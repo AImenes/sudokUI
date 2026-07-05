@@ -2,6 +2,16 @@ import React from 'react';
 import { useGame, EntryMode } from '../state/gameStore';
 import { PALETTE } from './Grid';
 
+function eraseTitle(mode: EntryMode, auto: boolean): string {
+  if (mode === 'color') return 'Erase colours in selected cells (Backspace) · Shift+Backspace wipes everything';
+  if (mode === 'corner' || mode === 'center') {
+    return auto
+      ? 'Restore struck candidates in selected cells (Backspace) · Shift+Backspace wipes everything'
+      : `Erase ${mode === 'corner' ? 'corner' : 'centre'} marks in selected cells (Backspace) · Shift+Backspace wipes everything`;
+  }
+  return 'Erase value, then marks, then colours (Backspace) · Shift+Backspace wipes everything';
+}
+
 const MODES: { id: EntryMode; label: string; key: string }[] = [
   { id: 'digit', label: 'Digit', key: 'Z' },
   { id: 'corner', label: 'Corner', key: 'X' },
@@ -60,19 +70,26 @@ export function Controls() {
       <div className="action-row">
         <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩ Undo</button>
         <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪ Redo</button>
-        <button onClick={erase} title="Erase (Backspace)">⌫ Erase</button>
+        <button onClick={erase} title={eraseTitle(mode, autoCandidates)}>⌫ Erase</button>
       </div>
       <div className="action-row">
         <button onClick={requestHint} title="Hint (H)">💡 Hint</button>
-        <button onClick={check} title="Check entered digits">✓ Check</button>
+        <button onClick={check} title="Check values and candidate lists against the solution">✓ Check</button>
         <button
           className={autoCandidates ? 'toggled' : ''}
           onClick={toggleAutoCandidates}
-          title="Show computed candidates in a 3×3 layout (HoDoKu style)"
+          title={
+            autoCandidates
+              ? 'Turn off — the current candidates are written to centre marks'
+              : 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
+          }
         >
           ⚙ Auto cands
         </button>
-        <button onClick={fillCandidates} title="Fill centre marks with all candidates">
+        <button
+          onClick={fillCandidates}
+          title={`Fill ${mode === 'corner' ? 'corner' : 'centre'} marks with all candidates — with several cells selected, only those are filled`}
+        >
           ✎ Fill cands
         </button>
       </div>

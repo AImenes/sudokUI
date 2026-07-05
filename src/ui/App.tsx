@@ -39,6 +39,9 @@ export default function App() {
   const togglePause = useGame((s) => s.togglePause);
   const input = useGame((s) => s.input);
   const erase = useGame((s) => s.erase);
+  const wipe = useGame((s) => s.wipe);
+  const notice = useGame((s) => s.notice);
+  const clearNotice = useGame((s) => s.clearNotice);
   const undo = useGame((s) => s.undo);
   const redo = useGame((s) => s.redo);
   const setMode = useGame((s) => s.setMode);
@@ -65,6 +68,13 @@ export default function App() {
   }, []);
 
   useEffect(() => setVictoryDismissed(false), [info?.puzzle]);
+
+  // toasts fade after a few seconds
+  useEffect(() => {
+    if (!notice) return;
+    const id = setTimeout(clearNotice, 3500);
+    return () => clearTimeout(id);
+  }, [notice, clearNotice]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -98,7 +108,8 @@ export default function App() {
         case 'Backspace':
         case 'Delete':
           e.preventDefault();
-          erase();
+          if (e.shiftKey) wipe();
+          else erase();
           break;
         case 'KeyZ':
           setMode('digit');
@@ -140,7 +151,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [input, erase, undo, redo, setMode, requestHint, select, selection, togglePause]);
+  }, [input, erase, wipe, undo, redo, setMode, requestHint, select, selection, togglePause]);
 
   return (
     <div className="app">
@@ -215,6 +226,7 @@ export default function App() {
           onClose={() => setVictoryDismissed(true)}
         />
       )}
+      {notice && <div className="toast">{notice}</div>}
     </div>
   );
 }

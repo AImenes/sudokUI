@@ -75,6 +75,8 @@ interface GameStore {
   hint: Step | null;
   hintStage: 'hidden' | 'tech' | 'full';
   errors: number[];
+  /** transient toast message */
+  notice: string | null;
 
   startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null) => void;
   select: (cells: number[], additive: boolean) => void;
@@ -83,6 +85,8 @@ interface GameStore {
   setActiveColor: (c: number) => void;
   input: (digit: number) => void;
   erase: () => void;
+  wipe: () => void;
+  clearNotice: () => void;
   undo: () => void;
   redo: () => void;
   toggleAutoCandidates: () => void;
@@ -121,6 +125,7 @@ export const useGame = create<GameStore>()(
       hint: null,
       hintStage: 'hidden' as const,
       errors: [],
+      notice: null,
 
       startGame: (puzzle, score, level, practiceTech = null) => {
         const g = parseGrid(puzzle);
@@ -224,13 +229,31 @@ export const useGame = create<GameStore>()(
             }
           }
         } else if (s.mode === 'corner' || s.mode === 'center') {
-          const key = s.mode;
           const editable = targets.filter((i) => !cells[i].given && !cells[i].value);
-          const allHave = editable.length > 0 && editable.every((i) => cells[i][key] & bit(digit));
-          for (const i of editable) {
-            if (allHave) cells[i][key] &= ~bit(digit);
-            else cells[i][key] |= bit(digit);
-            changed = true;
+          if (s.autoCandidates) {
+            // auto mode: pencil input strikes a candidate through (exclusion),
+            // pressing again restores it
+            const eg = engineGrid(cells);
+            const relevant = editable.filter(
+              (i) => eg.cands[i] & bit(digit) || cells[i].excluded & bit(digit)
+            );
+            const allExcluded =
+              relevant.length > 0 &&
+              relevant.every((i) => cells[i].excluded & bit(digit));
+            for (const i of relevant) {
+              if (allExcluded) cells[i].excluded &= ~bit(digit);
+              else cells[i].excluded |= bit(digit);
+              changed = true;
+            }
+          } else {
+            const key = s.mode;
+            const allHave =
+              editable.length > 0 && editable.every((i) => cells[i][key] & bit(digit));
+            for (const i of editable) {
+              if (allHave) cells[i][key] &= ~bit(digit);
+              else cells[i][key] |= bit(digit);
+              changed = true;
+            }
           }
         } else if (s.mode === 'color') {
           const colorIdx = digit - 1;
@@ -255,29 +278,58 @@ export const useGame = create<GameStore>()(
         });
       },
 
+      /** Erase only the layer belonging to the current mode. Digit mode keeps
+       *  the forgiving progressive behaviour: value, then marks, then colours. */
       erase: () => {
         const s = get();
-        if (s.won || s.paused) return;
+        if (s.won || s.paused || !s.selection.length) return;
         const targets = s.selection.filter((i) => !s.cells[i].given);
-        const colorTargets = s.selection;
-        if (!colorTargets.length) return;
         const cells = cloneCells(s.cells);
         let changed = false;
-        for (const i of targets) {
-          if (cells[i].value) {
-            cells[i].value = 0;
-            changed = true;
-          } else if (cells[i].corner || cells[i].center) {
-            cells[i].corner = 0;
-            cells[i].center = 0;
-            changed = true;
-          }
-        }
-        if (!changed) {
-          for (const i of colorTargets) {
+
+        if (s.mode === 'color') {
+          for (const i of s.selection) {
             if (cells[i].colors.length) {
               cells[i].colors = [];
               changed = true;
+            }
+          }
+        } else if (s.mode === 'corner' || s.mode === 'center') {
+          if (s.autoCandidates) {
+            // restore struck-through candidates
+            for (const i of targets) {
+              if (cells[i].excluded) {
+                cells[i].excluded = 0;
+                changed = true;
+              }
+            }
+          } else {
+            const key = s.mode;
+            for (const i of targets) {
+              if (cells[i][key]) {
+                cells[i][key] = 0;
+                changed = true;
+              }
+            }
+          }
+        } else {
+          // digit mode: progressive
+          for (const i of targets) {
+            if (cells[i].value) {
+              cells[i].value = 0;
+              changed = true;
+            } else if (cells[i].corner || cells[i].center) {
+              cells[i].corner = 0;
+              cells[i].center = 0;
+              changed = true;
+            }
+          }
+          if (!changed) {
+            for (const i of s.selection) {
+              if (cells[i].colors.length) {
+                cells[i].colors = [];
+                changed = true;
+              }
             }
           }
         }
@@ -291,6 +343,41 @@ export const useGame = create<GameStore>()(
           errors: []
         });
       },
+
+      /** Wipe everything from the selected cells (Shift+Erase). */
+      wipe: () => {
+        const s = get();
+        if (s.won || s.paused || !s.selection.length) return;
+        const cells = cloneCells(s.cells);
+        let changed = false;
+        for (const i of s.selection) {
+          const c = cells[i];
+          if (
+            (!c.given && (c.value || c.corner || c.center || c.excluded)) ||
+            c.colors.length
+          ) {
+            if (!c.given) {
+              c.value = 0;
+              c.corner = 0;
+              c.center = 0;
+              c.excluded = 0;
+            }
+            c.colors = [];
+            changed = true;
+          }
+        }
+        if (!changed) return;
+        set({
+          cells,
+          history: [...s.history, cloneCells(s.cells)],
+          future: [],
+          hint: null,
+          hintStage: 'hidden',
+          errors: []
+        });
+      },
+
+      clearNotice: () => set({ notice: null }),
 
       undo: () => {
         const s = get();
@@ -321,17 +408,85 @@ export const useGame = create<GameStore>()(
         });
       },
 
-      toggleAutoCandidates: () => set((s) => ({ autoCandidates: !s.autoCandidates })),
+      /**
+       * Auto candidates on/off with a clean handover:
+       * - ON: centre-mark eliminations are adopted as exclusions (centre marks
+       *   are an exhaustive list; corner marks are notation and left alone).
+       *   Impossible marks are dropped, and both events are reported.
+       * - OFF: the current auto view is written into centre marks so play
+       *   continues exactly where auto left off.
+       */
+      toggleAutoCandidates: () => {
+        const s = get();
+        const cells = cloneCells(s.cells);
+        let notice: string | null = null;
 
-      /** Fill center marks with the canonical candidates (HoDoKu "fill candidates"). */
+        if (!s.autoCandidates) {
+          const eg = engineGrid(cells);
+          let adopted = 0;
+          let dropped = 0;
+          for (let i = 0; i < 81; i++) {
+            const c = cells[i];
+            if (c.given || c.value || !c.center) continue;
+            const missing = eg.cands[i] & ~c.center;
+            if (missing) {
+              c.excluded |= missing;
+              adopted++;
+            }
+            if (c.center & ~eg.cands[i]) dropped++;
+          }
+          const parts: string[] = [];
+          if (adopted) parts.push(`kept your eliminations in ${adopted} cell${adopted > 1 ? 's' : ''}`);
+          if (dropped) parts.push(`dropped impossible marks in ${dropped} cell${dropped > 1 ? 's' : ''}`);
+          if (parts.length) notice = `Auto candidates on — ${parts.join(', ')}`;
+        } else {
+          const eg = engineGrid(cells);
+          for (let i = 0; i < 81; i++) {
+            if (!cells[i].given && !cells[i].value) cells[i].center = eg.cands[i];
+          }
+          notice = 'Auto candidates off — current state written to centre marks';
+        }
+        set({
+          autoCandidates: !s.autoCandidates,
+          cells,
+          history: [...s.history, cloneCells(s.cells)],
+          future: [],
+          notice
+        });
+      },
+
+      /**
+       * Fill candidates into the marks of the current mode (corner mode fills
+       * corners, everything else fills centre). With 2+ cells selected only
+       * those cells are filled — handy when your own logic is already
+       * underway elsewhere. Wrong marks are corrected and reported.
+       */
       fillCandidates: () => {
         const s = get();
         const g = engineGrid(s.cells);
         const cells = cloneCells(s.cells);
-        for (let i = 0; i < 81; i++) {
-          if (!cells[i].value && !cells[i].given) cells[i].center = g.cands[i];
+        const layer = s.mode === 'corner' ? 'corner' : 'center';
+        const scope = s.selection.filter((i) => !cells[i].given && !cells[i].value);
+        const partial = scope.length >= 2;
+        const targets = partial
+          ? scope
+          : Array.from({ length: 81 }, (_, i) => i).filter(
+              (i) => !cells[i].given && !cells[i].value
+            );
+        let corrected = 0;
+        for (const i of targets) {
+          if (cells[i][layer] && cells[i][layer] !== g.cands[i]) corrected++;
+          cells[i][layer] = g.cands[i];
         }
-        set({ cells, history: [...s.history, cloneCells(s.cells)], future: [] });
+        const layerName = layer === 'corner' ? 'corner' : 'centre';
+        set({
+          cells,
+          history: [...s.history, cloneCells(s.cells)],
+          future: [],
+          notice: `Filled ${layerName} marks${partial ? ' in selection' : ''}${
+            corrected ? ` — corrected ${corrected} cell${corrected > 1 ? 's' : ''}` : ''
+          }`
+        });
       },
 
       requestHint: () => {
@@ -381,16 +536,31 @@ export const useGame = create<GameStore>()(
 
       dismissHint: () => set({ hint: null, hintStage: 'hidden' }),
 
+      /** Flags wrong values, plus cells whose candidate list (auto view or
+       *  centre marks) no longer contains the solution digit. */
       check: () => {
         const s = get();
         if (!s.info) return;
         const errors: number[] = [];
+        const eg = s.autoCandidates ? engineGrid(s.cells) : null;
         for (let i = 0; i < 81; i++) {
-          if (s.cells[i].value && s.cells[i].value !== Number(s.info.solution[i])) {
+          const sol = Number(s.info.solution[i]);
+          const c = s.cells[i];
+          if (c.value) {
+            if (c.value !== sol) errors.push(i);
+          } else if (eg) {
+            if (!(eg.cands[i] & bit(sol))) errors.push(i);
+          } else if (c.center && !(c.center & bit(sol))) {
             errors.push(i);
           }
         }
-        set({ errors });
+        set({
+          errors,
+          notice:
+            errors.length === 0
+              ? 'Everything checks out so far'
+              : `${errors.length} problem${errors.length > 1 ? 's' : ''} found — values or candidate lists missing the true digit`
+        });
       },
 
       togglePause: () => {
