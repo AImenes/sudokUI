@@ -76,6 +76,7 @@ export const TECHS = {
   WHALE: t(2600, 'Whale', 'Unfair', 'Basic Fish', 470, false, false),
   LEVIATHAN: t(2700, 'Leviathan', 'Unfair', 'Basic Fish', 470, false, false),
   REMOTE_PAIR: t(2800, 'Remote Pair', 'Hard', 'Chains and Loops', 110),
+  CHUTE_REMOTE_PAIR: t(2850, 'Chute Remote Pair', 'Hard', 'Chains and Loops', 110),
   BUG_PLUS_1: t(2900, 'BUG+1', 'Hard', 'Uniqueness', 100),
   SKYSCRAPER: t(3000, 'Skyscraper', 'Hard', 'Single Digit Patterns', 130),
   TWO_STRING_KITE: t(3100, '2-String Kite', 'Hard', 'Single Digit Patterns', 150),
@@ -84,15 +85,16 @@ export const TECHS = {
   W_WING: t(3200, 'W-Wing', 'Hard', 'Wings', 150),
   XY_WING: t(3300, 'XY-Wing', 'Hard', 'Wings', 160),
   XYZ_WING: t(3400, 'XYZ-Wing', 'Hard', 'Wings', 180),
+  WXYZ_WING: t(3450, 'WXYZ-Wing', 'Hard', 'Wings', 200),
   UNIQUENESS_1: t(3500, 'Unique Rectangle Type 1', 'Hard', 'Uniqueness', 100),
   UNIQUENESS_2: t(3600, 'Unique Rectangle Type 2', 'Hard', 'Uniqueness', 100),
-  UNIQUENESS_3: t(3700, 'Unique Rectangle Type 3', 'Hard', 'Uniqueness', 100, false),
+  UNIQUENESS_3: t(3700, 'Unique Rectangle Type 3', 'Hard', 'Uniqueness', 100),
   UNIQUENESS_4: t(3800, 'Unique Rectangle Type 4', 'Hard', 'Uniqueness', 100),
-  UNIQUENESS_5: t(3900, 'Unique Rectangle Type 5', 'Hard', 'Uniqueness', 100, false),
-  UNIQUENESS_6: t(4000, 'Unique Rectangle Type 6', 'Hard', 'Uniqueness', 100, false),
-  HIDDEN_RECTANGLE: t(4010, 'Hidden Rectangle', 'Hard', 'Uniqueness', 100, false),
-  AVOIDABLE_RECTANGLE_1: t(4020, 'Avoidable Rectangle Type 1', 'Hard', 'Uniqueness', 100, false),
-  AVOIDABLE_RECTANGLE_2: t(4030, 'Avoidable Rectangle Type 2', 'Hard', 'Uniqueness', 100, false),
+  UNIQUENESS_5: t(3900, 'Unique Rectangle Type 5', 'Hard', 'Uniqueness', 100),
+  UNIQUENESS_6: t(4000, 'Unique Rectangle Type 6', 'Hard', 'Uniqueness', 100),
+  HIDDEN_RECTANGLE: t(4010, 'Hidden Rectangle', 'Hard', 'Uniqueness', 100),
+  AVOIDABLE_RECTANGLE_1: t(4020, 'Avoidable Rectangle Type 1', 'Hard', 'Uniqueness', 100),
+  AVOIDABLE_RECTANGLE_2: t(4030, 'Avoidable Rectangle Type 2', 'Hard', 'Uniqueness', 100),
   FINNED_X_WING: t(4100, 'Finned X-Wing', 'Hard', 'Finned Fish', 130),
   SASHIMI_X_WING: t(4200, 'Sashimi X-Wing', 'Hard', 'Finned Fish', 150),
   FINNED_SWORDFISH: t(4300, 'Finned Swordfish', 'Unfair', 'Finned Fish', 200),
@@ -111,9 +113,28 @@ export const TECHS = {
   ALS_XZ: t(5700, 'ALS-XZ', 'Unfair', 'Almost Locked Sets', 300),
   ALS_XY_WING: t(5800, 'ALS-XY-Wing', 'Unfair', 'Almost Locked Sets', 320, false),
   ALS_XY_CHAIN: t(5900, 'ALS-XY-Chain', 'Unfair', 'Almost Locked Sets', 340, false),
-  DEATH_BLOSSOM: t(6000, 'Death Blossom', 'Unfair', 'Almost Locked Sets', 360, false, false),
+  DEATH_BLOSSOM: t(6000, 'Death Blossom', 'Unfair', 'Almost Locked Sets', 360),
   FRANKEN_X_WING: t(6100, 'Franken X-Wing', 'Unfair', 'Complex Fish', 300, false),
   FRANKEN_SWORDFISH: t(6200, 'Franken Swordfish', 'Unfair', 'Complex Fish', 350, false),
+  // --- not yet implemented; shown in the app for the full picture ---
+  X_CYCLES: t(5450, 'X-Cycles (loops)', 'Unfair', 'Chains and Loops', 280, false),
+  GROUPED_X_CYCLES: t(5460, 'Grouped X-Cycles', 'Unfair', 'Chains and Loops', 300, false),
+  TWINNED_XY_CHAIN: t(5550, 'Twinned XY-Chains', 'Unfair', 'Chains and Loops', 300, false),
+  AIC: t(5950, 'Alternating Inference Chain', 'Unfair', 'Chains and Loops', 320, false),
+  AIC_GROUPED: t(5960, 'AIC with Groups', 'Unfair', 'Chains and Loops', 340, false),
+  AIC_ALS: t(5970, 'AIC with ALSs', 'Unfair', 'Chains and Loops', 360, false),
+  EXTENDED_RECTANGLE: t(4040, 'Extended Rectangle', 'Hard', 'Uniqueness', 110, false),
+  FIREWORKS: t(6300, 'Fireworks', 'Extreme', 'Miscellaneous', 400, false),
+  TRIDAGON: t(6310, 'Tridagon', 'Extreme', 'Miscellaneous', 400, false),
+  SK_LOOP: t(6320, 'SK Loop', 'Extreme', 'Miscellaneous', 400, false),
+  ALIGNED_PAIR_EXCLUSION: t(6330, 'Aligned Pair Exclusion', 'Unfair', 'Miscellaneous', 320, false),
+  EXOCET: t(8300, 'Exocet', 'Extreme', 'Last Resort', 450, false),
+  DOUBLE_EXOCET: t(8310, 'Double Exocet', 'Extreme', 'Last Resort', 480, false),
+  PATTERN_OVERLAY: t(8320, 'Pattern Overlay', 'Extreme', 'Last Resort', 500, false),
+  DIGIT_FORCING_CHAIN: t(8510, 'Digit Forcing Chain', 'Extreme', 'Last Resort', 500, false),
+  NISHIO_FORCING_CHAIN: t(8520, 'Nishio Forcing Chain', 'Extreme', 'Last Resort', 500, false),
+  CELL_FORCING_CHAIN: t(8530, 'Cell Forcing Chain', 'Extreme', 'Last Resort', 550, false),
+  UNIT_FORCING_CHAIN: t(8540, 'Unit Forcing Chain', 'Extreme', 'Last Resort', 550, false),
   FORCING_CHAIN: t(8500, 'Forcing Chain', 'Extreme', 'Last Resort', 500, false),
   FORCING_NET: t(8600, 'Forcing Net', 'Extreme', 'Last Resort', 700, false),
   BRUTE_FORCE: t(8900, 'Brute Force', 'Extreme', 'Last Resort', 10000)
@@ -126,9 +147,14 @@ export const SOLVE_ORDER: Tech[] = (Object.keys(TECHS) as Tech[])
   .filter((k) => TECHS[k].implemented && TECHS[k].enabled)
   .sort((a, b) => TECHS[a].index - TECHS[b].index);
 
-/** Techniques offered in practice mode (implemented, excluding trivial/last resort). */
+/** Techniques offered in practice mode (implemented, excluding last resorts). */
 export const PRACTICE_TECHS: Tech[] = SOLVE_ORDER.filter(
-  (k) => TECHS[k].index >= 1000 && TECHS[k].category !== 'Last Resort'
+  (k) => TECHS[k].category !== 'Last Resort'
+);
+
+/** Full catalogue in solver order, for the technique overview UI. */
+export const ALL_TECHS: Tech[] = (Object.keys(TECHS) as Tech[]).sort(
+  (a, b) => TECHS[a].index - TECHS[b].index
 );
 
 export function levelForScore(score: number): Level {

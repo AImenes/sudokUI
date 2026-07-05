@@ -73,6 +73,7 @@ export function generatePuzzle(symmetry: Symmetry = 'rotational'): Grid {
       // rebuild puzzle grid without the removed cells
       puzzle.values = test.values;
       puzzle.cands = test.cands;
+      puzzle.given = test.given;
     }
   }
   return puzzle;

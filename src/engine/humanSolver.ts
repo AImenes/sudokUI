@@ -10,10 +10,16 @@ import { findTurbotFamily, findEmptyRectangle } from './techniques/singleDigit';
 import { findXYWing, findXYZWing, findWWing } from './techniques/wings';
 import { findRemotePair, findXChain, findXYChain } from './techniques/chains';
 import { findSimpleColors, findMultiColors } from './techniques/coloring';
-import { findUniqueness, findBugPlus1 } from './techniques/uniqueness';
-import { findAlsXz } from './techniques/als';
+import {
+  findUniqueness,
+  findBugPlus1,
+  findHiddenRectangle,
+  findAvoidableRectangle
+} from './techniques/uniqueness';
+import { findAlsXz, findWxyzWing, findDeathBlossom } from './techniques/als';
 import { findSueDeCoq } from './techniques/sueDeCoq';
 import { findMedusa3d } from './techniques/medusa';
+import { findChuteRemotePair } from './techniques/chuteRemotePair';
 
 type Finder = (g: Grid) => Step | null;
 
@@ -35,6 +41,7 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   SWORDFISH: (g) => findBasicFish(g, 3),
   JELLYFISH: (g) => findBasicFish(g, 4),
   REMOTE_PAIR: findRemotePair,
+  CHUTE_REMOTE_PAIR: findChuteRemotePair,
   BUG_PLUS_1: findBugPlus1,
   SKYSCRAPER: (g) => findTurbotFamily(g, 'SKYSCRAPER'),
   TWO_STRING_KITE: (g) => findTurbotFamily(g, 'TWO_STRING_KITE'),
@@ -43,9 +50,16 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   W_WING: findWWing,
   XY_WING: findXYWing,
   XYZ_WING: findXYZWing,
+  WXYZ_WING: findWxyzWing,
   UNIQUENESS_1: (g) => findUniqueness(g, 1),
   UNIQUENESS_2: (g) => findUniqueness(g, 2),
+  UNIQUENESS_3: (g) => findUniqueness(g, 3),
   UNIQUENESS_4: (g) => findUniqueness(g, 4),
+  UNIQUENESS_5: (g) => findUniqueness(g, 5),
+  UNIQUENESS_6: (g) => findUniqueness(g, 6),
+  HIDDEN_RECTANGLE: findHiddenRectangle,
+  AVOIDABLE_RECTANGLE_1: (g) => findAvoidableRectangle(g, 1),
+  AVOIDABLE_RECTANGLE_2: (g) => findAvoidableRectangle(g, 2),
   FINNED_X_WING: (g) => findFinnedFish(g, 2, false),
   SASHIMI_X_WING: (g) => findFinnedFish(g, 2, true),
   FINNED_SWORDFISH: (g) => findFinnedFish(g, 3, false),
@@ -56,7 +70,8 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   MEDUSA_3D: findMedusa3d,
   X_CHAIN: (g) => findXChain(g),
   XY_CHAIN: (g) => findXYChain(g),
-  ALS_XZ: findAlsXz
+  ALS_XZ: findAlsXz,
+  DEATH_BLOSSOM: findDeathBlossom
 };
 
 /** Find the next step in HoDoKu order. Never returns BRUTE_FORCE. */

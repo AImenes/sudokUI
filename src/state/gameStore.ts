@@ -41,7 +41,12 @@ const cloneCells = (cells: CellState[]): CellState[] =>
  *  explicit exclusions. */
 export function engineGrid(cells: CellState[]): Grid {
   const g = emptyGrid();
-  for (let i = 0; i < 81; i++) if (cells[i].value) setValue(g, i, cells[i].value);
+  for (let i = 0; i < 81; i++) {
+    if (cells[i].value) {
+      setValue(g, i, cells[i].value);
+      if (cells[i].given) g.given[i] = 1;
+    }
+  }
   for (let i = 0; i < 81; i++) if (!cells[i].value) g.cands[i] &= ~cells[i].excluded;
   return g;
 }

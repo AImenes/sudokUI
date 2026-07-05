@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGame, rateImport } from '../state/gameStore';
-import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, Category } from '../engine/ratings';
+import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
 
 interface GenState {
@@ -72,29 +72,53 @@ export function NewGameDialog({ onClose, onStart }: { onClose: () => void; onSta
 
 export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onStart: (tech: Tech) => void }) {
   const byCategory = new Map<Category, Tech[]>();
-  for (const tech of PRACTICE_TECHS) {
+  for (const tech of ALL_TECHS) {
+    if (TECHS[tech].category === 'Last Resort') continue;
     const cat = TECHS[tech].category;
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat)!.push(tech);
   }
+  const shown = [...byCategory.values()].flat();
+  const playable = shown.filter((t) => PRACTICE_TECHS.includes(t));
   return (
     <Modal title="Practice a technique" onClose={onClose}>
       <p className="dialog-note">
         Ninefold generates a puzzle whose solution path requires the chosen
-        technique. Rare techniques can take a little while — found puzzles are
-        cached, so the next one is instant.
+        technique — with nothing harder needed before it — and skips you to
+        the position where it applies. Techniques marked ✗ are catalogued but
+        not implemented yet.
+      </p>
+      <p className="tech-count">
+        <strong>{playable.length}</strong> of {shown.length} techniques playable
       </p>
       <div className="practice-list">
         {[...byCategory.entries()].map(([cat, techs]) => (
           <div key={cat} className="practice-group">
             <h4>{cat}</h4>
             <div className="practice-btns">
-              {techs.map((tech) => (
-                <button key={tech} onClick={() => onStart(tech)} title={`Score ${TECHS[tech].score}, ${TECHS[tech].level}`}>
-                  {TECHS[tech].name}
-                  {poolSize(techKey(tech)) > 0 && <span className="pool-dot" title="cached puzzle ready" />}
-                </button>
-              ))}
+              {techs.map((tech) => {
+                const info = TECHS[tech];
+                const ok = PRACTICE_TECHS.includes(tech);
+                return (
+                  <button
+                    key={tech}
+                    disabled={!ok}
+                    className={ok ? '' : 'tech-missing'}
+                    onClick={() => ok && onStart(tech)}
+                    title={
+                      ok
+                        ? `Score ${info.score} · ${info.level}`
+                        : `${info.name} is not implemented yet (planned score ${info.score}, ${info.level})`
+                    }
+                  >
+                    {ok ? '' : <span className="tech-x">✗ </span>}
+                    {info.name}
+                    {ok && poolSize(techKey(tech)) > 0 && (
+                      <span className="pool-dot" title="cached puzzle ready" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}

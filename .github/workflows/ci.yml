@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc -b
+
+      - name: Tests (engine, practice, soundness harness)
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ninefold-dist
+          path: dist/
+          retention-days: 7
+
+  # Deploy to your Hetzner box once secrets are configured:
+  #   HETZNER_HOST, HETZNER_USER, HETZNER_SSH_KEY, HETZNER_PATH
+  # Uncomment when ready.
+  #
+  # deploy:
+  #   needs: test-and-build
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: ninefold-dist
+  #         path: dist
+  #     - name: Rsync to server
+  #       uses: burnett01/rsync-deployments@7.0.1
+  #       with:
+  #         switches: -avzr --delete
+  #         path: dist/
+  #         remote_path: ${{ secrets.HETZNER_PATH }}
+  #         remote_host: ${{ secrets.HETZNER_HOST }}
+  #         remote_user: ${{ secrets.HETZNER_USER }}
+  #         remote_key: ${{ secrets.HETZNER_SSH_KEY }}

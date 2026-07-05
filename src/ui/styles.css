@@ -452,8 +452,25 @@ body {
   position: relative;
 }
 
-.practice-btns button:hover {
+.practice-btns button:hover:not(:disabled) {
   border-color: var(--accent);
+}
+
+.tech-count {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+
+.practice-btns button.tech-missing {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+.tech-x {
+  color: var(--hint-elim);
+  font-weight: 700;
 }
 
 .pool-dot {

@@ -62,16 +62,26 @@ export function digitsOf(mask: number): number[] {
 export interface Grid {
   values: Uint8Array; // 81, 0 = empty
   cands: Uint16Array; // 81, 9-bit masks; 0 for solved cells
+  /** 1 = clue from the original puzzle (avoidable rectangles need this) */
+  given: Uint8Array;
 }
 
 export function emptyGrid(): Grid {
-  const g: Grid = { values: new Uint8Array(81), cands: new Uint16Array(81) };
+  const g: Grid = {
+    values: new Uint8Array(81),
+    cands: new Uint16Array(81),
+    given: new Uint8Array(81)
+  };
   g.cands.fill(ALL_CANDS);
   return g;
 }
 
 export function cloneGrid(g: Grid): Grid {
-  return { values: new Uint8Array(g.values), cands: new Uint16Array(g.cands) };
+  return {
+    values: new Uint8Array(g.values),
+    cands: new Uint16Array(g.cands),
+    given: new Uint8Array(g.given)
+  };
 }
 
 /** Place a digit and strip it from peers' candidates. */
@@ -89,7 +99,10 @@ export function parseGrid(s: string): Grid | null {
   const g = emptyGrid();
   for (let i = 0; i < 81; i++) {
     const ch = chars[i];
-    if (ch !== '.' && ch !== '0') setValue(g, i, Number(ch));
+    if (ch !== '.' && ch !== '0') {
+      setValue(g, i, Number(ch));
+      g.given[i] = 1;
+    }
   }
   return g;
 }
