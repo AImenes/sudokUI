@@ -409,7 +409,7 @@ export const useGame = create<GameStore>()(
       }
     }),
     {
-      name: 'ninefold-game-v1',
+      name: 'sudokui-game-v1',
       partialize: (s) => ({
         info: s.info,
         cells: s.cells,

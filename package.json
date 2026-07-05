@@ -1,8 +1,8 @@
 {
-  "name": "ninefold",
+  "name": "sudokui",
   "private": true,
   "version": "0.1.0",
-  "description": "Ninefold — play, practise and rate sudoku puzzles. A modern successor to HoDoKu.",
+  "description": "sudokUI — play, practise and rate sudoku puzzles in a beautiful UI.",
   "type": "module",
   "scripts": {
     "dev": "vite",

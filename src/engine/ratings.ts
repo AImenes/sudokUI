@@ -38,7 +38,7 @@ export interface TechInfo {
   level: Level;
   category: Category;
   score: number;
-  /** implemented in the Ninefold engine (unimplemented ones are roadmap) */
+  /** implemented in the sudokUI engine (unimplemented ones are roadmap) */
   implemented: boolean;
   /** enabled in the default solve/rating loop */
   enabled: boolean;
@@ -104,7 +104,7 @@ export const TECHS = {
   SUE_DE_COQ: t(5300, 'Sue de Coq', 'Unfair', 'Miscellaneous', 250),
   SIMPLE_COLORS: t(5330, 'Simple Colors', 'Hard', 'Coloring', 150),
   MULTI_COLORS: t(5360, 'Multi Colors', 'Hard', 'Coloring', 200),
-  // Ninefold extension (not in HoDoKu): rated between Multi Colors and X-Chain
+  // sudokUI extension (not in HoDoKu): rated between Multi Colors and X-Chain
   MEDUSA_3D: t(5370, '3D Medusa', 'Unfair', 'Coloring', 250),
   X_CHAIN: t(5400, 'X-Chain', 'Unfair', 'Chains and Loops', 260),
   XY_CHAIN: t(5500, 'XY-Chain', 'Unfair', 'Chains and Loops', 260),

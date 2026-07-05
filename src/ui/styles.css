@@ -92,13 +92,22 @@ body {
   background: linear-gradient(135deg, #5b8fe0, #9b74d8);
   color: white;
   font-weight: 800;
-  font-size: 20px;
+  font-size: 15px;
+  letter-spacing: 0.5px;
 }
 
 .brand h1 {
   font-size: 20px;
   margin: 0;
   letter-spacing: 0.5px;
+}
+
+.brand-ui {
+  background: linear-gradient(135deg, #5b8fe0, #9b74d8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 800;
 }
 
 .game-meta {

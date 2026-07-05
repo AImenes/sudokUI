@@ -1,5 +1,5 @@
 // Generates icon-192.png and icon-512.png without any native image deps:
-// draws the Ninefold mark (gradient rounded square + 3x3 grid) pixel by pixel
+// draws the sudokUI mark (gradient rounded square + 3x3 grid) pixel by pixel
 // and encodes a minimal PNG using zlib.
 import { deflateSync } from 'node:zlib';
 import { writeFileSync } from 'node:fs';
@@ -91,14 +91,25 @@ function drawIcon(size) {
         if (onBorder) {
           r = g = b = 255;
         } else if (onLine) {
-          r = Math.round(r + (255 - r) * 0.6);
-          g = Math.round(g + (255 - g) * 0.6);
-          b = Math.round(b + (255 - b) * 0.6);
+          r = Math.round(r + (255 - r) * 0.45);
+          g = Math.round(g + (255 - g) * 0.45);
+          b = Math.round(b + (255 - b) * 0.45);
         }
-        // fill the centre cell white (the "9" cell of the fold)
-        const col = Math.floor((x - gridMin) / cell);
-        const row = Math.floor((y - gridMin) / cell);
-        if (col === 1 && row === 1 && !onBorder && !onLine) {
+      }
+      // blocky "UI" wordmark centred over the grid
+      const bx = size * 0.30;
+      const by = size * 0.355;
+      const bw = size * 0.40;
+      const bh = size * 0.29;
+      if (x >= bx && x <= bx + bw && y >= by && y <= by + bh) {
+        const u = (x - bx) / bw; // 0..1 across the glyph box
+        const v = (y - by) / bh;
+        const inU =
+          (u <= 0.16 && v <= 1) || // U left bar
+          (u >= 0.44 && u <= 0.6) || // U right bar
+          (u <= 0.6 && v >= 0.8); // U bottom bar
+        const inI = u >= 0.84; // I bar
+        if (inU || inI) {
           r = g = b = 255;
         }
       }

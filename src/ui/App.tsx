@@ -57,8 +57,8 @@ export default function App() {
 
   // first visit: start an easy game (guarded against StrictMode double-fire)
   useEffect(() => {
-    if (!useGame.getState().info && !(window as any).__ninefoldBooted) {
-      (window as any).__ninefoldBooted = true;
+    if (!useGame.getState().info && !(window as any).__sudokuiBooted) {
+      (window as any).__sudokuiBooted = true;
       start({ kind: 'level', level: 'Easy' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,8 +146,10 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">9</span>
-          <h1>Ninefold</h1>
+          <span className="brand-mark">UI</span>
+          <h1>
+            sudok<span className="brand-ui">UI</span>
+          </h1>
         </div>
         {info && (
           <div className="game-meta">

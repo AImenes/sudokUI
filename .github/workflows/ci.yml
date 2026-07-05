@@ -32,7 +32,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ninefold-dist
+          name: sudokui-dist
           path: dist/
           retention-days: 7
 
@@ -47,7 +47,7 @@ jobs:
   #   steps:
   #     - uses: actions/download-artifact@v4
   #       with:
-  #         name: ninefold-dist
+  #         name: sudokui-dist
   #         path: dist
   #     - name: Rsync to server
   #       uses: burnett01/rsync-deployments@7.0.1

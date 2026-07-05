@@ -21,6 +21,6 @@ export const useSettings = create<Settings>()(
         set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       set: (p) => set(p)
     }),
-    { name: 'ninefold-settings-v1' }
+    { name: 'sudokui-settings-v1' }
   )
 );

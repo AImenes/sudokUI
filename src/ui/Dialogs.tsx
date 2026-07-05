@@ -83,7 +83,7 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
   return (
     <Modal title="Practice a technique" onClose={onClose}>
       <p className="dialog-note">
-        Ninefold generates a puzzle whose solution path requires the chosen
+        sudokUI generates a puzzle whose solution path requires the chosen
         technique — with nothing harder needed before it — and skips you to
         the position where it applies. Techniques marked ✗ are catalogued but
         not implemented yet.

@@ -1,9 +1,10 @@
-# Ninefold
+# sudokUI
 
-Ninefold is a free, open-source sudoku app for playing, practising and rating
-puzzles. It aims to combine a first-class playing experience with the deepest
-solving-technique library available in a browser — from a beginner's first
-naked single to Death Blossoms and finned fish.
+**sudokUI** (*sudoku + UI* — [sudokui.app](https://sudokui.app)) is a free,
+open-source sudoku app for playing, practising and rating puzzles. It aims to
+combine a first-class playing experience with the deepest solving-technique
+library available in a browser — from a beginner's first naked single to
+Death Blossoms and finned fish.
 
 Runs as an installable, offline-capable web app (PWA). The same build wraps
 natively for iOS and Android via Capacitor.
@@ -117,7 +118,7 @@ browser, in a worker, and under Node in tests.
 
 ```bash
 npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android
-npx cap init Ninefold app.ninefold --web-dir dist
+npx cap init sudokUI app.sudokui --web-dir dist
 npm run build
 npx cap add ios && npx cap open ios          # Xcode
 npx cap add android && npx cap open android  # Android Studio
@@ -134,6 +135,6 @@ npx cap add android && npx cap open android  # Android Studio
 
 The rating model (per-technique scores and difficulty bands) and much of the
 technique semantics follow HoDoKu by Bernhard Hobiger; several newer
-strategies follow the definitions documented at sudokuwiki.org. Ninefold is an
+strategies follow the definitions documented at sudokuwiki.org. sudokUI is an
 independent implementation, released under the GPL-3.0 license (see
 `LICENSE`).

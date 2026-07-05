@@ -9,10 +9,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'Ninefold Sudoku',
-        short_name: 'Ninefold',
+        name: 'sudokUI',
+        short_name: 'sudokUI',
         description:
-          'Play, practise and rate sudoku puzzles. A modern successor to HoDoKu.',
+          'Play, practise and rate sudoku puzzles in a beautiful UI.',
         theme_color: '#1a1d29',
         background_color: '#1a1d29',
         display: 'standalone',
