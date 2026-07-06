@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { emptyGrid, setValue, bit } from '../src/engine/board';
 import { findUniqueness, findAvoidableRectangle } from '../src/engine/techniques/uniqueness';
 import { findBasicFish } from '../src/engine/techniques/fish';
+import { findFrankenFish } from '../src/engine/techniques/complexFish';
 
 // Deterministic positions for the rare finders that random hunts seldom hit.
 // (Their common siblings are validated against real solutions in hunt-new.)
@@ -61,6 +62,28 @@ describe('synthetic rare-pattern positions', () => {
       expect(step!.eliminations.every((e) => e.digit === 5 && e.cell % 9 < size)).toBe(true);
     });
   }
+
+  it('finds a Franken X-Wing (row + box base)', () => {
+    const g = emptyGrid();
+    // digit 5: row 1 restricted to columns 1 and 5; box 5 restricted to
+    // column 5 -> base {row 0, box 4} covered by columns {0, 4}
+    for (let col = 0; col < 9; col++) {
+      if (col !== 0 && col !== 4) g.cands[0 * 9 + col] &= ~bit(5);
+    }
+    for (const cell of [30, 32, 39, 41, 48, 50]) {
+      g.cands[cell] &= ~bit(5); // box 4 keeps 5 only in its middle column
+    }
+    const step = findFrankenFish(g, 2);
+    expect(step).not.toBeNull();
+    expect(step!.tech).toBe('FRANKEN_X_WING');
+    expect(step!.eliminations.length).toBeGreaterThan(0);
+    // every elimination is digit 5 in column 1 or 5, outside row 1 and box 5
+    expect(
+      step!.eliminations.every(
+        (e) => e.digit === 5 && (e.cell % 9 === 0 || e.cell % 9 === 4)
+      )
+    ).toBe(true);
+  });
 
   it('Avoidable Rectangle Type 2 does NOT fire when a corner is a given', () => {
     const g = emptyGrid();

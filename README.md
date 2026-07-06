@@ -43,7 +43,7 @@ natively for iOS and Android via Capacitor.
 
 ## Technique library
 
-80 techniques catalogued, 58 implemented (55 enabled in the default solve
+80 techniques catalogued, 66 implemented (63 enabled in the default solve
 order — large fish are provably redundant and stay off, as in HoDoKu):
 
 | Family | Implemented |
@@ -57,12 +57,15 @@ order — large fish are provably redundant and stay off, as in HoDoKu):
 | Uniqueness | UR Types 1–6, Hidden Rectangle, Avoidable Rectangles 1/2, Extended Rectangles, BUG+1 |
 | Colouring | Simple Colours, Multi Colours, 3D Medusa |
 | Chains | Remote Pairs, Chute Remote Pairs, X-Chain, X-Cycles, XY-Chain, AICs |
-| ALS | ALS-XZ, ALS-XY-Wing, Sue de Coq, Death Blossom |
+| ALS | ALS-XZ, ALS-XY-Wing, ALS-XY-Chain, Sue de Coq, Death Blossom |
+| Complex fish | Franken X-Wing, Franken Swordfish |
+| Miscellaneous | Aligned Pair Exclusion |
+| Last resorts | Pattern Overlay, Nishio/Cell/Unit forcing nets |
 
 Not yet implemented (visible in-app, marked ✗): grouped chains and AICs
-with groups/ALS nodes, ALS-XY-Chain, complex (franken/mutant) fish, Exocet,
-SK Loops, Fireworks, Tridagons, Aligned Pair Exclusion, Pattern Overlay, and
-the forcing-chain family. Contributions welcome — see *Adding a technique*.
+with groups/ALS nodes, Exocet, SK Loops, Fireworks, Tridagons, and the
+generic linear forcing-chain entries (their Nishio/cell/unit net forms are
+implemented). Contributions welcome — see *Adding a technique*.
 
 ### Correctness policy
 
