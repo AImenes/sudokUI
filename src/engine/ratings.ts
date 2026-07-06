@@ -133,14 +133,14 @@ export const TECHS = {
   SK_LOOP: t(6320, 'SK Loop', 'Extreme', 'Miscellaneous', 400, false),
   ALIGNED_PAIR_EXCLUSION: t(6330, 'Aligned Pair Exclusion', 'Unfair', 'Miscellaneous', 320),
   EXOCET: t(8300, 'Exocet', 'Extreme', 'Last Resort', 450),
-  DOUBLE_EXOCET: t(8310, 'Double Exocet', 'Extreme', 'Last Resort', 480, false),
+  DOUBLE_EXOCET: t(8310, 'Double Exocet', 'Extreme', 'Last Resort', 480, true, false),
   PATTERN_OVERLAY: t(8320, 'Pattern Overlay', 'Extreme', 'Last Resort', 500),
   DIGIT_FORCING_CHAIN: t(8510, 'Digit Forcing Chain', 'Extreme', 'Last Resort', 500),
   NISHIO_FORCING_CHAIN: t(8520, 'Nishio Forcing Chain', 'Extreme', 'Last Resort', 500),
   CELL_FORCING_CHAIN: t(8530, 'Cell Forcing Chain', 'Extreme', 'Last Resort', 550),
   UNIT_FORCING_CHAIN: t(8540, 'Unit Forcing Chain', 'Extreme', 'Last Resort', 550),
   FORCING_CHAIN: t(8500, 'Forcing Chain', 'Extreme', 'Last Resort', 500, false),
-  FORCING_NET: t(8600, 'Forcing Net', 'Extreme', 'Last Resort', 700, false),
+  FORCING_NET: t(8600, 'Forcing Net', 'Extreme', 'Last Resort', 700),
   BRUTE_FORCE: t(8900, 'Brute Force', 'Extreme', 'Last Resort', 10000)
 } as const;
 

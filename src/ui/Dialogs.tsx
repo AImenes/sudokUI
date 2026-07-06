@@ -127,7 +127,7 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
                       ok
                         ? `Score ${info.score} · ${info.level}`
                         : redundant
-                          ? `${info.name} is implemented, but any fish this size implies a smaller complementary fish, so it is never required — nothing to practise`
+                          ? `${info.name} is implemented, but provably redundant — its conclusions are always found by earlier techniques, so it never appears in a solve path`
                           : `${info.name} is not implemented yet (planned score ${info.score}, ${info.level})`
                     }
                   >

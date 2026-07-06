@@ -3,7 +3,7 @@
 import { Level, Tech } from '../engine/ratings';
 import type { PoolEntry, WorkerRequest, WorkerResponse } from '../engine/worker';
 
-const STORAGE_KEY = 'sudokui-pools-v7'; // v7: exocet in the loop
+const STORAGE_KEY = 'sudokui-pools-v8'; // v8: forcing net in the loop
 const POOL_CAP = 8;
 
 type Pools = Record<string, PoolEntry[]>;
