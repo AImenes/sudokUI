@@ -4,7 +4,7 @@ import { solve } from '../src/engine/bruteForce';
 import { generatePuzzle } from '../src/engine/generator';
 import { findNextStep, applyStep } from '../src/engine/humanSolver';
 import { Step } from '../src/engine/steps';
-import { findNishio, findCellForcing, findUnitForcing } from '../src/engine/techniques/forcing';
+import { findNishio, findCellForcing, findUnitForcing, findForcingNet } from '../src/engine/techniques/forcing';
 import { findPatternOverlay } from '../src/engine/techniques/templates';
 import { findAlsXyChain } from '../src/engine/techniques/als';
 import { findAlignedPairExclusion } from '../src/engine/techniques/ape';
@@ -35,7 +35,8 @@ const PROBES: Record<string, (g: Grid) => Step | null> = {
   AIC_GROUPED: (g) => findGroupedAic(g),
   AIC_ALS_ENGINE: (g) => findGroupedAic(g),
   GROUPED_NICE_LOOP: (g) => findGroupedNiceLoop(g),
-  FIREWORKS: findFireworks
+  FIREWORKS: findFireworks,
+  FORCING_NET: findForcingNet
 };
 
 const REQUIRED = [
@@ -48,7 +49,8 @@ const REQUIRED = [
   'NICE_LOOP',
   'DIGIT_FORCING_CHAIN',
   'AIC_GROUPED',
-  'GROUPED_NICE_LOOP'
+  'GROUPED_NICE_LOOP',
+  'FORCING_NET'
 ];
 
 describe('heavy technique hunt + validation', () => {

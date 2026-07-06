@@ -57,6 +57,80 @@ function propagate(g: Grid): boolean {
   return true;
 }
 
+/**
+ * Propagation with intersections on top of singles: after each singles pass,
+ * apply pointing (box digit confined to a line clears the rest of the line)
+ * and claiming (line digit confined to a box clears the rest of the box).
+ * Strictly stronger than `propagate`, still every step a sound inference.
+ * Returns false on contradiction.
+ */
+function propagateNet(g: Grid): boolean {
+  for (let guard = 0; guard < 200; guard++) {
+    if (!propagate(g)) return false;
+    let changed = false;
+    for (let d = 1; d <= 9; d++) {
+      const m = bit(d);
+      // pointing: box -> line
+      for (let b = 0; b < 9; b++) {
+        const cells = UNITS[18 + b].filter((c) => g.values[c] === 0 && g.cands[c] & m);
+        if (cells.length < 2) continue;
+        for (const axis of [0, 1] as const) {
+          const lineOf = (c: number) => (axis === 0 ? Math.floor(c / 9) : c % 9);
+          const l = lineOf(cells[0]);
+          if (!cells.every((c) => lineOf(c) === l)) continue;
+          for (const c of UNITS[axis === 0 ? l : 9 + l]) {
+            if (g.values[c] === 0 && g.cands[c] & m && !UNITS[18 + b].includes(c)) {
+              g.cands[c] &= ~m;
+              changed = true;
+            }
+          }
+        }
+      }
+      // claiming: line -> box
+      for (let u = 0; u < 18; u++) {
+        const cells = UNITS[u].filter((c) => g.values[c] === 0 && g.cands[c] & m);
+        if (cells.length < 2) continue;
+        const box = Math.floor(cells[0] / 27) * 3 + Math.floor((cells[0] % 9) / 3);
+        const boxOfC = (c: number) => Math.floor(c / 27) * 3 + Math.floor((c % 9) / 3);
+        if (!cells.every((c) => boxOfC(c) === box)) continue;
+        for (const c of UNITS[18 + box]) {
+          if (g.values[c] === 0 && g.cands[c] & m && !UNITS[u].includes(c)) {
+            g.cands[c] &= ~m;
+            changed = true;
+          }
+        }
+      }
+    }
+    if (!changed) return true;
+  }
+  return true;
+}
+
+/**
+ * Forcing net: Nishio with the stronger net propagation. Fires only for
+ * contradictions that plain singles propagation (Nishio, which runs earlier)
+ * cannot reach.
+ */
+export function findForcingNet(g: Grid): Step | null {
+  for (let cell = 0; cell < 81; cell++) {
+    if (g.values[cell] !== 0) continue;
+    for (const d of digitsOf(g.cands[cell])) {
+      const b = cloneGrid(g);
+      setValue(b, cell, d);
+      if (!propagateNet(b)) {
+        return {
+          tech: 'FORCING_NET',
+          placements: [],
+          eliminations: [{ cell, digit: d }],
+          primary: [{ cell, digit: d }],
+          description: `Forcing net: assuming ${cellName(cell)} = ${d} and following singles plus box/line intersections leads to a contradiction, so ${d} is impossible there.`
+        };
+      }
+    }
+  }
+  return null;
+}
+
 /** Assume cell=digit and propagate; null means contradiction. */
 function branch(g: Grid, cell: number, digit: number): Grid | null {
   const b = cloneGrid(g);

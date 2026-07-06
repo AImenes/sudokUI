@@ -3,7 +3,7 @@ import { emptyGrid, cloneGrid, isSolved, gridToString, bit } from '../src/engine
 import { solve } from '../src/engine/bruteForce';
 import { generatePuzzle } from '../src/engine/generator';
 import { findNextStep, applyStep } from '../src/engine/humanSolver';
-import { findExocet } from '../src/engine/techniques/exocet';
+import { findExocet, findDoubleExocet } from '../src/engine/techniques/exocet';
 
 describe('exocet', () => {
   it('finds a synthetic exocet and derives the right eliminations', () => {
@@ -39,6 +39,29 @@ describe('exocet', () => {
     g.cands[1] = bit(1) | bit(2) | bit(3);
     const step = findExocet(g);
     expect(step).toBeNull();
+  });
+
+  it('finds a synthetic double exocet (line elimination)', () => {
+    const g = emptyGrid();
+    const S = [1, 2, 3, 4];
+    // two bases on row 1: box 1 (r1c1,r1c2) and box 2 (r1c4,r1c5), same set
+    for (const cell of [0, 1, 3, 4]) {
+      g.cands[cell] = bit(1) | bit(2) | bit(3) | bit(4);
+    }
+    // rows 2 and 3: base digits confined so each exocet's template proof holds
+    for (const d of S) {
+      for (let col = 0; col < 9; col++) {
+        if (col !== 1 && col !== 4) g.cands[1 * 9 + col] &= ~bit(d); // row 2: cols 2 & 5
+        if (col !== 6 && col !== 7) g.cands[2 * 9 + col] &= ~bit(d); // row 3: cols 7 & 8
+      }
+    }
+    const step = findDoubleExocet(g);
+    expect(step).not.toBeNull();
+    expect(step!.tech).toBe('DOUBLE_EXOCET');
+    // the rest of row 1 (cols 3, 6, 7, 8, 9) loses the base digits
+    const cells = [...new Set(step!.eliminations.map((e) => e.cell))].sort((a, b) => a - b);
+    expect(cells).toEqual([2, 5, 6, 7, 8]);
+    expect(step!.eliminations.every((e) => e.digit <= 4)).toBe(true);
   });
 
   it('validates every random-puzzle firing against the solution', { timeout: 300_000 }, () => {
