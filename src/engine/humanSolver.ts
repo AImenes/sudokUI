@@ -37,6 +37,7 @@ import { findAic, findNiceLoop } from './techniques/aic';
 import { findGroupedXCycles } from './techniques/groupedXCycles';
 import { findGroupedAic, findGroupedNiceLoop } from './techniques/groupedAic';
 import { findFireworks } from './techniques/fireworks';
+import { findTridagon } from './techniques/tridagon';
 
 type Finder = (g: Grid) => Step | null;
 
@@ -100,6 +101,7 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   // part and AIC_GROUPED otherwise, so a second call would be pure waste
   AIC_GROUPED: (g) => findGroupedAic(g),
   FIREWORKS: findFireworks,
+  TRIDAGON: findTridagon,
   XY_CHAIN: (g) => findXYChain(g),
   ALS_XZ: findAlsXz,
   ALS_XY_WING: findAlsXyWing,

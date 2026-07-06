@@ -43,7 +43,7 @@ natively for iOS and Android via Capacitor.
 
 ## Technique library
 
-80 techniques catalogued, 76 implemented (72 enabled in the default solve
+80 techniques catalogued, 77 implemented (73 enabled in the default solve
 order — large fish and Double Exocet are provably redundant and stay off):
 
 | Family | Implemented |
@@ -59,12 +59,14 @@ order — large fish and Double Exocet are provably redundant and stay off):
 | Chains | Remote Pairs, Chute Remote Pairs, X-Chain, X-Cycles, XY-Chain, AICs, Nice Loops — with grouped and ALS-augmented variants |
 | ALS | ALS-XZ, ALS-XY-Wing, ALS-XY-Chain, Sue de Coq, Death Blossom |
 | Complex fish | Franken X-Wing, Franken Swordfish |
-| Miscellaneous | Aligned Pair Exclusion, Fireworks |
+| Miscellaneous | Aligned Pair Exclusion, Fireworks, Tridagon (impossibility proven per position) |
 | Last resorts | Exocet & Double Exocet (template-proven per position), Pattern Overlay, Nishio/Digit/Cell/Unit forcing nets, Forcing Net with intersections |
 
-Not yet implemented (visible in-app, marked ✗): Twinned XY-Chains, SK
-Loops, Tridagons and the generic linear Forcing Chain entry (its net forms
-are implemented). Contributions welcome — see *Adding a technique*.
+Not implemented, by editorial decision (visible in-app, marked ✗):
+Twinned XY-Chains and SK Loops (historical patterns subsumed in practice by
+the AIC/ALS engines) and the generic linear Forcing Chain entry (AICs and
+Nice Loops are its linear forms; its net forms are implemented). These are
+documented decisions, not gaps. Contributions welcome — see *Adding a technique*.
 
 ### Correctness policy
 
