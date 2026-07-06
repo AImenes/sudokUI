@@ -16,10 +16,13 @@ import {
   findHiddenRectangle,
   findAvoidableRectangle
 } from './techniques/uniqueness';
-import { findAlsXz, findWxyzWing, findDeathBlossom } from './techniques/als';
+import { findAlsXz, findWxyzWing, findDeathBlossom, findAlsXyWing } from './techniques/als';
 import { findSueDeCoq } from './techniques/sueDeCoq';
 import { findMedusa3d } from './techniques/medusa';
 import { findChuteRemotePair } from './techniques/chuteRemotePair';
+import { findExtendedRectangle } from './techniques/extendedRectangle';
+import { findXCycles } from './techniques/xCycles';
+import { findAic } from './techniques/aic';
 
 type Finder = (g: Grid) => Step | null;
 
@@ -67,13 +70,19 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   SASHIMI_X_WING: (g) => findFinnedFish(g, 2, true),
   FINNED_SWORDFISH: (g) => findFinnedFish(g, 3, false),
   SASHIMI_SWORDFISH: (g) => findFinnedFish(g, 3, true),
+  FINNED_JELLYFISH: (g) => findFinnedFish(g, 4, false),
+  SASHIMI_JELLYFISH: (g) => findFinnedFish(g, 4, true),
+  EXTENDED_RECTANGLE: findExtendedRectangle,
   SUE_DE_COQ: findSueDeCoq,
   SIMPLE_COLORS: findSimpleColors,
   MULTI_COLORS: findMultiColors,
   MEDUSA_3D: findMedusa3d,
   X_CHAIN: (g) => findXChain(g),
+  X_CYCLES: (g) => findXCycles(g),
   XY_CHAIN: (g) => findXYChain(g),
   ALS_XZ: findAlsXz,
+  ALS_XY_WING: findAlsXyWing,
+  AIC: (g) => findAic(g),
   DEATH_BLOSSOM: findDeathBlossom
 };
 

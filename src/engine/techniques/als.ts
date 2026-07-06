@@ -116,6 +116,89 @@ export function findAlsXz(g: Grid): Step | null {
 }
 
 /**
+ * ALS-XY-Wing: a hinge set C with two different restricted commons — x to
+ * set A and y to set B (x ≠ y). Any digit z common to A and B (z ∉ {x,y})
+ * falls from every outside cell that sees all z-candidates of A and B.
+ *
+ * Justification: suppose such a cell were z. A loses z entirely and locks,
+ * placing x in A; that removes x from C (restricted), so C locks and places
+ * y; that removes y from B, so B locks and must place z — which the assumed
+ * cell also sees. Contradiction.
+ */
+export function findAlsXyWing(g: Grid): Step | null {
+  const alses = collectAls(g, 4, 400);
+  interface Link {
+    a: number;
+    b: number;
+    x: number;
+  }
+  const byAls = new Map<number, Link[]>();
+  for (let i = 0; i < alses.length; i++) {
+    for (let j = i + 1; j < alses.length; j++) {
+      const A = alses[i];
+      const B = alses[j];
+      if (A.cells.some((c) => B.cells.includes(c))) continue;
+      for (const x of digitsOf(A.mask & B.mask)) {
+        if (!restrictedCommon(g, A, B, x)) continue;
+        const link = { a: i, b: j, x };
+        for (const k of [i, j]) {
+          if (!byAls.has(k)) byAls.set(k, []);
+          byAls.get(k)!.push(link);
+        }
+      }
+    }
+  }
+
+  for (const [hinge, hingeLinks] of byAls) {
+    for (let li = 0; li < hingeLinks.length; li++) {
+      for (let lj = li + 1; lj < hingeLinks.length; lj++) {
+        const l1 = hingeLinks[li];
+        const l2 = hingeLinks[lj];
+        if (l1.x === l2.x) continue;
+        const ai = l1.a === hinge ? l1.b : l1.a;
+        const bi = l2.a === hinge ? l2.b : l2.a;
+        if (ai === bi || ai === hinge || bi === hinge) continue;
+        const A = alses[ai];
+        const B = alses[bi];
+        const C = alses[hinge];
+        if (A.cells.some((c) => B.cells.includes(c))) continue;
+        const zMask = A.mask & B.mask & ~bit(l1.x) & ~bit(l2.x);
+        for (const z of digitsOf(zMask)) {
+          const zCells = [
+            ...A.cells.filter((c) => g.cands[c] & bit(z)),
+            ...B.cells.filter((c) => g.cands[c] & bit(z))
+          ];
+          const inPattern = new Set([...A.cells, ...B.cells, ...C.cells]);
+          const elims: CellDigit[] = [];
+          for (let c = 0; c < 81; c++) {
+            if (g.values[c] !== 0 || inPattern.has(c)) continue;
+            if (!(g.cands[c] & bit(z))) continue;
+            if (zCells.every((zc) => sees(c, zc))) elims.push({ cell: c, digit: z });
+          }
+          if (!elims.length) continue;
+          return {
+            tech: 'ALS_XY_WING',
+            placements: [],
+            eliminations: elims,
+            primary: A.cells.flatMap((cell) =>
+              digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
+            ),
+            secondary: B.cells.flatMap((cell) =>
+              digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
+            ),
+            fins: C.cells.flatMap((cell) =>
+              digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
+            ),
+            description: `ALS-XY-Wing: hinge ${cellNames(C.cells)} links ${cellNames(A.cells)} (via ${l1.x}) and ${cellNames(B.cells)} (via ${l2.x}); digit ${z} can be removed from cells seeing every ${z} of both outer sets.`
+          };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Death Blossom: a stem cell whose every candidate p links to a petal ALS
  * (all p-cells of the petal see the stem). Whatever the stem is, one petal
  * becomes a locked set, so a digit z common to all petals is placed in one of
