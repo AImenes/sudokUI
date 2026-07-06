@@ -26,13 +26,14 @@ import {
 import { findFrankenFish } from './techniques/complexFish';
 import { findAlignedPairExclusion } from './techniques/ape';
 import { findPatternOverlay } from './techniques/templates';
-import { findNishio, findCellForcing, findUnitForcing } from './techniques/forcing';
+import { findNishio, findCellForcing, findUnitForcing, findDigitForcing } from './techniques/forcing';
 import { findSueDeCoq } from './techniques/sueDeCoq';
 import { findMedusa3d } from './techniques/medusa';
 import { findChuteRemotePair } from './techniques/chuteRemotePair';
 import { findExtendedRectangle } from './techniques/extendedRectangle';
 import { findXCycles } from './techniques/xCycles';
-import { findAic } from './techniques/aic';
+import { findAic, findNiceLoop } from './techniques/aic';
+import { findGroupedXCycles } from './techniques/groupedXCycles';
 
 type Finder = (g: Grid) => Step | null;
 
@@ -89,6 +90,8 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   MEDUSA_3D: findMedusa3d,
   X_CHAIN: (g) => findXChain(g),
   X_CYCLES: (g) => findXCycles(g),
+  GROUPED_X_CYCLES: (g) => findGroupedXCycles(g),
+  NICE_LOOP: (g) => findNiceLoop(g),
   XY_CHAIN: (g) => findXYChain(g),
   ALS_XZ: findAlsXz,
   ALS_XY_WING: findAlsXyWing,
@@ -99,6 +102,7 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   FRANKEN_SWORDFISH: (g) => findFrankenFish(g, 3),
   ALIGNED_PAIR_EXCLUSION: findAlignedPairExclusion,
   PATTERN_OVERLAY: (g) => findPatternOverlay(g),
+  DIGIT_FORCING_CHAIN: findDigitForcing,
   NISHIO_FORCING_CHAIN: findNishio,
   CELL_FORCING_CHAIN: findCellForcing,
   UNIT_FORCING_CHAIN: findUnitForcing
