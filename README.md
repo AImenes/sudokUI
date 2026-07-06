@@ -43,26 +43,26 @@ natively for iOS and Android via Capacitor.
 
 ## Technique library
 
-80 techniques catalogued, 49 implemented and enabled in the default solve
-order:
+80 techniques catalogued, 58 implemented (55 enabled in the default solve
+order — large fish are provably redundant and stay off, as in HoDoKu):
 
 | Family | Implemented |
 | --- | --- |
 | Singles | Full House, Naked Single, Hidden Single |
 | Intersections | Locked Pair/Triple, Pointing, Claiming |
 | Subsets | Naked/Hidden Pair, Triple, Quadruple |
-| Fish | X-Wing, Swordfish, Jellyfish; Finned/Sashimi X-Wing & Swordfish |
+| Fish | X-Wing through Leviathan; Finned/Sashimi X-Wing, Swordfish & Jellyfish |
 | Single-digit patterns | Skyscraper, 2-String Kite, Turbot Fish, Empty Rectangle |
 | Wings | XY-Wing, XYZ-Wing, W-Wing, WXYZ-Wing |
-| Uniqueness | UR Types 1–6, Hidden Rectangle, Avoidable Rectangles 1/2, BUG+1 |
+| Uniqueness | UR Types 1–6, Hidden Rectangle, Avoidable Rectangles 1/2, Extended Rectangles, BUG+1 |
 | Colouring | Simple Colours, Multi Colours, 3D Medusa |
-| Chains | Remote Pairs, Chute Remote Pairs, X-Chain, XY-Chain |
-| ALS | ALS-XZ, Sue de Coq, Death Blossom |
+| Chains | Remote Pairs, Chute Remote Pairs, X-Chain, X-Cycles, XY-Chain, AICs |
+| ALS | ALS-XZ, ALS-XY-Wing, Sue de Coq, Death Blossom |
 
-Not yet implemented (visible in-app, marked ✗): X-Cycles, AICs, grouped
-chains, ALS-XY-Wing/Chain, complex (franken/mutant) fish, Exocet, SK Loops,
-Fireworks, Tridagons, Aligned Pair Exclusion, Pattern Overlay, and the
-forcing-chain family. Contributions welcome — see *Adding a technique*.
+Not yet implemented (visible in-app, marked ✗): grouped chains and AICs
+with groups/ALS nodes, ALS-XY-Chain, complex (franken/mutant) fish, Exocet,
+SK Loops, Fireworks, Tridagons, Aligned Pair Exclusion, Pattern Overlay, and
+the forcing-chain family. Contributions welcome — see *Adding a technique*.
 
 ### Correctness policy
 
@@ -131,7 +131,7 @@ npx cap add android && npx cap open android  # Android Studio
 
 ## Roadmap
 
-- Chain-based techniques: X-Cycles, AICs, forcing chains
+- Grouped chains, AIC with ALS nodes, forcing chains
 - Photo import: scan a puzzle from a book with the camera
 - Teacher/annotation mode: arrows, shapes and freehand drawing over the
   board for streams and classroom use

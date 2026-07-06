@@ -3,7 +3,7 @@
 import { Level, Tech } from '../engine/ratings';
 import type { PoolEntry, WorkerRequest, WorkerResponse } from '../engine/worker';
 
-const STORAGE_KEY = 'sudokui-pools-v1'; // v2: tech pools hold clean-path puzzles only
+const STORAGE_KEY = 'sudokui-pools-v2'; // v2: ratings include chains (X-Cycles, AIC, ALS-XY-Wing, EUR)
 const POOL_CAP = 8;
 
 type Pools = Record<string, PoolEntry[]>;

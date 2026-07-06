@@ -10,7 +10,11 @@ import {
   findHiddenRectangle,
   findAvoidableRectangle
 } from '../src/engine/techniques/uniqueness';
-import { findWxyzWing, findDeathBlossom } from '../src/engine/techniques/als';
+import { findWxyzWing, findDeathBlossom, findAlsXyWing } from '../src/engine/techniques/als';
+import { findExtendedRectangle } from '../src/engine/techniques/extendedRectangle';
+import { findXCycles } from '../src/engine/techniques/xCycles';
+import { findAic } from '../src/engine/techniques/aic';
+import { findFinnedFish } from '../src/engine/techniques/fish';
 
 /**
  * Every new finder is probed at EVERY position of every solve path (not just
@@ -27,7 +31,13 @@ const PROBES: Record<string, (g: Grid) => Step | null> = {
   AVOIDABLE_RECTANGLE_1: (g) => findAvoidableRectangle(g, 1),
   AVOIDABLE_RECTANGLE_2: (g) => findAvoidableRectangle(g, 2),
   WXYZ_WING: findWxyzWing,
-  DEATH_BLOSSOM: findDeathBlossom
+  DEATH_BLOSSOM: findDeathBlossom,
+  ALS_XY_WING: findAlsXyWing,
+  EXTENDED_RECTANGLE: findExtendedRectangle,
+  X_CYCLES: (g) => findXCycles(g),
+  AIC: (g) => findAic(g),
+  FINNED_JELLYFISH: (g) => findFinnedFish(g, 4, false),
+  SASHIMI_JELLYFISH: (g) => findFinnedFish(g, 4, true)
 };
 
 // these are common enough that the budget MUST produce them
@@ -36,7 +46,10 @@ const REQUIRED = [
   'UNIQUENESS_3',
   'HIDDEN_RECTANGLE',
   'AVOIDABLE_RECTANGLE_1',
-  'WXYZ_WING'
+  'WXYZ_WING',
+  'X_CYCLES',
+  'AIC',
+  'ALS_XY_WING'
 ];
 
 describe('new technique hunt + validation', () => {
