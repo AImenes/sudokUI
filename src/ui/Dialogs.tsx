@@ -68,6 +68,16 @@ export function NewGameDialog({ onClose, onStart }: { onClose: () => void; onSta
             <span>{LEVEL_DESCRIPTIONS[level]}</span>
           </button>
         ))}
+        <button
+          className="level-btn"
+          onClick={() => onStart(LEVELS[Math.floor(Math.random() * LEVELS.length)])}
+        >
+          <strong>🎲 Surprise me</strong>
+          <span>
+            Any difficulty — enable "Hide difficulty while playing" in Settings
+            for the full mystery
+          </span>
+        </button>
       </div>
     </Modal>
   );
@@ -89,7 +99,8 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
         sudokUI generates a puzzle whose solution path requires the chosen
         technique — with nothing harder needed before it — and skips you to
         the position where it applies. Techniques marked ✗ are catalogued but
-        not implemented yet.
+        not implemented yet. The number on each technique is its rating cost:
+        a puzzle's difficulty rating is the sum of these over its solve path.
       </p>
       <p className="tech-count">
         <strong>{playable.length}</strong> of {shown.length} techniques playable
@@ -122,6 +133,7 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
                   >
                     {ok ? '' : redundant ? <span className="tech-tilde">≈ </span> : <span className="tech-x">✗ </span>}
                     {info.name}
+                    <span className="tech-score">{info.score}</span>
                     {ok && poolSize(techKey(tech)) > 0 && (
                       <span className="pool-dot" title="cached puzzle ready" />
                     )}
@@ -142,9 +154,21 @@ export function ImportExportDialog({ onClose }: { onClose: () => void }) {
   const startGame = useGame((s) => s.startGame);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState('');
 
   const currentAsString = () =>
     cells.map((c) => (c.given ? String(c.value) : '.')).join('');
+
+  // the puzzle string doubles as the seed: anyone opening this link plays
+  // the exact same game
+  const shareLink = () =>
+    `${window.location.origin}${window.location.pathname}#p=${currentAsString()}`;
+
+  const copy = (what: 'link' | 'string') => {
+    navigator.clipboard?.writeText(what === 'link' ? shareLink() : currentAsString());
+    setCopied(what);
+    setTimeout(() => setCopied(''), 2000);
+  };
 
   const doImport = () => {
     const cleaned = text.replace(/[^0-9.]/g, '');
@@ -162,7 +186,7 @@ export function ImportExportDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title="Import / Export" onClose={onClose}>
+    <Modal title="Import & Share" onClose={onClose}>
       <p className="dialog-note">Paste an 81-character puzzle string (dots or zeros for empty cells).</p>
       <textarea
         rows={3}
@@ -176,15 +200,24 @@ export function ImportExportDialog({ onClose }: { onClose: () => void }) {
       {error && <p className="dialog-error">{error}</p>}
       <div className="hint-actions">
         <button onClick={doImport}>Load puzzle</button>
-        {info && (
-          <button
-            className="ghost"
-            onClick={() => navigator.clipboard?.writeText(currentAsString())}
-          >
-            Copy current puzzle
-          </button>
-        )}
       </div>
+      {info && (
+        <>
+          <h4 className="setting-group">Share this puzzle</h4>
+          <p className="dialog-note">
+            Friends, streams, classrooms: anyone opening the link gets exactly
+            this puzzle. The address bar always carries it too.
+          </p>
+          <div className="hint-actions">
+            <button onClick={() => copy('link')}>
+              {copied === 'link' ? '✓ Copied' : '🔗 Copy link'}
+            </button>
+            <button className="ghost" onClick={() => copy('string')}>
+              {copied === 'string' ? '✓ Copied' : 'Copy puzzle string'}
+            </button>
+          </div>
+        </>
+      )}
     </Modal>
   );
 }

@@ -2,7 +2,7 @@
 // board + side panel layout, global keyboard handling, dialog routing,
 // toast display and the first-visit bootstrap game.
 import React, { useEffect, useState } from 'react';
-import { useGame } from '../state/gameStore';
+import { useGame, rateImport } from '../state/gameStore';
 import { useSettings } from '../state/settings';
 import { Grid } from './Grid';
 import { Controls } from './Controls';
@@ -53,7 +53,7 @@ export default function App() {
   const requestHint = useGame((s) => s.requestHint);
   const selection = useGame((s) => s.selection);
   const select = useGame((s) => s.select);
-  const { theme, toggleTheme, showTimer } = useSettings();
+  const { theme, toggleTheme, showTimer, hideRating } = useSettings();
   const { start, genState, cancel } = useNewGame();
 
   const [dialog, setDialog] = useState<
@@ -66,16 +66,32 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // first visit: start an easy game (guarded against StrictMode double-fire)
+  // boot: a shared link (#p=<81 chars>) wins over everything; otherwise a
+  // saved game resumes, otherwise start an easy one. StrictMode-guarded.
   useEffect(() => {
-    if (!useGame.getState().info && !(window as any).__sudokuiBooted) {
-      (window as any).__sudokuiBooted = true;
-      start({ kind: 'level', level: 'Easy' });
+    if ((window as any).__sudokuiBooted) return;
+    (window as any).__sudokuiBooted = true;
+    const shared = new URLSearchParams(window.location.hash.slice(1)).get('p');
+    if (shared && shared !== useGame.getState().info?.puzzle) {
+      const cleaned = shared.replace(/[^0-9.]/g, '');
+      const rating = cleaned.length === 81 ? rateImport(cleaned) : null;
+      if (rating) {
+        useGame.getState().startGame(cleaned, rating.score, rating.level);
+        return;
+      }
     }
+    if (!useGame.getState().info) start({ kind: 'level', level: 'Easy' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => setVictoryDismissed(false), [info?.puzzle]);
+
+  // keep the address bar shareable: it always points at the current puzzle
+  useEffect(() => {
+    if (info?.puzzle) {
+      window.history.replaceState(null, '', `#p=${info.puzzle}`);
+    }
+  }, [info?.puzzle]);
 
   // toasts fade after a few seconds
   useEffect(() => {
@@ -174,14 +190,26 @@ export default function App() {
         </div>
         {info && (
           <div className="game-meta">
-            <span className={`level-badge level-${info.level.toLowerCase()}`}>{info.level}</span>
-            <button
-              className="score-btn"
-              onClick={() => setDialog('info')}
-              title="Difficulty rating — the summed technique cost of solving this puzzle. Click to learn more."
-            >
-              Rating <strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
-            </button>
+            {hideRating && !won ? (
+              <button
+                className="score-btn"
+                onClick={() => setDialog('info')}
+                title="Difficulty hidden until you solve the puzzle (change in Settings)"
+              >
+                <strong>? ? ?</strong>
+              </button>
+            ) : (
+              <>
+                <span className={`level-badge level-${info.level.toLowerCase()}`}>{info.level}</span>
+                <button
+                  className="score-btn"
+                  onClick={() => setDialog('info')}
+                  title="Difficulty rating — the summed technique cost of solving this puzzle. Click to learn more."
+                >
+                  Rating <strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
+                </button>
+              </>
+            )}
             {info.practiceTech && (
               <span className="practice-badge">Practice: {TECHS[info.practiceTech].name}</span>
             )}
