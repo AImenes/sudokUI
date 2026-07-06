@@ -125,14 +125,15 @@ export function findAlsXz(g: Grid): Step | null {
  * y; that removes y from B, so B locks and must place z — which the assumed
  * cell also sees. Contradiction.
  */
-export function findAlsXyWing(g: Grid): Step | null {
-  const alses = collectAls(g, 4, 400);
-  interface Link {
-    a: number;
-    b: number;
-    x: number;
-  }
-  const byAls = new Map<number, Link[]>();
+export interface AlsLink {
+  a: number;
+  b: number;
+  x: number;
+}
+
+/** All restricted-common links between disjoint ALS pairs, indexed per ALS. */
+export function buildAlsLinks(g: Grid, alses: Als[]): Map<number, AlsLink[]> {
+  const byAls = new Map<number, AlsLink[]>();
   for (let i = 0; i < alses.length; i++) {
     for (let j = i + 1; j < alses.length; j++) {
       const A = alses[i];
@@ -148,6 +149,12 @@ export function findAlsXyWing(g: Grid): Step | null {
       }
     }
   }
+  return byAls;
+}
+
+export function findAlsXyWing(g: Grid): Step | null {
+  const alses = collectAls(g, 4, 400);
+  const byAls = buildAlsLinks(g, alses);
 
   for (const [hinge, hingeLinks] of byAls) {
     for (let li = 0; li < hingeLinks.length; li++) {
@@ -191,6 +198,74 @@ export function findAlsXyWing(g: Grid): Step | null {
             ),
             description: `ALS-XY-Wing: hinge ${cellNames(C.cells)} links ${cellNames(A.cells)} (via ${l1.x}) and ${cellNames(B.cells)} (via ${l2.x}); digit ${z} can be removed from cells seeing every ${z} of both outer sets.`
           };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * ALS-XY-Chain (length 4): sets A–B–C–D joined by restricted commons
+ * x1, x2, x3 with x1 ≠ x2 at B and x2 ≠ x3 at C. A digit z present in both
+ * ends (z ∉ {x1, x3}) falls from outside cells seeing every z of A and D.
+ *
+ * Same locking cascade as the ALS-XY-Wing, one set longer: assume such a
+ * cell is z → A loses z and locks, placing x1 → B loses x1 and locks,
+ * placing x2 → C loses x2 and locks, placing x3 → D loses x3 and locks,
+ * placing z — which the assumed cell sees. Contradiction. (Three-set chains
+ * are the XY-Wing itself, found earlier in the solve order.)
+ */
+export function findAlsXyChain(g: Grid): Step | null {
+  const alses = collectAls(g, 4, 300);
+  const byAls = buildAlsLinks(g, alses);
+  let budget = 20000;
+
+  for (const [bIdx, bLinks] of byAls) {
+    for (const l1 of bLinks) {
+      const aIdx = l1.a === bIdx ? l1.b : l1.a;
+      for (const l2 of bLinks) {
+        if (l2 === l1 || l2.x === l1.x) continue;
+        const cIdx = l2.a === bIdx ? l2.b : l2.a;
+        if (cIdx === aIdx) continue;
+        const cLinks = byAls.get(cIdx) ?? [];
+        for (const l3 of cLinks) {
+          if (budget-- <= 0) return null;
+          if (l3.x === l2.x) continue;
+          const dIdx = l3.a === cIdx ? l3.b : l3.a;
+          if (dIdx === aIdx || dIdx === bIdx || dIdx === cIdx) continue;
+          if (l3.a !== cIdx && l3.b !== cIdx) continue;
+          const A = alses[aIdx];
+          const B = alses[bIdx];
+          const C = alses[cIdx];
+          const D = alses[dIdx];
+          const zMask = A.mask & D.mask & ~bit(l1.x) & ~bit(l3.x);
+          for (const z of digitsOf(zMask)) {
+            const zCells = [
+              ...A.cells.filter((c) => g.cands[c] & bit(z)),
+              ...D.cells.filter((c) => g.cands[c] & bit(z))
+            ];
+            const inPattern = new Set([...A.cells, ...B.cells, ...C.cells, ...D.cells]);
+            const elims: CellDigit[] = [];
+            for (let c = 0; c < 81; c++) {
+              if (g.values[c] !== 0 || inPattern.has(c)) continue;
+              if (!(g.cands[c] & bit(z))) continue;
+              if (zCells.every((zc) => sees(c, zc))) elims.push({ cell: c, digit: z });
+            }
+            if (!elims.length) continue;
+            return {
+              tech: 'ALS_XY_CHAIN',
+              placements: [],
+              eliminations: elims,
+              primary: [...A.cells, ...D.cells].flatMap((cell) =>
+                digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
+              ),
+              secondary: [...B.cells, ...C.cells].flatMap((cell) =>
+                digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
+              ),
+              description: `ALS-XY-Chain: ${cellNames(A.cells)} –${l1.x}– ${cellNames(B.cells)} –${l2.x}– ${cellNames(C.cells)} –${l3.x}– ${cellNames(D.cells)}; digit ${z} falls from cells seeing every ${z} of both end sets.`
+            };
+          }
         }
       }
     }

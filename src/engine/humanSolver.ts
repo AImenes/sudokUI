@@ -16,7 +16,17 @@ import {
   findHiddenRectangle,
   findAvoidableRectangle
 } from './techniques/uniqueness';
-import { findAlsXz, findWxyzWing, findDeathBlossom, findAlsXyWing } from './techniques/als';
+import {
+  findAlsXz,
+  findWxyzWing,
+  findDeathBlossom,
+  findAlsXyWing,
+  findAlsXyChain
+} from './techniques/als';
+import { findFrankenFish } from './techniques/complexFish';
+import { findAlignedPairExclusion } from './techniques/ape';
+import { findPatternOverlay } from './techniques/templates';
+import { findNishio, findCellForcing, findUnitForcing } from './techniques/forcing';
 import { findSueDeCoq } from './techniques/sueDeCoq';
 import { findMedusa3d } from './techniques/medusa';
 import { findChuteRemotePair } from './techniques/chuteRemotePair';
@@ -82,8 +92,16 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   XY_CHAIN: (g) => findXYChain(g),
   ALS_XZ: findAlsXz,
   ALS_XY_WING: findAlsXyWing,
+  ALS_XY_CHAIN: findAlsXyChain,
   AIC: (g) => findAic(g),
-  DEATH_BLOSSOM: findDeathBlossom
+  DEATH_BLOSSOM: findDeathBlossom,
+  FRANKEN_X_WING: (g) => findFrankenFish(g, 2),
+  FRANKEN_SWORDFISH: (g) => findFrankenFish(g, 3),
+  ALIGNED_PAIR_EXCLUSION: findAlignedPairExclusion,
+  PATTERN_OVERLAY: (g) => findPatternOverlay(g),
+  NISHIO_FORCING_CHAIN: findNishio,
+  CELL_FORCING_CHAIN: findCellForcing,
+  UNIT_FORCING_CHAIN: findUnitForcing
 };
 
 /** Find the next step in HoDoKu order. Never returns BRUTE_FORCE. */

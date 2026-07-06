@@ -3,7 +3,7 @@
 import { Level, Tech } from '../engine/ratings';
 import type { PoolEntry, WorkerRequest, WorkerResponse } from '../engine/worker';
 
-const STORAGE_KEY = 'sudokui-pools-v2'; // v2: ratings include chains (X-Cycles, AIC, ALS-XY-Wing, EUR)
+const STORAGE_KEY = 'sudokui-pools-v3'; // v3: forcing nets + POM join the rating loop
 const POOL_CAP = 8;
 
 type Pools = Record<string, PoolEntry[]>;
