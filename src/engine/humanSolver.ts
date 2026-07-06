@@ -34,6 +34,8 @@ import { findExtendedRectangle } from './techniques/extendedRectangle';
 import { findXCycles } from './techniques/xCycles';
 import { findAic, findNiceLoop } from './techniques/aic';
 import { findGroupedXCycles } from './techniques/groupedXCycles';
+import { findGroupedAic, findGroupedNiceLoop } from './techniques/groupedAic';
+import { findFireworks } from './techniques/fireworks';
 
 type Finder = (g: Grid) => Step | null;
 
@@ -92,6 +94,9 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   X_CYCLES: (g) => findXCycles(g),
   GROUPED_X_CYCLES: (g) => findGroupedXCycles(g),
   NICE_LOOP: (g) => findNiceLoop(g),
+  GROUPED_NICE_LOOP: (g) => findGroupedNiceLoop(g),
+  AIC_GROUPED: (g) => findGroupedAic(g),
+  FIREWORKS: findFireworks,
   XY_CHAIN: (g) => findXYChain(g),
   ALS_XZ: findAlsXz,
   ALS_XY_WING: findAlsXyWing,

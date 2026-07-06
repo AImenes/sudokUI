@@ -3,6 +3,7 @@ import { emptyGrid, setValue, bit } from '../src/engine/board';
 import { findUniqueness, findAvoidableRectangle } from '../src/engine/techniques/uniqueness';
 import { findBasicFish } from '../src/engine/techniques/fish';
 import { findFrankenFish } from '../src/engine/techniques/complexFish';
+import { findFireworks } from '../src/engine/techniques/fireworks';
 
 // Deterministic positions for the rare finders that random hunts seldom hit.
 // (Their common siblings are validated against real solutions in hunt-new.)
@@ -83,6 +84,27 @@ describe('synthetic rare-pattern positions', () => {
         (e) => e.digit === 5 && (e.cell % 9 === 0 || e.cell % 9 === 4)
       )
     ).toBe(true);
+  });
+
+  it('finds a Fireworks triple', () => {
+    const g = emptyGrid();
+    // digits 1,2,3: row 1 candidates outside box 1 confined to r1c6 (B),
+    // column 1 candidates outside box 1 confined to r6c1 (C)
+    for (const d of [1, 2, 3]) {
+      for (let col = 3; col < 9; col++) {
+        if (col !== 5) g.cands[0 * 9 + col] &= ~bit(d);
+      }
+      for (let row = 3; row < 9; row++) {
+        if (row !== 5) g.cands[row * 9 + 0] &= ~bit(d);
+      }
+    }
+    const step = findFireworks(g);
+    expect(step).not.toBeNull();
+    expect(step!.tech).toBe('FIREWORKS');
+    // cross r1c1 (0), row wing r1c6 (5), column wing r6c1 (45) lose digits 4-9
+    const cells = new Set(step!.eliminations.map((e) => e.cell));
+    expect([...cells].sort((a, b) => a - b)).toEqual([0, 5, 45]);
+    expect(step!.eliminations.every((e) => e.digit >= 4)).toBe(true);
   });
 
   it('Avoidable Rectangle Type 2 does NOT fire when a corner is a given', () => {
