@@ -51,6 +51,7 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -115,6 +116,8 @@ body {
   align-items: center;
   gap: 10px;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .level-badge {
@@ -122,6 +125,7 @@ body {
   border-radius: 20px;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .level-easy { background: #2e7d3230; color: #7fd486; }
@@ -138,6 +142,7 @@ body {
 :root[data-theme='light'] .level-extreme { background: #b312302e; color: #8f0e24; }
 
 .score-btn {
+  white-space: nowrap;
   background: none;
   border: none;
   color: var(--muted);
@@ -168,6 +173,10 @@ body {
 .practice-badge {
   font-size: 13px;
   color: var(--hint-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .topbar-right {
@@ -175,6 +184,7 @@ body {
   align-items: center;
   gap: 8px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .timer {
@@ -762,6 +772,52 @@ kbd {
 }
 
 /* ---------- responsive ---------- */
+@media (max-width: 560px) {
+  .topbar {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .brand h1 {
+    display: none; /* the UI mark carries the brand on phones */
+  }
+
+  .game-meta {
+    gap: 6px;
+  }
+
+  .score-btn {
+    padding: 3px 4px;
+    font-size: 13px;
+  }
+
+  .score-btn .rating-word {
+    display: none;
+  }
+
+  .timer {
+    font-size: 14px;
+  }
+
+  .topbar-right {
+    gap: 2px;
+  }
+
+  .icon-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
+
+  .icon-btn.gear {
+    font-size: 19px;
+  }
+
+  .practice-badge {
+    display: none; /* not enough room; the practice dialog still shows it */
+  }
+}
+
 @media (max-width: 860px) {
   .layout {
     flex-direction: column;

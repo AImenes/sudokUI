@@ -1,5 +1,6 @@
 import { Grid, UNITS, bit, digitsOf, sees, rowOf, colOf, cellName, cellNames } from '../board';
 import { Step, CellDigit } from '../steps';
+import { collectAls } from './als';
 
 /**
  * AIC with Groups (sudokuwiki.org/AIC_with_Groups) and Grouped Nice Loops.
@@ -15,9 +16,15 @@ import { Step, CellDigit } from '../steps';
  *   a group being true fixes no single cell, so it carries no cross-digit
  *   inference).
  *
+ * ALS augmentation (sudokuwiki.org/AIC_with_ALSs): an Almost Locked Set
+ * contributes one node per digit ("the digit is somewhere in the set").
+ * Removing one digit from an ALS locks it and places every other digit, so
+ * any two digit-nodes of the same ALS are STRONGLY linked; externally the
+ * nodes weak-link exactly like groups (full visibility, same digit).
+ *
  * Chains (strong ends): at least one end is true → candidates conflicting
- * with both ends fall. A group end's conflicts are the digit's candidates in
- * cells seeing the whole group.
+ * with both ends fall. A group or ALS end's conflicts are the digit's
+ * candidates in cells seeing all of the node's cells.
  *
  * Loops: continuous loops eliminate along every weak link (same-cell links
  * strip the cell's other candidates, same-digit links clear outside cells
@@ -28,6 +35,8 @@ import { Step, CellDigit } from '../steps';
 interface GNode {
   cells: number[];
   digit: number;
+  /** index of the ALS this node belongs to, for ALS-augmented chains */
+  als?: number;
 }
 
 export function findGroupedAic(g: Grid, maxNodes = 10): Step | null {
@@ -67,7 +76,25 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
       }
     }
   }
-  if (firstGroup === nodes.length) return null; // no groups -> plain AIC covers it
+  // ALS digit-nodes (chain mode only): one node per digit of each ALS,
+  // internally strong-linked pairwise
+  const alsPairs: [number, number][] = [];
+  if (mode === 'chain') {
+    const alses = collectAls(g, 3, 90);
+    for (let a = 0; a < alses.length; a++) {
+      const ids: number[] = [];
+      for (const d of digitsOf(alses[a].mask)) {
+        const cells = alses[a].cells.filter((c) => g.cands[c] & bit(d));
+        if (!cells.length) continue;
+        ids.push(nodes.length);
+        nodes.push({ cells, digit: d, als: a });
+      }
+      for (let x = 0; x < ids.length; x++) {
+        for (let y = x + 1; y < ids.length; y++) alsPairs.push([ids[x], ids[y]]);
+      }
+    }
+  }
+  if (firstGroup === nodes.length) return null; // no groups/ALS -> plain AIC covers it
 
   const disjoint = (a: GNode, b: GNode) => !a.cells.some((c) => b.cells.includes(c));
   const sameDigitWeak = (a: GNode, b: GNode) =>
@@ -96,10 +123,13 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
       addStrong(candId.get(c * 9 + ds[0] - 1)!, candId.get(c * 9 + ds[1] - 1)!);
     }
   }
+  for (const [x, y] of alsPairs) addStrong(x, y);
   for (let d = 1; d <= 9; d++) {
     const mask = bit(d);
     const digitNodes: number[] = [];
-    for (let n = 0; n < nodes.length; n++) if (nodes[n].digit === d) digitNodes.push(n);
+    for (let n = 0; n < nodes.length; n++) {
+      if (nodes[n].digit === d && nodes[n].als === undefined) digitNodes.push(n);
+    }
     for (const unit of UNITS) {
       const uc = unit.filter((c) => g.values[c] === 0 && g.cands[c] & mask);
       if (uc.length < 2) continue;
@@ -164,7 +194,8 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
       const cur = path[path.length - 1];
       const groupInPath = path.some((p) => nodes[p].cells.length > 1);
 
-      if (mode === 'chain' && nextType === 'weak' && path.length >= 4 && groupInPath) {
+      const alsInPath = path.some((p) => nodes[p].als !== undefined);
+      if (mode === 'chain' && nextType === 'weak' && path.length >= 4 && (groupInPath || alsInPath)) {
         const endConf = conflictsOf(cur);
         const elims: CellDigit[] = [];
         for (const id of startConf!) {
@@ -176,13 +207,13 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
         }
         if (elims.length) {
           return {
-            tech: 'AIC_GROUPED',
+            tech: alsInPath ? 'AIC_ALS' : 'AIC_GROUPED',
             placements: [],
             eliminations: elims,
             primary: path.flatMap((n) =>
               nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))
             ),
-            description: `Grouped AIC: ${path.map(label).join(' → ')}; at least one end is true, so candidates conflicting with both ends are removed.`
+            description: `${alsInPath ? 'AIC with ALS' : 'Grouped AIC'}: ${path.map(label).join(' → ')}; at least one end is true, so candidates conflicting with both ends are removed.`
           };
         }
       }

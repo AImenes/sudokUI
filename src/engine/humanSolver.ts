@@ -95,6 +95,8 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   GROUPED_X_CYCLES: (g) => findGroupedXCycles(g),
   NICE_LOOP: (g) => findNiceLoop(g),
   GROUPED_NICE_LOOP: (g) => findGroupedNiceLoop(g),
+  // one engine serves both: it labels steps AIC_ALS when an ALS node takes
+  // part and AIC_GROUPED otherwise, so a second call would be pure waste
   AIC_GROUPED: (g) => findGroupedAic(g),
   FIREWORKS: findFireworks,
   XY_CHAIN: (g) => findXYChain(g),

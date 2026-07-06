@@ -222,7 +222,7 @@ export default function App() {
                 onClick={() => setDialog('info')}
                 title="Difficulty hidden until you solve the puzzle (change in Settings)"
               >
-                <strong>? ? ?</strong>
+                <strong>???</strong>
               </button>
             ) : (
               <>
@@ -232,7 +232,7 @@ export default function App() {
                   onClick={() => setDialog('info')}
                   title="Difficulty rating — the summed technique cost of solving this puzzle. Click to learn more."
                 >
-                  Rating <strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
+                  <span className="rating-word">Rating&nbsp;</span><strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
                 </button>
               </>
             )}
