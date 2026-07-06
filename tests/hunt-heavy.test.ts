@@ -33,6 +33,7 @@ const PROBES: Record<string, (g: Grid) => Step | null> = {
   NICE_LOOP: (g) => findNiceLoop(g),
   DIGIT_FORCING_CHAIN: findDigitForcing,
   AIC_GROUPED: (g) => findGroupedAic(g),
+  AIC_ALS_ENGINE: (g) => findGroupedAic(g),
   GROUPED_NICE_LOOP: (g) => findGroupedNiceLoop(g),
   FIREWORKS: findFireworks
 };

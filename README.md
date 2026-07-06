@@ -43,7 +43,7 @@ natively for iOS and Android via Capacitor.
 
 ## Technique library
 
-80 techniques catalogued, 72 implemented (69 enabled in the default solve
+80 techniques catalogued, 73 implemented (70 enabled in the default solve
 order — large fish are provably redundant and stay off, as in HoDoKu):
 
 | Family | Implemented |
@@ -56,16 +56,15 @@ order — large fish are provably redundant and stay off, as in HoDoKu):
 | Wings | XY-Wing, XYZ-Wing, W-Wing, WXYZ-Wing |
 | Uniqueness | UR Types 1–6, Hidden Rectangle, Avoidable Rectangles 1/2, Extended Rectangles, BUG+1 |
 | Colouring | Simple Colours, Multi Colours, 3D Medusa |
-| Chains | Remote Pairs, Chute Remote Pairs, X-Chain, X-Cycles, XY-Chain, AICs, Nice Loops — grouped variants of all three chain engines |
+| Chains | Remote Pairs, Chute Remote Pairs, X-Chain, X-Cycles, XY-Chain, AICs, Nice Loops — with grouped and ALS-augmented variants |
 | ALS | ALS-XZ, ALS-XY-Wing, ALS-XY-Chain, Sue de Coq, Death Blossom |
 | Complex fish | Franken X-Wing, Franken Swordfish |
 | Miscellaneous | Aligned Pair Exclusion, Fireworks |
 | Last resorts | Pattern Overlay, Nishio/Digit/Cell/Unit forcing nets |
 
-Not yet implemented (visible in-app, marked ✗): AICs with ALS nodes,
-Twinned XY-Chains, Exocet, SK Loops, Tridagons, and the generic linear
-forcing-chain entries (their Nishio/digit/cell/unit net forms are
-implemented). Contributions welcome — see *Adding a technique*.
+Not yet implemented (visible in-app, marked ✗): Twinned XY-Chains, Exocet,
+SK Loops, Tridagons, and the generic linear forcing-chain entries (their
+Nishio/digit/cell/unit net forms are implemented). Contributions welcome — see *Adding a technique*.
 
 ### Correctness policy
 

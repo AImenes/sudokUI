@@ -126,7 +126,7 @@ export const TECHS = {
   TWINNED_XY_CHAIN: t(5550, 'Twinned XY-Chains', 'Unfair', 'Chains and Loops', 300, false),
   AIC: t(5950, 'Alternating Inference Chain', 'Unfair', 'Chains and Loops', 320),
   AIC_GROUPED: t(5960, 'AIC with Groups', 'Unfair', 'Chains and Loops', 340),
-  AIC_ALS: t(5970, 'AIC with ALSs', 'Unfair', 'Chains and Loops', 360, false),
+  AIC_ALS: t(5970, 'AIC with ALSs', 'Unfair', 'Chains and Loops', 360),
   EXTENDED_RECTANGLE: t(4040, 'Extended Rectangle', 'Hard', 'Uniqueness', 110),
   FIREWORKS: t(6300, 'Fireworks', 'Extreme', 'Miscellaneous', 400),
   TRIDAGON: t(6310, 'Tridagon', 'Extreme', 'Miscellaneous', 400, false),
