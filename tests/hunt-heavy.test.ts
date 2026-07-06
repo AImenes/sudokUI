@@ -12,6 +12,8 @@ import { findFrankenFish } from '../src/engine/techniques/complexFish';
 import { findGroupedXCycles } from '../src/engine/techniques/groupedXCycles';
 import { findNiceLoop } from '../src/engine/techniques/aic';
 import { findDigitForcing } from '../src/engine/techniques/forcing';
+import { findGroupedAic, findGroupedNiceLoop } from '../src/engine/techniques/groupedAic';
+import { findFireworks } from '../src/engine/techniques/fireworks';
 
 /**
  * The expensive finders (forcing nets, pattern overlay) probed on a smaller
@@ -29,7 +31,10 @@ const PROBES: Record<string, (g: Grid) => Step | null> = {
   FRANKEN_SWORDFISH: (g) => findFrankenFish(g, 3),
   GROUPED_X_CYCLES: (g) => findGroupedXCycles(g),
   NICE_LOOP: (g) => findNiceLoop(g),
-  DIGIT_FORCING_CHAIN: findDigitForcing
+  DIGIT_FORCING_CHAIN: findDigitForcing,
+  AIC_GROUPED: (g) => findGroupedAic(g),
+  GROUPED_NICE_LOOP: (g) => findGroupedNiceLoop(g),
+  FIREWORKS: findFireworks
 };
 
 const REQUIRED = [
@@ -40,7 +45,9 @@ const REQUIRED = [
   'ALS_XY_CHAIN',
   'GROUPED_X_CYCLES',
   'NICE_LOOP',
-  'DIGIT_FORCING_CHAIN'
+  'DIGIT_FORCING_CHAIN',
+  'AIC_GROUPED',
+  'GROUPED_NICE_LOOP'
 ];
 
 describe('heavy technique hunt + validation', () => {
