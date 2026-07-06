@@ -1,3 +1,7 @@
+// Progressive hint disclosure: first only the technique name (stage 'tech'),
+// then the full explanation with board highlights (stage 'full'), then one
+// click applies the step. The highlights themselves are rendered by Grid
+// from the Step's primary/secondary/fin/elimination data.
 import React from 'react';
 import { useGame } from '../state/gameStore';
 import { TECHS } from '../engine/ratings';

@@ -1,3 +1,9 @@
+// The active game: cell state, selection, entry modes, undo/redo, timer,
+// hints and toasts. The candidate model implemented here:
+//   corner marks  = notation (Snyder-style, partial by design)
+//   centre marks  = exhaustive candidate list (absence = eliminated)
+//   auto          = engine-computed list minus per-cell exclusions (strikes)
+// engineGrid() bridges UI cell state to the engine's Grid for hints/fill/check.
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
@@ -13,6 +19,7 @@ import { solve } from '../engine/bruteForce';
 import { findNextStep, applyStep, ratePuzzle } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { Level, Tech } from '../engine/ratings';
+import { useSettings } from './settings';
 
 export type EntryMode = 'digit' | 'corner' | 'center' | 'color';
 
@@ -91,6 +98,7 @@ interface GameStore {
   redo: () => void;
   toggleAutoCandidates: () => void;
   fillCandidates: () => void;
+  convertMarks: () => void;
   requestHint: () => void;
   revealHint: () => void;
   applyHint: () => void;
@@ -413,7 +421,8 @@ export const useGame = create<GameStore>()(
        * - ON: centre-mark eliminations are adopted as exclusions (centre marks
        *   are an exhaustive list; corner marks are notation and left alone).
        *   Impossible marks are dropped, and both events are reported.
-       * - OFF: the current auto view is written into centre marks so play
+       * - OFF: if the "write candidates to marks" setting is on, the current
+       *   auto view is written into the configured mark layer so play
        *   continues exactly where auto left off.
        */
       toggleAutoCandidates: () => {
@@ -440,11 +449,18 @@ export const useGame = create<GameStore>()(
           if (dropped) parts.push(`dropped impossible marks in ${dropped} cell${dropped > 1 ? 's' : ''}`);
           if (parts.length) notice = `Auto candidates on — ${parts.join(', ')}`;
         } else {
-          const eg = engineGrid(cells);
-          for (let i = 0; i < 81; i++) {
-            if (!cells[i].given && !cells[i].value) cells[i].center = eg.cands[i];
+          const { autoOffMaterialize, materializeLayer } = useSettings.getState();
+          if (autoOffMaterialize) {
+            const eg = engineGrid(cells);
+            for (let i = 0; i < 81; i++) {
+              if (!cells[i].given && !cells[i].value) cells[i][materializeLayer] = eg.cands[i];
+            }
+            notice = `Auto candidates off — current state written to ${
+              materializeLayer === 'corner' ? 'corner' : 'centre'
+            } marks`;
+          } else {
+            notice = 'Auto candidates off';
           }
-          notice = 'Auto candidates off — current state written to centre marks';
         }
         set({
           autoCandidates: !s.autoCandidates,
@@ -486,6 +502,39 @@ export const useGame = create<GameStore>()(
           notice: `Filled ${layerName} marks${partial ? ' in selection' : ''}${
             corrected ? ` — corrected ${corrected} cell${corrected > 1 ? 's' : ''}` : ''
           }`
+        });
+      },
+
+      /**
+       * Swap corner ↔ centre marks. With 2+ cells selected only those cells
+       * are converted, otherwise every cell with marks. Swapping is
+       * self-inverse and loses nothing — handy after auto-off wrote an
+       * exhaustive list into the "wrong" layer for your style.
+       */
+      convertMarks: () => {
+        const s = get();
+        if (s.won || s.paused) return;
+        const cells = cloneCells(s.cells);
+        const scope = s.selection.filter((i) => !cells[i].given && !cells[i].value);
+        const partial = scope.length >= 2;
+        const targets = partial
+          ? scope
+          : Array.from({ length: 81 }, (_, i) => i).filter(
+              (i) => !cells[i].given && !cells[i].value
+            );
+        let changed = 0;
+        for (const i of targets) {
+          const c = cells[i];
+          if (!c.corner && !c.center) continue;
+          [c.corner, c.center] = [c.center, c.corner];
+          changed++;
+        }
+        if (!changed) return;
+        set({
+          cells,
+          history: [...s.history, cloneCells(s.cells)],
+          future: [],
+          notice: `Swapped corner and centre marks in ${changed} cell${changed > 1 ? 's' : ''}${partial ? ' (selection)' : ''}`
         });
       },
 

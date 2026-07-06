@@ -1,3 +1,6 @@
+// App shell: top bar (brand, difficulty/score, timer, quick toggles), the
+// board + side panel layout, global keyboard handling, dialog routing,
+// toast display and the first-visit bootstrap game.
 import React, { useEffect, useState } from 'react';
 import { useGame } from '../state/gameStore';
 import { useSettings } from '../state/settings';
@@ -12,6 +15,7 @@ import {
   GeneratingDialog,
   VictoryDialog
 } from './Dialogs';
+import { SettingsDialog, InfoDialog } from './SettingsInfo';
 import { TECHS } from '../engine/ratings';
 
 function Timer() {
@@ -51,7 +55,9 @@ export default function App() {
   const { theme, toggleTheme, showTimer } = useSettings();
   const { start, genState, cancel } = useNewGame();
 
-  const [dialog, setDialog] = useState<'none' | 'new' | 'practice' | 'io'>('none');
+  const [dialog, setDialog] = useState<
+    'none' | 'new' | 'practice' | 'io' | 'settings' | 'info'
+  >('none');
   const [victoryDismissed, setVictoryDismissed] = useState(false);
 
   useEffect(() => {
@@ -179,6 +185,12 @@ export default function App() {
           <button className="icon-btn" onClick={toggleTheme} title="Toggle theme">
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
+          <button className="icon-btn" onClick={() => setDialog('info')} title="How to play, modes & shortcuts">
+            ⓘ
+          </button>
+          <button className="icon-btn" onClick={() => setDialog('settings')} title="Settings">
+            ⚙
+          </button>
         </div>
       </header>
 
@@ -214,6 +226,8 @@ export default function App() {
         />
       )}
       {dialog === 'io' && <ImportExportDialog onClose={() => setDialog('none')} />}
+      {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
+      {dialog === 'info' && <InfoDialog onClose={() => setDialog('none')} />}
       {genState && (
         <GeneratingDialog label={genState.label} attempts={genState.attempts} onCancel={cancel} />
       )}

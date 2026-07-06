@@ -524,6 +524,123 @@ textarea {
   text-align: center;
 }
 
+/* ---------- settings & info ---------- */
+.setting-group {
+  margin: 18px 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  cursor: pointer;
+}
+
+.setting-row.disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.setting-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.setting-text span {
+  font-size: 14.5px;
+}
+
+.setting-text small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.switch {
+  flex-shrink: 0;
+  width: 42px;
+  height: 24px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(128, 128, 160, 0.35);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switch.on {
+  background: var(--accent);
+}
+
+.switch .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.15s;
+}
+
+.switch.on .knob {
+  transform: translateX(18px);
+}
+
+.segmented {
+  display: flex;
+  flex-shrink: 0;
+  border: 1px solid rgba(128, 128, 160, 0.3);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.segmented button {
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.segmented button.active {
+  background: var(--accent);
+  color: white;
+}
+
+.shortcut-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.shortcut-table td {
+  padding: 5px 8px 5px 0;
+  vertical-align: top;
+}
+
+.shortcut-table td:first-child {
+  white-space: nowrap;
+}
+
+kbd {
+  background: var(--bg-soft);
+  border: 1px solid rgba(128, 128, 160, 0.35);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-family: inherit;
+  font-size: 12px;
+}
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed;
