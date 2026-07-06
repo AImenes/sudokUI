@@ -66,6 +66,14 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         onChange={(v) => s.set({ showTimer: v })}
       />
 
+      <h4 className="setting-group">Practice</h4>
+      <Toggle
+        label="Jump to the technique"
+        hint="Practice puzzles skip the routine steps and start where the chosen technique applies; off = play from the very beginning"
+        value={s.practiceFastForward}
+        onChange={(v) => s.set({ practiceFastForward: v })}
+      />
+
       <h4 className="setting-group">Candidates</h4>
       <Toggle
         label="Keep candidates when turning auto off"
@@ -109,10 +117,11 @@ const SHORTCUTS: [string, string][] = [
   ['Double-click a digit', 'Select every cell with that digit'],
   ['Backspace / Delete', "Erase the current mode's layer"],
   ['Shift + Backspace', 'Wipe a cell completely'],
+  ['Ctrl/Cmd + A', 'Select every cell (then Erase or Shift+Backspace acts board-wide)'],
   ['Ctrl/Cmd + Z · Y', 'Undo · Redo'],
   ['H', 'Hint'],
   ['P', 'Pause'],
-  ['Escape', 'Clear the selection']
+  ['Escape', 'Close a dialog / clear the selection']
 ];
 
 export function InfoDialog({ onClose }: { onClose: () => void }) {
@@ -139,6 +148,23 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
         <em>Check</em> flags wrong digits and candidate lists that lost the
         true digit.
       </p>
+
+      <h4 className="setting-group">Difficulty rating</h4>
+      <p className="dialog-note">
+        The rating is the summed cost of solving the puzzle: sudokUI plays it
+        using the cheapest applicable technique at every step and adds each
+        technique's score (naked single 4 … Death Blossom 360). Scores follow
+        HoDoKu, so ratings are directly comparable. The bands:
+      </p>
+      <table className="shortcut-table">
+        <tbody>
+          <tr><td><kbd>Easy</kbd></td><td>≤ 800 — singles only territory</td></tr>
+          <tr><td><kbd>Medium</kbd></td><td>≤ 1000 — locked candidates, subsets</td></tr>
+          <tr><td><kbd>Hard</kbd></td><td>≤ 1600 — fish, wings, single-digit patterns</td></tr>
+          <tr><td><kbd>Unfair</kbd></td><td>≤ 1800 — chains, ALS, finned fish</td></tr>
+          <tr><td><kbd>Extreme</kbd></td><td>above — everything the solver has</td></tr>
+        </tbody>
+      </table>
 
       <h4 className="setting-group">Hints & practice</h4>
       <p className="dialog-note">

@@ -224,6 +224,19 @@ export function VictoryDialog({ onNewGame, onClose }: { onNewGame: () => void; o
 }
 
 export function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  // Escape closes the dialog (capture phase so the app's own Escape
+  // handling — clearing the selection — doesn't also fire)
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onClose]);
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>

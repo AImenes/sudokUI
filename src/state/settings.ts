@@ -20,6 +20,9 @@ interface Settings {
    *  for exhaustive candidate lists; corner puts them in the digit-bound
    *  3×3 layout that hint highlights align with */
   materializeLayer: MarkLayer;
+  /** practice mode jumps straight to the position where the chosen
+   *  technique is the next step; off = play the puzzle from the start */
+  practiceFastForward: boolean;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -34,6 +37,7 @@ export const useSettings = create<Settings>()(
       showTimer: true,
       autoOffMaterialize: true,
       materializeLayer: 'center',
+      practiceFastForward: true,
       toggleTheme: () =>
         set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       set: (p) => set(p)
