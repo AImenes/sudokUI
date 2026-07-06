@@ -129,7 +129,7 @@ export const TECHS = {
   AIC_ALS: t(5970, 'AIC with ALSs', 'Unfair', 'Chains and Loops', 360),
   EXTENDED_RECTANGLE: t(4040, 'Extended Rectangle', 'Hard', 'Uniqueness', 110),
   FIREWORKS: t(6300, 'Fireworks', 'Extreme', 'Miscellaneous', 400),
-  TRIDAGON: t(6310, 'Tridagon', 'Extreme', 'Miscellaneous', 400, false),
+  TRIDAGON: t(6310, 'Tridagon', 'Extreme', 'Miscellaneous', 400),
   SK_LOOP: t(6320, 'SK Loop', 'Extreme', 'Miscellaneous', 400, false),
   ALIGNED_PAIR_EXCLUSION: t(6330, 'Aligned Pair Exclusion', 'Unfair', 'Miscellaneous', 320),
   EXOCET: t(8300, 'Exocet', 'Extreme', 'Last Resort', 450),
