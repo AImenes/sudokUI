@@ -44,6 +44,7 @@ export const cellNames = (cells: number[]) => cells.map(cellName).join(', ');
 export const bit = (digit: number) => 1 << (digit - 1);
 export const hasCand = (mask: number, digit: number) => (mask & bit(digit)) !== 0;
 
+/** Number of set bits — for candidate masks, the number of candidates. */
 export function popcount(x: number): number {
   x -= (x >> 1) & 0x55555555;
   x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
@@ -107,12 +108,15 @@ export function parseGrid(s: string): Grid | null {
   return g;
 }
 
+/** Serialise to the canonical 81-char form ('.' = empty) — the inverse of
+ *  parseGrid for values (candidate state is not encoded). */
 export function gridToString(g: Grid): string {
   let s = '';
   for (let i = 0; i < 81; i++) s += g.values[i] === 0 ? '.' : String(g.values[i]);
   return s;
 }
 
+/** True when every cell holds a value. */
 export function isSolved(g: Grid): boolean {
   for (let i = 0; i < 81; i++) if (g.values[i] === 0) return false;
   return true;

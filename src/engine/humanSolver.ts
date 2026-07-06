@@ -40,6 +40,9 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   X_WING: (g) => findBasicFish(g, 2),
   SWORDFISH: (g) => findBasicFish(g, 3),
   JELLYFISH: (g) => findBasicFish(g, 4),
+  SQUIRMBAG: (g) => findBasicFish(g, 5),
+  WHALE: (g) => findBasicFish(g, 6),
+  LEVIATHAN: (g) => findBasicFish(g, 7),
   REMOTE_PAIR: findRemotePair,
   CHUTE_REMOTE_PAIR: findChuteRemotePair,
   BUG_PLUS_1: findBugPlus1,
@@ -85,6 +88,8 @@ export function findNextStep(g: Grid, order: Tech[] = SOLVE_ORDER): Step | null 
   return null;
 }
 
+/** Apply a step to the grid: eliminations strip candidate bits, placements
+ *  set values (which also strips the digit from all peers). */
 export function applyStep(g: Grid, step: Step): void {
   for (const { cell, digit } of step.eliminations) g.cands[cell] &= ~bit(digit);
   for (const { cell, digit } of step.placements) setValue(g, cell, digit);

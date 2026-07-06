@@ -286,6 +286,20 @@ body {
   margin: 2px 2px -4px;
 }
 
+/* menu buttons: icon stacked above a short label, consistently */
+.menu-row button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+}
+
+.menu-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
 .menu-row button:hover,
 .action-row button:hover:not(:disabled) {
   border-color: var(--accent);
@@ -522,6 +536,18 @@ body {
 
 .tech-x {
   color: var(--hint-elim);
+  font-weight: 700;
+}
+
+/* implemented but mathematically redundant (large fish) */
+.practice-btns button.tech-redundant {
+  opacity: 0.6;
+  cursor: help;
+  border-style: dotted;
+}
+
+.tech-tilde {
+  color: var(--muted);
   font-weight: 700;
 }
 

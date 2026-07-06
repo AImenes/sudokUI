@@ -1,6 +1,13 @@
 // Fast bitmask backtracking solver: solution finding and counting.
 import { Grid, cloneGrid, popcount, setValue, isSolved } from './board';
 
+/**
+ * Minimum-remaining-values heuristic: the empty cell with the fewest
+ * candidates, which keeps the backtracking tree small.
+ *
+ * @returns the cell index, `-1` if the grid is full (solved), or `-2` if
+ *   some empty cell has no candidates left (dead end).
+ */
 function findBestCell(g: Grid): number {
   let best = -1;
   let bestCount = 10;
@@ -17,7 +24,15 @@ function findBestCell(g: Grid): number {
   return best;
 }
 
-/** Count solutions up to `limit`. */
+/**
+ * Count the grid's solutions, stopping early once `limit` is reached.
+ * `countSolutions(g, 2)` is the standard uniqueness check: 0 = unsolvable,
+ * 1 = proper puzzle, 2 = ambiguous.
+ *
+ * @param g - grid to solve; not mutated
+ * @param limit - stop counting at this many solutions (default 2)
+ * @returns the number of solutions found, capped at `limit`
+ */
 export function countSolutions(g: Grid, limit = 2): number {
   let count = 0;
   const rec = (grid: Grid): void => {
@@ -65,6 +80,7 @@ export function solve(g: Grid): Grid | null {
   return res && isSolved(res) ? res : null;
 }
 
+/** True iff the grid has exactly one solution (a proper puzzle). */
 export function hasUniqueSolution(g: Grid): boolean {
   return countSolutions(g, 2) === 1;
 }

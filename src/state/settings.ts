@@ -23,6 +23,9 @@ interface Settings {
   /** practice mode jumps straight to the position where the chosen
    *  technique is the next step; off = play the puzzle from the start */
   practiceFastForward: boolean;
+  /** the one-time "keep your candidates?" prompt on first auto-off has been
+   *  answered */
+  autoOffPromptDone: boolean;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -38,6 +41,7 @@ export const useSettings = create<Settings>()(
       autoOffMaterialize: true,
       materializeLayer: 'center',
       practiceFastForward: true,
+      autoOffPromptDone: false,
       toggleTheme: () =>
         set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       set: (p) => set(p)

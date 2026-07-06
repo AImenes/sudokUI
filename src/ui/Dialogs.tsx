@@ -102,19 +102,25 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
               {techs.map((tech) => {
                 const info = TECHS[tech];
                 const ok = PRACTICE_TECHS.includes(tech);
+                // implemented but disabled = mathematically redundant (large
+                // fish): the solver knows it, but it never appears in a solve
+                // path, so there is nothing to practise
+                const redundant = !ok && info.implemented;
                 return (
                   <button
                     key={tech}
                     disabled={!ok}
-                    className={ok ? '' : 'tech-missing'}
+                    className={ok ? '' : redundant ? 'tech-redundant' : 'tech-missing'}
                     onClick={() => ok && onStart(tech)}
                     title={
                       ok
                         ? `Score ${info.score} · ${info.level}`
-                        : `${info.name} is not implemented yet (planned score ${info.score}, ${info.level})`
+                        : redundant
+                          ? `${info.name} is implemented, but any fish this size implies a smaller complementary fish, so it is never required — nothing to practise`
+                          : `${info.name} is not implemented yet (planned score ${info.score}, ${info.level})`
                     }
                   >
-                    {ok ? '' : <span className="tech-x">✗ </span>}
+                    {ok ? '' : redundant ? <span className="tech-tilde">≈ </span> : <span className="tech-x">✗ </span>}
                     {info.name}
                     {ok && poolSize(techKey(tech)) > 0 && (
                       <span className="pool-dot" title="cached puzzle ready" />

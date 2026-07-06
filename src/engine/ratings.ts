@@ -72,9 +72,13 @@ export const TECHS = {
   X_WING: t(2200, 'X-Wing', 'Hard', 'Basic Fish', 140),
   SWORDFISH: t(2300, 'Swordfish', 'Hard', 'Basic Fish', 150),
   JELLYFISH: t(2400, 'Jellyfish', 'Hard', 'Basic Fish', 160),
-  SQUIRMBAG: t(2500, 'Squirmbag', 'Unfair', 'Basic Fish', 470, false, false),
-  WHALE: t(2600, 'Whale', 'Unfair', 'Basic Fish', 470, false, false),
-  LEVIATHAN: t(2700, 'Leviathan', 'Unfair', 'Basic Fish', 470, false, false),
+  // Implemented but disabled by default (as in HoDoKu): any fish larger than
+  // a jellyfish implies a complementary fish of size ≤ 4 on the same digit
+  // (sudokuwiki: "a 5x5 automatically creates a 4x4 with the remaining
+  // numbers"), so these can never be *required* by a solve path.
+  SQUIRMBAG: t(2500, 'Squirmbag', 'Unfair', 'Basic Fish', 470, true, false),
+  WHALE: t(2600, 'Whale', 'Unfair', 'Basic Fish', 470, true, false),
+  LEVIATHAN: t(2700, 'Leviathan', 'Unfair', 'Basic Fish', 470, true, false),
   REMOTE_PAIR: t(2800, 'Remote Pair', 'Hard', 'Chains and Loops', 110),
   CHUTE_REMOTE_PAIR: t(2850, 'Chute Remote Pair', 'Hard', 'Chains and Loops', 110),
   BUG_PLUS_1: t(2900, 'BUG+1', 'Hard', 'Uniqueness', 100),
