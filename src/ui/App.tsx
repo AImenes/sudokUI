@@ -11,7 +11,8 @@ import {
   useNewGame,
   NewGameDialog,
   PracticeDialog,
-  ImportExportDialog,
+  ImportDialog,
+  ShareDialog,
   GeneratingDialog,
   VictoryDialog
 } from './Dialogs';
@@ -50,6 +51,12 @@ export default function App() {
   const undo = useGame((s) => s.undo);
   const redo = useGame((s) => s.redo);
   const setMode = useGame((s) => s.setMode);
+  const setTempMode = useGame((s) => s.setTempMode);
+  const mode = useGame((s) => s.mode);
+  const errors = useGame((s) => s.errors);
+  const revertIndex = useGame((s) => s.revertIndex);
+  const revertToValid = useGame((s) => s.revertToValid);
+  const dismissRevert = useGame((s) => s.dismissRevert);
   const requestHint = useGame((s) => s.requestHint);
   const selection = useGame((s) => s.selection);
   const select = useGame((s) => s.select);
@@ -57,7 +64,7 @@ export default function App() {
   const { start, genState, cancel } = useNewGame();
 
   const [dialog, setDialog] = useState<
-    'none' | 'new' | 'practice' | 'io' | 'settings' | 'info' | 'restart'
+    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart'
   >('none');
   const restart = useGame((s) => s.restart);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
@@ -100,9 +107,35 @@ export default function App() {
     return () => clearTimeout(id);
   }, [notice, clearNotice]);
 
+  // hold-modifier temporary modes: Shift = corner, Ctrl/Alt = centre,
+  // Shift together with Ctrl/Alt = colour; release returns to the base mode
+  useEffect(() => {
+    const applyModifiers = (e: KeyboardEvent) => {
+      if (e.metaKey) return void setTempMode(null); // leave Cmd shortcuts alone
+      const other = e.ctrlKey || e.altKey;
+      setTempMode(
+        e.shiftKey && other ? 'color' : e.shiftKey ? 'corner' : other ? 'center' : null
+      );
+    };
+    const onUp = (e: KeyboardEvent) => applyModifiers(e);
+    const onBlur = () => setTempMode(null);
+    window.addEventListener('keyup', onUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keyup', onUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, [setTempMode]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+      if (!e.metaKey) {
+        const other = e.ctrlKey || e.altKey;
+        setTempMode(
+          e.shiftKey && other ? 'color' : e.shiftKey ? 'corner' : other ? 'center' : null
+        );
+      }
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.code === 'KeyZ' && !e.shiftKey) return void (e.preventDefault(), undo());
       if (mod && (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey)))
@@ -113,20 +146,7 @@ export default function App() {
         const d = Number(e.code.replace('Digit', '').replace('Numpad', ''));
         if (d >= 1 && d <= 9) {
           e.preventDefault();
-          const s = useGame.getState();
-          if (e.shiftKey) {
-            const m = s.mode;
-            s.setMode('corner');
-            s.input(d);
-            s.setMode(m);
-          } else if (e.altKey) {
-            const m = s.mode;
-            s.setMode('center');
-            s.input(d);
-            s.setMode(m);
-          } else {
-            input(d);
-          }
+          input(d); // held modifiers already routed via the temporary mode
           return;
         }
       }
@@ -137,6 +157,12 @@ export default function App() {
           if (e.shiftKey) wipe();
           else erase();
           break;
+        case 'Space': {
+          e.preventDefault();
+          const order = ['digit', 'corner', 'center', 'color'] as const;
+          setMode(order[(order.indexOf(useGame.getState().mode) + 1) % order.length]);
+          break;
+        }
         case 'KeyZ':
           setMode('digit');
           break;
@@ -245,12 +271,34 @@ export default function App() {
             <button onClick={() => setDialog('io')}>
               <span className="menu-icon">⇅</span>Import
             </button>
+            <button onClick={() => setDialog('share')}>
+              <span className="menu-icon">🔗</span>Share
+            </button>
             <button onClick={() => setDialog('restart')} title="Reset this puzzle and the timer">
               <span className="menu-icon">↺</span>Restart
             </button>
           </div>
           <Controls />
           <HintPanel />
+          {revertIndex !== null && errors.length > 0 && (
+            <div className="hint-panel">
+              <div className="hint-head">
+                <strong>Mistakes found</strong>
+              </div>
+              <div className="hint-body">
+                <p>
+                  Jump back to the last position where everything was correct?
+                  Your later entries are removed — Ctrl+Z brings them back.
+                </p>
+                <div className="hint-actions">
+                  <button onClick={revertToValid}>↩ Back to correct</button>
+                  <button className="ghost" onClick={dismissRevert}>
+                    Keep looking
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </aside>
       </main>
 
@@ -272,7 +320,8 @@ export default function App() {
           }}
         />
       )}
-      {dialog === 'io' && <ImportExportDialog onClose={() => setDialog('none')} />}
+      {dialog === 'io' && <ImportDialog onClose={() => setDialog('none')} />}
+      {dialog === 'share' && <ShareDialog onClose={() => setDialog('none')} />}
       {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
       {dialog === 'info' && <InfoDialog onClose={() => setDialog('none')} />}
       {dialog === 'restart' && (

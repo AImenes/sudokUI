@@ -36,25 +36,5 @@ jobs:
           path: dist/
           retention-days: 7
 
-  # Deploy to your Hetzner box once secrets are configured:
-  #   HETZNER_HOST, HETZNER_USER, HETZNER_SSH_KEY, HETZNER_PATH
-  # Uncomment when ready.
-  #
-  # deploy:
-  #   needs: test-and-build
-  #   if: github.ref == 'refs/heads/main'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: sudokui-dist
-  #         path: dist
-  #     - name: Rsync to server
-  #       uses: burnett01/rsync-deployments@7.0.1
-  #       with:
-  #         switches: -avzr --delete
-  #         path: dist/
-  #         remote_path: ${{ secrets.HETZNER_PATH }}
-  #         remote_host: ${{ secrets.HETZNER_HOST }}
-  #         remote_user: ${{ secrets.HETZNER_USER }}
-  #         remote_key: ${{ secrets.HETZNER_SSH_KEY }}
+  # Deployment happens on Cloudflare (Workers Builds) on every push to main;
+  # see docs/deployment.md. This workflow is the quality gate.

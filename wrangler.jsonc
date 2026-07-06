@@ -1,0 +1,13 @@
+// Cloudflare deployment config: sudokUI is a fully static PWA, so this is an
+// assets-only Worker — `npx wrangler deploy` uploads dist/ to Cloudflare's
+// edge, no server code involved. With this file present, wrangler skips its
+// framework auto-detection (which would demand Vite >= 6) and just ships.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sudokui",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

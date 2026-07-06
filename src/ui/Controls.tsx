@@ -26,6 +26,8 @@ const MODES: { id: EntryMode; label: string; key: string }[] = [
 
 export function Controls() {
   const mode = useGame((s) => s.mode);
+  const tempMode = useGame((s) => s.tempMode);
+  const effectiveMode = tempMode ?? mode;
   const setMode = useGame((s) => s.setMode);
   const input = useGame((s) => s.input);
   const erase = useGame((s) => s.erase);
@@ -67,7 +69,7 @@ export function Controls() {
         {MODES.map((m) => (
           <button
             key={m.id}
-            className={`mode-btn ${mode === m.id ? 'active' : ''}`}
+            className={`mode-btn ${effectiveMode === m.id ? 'active' : ''}${tempMode === m.id ? ' held' : ''}`}
             onClick={() => setMode(m.id)}
             title={`${m.label} (${m.key})`}
           >
@@ -97,7 +99,7 @@ export function Controls() {
       <div className="action-row">
         <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩ Undo</button>
         <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪ Redo</button>
-        <button onClick={erase} title={eraseTitle(mode, autoCandidates)}>⌫ Erase</button>
+        <button onClick={erase} title={eraseTitle(effectiveMode, autoCandidates)}>⌫ Erase</button>
       </div>
 
       <div className="row-caption">Assist</div>
@@ -121,7 +123,7 @@ export function Controls() {
         </button>
         <button
           onClick={fillCandidates}
-          title={`Fill ${mode === 'corner' ? 'corner' : 'centre'} marks with all candidates — with several cells selected, only those are filled`}
+          title={`Fill ${effectiveMode === 'corner' ? 'corner' : 'centre'} marks with all candidates — with several cells selected, only those are filled`}
         >
           ✎ Fill
         </button>

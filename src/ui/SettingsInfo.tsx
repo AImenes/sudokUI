@@ -114,8 +114,10 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
 
 const SHORTCUTS: [string, string][] = [
   ['1–9', 'Enter digit / mark / colour, depending on the mode'],
-  ['Shift + 1–9', 'Corner mark (from any mode)'],
-  ['Alt + 1–9', 'Centre mark (from any mode)'],
+  ['Hold Shift', 'Corner-mark mode while held'],
+  ['Hold Ctrl or Alt', 'Centre-mark mode while held'],
+  ['Hold Shift + Ctrl/Alt', 'Colour mode while held'],
+  ['Space', 'Cycle through the modes'],
   ['Z / X / C / V', 'Switch mode: Digit / Corner / Centre / Colour'],
   ['Arrow keys', 'Move the selection (Shift extends it)'],
   ['Click + drag', 'Select multiple cells'],
