@@ -551,6 +551,13 @@ body {
   font-weight: 700;
 }
 
+.tech-score {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
 .pool-dot {
   display: inline-block;
   width: 7px;

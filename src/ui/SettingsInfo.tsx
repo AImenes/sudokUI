@@ -65,6 +65,12 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         value={s.showTimer}
         onChange={(v) => s.set({ showTimer: v })}
       />
+      <Toggle
+        label="Hide difficulty while playing"
+        hint="No badge, no rating — revealed when you solve the puzzle. Pairs well with 'Surprise me' in New game"
+        value={s.hideRating}
+        onChange={(v) => s.set({ hideRating: v })}
+      />
 
       <h4 className="setting-group">Practice</h4>
       <Toggle

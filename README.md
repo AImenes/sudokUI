@@ -133,8 +133,9 @@ npx cap add android && npx cap open android  # Android Studio
 
 - Chain-based techniques: X-Cycles, AICs, forcing chains
 - Photo import: scan a puzzle from a book with the camera
+- Teacher/annotation mode: arrows, shapes and freehand drawing over the
+  board for streams and classroom use
 - Statistics and streaks
-- Puzzle sharing links
 
 ## Credits & license
 

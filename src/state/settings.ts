@@ -26,6 +26,9 @@ interface Settings {
   /** the one-time "keep your candidates?" prompt on first auto-off has been
    *  answered */
   autoOffPromptDone: boolean;
+  /** hide the difficulty badge and rating while playing (revealed on solve) —
+   *  knowing a puzzle is rated 1200 tells you to expect advanced techniques */
+  hideRating: boolean;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -42,6 +45,7 @@ export const useSettings = create<Settings>()(
       materializeLayer: 'center',
       practiceFastForward: true,
       autoOffPromptDone: false,
+      hideRating: false,
       toggleTheme: () =>
         set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       set: (p) => set(p)
