@@ -13,6 +13,56 @@ import { Step, CellDigit } from '../steps';
  * Cross-digit template pruning (sudokuwiki's rule 2) is not applied; that
  * only means fewer finds, never wrong ones.
  */
+/**
+ * All complete, conflict-free placements of a digit (one cell per row, all
+ * columns and boxes distinct, consistent with current values/candidates).
+ * In any solution, the digit's positions form exactly one of these — a
+ * complete case analysis, which the Exocet finder uses as its proof engine.
+ *
+ * @returns the templates as 9-cell arrays, or null if the enumeration
+ *   exceeds `cap` (in which case no claim may be made).
+ */
+export function digitTemplates(g: Grid, d: number, cap = 20000): number[][] | null {
+  const mask = bit(d);
+  const rowChoices: number[][] = [];
+  for (let r = 0; r < 9; r++) {
+    const cells: number[] = [];
+    for (let c = 0; c < 9; c++) {
+      const i = r * 9 + c;
+      if (g.values[i] === d) {
+        cells.length = 0;
+        cells.push(i);
+        break;
+      }
+      if (g.values[i] === 0 && g.cands[i] & mask) cells.push(i);
+    }
+    if (cells.length === 0) return []; // broken grid: no valid placement
+    rowChoices.push(cells);
+  }
+  const out: number[][] = [];
+  let overflow = false;
+  const current: number[] = [];
+  const rec = (row: number, colMask: number, boxMask: number): void => {
+    if (overflow) return;
+    if (row === 9) {
+      out.push([...current]);
+      if (out.length > cap) overflow = true;
+      return;
+    }
+    for (const cell of rowChoices[row]) {
+      const cb = 1 << (cell % 9);
+      const bb = 1 << boxOf(cell);
+      if (colMask & cb || boxMask & bb) continue;
+      current.push(cell);
+      rec(row + 1, colMask | cb, boxMask | bb);
+      current.pop();
+      if (overflow) return;
+    }
+  };
+  rec(0, 0, 0);
+  return overflow ? null : out;
+}
+
 export function findPatternOverlay(g: Grid, maxTemplates = 20000): Step | null {
   for (let d = 1; d <= 9; d++) {
     const mask = bit(d);

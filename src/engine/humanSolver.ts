@@ -26,6 +26,7 @@ import {
 import { findFrankenFish } from './techniques/complexFish';
 import { findAlignedPairExclusion } from './techniques/ape';
 import { findPatternOverlay } from './techniques/templates';
+import { findExocet } from './techniques/exocet';
 import { findNishio, findCellForcing, findUnitForcing, findDigitForcing } from './techniques/forcing';
 import { findSueDeCoq } from './techniques/sueDeCoq';
 import { findMedusa3d } from './techniques/medusa';
@@ -108,6 +109,7 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   FRANKEN_X_WING: (g) => findFrankenFish(g, 2),
   FRANKEN_SWORDFISH: (g) => findFrankenFish(g, 3),
   ALIGNED_PAIR_EXCLUSION: findAlignedPairExclusion,
+  EXOCET: findExocet,
   PATTERN_OVERLAY: (g) => findPatternOverlay(g),
   DIGIT_FORCING_CHAIN: findDigitForcing,
   NISHIO_FORCING_CHAIN: findNishio,

@@ -43,7 +43,7 @@ natively for iOS and Android via Capacitor.
 
 ## Technique library
 
-80 techniques catalogued, 73 implemented (70 enabled in the default solve
+80 techniques catalogued, 74 implemented (71 enabled in the default solve
 order — large fish are provably redundant and stay off, as in HoDoKu):
 
 | Family | Implemented |
@@ -60,11 +60,11 @@ order — large fish are provably redundant and stay off, as in HoDoKu):
 | ALS | ALS-XZ, ALS-XY-Wing, ALS-XY-Chain, Sue de Coq, Death Blossom |
 | Complex fish | Franken X-Wing, Franken Swordfish |
 | Miscellaneous | Aligned Pair Exclusion, Fireworks |
-| Last resorts | Pattern Overlay, Nishio/Digit/Cell/Unit forcing nets |
+| Last resorts | Exocet (template-proven per position), Pattern Overlay, Nishio/Digit/Cell/Unit forcing nets |
 
-Not yet implemented (visible in-app, marked ✗): Twinned XY-Chains, Exocet,
-SK Loops, Tridagons, and the generic linear forcing-chain entries (their
-Nishio/digit/cell/unit net forms are implemented). Contributions welcome — see *Adding a technique*.
+Not yet implemented (visible in-app, marked ✗): Twinned XY-Chains, Double
+Exocet, SK Loops, Tridagons, and the generic linear forcing-chain entries
+(their Nishio/digit/cell/unit net forms are implemented). Contributions welcome — see *Adding a technique*.
 
 ### Correctness policy
 

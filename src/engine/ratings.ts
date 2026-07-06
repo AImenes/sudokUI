@@ -132,7 +132,7 @@ export const TECHS = {
   TRIDAGON: t(6310, 'Tridagon', 'Extreme', 'Miscellaneous', 400, false),
   SK_LOOP: t(6320, 'SK Loop', 'Extreme', 'Miscellaneous', 400, false),
   ALIGNED_PAIR_EXCLUSION: t(6330, 'Aligned Pair Exclusion', 'Unfair', 'Miscellaneous', 320),
-  EXOCET: t(8300, 'Exocet', 'Extreme', 'Last Resort', 450, false),
+  EXOCET: t(8300, 'Exocet', 'Extreme', 'Last Resort', 450),
   DOUBLE_EXOCET: t(8310, 'Double Exocet', 'Extreme', 'Last Resort', 480, false),
   PATTERN_OVERLAY: t(8320, 'Pattern Overlay', 'Extreme', 'Last Resort', 500),
   DIGIT_FORCING_CHAIN: t(8510, 'Digit Forcing Chain', 'Extreme', 'Last Resort', 500),
