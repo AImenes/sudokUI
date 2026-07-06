@@ -130,9 +130,32 @@ body {
 .level-unfair { background: #c0541530; color: #e8934a; }
 .level-extreme { background: #b3123030; color: #e05563; }
 
-.score {
+.score-btn {
+  background: none;
+  border: none;
   color: var(--muted);
   font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.score-btn strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.score-btn:hover {
+  background: rgba(128, 128, 160, 0.15);
+}
+
+.mini-i {
+  font-size: 12px;
+  opacity: 0.6;
 }
 
 .practice-badge {
@@ -161,10 +184,19 @@ body {
   background: none;
   border: none;
   font-size: 18px;
+  line-height: 1;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
   cursor: pointer;
   color: var(--text);
-  padding: 4px 8px;
   border-radius: 8px;
+}
+
+/* the gear glyph renders smaller than ⓘ at the same font size */
+.icon-btn.gear {
+  font-size: 22px;
 }
 
 .icon-btn:hover {
@@ -241,6 +273,17 @@ body {
   color: var(--text);
   cursor: pointer;
   font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  letter-spacing: 0.1px;
+}
+
+.row-caption {
+  color: var(--muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin: 2px 2px -4px;
 }
 
 .menu-row button:hover,

@@ -86,6 +86,8 @@ interface GameStore {
   notice: string | null;
 
   startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null) => void;
+  /** reset the current puzzle to its starting position, timer included */
+  restart: () => void;
   select: (cells: number[], additive: boolean) => void;
   selectAllOf: (digit: number) => void;
   setMode: (mode: EntryMode) => void;
@@ -150,8 +152,10 @@ export const useGame = create<GameStore>()(
           return cell;
         });
         // practice mode: fast-forward to the position where the target
-        // technique is the next step
-        if (practiceTech) {
+        // technique is the next step (unless the user prefers playing from
+        // the very start — see Settings)
+        const fastForward = practiceTech && useSettings.getState().practiceFastForward;
+        if (fastForward) {
           const eg = engineGrid(cells);
           for (let guard = 0; guard < 200; guard++) {
             const step = findNextStep(eg);
@@ -184,9 +188,16 @@ export const useGame = create<GameStore>()(
           hint: null,
           hintStage: 'hidden',
           errors: [],
-          // practice needs the candidate state visible to spot the pattern
-          ...(practiceTech ? { autoCandidates: true } : {})
+          // after a jump the candidate state must be visible to spot the pattern
+          ...(fastForward ? { autoCandidates: true } : {})
         });
+      },
+
+      restart: () => {
+        const s = get();
+        if (!s.info) return;
+        get().startGame(s.info.puzzle, s.info.score, s.info.level, s.info.practiceTech);
+        set({ notice: 'Puzzle restarted' });
       },
 
       select: (cells, additive) =>
@@ -457,7 +468,7 @@ export const useGame = create<GameStore>()(
             }
             notice = `Auto candidates off — current state written to ${
               materializeLayer === 'corner' ? 'corner' : 'centre'
-            } marks`;
+            } marks (Ctrl+Z reverts)`;
           } else {
             notice = 'Auto candidates off';
           }

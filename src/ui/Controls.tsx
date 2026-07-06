@@ -76,31 +76,37 @@ export function Controls() {
         <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪ Redo</button>
         <button onClick={erase} title={eraseTitle(mode, autoCandidates)}>⌫ Erase</button>
       </div>
+
+      <div className="row-caption">Assist</div>
       <div className="action-row">
-        <button onClick={requestHint} title="Hint (H)">💡 Hint</button>
+        <button onClick={requestHint} title="Hint (H) — names the technique first, reveals it only if you ask">💡 Hint</button>
         <button onClick={check} title="Check values and candidate lists against the solution">✓ Check</button>
+      </div>
+
+      <div className="row-caption">Candidates</div>
+      <div className="action-row">
         <button
           className={autoCandidates ? 'toggled' : ''}
           onClick={toggleAutoCandidates}
           title={
             autoCandidates
-              ? 'Turn off — the current candidates are written to centre marks'
+              ? 'Turn off — where the candidates go is configurable in Settings, and Ctrl+Z reverts'
               : 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
           }
         >
-          ⚙ Auto cands
+          ⌗ Auto
         </button>
         <button
           onClick={fillCandidates}
           title={`Fill ${mode === 'corner' ? 'corner' : 'centre'} marks with all candidates — with several cells selected, only those are filled`}
         >
-          ✎ Fill cands
+          ✎ Fill
         </button>
         <button
           onClick={convertMarks}
           title="Swap corner and centre marks — with several cells selected, only those are converted"
         >
-          ⇄ Marks
+          ⇄ Swap
         </button>
       </div>
     </div>

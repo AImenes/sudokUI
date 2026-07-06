@@ -26,10 +26,10 @@ const PALETTE = [
 const candX = (d: number) => 22 + ((d - 1) % 3) * 28;
 const candY = (d: number) => 30 + Math.floor((d - 1) / 3) * 28;
 
-/** corner marks live at the digit's canonical 3x3 position (3 is always
- *  top-right, 5 always centre), nudged to the cell edges */
-const cornerX = (d: number) => 20 + ((d - 1) % 3) * 30;
-const cornerY = (d: number) => 30 + Math.floor((d - 1) / 3) * 31;
+/** Text colour for a candidate sitting on a hint circle: dark on the amber
+ *  secondary circles, white on the saturated blue/red/purple ones. Keeps the
+ *  digit readable regardless of theme. */
+const hintTextFill = (kind: string) => (kind === 'secondary' ? '#1b2233' : '#ffffff');
 
 export function Grid() {
   const cells = useGame((s) => s.cells);
@@ -252,23 +252,26 @@ export function Grid() {
                       x={x + candX(d)}
                       y={y + candY(d)}
                       textAnchor="middle"
-                      fontSize={24}
-                      fill="var(--cand)"
+                      fontSize={23}
+                      fontWeight={marks?.has(d) ? 700 : 400}
+                      fill={marks?.has(d) ? hintTextFill(marks.get(d)!) : 'var(--cand)'}
                     >
                       {d}
                     </text>
                   ))
                 ) : (
                   <>
+                    {/* corner marks share the auto-candidate geometry so hint
+                        circles align in both views */}
                     {digitsOf(cell.corner).map((d) => (
                       <text
                         key={`co${d}`}
-                        x={x + cornerX(d)}
-                        y={y + cornerY(d)}
+                        x={x + candX(d)}
+                        y={y + candY(d)}
                         textAnchor="middle"
-                        fontSize={22}
-                        fontWeight={600}
-                        fill="var(--cand)"
+                        fontSize={23}
+                        fontWeight={marks?.has(d) ? 700 : 600}
+                        fill={marks?.has(d) ? hintTextFill(marks.get(d)!) : 'var(--cand)'}
                       >
                         {d}
                       </text>

@@ -16,6 +16,7 @@ import {
   VictoryDialog
 } from './Dialogs';
 import { SettingsDialog, InfoDialog } from './SettingsInfo';
+import { Modal } from './Dialogs';
 import { TECHS } from '../engine/ratings';
 
 function Timer() {
@@ -56,8 +57,9 @@ export default function App() {
   const { start, genState, cancel } = useNewGame();
 
   const [dialog, setDialog] = useState<
-    'none' | 'new' | 'practice' | 'io' | 'settings' | 'info'
+    'none' | 'new' | 'practice' | 'io' | 'settings' | 'info' | 'restart'
   >('none');
+  const restart = useGame((s) => s.restart);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
 
   useEffect(() => {
@@ -89,6 +91,8 @@ export default function App() {
       if (mod && e.code === 'KeyZ' && !e.shiftKey) return void (e.preventDefault(), undo());
       if (mod && (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey)))
         return void (e.preventDefault(), redo());
+      if (mod && e.code === 'KeyA')
+        return void (e.preventDefault(), select(Array.from({ length: 81 }, (_, i) => i), false));
       if (e.code.startsWith('Digit') || e.code.startsWith('Numpad')) {
         const d = Number(e.code.replace('Digit', '').replace('Numpad', ''));
         if (d >= 1 && d <= 9) {
@@ -171,7 +175,13 @@ export default function App() {
         {info && (
           <div className="game-meta">
             <span className={`level-badge level-${info.level.toLowerCase()}`}>{info.level}</span>
-            <span className="score">{info.score}</span>
+            <button
+              className="score-btn"
+              onClick={() => setDialog('info')}
+              title="Difficulty rating — the summed technique cost of solving this puzzle. Click to learn more."
+            >
+              Rating <strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
+            </button>
             {info.practiceTech && (
               <span className="practice-badge">Practice: {TECHS[info.practiceTech].name}</span>
             )}
@@ -188,7 +198,7 @@ export default function App() {
           <button className="icon-btn" onClick={() => setDialog('info')} title="How to play, modes & shortcuts">
             ⓘ
           </button>
-          <button className="icon-btn" onClick={() => setDialog('settings')} title="Settings">
+          <button className="icon-btn gear" onClick={() => setDialog('settings')} title="Settings">
             ⚙
           </button>
         </div>
@@ -201,6 +211,9 @@ export default function App() {
             <button onClick={() => setDialog('new')}>▦ New game</button>
             <button onClick={() => setDialog('practice')}>🎯 Practice</button>
             <button onClick={() => setDialog('io')}>⇅ Import</button>
+            <button onClick={() => setDialog('restart')} title="Reset this puzzle and the timer">
+              ↺ Restart
+            </button>
           </div>
           <Controls />
           <HintPanel />
@@ -228,6 +241,28 @@ export default function App() {
       {dialog === 'io' && <ImportExportDialog onClose={() => setDialog('none')} />}
       {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
       {dialog === 'info' && <InfoDialog onClose={() => setDialog('none')} />}
+      {dialog === 'restart' && (
+        <Modal title="Restart puzzle?" onClose={() => setDialog('none')}>
+          <p className="dialog-note">
+            The board and timer reset to the beginning
+            {info?.practiceTech ? ' of the practice position' : ''}. Your
+            progress on this puzzle is lost.
+          </p>
+          <div className="hint-actions">
+            <button
+              onClick={() => {
+                setDialog('none');
+                restart();
+              }}
+            >
+              Restart
+            </button>
+            <button className="ghost" onClick={() => setDialog('none')}>
+              Keep playing
+            </button>
+          </div>
+        </Modal>
+      )}
       {genState && (
         <GeneratingDialog label={genState.label} attempts={genState.attempts} onCancel={cancel} />
       )}
