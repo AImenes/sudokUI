@@ -3,7 +3,7 @@ import { Step, CellDigit } from '../steps';
 import { Tech } from '../ratings';
 import { combinations } from './subsets';
 
-const FISH_NAMES = ['', '', 'X-Wing', 'Swordfish', 'Jellyfish'];
+const FISH_NAMES = ['', '', 'X-Wing', 'Swordfish', 'Jellyfish', 'Squirmbag', 'Whale', 'Leviathan'];
 
 /** cell index for (baseLine, coverPos); rows=true means base lines are rows */
 const cellAt = (rows: boolean, line: number, pos: number) =>

@@ -31,6 +31,116 @@ const candY = (d: number) => 30 + Math.floor((d - 1) / 3) * 28;
  *  digit readable regardless of theme. */
 const hintTextFill = (kind: string) => (kind === 'secondary' ? '#1b2233' : '#ffffff');
 
+/** Perimeter slots for corner marks when a cell ALSO holds centre marks —
+ *  the classic SudokuPad arrangement, keeping the middle free for the
+ *  centre line. Filled in digit order. */
+const PERIMETER: [number, number][] = [
+  [21, 30], // top-left
+  [79, 30], // top-right
+  [21, 92], // bottom-left
+  [79, 92], // bottom-right
+  [50, 30], // top-middle
+  [50, 92], // bottom-middle
+  [21, 62], // left-middle
+  [79, 62] // right-middle
+];
+
+/**
+ * How a cell's manual pencil marks are drawn (auto candidates handled
+ * separately). The rules, chosen so nothing ever overlaps:
+ *
+ * - hint highlights on the cell → everything promotes to the 3×3 grid so the
+ *   highlight circles sit exactly on the digits (corner-sourced digits stay
+ *   bold, centre-sourced regular);
+ * - corner marks only → digit-bound 3×3 positions;
+ * - centre marks only → a centred line while it reads like a note (≤4
+ *   digits), the 3×3 grid once it is an exhaustive list (5+);
+ * - both layers → corner marks retreat to the cell perimeter and the centre
+ *   line keeps the middle.
+ */
+function renderMarks(
+  cell: { corner: number; center: number },
+  x: number,
+  y: number,
+  marks: Map<number, string> | undefined
+): React.ReactNode {
+  const cornerDs = digitsOf(cell.corner);
+  const centerDs = digitsOf(cell.center);
+  if (!cornerDs.length && !centerDs.length) return null;
+
+  const gridText = (d: number, bold: boolean) => (
+    <text
+      key={`g${d}`}
+      x={x + candX(d)}
+      y={y + candY(d)}
+      textAnchor="middle"
+      fontSize={23}
+      fontWeight={marks?.has(d) ? 700 : bold ? 600 : 400}
+      fill={marks?.has(d) ? hintTextFill(marks.get(d)!) : 'var(--cand)'}
+    >
+      {d}
+    </text>
+  );
+
+  // hint promotion: union of both layers on the 3×3 grid
+  if (marks && marks.size > 0) {
+    const union = [...new Set([...cornerDs, ...centerDs])].sort((a, b) => a - b);
+    return <>{union.map((d) => gridText(d, cell.corner ? (cell.corner & bit(d)) !== 0 : false))}</>;
+  }
+
+  const centerLine =
+    centerDs.length > 0 && centerDs.length <= 4 ? (
+      <text
+        key="cl"
+        x={x + SIZE / 2}
+        y={y + SIZE / 2 + 8}
+        textAnchor="middle"
+        fontSize={26}
+        fill="var(--cand)"
+      >
+        {centerDs.join('')}
+      </text>
+    ) : null;
+
+  if (cornerDs.length && centerDs.length) {
+    return (
+      <>
+        {cornerDs.slice(0, 8).map((d, k) => (
+          <text
+            key={`p${d}`}
+            x={x + PERIMETER[k][0]}
+            y={y + PERIMETER[k][1]}
+            textAnchor="middle"
+            fontSize={21}
+            fontWeight={600}
+            fill="var(--cand)"
+          >
+            {d}
+          </text>
+        ))}
+        {centerLine ?? (
+          <text
+            key="cl2"
+            x={x + SIZE / 2}
+            y={y + SIZE / 2 + 7}
+            textAnchor="middle"
+            fontSize={Math.min(22, 118 / centerDs.length + 4)}
+            fill="var(--cand)"
+          >
+            {centerDs.join('')}
+          </text>
+        )}
+      </>
+    );
+  }
+
+  if (cornerDs.length) return <>{cornerDs.map((d) => gridText(d, true))}</>;
+
+  // centre only: line while it reads like a note, grid once it's a full list
+  if (centerDs.length <= 4) return centerLine;
+  return <>{centerDs.map((d) => gridText(d, false))}</>;
+}
+
 export function Grid() {
   const cells = useGame((s) => s.cells);
   const selection = useGame((s) => s.selection);
@@ -260,34 +370,7 @@ export function Grid() {
                     </text>
                   ))
                 ) : (
-                  <>
-                    {/* corner marks share the auto-candidate geometry so hint
-                        circles align in both views */}
-                    {digitsOf(cell.corner).map((d) => (
-                      <text
-                        key={`co${d}`}
-                        x={x + candX(d)}
-                        y={y + candY(d)}
-                        textAnchor="middle"
-                        fontSize={23}
-                        fontWeight={marks?.has(d) ? 700 : 600}
-                        fill={marks?.has(d) ? hintTextFill(marks.get(d)!) : 'var(--cand)'}
-                      >
-                        {d}
-                      </text>
-                    ))}
-                    {cell.center > 0 && (
-                      <text
-                        x={x + SIZE / 2}
-                        y={y + SIZE / 2 + 8}
-                        textAnchor="middle"
-                        fontSize={Math.min(26, 128 / digitsOf(cell.center).length + 6)}
-                        fill="var(--cand)"
-                      >
-                        {digitsOf(cell.center).join('')}
-                      </text>
-                    )}
-                  </>
+                  renderMarks(cell, x, y, marks)
                 )}
               </g>
             );

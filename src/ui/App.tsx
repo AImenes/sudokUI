@@ -208,11 +208,17 @@ export default function App() {
         <Grid />
         <aside className="side">
           <div className="menu-row">
-            <button onClick={() => setDialog('new')}>▦ New game</button>
-            <button onClick={() => setDialog('practice')}>🎯 Practice</button>
-            <button onClick={() => setDialog('io')}>⇅ Import</button>
+            <button onClick={() => setDialog('new')}>
+              <span className="menu-icon">▦</span>New
+            </button>
+            <button onClick={() => setDialog('practice')}>
+              <span className="menu-icon">🎯</span>Practice
+            </button>
+            <button onClick={() => setDialog('io')}>
+              <span className="menu-icon">⇅</span>Import
+            </button>
             <button onClick={() => setDialog('restart')} title="Reset this puzzle and the timer">
-              ↺ Restart
+              <span className="menu-icon">↺</span>Restart
             </button>
           </div>
           <Controls />

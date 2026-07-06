@@ -1,8 +1,10 @@
 // The control panel: mode switcher (digit/corner/centre/colour), number pad
 // (doubles as the colour palette in colour mode), undo/redo/erase and the
 // candidate tools (hint, check, auto candidates, fill, convert).
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame, EntryMode } from '../state/gameStore';
+import { useSettings, MarkLayer } from '../state/settings';
+import { Modal } from './Dialogs';
 import { PALETTE } from './Grid';
 
 function eraseTitle(mode: EntryMode, auto: boolean): string {
@@ -37,6 +39,27 @@ export function Controls() {
   const convertMarks = useGame((s) => s.convertMarks);
   const requestHint = useGame((s) => s.requestHint);
   const check = useGame((s) => s.check);
+  const [autoOffPrompt, setAutoOffPrompt] = useState(false);
+
+  // first time auto candidates are switched OFF, let the user decide what
+  // happens to the candidate state (the answer becomes their setting)
+  const onAutoToggle = () => {
+    if (autoCandidates && !useSettings.getState().autoOffPromptDone) {
+      setAutoOffPrompt(true);
+      return;
+    }
+    toggleAutoCandidates();
+  };
+
+  const chooseAutoOff = (layer: MarkLayer | 'none') => {
+    useSettings.getState().set(
+      layer === 'none'
+        ? { autoOffMaterialize: false, autoOffPromptDone: true }
+        : { autoOffMaterialize: true, materializeLayer: layer, autoOffPromptDone: true }
+    );
+    setAutoOffPrompt(false);
+    toggleAutoCandidates();
+  };
 
   return (
     <div className="controls">
@@ -87,7 +110,7 @@ export function Controls() {
       <div className="action-row">
         <button
           className={autoCandidates ? 'toggled' : ''}
-          onClick={toggleAutoCandidates}
+          onClick={onAutoToggle}
           title={
             autoCandidates
               ? 'Turn off — where the candidates go is configurable in Settings, and Ctrl+Z reverts'
@@ -109,6 +132,30 @@ export function Controls() {
           ⇄ Swap
         </button>
       </div>
+
+      {autoOffPrompt && (
+        <Modal title="Keep your candidates?" onClose={() => setAutoOffPrompt(false)}>
+          <p className="dialog-note">
+            Turning auto candidates off can write the current candidate state
+            into pencil marks, so you continue exactly where auto left off.
+            Your choice becomes the default — change it anytime in Settings.
+          </p>
+          <div className="level-list">
+            <button className="level-btn" onClick={() => chooseAutoOff('center')}>
+              <strong>Centre marks</strong>
+              <span>The convention for full candidate lists — recommended</span>
+            </button>
+            <button className="level-btn" onClick={() => chooseAutoOff('corner')}>
+              <strong>Corner marks</strong>
+              <span>The digit-bound 3×3 layout that hint highlights align with</span>
+            </button>
+            <button className="level-btn" onClick={() => chooseAutoOff('none')}>
+              <strong>Don't fill anything</strong>
+              <span>Just switch off — your own marks stay as they were</span>
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

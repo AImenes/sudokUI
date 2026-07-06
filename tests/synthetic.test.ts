@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { emptyGrid, setValue, bit } from '../src/engine/board';
 import { findUniqueness, findAvoidableRectangle } from '../src/engine/techniques/uniqueness';
+import { findBasicFish } from '../src/engine/techniques/fish';
 
 // Deterministic positions for the rare finders that random hunts seldom hit.
 // (Their common siblings are validated against real solutions in hunt-new.)
@@ -35,6 +36,31 @@ describe('synthetic rare-pattern positions', () => {
     expect(step!.eliminations).toContainEqual({ cell: 10, digit: 9 });
     expect(step!.eliminations.every((e) => e.digit === 9)).toBe(true);
   });
+
+  // Large basic fish (mathematically redundant — any N>4 fish implies a
+  // complementary fish of size ≤4 — but implemented for completeness and
+  // custom solve orders). Same generic algorithm as X-Wing/Swordfish.
+  for (const [size, name] of [
+    [5, 'SQUIRMBAG'],
+    [6, 'WHALE'],
+    [7, 'LEVIATHAN']
+  ] as const) {
+    it(`finds a ${name} (size-${size} fish)`, () => {
+      const g = emptyGrid();
+      // digit 5 confined to columns 0..size-1 within rows 0..size-1
+      for (let row = 0; row < size; row++) {
+        for (let col = size; col < 9; col++) {
+          g.cands[row * 9 + col] &= ~bit(5);
+        }
+      }
+      const step = findBasicFish(g, size);
+      expect(step).not.toBeNull();
+      expect(step!.tech).toBe(name);
+      // eliminations: digit 5 in the cover columns outside the base rows
+      expect(step!.eliminations.length).toBe((9 - size) * size);
+      expect(step!.eliminations.every((e) => e.digit === 5 && e.cell % 9 < size)).toBe(true);
+    });
+  }
 
   it('Avoidable Rectangle Type 2 does NOT fire when a corner is a given', () => {
     const g = emptyGrid();
