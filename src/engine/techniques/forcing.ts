@@ -122,6 +122,44 @@ function verityStep(
   };
 }
 
+/**
+ * Digit forcing: follow BOTH parities of one candidate — placed, or removed —
+ * and keep whatever the two outcomes agree on. If removing the candidate
+ * self-destructs, it must be true and is placed. (The placed-parity
+ * contradiction is Nishio's find and is left to it.)
+ */
+export function findDigitForcing(g: Grid): Step | null {
+  for (let cell = 0; cell < 81; cell++) {
+    if (g.values[cell] !== 0) continue;
+    for (const d of digitsOf(g.cands[cell])) {
+      const on = branch(g, cell, d);
+      const off = cloneGrid(g);
+      off.cands[cell] &= ~bit(d);
+      const offOk = propagate(off);
+      if (!offOk && on) {
+        return {
+          tech: 'DIGIT_FORCING_CHAIN',
+          placements: [{ cell, digit: d }],
+          eliminations: [],
+          primary: [{ cell, digit: d }],
+          description: `Digit forcing: removing ${d} from ${cellName(cell)} collapses the puzzle via forced singles, so ${cellName(cell)} must be ${d}.`
+        };
+      }
+      if (!on || !offOk) continue;
+      const { places, elims } = intersectBranches(g, [on, off]);
+      if (!places.length && !elims.length) continue;
+      return {
+        tech: 'DIGIT_FORCING_CHAIN',
+        placements: places,
+        eliminations: elims,
+        primary: [{ cell, digit: d }],
+        description: `Digit forcing: whether ${cellName(cell)} is ${d} or not, the forced singles agree on the same conclusion${places.length + elims.length > 1 ? 's' : ''}.`
+      };
+    }
+  }
+  return null;
+}
+
 /** Try every candidate of a cell; keep what all outcomes agree on. */
 export function findCellForcing(g: Grid): Step | null {
   for (let cell = 0; cell < 81; cell++) {
