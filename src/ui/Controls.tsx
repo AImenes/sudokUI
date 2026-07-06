@@ -1,3 +1,6 @@
+// The control panel: mode switcher (digit/corner/centre/colour), number pad
+// (doubles as the colour palette in colour mode), undo/redo/erase and the
+// candidate tools (hint, check, auto candidates, fill, convert).
 import React from 'react';
 import { useGame, EntryMode } from '../state/gameStore';
 import { PALETTE } from './Grid';
@@ -31,6 +34,7 @@ export function Controls() {
   const autoCandidates = useGame((s) => s.autoCandidates);
   const toggleAutoCandidates = useGame((s) => s.toggleAutoCandidates);
   const fillCandidates = useGame((s) => s.fillCandidates);
+  const convertMarks = useGame((s) => s.convertMarks);
   const requestHint = useGame((s) => s.requestHint);
   const check = useGame((s) => s.check);
 
@@ -91,6 +95,12 @@ export function Controls() {
           title={`Fill ${mode === 'corner' ? 'corner' : 'centre'} marks with all candidates — with several cells selected, only those are filled`}
         >
           ✎ Fill cands
+        </button>
+        <button
+          onClick={convertMarks}
+          title="Swap corner and centre marks — with several cells selected, only those are converted"
+        >
+          ⇄ Marks
         </button>
       </div>
     </div>

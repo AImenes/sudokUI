@@ -1,3 +1,6 @@
+// Game dialogs: new game, practice (full technique catalogue), import/export,
+// generation progress and victory — plus useNewGame, the hook that ties the
+// puzzle pools, the generation worker and the game store together.
 import React, { useState } from 'react';
 import { useGame, rateImport } from '../state/gameStore';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';

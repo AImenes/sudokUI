@@ -1,3 +1,8 @@
+// The SVG board. Renders per cell, back to front: background → user colours →
+// peer/same-digit tints → hint tint → selection → error tint, then the cell
+// content (big digit, corner marks at digit-bound 3×3 positions, centre-mark
+// line, or the auto-candidate 3×3 view), then hint candidate circles, chain
+// polyline and grid lines. Pointer events implement drag multi-select.
 import React, { useRef } from 'react';
 import { useGame, engineGrid } from '../state/gameStore';
 import { useSettings } from '../state/settings';
