@@ -3,7 +3,7 @@
 import { Level, Tech } from '../engine/ratings';
 import type { PoolEntry, WorkerRequest, WorkerResponse } from '../engine/worker';
 
-const STORAGE_KEY = 'sudokui-pools-v6'; // v6: ALS-augmented AICs in the loop
+const STORAGE_KEY = 'sudokui-pools-v7'; // v7: exocet in the loop
 const POOL_CAP = 8;
 
 type Pools = Record<string, PoolEntry[]>;
