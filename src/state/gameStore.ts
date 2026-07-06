@@ -71,6 +71,9 @@ interface GameStore {
   cells: CellState[];
   selection: number[];
   mode: EntryMode;
+  /** hold-modifier override (Shift = corner, Ctrl/Alt = centre, both =
+   *  colour); null = use `mode`. Never persisted. */
+  tempMode: EntryMode | null;
   activeColor: number;
   autoCandidates: boolean;
   history: CellState[][];
@@ -84,6 +87,8 @@ interface GameStore {
   errors: number[];
   /** transient toast message */
   notice: string | null;
+  /** history index of the last error-free position, set by check() */
+  revertIndex: number | null;
 
   startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null) => void;
   /** reset the current puzzle to its starting position, timer included */
@@ -91,6 +96,7 @@ interface GameStore {
   select: (cells: number[], additive: boolean) => void;
   selectAllOf: (digit: number) => void;
   setMode: (mode: EntryMode) => void;
+  setTempMode: (mode: EntryMode | null) => void;
   setActiveColor: (c: number) => void;
   input: (digit: number) => void;
   erase: () => void;
@@ -106,6 +112,9 @@ interface GameStore {
   applyHint: () => void;
   dismissHint: () => void;
   check: () => void;
+  /** jump back to the most recent error-free position (offered by check) */
+  revertToValid: () => void;
+  dismissRevert: () => void;
   togglePause: () => void;
   elapsedMs: () => number;
 }
@@ -124,6 +133,7 @@ export const useGame = create<GameStore>()(
       cells: Array.from({ length: 81 }, emptyCell),
       selection: [],
       mode: 'digit' as EntryMode,
+      tempMode: null,
       activeColor: 0,
       autoCandidates: false,
       history: [],
@@ -136,6 +146,7 @@ export const useGame = create<GameStore>()(
       hintStage: 'hidden' as const,
       errors: [],
       notice: null,
+      revertIndex: null as number | null,
 
       startGame: (puzzle, score, level, practiceTech = null) => {
         const g = parseGrid(puzzle);
@@ -217,18 +228,21 @@ export const useGame = create<GameStore>()(
         })),
 
       setMode: (mode) => set({ mode }),
+      setTempMode: (tempMode) =>
+        set((s) => (s.tempMode === tempMode ? {} : { tempMode })),
       setActiveColor: (activeColor) => set({ activeColor, mode: 'color' }),
 
       input: (digit) => {
         const s = get();
         if (s.won || s.paused) return;
-        const targets = s.selection.filter((i) => !s.cells[i].given || s.mode === 'color');
+        const mode = s.tempMode ?? s.mode;
+        const targets = s.selection.filter((i) => !s.cells[i].given || mode === 'color');
         if (!targets.length) return;
         const cells = cloneCells(s.cells);
         const history = [...s.history, cloneCells(s.cells)];
         let changed = false;
 
-        if (s.mode === 'digit') {
+        if (mode === 'digit') {
           const editable = targets.filter((i) => !cells[i].given);
           const allSet = editable.length > 0 && editable.every((i) => cells[i].value === digit);
           for (const i of editable) {
@@ -247,7 +261,7 @@ export const useGame = create<GameStore>()(
               }
             }
           }
-        } else if (s.mode === 'corner' || s.mode === 'center') {
+        } else if (mode === 'corner' || mode === 'center') {
           const editable = targets.filter((i) => !cells[i].given && !cells[i].value);
           if (s.autoCandidates) {
             // auto mode: pencil input strikes a candidate through (exclusion),
@@ -265,7 +279,7 @@ export const useGame = create<GameStore>()(
               changed = true;
             }
           } else {
-            const key = s.mode;
+            const key = mode;
             const allHave =
               editable.length > 0 && editable.every((i) => cells[i][key] & bit(digit));
             for (const i of editable) {
@@ -274,7 +288,7 @@ export const useGame = create<GameStore>()(
               changed = true;
             }
           }
-        } else if (s.mode === 'color') {
+        } else if (mode === 'color') {
           const colorIdx = digit - 1;
           const allHave = targets.every((i) => cells[i].colors.includes(colorIdx));
           for (const i of targets) {
@@ -306,14 +320,15 @@ export const useGame = create<GameStore>()(
         const cells = cloneCells(s.cells);
         let changed = false;
 
-        if (s.mode === 'color') {
+        const mode = s.tempMode ?? s.mode;
+        if (mode === 'color') {
           for (const i of s.selection) {
             if (cells[i].colors.length) {
               cells[i].colors = [];
               changed = true;
             }
           }
-        } else if (s.mode === 'corner' || s.mode === 'center') {
+        } else if (mode === 'corner' || mode === 'center') {
           if (s.autoCandidates) {
             // restore struck-through candidates
             for (const i of targets) {
@@ -323,7 +338,7 @@ export const useGame = create<GameStore>()(
               }
             }
           } else {
-            const key = s.mode;
+            const key = mode;
             for (const i of targets) {
               if (cells[i][key]) {
                 cells[i][key] = 0;
@@ -492,7 +507,7 @@ export const useGame = create<GameStore>()(
         const s = get();
         const g = engineGrid(s.cells);
         const cells = cloneCells(s.cells);
-        const layer = s.mode === 'corner' ? 'corner' : 'center';
+        const layer = (s.tempMode ?? s.mode) === 'corner' ? 'corner' : 'center';
         const scope = s.selection.filter((i) => !cells[i].given && !cells[i].value);
         const partial = scope.length >= 2;
         const targets = partial
@@ -614,14 +629,47 @@ export const useGame = create<GameStore>()(
             errors.push(i);
           }
         }
+        // offer a jump back to the last position with no wrong values
+        let revertIndex: number | null = null;
+        if (errors.length) {
+          for (let h = s.history.length - 1; h >= 0; h--) {
+            const snap = s.history[h];
+            let valid = true;
+            for (let i = 0; i < 81 && valid; i++) {
+              if (snap[i].value && snap[i].value !== Number(s.info.solution[i])) valid = false;
+            }
+            if (valid) {
+              revertIndex = h;
+              break;
+            }
+          }
+        }
         set({
           errors,
+          revertIndex,
           notice:
             errors.length === 0
               ? 'Everything checks out so far'
               : `${errors.length} problem${errors.length > 1 ? 's' : ''} found — values or candidate lists missing the true digit`
         });
       },
+
+      revertToValid: () => {
+        const s = get();
+        if (s.revertIndex === null || !s.history[s.revertIndex]) return;
+        set({
+          cells: cloneCells(s.history[s.revertIndex]),
+          history: [...s.history, cloneCells(s.cells)],
+          future: [],
+          errors: [],
+          revertIndex: null,
+          hint: null,
+          hintStage: 'hidden',
+          notice: 'Back to the last correct position (Ctrl+Z restores your entries)'
+        });
+      },
+
+      dismissRevert: () => set({ revertIndex: null }),
 
       togglePause: () => {
         const s = get();

@@ -148,27 +148,10 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
   );
 }
 
-export function ImportExportDialog({ onClose }: { onClose: () => void }) {
-  const info = useGame((s) => s.info);
-  const cells = useGame((s) => s.cells);
+export function ImportDialog({ onClose }: { onClose: () => void }) {
   const startGame = useGame((s) => s.startGame);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState('');
-
-  const currentAsString = () =>
-    cells.map((c) => (c.given ? String(c.value) : '.')).join('');
-
-  // the puzzle string doubles as the seed: anyone opening this link plays
-  // the exact same game
-  const shareLink = () =>
-    `${window.location.origin}${window.location.pathname}#p=${currentAsString()}`;
-
-  const copy = (what: 'link' | 'string') => {
-    navigator.clipboard?.writeText(what === 'link' ? shareLink() : currentAsString());
-    setCopied(what);
-    setTimeout(() => setCopied(''), 2000);
-  };
 
   const doImport = () => {
     const cleaned = text.replace(/[^0-9.]/g, '');
@@ -186,7 +169,7 @@ export function ImportExportDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title="Import & Share" onClose={onClose}>
+    <Modal title="Import a puzzle" onClose={onClose}>
       <p className="dialog-note">Paste an 81-character puzzle string (dots or zeros for empty cells).</p>
       <textarea
         rows={3}
@@ -201,23 +184,42 @@ export function ImportExportDialog({ onClose }: { onClose: () => void }) {
       <div className="hint-actions">
         <button onClick={doImport}>Load puzzle</button>
       </div>
-      {info && (
-        <>
-          <h4 className="setting-group">Share this puzzle</h4>
-          <p className="dialog-note">
-            Friends, streams, classrooms: anyone opening the link gets exactly
-            this puzzle. The address bar always carries it too.
-          </p>
-          <div className="hint-actions">
-            <button onClick={() => copy('link')}>
-              {copied === 'link' ? '✓ Copied' : '🔗 Copy link'}
-            </button>
-            <button className="ghost" onClick={() => copy('string')}>
-              {copied === 'string' ? '✓ Copied' : 'Copy puzzle string'}
-            </button>
-          </div>
-        </>
-      )}
+    </Modal>
+  );
+}
+
+export function ShareDialog({ onClose }: { onClose: () => void }) {
+  const cells = useGame((s) => s.cells);
+  const [copied, setCopied] = useState('');
+
+  const currentAsString = () =>
+    cells.map((c) => (c.given ? String(c.value) : '.')).join('');
+
+  // the puzzle string doubles as the seed: anyone opening this link plays
+  // the exact same game
+  const shareLink = () =>
+    `${window.location.origin}${window.location.pathname}#p=${currentAsString()}`;
+
+  const copy = (what: 'link' | 'string') => {
+    navigator.clipboard?.writeText(what === 'link' ? shareLink() : currentAsString());
+    setCopied(what);
+    setTimeout(() => setCopied(''), 2000);
+  };
+
+  return (
+    <Modal title="Share this puzzle" onClose={onClose}>
+      <p className="dialog-note">
+        Friends, streams, classrooms: anyone opening the link gets exactly
+        this puzzle. The address bar always carries it too.
+      </p>
+      <div className="hint-actions">
+        <button onClick={() => copy('link')}>
+          {copied === 'link' ? '✓ Copied' : '🔗 Copy link'}
+        </button>
+        <button className="ghost" onClick={() => copy('string')}>
+          {copied === 'string' ? '✓ Copied' : 'Copy puzzle string'}
+        </button>
+      </div>
     </Modal>
   );
 }

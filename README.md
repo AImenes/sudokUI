@@ -91,7 +91,7 @@ npm run build      # production build + PWA service worker
 
 A guided tour of how everything ties together lives in
 [docs/architecture.md](docs/architecture.md); the production deployment
-runbook (Hetzner + Cloudflare, GitOps) is
+runbook (Cloudflare, GitOps) is
 [docs/deployment.md](docs/deployment.md).
 
 ```
