@@ -2,7 +2,7 @@
 // generation progress and victory — plus useNewGame, the hook that ties the
 // puzzle pools, the generation worker and the game store together.
 import React, { useState } from 'react';
-import { useGame, rateImport } from '../state/gameStore';
+import { useGame, validatePuzzle } from '../state/gameStore';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
 
@@ -54,7 +54,15 @@ const LEVEL_DESCRIPTIONS: Record<Level, string> = {
   Extreme: 'Everything the solver has got'
 };
 
-export function NewGameDialog({ onClose, onStart }: { onClose: () => void; onStart: (level: Level) => void }) {
+export function NewGameDialog({
+  onClose,
+  onStart,
+  onCustom
+}: {
+  onClose: () => void;
+  onStart: (level: Level) => void;
+  onCustom: () => void;
+}) {
   return (
     <Modal title="New game" onClose={onClose}>
       <div className="level-list">
@@ -76,6 +84,13 @@ export function NewGameDialog({ onClose, onStart }: { onClose: () => void; onSta
           <span>
             Any difficulty — enable "Hide difficulty while playing" in Settings
             for the full mystery
+          </span>
+        </button>
+        <button className="level-btn" onClick={onCustom}>
+          <strong>✏️ Custom</strong>
+          <span>
+            Type in a puzzle from a newspaper or book — sudokUI checks it has
+            exactly one solution and rates it before you play
           </span>
         </button>
       </div>
@@ -160,12 +175,12 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       setError('A puzzle needs exactly 81 characters (digits and dots).');
       return;
     }
-    const rating = rateImport(cleaned);
-    if (!rating) {
-      setError('That puzzle has no unique solution.');
+    const v = validatePuzzle(cleaned);
+    if (!v.ok) {
+      setError(v.reason);
       return;
     }
-    startGame(cleaned, rating.score, rating.level);
+    startGame(cleaned, v.score, v.level);
     onClose();
   };
 
