@@ -3,7 +3,7 @@
 import { Level, Tech } from '../engine/ratings';
 import type { PoolEntry, WorkerRequest, WorkerResponse } from '../engine/worker';
 
-const STORAGE_KEY = 'sudokui-pools-v9'; // v9: tridagon in the loop
+const STORAGE_KEY = 'sudokui-pools-v10'; // v10: eight difficulty bands
 const POOL_CAP = 8;
 
 type Pools = Record<string, PoolEntry[]>;

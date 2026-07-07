@@ -128,18 +128,24 @@ body {
   white-space: nowrap;
 }
 
+.level-beginner { background: #26999930; color: #6fd0cd; }
 .level-easy { background: #2e7d3230; color: #7fd486; }
 .level-medium { background: #38761d30; color: #b5d47f; }
+.level-tricky { background: #8a8a2030; color: #d3d36a; }
 .level-hard { background: #b8860b30; color: #e6c74c; }
 .level-unfair { background: #c0541530; color: #e8934a; }
 .level-extreme { background: #b3123030; color: #e05563; }
+.level-nightmare { background: #6a1b9a30; color: #b78ae8; }
 
 /* daylight theme needs darker badge text for contrast */
+:root[data-theme='light'] .level-beginner { background: #26999926; color: #0e6360; }
 :root[data-theme='light'] .level-easy { background: #2e7d3226; color: #1d6322; }
 :root[data-theme='light'] .level-medium { background: #38761d26; color: #2c5e14; }
+:root[data-theme='light'] .level-tricky { background: #8a8a202e; color: #5c5c08; }
 :root[data-theme='light'] .level-hard { background: #b8860b2e; color: #7a5800; }
 :root[data-theme='light'] .level-unfair { background: #c054152e; color: #93400e; }
 :root[data-theme='light'] .level-extreme { background: #b312302e; color: #8f0e24; }
+:root[data-theme='light'] .level-nightmare { background: #6a1b9a2e; color: #4d1470; }
 
 .score-btn {
   white-space: nowrap;
@@ -249,18 +255,54 @@ body {
   font-family: inherit;
 }
 
-.resume-overlay {
+/* pause: a calm card floating over the blank board */
+.pause-card {
   position: absolute;
   inset: 0;
-  margin: auto;
-  width: 180px;
-  height: 60px;
-  font-size: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.pause-card h3 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.5px;
+}
+
+.pause-tip {
+  margin: 0;
+  max-width: 72%;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.resume-btn {
+  margin-top: 8px;
+  padding: 14px 34px;
+  font-size: 19px;
+  font-weight: 600;
   border-radius: 12px;
   border: none;
   background: var(--accent);
   color: white;
   cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.resume-btn:hover {
+  filter: brightness(1.08);
+}
+
+.pause-poodle {
+  margin-top: 14px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 }
 
 .side {
@@ -645,13 +687,11 @@ textarea {
   width: 100%;
 }
 
+/* Nutella sits just below the board's right corner, watching the solve */
 .poodle {
-  margin-left: 8px;
-  opacity: 0.9;
-}
-
-:root[data-theme='light'] .poodle g {
-  fill: #2a2d36;
+  align-self: flex-end;
+  margin: 14px 10px 0 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 }
 
 /* "Surprise me" carries a whisper of every difficulty colour */
@@ -659,10 +699,11 @@ textarea {
   background:
     linear-gradient(
       100deg,
-      rgba(103, 185, 106, 0.16),
-      rgba(230, 199, 76, 0.16) 30%,
-      rgba(232, 147, 74, 0.16) 55%,
-      rgba(224, 85, 99, 0.16) 80%,
+      rgba(111, 208, 205, 0.16),
+      rgba(103, 185, 106, 0.16) 18%,
+      rgba(230, 199, 76, 0.16) 40%,
+      rgba(232, 147, 74, 0.16) 60%,
+      rgba(224, 85, 99, 0.16) 78%,
       rgba(155, 116, 216, 0.16)
     ),
     var(--panel);
@@ -682,9 +723,15 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 5px 8px;
+  padding: 7px 10px;
   border-radius: 8px;
   background: var(--panel);
+  cursor: pointer;
+  user-select: none;
+}
+
+.path-row:hover {
+  outline: 1.5px solid var(--accent);
 }
 
 .path-row.path-crux {
@@ -697,6 +744,10 @@ textarea {
   padding: 3px 8px;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  text-align: center;
+  border-radius: 6px;
+  background: var(--sel-bg);
+  color: var(--text);
 }
 
 .path-label {

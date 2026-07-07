@@ -46,8 +46,10 @@ natively for iOS and Android via Capacitor.
 - Every puzzle gets a difficulty score: the solver plays it with the cheapest
   applicable technique at each step and sums per-technique scores
   (HoDoKu-compatible model)
-- Five bands: Easy (≤800), Medium (≤1000), Hard (≤1600), Unfair (≤1800),
-  Extreme
+- Eight bands: Beginner (≤400), Easy (≤800), Medium (≤1000), Tricky (≤1150),
+  Hard (≤1600), Unfair (≤1800), Extreme (≤3000) and Nightmare above — the
+  HoDoKu thresholds, with the extremes subdivided. One fish or wing makes a
+  puzzle Tricky; several make it Hard
 - Optional hidden-rating mode and "Surprise me"
 
 **Generate**

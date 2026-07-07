@@ -48,11 +48,14 @@ export function useNewGame() {
 }
 
 const LEVEL_DESCRIPTIONS: Record<Level, string> = {
+  Beginner: 'Full houses and easy singles — learn the ropes',
   Easy: 'Singles only — a relaxed solve',
   Medium: 'Locked candidates and subsets',
-  Hard: 'Fish, wings and single-digit patterns',
+  Tricky: 'A first fish, wing or kite — one new trick',
+  Hard: 'Fish, wings and single-digit patterns in force',
   Unfair: 'Chains, ALS and finned fish',
-  Extreme: 'Everything the solver has got'
+  Extreme: 'Long chains, colouring and nets',
+  Nightmare: 'Forcing nets and Exocet territory — ratings past 3000'
 };
 
 export function NewGameDialog({
@@ -232,30 +235,39 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
         <div className="path-list">
           {rows.map((row) =>
             row.kind === 'group' ? (
-              <div key={row.index} className="path-row path-group">
-                <button className="path-jump" onClick={() => jump(row.index)}>
+              // the whole group row expands; the step-range button jumps
+              <div
+                key={row.index}
+                className="path-row path-group"
+                role="button"
+                title="Expand these steps"
+                onClick={() => setExpanded(new Set([...expanded, row.index]))}
+              >
+                <button
+                  className="path-jump"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    jump(row.index);
+                  }}
+                >
                   {row.index + 1}–{row.index + row.steps.length}
                 </button>
-                <button
-                  className="path-label"
-                  onClick={() => setExpanded(new Set([...expanded, row.index]))}
-                  title="Expand these steps"
-                >
-                  {row.steps.length} singles ▸
-                </button>
+                <span className="path-label">{row.steps.length} singles ▸</span>
                 <span className="path-score">
                   +{row.steps.reduce((a, s) => a + TECHS[s.tech].score, 0)}
                 </span>
               </div>
             ) : (
+              // the whole step row jumps to the position before the step
               <div
                 key={row.index}
                 className={`path-row ${row.index === cruxIndex ? 'path-crux' : ''}`}
+                role="button"
+                title={row.step.description}
+                onClick={() => jump(row.index)}
               >
-                <button className="path-jump" onClick={() => jump(row.index)}>
-                  {row.index + 1}
-                </button>
-                <span className="path-label" title={row.step.description}>
+                <span className="path-jump">{row.index + 1}</span>
+                <span className="path-label">
                   {TECHS[row.step.tech].name}
                   {row.index === cruxIndex && <span className="crux-badge">crux</span>}
                 </span>

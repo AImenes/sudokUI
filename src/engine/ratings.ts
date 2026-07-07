@@ -1,18 +1,47 @@
 // Technique catalog ported from HoDoKu (Options.java DEFAULT_SOLVER_STEPS).
-// Scores and difficulty bands are HoDoKu's defaults, so puzzle ratings are
-// directly comparable with HoDoKu's.
+// Scores are HoDoKu's defaults, so puzzle ratings are directly comparable
+// with HoDoKu's.
+//
+// Difficulty runs on eight named bands. The five HoDoKu bands keep their
+// original thresholds (Easy 800 / Medium 1000 / Hard 1600 / Unfair 1800),
+// so a puzzle HoDoKu calls Hard is still Hard here; the three new bands
+// subdivide the extremes: Beginner splits off the gentlest singles-only
+// puzzles, Tricky sits between Medium and Hard for grinds that need no new
+// technique but lots of bookkeeping, and Nightmare splits off the monsters
+// past 3000 (forcing nets, Exocet territory — ratings of 4000+ exist).
+// A puzzle's band is max(hardest technique's band, band from total score).
 
-export type Level = 'Easy' | 'Medium' | 'Hard' | 'Unfair' | 'Extreme';
+export type Level =
+  | 'Beginner'
+  | 'Easy'
+  | 'Medium'
+  | 'Tricky'
+  | 'Hard'
+  | 'Unfair'
+  | 'Extreme'
+  | 'Nightmare';
 
-export const LEVELS: Level[] = ['Easy', 'Medium', 'Hard', 'Unfair', 'Extreme'];
+export const LEVELS: Level[] = [
+  'Beginner',
+  'Easy',
+  'Medium',
+  'Tricky',
+  'Hard',
+  'Unfair',
+  'Extreme',
+  'Nightmare'
+];
 
-/** Max total score per level (HoDoKu defaults). */
+/** Max total score per level (HoDoKu thresholds, subdivided). */
 export const LEVEL_MAX_SCORE: Record<Level, number> = {
+  Beginner: 400,
   Easy: 800,
   Medium: 1000,
+  Tricky: 1150,
   Hard: 1600,
   Unfair: 1800,
-  Extreme: Number.MAX_SAFE_INTEGER
+  Extreme: 3000,
+  Nightmare: Number.MAX_SAFE_INTEGER
 };
 
 export type Category =
@@ -56,9 +85,9 @@ const t = (
 
 /** Keys follow HoDoKu's SolutionType names. */
 export const TECHS = {
-  FULL_HOUSE: t(100, 'Full House', 'Easy', 'Singles', 4),
-  NAKED_SINGLE: t(200, 'Naked Single', 'Easy', 'Singles', 4),
-  HIDDEN_SINGLE: t(300, 'Hidden Single', 'Easy', 'Singles', 14),
+  FULL_HOUSE: t(100, 'Full House', 'Beginner', 'Singles', 4),
+  NAKED_SINGLE: t(200, 'Naked Single', 'Beginner', 'Singles', 4),
+  HIDDEN_SINGLE: t(300, 'Hidden Single', 'Beginner', 'Singles', 14),
   LOCKED_PAIR: t(1000, 'Locked Pair', 'Medium', 'Intersections', 40),
   LOCKED_TRIPLE: t(1100, 'Locked Triple', 'Medium', 'Intersections', 60),
   LOCKED_CANDIDATES_1: t(1200, 'Locked Candidates (Pointing)', 'Medium', 'Intersections', 50),
@@ -168,4 +197,15 @@ export function levelForScore(score: number): Level {
 
 export function maxLevel(a: Level, b: Level): Level {
   return LEVELS.indexOf(a) >= LEVELS.indexOf(b) ? a : b;
+}
+
+/**
+ * Puzzle-band floor of a technique class. Hard-class techniques (fish,
+ * wings, single-digit patterns) floor a puzzle only at Tricky: a puzzle
+ * whose one advanced move is an X-Wing is a Tricky puzzle, while Hard
+ * proper means those techniques in force (score past 1300). Every other
+ * class floors at itself.
+ */
+export function bandFloor(l: Level): Level {
+  return l === 'Hard' ? 'Tricky' : l;
 }

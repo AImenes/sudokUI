@@ -297,7 +297,7 @@ export function Grid() {
   const paused = useGame((s) => s.paused);
   const won = useGame((s) => s.won);
   const togglePause = useGame((s) => s.togglePause);
-  const { highlightPeers, highlightSameDigit } = useSettings();
+  const { highlightPeers, highlightSameDigit, showPoodle } = useSettings();
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragging = useRef(false);
@@ -531,28 +531,7 @@ export function Grid() {
               </g>
             );
           })
-        ) : (
-          <>
-            <text
-              x={M + (SIZE * 9) / 2}
-              y={M + (SIZE * 9) / 2}
-              textAnchor="middle"
-              fontSize={44}
-              fill="var(--cand)"
-            >
-              Paused — press ⏵ to resume
-            </text>
-            <text
-              x={M + (SIZE * 9) / 2}
-              y={M + (SIZE * 9) / 2 + 52}
-              textAnchor="middle"
-              fontSize={22}
-              fill="var(--muted)"
-            >
-              Did you know? {pauseTip}
-            </text>
-          </>
-        )}
+        ) : null /* pause card is drawn as an HTML overlay below */}
 
         {/* chain arrows (candidate-anchored), with the legacy centre-to-centre
             polyline as fallback for steps that only carry chainCells */}
@@ -612,9 +591,16 @@ export function Grid() {
         ))}
       </svg>
       {paused && !won && (
-        <button className="resume-overlay" onClick={togglePause}>
-          ⏵ Resume
-        </button>
+        <div className="pause-card">
+          <h3>Paused</h3>
+          <p className="pause-tip">Did you know? {pauseTip}</p>
+          <button className="resume-btn" onClick={togglePause}>
+            ⏵ Resume (P)
+          </button>
+          {showPoodle && (
+            <img className="pause-poodle" src="/poodle.png" width="76" alt="" aria-hidden="true" />
+          )}
+        </div>
       )}
     </div>
   );

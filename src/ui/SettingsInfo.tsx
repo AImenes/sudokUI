@@ -173,11 +173,14 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
       </p>
       <table className="shortcut-table">
         <tbody>
+          <tr><td><kbd>Beginner</kbd></td><td>≤ 400 — full houses and easy singles</td></tr>
           <tr><td><kbd>Easy</kbd></td><td>≤ 800 — singles only territory</td></tr>
           <tr><td><kbd>Medium</kbd></td><td>≤ 1000 — locked candidates, subsets</td></tr>
-          <tr><td><kbd>Hard</kbd></td><td>≤ 1600 — fish, wings, single-digit patterns</td></tr>
+          <tr><td><kbd>Tricky</kbd></td><td>≤ 1150 — a first fish, wing or kite</td></tr>
+          <tr><td><kbd>Hard</kbd></td><td>≤ 1600 — fish, wings, patterns in force</td></tr>
           <tr><td><kbd>Unfair</kbd></td><td>≤ 1800 — chains, ALS, finned fish</td></tr>
-          <tr><td><kbd>Extreme</kbd></td><td>above — everything the solver has</td></tr>
+          <tr><td><kbd>Extreme</kbd></td><td>≤ 3000 — long chains, colouring, nets</td></tr>
+          <tr><td><kbd>Nightmare</kbd></td><td>above — forcing nets and Exocets</td></tr>
         </tbody>
       </table>
 

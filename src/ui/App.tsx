@@ -295,7 +295,8 @@ export default function App() {
       <main className="layout">
         <div className="board-col">
           <Grid />
-          {showPoodle && <Poodle />}
+          {/* while paused, Nutella moves onto the pause card instead */}
+          {showPoodle && (!paused || won) && <Poodle />}
         </div>
         <aside className="side">
           <div className="menu-row">

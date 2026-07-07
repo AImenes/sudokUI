@@ -35,7 +35,8 @@ describe('human solver', () => {
     const rating = ratePuzzle(EASY)!;
     expect(rating).not.toBeNull();
     expect(rating.solvable).toBe(true);
-    expect(rating.level).toBe('Easy');
+    // singles-only and a low score: the gentlest of the eight bands
+    expect(rating.level).toBe('Beginner');
     const techs = Object.keys(rating.techniques);
     for (const t of techs) {
       expect(['FULL_HOUSE', 'NAKED_SINGLE', 'HIDDEN_SINGLE']).toContain(t);
@@ -55,8 +56,21 @@ describe('human solver', () => {
   it('rates a hard puzzle above Easy and reaches the solution', () => {
     const rating = ratePuzzle(HARD);
     expect(rating).not.toBeNull();
-    expect(rating!.level).not.toBe('Easy');
+    expect(['Beginner', 'Easy']).not.toContain(rating!.level);
     expect(rating!.score).toBeGreaterThan(300);
+  });
+
+  it('maps scores to the eight difficulty bands', async () => {
+    const { levelForScore, LEVELS } = await import('../src/engine/ratings');
+    expect(LEVELS).toHaveLength(8);
+    expect(levelForScore(300)).toBe('Beginner');
+    expect(levelForScore(401)).toBe('Easy');
+    expect(levelForScore(900)).toBe('Medium');
+    expect(levelForScore(1100)).toBe('Tricky');
+    expect(levelForScore(1500)).toBe('Hard');
+    expect(levelForScore(1700)).toBe('Unfair');
+    expect(levelForScore(2500)).toBe('Extreme');
+    expect(levelForScore(4354)).toBe('Nightmare');
   });
 });
 
