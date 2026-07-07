@@ -29,6 +29,8 @@ interface Settings {
   /** hide the difficulty badge and rating while playing (revealed on solve) —
    *  knowing a puzzle is rated 1200 tells you to expect advanced techniques */
   hideRating: boolean;
+  /** show Nutella, the resident poodle, beneath the board */
+  showPoodle: boolean;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -46,6 +48,7 @@ export const useSettings = create<Settings>()(
       practiceFastForward: true,
       autoOffPromptDone: false,
       hideRating: false,
+      showPoodle: false,
       toggleTheme: () =>
         set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       set: (p) => set(p)

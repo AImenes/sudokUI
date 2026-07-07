@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useGame, rateImport } from '../state/gameStore';
 import { useSettings } from '../state/settings';
 import { Grid } from './Grid';
+import { Poodle } from './Poodle';
 import { Controls } from './Controls';
 import { HintPanel } from './HintPanel';
 import {
@@ -61,13 +62,14 @@ export default function App() {
   const selection = useGame((s) => s.selection);
   const select = useGame((s) => s.select);
   const custom = useGame((s) => s.custom);
+  const convertMarks = useGame((s) => s.convertMarks);
   const startCustomEntry = useGame((s) => s.startCustomEntry);
   const cancelCustomEntry = useGame((s) => s.cancelCustomEntry);
   const finishCustomEntry = useGame((s) => s.finishCustomEntry);
   const givenCount = useGame((s) =>
     s.custom ? s.cells.filter((c) => c.value > 0).length : 0
   );
-  const { theme, toggleTheme, showTimer, hideRating } = useSettings();
+  const { theme, toggleTheme, showTimer, hideRating, showPoodle } = useSettings();
   const { start, genState, cancel } = useNewGame();
 
   const [dialog, setDialog] = useState<
@@ -186,6 +188,9 @@ export default function App() {
         case 'KeyH':
           requestHint();
           break;
+        case 'KeyS':
+          convertMarks(); // swap corner ↔ centre marks (selection or board)
+          break;
         case 'KeyP':
           togglePause();
           break;
@@ -211,7 +216,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [input, erase, wipe, undo, redo, setMode, requestHint, select, selection, togglePause]);
+  }, [input, erase, wipe, undo, redo, setMode, requestHint, select, selection, togglePause, convertMarks]);
 
   return (
     <div className="app">
@@ -287,7 +292,10 @@ export default function App() {
       </header>
 
       <main className="layout">
-        <Grid />
+        <div className="board-col">
+          <Grid />
+          {showPoodle && <Poodle />}
+        </div>
         <aside className="side">
           <div className="menu-row">
             <button onClick={() => setDialog('new')}>
@@ -363,6 +371,7 @@ export default function App() {
               Open source on GitHub
             </a>
             <span> · feature requests & issues welcome</span>
+            <span className="dedication">for thth ♥</span>
           </footer>
         </aside>
       </main>
@@ -425,6 +434,14 @@ export default function App() {
             setVictoryDismissed(true);
             setDialog('new');
           }}
+          onAnother={
+            info?.practiceTech
+              ? () => {
+                  setVictoryDismissed(true);
+                  start({ kind: 'tech', tech: info.practiceTech! });
+                }
+              : undefined
+          }
           onClose={() => setVictoryDismissed(true)}
         />
       )}
