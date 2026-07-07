@@ -5,3 +5,6 @@ dist-ssr/
 *.local
 .DS_Store
 .vite/
+
+# local editor/agent config (contains machine-specific paths)
+.claude/
