@@ -129,7 +129,7 @@ export function Controls() {
         </button>
         <button
           onClick={convertMarks}
-          title="Swap corner and centre marks — with several cells selected, only those are converted"
+          title="Swap corner and centre marks (S) — with cells selected, only those are converted"
         >
           ⇄ Swap
         </button>

@@ -233,8 +233,7 @@ body {
 
 .grid-wrap {
   position: relative;
-  flex: 0 1 min(78vh, 640px);
-  max-width: min(78vh, 640px);
+  width: 100%;
 }
 
 .board {
@@ -623,6 +622,60 @@ textarea {
   text-align: center;
 }
 
+.solve-clean {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.solve-assisted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* board column: grid + optional mascot underneath; carries the sizing the
+   grid-wrap used to have as a direct flex child of the layout */
+.board-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex: 0 1 min(78vh, 640px);
+  max-width: min(78vh, 640px);
+  width: 100%;
+}
+
+.poodle {
+  margin-left: 8px;
+  opacity: 0.9;
+}
+
+:root[data-theme='light'] .poodle g {
+  fill: #2a2d36;
+}
+
+/* "Surprise me" carries a whisper of every difficulty colour */
+.level-btn.surprise {
+  background:
+    linear-gradient(
+      100deg,
+      rgba(103, 185, 106, 0.16),
+      rgba(230, 199, 76, 0.16) 30%,
+      rgba(232, 147, 74, 0.16) 55%,
+      rgba(224, 85, 99, 0.16) 80%,
+      rgba(155, 116, 216, 0.16)
+    ),
+    var(--panel);
+}
+
+.dedication {
+  display: block;
+  margin-top: 4px;
+  font-family: 'Snell Roundhand', 'Segoe Script', 'Brush Script MT', cursive;
+  font-size: 15px;
+  color: var(--muted);
+}
+
 /* lightweight confetti behind the victory dialog: 24 tinted squares fall
    with staggered delays, drift and spin; each picks its lane from --n */
 .confetti {
@@ -888,7 +941,7 @@ kbd {
     padding: 10px;
   }
 
-  .grid-wrap {
+  .board-col {
     flex: none;
     width: 100%;
     max-width: min(96vw, 70vh);

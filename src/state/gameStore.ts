@@ -95,6 +95,9 @@ interface GameStore {
   elapsedBefore: number;
   paused: boolean;
   won: boolean;
+  /** true once any assist was used this game (hint, check, revert) — a
+   *  solve is "clean" only while this stays false. Reset by restart/new. */
+  assisted: boolean;
   hint: Step | null;
   hintStage: 'hidden' | 'tech' | 'full';
   errors: number[];
@@ -163,6 +166,7 @@ export const useGame = create<GameStore>()(
       elapsedBefore: 0,
       paused: false,
       won: false,
+      assisted: false,
       hint: null,
       hintStage: 'hidden' as const,
       errors: [],
@@ -219,6 +223,7 @@ export const useGame = create<GameStore>()(
           elapsedBefore: 0,
           paused: false,
           won: false,
+          assisted: false,
           hint: null,
           hintStage: 'hidden',
           errors: [],
@@ -592,7 +597,7 @@ export const useGame = create<GameStore>()(
         const cells = cloneCells(s.cells);
         const layer = (s.tempMode ?? s.mode) === 'corner' ? 'corner' : 'center';
         const scope = s.selection.filter((i) => !cells[i].given && !cells[i].value);
-        const partial = scope.length >= 2;
+        const partial = scope.length >= 1;
         const targets = partial
           ? scope
           : Array.from({ length: 81 }, (_, i) => i).filter(
@@ -625,7 +630,7 @@ export const useGame = create<GameStore>()(
         if (s.won || s.paused) return;
         const cells = cloneCells(s.cells);
         const scope = s.selection.filter((i) => !cells[i].given && !cells[i].value);
-        const partial = scope.length >= 2;
+        const partial = scope.length >= 1;
         const targets = partial
           ? scope
           : Array.from({ length: 81 }, (_, i) => i).filter(
@@ -653,7 +658,9 @@ export const useGame = create<GameStore>()(
         const g = engineGrid(s.cells);
         const step = findNextStep(g);
         if (step) {
-          set({ hint: step, hintStage: 'tech' });
+          // even the technique's name is information — the solve is no
+          // longer clean
+          set({ hint: step, hintStage: 'tech', assisted: true });
         } else {
           set({ hint: null, hintStage: 'hidden' });
         }
@@ -699,6 +706,7 @@ export const useGame = create<GameStore>()(
       check: () => {
         const s = get();
         if (!s.info) return;
+        set({ assisted: true });
         const errors: number[] = [];
         const eg = s.autoCandidates ? engineGrid(s.cells) : null;
         for (let i = 0; i < 81; i++) {
@@ -778,7 +786,8 @@ export const useGame = create<GameStore>()(
         custom: s.custom,
         autoCandidates: s.autoCandidates,
         elapsedBefore: s.elapsedMs(),
-        won: s.won
+        won: s.won,
+        assisted: s.assisted
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

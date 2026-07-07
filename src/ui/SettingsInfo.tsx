@@ -71,6 +71,12 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         value={s.hideRating}
         onChange={(v) => s.set({ hideRating: v })}
       />
+      <Toggle
+        label="Nutella the poodle"
+        hint="A small companion below the board"
+        value={s.showPoodle}
+        onChange={(v) => s.set({ showPoodle: v })}
+      />
 
       <h4 className="setting-group">Practice</h4>
       <Toggle
@@ -128,6 +134,7 @@ const SHORTCUTS: [string, string][] = [
   ['Ctrl/Cmd + A', 'Select every cell (then Erase or Shift+Backspace acts board-wide)'],
   ['Ctrl/Cmd + Z · Y', 'Undo · Redo'],
   ['H', 'Hint'],
+  ['S', 'Swap corner ↔ centre marks (selection, or the whole board)'],
   ['P', 'Pause'],
   ['Escape', 'Close a dialog / clear the selection']
 ];

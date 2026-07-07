@@ -66,6 +66,16 @@ export function NewGameDialog({
   return (
     <Modal title="New game" onClose={onClose}>
       <div className="level-list">
+        <button
+          className="level-btn surprise"
+          onClick={() => onStart(LEVELS[Math.floor(Math.random() * LEVELS.length)])}
+        >
+          <strong>Surprise me</strong>
+          <span>
+            Any difficulty — enable "Hide difficulty while playing" in Settings
+            for the full mystery
+          </span>
+        </button>
         {LEVELS.map((level) => (
           <button
             key={level}
@@ -76,18 +86,8 @@ export function NewGameDialog({
             <span>{LEVEL_DESCRIPTIONS[level]}</span>
           </button>
         ))}
-        <button
-          className="level-btn"
-          onClick={() => onStart(LEVELS[Math.floor(Math.random() * LEVELS.length)])}
-        >
-          <strong>🎲 Surprise me</strong>
-          <span>
-            Any difficulty — enable "Hide difficulty while playing" in Settings
-            for the full mystery
-          </span>
-        </button>
         <button className="level-btn" onClick={onCustom}>
-          <strong>✏️ Custom</strong>
+          <strong>Custom</strong>
           <span>
             Type in a puzzle from a newspaper or book — sudokUI checks it has
             exactly one solution and rates it before you play
@@ -257,8 +257,18 @@ export function GeneratingDialog({ label, attempts, onCancel }: { label: string;
   );
 }
 
-export function VictoryDialog({ onNewGame, onClose }: { onNewGame: () => void; onClose: () => void }) {
+export function VictoryDialog({
+  onNewGame,
+  onClose,
+  onAnother
+}: {
+  onNewGame: () => void;
+  onClose: () => void;
+  /** start a fresh practice puzzle for the same technique */
+  onAnother?: () => void;
+}) {
   const info = useGame((s) => s.info);
+  const assisted = useGame((s) => s.assisted);
   const elapsedMs = useGame((s) => s.elapsedMs);
   const [copied, setCopied] = useState(false);
   if (!info) return null;
@@ -269,7 +279,8 @@ export function VictoryDialog({ onNewGame, onClose }: { onNewGame: () => void; o
   // same-puzzle challenge: the share text carries the seed link, so the
   // recipient plays exactly this grid
   const shareResult = () => {
-    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss} on sudokUI — can you beat that? https://sudokui.app/#p=${info.puzzle}`;
+    const clean = assisted ? '' : ', no hints, no checks';
+    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss}${clean} on sudokUI — can you beat that? https://sudokui.app/#p=${info.puzzle}`;
     navigator.clipboard?.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -287,7 +298,15 @@ export function VictoryDialog({ onNewGame, onClose }: { onNewGame: () => void; o
         <p>
           {info.level} · score {info.score} · {mm}:{ss}
         </p>
+        <p className={assisted ? 'solve-assisted' : 'solve-clean'}>
+          {assisted
+            ? 'Solved with assistance — restart the puzzle for a clean run'
+            : '✨ Clean solve: no hints, no checks'}
+        </p>
         <div className="hint-actions">
+          {info.practiceTech && onAnother && (
+            <button onClick={onAnother}>Another {TECHS[info.practiceTech].name}</button>
+          )}
           <button onClick={onNewGame}>New game</button>
           <button onClick={shareResult}>{copied ? '✓ Copied' : '🔗 Challenge a friend'}</button>
           <button className="ghost" onClick={onClose}>Admire the grid</button>
