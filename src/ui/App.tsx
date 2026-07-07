@@ -268,10 +268,16 @@ export default function App() {
           <button
             className="icon-btn"
             onClick={toggleTheme}
-            title="Toggle theme"
-            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            title="Cycle theme: dark → daylight → rosé"
+            aria-label={
+              theme === 'dark'
+                ? 'Switch to daylight theme'
+                : theme === 'light'
+                  ? 'Switch to rosé theme'
+                  : 'Switch to dark theme'
+            }
           >
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {theme === 'dark' ? '☀️' : theme === 'light' ? '🌸' : '🌙'}
           </button>
           <button
             className="icon-btn"
