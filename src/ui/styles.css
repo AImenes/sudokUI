@@ -1108,6 +1108,18 @@ kbd {
     flex: none;
     width: 100%;
     max-width: min(96vw, 70vh);
+    position: relative;
+  }
+
+  /* phones: Nutella shrinks and perches on the board's corner instead of
+     occupying a whole row between the board and the controls — she costs
+     no vertical space, and a drag nudges her off any cell she shades */
+  .poodle {
+    position: absolute;
+    right: 4px;
+    bottom: -22px;
+    width: 46px;
+    margin: 0;
   }
 
   .side {
