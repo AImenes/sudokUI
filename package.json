@@ -1,7 +1,7 @@
 {
   "name": "sudokui",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "sudokUI — play, practise and rate sudoku puzzles in a beautiful UI.",
   "type": "module",
   "scripts": {

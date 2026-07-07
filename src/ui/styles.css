@@ -24,7 +24,8 @@
   --hint-chain: #d9a13c;
 }
 
-:root[data-theme='light'] {
+:root[data-theme='light'],
+:root[data-theme='rose'] {
   --bg: #f2f4f9;
   --bg-soft: #e8ebf3;
   --panel: #ffffff;
@@ -40,6 +41,25 @@
   --sel-border: #3467c0;
   --peer-bg: rgba(52, 103, 192, 0.07);
   --same-bg: rgba(212, 168, 32, 0.22);
+}
+
+/* Rosé: daylight's contrast rules with a pink wash and red digits.
+   Candidates and hint colours stay untouched so highlights, chains and
+   solutions read exactly the same. */
+:root[data-theme='rose'] {
+  --bg: #fbeef3;
+  --bg-soft: #f6e2ea;
+  --panel: #fff7fa;
+  --text: #3a2733;
+  --muted: #8a6f7d;
+  --accent: #d4568a;
+  --cell-bg: #fffbfd;
+  --line: #57414d;
+  --given: #a81d47;
+  --entered: #e0567f;
+  --sel-bg: rgba(212, 86, 138, 0.18);
+  --sel-border: #d4568a;
+  --peer-bg: rgba(212, 86, 138, 0.07);
 }
 
 * {
@@ -138,14 +158,22 @@ body {
 .level-nightmare { background: #6a1b9a30; color: #b78ae8; }
 
 /* daylight theme needs darker badge text for contrast */
-:root[data-theme='light'] .level-beginner { background: #26999926; color: #0e6360; }
-:root[data-theme='light'] .level-easy { background: #2e7d3226; color: #1d6322; }
-:root[data-theme='light'] .level-medium { background: #38761d26; color: #2c5e14; }
-:root[data-theme='light'] .level-tricky { background: #8a8a202e; color: #5c5c08; }
-:root[data-theme='light'] .level-hard { background: #b8860b2e; color: #7a5800; }
-:root[data-theme='light'] .level-unfair { background: #c054152e; color: #93400e; }
-:root[data-theme='light'] .level-extreme { background: #b312302e; color: #8f0e24; }
-:root[data-theme='light'] .level-nightmare { background: #6a1b9a2e; color: #4d1470; }
+:root[data-theme='light'] .level-beginner,
+:root[data-theme='rose'] .level-beginner { background: #26999926; color: #0e6360; }
+:root[data-theme='light'] .level-easy,
+:root[data-theme='rose'] .level-easy { background: #2e7d3226; color: #1d6322; }
+:root[data-theme='light'] .level-medium,
+:root[data-theme='rose'] .level-medium { background: #38761d26; color: #2c5e14; }
+:root[data-theme='light'] .level-tricky,
+:root[data-theme='rose'] .level-tricky { background: #8a8a202e; color: #5c5c08; }
+:root[data-theme='light'] .level-hard,
+:root[data-theme='rose'] .level-hard { background: #b8860b2e; color: #7a5800; }
+:root[data-theme='light'] .level-unfair,
+:root[data-theme='rose'] .level-unfair { background: #c054152e; color: #93400e; }
+:root[data-theme='light'] .level-extreme,
+:root[data-theme='rose'] .level-extreme { background: #b312302e; color: #8f0e24; }
+:root[data-theme='light'] .level-nightmare,
+:root[data-theme='rose'] .level-nightmare { background: #6a1b9a2e; color: #4d1470; }
 
 .score-btn {
   white-space: nowrap;
@@ -255,7 +283,7 @@ body {
   font-family: inherit;
 }
 
-/* pause: a calm card floating over the blank board */
+/* pause: a calm frosted card floating over the blank board */
 .pause-card {
   position: absolute;
   inset: 0;
@@ -265,6 +293,19 @@ body {
   justify-content: center;
   gap: 12px;
   text-align: center;
+  isolation: isolate;
+}
+
+/* the frost: grid lines and highlights fade behind the text */
+.pause-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 6px;
+  background: var(--bg);
+  opacity: 0.88;
+  backdrop-filter: blur(3px);
 }
 
 .pause-card h3 {
@@ -692,6 +733,13 @@ textarea {
   align-self: flex-end;
   margin: 14px 10px 0 0;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+  cursor: grab;
+  touch-action: none; /* horizontal drags must not scroll the page */
+  user-select: none;
+}
+
+.poodle:active {
+  cursor: grabbing;
 }
 
 /* "Surprise me" carries a whisper of every difficulty colour */

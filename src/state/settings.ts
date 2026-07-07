@@ -5,9 +5,11 @@ import { persist } from 'zustand/middleware';
 
 export type MarkLayer = 'center' | 'corner';
 
+export type Theme = 'dark' | 'light' | 'rose';
+
 interface Settings {
-  /** dark or light board theme */
-  theme: 'dark' | 'light';
+  /** board theme: dark, daylight or rosé */
+  theme: Theme;
   /** tint the row/column/box of a single selected cell */
   highlightPeers: boolean;
   /** tint all cells holding the same digit as the selection */
@@ -50,7 +52,9 @@ export const useSettings = create<Settings>()(
       hideRating: false,
       showPoodle: false,
       toggleTheme: () =>
-        set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+        set((s) => ({
+          theme: s.theme === 'dark' ? 'light' : s.theme === 'light' ? 'rose' : 'dark'
+        })),
       set: (p) => set(p)
     }),
     { name: 'sudokui-settings-v1' }

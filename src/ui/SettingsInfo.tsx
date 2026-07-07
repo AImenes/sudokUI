@@ -42,12 +42,32 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Settings" onClose={onClose}>
       <h4 className="setting-group">Appearance</h4>
-      <Toggle
-        label="Dark theme"
-        hint="Switch between the dark and light board"
-        value={s.theme === 'dark'}
-        onChange={() => s.toggleTheme()}
-      />
+      <label className="setting-row">
+        <div className="setting-text">
+          <span>Theme</span>
+          <small>
+            Rosé keeps candidate and hint colours unchanged, so nothing about
+            solving reads differently
+          </small>
+        </div>
+        <div className="segmented">
+          {(
+            [
+              ['dark', 'Dark'],
+              ['light', 'Daylight'],
+              ['rose', 'Rosé']
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              className={s.theme === value ? 'active' : ''}
+              onClick={() => s.set({ theme: value })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </label>
       <Toggle
         label="Highlight row, column and box"
         hint="Tint the units of the selected cell"
