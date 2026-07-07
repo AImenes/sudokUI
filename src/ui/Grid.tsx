@@ -35,7 +35,14 @@ const candY = (d: number) => 30 + Math.floor((d - 1) / 3) * 28;
  * chain node their straight path would cross, so they never cover a
  * candidate they are not about.
  */
-function ChainArrows({ links }: { links: ChainLink[] }) {
+function ChainArrows({
+  links,
+  cellCands
+}: {
+  links: ChainLink[];
+  /** digits currently displayed in a cell, for routing in-cell arcs */
+  cellCands: (cell: number) => number[];
+}) {
   const R = 17; // hint circle radius + breathing room
 
   const anchor = (node: CellDigit[]) => {
@@ -98,12 +105,25 @@ function ChainArrows({ links }: { links: ChainLink[] }) {
 
         let bow = 0;
         if (inCell) {
+          // arc to whichever side of the segment has the most free space:
+          // clear of the cell's other candidate glyphs and inside the cell
           const cell = l.from[0].cell;
-          const cx = M + (cell % 9) * SIZE + SIZE / 2;
-          const cy = M + Math.floor(cell / 9) * SIZE + SIZE / 2;
+          const x0 = M + (cell % 9) * SIZE;
+          const y0 = M + Math.floor(cell / 9) * SIZE;
           const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-          const side = -uy * (mid.x - cx) + ux * (mid.y - cy);
-          bow = (side >= 0 ? 1 : -1) * 26;
+          const glyphs = cellCands(cell)
+            .filter((d) => d !== l.from[0].digit && d !== l.to[0].digit)
+            .map((d) => ({ x: x0 + candX(d), y: y0 + candY(d) - 7 }));
+          const room = (s: number) => {
+            const p = { x: mid.x - uy * s, y: mid.y + ux * s };
+            let r = glyphs.length
+              ? Math.min(...glyphs.map((g) => Math.hypot(g.x - p.x, g.y - p.y)))
+              : 60;
+            if (p.x < x0 + 8 || p.x > x0 + SIZE - 8 || p.y < y0 + 8 || p.y > y0 + SIZE - 8)
+              r -= 100; // spilling outside the cell is worse than any glyph
+            return r;
+          };
+          bow = room(26) >= room(-26) ? 26 : -26;
         } else {
           // bow away from the nearest node the straight segment would graze
           let nearest = Infinity;
@@ -509,7 +529,16 @@ export function Grid() {
         {/* chain arrows (candidate-anchored), with the legacy centre-to-centre
             polyline as fallback for steps that only carry chainCells */}
         {showHint && hint.links && hint.links.length > 0 && (!paused || won) && (
-          <ChainArrows links={hint.links} />
+          <ChainArrows
+            links={hint.links}
+            cellCands={(c) =>
+              cells[c].value
+                ? []
+                : autoCandidates && canonical
+                  ? digitsOf(canonical.cands[c])
+                  : digitsOf(cells[c].corner | cells[c].center)
+            }
+          />
         )}
         {showHint &&
           !hint.links &&
