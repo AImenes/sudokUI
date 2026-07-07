@@ -65,6 +65,17 @@ function ChainArrows({ links }: { links: ChainLink[] }) {
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--hint-chain)" />
         </marker>
+        <marker
+          id="chain-arrowhead-sm"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth="3.4"
+          markerHeight="3.4"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--hint-chain)" />
+        </marker>
       </defs>
       {links.map((l, i) => {
         const a = anchor(l.from);
@@ -74,23 +85,38 @@ function ChainArrows({ links }: { links: ChainLink[] }) {
         const len = Math.hypot(dx, dy) || 1;
         const ux = dx / len;
         const uy = dy / len;
-        // short links (e.g. two candidates of one cell) get smaller trims
-        const trim = Math.min(R, Math.max(4, (len - 16) / 2));
+        // short links get a smaller head + thinner shaft so the arrow does
+        // not swallow the candidates; links between two candidates of ONE
+        // cell additionally arc outward (away from the cell centre) to gain
+        // enough length for the dash pattern to read
+        const inCell =
+          l.from.length === 1 && l.to.length === 1 && l.from[0].cell === l.to[0].cell;
+        const short = len < 70;
+        const trim = short ? 8 : Math.min(R, Math.max(4, (len - 16) / 2));
         const p0 = { x: a.x + ux * trim, y: a.y + uy * trim };
-        const p1 = { x: b.x - ux * (trim + 5), y: b.y - uy * (trim + 5) };
+        const p1 = { x: b.x - ux * (trim + 4), y: b.y - uy * (trim + 4) };
 
-        // bow away from the nearest node the straight segment would graze
         let bow = 0;
-        let nearest = Infinity;
-        for (const o of anchors) {
-          if (Math.hypot(o.x - a.x, o.y - a.y) < 1 || Math.hypot(o.x - b.x, o.y - b.y) < 1) continue;
-          const t = ((o.x - a.x) * dx + (o.y - a.y) * dy) / (len * len);
-          if (t <= 0.02 || t >= 0.98) continue;
-          const dist = Math.hypot(o.x - (a.x + t * dx), o.y - (a.y + t * dy));
-          if (dist < 34 && dist < nearest) {
-            nearest = dist;
-            const cross = dx * (o.y - a.y) - dy * (o.x - a.x);
-            bow = -(Math.sign(cross) || 1) * 40;
+        if (inCell) {
+          const cell = l.from[0].cell;
+          const cx = M + (cell % 9) * SIZE + SIZE / 2;
+          const cy = M + Math.floor(cell / 9) * SIZE + SIZE / 2;
+          const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+          const side = -uy * (mid.x - cx) + ux * (mid.y - cy);
+          bow = (side >= 0 ? 1 : -1) * 26;
+        } else {
+          // bow away from the nearest node the straight segment would graze
+          let nearest = Infinity;
+          for (const o of anchors) {
+            if (Math.hypot(o.x - a.x, o.y - a.y) < 1 || Math.hypot(o.x - b.x, o.y - b.y) < 1) continue;
+            const t = ((o.x - a.x) * dx + (o.y - a.y) * dy) / (len * len);
+            if (t <= 0.02 || t >= 0.98) continue;
+            const dist = Math.hypot(o.x - (a.x + t * dx), o.y - (a.y + t * dy));
+            if (dist < 34 && dist < nearest) {
+              nearest = dist;
+              const cross = dx * (o.y - a.y) - dy * (o.x - a.x);
+              bow = -(Math.sign(cross) || 1) * 40;
+            }
           }
         }
         const mx = (p0.x + p1.x) / 2 - uy * bow;
@@ -101,10 +127,10 @@ function ChainArrows({ links }: { links: ChainLink[] }) {
             d={`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`}
             fill="none"
             stroke="var(--hint-chain)"
-            strokeWidth={4.5}
-            strokeDasharray={l.strong ? undefined : '11 8'}
+            strokeWidth={short ? 3.2 : 4.5}
+            strokeDasharray={l.strong ? undefined : short ? '6 5' : '11 8'}
             opacity={0.9}
-            markerEnd="url(#chain-arrowhead)"
+            markerEnd={short ? 'url(#chain-arrowhead-sm)' : 'url(#chain-arrowhead)'}
           />
         );
       })}
