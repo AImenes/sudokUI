@@ -9,7 +9,7 @@ import {
   cellName,
   cellNames
 } from '../board';
-import { Step, CellDigit } from '../steps';
+import { Step, CellDigit, alternatingLinks } from '../steps';
 
 type LinkType = 'row' | 'col' | 'box';
 interface StrongLink {
@@ -95,7 +95,7 @@ export function findTurbotFamily(
               placements: [],
               eliminations: elims,
               primary: pattern.map((cell) => ({ cell, digit: d })),
-              chainCells: [a, p, q, b],
+              links: alternatingLinks([a, p, q, b].map((cell) => [{ cell, digit: d }])),
               description: `${names[variant]}: strong links on ${d} (${cellName(l1.a)}–${cellName(l1.b)} and ${cellName(l2.a)}–${cellName(l2.b)}) are weakly connected, so ${d} can be removed from cells seeing both ${cellName(a)} and ${cellName(b)}.`
             };
           }

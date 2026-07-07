@@ -1,5 +1,5 @@
 import { Grid, UNITS, bit, sees, cellName, cellNames } from '../board';
-import { Step, CellDigit } from '../steps';
+import { Step, CellDigit, alternatingLinks } from '../steps';
 
 /**
  * X-Cycles (sudokuwiki.org/X_Cycles): closed alternating strong/weak loops on
@@ -93,7 +93,7 @@ function rule2(g: Grid, d: number, path: number[]): Step | null {
     placements: [{ cell: start, digit: d }],
     eliminations: [],
     primary: path.map((cell) => ({ cell, digit: d })),
-    chainCells: [...path, start],
+    links: alternatingLinks(path.map((cell) => [{ cell, digit: d }]), 'strong'),
     description: `X-Cycle on ${d}: the loop ${path.map(cellName).join(' → ')} closes with two strong links at ${cellName(start)} — if it were not ${d}, the loop would force it to be ${d}. So ${cellName(start)} is ${d}.`
   };
 }
@@ -124,7 +124,7 @@ function rule1(g: Grid, d: number, path: number[]): Step | null {
     placements: [],
     eliminations: elims,
     primary: path.map((cell) => ({ cell, digit: d })),
-    chainCells: [...path, path[0]],
+    links: alternatingLinks(path.map((cell) => [{ cell, digit: d }]), 'weak'),
     description: `X-Cycle on ${d}: the continuous loop ${cellNames(path)} alternates perfectly, so along each weak link one end is ${d} — ${d} falls from every outside cell seeing both ends of a weak link.`
   };
 }

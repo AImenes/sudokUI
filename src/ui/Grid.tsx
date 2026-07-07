@@ -2,11 +2,12 @@
 // peer/same-digit tints → hint tint → selection → error tint, then the cell
 // content (big digit, corner marks at digit-bound 3×3 positions, centre-mark
 // line, or the auto-candidate 3×3 view), then hint candidate circles, chain
-// polyline and grid lines. Pointer events implement drag multi-select.
+// arrows and grid lines. Pointer events implement drag multi-select.
 import React, { useRef } from 'react';
 import { useGame, engineGrid } from '../state/gameStore';
 import { useSettings } from '../state/settings';
 import { bit, digitsOf } from '../engine/board';
+import { ChainLink, CellDigit } from '../engine/steps';
 
 const SIZE = 100;
 const M = 4; // outer margin
@@ -25,6 +26,91 @@ const PALETTE = [
 /** candidate position inside a cell (3x3 layout, digit 1 top-left) */
 const candX = (d: number) => 22 + ((d - 1) % 3) * 28;
 const candY = (d: number) => 30 + Math.floor((d - 1) / 3) * 28;
+
+/**
+ * HoDoKu-style chain arrows: each link is an arrow rooted at the candidate
+ * glyph it argues from and pointing at the one it argues to (group/ALS nodes
+ * anchor at their centroid). Strong links draw solid, weak links dashed.
+ * Arrows are trimmed to the hint-circle edge and bow away from any other
+ * chain node their straight path would cross, so they never cover a
+ * candidate they are not about.
+ */
+function ChainArrows({ links }: { links: ChainLink[] }) {
+  const R = 17; // hint circle radius + breathing room
+
+  const anchor = (node: CellDigit[]) => {
+    let x = 0;
+    let y = 0;
+    for (const cd of node) {
+      x += M + (cd.cell % 9) * SIZE + candX(cd.digit);
+      y += M + Math.floor(cd.cell / 9) * SIZE + candY(cd.digit) - 7;
+    }
+    return { x: x / node.length, y: y / node.length };
+  };
+
+  // every node anchor is an obstacle no other arrow may pass through
+  const anchors = links.flatMap((l) => [anchor(l.from), anchor(l.to)]);
+
+  return (
+    <g className="chain-arrows">
+      <defs>
+        <marker
+          id="chain-arrowhead"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth="5.5"
+          markerHeight="5.5"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--hint-chain)" />
+        </marker>
+      </defs>
+      {links.map((l, i) => {
+        const a = anchor(l.from);
+        const b = anchor(l.to);
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const ux = dx / len;
+        const uy = dy / len;
+        // short links (e.g. two candidates of one cell) get smaller trims
+        const trim = Math.min(R, Math.max(4, (len - 16) / 2));
+        const p0 = { x: a.x + ux * trim, y: a.y + uy * trim };
+        const p1 = { x: b.x - ux * (trim + 5), y: b.y - uy * (trim + 5) };
+
+        // bow away from the nearest node the straight segment would graze
+        let bow = 0;
+        let nearest = Infinity;
+        for (const o of anchors) {
+          if (Math.hypot(o.x - a.x, o.y - a.y) < 1 || Math.hypot(o.x - b.x, o.y - b.y) < 1) continue;
+          const t = ((o.x - a.x) * dx + (o.y - a.y) * dy) / (len * len);
+          if (t <= 0.02 || t >= 0.98) continue;
+          const dist = Math.hypot(o.x - (a.x + t * dx), o.y - (a.y + t * dy));
+          if (dist < 34 && dist < nearest) {
+            nearest = dist;
+            const cross = dx * (o.y - a.y) - dy * (o.x - a.x);
+            bow = -(Math.sign(cross) || 1) * 40;
+          }
+        }
+        const mx = (p0.x + p1.x) / 2 - uy * bow;
+        const my = (p0.y + p1.y) / 2 + ux * bow;
+        return (
+          <path
+            key={i}
+            d={`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`}
+            fill="none"
+            stroke="var(--hint-chain)"
+            strokeWidth={4.5}
+            strokeDasharray={l.strong ? undefined : '11 8'}
+            opacity={0.9}
+            markerEnd="url(#chain-arrowhead)"
+          />
+        );
+      })}
+    </g>
+  );
+}
 
 /** Text colour for a candidate sitting on a hint circle: dark on the amber
  *  secondary circles, white on the saturated blue/red/purple ones. Keeps the
@@ -199,6 +285,13 @@ export function Grid() {
     for (const cd of hint.secondary ?? []) {
       mark(cd.cell, cd.digit, 'secondary');
       if (!hintCells.has(cd.cell)) hintCells.set(cd.cell, 'secondary');
+    }
+    // every chain-node candidate gets a circle so arrows root on one
+    for (const link of hint.links ?? []) {
+      for (const cd of [...link.from, ...link.to]) {
+        mark(cd.cell, cd.digit, 'primary');
+        if (!hintCells.has(cd.cell)) hintCells.set(cd.cell, 'primary');
+      }
     }
     for (const cd of hint.fins ?? []) {
       mark(cd.cell, cd.digit, 'fin');
@@ -387,19 +480,29 @@ export function Grid() {
           </text>
         )}
 
-        {/* chain lines */}
-        {showHint && hint.chainCells && hint.chainCells.length > 1 && (!paused || won) && (
-          <polyline
-            points={hint.chainCells
-              .map((c) => `${M + (c % 9) * SIZE + SIZE / 2},${M + Math.floor(c / 9) * SIZE + SIZE / 2}`)
-              .join(' ')}
-            fill="none"
-            stroke="var(--hint-chain)"
-            strokeWidth={5}
-            strokeDasharray="12 8"
-            opacity={0.7}
-          />
+        {/* chain arrows (candidate-anchored), with the legacy centre-to-centre
+            polyline as fallback for steps that only carry chainCells */}
+        {showHint && hint.links && hint.links.length > 0 && (!paused || won) && (
+          <ChainArrows links={hint.links} />
         )}
+        {showHint &&
+          !hint.links &&
+          hint.chainCells &&
+          hint.chainCells.length > 1 &&
+          (!paused || won) && (
+            <polyline
+              points={hint.chainCells
+                .map(
+                  (c) => `${M + (c % 9) * SIZE + SIZE / 2},${M + Math.floor(c / 9) * SIZE + SIZE / 2}`
+                )
+                .join(' ')}
+              fill="none"
+              stroke="var(--hint-chain)"
+              strokeWidth={5}
+              strokeDasharray="12 8"
+              opacity={0.7}
+            />
+          )}
 
         {/* grid lines */}
         {Array.from({ length: 10 }, (_, k) => (

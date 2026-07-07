@@ -1,5 +1,9 @@
 import { Grid, UNITS, bit, sees, rowOf, colOf, cellNames } from '../board';
-import { Step, CellDigit } from '../steps';
+import { Step, CellDigit, alternatingLinks } from '../steps';
+
+/** node path -> candidate sets for arrow drawing */
+const nodeCds = (nodes: GNode[], path: number[], d: number): CellDigit[][] =>
+  path.map((n) => nodes[n].cells.map((cell) => ({ cell, digit: d })));
 
 /**
  * Grouped X-Cycles (sudokuwiki.org/Grouped_X_Cycles): X-Cycles where a node
@@ -116,6 +120,19 @@ export function findGroupedXCycles(g: Grid, maxLen = 10): Step | null {
               placements: [],
               eliminations: startCells.map((cell) => ({ cell, digit: d })),
               primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
+              // rule 3 paths start with a WEAK link (inverted alternation)
+              // and also close weak
+              links: [
+                ...alternatingLinks(nodeCds(nodes, path, d)).map((l) => ({
+                  ...l,
+                  strong: !l.strong
+                })),
+                {
+                  from: nodes[path[path.length - 1]].cells.map((cell) => ({ cell, digit: d })),
+                  to: nodes[path[0]].cells.map((cell) => ({ cell, digit: d })),
+                  strong: false
+                }
+              ],
               description: `Grouped X-Cycle on ${d}: the loop closes with two weak links at the group ${cellNames(startCells)}, so none of those cells can be ${d}.`
             };
           }
@@ -162,6 +179,7 @@ function rule2(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
       placements: [{ cell: start.cells[0], digit: d }],
       eliminations: [],
       primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
+      links: alternatingLinks(nodeCds(nodes, path, d), 'strong'),
       description: `Grouped X-Cycle on ${d}: the loop closes with two strong links at ${cellNames(start.cells)}, forcing it to be ${d}.`
     };
   }
@@ -178,6 +196,7 @@ function rule2(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
+    links: alternatingLinks(nodeCds(nodes, path, d), 'strong'),
     description: `Grouped X-Cycle on ${d}: two strong links meet at the group ${cellNames(start.cells)}, so ${d} lives there and falls from every cell seeing the whole group.`
   };
 }
@@ -205,6 +224,7 @@ function rule1(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
+    links: alternatingLinks(nodeCds(nodes, path, d), 'weak'),
     description: `Grouped X-Cycle on ${d}: a continuous loop through ${path.length} nodes (groups included); along each weak link one side is ${d}, so ${d} falls from outside cells seeing both sides.`
   };
 }
