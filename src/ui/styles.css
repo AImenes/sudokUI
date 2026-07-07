@@ -623,6 +623,48 @@ textarea {
   text-align: center;
 }
 
+/* lightweight confetti behind the victory dialog: 24 tinted squares fall
+   with staggered delays, drift and spin; each picks its lane from --n */
+.confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti i {
+  position: absolute;
+  top: -12px;
+  left: calc((var(--n) * 4.166% ) + 1%);
+  width: 8px;
+  height: 12px;
+  background: hsl(calc(var(--n) * 60), 85%, 62%);
+  opacity: 0;
+  animation: confetti-fall 3.2s ease-in calc(var(--n) * 0.09s) 2;
+}
+
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    opacity: 0.4;
+    transform: translateY(105vh) translateX(4vw) rotate(540deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
+}
+
+.version-note {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 /* ---------- settings & info ---------- */
 .setting-group {
   margin: 18px 0 6px;

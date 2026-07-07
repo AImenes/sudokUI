@@ -209,6 +209,16 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
         . Bug reports, feature requests and technique contributions are very
         welcome.
       </p>
+      <p className="dialog-note version-note">
+        sudokUI v{__APP_VERSION__} ·{' '}
+        <a
+          href="https://github.com/AImenes/sudokUI/releases"
+          target="_blank"
+          rel="noreferrer"
+        >
+          what's new
+        </a>
+      </p>
     </Modal>
   );
 }
