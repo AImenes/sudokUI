@@ -1,8 +1,9 @@
 // Game dialogs: new game, practice (full technique catalogue), import/export,
 // generation progress and victory — plus useNewGame, the hook that ties the
 // puzzle pools, the generation worker and the game store together.
-import React, { useState } from 'react';
-import { useGame, validatePuzzle } from '../state/gameStore';
+import React, { useState, useEffect } from 'react';
+import { useGame, validatePuzzle, solvePath } from '../state/gameStore';
+import { Step } from '../engine/steps';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
 
@@ -160,6 +161,110 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
           </div>
         ))}
       </div>
+    </Modal>
+  );
+}
+
+/** a run of consecutive Easy-level steps, collapsed to one row */
+type PathRow = { kind: 'single'; index: number; step: Step } | { kind: 'group'; index: number; steps: Step[] };
+
+/**
+ * The solution path: every solver step from the puzzle's start, with runs of
+ * singles collapsed and the most expensive step marked as the crux. Clicking
+ * a row sets the board to the position just before that step (and flags the
+ * game as assisted — opening this dialog already does).
+ */
+export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
+  const info = useGame((s) => s.info);
+  const jumpToStep = useGame((s) => s.jumpToStep);
+  const markAssisted = useGame((s) => s.markAssisted);
+  const [steps, setSteps] = useState<Step[] | null>(null);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!info) return;
+    markAssisted(); // seeing the path (even its shape) is assistance
+    // defer the (possibly slow) rating so the dialog paints first
+    const t = setTimeout(() => setSteps(solvePath(info.puzzle)), 30);
+    return () => clearTimeout(t);
+  }, [info?.puzzle]);
+
+  if (!info) return null;
+
+  const rows: PathRow[] = [];
+  if (steps) {
+    const isSingle = (s: Step) => TECHS[s.tech].level === 'Easy';
+    for (let i = 0; i < steps.length; i++) {
+      if (isSingle(steps[i])) {
+        const run: Step[] = [];
+        const start = i;
+        while (i < steps.length && isSingle(steps[i])) run.push(steps[i++]);
+        i--;
+        if (run.length >= 3 && !expanded.has(start)) {
+          rows.push({ kind: 'group', index: start, steps: run });
+          continue;
+        }
+        run.forEach((s, k) => rows.push({ kind: 'single', index: start + k, step: s }));
+      } else {
+        rows.push({ kind: 'single', index: i, step: steps[i] });
+      }
+    }
+  }
+  const cruxIndex = steps?.length
+    ? steps.reduce((best, s, i) => (TECHS[s.tech].score > TECHS[steps[best].tech].score ? i : best), 0)
+    : -1;
+
+  const jump = (k: number) => {
+    jumpToStep(k);
+    onClose();
+  };
+
+  return (
+    <Modal title="Solution path" onClose={onClose}>
+      <p className="dialog-note">
+        Every step of one complete solution, cheapest technique first. Click a
+        step to set the board to the position just before it — the crux is
+        highlighted. Viewing this counts as assistance.
+      </p>
+      {!steps ? (
+        <div className="spinner" />
+      ) : (
+        <div className="path-list">
+          {rows.map((row) =>
+            row.kind === 'group' ? (
+              <div key={row.index} className="path-row path-group">
+                <button className="path-jump" onClick={() => jump(row.index)}>
+                  {row.index + 1}–{row.index + row.steps.length}
+                </button>
+                <button
+                  className="path-label"
+                  onClick={() => setExpanded(new Set([...expanded, row.index]))}
+                  title="Expand these steps"
+                >
+                  {row.steps.length} singles ▸
+                </button>
+                <span className="path-score">
+                  +{row.steps.reduce((a, s) => a + TECHS[s.tech].score, 0)}
+                </span>
+              </div>
+            ) : (
+              <div
+                key={row.index}
+                className={`path-row ${row.index === cruxIndex ? 'path-crux' : ''}`}
+              >
+                <button className="path-jump" onClick={() => jump(row.index)}>
+                  {row.index + 1}
+                </button>
+                <span className="path-label" title={row.step.description}>
+                  {TECHS[row.step.tech].name}
+                  {row.index === cruxIndex && <span className="crux-badge">crux</span>}
+                </span>
+                <span className="path-score">+{TECHS[row.step.tech].score}</span>
+              </div>
+            )
+          )}
+        </div>
+      )}
     </Modal>
   );
 }

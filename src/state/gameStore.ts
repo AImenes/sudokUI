@@ -134,6 +134,11 @@ interface GameStore {
   applyHint: () => void;
   dismissHint: () => void;
   check: () => void;
+  /** flag the game as assisted (e.g. the solution path was viewed) */
+  markAssisted: () => void;
+  /** set the board to the position just before solve-path step `k` —
+   *  study aid; marks the game assisted and turns auto candidates on */
+  jumpToStep: (k: number) => void;
   /** jump back to the most recent error-free position (offered by check) */
   revertToValid: () => void;
   dismissRevert: () => void;
@@ -762,6 +767,51 @@ export const useGame = create<GameStore>()(
 
       dismissRevert: () => set({ revertIndex: null }),
 
+      markAssisted: () => set({ assisted: true }),
+
+      jumpToStep: (k) => {
+        const s = get();
+        if (!s.info) return;
+        const steps = solvePath(s.info.puzzle);
+        const cells = Array.from({ length: 81 }, (_, i) => {
+          const cell = emptyCell();
+          const ch = s.info!.puzzle[i];
+          if (ch !== '.' && ch !== '0') {
+            cell.given = true;
+            cell.value = Number(ch);
+          }
+          return cell;
+        });
+        // replay the path up to (not including) step k, recording placements
+        // as entries and eliminations as candidate exclusions — the same
+        // mechanics practice fast-forward uses
+        const eg = engineGrid(cells);
+        for (let i = 0; i < k && i < steps.length; i++) {
+          const step = steps[i];
+          applyStep(eg, step);
+          for (const { cell, digit } of step.eliminations) {
+            cells[cell].excluded |= bit(digit);
+          }
+          for (const { cell, digit } of step.placements) {
+            cells[cell].value = digit;
+          }
+        }
+        set({
+          cells,
+          selection: [],
+          history: [...s.history, cloneCells(s.cells)],
+          future: [],
+          assisted: true,
+          autoCandidates: true,
+          won: false,
+          hint: null,
+          hintStage: 'hidden',
+          errors: [],
+          revertIndex: null,
+          notice: `Jumped to step ${Math.min(k, steps.length - 1) + 1} of ${steps.length} — Ctrl+Z goes back`
+        });
+      },
+
       togglePause: () => {
         const s = get();
         if (s.won) return;
@@ -798,6 +848,19 @@ export const useGame = create<GameStore>()(
     }
   )
 );
+
+// the full solve path of the current puzzle, cached — rating a hard puzzle
+// can take a few hundred milliseconds and the path never changes
+let pathCache: { puzzle: string; steps: Step[] } | null = null;
+
+/** Ordered list of solver steps from the puzzle's start to its solution. */
+export function solvePath(puzzle: string): Step[] {
+  if (pathCache?.puzzle !== puzzle) {
+    const rating = ratePuzzle(puzzle);
+    pathCache = { puzzle, steps: rating?.steps ?? [] };
+  }
+  return pathCache.steps;
+}
 
 export type PuzzleValidation =
   | { ok: true; score: number; level: Level }
