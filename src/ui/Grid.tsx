@@ -158,6 +158,18 @@ function ChainArrows({
   );
 }
 
+/** One shows on each pause — the only place a tip never interrupts play. */
+const TIPS = [
+  'Hold Shift to type corner marks from digit mode',
+  'Hold Ctrl or Alt to type centre marks anywhere',
+  'Space cycles input modes · S swaps corner ↔ centre',
+  'Double-click a digit to select all of its cells',
+  'The address bar link always carries this exact puzzle',
+  'Practice can start from the very beginning — see Settings',
+  'Finish without Hint or Check for a certified clean solve',
+  'Ctrl+A selects the board — Fill then rebuilds every mark'
+];
+
 /** Text colour for a candidate sitting on a hint circle: dark on the amber
  *  secondary circles, white on the saturated blue/red/purple ones. Keeps the
  *  digit readable regardless of theme. */
@@ -292,6 +304,11 @@ export function Grid() {
   const additive = useRef(false);
 
   const showHint = hint && hintStage === 'full';
+  // a fresh tip each time the game pauses
+  const pauseTip = React.useMemo(
+    () => TIPS[Math.floor(Math.random() * TIPS.length)],
+    [paused]
+  );
   const canonical = React.useMemo(
     () => (autoCandidates ? engineGrid(cells) : null),
     [cells, autoCandidates]
@@ -515,15 +532,26 @@ export function Grid() {
             );
           })
         ) : (
-          <text
-            x={M + (SIZE * 9) / 2}
-            y={M + (SIZE * 9) / 2}
-            textAnchor="middle"
-            fontSize={44}
-            fill="var(--cand)"
-          >
-            Paused — press ⏵ to resume
-          </text>
+          <>
+            <text
+              x={M + (SIZE * 9) / 2}
+              y={M + (SIZE * 9) / 2}
+              textAnchor="middle"
+              fontSize={44}
+              fill="var(--cand)"
+            >
+              Paused — press ⏵ to resume
+            </text>
+            <text
+              x={M + (SIZE * 9) / 2}
+              y={M + (SIZE * 9) / 2 + 52}
+              textAnchor="middle"
+              fontSize={22}
+              fill="var(--muted)"
+            >
+              Did you know? {pauseTip}
+            </text>
+          </>
         )}
 
         {/* chain arrows (candidate-anchored), with the legacy centre-to-centre
