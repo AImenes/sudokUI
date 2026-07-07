@@ -255,18 +255,54 @@ body {
   font-family: inherit;
 }
 
-.resume-overlay {
+/* pause: a calm card floating over the blank board */
+.pause-card {
   position: absolute;
   inset: 0;
-  margin: auto;
-  width: 180px;
-  height: 60px;
-  font-size: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.pause-card h3 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.5px;
+}
+
+.pause-tip {
+  margin: 0;
+  max-width: 72%;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.resume-btn {
+  margin-top: 8px;
+  padding: 14px 34px;
+  font-size: 19px;
+  font-weight: 600;
   border-radius: 12px;
   border: none;
   background: var(--accent);
   color: white;
   cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.resume-btn:hover {
+  filter: brightness(1.08);
+}
+
+.pause-poodle {
+  margin-top: 14px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 }
 
 .side {
@@ -654,7 +690,7 @@ textarea {
 /* Nutella sits just below the board's right corner, watching the solve */
 .poodle {
   align-self: flex-end;
-  margin: -6px 10px 0 0;
+  margin: 14px 10px 0 0;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 }
 
@@ -687,9 +723,15 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 5px 8px;
+  padding: 7px 10px;
   border-radius: 8px;
   background: var(--panel);
+  cursor: pointer;
+  user-select: none;
+}
+
+.path-row:hover {
+  outline: 1.5px solid var(--accent);
 }
 
 .path-row.path-crux {
@@ -702,6 +744,10 @@ textarea {
   padding: 3px 8px;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  text-align: center;
+  border-radius: 6px;
+  background: var(--sel-bg);
+  color: var(--text);
 }
 
 .path-label {
