@@ -668,6 +668,70 @@ textarea {
     var(--panel);
 }
 
+/* ---------- solution path ---------- */
+.path-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 52vh;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.path-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.path-row.path-crux {
+  background: var(--sel-bg);
+  outline: 1.5px solid var(--accent);
+}
+
+.path-jump {
+  min-width: 52px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.path-label {
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.path-group .path-label {
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.crux-badge {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.path-score {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .dedication {
   display: block;
   margin-top: 4px;

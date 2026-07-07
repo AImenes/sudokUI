@@ -24,7 +24,7 @@ const MODES: { id: EntryMode; label: string; key: string }[] = [
   { id: 'color', label: 'Colour', key: 'V' }
 ];
 
-export function Controls() {
+export function Controls({ onShowSteps }: { onShowSteps?: () => void }) {
   const mode = useGame((s) => s.mode);
   const tempMode = useGame((s) => s.tempMode);
   const effectiveMode = tempMode ?? mode;
@@ -106,6 +106,14 @@ export function Controls() {
       <div className="action-row">
         <button onClick={requestHint} title="Hint (H) — names the technique first, reveals it only if you ask">💡 Hint</button>
         <button onClick={check} title="Check values and candidate lists against the solution">✓ Check</button>
+        {onShowSteps && (
+          <button
+            onClick={onShowSteps}
+            title="Show every step of one complete solution and jump to any point — counts as assistance"
+          >
+            ≡ Steps
+          </button>
+        )}
       </div>
 
       <div className="row-caption">Candidates</div>

@@ -15,7 +15,8 @@ import {
   ImportDialog,
   ShareDialog,
   GeneratingDialog,
-  VictoryDialog
+  VictoryDialog,
+  SolutionPathDialog
 } from './Dialogs';
 import { SettingsDialog, InfoDialog } from './SettingsInfo';
 import { Modal } from './Dialogs';
@@ -73,7 +74,7 @@ export default function App() {
   const { start, genState, cancel } = useNewGame();
 
   const [dialog, setDialog] = useState<
-    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart'
+    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart' | 'steps'
   >('none');
   const restart = useGame((s) => s.restart);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
@@ -314,7 +315,7 @@ export default function App() {
               <span className="menu-icon">↺</span>Restart
             </button>
           </div>
-          <Controls />
+          <Controls onShowSteps={info && !custom ? () => setDialog('steps') : undefined} />
           <HintPanel />
           {custom && (
             <div className="hint-panel">
@@ -401,6 +402,7 @@ export default function App() {
       )}
       {dialog === 'io' && <ImportDialog onClose={() => setDialog('none')} />}
       {dialog === 'share' && <ShareDialog onClose={() => setDialog('none')} />}
+      {dialog === 'steps' && <SolutionPathDialog onClose={() => setDialog('none')} />}
       {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
       {dialog === 'info' && <InfoDialog onClose={() => setDialog('none')} />}
       {dialog === 'restart' && (
