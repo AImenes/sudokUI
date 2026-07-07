@@ -8,7 +8,7 @@
 import { Grid, cloneGrid, setValue, bit, isSolved, isBroken, cellName, parseGrid } from './board';
 import { solve } from './bruteForce';
 import { Step } from './steps';
-import { Tech, TECHS, Level, LEVELS, LEVEL_MAX_SCORE, SOLVE_ORDER, maxLevel } from './ratings';
+import { Tech, TECHS, Level, LEVELS, LEVEL_MAX_SCORE, SOLVE_ORDER, maxLevel, bandFloor } from './ratings';
 import { findFullHouse, findNakedSingle, findHiddenSingle } from './techniques/singles';
 import { findLockedCandidates1, findLockedCandidates2 } from './techniques/intersections';
 import { findNakedSubset, findHiddenSubset } from './techniques/subsets';
@@ -169,7 +169,7 @@ export function ratePuzzle(input: Grid | string, order: Tech[] = SOLVE_ORDER): R
   const steps: Step[] = [];
   const techniques: Partial<Record<Tech, number>> = {};
   let score = 0;
-  let level: Level = 'Easy';
+  let level: Level = 'Beginner';
   let solvable = true;
 
   while (!isSolved(g)) {
@@ -196,9 +196,14 @@ export function ratePuzzle(input: Grid | string, order: Tech[] = SOLVE_ORDER): R
     steps.push(step);
     techniques[step.tech] = (techniques[step.tech] ?? 0) + 1;
     score += TECHS[step.tech].score;
-    level = maxLevel(level, TECHS[step.tech].level);
+    level = maxLevel(level, bandFloor(TECHS[step.tech].level));
     if (steps.length > 400) return null; // safety
   }
+
+  // one Hard-class step (a single fish/wing/kite) floors at Tricky via
+  // bandFloor; needing SEVERAL of them is what Hard proper means
+  const hardSteps = steps.filter((s) => TECHS[s.tech].level === 'Hard').length;
+  if (hardSteps >= 2) level = maxLevel(level, 'Hard');
 
   // HoDoKu: bump the level while the total score exceeds the level cap
   let li = LEVELS.indexOf(level);

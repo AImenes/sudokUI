@@ -48,11 +48,14 @@ export function useNewGame() {
 }
 
 const LEVEL_DESCRIPTIONS: Record<Level, string> = {
+  Beginner: 'Full houses and easy singles — learn the ropes',
   Easy: 'Singles only — a relaxed solve',
   Medium: 'Locked candidates and subsets',
-  Hard: 'Fish, wings and single-digit patterns',
+  Tricky: 'A first fish, wing or kite — one new trick',
+  Hard: 'Fish, wings and single-digit patterns in force',
   Unfair: 'Chains, ALS and finned fish',
-  Extreme: 'Everything the solver has got'
+  Extreme: 'Long chains, colouring and nets',
+  Nightmare: 'Forcing nets and Exocet territory — ratings past 3000'
 };
 
 export function NewGameDialog({
