@@ -109,3 +109,43 @@ describe('generator', () => {
     expect(res!.rating.level).toBe('Easy');
   });
 });
+
+describe('validatePuzzle (import & custom entry pre-play check)', async () => {
+  const { validatePuzzle } = await import('../src/state/gameStore');
+
+  it('accepts and rates a proper puzzle', () => {
+    const v = validatePuzzle(EASY.replace(/0/g, '.'));
+    expect(v.ok).toBe(true);
+    if (v.ok) expect(v.score).toBeGreaterThan(0);
+  });
+
+  it('rejects too few givens', () => {
+    const v = validatePuzzle('1'.padEnd(81, '.'));
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toContain('17');
+  });
+
+  it('rejects conflicting givens', () => {
+    const v = validatePuzzle(('11'.padEnd(17, '2') + '3').padEnd(81, '.'));
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toContain('Conflicting');
+  });
+
+  it('rejects multi-solution puzzles', () => {
+    // strip givens from EASY one by one until uniqueness first breaks — the
+    // result keeps far more than 17 givens, so the uniqueness branch (not
+    // the clue-count branch) must be the one that fires
+    const chars = [...EASY.replace(/0/g, '.')];
+    const givens = chars.flatMap((ch, i) => (ch !== '.' ? [i] : []));
+    let weak = '';
+    for (const i of givens) {
+      chars[i] = '.';
+      weak = chars.join('');
+      if (countSolutions(parseGrid(weak)!, 2) > 1) break;
+    }
+    expect([...weak].filter((c) => c !== '.').length).toBeGreaterThanOrEqual(17);
+    const v = validatePuzzle(weak);
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toContain('more than one solution');
+  });
+});

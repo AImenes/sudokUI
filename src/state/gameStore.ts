@@ -13,9 +13,10 @@ import {
   parseGrid,
   gridToString,
   bit,
-  PEERS
+  PEERS,
+  UNITS
 } from '../engine/board';
-import { solve } from '../engine/bruteForce';
+import { solve, countSolutions } from '../engine/bruteForce';
 import { findNextStep, applyStep, ratePuzzle } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { Level, Tech } from '../engine/ratings';
@@ -66,9 +67,21 @@ export interface GameInfo {
   practiceTech: Tech | null;
 }
 
+/** snapshot of the running game, restored if custom entry is cancelled */
+interface GameBackup {
+  info: GameInfo | null;
+  cells: CellState[];
+  autoCandidates: boolean;
+  elapsedBefore: number;
+  won: boolean;
+}
+
 interface GameStore {
   info: GameInfo | null;
   cells: CellState[];
+  /** true while the user is typing in a custom puzzle */
+  custom: boolean;
+  customBackup: GameBackup | null;
   selection: number[];
   mode: EntryMode;
   /** hold-modifier override (Shift = corner, Ctrl/Alt = centre, both =
@@ -91,6 +104,12 @@ interface GameStore {
   revertIndex: number | null;
 
   startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null) => void;
+  /** blank board the user types givens onto; the running game is backed up */
+  startCustomEntry: () => void;
+  cancelCustomEntry: () => void;
+  /** validate + rate the entered givens and start playing; returns an error
+   *  message instead when the puzzle is not a proper sudoku */
+  finishCustomEntry: () => string | null;
   /** reset the current puzzle to its starting position, timer included */
   restart: () => void;
   select: (cells: number[], additive: boolean) => void;
@@ -131,6 +150,8 @@ export const useGame = create<GameStore>()(
     (set, get) => ({
       info: null,
       cells: Array.from({ length: 81 }, emptyCell),
+      custom: false,
+      customBackup: null as GameBackup | null,
       selection: [],
       mode: 'digit' as EntryMode,
       tempMode: null,
@@ -188,6 +209,8 @@ export const useGame = create<GameStore>()(
             level,
             practiceTech
           },
+          custom: false,
+          customBackup: null,
           cells,
           selection: [],
           history: [],
@@ -209,6 +232,66 @@ export const useGame = create<GameStore>()(
         if (!s.info) return;
         get().startGame(s.info.puzzle, s.info.score, s.info.level, s.info.practiceTech);
         set({ notice: 'Puzzle restarted' });
+      },
+
+      startCustomEntry: () => {
+        const s = get();
+        set({
+          customBackup: {
+            info: s.info,
+            cells: cloneCells(s.cells),
+            autoCandidates: s.autoCandidates,
+            elapsedBefore: s.elapsedMs(),
+            won: s.won
+          },
+          custom: true,
+          info: null,
+          cells: Array.from({ length: 81 }, emptyCell),
+          selection: [],
+          history: [],
+          future: [],
+          startedAt: Date.now(),
+          elapsedBefore: 0,
+          paused: false,
+          won: false,
+          hint: null,
+          hintStage: 'hidden',
+          errors: [],
+          autoCandidates: false,
+          mode: 'digit'
+        });
+      },
+
+      cancelCustomEntry: () => {
+        const b = get().customBackup;
+        set({
+          custom: false,
+          customBackup: null,
+          info: b?.info ?? null,
+          cells: b?.cells ?? Array.from({ length: 81 }, emptyCell),
+          autoCandidates: b?.autoCandidates ?? false,
+          elapsedBefore: b?.elapsedBefore ?? 0,
+          startedAt: Date.now(),
+          won: b?.won ?? false,
+          paused: b?.won ?? false,
+          selection: [],
+          history: [],
+          future: [],
+          hint: null,
+          hintStage: 'hidden',
+          errors: []
+        });
+      },
+
+      finishCustomEntry: () => {
+        const s = get();
+        const puzzle = s.cells.map((c) => (c.value ? String(c.value) : '.')).join('');
+        const v = validatePuzzle(puzzle);
+        if (!v.ok) return v.reason;
+        set({ custom: false, customBackup: null });
+        get().startGame(puzzle, v.score, v.level);
+        set({ notice: `Puzzle checked: unique solution, rated ${v.score} (${v.level})` });
+        return null;
       },
 
       select: (cells, additive) =>
@@ -691,6 +774,8 @@ export const useGame = create<GameStore>()(
       partialize: (s) => ({
         info: s.info,
         cells: s.cells,
+        // an in-progress custom entry survives a reload (its backup doesn't)
+        custom: s.custom,
         autoCandidates: s.autoCandidates,
         elapsedBefore: s.elapsedMs(),
         won: s.won
@@ -705,11 +790,46 @@ export const useGame = create<GameStore>()(
   )
 );
 
-/** Rate an imported puzzle (synchronous; may take a moment on hard ones). */
-export function rateImport(puzzle: string): { score: number; level: Level } | null {
+export type PuzzleValidation =
+  | { ok: true; score: number; level: Level }
+  | { ok: false; reason: string };
+
+/**
+ * Full pre-play validation of a puzzle string: well-formed, no conflicting
+ * givens, exactly one solution (brute-force counted), then rated. Shared by
+ * the import dialog, custom entry and URL seeding. Synchronous — rating a
+ * hard puzzle can take a few hundred milliseconds.
+ */
+export function validatePuzzle(puzzle: string): PuzzleValidation {
+  const clues = [...puzzle].filter((ch) => ch >= '1' && ch <= '9').length;
+  if (clues < 17) {
+    return {
+      ok: false,
+      reason: `Only ${clues} given${clues === 1 ? '' : 's'} — a puzzle needs at least 17 to have a unique solution.`
+    };
+  }
+  for (const unit of UNITS) {
+    const seen = new Set<string>();
+    for (const c of unit) {
+      const ch = puzzle[c];
+      if (ch < '1' || ch > '9') continue;
+      if (seen.has(ch)) return { ok: false, reason: `Conflicting givens: two ${ch}s share a row, column or box.` };
+      seen.add(ch);
+    }
+  }
   const g = parseGrid(puzzle);
-  if (!g) return null;
-  const rating = ratePuzzle(g);
-  if (!rating) return null;
-  return { score: rating.score, level: rating.level };
+  if (!g) return { ok: false, reason: 'That is not a valid puzzle.' };
+  const solutions = countSolutions(g, 2);
+  if (solutions === 0) return { ok: false, reason: 'The puzzle has no solution.' };
+  if (solutions > 1) return { ok: false, reason: 'The puzzle has more than one solution.' };
+  const rating = ratePuzzle(parseGrid(puzzle)!);
+  if (!rating) return { ok: false, reason: 'The puzzle could not be rated.' };
+  return { ok: true, score: rating.score, level: rating.level };
+}
+
+/** Rate an imported puzzle; null unless it is a proper unique-solution
+ *  sudoku. Thin wrapper around `validatePuzzle` for the URL seeding path. */
+export function rateImport(puzzle: string): { score: number; level: Level } | null {
+  const v = validatePuzzle(puzzle);
+  return v.ok ? { score: v.score, level: v.level } : null;
 }

@@ -60,6 +60,13 @@ export default function App() {
   const requestHint = useGame((s) => s.requestHint);
   const selection = useGame((s) => s.selection);
   const select = useGame((s) => s.select);
+  const custom = useGame((s) => s.custom);
+  const startCustomEntry = useGame((s) => s.startCustomEntry);
+  const cancelCustomEntry = useGame((s) => s.cancelCustomEntry);
+  const finishCustomEntry = useGame((s) => s.finishCustomEntry);
+  const givenCount = useGame((s) =>
+    s.custom ? s.cells.filter((c) => c.value > 0).length : 0
+  );
   const { theme, toggleTheme, showTimer, hideRating } = useSettings();
   const { start, genState, cancel } = useNewGame();
 
@@ -68,6 +75,7 @@ export default function App() {
   >('none');
   const restart = useGame((s) => s.restart);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
+  const [customError, setCustomError] = useState<string | null>(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -300,6 +308,37 @@ export default function App() {
           </div>
           <Controls />
           <HintPanel />
+          {custom && (
+            <div className="hint-panel">
+              <div className="hint-head">
+                <strong>Custom puzzle</strong>
+              </div>
+              <div className="hint-body">
+                <p>
+                  Type the givens onto the board ({givenCount} so far). When
+                  you are done, sudokUI verifies the puzzle has exactly one
+                  solution and rates it before play begins.
+                </p>
+                {customError && <p className="dialog-error">{customError}</p>}
+                <div className="hint-actions">
+                  <button
+                    onClick={() => setCustomError(finishCustomEntry())}
+                  >
+                    ✓ Check &amp; play
+                  </button>
+                  <button
+                    className="ghost"
+                    onClick={() => {
+                      setCustomError(null);
+                      cancelCustomEntry();
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {revertIndex !== null && errors.length > 0 && (
             <div className="hint-panel">
               <div className="hint-head">
@@ -334,6 +373,11 @@ export default function App() {
           onStart={(level) => {
             setDialog('none');
             start({ kind: 'level', level });
+          }}
+          onCustom={() => {
+            setDialog('none');
+            setCustomError(null);
+            startCustomEntry();
           }}
         />
       )}
