@@ -1,3 +1,8 @@
+/**
+ * Exocet validation: synthetic positions with known base/target structure,
+ * plus generated-puzzle probing where every step's placements must match the
+ * brute-force solution and eliminations must never hit it.
+ */
 import { describe, it, expect } from 'vitest';
 import { emptyGrid, cloneGrid, isSolved, gridToString, bit } from '../src/engine/board';
 import { solve } from '../src/engine/bruteForce';

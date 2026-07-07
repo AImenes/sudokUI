@@ -1,3 +1,7 @@
+/**
+ * Practice-mode generation: `generateWhere` must produce puzzles that
+ * genuinely require the requested technique with nothing harder needed first.
+ */
 import { describe, it, expect } from 'vitest';
 import { generateWhere, requiresTechnique } from '../src/engine/generator';
 import { ratePuzzle } from '../src/engine/humanSolver';

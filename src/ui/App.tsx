@@ -299,6 +299,12 @@ export default function App() {
               </div>
             </div>
           )}
+          <footer className="app-footer">
+            <a href="https://github.com/AImenes/sudokUI" target="_blank" rel="noreferrer">
+              Open source on GitHub
+            </a>
+            <span> · feature requests & issues welcome</span>
+          </footer>
         </aside>
       </main>
 

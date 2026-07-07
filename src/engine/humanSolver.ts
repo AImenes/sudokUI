@@ -1,3 +1,10 @@
+/**
+ * The human-style solver: tries every enabled technique in SOLVE_ORDER
+ * (cheapest first) to find the next step, applies steps, and rates whole
+ * puzzles by summing per-technique scores along the solve path — the same
+ * model HoDoKu uses. This is the single integration point for technique
+ * finders; see `ratings.ts` for the catalogue and `techniques/` for finders.
+ */
 import { Grid, cloneGrid, setValue, bit, isSolved, isBroken, cellName, parseGrid } from './board';
 import { solve } from './bruteForce';
 import { Step } from './steps';

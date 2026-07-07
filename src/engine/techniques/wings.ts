@@ -2,6 +2,19 @@ import { Grid, PEERS, bit, digitsOf, popcount, sees, cellName } from '../board';
 import { Step, CellDigit } from '../steps';
 import { strongLinks } from './singleDigit';
 
+/**
+ * Wings — small pivot-and-pincer patterns built on bivalue cells.
+ *
+ * - XY-Wing: pivot XY sees pincers XZ and YZ; whichever value the pivot
+ *   takes, some pincer becomes Z, so cells seeing both pincers lose Z.
+ * - XYZ-Wing: like XY-Wing but the pivot also holds Z, so eliminations must
+ *   additionally see the pivot.
+ * - W-Wing: two XZ bivalue cells joined through a strong link on X; one of
+ *   the two must be Z.
+ * - WXYZ-Wing: four cells, four digits, one non-restricted digit Z that must
+ *   land inside the pattern — an ALS argument in miniature.
+ */
+
 function collectZElims(
   g: Grid,
   z: number,
