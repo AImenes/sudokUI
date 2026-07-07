@@ -98,9 +98,10 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
       <p className="dialog-note">
         sudokUI generates a puzzle whose solution path requires the chosen
         technique — with nothing harder needed before it — and skips you to
-        the position where it applies. Techniques marked ✗ are catalogued but
-        not implemented yet. The number on each technique is its rating cost:
-        a puzzle's difficulty rating is the sum of these over its solve path.
+        the position where it applies. Techniques marked ✗ or ≈ are shown for
+        completeness but deliberately not playable: hover them to see why.
+        The number on each technique is its rating cost: a puzzle's
+        difficulty rating is the sum of these over its solve path.
       </p>
       <p className="tech-count">
         <strong>{playable.length}</strong> of {shown.length} techniques playable
@@ -128,7 +129,7 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
                         ? `Score ${info.score} · ${info.level}`
                         : redundant
                           ? `${info.name} is implemented, but provably redundant — its conclusions are always found by earlier techniques, so it never appears in a solve path`
-                          : `${info.name} is not implemented yet (planned score ${info.score}, ${info.level})`
+                          : `${info.name} is deliberately not implemented — everything it can find, the AIC/ALS chain engines already find. It stays in the catalogue (score ${info.score}, ${info.level}) so the map of sudoku techniques is complete.`
                     }
                   >
                     {ok ? '' : redundant ? <span className="tech-tilde">≈ </span> : <span className="tech-x">✗ </span>}
@@ -244,12 +245,28 @@ export function GeneratingDialog({ label, attempts, onCancel }: { label: string;
 export function VictoryDialog({ onNewGame, onClose }: { onNewGame: () => void; onClose: () => void }) {
   const info = useGame((s) => s.info);
   const elapsedMs = useGame((s) => s.elapsedMs);
+  const [copied, setCopied] = useState(false);
   if (!info) return null;
   const secs = Math.floor(elapsedMs() / 1000);
   const mm = Math.floor(secs / 60);
   const ss = String(secs % 60).padStart(2, '0');
+
+  // same-puzzle challenge: the share text carries the seed link, so the
+  // recipient plays exactly this grid
+  const shareResult = () => {
+    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss} on sudokUI — can you beat that? https://sudokui.app/#p=${info.puzzle}`;
+    navigator.clipboard?.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="modal-backdrop">
+      <div className="confetti" aria-hidden="true">
+        {Array.from({ length: 24 }, (_, i) => (
+          <i key={i} style={{ '--n': i } as React.CSSProperties} />
+        ))}
+      </div>
       <div className="modal victory">
         <h3>Solved! 🎉</h3>
         <p>
@@ -257,6 +274,7 @@ export function VictoryDialog({ onNewGame, onClose }: { onNewGame: () => void; o
         </p>
         <div className="hint-actions">
           <button onClick={onNewGame}>New game</button>
+          <button onClick={shareResult}>{copied ? '✓ Copied' : '🔗 Challenge a friend'}</button>
           <button className="ghost" onClick={onClose}>Admire the grid</button>
         </div>
       </div>
@@ -283,7 +301,7 @@ export function Modal({ title, children, onClose }: { title: string; children: R
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h3>{title}</h3>
-          <button className="close-btn" onClick={onClose}>✕</button>
+          <button className="close-btn" onClick={onClose} aria-label="Close dialog">✕</button>
         </div>
         {children}
       </div>

@@ -243,16 +243,36 @@ export default function App() {
         )}
         <div className="topbar-right">
           {showTimer && <Timer />}
-          <button className="icon-btn" onClick={togglePause} title="Pause (P)">
+          <button
+            className="icon-btn"
+            onClick={togglePause}
+            title="Pause (P)"
+            aria-label={paused ? 'Resume game' : 'Pause game'}
+          >
             {paused ? '⏵' : '⏸'}
           </button>
-          <button className="icon-btn" onClick={toggleTheme} title="Toggle theme">
+          <button
+            className="icon-btn"
+            onClick={toggleTheme}
+            title="Toggle theme"
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
-          <button className="icon-btn" onClick={() => setDialog('info')} title="How to play, modes & shortcuts">
+          <button
+            className="icon-btn"
+            onClick={() => setDialog('info')}
+            title="How to play, modes & shortcuts"
+            aria-label="How to play, modes and shortcuts"
+          >
             ⓘ
           </button>
-          <button className="icon-btn gear" onClick={() => setDialog('settings')} title="Settings">
+          <button
+            className="icon-btn gear"
+            onClick={() => setDialog('settings')}
+            title="Settings"
+            aria-label="Settings"
+          >
             ⚙
           </button>
         </div>
