@@ -9,7 +9,24 @@ import {
   cellName,
   cellNames
 } from '../board';
-import { Step, CellDigit } from '../steps';
+import { Step, CellDigit, ChainLink, alternatingLinks } from '../steps';
+
+/**
+ * Candidate-level links for a chain of bivalue cells where each cell is
+ * entered on one digit and left on the other: a strong link inside every
+ * cell (entry → exit) and a weak link on the shared exit digit between
+ * consecutive cells. `entry` is the digit the first cell is entered on.
+ */
+function bivalueCellLinks(g: Grid, path: number[], entry: number): ChainLink[] {
+  const nodes: CellDigit[][] = [];
+  let inDigit = entry;
+  for (const cell of path) {
+    const outDigit = digitsOf(g.cands[cell]).find((x) => x !== inDigit)!;
+    nodes.push([{ cell, digit: inDigit }], [{ cell, digit: outDigit }]);
+    inDigit = outDigit;
+  }
+  return alternatingLinks(nodes);
+}
 
 /** Remote Pairs: chain of identical bivalue cells; both digits fall in cells
  *  seeing two opposite-parity chain cells. */
@@ -60,6 +77,9 @@ export function findRemotePair(g: Grid): Step | null {
         }
       }
       if (!elims.length) continue;
+      // order the component into a simple path for the arrows; when it
+      // branches (rare), fall back to highlights only
+      const path = orderAsPath(component, sees);
       return {
         tech: 'REMOTE_PAIR',
         placements: [],
@@ -67,12 +87,36 @@ export function findRemotePair(g: Grid): Step | null {
         primary: component.flatMap((cell) =>
           digits.map((digit) => ({ cell, digit }))
         ),
-        chainCells: component,
+        links: path ? bivalueCellLinks(g, path, digits[0]) : undefined,
         description: `Remote Pair: the cells ${cellNames(component)} form a chain of ${digits.join('')} pairs; cells seeing both "colors" of the chain lose ${digits.join(' and ')}.`
       };
     }
   }
   return null;
+}
+
+/**
+ * Order a connected cell set into a simple path along the `sees` relation,
+ * or null when it isn't one (a branching component). Greedy walk from a
+ * degree-1 endpoint.
+ */
+function orderAsPath(
+  component: number[],
+  seesFn: (a: number, b: number) => boolean
+): number[] | null {
+  const degree = (c: number) => component.filter((o) => o !== c && seesFn(c, o)).length;
+  const start = component.find((c) => degree(c) === 1);
+  if (start === undefined) return null;
+  const path = [start];
+  const used = new Set([start]);
+  while (path.length < component.length) {
+    const cur = path[path.length - 1];
+    const nexts = component.filter((c) => !used.has(c) && seesFn(cur, c));
+    if (nexts.length !== 1) return null;
+    path.push(nexts[0]);
+    used.add(nexts[0]);
+  }
+  return path;
 }
 
 /** X-Chain: alternating strong/weak links on one digit, strong at both ends. */
@@ -120,7 +164,7 @@ export function findXChain(g: Grid, maxLen = 9): Step | null {
                 placements: [],
                 eliminations: elims,
                 primary: newPath.map((cell) => ({ cell, digit: d })),
-                chainCells: newPath,
+                links: alternatingLinks(newPath.map((cell) => [{ cell, digit: d }])),
                 description: `X-Chain on ${d}: ${newPath.map(cellName).join(' → ')}; one end must be ${d}, so ${d} is removed from cells seeing both ends.`
               };
             }
@@ -170,7 +214,7 @@ export function findXYChain(g: Grid, maxLen = 10): Step | null {
                   cell,
                   digit: cell === start || cell === next ? z : 0
                 })).filter((cd) => cd.digit !== 0),
-                chainCells: newPath,
+                links: bivalueCellLinks(g, newPath, z),
                 description: `XY-Chain: ${newPath.map(cellName).join(' → ')}; whichever way the chain resolves, one end is ${z}, so ${z} is removed from cells seeing both ends.`
               };
             }

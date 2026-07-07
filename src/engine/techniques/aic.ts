@@ -1,5 +1,5 @@
 import { Grid, UNITS, bit, digitsOf, popcount, sees, cellName } from '../board';
-import { Step, CellDigit } from '../steps';
+import { Step, CellDigit, alternatingLinks } from '../steps';
 
 /**
  * Alternating Inference Chains (sudokuwiki.org/Alternating_Inference_Chains).
@@ -135,7 +135,7 @@ function searchAic(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | nu
             placements: [],
             eliminations: elims,
             primary: path.map((id) => ({ cell: nCell(id), digit: nDigit(id) })),
-            chainCells: path.map(nCell),
+            links: alternatingLinks(path.map((id) => [{ cell: nCell(id), digit: nDigit(id) }])),
             description: `AIC: ${path
               .map((id) => `${nDigit(id)}@${cellName(nCell(id))}`)
               .join(' → ')}; at least one of ${nDigit(a)}@${cellName(nCell(a))} and ${nDigit(b)}@${cellName(nCell(b))} is true, so candidates conflicting with both are removed.`
@@ -152,7 +152,10 @@ function searchAic(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | nu
             placements: [{ cell: nCell(start), digit: nDigit(start) }],
             eliminations: [],
             primary: path.map((id) => ({ cell: nCell(id), digit: nDigit(id) })),
-            chainCells: [...path.map(nCell), nCell(start)],
+            links: alternatingLinks(
+              path.map((id) => [{ cell: nCell(id), digit: nDigit(id) }]),
+              'strong'
+            ),
             description: `Nice Loop: the loop ${path
               .map((id) => `${nDigit(id)}@${cellName(nCell(id))}`)
               .join(' → ')} closes with two strong links at ${nDigit(start)}@${cellName(nCell(start))}; denying it forces it, so it is placed.`
@@ -219,7 +222,10 @@ function continuousLoop(g: Grid, path: number[]): Step | null {
     placements: [],
     eliminations: elims,
     primary: path.map((id) => ({ cell: nCell(id), digit: nDigit(id) })),
-    chainCells: [...path.map(nCell), nCell(path[0])],
+    links: alternatingLinks(
+      path.map((id) => [{ cell: nCell(id), digit: nDigit(id) }]),
+      'weak'
+    ),
     description: `Nice Loop: the continuous loop ${path
       .map((id) => `${nDigit(id)}@${cellName(nCell(id))}`)
       .join(' → ')} alternates perfectly; every weak link has exactly one true side, clearing other candidates along it.`

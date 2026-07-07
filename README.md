@@ -31,7 +31,9 @@ natively for iOS and Android via Capacitor.
 
 **Learn**
 - Progressive hints: first the technique name, then the full explanation with
-  the pattern highlighted on the board, then one click to apply it
+  the pattern highlighted on the board, then one click to apply it. Chains
+  draw as candidate-anchored arrows — solid for strong links, dashed for
+  weak, HoDoKu-style
 - **Practice mode** for 65 named techniques: pick one and get a generated
   puzzle that genuinely requires it — with nothing harder needed before it.
   The game fast-forwards through the routine steps so the chosen pattern is

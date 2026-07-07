@@ -31,6 +31,15 @@ function verifySolvePath(puzzle: Grid): Set<Tech> {
         `${step.tech} eliminated the SOLUTION digit ${digit} from cell ${cell}\n${gridToString(puzzle)}`
       ).not.toBe(digit);
     }
+    // chain arrows must root/point at candidates that actually exist
+    for (const link of step.links ?? []) {
+      for (const { cell, digit } of [...link.from, ...link.to]) {
+        expect(
+          g.values[cell] === 0 && (g.cands[cell] & (1 << (digit - 1))) !== 0,
+          `${step.tech} drew a link touching non-candidate ${digit} in cell ${cell}\n${gridToString(puzzle)}`
+        ).toBe(true);
+      }
+    }
     applyStep(g, step);
   }
   return seen;

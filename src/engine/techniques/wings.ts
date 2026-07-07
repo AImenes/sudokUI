@@ -1,5 +1,5 @@
 import { Grid, PEERS, bit, digitsOf, popcount, sees, cellName } from '../board';
-import { Step, CellDigit } from '../steps';
+import { Step, CellDigit, alternatingLinks } from '../steps';
 import { strongLinks } from './singleDigit';
 
 /**
@@ -132,7 +132,27 @@ export function findWWing(g: Grid): Step | null {
               { cell: e1, digit: linkDigit },
               { cell: e2, digit: linkDigit }
             ],
-            chainCells: sees(e1, A) ? [A, e1, e2, B] : [A, e2, e1, B],
+            // full AIC: z@A =s= w@A -w- w@e1 =s= w@e2 -w- w@B =s= z@B
+            links: alternatingLinks(
+              (sees(e1, A)
+                ? [
+                    { cell: A, digit: elimDigit },
+                    { cell: A, digit: linkDigit },
+                    { cell: e1, digit: linkDigit },
+                    { cell: e2, digit: linkDigit },
+                    { cell: B, digit: linkDigit },
+                    { cell: B, digit: elimDigit }
+                  ]
+                : [
+                    { cell: A, digit: elimDigit },
+                    { cell: A, digit: linkDigit },
+                    { cell: e2, digit: linkDigit },
+                    { cell: e1, digit: linkDigit },
+                    { cell: B, digit: linkDigit },
+                    { cell: B, digit: elimDigit }
+                  ]
+              ).map((cd) => [cd])
+            ),
             description: `W-Wing: ${cellName(A)} and ${cellName(B)} both hold ${x}${y}; the strong link on ${linkDigit} (${cellName(e1)}–${cellName(e2)}) forces one of them to be ${elimDigit}, removing ${elimDigit} from cells seeing both.`
           };
         }
