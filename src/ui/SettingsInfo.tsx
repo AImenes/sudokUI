@@ -201,6 +201,14 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
         app has loaded — install it from your browser menu for a full-screen
         experience.
       </p>
+      <p className="dialog-note">
+        sudokUI is open source —{' '}
+        <a href="https://github.com/AImenes/sudokUI" target="_blank" rel="noreferrer">
+          github.com/AImenes/sudokUI
+        </a>
+        . Bug reports, feature requests and technique contributions are very
+        welcome.
+      </p>
     </Modal>
   );
 }

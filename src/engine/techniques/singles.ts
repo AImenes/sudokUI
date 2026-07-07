@@ -1,6 +1,14 @@
 import { Grid, UNITS, bit, digitsOf, cellName, popcount } from '../board';
 import { Step } from '../steps';
 
+/**
+ * Singles — the placement techniques every solve is built on.
+ *
+ * - Full House: a unit with one empty cell left; the missing digit goes there.
+ * - Naked Single: a cell with exactly one candidate.
+ * - Hidden Single: a digit with exactly one possible cell in some unit.
+ */
+
 const UNIT_NAMES = [
   ...Array.from({ length: 9 }, (_, i) => `row ${i + 1}`),
   ...Array.from({ length: 9 }, (_, i) => `column ${i + 1}`),
