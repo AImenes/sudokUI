@@ -8,3 +8,6 @@ dist-ssr/
 
 # local editor/agent config (contains machine-specific paths)
 .claude/
+
+# rendered marketing screenshots
+promo/
