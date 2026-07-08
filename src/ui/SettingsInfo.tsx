@@ -148,7 +148,7 @@ const SHORTCUTS: [string, string][] = [
   ['Arrow keys', 'Move the selection (Shift extends it)'],
   ['Click + drag', 'Select multiple cells'],
   ['Ctrl/Cmd + click', 'Add cells to the selection'],
-  ['Double-click a digit', 'Select every cell with that digit'],
+  ['Double-click / long-press a digit', 'Select every cell with that digit'],
   ['Backspace / Delete', 'Erase the active layer — hold Shift for corner marks, Ctrl for centre, both for colours'],
   ['W', 'Wipe the selected cells completely'],
   ['Ctrl/Cmd + A', 'Select every cell (Erase and W then act board-wide)'],
@@ -176,14 +176,13 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
 
       <h4 className="setting-group">Candidates</h4>
       <p className="dialog-note">
-        <em>Fill cands</em> fills the current mode's layer — with several
-        cells selected, only those. <em>Auto cands</em> computes and maintains
-        candidates for you; your centre-mark eliminations are adopted when you
-        turn it on, and pencil input strikes candidates through while it's
-        active. Turning it off can hand the state back as marks (see
-        Settings). <em>⇄ Marks</em> swaps corner and centre layers.{' '}
-        <em>Check</em> flags wrong digits and candidate lists that lost the
-        true digit.
+        <em>Fill</em> fills the current mode's layer — with cells selected,
+        only those. <em>Auto</em> computes and maintains candidates for you;
+        your centre-mark eliminations are adopted when you turn it on, and
+        pencil input strikes candidates through while it's active. Turning it
+        off can hand the state back as marks (see Settings). <em>Swap</em>{' '}
+        exchanges corner and centre layers. <em>Check</em> flags wrong digits
+        and candidate lists that lost the true digit.
       </p>
 
       <h4 className="setting-group">Difficulty rating</h4>
@@ -209,9 +208,13 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
       <h4 className="setting-group">Hints & practice</h4>
       <p className="dialog-note">
         <em>Hint</em> first names the next technique, then shows and explains
-        it on the board, then applies it if you want. <em>Practice</em>{' '}
+        it on the board, then applies it if you want. <em>Steps</em> lists a
+        complete solution path with its crux, and <em>Scan</em> lists every
+        technique available in the exact current position — not just the
+        cheapest — so you can hunt the pattern you prefer. <em>Practice</em>{' '}
         generates a puzzle that genuinely requires a chosen technique and
-        skips you to the position where it is the next step.
+        skips you to the position where it applies (optional, see Settings);
+        press N for the next one.
       </p>
 
       <h4 className="setting-group">Keyboard</h4>
