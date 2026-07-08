@@ -301,7 +301,17 @@ export default function App() {
         </div>
       </header>
 
-      <main className="layout">
+      <main
+        className="layout"
+        onPointerDown={(e) => {
+          // touch has no Escape key: tapping the empty space around the
+          // board clears the selection
+          const t = e.target as HTMLElement;
+          if (t.classList.contains('layout') || t.classList.contains('board-col')) {
+            select([], false);
+          }
+        }}
+      >
         <div className="board-col">
           <Grid />
           {/* while paused, Nutella moves onto the pause card instead */}

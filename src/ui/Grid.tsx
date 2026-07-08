@@ -385,6 +385,12 @@ export function Grid() {
     dragging.current = true;
     additive.current = e.ctrlKey || e.metaKey || e.shiftKey;
     (e.target as Element).setPointerCapture?.(e.pointerId);
+    // tapping the lone selected cell deselects it — on touch there is no
+    // Escape key, so this is the way out of a highlight
+    if (!additive.current && selection.length === 1 && selection[0] === cell) {
+      select([], false);
+      return;
+    }
     select([cell], additive.current);
   };
   const onPointerMove = (e: React.PointerEvent) => {
