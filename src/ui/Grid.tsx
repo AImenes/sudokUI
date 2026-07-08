@@ -379,12 +379,31 @@ export function Grid() {
     return r * 9 + c;
   };
 
+  // long-press on a digit = "highlight all of this digit", the deliberate
+  // touch counterpart to double-click (which also still works)
+  const longPress = useRef<{ timer: number; cell: number } | null>(null);
+  const cancelLongPress = () => {
+    if (longPress.current) {
+      window.clearTimeout(longPress.current.timer);
+      longPress.current = null;
+    }
+  };
+
   const onPointerDown = (e: React.PointerEvent) => {
     const cell = cellFromEvent(e);
     if (cell === null) return;
     dragging.current = true;
     additive.current = e.ctrlKey || e.metaKey || e.shiftKey;
     (e.target as Element).setPointerCapture?.(e.pointerId);
+    if (cells[cell].value) {
+      longPress.current = {
+        cell,
+        timer: window.setTimeout(() => {
+          longPress.current = null;
+          selectAllOf(cells[cell].value);
+        }, 500)
+      };
+    }
     // tapping the lone selected cell deselects it — on touch there is no
     // Escape key, so this is the way out of a highlight
     if (!additive.current && selection.length === 1 && selection[0] === cell) {
@@ -396,10 +415,15 @@ export function Grid() {
   const onPointerMove = (e: React.PointerEvent) => {
     if (!dragging.current) return;
     const cell = cellFromEvent(e);
-    if (cell !== null) select([cell], true);
+    if (cell !== null) {
+      // leaving the press cell turns the gesture into a drag-select
+      if (longPress.current && cell !== longPress.current.cell) cancelLongPress();
+      select([cell], true);
+    }
   };
   const onPointerUp = () => {
     dragging.current = false;
+    cancelLongPress();
   };
   const onDoubleClick = (e: React.MouseEvent) => {
     const cell = cellFromEvent(e as unknown as React.PointerEvent);
@@ -423,6 +447,7 @@ export function Grid() {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         onDoubleClick={onDoubleClick}
       >
         {/* cell layers */}
