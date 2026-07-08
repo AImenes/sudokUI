@@ -59,6 +59,57 @@ export function engineGrid(cells: CellState[]): Grid {
   return g;
 }
 
+/**
+ * The candidate grid the SOLVER reasons over. Like {@link engineGrid}, but in
+ * manual play it also folds the player's own CENTRE marks in as eliminations,
+ * so Hint and Scan continue from where the player is rather than re-deriving
+ * moves already made by hand.
+ *
+ * Only centre marks are trusted: they are exhaustive by convention (a missing
+ * digit is a deliberate elimination). Corner marks are Snyder notation —
+ * partial by nature — so their absence means nothing and they are never used;
+ * `Swap` moves them into the centre layer when the player wants them counted.
+ * In auto mode the `excluded` set already carries the player's eliminations,
+ * so this is identical to `engineGrid`. Marks are only intersected with the
+ * canonical set, never allowed to add an impossible candidate.
+ */
+export function solverGrid(cells: CellState[], autoCandidates: boolean): Grid {
+  const g = engineGrid(cells);
+  if (autoCandidates) return g;
+  for (let i = 0; i < 81; i++) {
+    if (cells[i].value || !cells[i].center) continue;
+    const folded = g.cands[i] & cells[i].center;
+    if (folded) g.cands[i] = folded; // never zero a cell; the solution guard
+    // in the callers catches a mark that dropped the true digit
+  }
+  return g;
+}
+
+/** True when a step never contradicts the known solution: every placement is
+ *  the solution digit and no elimination removes it. A step derived from
+ *  player marks that fails this can only mean the marks are corrupted, so
+ *  callers redirect to Check rather than show an unsound hint. */
+export function stepMatchesSolution(step: Step, solution: string): boolean {
+  for (const { cell, digit } of step.placements) {
+    if (Number(solution[cell]) !== digit) return false;
+  }
+  for (const { cell, digit } of step.eliminations) {
+    if (Number(solution[cell]) === digit) return false;
+  }
+  return true;
+}
+
+/** The cell where a centre mark has dropped the true solution digit, or -1.
+ *  Such a slip means the player's candidate set is wrong; Check pinpoints it. */
+export function centreMarkSlip(cells: CellState[], solution: string): number {
+  for (let i = 0; i < 81; i++) {
+    const c = cells[i];
+    if (c.value || !c.center) continue;
+    if (!(c.center & bit(Number(solution[i])))) return i;
+  }
+  return -1;
+}
+
 export interface GameInfo {
   puzzle: string;
   solution: string;
@@ -95,9 +146,13 @@ interface GameStore {
   elapsedBefore: number;
   paused: boolean;
   won: boolean;
-  /** true once any assist was used this game (hint, check, revert) — a
-   *  solve is "clean" only while this stays false. Reset by restart/new. */
+  /** true once a DEDUCTIVE assist was used (hint, check, steps, scan,
+   *  revert) — these reveal reasoning, so the solve is no longer "clean". */
   assisted: boolean;
+  /** true once a bookkeeping aid was used (auto candidates or Fill) — no
+   *  reasoning revealed, but the machine tracked candidates for you, so the
+   *  solve is not "pure". Swapping corner↔centre never sets this. */
+  usedAuto: boolean;
   hint: Step | null;
   hintStage: 'hidden' | 'tech' | 'full';
   errors: number[];
@@ -177,6 +232,7 @@ export const useGame = create<GameStore>()(
       paused: false,
       won: false,
       assisted: false,
+      usedAuto: false,
       hint: null,
       hintStage: 'hidden' as const,
       errors: [],
@@ -234,6 +290,9 @@ export const useGame = create<GameStore>()(
           paused: false,
           won: false,
           assisted: false,
+          // a fast-forwarded practice puzzle turns auto candidates on for you,
+          // which is a bookkeeping aid — so that solve starts "not pure"
+          usedAuto: !!fastForward,
           hint: null,
           hintStage: 'hidden',
           errors: [],
@@ -591,6 +650,8 @@ export const useGame = create<GameStore>()(
           cells,
           history: [...s.history, cloneCells(s.cells)],
           future: [],
+          // turning auto ON is a bookkeeping aid; the flag is sticky
+          usedAuto: s.usedAuto || !s.autoCandidates,
           notice
         });
       },
@@ -623,6 +684,7 @@ export const useGame = create<GameStore>()(
           cells,
           history: [...s.history, cloneCells(s.cells)],
           future: [],
+          usedAuto: true, // Fill did the candidate bookkeeping for you
           notice: `Filled ${layerName} marks${partial ? ' in selection' : ''}${
             corrected ? ` — corrected ${corrected} cell${corrected > 1 ? 's' : ''}` : ''
           }`
@@ -665,12 +727,35 @@ export const useGame = create<GameStore>()(
       requestHint: () => {
         const s = get();
         if (!s.info || s.won) return;
-        const g = engineGrid(s.cells);
-        const step = findNextStep(g);
-        if (step) {
-          // even the technique's name is information — the solve is no
-          // longer clean
+        const sol = s.info.solution;
+        // a centre mark that dropped the true digit corrupts the candidate
+        // set — don't reason from it; that slip is Check's job to pinpoint
+        if (!s.autoCandidates) {
+          const slip = centreMarkSlip(s.cells, sol);
+          if (slip >= 0) {
+            set({
+              hint: null,
+              hintStage: 'hidden',
+              assisted: true,
+              notice: 'A pencil mark dropped a digit that belongs there — run Check to find it'
+            });
+            return;
+          }
+        }
+        // reason from the player's own candidates (centre marks folded in)
+        const step = findNextStep(solverGrid(s.cells, s.autoCandidates));
+        if (step && stepMatchesSolution(step, sol)) {
+          // even the technique's name is information — no longer a clean solve
           set({ hint: step, hintStage: 'tech', assisted: true });
+        } else if (step) {
+          // a technique fired but contradicts the solution: the marks misled
+          // it (e.g. a uniqueness pattern faked by a wrong elimination)
+          set({
+            hint: null,
+            hintStage: 'hidden',
+            assisted: true,
+            notice: 'Your pencil marks lead to an impossible deduction — run Check'
+          });
         } else {
           set({ hint: null, hintStage: 'hidden' });
         }
@@ -863,7 +948,8 @@ export const useGame = create<GameStore>()(
         autoCandidates: s.autoCandidates,
         elapsedBefore: s.elapsedMs(),
         won: s.won,
-        assisted: s.assisted
+        assisted: s.assisted,
+        usedAuto: s.usedAuto
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

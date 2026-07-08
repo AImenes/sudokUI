@@ -2,7 +2,15 @@
 // generation progress and victory — plus useNewGame, the hook that ties the
 // puzzle pools, the generation worker and the game store together.
 import React, { useState, useEffect } from 'react';
-import { useGame, validatePuzzle, solvePath, encodePosition, engineGrid } from '../state/gameStore';
+import {
+  useGame,
+  validatePuzzle,
+  solvePath,
+  encodePosition,
+  solverGrid,
+  stepMatchesSolution,
+  centreMarkSlip
+} from '../state/gameStore';
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
@@ -290,14 +298,30 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
  */
 export function ScanDialog({ onClose }: { onClose: () => void }) {
   const cells = useGame((s) => s.cells);
+  const auto = useGame((s) => s.autoCandidates);
+  const solution = useGame((s) => s.info?.solution);
   const markAssisted = useGame((s) => s.markAssisted);
   const showStep = useGame((s) => s.showStep);
   const [steps, setSteps] = useState<Step[] | null>(null);
+  const [slip, setSlip] = useState(false);
 
   useEffect(() => {
     markAssisted();
     // defer the finder sweep so the dialog paints first
-    const t = setTimeout(() => setSteps(findAllSteps(engineGrid(cells))), 30);
+    const t = setTimeout(() => {
+      // a centre mark that dropped a true digit corrupts the scan — say so
+      if (solution && !auto && centreMarkSlip(cells, solution) >= 0) {
+        setSlip(true);
+        setSteps([]);
+        return;
+      }
+      // reason from the player's candidates; drop any step the wrong marks
+      // faked (unsound vs the solution) so only real options are listed
+      const all = findAllSteps(solverGrid(cells, auto)).filter(
+        (st) => !solution || stepMatchesSolution(st, solution)
+      );
+      setSteps(all);
+    }, 30);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -311,9 +335,15 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
       </p>
       {!steps ? (
         <div className="spinner" />
+      ) : slip ? (
+        <p className="dialog-note">
+          A pencil mark dropped a digit that belongs in the solution — run
+          Check to find it before scanning.
+        </p>
       ) : steps.length === 0 ? (
         <p className="dialog-note">
-          Nothing fires here — check the candidates for mistakes.
+          Nothing fires here — you may need trial and error, or a candidate is
+          off (run Check).
         </p>
       ) : (
         <div className="path-list">
@@ -459,6 +489,7 @@ export function VictoryDialog({
 }) {
   const info = useGame((s) => s.info);
   const assisted = useGame((s) => s.assisted);
+  const usedAuto = useGame((s) => s.usedAuto);
   const elapsedMs = useGame((s) => s.elapsedMs);
   const [copied, setCopied] = useState(false);
   if (!info) return null;
@@ -466,11 +497,20 @@ export function VictoryDialog({
   const mm = Math.floor(secs / 60);
   const ss = String(secs % 60).padStart(2, '0');
 
+  // three tiers: deductive assists break "clean"; auto/Fill bookkeeping
+  // breaks "pure"; swapping marks breaks neither
+  const tier = assisted ? 'assisted' : usedAuto ? 'clean' : 'pure';
+
   // same-puzzle challenge: the share text carries the seed link, so the
   // recipient plays exactly this grid
   const shareResult = () => {
-    const clean = assisted ? '' : ', no hints, no checks';
-    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss}${clean} on sudokUI — can you beat that? https://sudokui.app/#p=${info.puzzle}`;
+    const badge =
+      tier === 'pure'
+        ? ', no hints and every candidate by hand'
+        : tier === 'clean'
+          ? ', no hints or checks'
+          : '';
+    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss}${badge} on sudokUI — can you beat that? https://sudokui.app/#p=${info.puzzle}`;
     navigator.clipboard?.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -488,10 +528,12 @@ export function VictoryDialog({
         <p>
           {info.level} · score {info.score} · {mm}:{ss}
         </p>
-        <p className={assisted ? 'solve-assisted' : 'solve-clean'}>
-          {assisted
+        <p className={tier === 'assisted' ? 'solve-assisted' : 'solve-clean'}>
+          {tier === 'assisted'
             ? 'Solved with assistance — restart the puzzle for a clean run'
-            : '✨ Clean solve: no hints, no checks'}
+            : tier === 'clean'
+              ? '✨ Clean solve — no hints or checks'
+              : '🏅 Pure solve — no hints, every candidate by hand'}
         </p>
         <div className="hint-actions">
           {info.practiceTech && onAnother && (

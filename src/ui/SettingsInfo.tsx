@@ -184,6 +184,14 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
         exchanges corner and centre layers. <em>Check</em> flags wrong digits
         and candidate lists that lost the true digit.
       </p>
+      <p className="dialog-note">
+        <strong>Hint</strong> and <strong>Scan</strong> read your{' '}
+        <strong>centre</strong> marks as an exhaustive list, so they continue
+        from the eliminations you have already made rather than re-suggesting
+        them. Corner marks are Snyder-style (partial) — their absence can't
+        mean "eliminated", so press <em>Swap</em> to move them into the centre
+        layer if you want them counted.
+      </p>
 
       <h4 className="setting-group">Difficulty rating</h4>
       <p className="dialog-note">
