@@ -196,7 +196,7 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
 
   const rows: PathRow[] = [];
   if (steps) {
-    const isSingle = (s: Step) => TECHS[s.tech].level === 'Easy';
+    const isSingle = (s: Step) => TECHS[s.tech].category === 'Singles';
     for (let i = 0; i < steps.length; i++) {
       if (isSingle(steps[i])) {
         const run: Step[] = [];
