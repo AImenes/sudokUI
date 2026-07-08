@@ -2,7 +2,8 @@
 // generation progress and victory — plus useNewGame, the hook that ties the
 // puzzle pools, the generation worker and the game store together.
 import React, { useState, useEffect } from 'react';
-import { useGame, validatePuzzle, solvePath, encodePosition } from '../state/gameStore';
+import { useGame, validatePuzzle, solvePath, encodePosition, engineGrid } from '../state/gameStore';
+import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
@@ -275,6 +276,67 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
               </div>
             )
           )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+/**
+ * Scan: every technique that fires in the CURRENT position, cheapest first —
+ * not just the cheapest one the solve path would take. For players who are
+ * better at spotting, say, uniqueness patterns than wings: pick the step you
+ * want and it is shown as a full hint on the board.
+ */
+export function ScanDialog({ onClose }: { onClose: () => void }) {
+  const cells = useGame((s) => s.cells);
+  const markAssisted = useGame((s) => s.markAssisted);
+  const showStep = useGame((s) => s.showStep);
+  const [steps, setSteps] = useState<Step[] | null>(null);
+
+  useEffect(() => {
+    markAssisted();
+    // defer the finder sweep so the dialog paints first
+    const t = setTimeout(() => setSteps(findAllSteps(engineGrid(cells))), 30);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <Modal title="What's in this position?" onClose={onClose}>
+      <p className="dialog-note">
+        Every technique the solver can apply right now, with your exact
+        candidates — cheapest first. Click one to see it highlighted on the
+        board. Counts as assistance.
+      </p>
+      {!steps ? (
+        <div className="spinner" />
+      ) : steps.length === 0 ? (
+        <p className="dialog-note">
+          Nothing fires here — check the candidates for mistakes.
+        </p>
+      ) : (
+        <div className="path-list">
+          {steps.map((step, i) => (
+            <div
+              key={i}
+              className="path-row"
+              role="button"
+              title={step.description}
+              onClick={() => {
+                showStep(step);
+                onClose();
+              }}
+            >
+              <span className="path-jump">+{TECHS[step.tech].score}</span>
+              <span className="path-label">{TECHS[step.tech].name}</span>
+              <span className="path-score">
+                {step.placements.length > 0 && `${step.placements.length} placed`}
+                {step.placements.length > 0 && step.eliminations.length > 0 && ' · '}
+                {step.eliminations.length > 0 && `${step.eliminations.length} removed`}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </Modal>

@@ -24,7 +24,13 @@ const MODES: { id: EntryMode; label: string; key: string }[] = [
   { id: 'color', label: 'Colour', key: 'V' }
 ];
 
-export function Controls({ onShowSteps }: { onShowSteps?: () => void }) {
+export function Controls({
+  onShowSteps,
+  onScan
+}: {
+  onShowSteps?: () => void;
+  onScan?: () => void;
+}) {
   const mode = useGame((s) => s.mode);
   const tempMode = useGame((s) => s.tempMode);
   const effectiveMode = tempMode ?? mode;
@@ -112,6 +118,14 @@ export function Controls({ onShowSteps }: { onShowSteps?: () => void }) {
             title="Show every step of one complete solution and jump to any point — counts as assistance"
           >
             ≡ Steps
+          </button>
+        )}
+        {onScan && (
+          <button
+            onClick={onScan}
+            title="List every technique available in this exact position, not just the cheapest — counts as assistance"
+          >
+            🔎 Scan
           </button>
         )}
       </div>

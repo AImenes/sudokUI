@@ -16,7 +16,8 @@ import {
   ShareDialog,
   GeneratingDialog,
   VictoryDialog,
-  SolutionPathDialog
+  SolutionPathDialog,
+  ScanDialog
 } from './Dialogs';
 import { SettingsDialog, InfoDialog } from './SettingsInfo';
 import { Modal } from './Dialogs';
@@ -74,7 +75,7 @@ export default function App() {
   const { start, genState, cancel } = useNewGame();
 
   const [dialog, setDialog] = useState<
-    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart' | 'steps'
+    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart' | 'steps' | 'scan'
   >('none');
   const restart = useGame((s) => s.restart);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
@@ -168,9 +169,24 @@ export default function App() {
         case 'Backspace':
         case 'Delete':
           e.preventDefault();
-          if (e.shiftKey) wipe();
-          else erase();
+          // held modifiers route through the temporary mode, so
+          // Shift+Backspace erases corner marks, Ctrl+Backspace centre
+          // marks, both together colours — full wipe lives on W
+          erase();
           break;
+        case 'KeyW':
+          wipe();
+          break;
+        case 'KeyD':
+          // deselect — the Escape alternative for fullscreen browsers,
+          // where Escape exits fullscreen instead
+          select([], false);
+          break;
+        case 'KeyN': {
+          const tech = useGame.getState().info?.practiceTech;
+          if (tech) start({ kind: 'tech', tech });
+          break;
+        }
         case 'Space': {
           e.preventDefault();
           const order = ['digit', 'corner', 'center', 'color'] as const;
@@ -220,7 +236,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [input, erase, wipe, undo, redo, setMode, requestHint, select, selection, togglePause, convertMarks]);
+  }, [input, erase, wipe, undo, redo, setMode, requestHint, select, selection, togglePause, convertMarks, start]);
 
   return (
     <div className="app">
@@ -322,7 +338,10 @@ export default function App() {
             <button onClick={() => setDialog('new')}>
               <span className="menu-icon">▦</span>New
             </button>
-            <button onClick={() => setDialog('practice')}>
+            <button
+              className={info?.practiceTech ? 'active' : ''}
+              onClick={() => setDialog('practice')}
+            >
               <span className="menu-icon">🎯</span>Practice
             </button>
             <button onClick={() => setDialog('io')}>
@@ -335,7 +354,20 @@ export default function App() {
               <span className="menu-icon">↺</span>Restart
             </button>
           </div>
-          <Controls onShowSteps={info && !custom ? () => setDialog('steps') : undefined} />
+          <Controls
+            onShowSteps={info && !custom ? () => setDialog('steps') : undefined}
+            onScan={info && !custom ? () => setDialog('scan') : undefined}
+          />
+          {info?.practiceTech && !custom && (
+            <div className="practice-bar">
+              <span>
+                Practicing <strong>{TECHS[info.practiceTech].name}</strong>
+              </span>
+              <button onClick={() => start({ kind: 'tech', tech: info.practiceTech! })}>
+                Next puzzle (N)
+              </button>
+            </div>
+          )}
           <HintPanel />
           {custom && (
             <div className="hint-panel">
@@ -423,6 +455,7 @@ export default function App() {
       {dialog === 'io' && <ImportDialog onClose={() => setDialog('none')} />}
       {dialog === 'share' && <ShareDialog onClose={() => setDialog('none')} />}
       {dialog === 'steps' && <SolutionPathDialog onClose={() => setDialog('none')} />}
+      {dialog === 'scan' && <ScanDialog onClose={() => setDialog('none')} />}
       {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
       {dialog === 'info' && <InfoDialog onClose={() => setDialog('none')} />}
       {dialog === 'restart' && (

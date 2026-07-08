@@ -139,6 +139,8 @@ interface GameStore {
   loadPosition: (encoded: string) => boolean;
   /** flag the game as assisted (e.g. the solution path was viewed) */
   markAssisted: () => void;
+  /** display an arbitrary step as the current full hint (used by Scan) */
+  showStep: (step: Step) => void;
   /** set the board to the position just before solve-path step `k` —
    *  study aid; marks the game assisted and turns auto candidates on */
   jumpToStep: (k: number) => void;
@@ -790,6 +792,8 @@ export const useGame = create<GameStore>()(
       },
 
       markAssisted: () => set({ assisted: true }),
+
+      showStep: (step) => set({ hint: step, hintStage: 'full', assisted: true }),
 
       jumpToStep: (k) => {
         const s = get();
