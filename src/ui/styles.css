@@ -501,6 +501,12 @@ body {
 .hint-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* the victory card is fully centred — its buttons should be too */
+.victory .hint-actions {
+  justify-content: center;
 }
 
 .hint-actions button {
