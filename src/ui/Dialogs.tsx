@@ -11,6 +11,7 @@ import {
   stepMatchesSolution,
   centreMarkSlip
 } from '../state/gameStore';
+import { useSettings } from '../state/settings';
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
@@ -300,6 +301,7 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
   const cells = useGame((s) => s.cells);
   const auto = useGame((s) => s.autoCandidates);
   const solution = useGame((s) => s.info?.solution);
+  const foldCorner = useSettings((s) => s.cornerMarksExhaustive);
   const markAssisted = useGame((s) => s.markAssisted);
   const showStep = useGame((s) => s.showStep);
   const [steps, setSteps] = useState<Step[] | null>(null);
@@ -309,15 +311,15 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
     markAssisted();
     // defer the finder sweep so the dialog paints first
     const t = setTimeout(() => {
-      // a centre mark that dropped a true digit corrupts the scan — say so
-      if (solution && !auto && centreMarkSlip(cells, solution) >= 0) {
+      // a mark that dropped a true digit corrupts the scan — say so
+      if (solution && !auto && centreMarkSlip(cells, solution, foldCorner) >= 0) {
         setSlip(true);
         setSteps([]);
         return;
       }
       // reason from the player's candidates; drop any step the wrong marks
       // faked (unsound vs the solution) so only real options are listed
-      const all = findAllSteps(solverGrid(cells, auto)).filter(
+      const all = findAllSteps(solverGrid(cells, auto, foldCorner)).filter(
         (st) => !solution || stepMatchesSolution(st, solution)
       );
       setSteps(all);

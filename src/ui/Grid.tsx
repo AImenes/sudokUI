@@ -167,7 +167,9 @@ const TIPS = [
   'The address bar link always carries this exact puzzle',
   'Practice can start from the very beginning — see Settings',
   'Finish without Hint or Check for a certified clean solve',
-  'Ctrl+A selects the board — Fill then rebuilds every mark'
+  'Ctrl+A selects the board — Fill then rebuilds every mark',
+  'Hint reads your centre marks — your eliminations carry over',
+  'Scan lists every technique on the board, not just the cheapest'
 ];
 
 /** Text colour for a candidate sitting on a hint circle: dark on the amber

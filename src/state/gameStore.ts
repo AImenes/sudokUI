@@ -73,12 +73,20 @@ export function engineGrid(cells: CellState[]): Grid {
  * so this is identical to `engineGrid`. Marks are only intersected with the
  * canonical set, never allowed to add an impossible candidate.
  */
-export function solverGrid(cells: CellState[], autoCandidates: boolean): Grid {
+export function solverGrid(
+  cells: CellState[],
+  autoCandidates: boolean,
+  foldCorner = false
+): Grid {
   const g = engineGrid(cells);
   if (autoCandidates) return g;
   for (let i = 0; i < 81; i++) {
-    if (cells[i].value || !cells[i].center) continue;
-    const folded = g.cands[i] & cells[i].center;
+    if (cells[i].value) continue;
+    // centre marks are always exhaustive; corner marks only when the player
+    // has declared they fill every candidate there (Settings)
+    const mask = foldCorner ? cells[i].center | cells[i].corner : cells[i].center;
+    if (!mask) continue;
+    const folded = g.cands[i] & mask;
     if (folded) g.cands[i] = folded; // never zero a cell; the solution guard
     // in the callers catches a mark that dropped the true digit
   }
@@ -99,13 +107,17 @@ export function stepMatchesSolution(step: Step, solution: string): boolean {
   return true;
 }
 
-/** The cell where a centre mark has dropped the true solution digit, or -1.
- *  Such a slip means the player's candidate set is wrong; Check pinpoints it. */
-export function centreMarkSlip(cells: CellState[], solution: string): number {
+/** The cell where an exhaustive mark has dropped the true solution digit, or
+ *  -1. Such a slip means the player's candidate set is wrong; Check pinpoints
+ *  it. Mirrors {@link solverGrid}: corner marks only count when declared
+ *  exhaustive. */
+export function centreMarkSlip(cells: CellState[], solution: string, foldCorner = false): number {
   for (let i = 0; i < 81; i++) {
     const c = cells[i];
-    if (c.value || !c.center) continue;
-    if (!(c.center & bit(Number(solution[i])))) return i;
+    if (c.value) continue;
+    const mask = foldCorner ? c.center | c.corner : c.center;
+    if (!mask) continue;
+    if (!(mask & bit(Number(solution[i])))) return i;
   }
   return -1;
 }
@@ -728,10 +740,11 @@ export const useGame = create<GameStore>()(
         const s = get();
         if (!s.info || s.won) return;
         const sol = s.info.solution;
-        // a centre mark that dropped the true digit corrupts the candidate
-        // set — don't reason from it; that slip is Check's job to pinpoint
+        const foldCorner = useSettings.getState().cornerMarksExhaustive;
+        // a mark that dropped the true digit corrupts the candidate set —
+        // don't reason from it; that slip is Check's job to pinpoint
         if (!s.autoCandidates) {
-          const slip = centreMarkSlip(s.cells, sol);
+          const slip = centreMarkSlip(s.cells, sol, foldCorner);
           if (slip >= 0) {
             set({
               hint: null,
@@ -742,8 +755,8 @@ export const useGame = create<GameStore>()(
             return;
           }
         }
-        // reason from the player's own candidates (centre marks folded in)
-        const step = findNextStep(solverGrid(s.cells, s.autoCandidates));
+        // reason from the player's own candidates (marks folded in)
+        const step = findNextStep(solverGrid(s.cells, s.autoCandidates, foldCorner));
         if (step && stepMatchesSolution(step, sol)) {
           // even the technique's name is information — no longer a clean solve
           set({ hint: step, hintStage: 'tech', assisted: true });

@@ -102,13 +102,23 @@ export function Controls({
         ))}
       </div>
 
+      {/* notation & history — none of these affect a clean or pure solve */}
       <div className="action-row">
         <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩ Undo</button>
         <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪ Redo</button>
         <button onClick={erase} title={eraseTitle(effectiveMode, autoCandidates)}>⌫ Erase</button>
+        <button
+          onClick={convertMarks}
+          title="Swap corner and centre marks (S) — with cells selected, only those are converted"
+        >
+          ⇄ Swap
+        </button>
       </div>
 
-      <div className="row-caption">Assist</div>
+      <div className="row-caption">
+        Assist
+        <small>reveals reasoning · ends a clean solve</small>
+      </div>
       <div className="action-row">
         <button onClick={requestHint} title="Hint (H) — names the technique first, reveals it only if you ask">💡 Hint</button>
         <button onClick={check} title="Check values and candidate lists against the solution">✓ Check</button>
@@ -130,7 +140,10 @@ export function Controls({
         )}
       </div>
 
-      <div className="row-caption">Candidates</div>
+      <div className="row-caption">
+        Candidates
+        <small>does your bookkeeping · ends a pure solve</small>
+      </div>
       <div className="action-row">
         <button
           className={autoCandidates ? 'toggled' : ''}
@@ -148,12 +161,6 @@ export function Controls({
           title={`Fill ${effectiveMode === 'corner' ? 'corner' : 'centre'} marks with all candidates — with several cells selected, only those are filled`}
         >
           ✎ Fill
-        </button>
-        <button
-          onClick={convertMarks}
-          title="Swap corner and centre marks (S) — with cells selected, only those are converted"
-        >
-          ⇄ Swap
         </button>
       </div>
 

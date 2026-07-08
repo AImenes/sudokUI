@@ -33,6 +33,11 @@ interface Settings {
   hideRating: boolean;
   /** show Nutella, the resident poodle, beneath the board */
   showPoodle: boolean;
+  /** treat CORNER marks as a complete candidate list too, so Hint and Scan
+   *  fold their eliminations in. Off by default: corner marks are Snyder
+   *  notation (partial), where a missing digit means nothing. Only turn this
+   *  on if you actually fill every candidate in the corner layer. */
+  cornerMarksExhaustive: boolean;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -51,6 +56,7 @@ export const useSettings = create<Settings>()(
       autoOffPromptDone: false,
       hideRating: false,
       showPoodle: false,
+      cornerMarksExhaustive: false,
       toggleTheme: () =>
         set((s) => ({
           theme: s.theme === 'dark' ? 'light' : s.theme === 'light' ? 'rose' : 'dark'
