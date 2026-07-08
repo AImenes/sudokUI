@@ -139,6 +139,24 @@ export function findNextStep(g: Grid, order: Tech[] = SOLVE_ORDER): Step | null 
   return null;
 }
 
+/**
+ * Every technique that fires in this exact position, cheapest first — one
+ * step per technique. The solve path always takes the cheapest, but a human
+ * may prefer the pattern they are better at spotting; this shows the whole
+ * menu. Runs every enabled finder once, so expect ~100–400 ms on hard
+ * positions.
+ */
+export function findAllSteps(g: Grid, order: Tech[] = SOLVE_ORDER): Step[] {
+  const out: Step[] = [];
+  for (const tech of order) {
+    const finder = FINDERS[tech];
+    if (!finder) continue;
+    const step = finder(g);
+    if (step) out.push(step);
+  }
+  return out;
+}
+
 /** Apply a step to the grid: eliminations strip candidate bits, placements
  *  set values (which also strips the digit from all peers). */
 export function applyStep(g: Grid, step: Step): void {

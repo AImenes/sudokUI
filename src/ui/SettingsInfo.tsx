@@ -149,14 +149,16 @@ const SHORTCUTS: [string, string][] = [
   ['Click + drag', 'Select multiple cells'],
   ['Ctrl/Cmd + click', 'Add cells to the selection'],
   ['Double-click a digit', 'Select every cell with that digit'],
-  ['Backspace / Delete', "Erase the current mode's layer"],
-  ['Shift + Backspace', 'Wipe a cell completely'],
-  ['Ctrl/Cmd + A', 'Select every cell (then Erase or Shift+Backspace acts board-wide)'],
+  ['Backspace / Delete', 'Erase the active layer — hold Shift for corner marks, Ctrl for centre, both for colours'],
+  ['W', 'Wipe the selected cells completely'],
+  ['Ctrl/Cmd + A', 'Select every cell (Erase and W then act board-wide)'],
   ['Ctrl/Cmd + Z · Y', 'Undo · Redo'],
   ['H', 'Hint'],
   ['S', 'Swap corner ↔ centre marks (selection, or the whole board)'],
+  ['N', 'Next practice puzzle (in practice mode)'],
   ['P', 'Pause'],
-  ['Escape', 'Close a dialog / clear the selection']
+  ['D or Escape', 'Clear the selection (D works in fullscreen, where Escape leaves fullscreen)'],
+  ['Shift + click', 'Add a cell to the selection — or remove one that is already selected']
 ];
 
 export function InfoDialog({ onClose }: { onClose: () => void }) {

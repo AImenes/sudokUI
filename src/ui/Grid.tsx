@@ -404,10 +404,19 @@ export function Grid() {
         }, 500)
       };
     }
+    // read the live selection (not this render's snapshot) so back-to-back
+    // interactions resolve against the current state
+    const sel = useGame.getState().selection;
     // tapping the lone selected cell deselects it — on touch there is no
     // Escape key, so this is the way out of a highlight
-    if (!additive.current && selection.length === 1 && selection[0] === cell) {
+    if (!additive.current && sel.length === 1 && sel[0] === cell) {
       select([], false);
+      return;
+    }
+    // modifier-clicking an already-selected cell removes it from the
+    // selection instead of re-adding it
+    if (additive.current && sel.includes(cell)) {
+      select(sel.filter((i) => i !== cell), false);
       return;
     }
     select([cell], additive.current);
