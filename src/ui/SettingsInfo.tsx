@@ -227,9 +227,11 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
       </table>
       <p className="dialog-note">
         On touch devices: tap to select, drag to multi-select, and use the
-        on-screen mode and number buttons. Everything works offline once the
-        app has loaded — install it from your browser menu for a full-screen
-        experience.
+        on-screen mode and number buttons. Tap the selected cell again — or
+        anywhere beside the board — to clear the highlight, and long-press a
+        digit to highlight all of its cells. Everything works
+        offline once the app has loaded — install it from your browser menu
+        (on iPhone: Share → Add to Home Screen) for a full-screen experience.
       </p>
       <p className="dialog-note">
         sudokUI is open source —{' '}

@@ -2,7 +2,7 @@
 // generation progress and victory — plus useNewGame, the hook that ties the
 // puzzle pools, the generation worker and the game store together.
 import React, { useState, useEffect } from 'react';
-import { useGame, validatePuzzle, solvePath } from '../state/gameStore';
+import { useGame, validatePuzzle, solvePath, encodePosition } from '../state/gameStore';
 import { Step } from '../engine/steps';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
@@ -323,18 +323,24 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
 export function ShareDialog({ onClose }: { onClose: () => void }) {
   const cells = useGame((s) => s.cells);
+  const autoCandidates = useGame((s) => s.autoCandidates);
   const [copied, setCopied] = useState('');
 
   const currentAsString = () =>
     cells.map((c) => (c.given ? String(c.value) : '.')).join('');
 
+  const base = () => `${window.location.origin}${window.location.pathname}`;
   // the puzzle string doubles as the seed: anyone opening this link plays
   // the exact same game
-  const shareLink = () =>
-    `${window.location.origin}${window.location.pathname}#p=${currentAsString()}`;
+  const shareLink = () => `${base()}#p=${currentAsString()}`;
+  // the position link additionally carries every entry, pencil mark,
+  // exclusion and colour — the recipient continues exactly where you are
+  const positionLink = () => `${base()}#s=${encodePosition(cells, autoCandidates)}`;
 
-  const copy = (what: 'link' | 'string') => {
-    navigator.clipboard?.writeText(what === 'link' ? shareLink() : currentAsString());
+  const copy = (what: 'link' | 'position' | 'string') => {
+    navigator.clipboard?.writeText(
+      what === 'link' ? shareLink() : what === 'position' ? positionLink() : currentAsString()
+    );
     setCopied(what);
     setTimeout(() => setCopied(''), 2000);
   };
@@ -342,15 +348,20 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Share this puzzle" onClose={onClose}>
       <p className="dialog-note">
-        Friends, streams, classrooms: anyone opening the link gets exactly
-        this puzzle. The address bar always carries it too.
+        <strong>Puzzle</strong> shares a fresh copy from the start.{' '}
+        <strong>Position</strong> shares it exactly as it stands — your
+        entries, pencil marks and colours included — for a second opinion or
+        a race from the same spot.
       </p>
       <div className="hint-actions">
         <button onClick={() => copy('link')}>
-          {copied === 'link' ? '✓ Copied' : '🔗 Copy link'}
+          {copied === 'link' ? '✓ Copied' : '🔗 Puzzle link'}
+        </button>
+        <button onClick={() => copy('position')}>
+          {copied === 'position' ? '✓ Copied' : '📍 Position link'}
         </button>
         <button className="ghost" onClick={() => copy('string')}>
-          {copied === 'string' ? '✓ Copied' : 'Copy puzzle string'}
+          {copied === 'string' ? '✓ Copied' : 'Puzzle string'}
         </button>
       </div>
     </Modal>

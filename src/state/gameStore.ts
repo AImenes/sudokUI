@@ -134,6 +134,9 @@ interface GameStore {
   applyHint: () => void;
   dismissHint: () => void;
   check: () => void;
+  /** restore a full shared position from an `#s=` link payload; false if
+   *  the payload is corrupt or its givens are not a proper puzzle */
+  loadPosition: (encoded: string) => boolean;
   /** flag the game as assisted (e.g. the solution path was viewed) */
   markAssisted: () => void;
   /** set the board to the position just before solve-path step `k` —
@@ -767,6 +770,25 @@ export const useGame = create<GameStore>()(
 
       dismissRevert: () => set({ revertIndex: null }),
 
+      loadPosition: (encoded) => {
+        const decoded = decodePosition(encoded);
+        if (!decoded) return false;
+        const givens = decoded.cells
+          .map((c) => (c.given ? String(c.value) : '.'))
+          .join('');
+        const v = validatePuzzle(givens);
+        if (!v.ok) return false;
+        // start the underlying game (computes the solution), then overlay
+        // the shared progress: entries, marks, exclusions and colours
+        get().startGame(givens, v.score, v.level);
+        set({
+          cells: decoded.cells,
+          autoCandidates: decoded.autoCandidates,
+          notice: 'Shared position loaded — entries, marks and colours included'
+        });
+        return true;
+      },
+
       markAssisted: () => set({ assisted: true }),
 
       jumpToStep: (k) => {
@@ -860,6 +882,99 @@ export function solvePath(puzzle: string): Step[] {
     pathCache = { puzzle, steps: rating?.steps ?? [] };
   }
   return pathCache.steps;
+}
+
+/* ---------- shareable position links (#s=<payload>) ----------
+ * The full board state — entries, corner/centre marks, exclusions, colours
+ * and the auto-candidates flag — bit-packed into a URL-safe string, so a
+ * half-solved puzzle can be handed to someone exactly as it stands.
+ * Worst case ≈ 450 characters; messengers handle that fine. */
+
+const B64URL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const SHARE_VERSION = 1;
+
+class BitWriter {
+  private bits: number[] = [];
+  write(value: number, width: number) {
+    for (let i = width - 1; i >= 0; i--) this.bits.push((value >> i) & 1);
+  }
+  toString() {
+    let out = '';
+    for (let i = 0; i < this.bits.length; i += 6) {
+      let v = 0;
+      for (let j = 0; j < 6; j++) v = (v << 1) | (this.bits[i + j] ?? 0);
+      out += B64URL[v];
+    }
+    return out;
+  }
+}
+
+class BitReader {
+  private bits: number[] = [];
+  private pos = 0;
+  constructor(s: string) {
+    for (const ch of s) {
+      const v = B64URL.indexOf(ch);
+      if (v < 0) throw new Error('bad character');
+      for (let i = 5; i >= 0; i--) this.bits.push((v >> i) & 1);
+    }
+  }
+  read(width: number) {
+    let v = 0;
+    for (let i = 0; i < width; i++) v = (v << 1) | (this.bits[this.pos++] ?? 0);
+    return v;
+  }
+}
+
+/** Pack a position for sharing. Layout per cell: given(1) value(4)
+ *  colours(9), plus corner/centre/excluded (9 each) for open cells. */
+export function encodePosition(cells: CellState[], autoCandidates: boolean): string {
+  const w = new BitWriter();
+  w.write(SHARE_VERSION, 4);
+  w.write(autoCandidates ? 1 : 0, 1);
+  for (const c of cells) {
+    w.write(c.given ? 1 : 0, 1);
+    w.write(c.value, 4);
+    let colorMask = 0;
+    for (const k of c.colors) colorMask |= 1 << k;
+    w.write(colorMask, 9);
+    if (!c.given && c.value === 0) {
+      w.write(c.corner, 9);
+      w.write(c.center, 9);
+      w.write(c.excluded, 9);
+    }
+  }
+  return w.toString();
+}
+
+/** Inverse of encodePosition; null for corrupt or foreign payloads. */
+export function decodePosition(
+  encoded: string
+): { cells: CellState[]; autoCandidates: boolean } | null {
+  try {
+    const r = new BitReader(encoded);
+    if (r.read(4) !== SHARE_VERSION) return null;
+    const autoCandidates = r.read(1) === 1;
+    const cells: CellState[] = [];
+    for (let i = 0; i < 81; i++) {
+      const given = r.read(1) === 1;
+      const value = r.read(4);
+      if (value > 9 || (given && value === 0)) return null;
+      const colorMask = r.read(9);
+      const colors: number[] = [];
+      for (let k = 0; k < 9; k++) if (colorMask & (1 << k)) colors.push(k);
+      const cell: CellState = { given, value, corner: 0, center: 0, excluded: 0, colors };
+      if (!given && value === 0) {
+        cell.corner = r.read(9);
+        cell.center = r.read(9);
+        cell.excluded = r.read(9);
+      }
+      cells.push(cell);
+    }
+    return { cells, autoCandidates };
+  } catch {
+    return null;
+  }
 }
 
 export type PuzzleValidation =
