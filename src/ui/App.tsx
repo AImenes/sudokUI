@@ -84,11 +84,14 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // boot: a shared link (#p=<81 chars>) wins over everything; otherwise a
-  // saved game resumes, otherwise start an easy one. StrictMode-guarded.
+  // boot: a shared link wins over everything — #s= carries a full position
+  // (entries, marks, colours), #p= just the puzzle; otherwise a saved game
+  // resumes, otherwise start an easy one. StrictMode-guarded.
   useEffect(() => {
     if ((window as any).__sudokuiBooted) return;
     (window as any).__sudokuiBooted = true;
+    const sharedPosition = new URLSearchParams(window.location.hash.slice(1)).get('s');
+    if (sharedPosition && useGame.getState().loadPosition(sharedPosition)) return;
     const shared = new URLSearchParams(window.location.hash.slice(1)).get('p');
     if (shared && shared !== useGame.getState().info?.puzzle) {
       const cleaned = shared.replace(/[^0-9.]/g, '');
