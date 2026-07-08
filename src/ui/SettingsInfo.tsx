@@ -134,6 +134,12 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </label>
+      <Toggle
+        label="Corner marks are a complete list"
+        hint="Hint and Scan already read your centre marks. Turn this on only if you also fill every candidate in the corner layer — then they read those too. Leave off for Snyder notation, where a missing corner mark means nothing."
+        value={s.cornerMarksExhaustive}
+        onChange={(v) => s.set({ cornerMarksExhaustive: v })}
+      />
     </Modal>
   );
 }
@@ -185,12 +191,15 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
         and candidate lists that lost the true digit.
       </p>
       <p className="dialog-note">
+        The <strong>highlight you use changes what the engine sees.</strong>{' '}
         <strong>Hint</strong> and <strong>Scan</strong> read your{' '}
         <strong>centre</strong> marks as an exhaustive list, so they continue
         from the eliminations you have already made rather than re-suggesting
         them. Corner marks are Snyder-style (partial) — their absence can't
-        mean "eliminated", so press <em>Swap</em> to move them into the centre
-        layer if you want them counted.
+        mean "eliminated", so press <em>Swap</em> to move them into centre, or,
+        if you fill every candidate in corners, turn on{' '}
+        <em>"Corner marks are a complete list"</em> in Settings to have them
+        counted too.
       </p>
 
       <h4 className="setting-group">Difficulty rating</h4>

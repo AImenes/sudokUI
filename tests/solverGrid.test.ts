@@ -57,6 +57,29 @@ describe('solverGrid + hint guards', () => {
     expect(solverGrid(cells, true).cands[i]).toBe(canon);
   });
 
+  it('folds corner marks only when they are declared exhaustive', () => {
+    const cells = cellsOf(EASY);
+    const i = cells.findIndex((c) => !c.value);
+    const canon = engineGrid(cells).cands[i];
+    const digits = [...Array(9)].map((_, d) => d + 1).filter((d) => canon & bit(d));
+    expect(digits.length).toBeGreaterThan(1);
+    cells[i].corner = bit(digits[0]); // a Snyder-style corner mark
+    // default: corner marks are partial, so they are ignored
+    expect(solverGrid(cells, false).cands[i]).toBe(canon);
+    // declared exhaustive: corner marks fold in as eliminations
+    expect(solverGrid(cells, false, true).cands[i]).toBe(bit(digits[0]));
+  });
+
+  it('a corner-mark slip is only seen when corner marks are exhaustive', () => {
+    const cells = cellsOf(EASY);
+    const sol = gridToString(solve(parseGrid(EASY)!)!);
+    const i = cells.findIndex((c) => !c.value);
+    // corner marks that omit the true digit
+    cells[i].corner = engineGrid(cells).cands[i] & ~bit(Number(sol[i]));
+    expect(centreMarkSlip(cells, sol, false)).toBe(-1); // partial: no slip
+    expect(centreMarkSlip(cells, sol, true)).toBe(i); // exhaustive: caught
+  });
+
   it('never lets a mark add an impossible candidate', () => {
     const cells = cellsOf(EASY);
     const i = cells.findIndex((c) => !c.value);
