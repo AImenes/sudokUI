@@ -71,15 +71,24 @@ const LEVEL_DESCRIPTIONS: Record<Level, string> = {
 export function NewGameDialog({
   onClose,
   onStart,
-  onCustom
+  onCustom,
+  onDaily
 }: {
   onClose: () => void;
   onStart: (level: Level) => void;
   onCustom: () => void;
+  onDaily: () => void;
 }) {
   return (
     <Modal title="New game" onClose={onClose}>
       <div className="level-list">
+        <button className="level-btn daily" onClick={onDaily}>
+          <strong>Daily puzzle</strong>
+          <span>
+            One shared puzzle per day — everyone in the world gets this exact
+            board today. Compare times with your friends
+          </span>
+        </button>
         <button
           className="level-btn surprise"
           onClick={() => onStart(LEVELS[Math.floor(Math.random() * LEVELS.length)])}
@@ -115,7 +124,6 @@ export function NewGameDialog({
 export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onStart: (tech: Tech) => void }) {
   const byCategory = new Map<Category, Tech[]>();
   for (const tech of ALL_TECHS) {
-    if (TECHS[tech].category === 'Last Resort') continue;
     const cat = TECHS[tech].category;
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat)!.push(tech);
@@ -127,9 +135,9 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
       <p className="dialog-note">
         sudokUI generates a puzzle whose solution path requires the chosen
         technique — with nothing harder needed before it — and skips you to
-        the position where it applies. Techniques marked ✗ or ≈ are shown for
-        completeness but deliberately not playable: hover them to see why.
-        The number on each technique is its rating cost: a puzzle's
+        the position where it applies. Techniques marked ✗, ≈ or ⚙ are shown
+        for completeness but deliberately not playable: hover them to see
+        why. The number on each technique is its rating cost: a puzzle's
         difficulty rating is the sum of these over its solve path.
       </p>
       <p className="tech-count">
@@ -143,25 +151,42 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
               {techs.map((tech) => {
                 const info = TECHS[tech];
                 const ok = PRACTICE_TECHS.includes(tech);
-                // implemented but disabled = mathematically redundant (large
-                // fish): the solver knows it, but it never appears in a solve
-                // path, so there is nothing to practise
-                const redundant = !ok && info.implemented;
+                // three honest reasons a technique can't be practised:
+                // ⚙ last resorts — the solver uses them, but there is no
+                //   pattern to SPOT (they try candidates and propagate), and
+                //   Exocet-grade patterns are too rare to generate on demand;
+                // ≈ provably redundant — never appears in any solve path;
+                // ✗ deliberately not implemented.
+                const lastResort =
+                  !ok && info.category === 'Last Resort' && info.implemented && info.enabled;
+                const redundant = !ok && !lastResort && info.implemented;
                 return (
                   <button
                     key={tech}
                     disabled={!ok}
-                    className={ok ? '' : redundant ? 'tech-redundant' : 'tech-missing'}
+                    className={
+                      ok ? '' : lastResort ? 'tech-lastresort' : redundant ? 'tech-redundant' : 'tech-missing'
+                    }
                     onClick={() => ok && onStart(tech)}
                     title={
                       ok
                         ? `Score ${info.score} · ${info.level}`
-                        : redundant
-                          ? `${info.name} is implemented, but provably redundant — its conclusions are always found by earlier techniques, so it never appears in a solve path`
-                          : `${info.name} is deliberately not implemented — everything it can find, the AIC/ALS chain engines already find. It stays in the catalogue (score ${info.score}, ${info.level}) so the map of sudoku techniques is complete.`
+                        : lastResort
+                          ? `${info.name} is implemented and the solver uses it on the hardest puzzles — but there is nothing to spot: it assumes candidates and propagates, so practising it would just be trial and error`
+                          : redundant
+                            ? `${info.name} is implemented, but provably redundant — its conclusions are always found by earlier techniques, so it never appears in a solve path`
+                            : `${info.name} is deliberately not implemented — everything it can find, the AIC/ALS chain engines already find. It stays in the catalogue (score ${info.score}, ${info.level}) so the map of sudoku techniques is complete.`
                     }
                   >
-                    {ok ? '' : redundant ? <span className="tech-tilde">≈ </span> : <span className="tech-x">✗ </span>}
+                    {ok ? (
+                      ''
+                    ) : lastResort ? (
+                      <span className="tech-gear">⚙ </span>
+                    ) : redundant ? (
+                      <span className="tech-tilde">≈ </span>
+                    ) : (
+                      <span className="tech-x">✗ </span>
+                    )}
                     {info.name}
                     <span className="tech-score">{info.score}</span>
                     {ok && poolSize(techKey(tech)) > 0 && (

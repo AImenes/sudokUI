@@ -208,7 +208,8 @@ function renderMarks(
   x: number,
   y: number,
   marks: Map<number, string> | undefined,
-  hlDigit = 0
+  hlDigit = 0,
+  frame = false
 ): React.ReactNode {
   const cornerDs = digitsOf(cell.corner);
   const centerDs = digitsOf(cell.center);
@@ -219,17 +220,30 @@ function renderMarks(
   const hl = (d: number) => d === hlDigit && !marks?.has(d);
 
   const gridText = (d: number, bold: boolean) => (
-    <text
-      key={`g${d}`}
-      x={x + candX(d)}
-      y={y + candY(d)}
-      textAnchor="middle"
-      fontSize={23}
-      fontWeight={marks?.has(d) ? 700 : hl(d) ? 700 : bold ? 600 : 400}
-      fill={marks?.has(d) ? hintTextFill(marks.get(d)!) : hl(d) ? 'var(--accent)' : 'var(--cand)'}
-    >
-      {d}
-    </text>
+    <React.Fragment key={`g${d}`}>
+      {hl(d) && frame && (
+        <rect
+          x={x + candX(d) - 11}
+          y={y + candY(d) - 19}
+          width={22}
+          height={25}
+          rx={5}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth={1.6}
+        />
+      )}
+      <text
+        x={x + candX(d)}
+        y={y + candY(d)}
+        textAnchor="middle"
+        fontSize={23}
+        fontWeight={marks?.has(d) ? 700 : hl(d) ? 700 : bold ? 600 : 400}
+        fill={marks?.has(d) ? hintTextFill(marks.get(d)!) : hl(d) ? 'var(--accent)' : 'var(--cand)'}
+      >
+        {d}
+      </text>
+    </React.Fragment>
   );
 
   // joined digit runs keep their layout; a matching digit gets its own tspan
@@ -268,17 +282,30 @@ function renderMarks(
     return (
       <>
         {cornerDs.slice(0, 8).map((d, k) => (
-          <text
-            key={`p${d}`}
-            x={x + PERIMETER[k][0]}
-            y={y + PERIMETER[k][1]}
-            textAnchor="middle"
-            fontSize={21}
-            fontWeight={hl(d) ? 700 : 600}
-            fill={hl(d) ? 'var(--accent)' : 'var(--cand)'}
-          >
-            {d}
-          </text>
+          <React.Fragment key={`p${d}`}>
+            {hl(d) && frame && (
+              <rect
+                x={x + PERIMETER[k][0] - 10}
+                y={y + PERIMETER[k][1] - 17}
+                width={20}
+                height={22}
+                rx={5}
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth={1.6}
+              />
+            )}
+            <text
+              x={x + PERIMETER[k][0]}
+              y={y + PERIMETER[k][1]}
+              textAnchor="middle"
+              fontSize={21}
+              fontWeight={hl(d) ? 700 : 600}
+              fill={hl(d) ? 'var(--accent)' : 'var(--cand)'}
+            >
+              {d}
+            </text>
+          </React.Fragment>
         ))}
         {centerLine ?? (
           <text
@@ -315,7 +342,7 @@ export function Grid() {
   const paused = useGame((s) => s.paused);
   const won = useGame((s) => s.won);
   const togglePause = useGame((s) => s.togglePause);
-  const { highlightPeers, highlightSameDigit, showPoodle } = useSettings();
+  const { highlightPeers, highlightSameDigit, showPoodle, frameHighlights } = useSettings();
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragging = useRef(false);
@@ -576,26 +603,39 @@ export function Grid() {
                   </text>
                 ) : candDisplay ? (
                   digitsOf(candDisplay).map((d) => (
-                    <text
-                      key={d}
-                      x={x + candX(d)}
-                      y={y + candY(d)}
-                      textAnchor="middle"
-                      fontSize={23}
-                      fontWeight={marks?.has(d) ? 700 : d === hlDigit ? 700 : 400}
-                      fill={
-                        marks?.has(d)
-                          ? hintTextFill(marks.get(d)!)
-                          : d === hlDigit
-                            ? 'var(--accent)'
-                            : 'var(--cand)'
-                      }
-                    >
-                      {d}
-                    </text>
+                    <React.Fragment key={d}>
+                      {d === hlDigit && frameHighlights && !marks?.has(d) && (
+                        <rect
+                          x={x + candX(d) - 11}
+                          y={y + candY(d) - 19}
+                          width={22}
+                          height={25}
+                          rx={5}
+                          fill="none"
+                          stroke="var(--accent)"
+                          strokeWidth={1.6}
+                        />
+                      )}
+                      <text
+                        x={x + candX(d)}
+                        y={y + candY(d)}
+                        textAnchor="middle"
+                        fontSize={23}
+                        fontWeight={marks?.has(d) ? 700 : d === hlDigit ? 700 : 400}
+                        fill={
+                          marks?.has(d)
+                            ? hintTextFill(marks.get(d)!)
+                            : d === hlDigit
+                              ? 'var(--accent)'
+                              : 'var(--cand)'
+                        }
+                      >
+                        {d}
+                      </text>
+                    </React.Fragment>
                   ))
                 ) : (
-                  renderMarks(cell, x, y, marks, hlDigit)
+                  renderMarks(cell, x, y, marks, hlDigit, frameHighlights)
                 )}
               </g>
             );

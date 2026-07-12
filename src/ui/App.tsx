@@ -3,6 +3,7 @@
 // toast display and the first-visit bootstrap game.
 import React, { useEffect, useState } from 'react';
 import { useGame, rateImport } from '../state/gameStore';
+import { dailyPuzzle } from '../engine/daily';
 import { useSettings } from '../state/settings';
 import { Grid } from './Grid';
 import { Poodle } from './Poodle';
@@ -255,11 +256,11 @@ export default function App() {
           <div className="game-meta">
             {hideRating && !won ? (
               <button
-                className="score-btn"
+                className="score-btn hidden-rating"
                 onClick={() => setDialog('info')}
                 title="Difficulty hidden until you solve the puzzle (change in Settings)"
               >
-                <strong>???</strong>
+                <span className="level-badge level-hidden">🎲 hidden</span>
               </button>
             ) : (
               <>
@@ -291,16 +292,18 @@ export default function App() {
           <button
             className="icon-btn"
             onClick={toggleTheme}
-            title="Cycle theme: dark → daylight → rosé"
+            title="Cycle theme: dark → daylight → rosé → forest"
             aria-label={
               theme === 'dark'
                 ? 'Switch to daylight theme'
                 : theme === 'light'
                   ? 'Switch to rosé theme'
-                  : 'Switch to dark theme'
+                  : theme === 'rose'
+                    ? 'Switch to forest theme'
+                    : 'Switch to dark theme'
             }
           >
-            {theme === 'dark' ? '☀️' : theme === 'light' ? '🌸' : '🌙'}
+            {theme === 'dark' ? '☀️' : theme === 'light' ? '🌸' : theme === 'rose' ? '🌲' : '🌙'}
           </button>
           <button
             className="icon-btn"
@@ -439,6 +442,13 @@ export default function App() {
           onStart={(level) => {
             setDialog('none');
             start({ kind: 'level', level });
+          }}
+          onDaily={() => {
+            setDialog('none');
+            // deterministic: the same board for everyone on this UTC day
+            const d = dailyPuzzle();
+            useGame.getState().startGame(d.puzzle, d.score, d.level);
+            useGame.setState({ notice: `Daily puzzle ${d.dateKey} — the whole world plays this one` });
           }}
           onCustom={() => {
             setDialog('none');

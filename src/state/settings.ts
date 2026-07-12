@@ -5,7 +5,7 @@ import { persist } from 'zustand/middleware';
 
 export type MarkLayer = 'center' | 'corner';
 
-export type Theme = 'dark' | 'light' | 'rose';
+export type Theme = 'dark' | 'light' | 'rose' | 'forest';
 
 interface Settings {
   /** board theme: dark, daylight or rosé */
@@ -33,6 +33,9 @@ interface Settings {
   hideRating: boolean;
   /** show Nutella, the resident poodle, beneath the board */
   showPoodle: boolean;
+  /** draw a thin frame around highlighted candidates (the held digit's
+   *  pencil occurrences) — bold + colour alone can be hard to spot */
+  frameHighlights: boolean;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -51,9 +54,17 @@ export const useSettings = create<Settings>()(
       autoOffPromptDone: false,
       hideRating: false,
       showPoodle: false,
+      frameHighlights: true,
       toggleTheme: () =>
         set((s) => ({
-          theme: s.theme === 'dark' ? 'light' : s.theme === 'light' ? 'rose' : 'dark'
+          theme:
+            s.theme === 'dark'
+              ? 'light'
+              : s.theme === 'light'
+                ? 'rose'
+                : s.theme === 'rose'
+                  ? 'forest'
+                  : 'dark'
         })),
       set: (p) => set(p)
     }),
