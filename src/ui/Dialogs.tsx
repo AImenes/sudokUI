@@ -2,7 +2,16 @@
 // generation progress and victory — plus useNewGame, the hook that ties the
 // puzzle pools, the generation worker and the game store together.
 import React, { useState, useEffect } from 'react';
-import { useGame, validatePuzzle, solvePath, encodePosition, engineGrid } from '../state/gameStore';
+import {
+  useGame,
+  validatePuzzle,
+  solvePath,
+  encodePosition,
+  contractGrid,
+  hasManualMarks,
+  markSlip,
+  stepMatchesSolution
+} from '../state/gameStore';
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
@@ -288,56 +297,146 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
  * better at spotting, say, uniqueness patterns than wings: pick the step you
  * want and it is shown as a full hint on the board.
  */
+/**
+ * The two possible meanings of manual pencil marks — the one question the
+ * engine cannot answer itself. Shared by the Hint flow (as a dialog) and
+ * Scan (inline); the answer holds for the rest of the game.
+ */
+export function ContractChoices({ onAnswer }: { onAnswer: (c: 'exhaustive' | 'open') => void }) {
+  return (
+    <div className="level-list">
+      <button className="level-btn" onClick={() => onAnswer('exhaustive')}>
+        <strong>They are my remaining candidates</strong>
+        <span>
+          You filled candidates and have been eliminating — a missing digit in
+          a marked cell means you ruled it out. Hints continue from exactly
+          where you are. (Corner or centre makes no difference.)
+        </span>
+      </button>
+      <button className="level-btn" onClick={() => onAnswer('open')}>
+        <strong>They are partial notes</strong>
+        <span>
+          Snyder-style or still filling — a missing digit means nothing yet.
+          Hints reason from every remaining possibility instead.
+        </span>
+      </button>
+    </div>
+  );
+}
+
+/** Asked at most once per game, the first time Hint meets manual marks. */
+export function ContractDialog({
+  onAnswer,
+  onClose
+}: {
+  onAnswer: (c: 'exhaustive' | 'open') => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal title="How should hints read your pencil marks?" onClose={onClose}>
+      <p className="dialog-note">
+        A missing pencil mark can mean "eliminated" or just "not written yet" —
+        only you know which. Your answer is remembered for the rest of this
+        puzzle (Auto and Fill answer it automatically).
+      </p>
+      <ContractChoices onAnswer={onAnswer} />
+    </Modal>
+  );
+}
+
 export function ScanDialog({ onClose }: { onClose: () => void }) {
   const cells = useGame((s) => s.cells);
+  const auto = useGame((s) => s.autoCandidates);
+  const solution = useGame((s) => s.info?.solution);
+  const contract = useGame((s) => s.markContract);
+  const setMarkContract = useGame((s) => s.setMarkContract);
   const markAssisted = useGame((s) => s.markAssisted);
   const showStep = useGame((s) => s.showStep);
   const [steps, setSteps] = useState<Step[] | null>(null);
+  const [slip, setSlip] = useState(false);
+
+  // manual marks with no declared meaning: ask before scanning
+  const needsContract = !auto && contract === 'unknown' && hasManualMarks(cells);
 
   useEffect(() => {
+    if (needsContract) return; // the choices below re-trigger this effect
     markAssisted();
     // defer the finder sweep so the dialog paints first
-    const t = setTimeout(() => setSteps(findAllSteps(engineGrid(cells))), 30);
+    const t = setTimeout(() => {
+      // under the exhaustive contract a mark that lost its true digit means
+      // the scan would reason from a corrupted position — say so instead
+      if (solution && !auto && contract === 'exhaustive' && markSlip(cells, solution) >= 0) {
+        setSlip(true);
+        setSteps([]);
+        return;
+      }
+      // scan from the declared candidates; a step the marks faked (one that
+      // would contradict the solution) is silently dropped, never listed
+      const all = findAllSteps(contractGrid(cells, auto, contract)).filter(
+        (st) => !solution || stepMatchesSolution(st, solution)
+      );
+      setSteps(all);
+    }, 30);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [needsContract, contract]);
 
   return (
     <Modal title="What's in this position?" onClose={onClose}>
-      <p className="dialog-note">
-        Every technique the solver can apply right now, with your exact
-        candidates — cheapest first. Click one to see it highlighted on the
-        board. Counts as assistance.
-      </p>
-      {!steps ? (
-        <div className="spinner" />
-      ) : steps.length === 0 ? (
-        <p className="dialog-note">
-          Nothing fires here — check the candidates for mistakes.
-        </p>
+      {needsContract ? (
+        <>
+          <p className="dialog-note">
+            A missing pencil mark can mean "eliminated" or just "not written
+            yet" — only you know which. Your answer is remembered for the rest
+            of this puzzle.
+          </p>
+          <ContractChoices onAnswer={setMarkContract} />
+        </>
       ) : (
-        <div className="path-list">
-          {steps.map((step, i) => (
-            <div
-              key={i}
-              className="path-row"
-              role="button"
-              title={step.description}
-              onClick={() => {
-                showStep(step);
-                onClose();
-              }}
-            >
-              <span className="path-jump">+{TECHS[step.tech].score}</span>
-              <span className="path-label">{TECHS[step.tech].name}</span>
-              <span className="path-score">
-                {step.placements.length > 0 && `${step.placements.length} placed`}
-                {step.placements.length > 0 && step.eliminations.length > 0 && ' · '}
-                {step.eliminations.length > 0 && `${step.eliminations.length} removed`}
-              </span>
+        <>
+          <p className="dialog-note">
+            Every technique the solver can apply right now, with your exact
+            candidates — cheapest first. Click one to see it highlighted on
+            the board. Counts as assistance.
+          </p>
+          {!steps ? (
+            <div className="spinner" />
+          ) : slip ? (
+            <p className="dialog-note">
+              A pencil mark somewhere dropped a digit that belongs in the
+              solution — run Check to find it before scanning.
+            </p>
+          ) : steps.length === 0 ? (
+            <p className="dialog-note">
+              Nothing fires here — you may need a technique beyond the
+              catalogue's reach from this position, or a candidate is off
+              (run Check).
+            </p>
+          ) : (
+            <div className="path-list">
+              {steps.map((step, i) => (
+                <div
+                  key={i}
+                  className="path-row"
+                  role="button"
+                  title={step.description}
+                  onClick={() => {
+                    showStep(step);
+                    onClose();
+                  }}
+                >
+                  <span className="path-jump">+{TECHS[step.tech].score}</span>
+                  <span className="path-label">{TECHS[step.tech].name}</span>
+                  <span className="path-score">
+                    {step.placements.length > 0 && `${step.placements.length} placed`}
+                    {step.placements.length > 0 && step.eliminations.length > 0 && ' · '}
+                    {step.eliminations.length > 0 && `${step.eliminations.length} removed`}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </Modal>
   );

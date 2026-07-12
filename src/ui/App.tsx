@@ -17,7 +17,8 @@ import {
   GeneratingDialog,
   VictoryDialog,
   SolutionPathDialog,
-  ScanDialog
+  ScanDialog,
+  ContractDialog
 } from './Dialogs';
 import { SettingsDialog, InfoDialog } from './SettingsInfo';
 import { Modal } from './Dialogs';
@@ -64,6 +65,9 @@ export default function App() {
   const selection = useGame((s) => s.selection);
   const select = useGame((s) => s.select);
   const custom = useGame((s) => s.custom);
+  const contractPrompt = useGame((s) => s.contractPrompt);
+  const answerContract = useGame((s) => s.answerContract);
+  const dismissContractPrompt = useGame((s) => s.dismissContractPrompt);
   const convertMarks = useGame((s) => s.convertMarks);
   const startCustomEntry = useGame((s) => s.startCustomEntry);
   const cancelCustomEntry = useGame((s) => s.cancelCustomEntry);
@@ -456,6 +460,9 @@ export default function App() {
       {dialog === 'share' && <ShareDialog onClose={() => setDialog('none')} />}
       {dialog === 'steps' && <SolutionPathDialog onClose={() => setDialog('none')} />}
       {dialog === 'scan' && <ScanDialog onClose={() => setDialog('none')} />}
+      {contractPrompt && (
+        <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} />
+      )}
       {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
       {dialog === 'info' && <InfoDialog onClose={() => setDialog('none')} />}
       {dialog === 'restart' && (
