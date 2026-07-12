@@ -77,13 +77,13 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       />
       <Toggle
         label="Highlight matching digits"
-        hint="Tint every cell holding the selected digit — and light up its pencil marks, wherever you have written them"
+        hint="Tint every cell holding the selected digit, and light up its pencil marks wherever you have written them"
         value={s.highlightSameDigit}
         onChange={(v) => s.set({ highlightSameDigit: v })}
       />
       <Toggle
         label="Frame highlighted pencil marks"
-        hint="Draw a thin box around the lit-up candidates too — colour and bold alone can be easy to miss"
+        hint="Draw a thin box around the lit-up candidates too, since colour and bold alone are easy to miss"
         value={s.frameHighlights}
         onChange={(v) => s.set({ frameHighlights: v })}
       />
@@ -94,7 +94,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       />
       <Toggle
         label="Hide difficulty while playing"
-        hint="No badge, no rating — revealed when you solve the puzzle. Pairs well with 'Surprise me' in New game"
+        hint="No badge and no rating until you solve the puzzle. Pairs well with 'Surprise me' in New game"
         value={s.hideRating}
         onChange={(v) => s.set({ hideRating: v })}
       />
@@ -156,7 +156,7 @@ const SHORTCUTS: [string, string][] = [
   ['Click + drag', 'Select multiple cells'],
   ['Ctrl/Cmd + click', 'Add cells to the selection'],
   ['Double-click / long-press a digit', 'Select every cell with that digit'],
-  ['Backspace / Delete', 'Erase the active layer — hold Shift for corner marks, Ctrl for centre, both for colours'],
+  ['Backspace / Delete', 'Erase the active layer: hold Shift for corner marks, Ctrl for centre, both for colours'],
   ['W', 'Wipe the selected cells completely'],
   ['Ctrl/Cmd + A', 'Select every cell (Erase and W then act board-wide)'],
   ['Ctrl/Cmd + Z · Y', 'Undo · Redo'],
@@ -165,7 +165,7 @@ const SHORTCUTS: [string, string][] = [
   ['N', 'Next practice puzzle (in practice mode)'],
   ['P', 'Pause'],
   ['D or Escape', 'Clear the selection (D works in fullscreen, where Escape leaves fullscreen)'],
-  ['Shift + click', 'Add a cell to the selection — or remove one that is already selected']
+  ['Shift + click', 'Add a cell to the selection, or remove one that is already selected']
 ];
 
 export function InfoDialog({ onClose }: { onClose: () => void }) {
@@ -174,16 +174,16 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
       <h4 className="setting-group">Entry modes</h4>
       <p className="dialog-note">
         <strong>Digit</strong> places big numbers. <strong>Corner</strong> is
-        for Snyder-style notation — small marks at the digit's fixed 3×3 spot,
+        for Snyder-style notation: small marks at the digit's fixed 3×3 spot,
         meaningful by presence. <strong>Centre</strong> holds an exhaustive
-        candidate list — a missing digit means you have eliminated it.{' '}
+        candidate list, where a missing digit means you have eliminated it.{' '}
         <strong>Colour</strong> paints cells from a nine-colour palette (a
         cell can hold several colours).
       </p>
 
       <h4 className="setting-group">Candidates</h4>
       <p className="dialog-note">
-        <em>Fill</em> fills the current mode's layer — with cells selected,
+        <em>Fill</em> fills the current mode's layer; with cells selected,
         only those. <em>Auto</em> computes and maintains candidates for you;
         your centre-mark eliminations are adopted when you turn it on, and
         pencil input strikes candidates through while it's active. Turning it
@@ -201,14 +201,14 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
       </p>
       <table className="shortcut-table">
         <tbody>
-          <tr><td><kbd>Beginner</kbd></td><td>≤ 400 — full houses and easy singles</td></tr>
-          <tr><td><kbd>Easy</kbd></td><td>≤ 800 — singles only territory</td></tr>
-          <tr><td><kbd>Medium</kbd></td><td>≤ 1000 — locked candidates, subsets</td></tr>
-          <tr><td><kbd>Tricky</kbd></td><td>≤ 1150 — a first fish, wing or kite</td></tr>
-          <tr><td><kbd>Hard</kbd></td><td>≤ 1600 — fish, wings, patterns in force</td></tr>
-          <tr><td><kbd>Unfair</kbd></td><td>≤ 1800 — chains, ALS, finned fish</td></tr>
-          <tr><td><kbd>Extreme</kbd></td><td>≤ 3000 — long chains, colouring, nets</td></tr>
-          <tr><td><kbd>Nightmare</kbd></td><td>above — forcing nets and Exocets</td></tr>
+          <tr><td><kbd>Beginner</kbd></td><td>≤ 400: full houses and easy singles</td></tr>
+          <tr><td><kbd>Easy</kbd></td><td>≤ 800: singles only territory</td></tr>
+          <tr><td><kbd>Medium</kbd></td><td>≤ 1000: locked candidates, subsets</td></tr>
+          <tr><td><kbd>Tricky</kbd></td><td>≤ 1150: a first fish, wing or kite</td></tr>
+          <tr><td><kbd>Hard</kbd></td><td>≤ 1600: fish, wings, patterns in force</td></tr>
+          <tr><td><kbd>Unfair</kbd></td><td>≤ 1800: chains, ALS, finned fish</td></tr>
+          <tr><td><kbd>Extreme</kbd></td><td>≤ 3000: long chains, colouring, nets</td></tr>
+          <tr><td><kbd>Nightmare</kbd></td><td>above that: forcing nets and Exocets</td></tr>
         </tbody>
       </table>
 
@@ -217,19 +217,19 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
         <em>Hint</em> first names the next technique, then shows and explains
         it on the board, then applies it if you want. <em>Steps</em> lists a
         complete solution path with its crux, and <em>Scan</em> lists every
-        technique available in the exact current position — not just the
-        cheapest — so you can hunt the pattern you prefer. <em>Practice</em>{' '}
+        technique available in the exact current position, not just the
+        cheapest, so you can hunt the pattern you prefer. <em>Practice</em>{' '}
         generates a puzzle that genuinely requires a chosen technique and
         skips you to the position where it applies (optional, see Settings);
         press N for the next one.
       </p>
       <p className="dialog-note">
         <strong>Hints follow your own play.</strong> A missing pencil mark can
-        mean "eliminated" or just "not written yet" — only you know which, so
+        mean "eliminated" or just "not written yet", and only you know which, so
         the first time Hint or Scan meets your manual marks it asks once, and
         remembers for the rest of the puzzle. Say your marks are your{' '}
         <em>remaining candidates</em> and hints continue from exactly where
-        you are — corner or centre makes no difference, since those are
+        you are. Corner or centre makes no difference, since those are
         positions, not meanings (Snyder notation is a <em>method</em>: partial
         corner marks, which is the other answer). Auto and Fill answer the
         question automatically. Every hint is verified against the true
@@ -252,14 +252,14 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
       </table>
       <p className="dialog-note">
         On touch devices: tap to select, drag to multi-select, and use the
-        on-screen mode and number buttons. Tap the selected cell again — or
-        anywhere beside the board — to clear the highlight, and long-press a
+        on-screen mode and number buttons. Tap the selected cell again, or
+        anywhere beside the board, to clear the highlight, and long-press a
         digit to highlight all of its cells. Everything works
-        offline once the app has loaded — install it from your browser menu
+        offline once the app has loaded. Install it from your browser menu
         (on iPhone: Share → Add to Home Screen) for a full-screen experience.
       </p>
       <p className="dialog-note">
-        sudokUI is open source —{' '}
+        sudokUI is open source at{' '}
         <a href="https://github.com/AImenes/sudokUI" target="_blank" rel="noreferrer">
           github.com/AImenes/sudokUI
         </a>

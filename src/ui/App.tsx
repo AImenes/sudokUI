@@ -85,6 +85,19 @@ export default function App() {
   const restart = useGame((s) => s.restart);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null);
+  // first visit only, and never over a shared puzzle link
+  const [welcome, setWelcome] = useState(
+    () => !localStorage.getItem('sudokui-welcomed') && !window.location.hash.match(/[ps]=/)
+  );
+  const dismissWelcome = () => {
+    localStorage.setItem('sudokui-welcomed', '1');
+    setWelcome(false);
+  };
+  const startDaily = () => {
+    const d = dailyPuzzle();
+    useGame.getState().startGame(d.puzzle, d.score, d.level);
+    useGame.setState({ notice: `Daily puzzle for ${d.dateKey}. Everyone gets this same board today` });
+  };
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -268,7 +281,7 @@ export default function App() {
                 <button
                   className="score-btn"
                   onClick={() => setDialog('info')}
-                  title="Difficulty rating — the summed technique cost of solving this puzzle. Click to learn more."
+                  title="Difficulty rating: the summed technique cost of solving this puzzle. Click to learn more."
                 >
                   <span className="rating-word">Rating&nbsp;</span><strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
                 </button>
@@ -415,7 +428,7 @@ export default function App() {
               <div className="hint-body">
                 <p>
                   Jump back to the last position where everything was correct?
-                  Your later entries are removed — Ctrl+Z brings them back.
+                  Your later entries are removed. Ctrl+Z brings them back.
                 </p>
                 <div className="hint-actions">
                   <button onClick={revertToValid}>↩ Back to correct</button>
@@ -445,10 +458,7 @@ export default function App() {
           }}
           onDaily={() => {
             setDialog('none');
-            // deterministic: the same board for everyone on this UTC day
-            const d = dailyPuzzle();
-            useGame.getState().startGame(d.puzzle, d.score, d.level);
-            useGame.setState({ notice: `Daily puzzle ${d.dateKey} — the whole world plays this one` });
+            startDaily();
           }}
           onCustom={() => {
             setDialog('none');
@@ -472,6 +482,45 @@ export default function App() {
       {dialog === 'scan' && <ScanDialog onClose={() => setDialog('none')} />}
       {contractPrompt && (
         <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} />
+      )}
+      {welcome && (
+        <Modal title="Welcome to sudokUI" onClose={dismissWelcome}>
+          <p className="dialog-note">
+            A free, open-source sudoku studio. No ads, no account, and it
+            works offline once loaded.
+          </p>
+          <ul className="welcome-list">
+            <li>
+              <strong>Hints that teach.</strong> 77 solving techniques, each
+              one explained and drawn on the board when you ask.
+            </li>
+            <li>
+              <strong>Practice what you struggle with.</strong> Pick any of 65
+              techniques and get a puzzle that truly needs it.
+            </li>
+            <li>
+              <strong>One daily puzzle for the whole world.</strong> Same
+              board for everyone, every day. Race your friends.
+            </li>
+          </ul>
+          <p className="dialog-note">
+            Press ⓘ in the top bar anytime for modes, shortcuts and the
+            candidate system.
+          </p>
+          <div className="hint-actions">
+            <button
+              onClick={() => {
+                dismissWelcome();
+                startDaily();
+              }}
+            >
+              Play today's daily
+            </button>
+            <button className="ghost" onClick={dismissWelcome}>
+              Just play
+            </button>
+          </div>
+        </Modal>
       )}
       {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
       {dialog === 'info' && <InfoDialog onClose={() => setDialog('none')} />}

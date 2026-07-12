@@ -271,7 +271,7 @@ function loopRule2(
       eliminations: [],
       primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
       links: alternatingLinks(nodeCds(nodes, path), 'strong'),
-      description: `Grouped Nice Loop: ${chain} closes with two strong links at the start — denying it forces it, so it is placed.`
+      description: `Grouped Nice Loop: ${chain} closes with two strong links at the start: denying it forces it, so it is placed.`
     };
   }
   const inPath = new Set(path.flatMap((n) => nodes[n].cells.map((c) => c * 9 + nodes[n].digit - 1)));

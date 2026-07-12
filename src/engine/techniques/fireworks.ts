@@ -62,7 +62,7 @@ export function findFireworks(g: Grid): Step | null {
             primary: cells.flatMap((cell) =>
               digitsOf(g.cands[cell] & dMask).map((digit) => ({ cell, digit }))
             ),
-            description: `Fireworks: digits ${digitsOf(dMask).join('/')} each must land on one of ${cellName(A)} (cross), ${cellName(B)} (row wing) or ${cellName(C)} (column wing), locking those three cells — all other candidates there are removed.`
+            description: `Fireworks: digits ${digitsOf(dMask).join('/')} each must land on one of ${cellName(A)} (cross), ${cellName(B)} (row wing) or ${cellName(C)} (column wing), locking those three cells, so all other candidates there are removed.`
           };
         }
       }

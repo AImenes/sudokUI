@@ -94,7 +94,7 @@ function rule2(g: Grid, d: number, path: number[]): Step | null {
     eliminations: [],
     primary: path.map((cell) => ({ cell, digit: d })),
     links: alternatingLinks(path.map((cell) => [{ cell, digit: d }]), 'strong'),
-    description: `X-Cycle on ${d}: the loop ${path.map(cellName).join(' → ')} closes with two strong links at ${cellName(start)} — if it were not ${d}, the loop would force it to be ${d}. So ${cellName(start)} is ${d}.`
+    description: `X-Cycle on ${d}: the loop ${path.map(cellName).join(' → ')} closes with two strong links at ${cellName(start)}: if it were not ${d}, the loop would force it to be ${d}. So ${cellName(start)} is ${d}.`
   };
 }
 
@@ -125,6 +125,6 @@ function rule1(g: Grid, d: number, path: number[]): Step | null {
     eliminations: elims,
     primary: path.map((cell) => ({ cell, digit: d })),
     links: alternatingLinks(path.map((cell) => [{ cell, digit: d }]), 'weak'),
-    description: `X-Cycle on ${d}: the continuous loop ${cellNames(path)} alternates perfectly, so along each weak link one end is ${d} — ${d} falls from every outside cell seeing both ends of a weak link.`
+    description: `X-Cycle on ${d}: the continuous loop ${cellNames(path)} alternates perfectly: along each weak link one end is ${d}, so ${d} falls from every outside cell seeing both ends of a weak link.`
   };
 }
