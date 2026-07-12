@@ -166,7 +166,8 @@ const TIPS = [
   'Double-click a digit to select all of its cells',
   'The address bar link always carries this exact puzzle',
   'Practice can start from the very beginning — see Settings',
-  'Finish without Hint or Check for a certified clean solve',
+  'Finish without any assist — Hint, Check, Auto or Fill — for a clean solve',
+  'Hold a placed digit and its pencil marks light up too',
   'Ctrl+A selects the board — Fill then rebuilds every mark'
 ];
 
@@ -206,11 +207,16 @@ function renderMarks(
   cell: { corner: number; center: number },
   x: number,
   y: number,
-  marks: Map<number, string> | undefined
+  marks: Map<number, string> | undefined,
+  hlDigit = 0
 ): React.ReactNode {
   const cornerDs = digitsOf(cell.corner);
   const centerDs = digitsOf(cell.center);
   if (!cornerDs.length && !centerDs.length) return null;
+
+  // same-digit highlight (hint circles win): the held/selected digit lights
+  // up wherever the player has pencilled it
+  const hl = (d: number) => d === hlDigit && !marks?.has(d);
 
   const gridText = (d: number, bold: boolean) => (
     <text
@@ -219,12 +225,24 @@ function renderMarks(
       y={y + candY(d)}
       textAnchor="middle"
       fontSize={23}
-      fontWeight={marks?.has(d) ? 700 : bold ? 600 : 400}
-      fill={marks?.has(d) ? hintTextFill(marks.get(d)!) : 'var(--cand)'}
+      fontWeight={marks?.has(d) ? 700 : hl(d) ? 700 : bold ? 600 : 400}
+      fill={marks?.has(d) ? hintTextFill(marks.get(d)!) : hl(d) ? 'var(--accent)' : 'var(--cand)'}
     >
       {d}
     </text>
   );
+
+  // joined digit runs keep their layout; a matching digit gets its own tspan
+  const lineTspans = (ds: number[]) =>
+    ds.map((d) =>
+      hl(d) ? (
+        <tspan key={d} fill="var(--accent)" fontWeight={700}>
+          {d}
+        </tspan>
+      ) : (
+        <tspan key={d}>{d}</tspan>
+      )
+    );
 
   // hint promotion: union of both layers on the 3×3 grid
   if (marks && marks.size > 0) {
@@ -242,7 +260,7 @@ function renderMarks(
         fontSize={26}
         fill="var(--cand)"
       >
-        {centerDs.join('')}
+        {lineTspans(centerDs)}
       </text>
     ) : null;
 
@@ -256,8 +274,8 @@ function renderMarks(
             y={y + PERIMETER[k][1]}
             textAnchor="middle"
             fontSize={21}
-            fontWeight={600}
-            fill="var(--cand)"
+            fontWeight={hl(d) ? 700 : 600}
+            fill={hl(d) ? 'var(--accent)' : 'var(--cand)'}
           >
             {d}
           </text>
@@ -271,7 +289,7 @@ function renderMarks(
             fontSize={Math.min(22, 118 / centerDs.length + 4)}
             fill="var(--cand)"
           >
-            {centerDs.join('')}
+            {lineTspans(centerDs)}
           </text>
         )}
       </>
@@ -318,6 +336,11 @@ export function Grid() {
   const selectedValues = new Set(
     selection.map((i) => cells[i].value).filter((v) => v > 0)
   );
+  // the digit being tracked (one distinct value selected — a click on a
+  // placed digit, or the hold/double-click select-all gesture): its pencil
+  // occurrences light up too, wherever the player has actually marked them
+  const hlDigit =
+    highlightSameDigit && selectedValues.size === 1 ? [...selectedValues][0] : 0;
   const peerSet = new Set<number>();
   if (highlightPeers && selection.length === 1) {
     const i = selection[0];
@@ -559,14 +582,20 @@ export function Grid() {
                       y={y + candY(d)}
                       textAnchor="middle"
                       fontSize={23}
-                      fontWeight={marks?.has(d) ? 700 : 400}
-                      fill={marks?.has(d) ? hintTextFill(marks.get(d)!) : 'var(--cand)'}
+                      fontWeight={marks?.has(d) ? 700 : d === hlDigit ? 700 : 400}
+                      fill={
+                        marks?.has(d)
+                          ? hintTextFill(marks.get(d)!)
+                          : d === hlDigit
+                            ? 'var(--accent)'
+                            : 'var(--cand)'
+                      }
                     >
                       {d}
                     </text>
                   ))
                 ) : (
-                  renderMarks(cell, x, y, marks)
+                  renderMarks(cell, x, y, marks, hlDigit)
                 )}
               </g>
             );
