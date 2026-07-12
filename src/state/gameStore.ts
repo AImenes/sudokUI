@@ -666,7 +666,7 @@ export const useGame = create<GameStore>()(
           const parts: string[] = [];
           if (adopted) parts.push(`kept your eliminations in ${adopted} cell${adopted > 1 ? 's' : ''}`);
           if (dropped) parts.push(`dropped impossible marks in ${dropped} cell${dropped > 1 ? 's' : ''}`);
-          if (parts.length) notice = `Auto candidates on — ${parts.join(', ')}`;
+          if (parts.length) notice = `Auto candidates on: ${parts.join(', ')}`;
         } else {
           const { autoOffMaterialize, materializeLayer } = useSettings.getState();
           if (autoOffMaterialize) {
@@ -674,7 +674,7 @@ export const useGame = create<GameStore>()(
             for (let i = 0; i < 81; i++) {
               if (!cells[i].given && !cells[i].value) cells[i][materializeLayer] = eg.cands[i];
             }
-            notice = `Auto candidates off — current state written to ${
+            notice = `Auto candidates off. Current state written to ${
               materializeLayer === 'corner' ? 'corner' : 'centre'
             } marks (Ctrl+Z reverts)`;
           } else {
@@ -730,7 +730,7 @@ export const useGame = create<GameStore>()(
           // fill says nothing about the player's other marks
           ...(partial ? {} : { markContract: 'exhaustive' as MarkContract }),
           notice: `Filled ${layerName} marks${partial ? ' in selection' : ''}${
-            corrected ? ` — corrected ${corrected} cell${corrected > 1 ? 's' : ''}` : ''
+            corrected ? `; corrected ${corrected} cell${corrected > 1 ? 's' : ''}` : ''
           }`
         });
       },
@@ -789,7 +789,7 @@ export const useGame = create<GameStore>()(
               hintStage: 'hidden',
               assisted: true,
               notice:
-                'A pencil mark somewhere dropped a digit that belongs — run Check to find it'
+                'A pencil mark somewhere dropped a digit that belongs. Run Check to find it'
             });
             return;
           }
@@ -806,7 +806,7 @@ export const useGame = create<GameStore>()(
             hint: null,
             hintStage: 'hidden',
             assisted: true,
-            notice: 'Your pencil marks lead to an impossible deduction — run Check'
+            notice: 'Your pencil marks lead to an impossible deduction. Run Check'
           });
         } else {
           set({ hint: null, hintStage: 'hidden' });
@@ -903,7 +903,7 @@ export const useGame = create<GameStore>()(
           notice:
             errors.length === 0
               ? 'Everything checks out so far'
-              : `${errors.length} problem${errors.length > 1 ? 's' : ''} found — values or candidate lists missing the true digit`
+              : `${errors.length} problem${errors.length > 1 ? 's' : ''} found: values or candidate lists missing the true digit`
         });
       },
 
@@ -938,7 +938,7 @@ export const useGame = create<GameStore>()(
         set({
           cells: decoded.cells,
           autoCandidates: decoded.autoCandidates,
-          notice: 'Shared position loaded — entries, marks and colours included'
+          notice: 'Shared position loaded, with entries, marks and colours'
         });
         return true;
       },
@@ -986,7 +986,7 @@ export const useGame = create<GameStore>()(
           hintStage: 'hidden',
           errors: [],
           revertIndex: null,
-          notice: `Jumped to step ${Math.min(k, steps.length - 1) + 1} of ${steps.length} — Ctrl+Z goes back`
+          notice: `Jumped to step ${Math.min(k, steps.length - 1) + 1} of ${steps.length} (Ctrl+Z goes back)`
         });
       },
 
@@ -1150,7 +1150,7 @@ export function validatePuzzle(puzzle: string): PuzzleValidation {
   if (clues < 17) {
     return {
       ok: false,
-      reason: `Only ${clues} given${clues === 1 ? '' : 's'} — a puzzle needs at least 17 to have a unique solution.`
+      reason: `Only ${clues} given${clues === 1 ? '' : 's'}. A puzzle needs at least 17 to have a unique solution.`
     };
   }
   for (const unit of UNITS) {

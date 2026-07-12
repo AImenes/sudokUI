@@ -109,7 +109,7 @@ export function Controls({
         <button onClick={erase} title={eraseTitle(effectiveMode, autoCandidates)}>⌫ Erase</button>
         <button
           onClick={convertMarks}
-          title="Swap corner and centre marks (S) — pure notation, never breaks a clean solve"
+          title="Swap corner and centre marks (S). Pure notation, never breaks a clean solve"
         >
           ⇄ Swap
         </button>
@@ -121,12 +121,12 @@ export function Controls({
           Assist <span className="zone-note">using these ends a clean solve</span>
         </div>
         <div className="action-row">
-          <button onClick={requestHint} title="Hint (H) — names the technique first, reveals it only if you ask">💡 Hint</button>
+          <button onClick={requestHint} title="Hint (H): names the technique first, reveals it only if you ask">💡 Hint</button>
           <button onClick={check} title="Check values and candidate lists against the solution">✓ Check</button>
           {onShowSteps && (
             <button
               onClick={onShowSteps}
-              title="Show every step of one complete solution and jump to any point — counts as assistance"
+              title="Show every step of one complete solution and jump to any point. Counts as assistance"
             >
               ≡ Steps
             </button>
@@ -134,7 +134,7 @@ export function Controls({
           {onScan && (
             <button
               onClick={onScan}
-              title="List every technique available in this exact position, not just the cheapest — counts as assistance"
+              title="List every technique available in this exact position, not just the cheapest. Counts as assistance"
             >
               🔎 Scan
             </button>
@@ -148,7 +148,7 @@ export function Controls({
             onClick={onAutoToggle}
             title={
               autoCandidates
-                ? 'Turn off — where the candidates go is configurable in Settings, and Ctrl+Z reverts'
+                ? 'Turn off. Where the candidates go is configurable in Settings, and Ctrl+Z reverts'
                 : 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
             }
           >
@@ -156,7 +156,7 @@ export function Controls({
           </button>
           <button
             onClick={fillCandidates}
-            title={`Fill ${effectiveMode === 'corner' ? 'corner' : 'centre'} marks with all candidates — with several cells selected, only those are filled`}
+            title={`Fill ${effectiveMode === 'corner' ? 'corner' : 'centre'} marks with all candidates. With several cells selected, only those are filled`}
           >
             ✎ Fill
           </button>
@@ -168,12 +168,12 @@ export function Controls({
           <p className="dialog-note">
             Turning auto candidates off can write the current candidate state
             into pencil marks, so you continue exactly where auto left off.
-            Your choice becomes the default — change it anytime in Settings.
+            Your choice becomes the default. Change it anytime in Settings.
           </p>
           <div className="level-list">
             <button className="level-btn" onClick={() => chooseAutoOff('center')}>
               <strong>Centre marks</strong>
-              <span>The convention for full candidate lists — recommended</span>
+              <span>The convention for full candidate lists (recommended)</span>
             </button>
             <button className="level-btn" onClick={() => chooseAutoOff('corner')}>
               <strong>Corner marks</strong>
@@ -181,7 +181,7 @@ export function Controls({
             </button>
             <button className="level-btn" onClick={() => chooseAutoOff('none')}>
               <strong>Don't fill anything</strong>
-              <span>Just switch off — your own marks stay as they were</span>
+              <span>Just switch off. Your own marks stay as they were</span>
             </button>
           </div>
         </Modal>

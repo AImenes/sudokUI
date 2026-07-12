@@ -165,10 +165,11 @@ const TIPS = [
   'Space cycles input modes · S swaps corner ↔ centre',
   'Double-click a digit to select all of its cells',
   'The address bar link always carries this exact puzzle',
-  'Practice can start from the very beginning — see Settings',
-  'Finish without any assist — Hint, Check, Auto or Fill — for a clean solve',
+  'Practice can start from the very beginning (see Settings)',
+  'Finish without Hint, Check, Auto or Fill to earn a clean solve',
   'Hold a placed digit and its pencil marks light up too',
-  'Ctrl+A selects the board — Fill then rebuilds every mark'
+  'Ctrl+A selects the board, and Fill rebuilds every mark',
+  'Hint reads your centre marks, so your eliminations carry over'
 ];
 
 /** Text colour for a candidate sitting on a hint circle: dark on the amber

@@ -15,7 +15,7 @@
       content="sudokUI is a free, open-source sudoku app: beautiful SudokuPad-style play, practice mode for 65 named techniques (X-Wing to Exocet), HoDoKu-compatible difficulty ratings, hints that explain every step, and shareable puzzle links. Works offline."
     />
     <link rel="canonical" href="https://sudokui.app/" />
-    <meta property="og:title" content="sudokUI — the open-source sudoku studio" />
+    <meta property="og:title" content="sudokUI: the open-source sudoku studio" />
     <meta
       property="og:description"
       content="Play, practise and rate sudoku puzzles with the deepest verified technique library in a browser. Free, offline-capable, no ads."
@@ -27,7 +27,7 @@
     <meta property="og:image:height" content="630" />
     <meta
       property="og:image:alt"
-      content="sudokUI — play, practise and rate sudoku. A board with an X-Wing pattern highlighted."
+      content="sudokUI: play, practise and rate sudoku. A board with an X-Wing pattern highlighted."
     />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://sudokui.app/og-card.png" />
@@ -40,12 +40,40 @@
         "applicationCategory": "GameApplication",
         "operatingSystem": "Any",
         "offers": { "@type": "Offer", "price": "0" },
+        "featureList": [
+          "77 machine-verified solving techniques with step-by-step hints",
+          "Practice mode for 65 named techniques, X-Wing to Exocet",
+          "A shared daily puzzle, identical worldwide",
+          "HoDoKu-compatible difficulty ratings across eight bands",
+          "Shareable puzzle and position links",
+          "Offline play, no ads, no account"
+        ],
         "description": "Free open-source sudoku app with practice mode for 65 named solving techniques, explainable hints and HoDoKu-compatible difficulty ratings."
       }
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- pre-hydration content: what crawlers and slow connections see;
+           React replaces this the moment the app mounts -->
+      <div style="max-width: 620px; margin: 72px auto; padding: 0 20px; line-height: 1.6">
+        <h1>sudokUI</h1>
+        <p>
+          A free, open-source sudoku app for playing, practising and rating
+          puzzles. 77 solving techniques with hints that explain every step,
+          practice mode for everything from X-Wings to Exocets, a shared
+          daily puzzle, and difficulty ratings you can trust. No ads, no
+          account, works offline.
+        </p>
+        <p>Loading the board&hellip;</p>
+        <noscript>
+          <p>
+            sudokUI needs JavaScript to run. The app is free and open source:
+            <a href="https://github.com/AImenes/sudokUI">github.com/AImenes/sudokUI</a>
+          </p>
+        </noscript>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

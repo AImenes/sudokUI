@@ -58,14 +58,14 @@ export function useNewGame() {
 }
 
 const LEVEL_DESCRIPTIONS: Record<Level, string> = {
-  Beginner: 'Full houses and easy singles — learn the ropes',
-  Easy: 'Singles only — a relaxed solve',
+  Beginner: 'Full houses and easy singles to learn the ropes',
+  Easy: 'Singles only, a relaxed solve',
   Medium: 'Locked candidates and subsets',
-  Tricky: 'A first fish, wing or kite — one new trick',
+  Tricky: 'One new trick: a first fish, wing or kite',
   Hard: 'Fish, wings and single-digit patterns in force',
   Unfair: 'Chains, ALS and finned fish',
   Extreme: 'Long chains, colouring and nets',
-  Nightmare: 'Forcing nets and Exocet territory — ratings past 3000'
+  Nightmare: 'Forcing nets and Exocet territory, with ratings past 3000'
 };
 
 export function NewGameDialog({
@@ -85,8 +85,8 @@ export function NewGameDialog({
         <button className="level-btn daily" onClick={onDaily}>
           <strong>Daily puzzle</strong>
           <span>
-            One shared puzzle per day — everyone in the world gets this exact
-            board today. Compare times with your friends
+            One shared puzzle per day. Everyone in the world gets this exact
+            board today, so compare times with your friends
           </span>
         </button>
         <button
@@ -95,7 +95,7 @@ export function NewGameDialog({
         >
           <strong>Surprise me</strong>
           <span>
-            Any difficulty — enable "Hide difficulty while playing" in Settings
+            Any difficulty. Enable "Hide difficulty while playing" in Settings
             for the full mystery
           </span>
         </button>
@@ -112,7 +112,7 @@ export function NewGameDialog({
         <button className="level-btn" onClick={onCustom}>
           <strong>Custom</strong>
           <span>
-            Type in a puzzle from a newspaper or book — sudokUI checks it has
+            Type in a puzzle from a newspaper or book. sudokUI checks it has
             exactly one solution and rates it before you play
           </span>
         </button>
@@ -134,7 +134,7 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
     <Modal title="Practice a technique" onClose={onClose}>
       <p className="dialog-note">
         sudokUI generates a puzzle whose solution path requires the chosen
-        technique — with nothing harder needed before it — and skips you to
+        technique, with nothing harder needed before it, and skips you to
         the position where it applies. Techniques marked ✗, ≈ or ⚙ are shown
         for completeness but deliberately not playable: hover them to see
         why. The number on each technique is its rating cost: a puzzle's
@@ -172,10 +172,10 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
                       ok
                         ? `Score ${info.score} · ${info.level}`
                         : lastResort
-                          ? `${info.name} is implemented and the solver uses it on the hardest puzzles — but there is nothing to spot: it assumes candidates and propagates, so practising it would just be trial and error`
+                          ? `${info.name} is implemented and the solver uses it on the hardest puzzles. But there is nothing to spot: it assumes candidates and propagates, so practising it would just be trial and error`
                           : redundant
-                            ? `${info.name} is implemented, but provably redundant — its conclusions are always found by earlier techniques, so it never appears in a solve path`
-                            : `${info.name} is deliberately not implemented — everything it can find, the AIC/ALS chain engines already find. It stays in the catalogue (score ${info.score}, ${info.level}) so the map of sudoku techniques is complete.`
+                            ? `${info.name} is implemented, but provably redundant: its conclusions are always found by earlier techniques, so it never appears in a solve path`
+                            : `${info.name} is deliberately not implemented. Everything it can find, the AIC/ALS chain engines already find. It stays in the catalogue (score ${info.score}, ${info.level}) so the map of sudoku techniques is complete.`
                     }
                   >
                     {ok ? (
@@ -261,7 +261,7 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
     <Modal title="Solution path" onClose={onClose}>
       <p className="dialog-note">
         Every step of one complete solution, cheapest technique first. Click a
-        step to set the board to the position just before it — the crux is
+        step to set the board to the position just before it, and the crux is
         highlighted. Viewing this counts as assistance.
       </p>
       {!steps ? (
@@ -333,7 +333,7 @@ export function ContractChoices({ onAnswer }: { onAnswer: (c: 'exhaustive' | 'op
       <button className="level-btn" onClick={() => onAnswer('exhaustive')}>
         <strong>They are my remaining candidates</strong>
         <span>
-          You filled candidates and have been eliminating — a missing digit in
+          You filled candidates and have been eliminating: a missing digit in
           a marked cell means you ruled it out. Hints continue from exactly
           where you are. (Corner or centre makes no difference.)
         </span>
@@ -341,7 +341,7 @@ export function ContractChoices({ onAnswer }: { onAnswer: (c: 'exhaustive' | 'op
       <button className="level-btn" onClick={() => onAnswer('open')}>
         <strong>They are partial notes</strong>
         <span>
-          Snyder-style or still filling — a missing digit means nothing yet.
+          Snyder-style or still filling: a missing digit means nothing yet.
           Hints reason from every remaining possibility instead.
         </span>
       </button>
@@ -360,7 +360,8 @@ export function ContractDialog({
   return (
     <Modal title="How should hints read your pencil marks?" onClose={onClose}>
       <p className="dialog-note">
-        A missing pencil mark can mean "eliminated" or just "not written yet" —
+        A missing pencil mark can mean "eliminated" or just "not written yet",
+        and
         only you know which. Your answer is remembered for the rest of this
         puzzle (Auto and Fill answer it automatically).
       </p>
@@ -412,7 +413,7 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
         <>
           <p className="dialog-note">
             A missing pencil mark can mean "eliminated" or just "not written
-            yet" — only you know which. Your answer is remembered for the rest
+            yet", and only you know which. Your answer is remembered for the rest
             of this puzzle.
           </p>
           <ContractChoices onAnswer={setMarkContract} />
@@ -421,7 +422,7 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
         <>
           <p className="dialog-note">
             Every technique the solver can apply right now, with your exact
-            candidates — cheapest first. Click one to see it highlighted on
+            candidates, cheapest first. Click one to see it highlighted on
             the board. Counts as assistance.
           </p>
           {!steps ? (
@@ -429,11 +430,11 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
           ) : slip ? (
             <p className="dialog-note">
               A pencil mark somewhere dropped a digit that belongs in the
-              solution — run Check to find it before scanning.
+              solution. Run Check to find it before scanning.
             </p>
           ) : steps.length === 0 ? (
             <p className="dialog-note">
-              Nothing fires here — you may need a technique beyond the
+              Nothing fires here. You may need a technique beyond the
               catalogue's reach from this position, or a candidate is off
               (run Check).
             </p>
@@ -535,9 +536,9 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
     <Modal title="Share this puzzle" onClose={onClose}>
       <p className="dialog-note">
         <strong>Puzzle</strong> shares a fresh copy from the start.{' '}
-        <strong>Position</strong> shares it exactly as it stands — your
-        entries, pencil marks and colours included — for a second opinion or
-        a race from the same spot.
+        <strong>Position</strong> shares it exactly as it stands, with
+        your entries, pencil marks and colours, for a second opinion or a
+        race from the same spot.
       </p>
       <div className="hint-actions">
         <button onClick={() => copy('link')}>
@@ -594,7 +595,7 @@ export function VictoryDialog({
   // recipient plays exactly this grid
   const shareResult = () => {
     const clean = assisted ? '' : ', no assists, every mark my own';
-    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss}${clean} on sudokUI — can you beat that? https://sudokui.app/#p=${info.puzzle}`;
+    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss}${clean} on sudokUI. Can you beat that? https://sudokui.app/#p=${info.puzzle}`;
     navigator.clipboard?.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -614,8 +615,8 @@ export function VictoryDialog({
         </p>
         <p className={assisted ? 'solve-assisted' : 'solve-clean'}>
           {assisted
-            ? 'Solved with assistance — restart the puzzle for a clean run'
-            : '✨ Clean solve — no assists, every mark your own'}
+            ? 'Solved with assistance. Restart the puzzle for a clean run'
+            : '✨ Clean solve: no assists, every mark your own'}
         </p>
         <div className="hint-actions">
           {info.practiceTech && onAnother && (
