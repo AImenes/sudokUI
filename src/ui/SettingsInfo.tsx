@@ -76,7 +76,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       />
       <Toggle
         label="Highlight matching digits"
-        hint="Tint every cell holding the same digit as the selection"
+        hint="Tint every cell holding the selected digit — and light up its pencil marks, wherever you have written them"
         value={s.highlightSameDigit}
         onChange={(v) => s.set({ highlightSameDigit: v })}
       />

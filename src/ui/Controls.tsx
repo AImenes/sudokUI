@@ -89,72 +89,78 @@ export function Controls({
         {Array.from({ length: 9 }, (_, k) => k + 1).map((d) => (
           <button
             key={d}
-            className={`num-btn ${mode === 'color' ? 'color-btn' : ''}`}
+            className={`num-btn ${effectiveMode === 'color' ? 'color-btn' : ''}`}
             style={
-              mode === 'color'
+              effectiveMode === 'color'
                 ? { background: PALETTE[d - 1], color: '#10131c' }
                 : undefined
             }
             onClick={() => input(d)}
           >
-            {mode === 'color' ? '' : d}
+            {effectiveMode === 'color' ? '' : d}
           </button>
         ))}
       </div>
 
+      {/* history & notation — none of these touch a clean solve */}
       <div className="action-row">
         <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩ Undo</button>
         <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪ Redo</button>
         <button onClick={erase} title={eraseTitle(effectiveMode, autoCandidates)}>⌫ Erase</button>
-      </div>
-
-      <div className="row-caption">Assist</div>
-      <div className="action-row">
-        <button onClick={requestHint} title="Hint (H) — names the technique first, reveals it only if you ask">💡 Hint</button>
-        <button onClick={check} title="Check values and candidate lists against the solution">✓ Check</button>
-        {onShowSteps && (
-          <button
-            onClick={onShowSteps}
-            title="Show every step of one complete solution and jump to any point — counts as assistance"
-          >
-            ≡ Steps
-          </button>
-        )}
-        {onScan && (
-          <button
-            onClick={onScan}
-            title="List every technique available in this exact position, not just the cheapest — counts as assistance"
-          >
-            🔎 Scan
-          </button>
-        )}
-      </div>
-
-      <div className="row-caption">Candidates</div>
-      <div className="action-row">
-        <button
-          className={autoCandidates ? 'toggled' : ''}
-          onClick={onAutoToggle}
-          title={
-            autoCandidates
-              ? 'Turn off — where the candidates go is configurable in Settings, and Ctrl+Z reverts'
-              : 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
-          }
-        >
-          ⌗ Auto
-        </button>
-        <button
-          onClick={fillCandidates}
-          title={`Fill ${effectiveMode === 'corner' ? 'corner' : 'centre'} marks with all candidates — with several cells selected, only those are filled`}
-        >
-          ✎ Fill
-        </button>
         <button
           onClick={convertMarks}
-          title="Swap corner and centre marks (S) — with cells selected, only those are converted"
+          title="Swap corner and centre marks (S) — pure notation, never breaks a clean solve"
         >
           ⇄ Swap
         </button>
+      </div>
+
+      {/* everything inside this zone ends a clean solve the moment it is used */}
+      <div className="assist-zone">
+        <div className="row-caption">
+          Assist <span className="zone-note">using these ends a clean solve</span>
+        </div>
+        <div className="action-row">
+          <button onClick={requestHint} title="Hint (H) — names the technique first, reveals it only if you ask">💡 Hint</button>
+          <button onClick={check} title="Check values and candidate lists against the solution">✓ Check</button>
+          {onShowSteps && (
+            <button
+              onClick={onShowSteps}
+              title="Show every step of one complete solution and jump to any point — counts as assistance"
+            >
+              ≡ Steps
+            </button>
+          )}
+          {onScan && (
+            <button
+              onClick={onScan}
+              title="List every technique available in this exact position, not just the cheapest — counts as assistance"
+            >
+              🔎 Scan
+            </button>
+          )}
+        </div>
+
+        <div className="row-caption">Candidates</div>
+        <div className="action-row">
+          <button
+            className={autoCandidates ? 'toggled' : ''}
+            onClick={onAutoToggle}
+            title={
+              autoCandidates
+                ? 'Turn off — where the candidates go is configurable in Settings, and Ctrl+Z reverts'
+                : 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
+            }
+          >
+            ⌗ Auto
+          </button>
+          <button
+            onClick={fillCandidates}
+            title={`Fill ${effectiveMode === 'corner' ? 'corner' : 'centre'} marks with all candidates — with several cells selected, only those are filled`}
+          >
+            ✎ Fill
+          </button>
+        </div>
       </div>
 
       {autoOffPrompt && (

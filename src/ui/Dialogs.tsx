@@ -469,7 +469,7 @@ export function VictoryDialog({
   // same-puzzle challenge: the share text carries the seed link, so the
   // recipient plays exactly this grid
   const shareResult = () => {
-    const clean = assisted ? '' : ', no hints, no checks';
+    const clean = assisted ? '' : ', no assists, every mark my own';
     const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss}${clean} on sudokUI — can you beat that? https://sudokui.app/#p=${info.puzzle}`;
     navigator.clipboard?.writeText(text);
     setCopied(true);
@@ -491,7 +491,7 @@ export function VictoryDialog({
         <p className={assisted ? 'solve-assisted' : 'solve-clean'}>
           {assisted
             ? 'Solved with assistance — restart the puzzle for a clean run'
-            : '✨ Clean solve: no hints, no checks'}
+            : '✨ Clean solve — no assists, every mark your own'}
         </p>
         <div className="hint-actions">
           {info.practiceTech && onAnother && (

@@ -95,8 +95,10 @@ interface GameStore {
   elapsedBefore: number;
   paused: boolean;
   won: boolean;
-  /** true once any assist was used this game (hint, check, revert) — a
-   *  solve is "clean" only while this stays false. Reset by restart/new. */
+  /** true once any assist was used this game — hint, check, steps, scan,
+   *  revert, auto candidates or fill. A solve is "clean" only while this
+   *  stays false; swapping corner↔centre marks never sets it. Reset by
+   *  restart/new. */
   assisted: boolean;
   hint: Step | null;
   hintStage: 'hidden' | 'tech' | 'full';
@@ -233,7 +235,9 @@ export const useGame = create<GameStore>()(
           elapsedBefore: 0,
           paused: false,
           won: false,
-          assisted: false,
+          // fast-forwarded practice switches auto candidates on for you,
+          // which under the house rules already counts as assistance
+          assisted: !!fastForward,
           hint: null,
           hintStage: 'hidden',
           errors: [],
@@ -591,6 +595,9 @@ export const useGame = create<GameStore>()(
           cells,
           history: [...s.history, cloneCells(s.cells)],
           future: [],
+          // machine-maintained candidates are assistance: the bookkeeping
+          // (and its materialised marks on the way out) was done for you
+          assisted: true,
           notice
         });
       },
@@ -623,6 +630,7 @@ export const useGame = create<GameStore>()(
           cells,
           history: [...s.history, cloneCells(s.cells)],
           future: [],
+          assisted: true, // the machine wrote your candidates for you
           notice: `Filled ${layerName} marks${partial ? ' in selection' : ''}${
             corrected ? ` — corrected ${corrected} cell${corrected > 1 ? 's' : ''}` : ''
           }`

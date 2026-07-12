@@ -385,6 +385,31 @@ body {
   margin: 2px 2px -4px;
 }
 
+/* everything inside this zone costs the clean-solve badge — a translucent
+   amber wash marks the boundary without shouting */
+.assist-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 -8px;
+  padding: 8px 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(217, 161, 60, 0.16);
+  background: linear-gradient(
+    180deg,
+    rgba(217, 161, 60, 0.09),
+    rgba(217, 161, 60, 0.02)
+  );
+}
+
+.zone-note {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  opacity: 0.75;
+  margin-left: 6px;
+}
+
 /* menu buttons: icon stacked above a short label, consistently */
 .menu-row button {
   display: flex;
