@@ -216,6 +216,19 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
         skips you to the position where it applies (optional, see Settings);
         press N for the next one.
       </p>
+      <p className="dialog-note">
+        <strong>Hints follow your own play.</strong> A missing pencil mark can
+        mean "eliminated" or just "not written yet" — only you know which, so
+        the first time Hint or Scan meets your manual marks it asks once, and
+        remembers for the rest of the puzzle. Say your marks are your{' '}
+        <em>remaining candidates</em> and hints continue from exactly where
+        you are — corner or centre makes no difference, since those are
+        positions, not meanings (Snyder notation is a <em>method</em>: partial
+        corner marks, which is the other answer). Auto and Fill answer the
+        question automatically. Every hint is verified against the true
+        solution before it is shown, so a stray mark can point you to Check
+        but can never produce a wrong hint.
+      </p>
 
       <h4 className="setting-group">Keyboard</h4>
       <table className="shortcut-table">

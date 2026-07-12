@@ -59,6 +59,82 @@ export function engineGrid(cells: CellState[]): Grid {
   return g;
 }
 
+/* ---------- the candidate contract ----------
+ * A missing pencil mark is ambiguous: not-written-yet, or eliminated? Only
+ * the player knows, so when Hint/Scan first run on a board with manual
+ * marks, the app asks once per game ("are your marks your remaining
+ * candidates?") and remembers the answer:
+ *
+ * - 'exhaustive': every marked cell's marks (corner ∪ centre — the layers
+ *   are positions, not semantics) are that cell's remaining candidates; the
+ *   solver folds them in and continues from the player's real position.
+ *   Auto candidates and Fill set this automatically — the machine wrote the
+ *   marks, so it knows they are complete.
+ * - 'open': marks are partial notes (e.g. Snyder notation); the solver
+ *   reasons from all canonical possibilities, as if unmarked.
+ * - 'unknown': not yet asked.
+ */
+export type MarkContract = 'unknown' | 'exhaustive' | 'open';
+
+/** any pencil marks on empty cells? (the contract question is pointless
+ *  on a bare board) */
+export function hasManualMarks(cells: CellState[]): boolean {
+  return cells.some((c) => !c.value && (c.corner | c.center) !== 0);
+}
+
+/**
+ * The grid the solver reasons over. Under the 'exhaustive' contract (manual
+ * play only), each marked cell's candidates are intersected with its marks —
+ * per cell, so unmarked cells simply stay canonical. Marks can only narrow,
+ * never add an impossible digit, and a cell is never zeroed: if a cell's
+ * marks are disjoint from the canonical set they are corrupt, and the slip
+ * guard in the callers routes that to Check instead.
+ */
+export function contractGrid(
+  cells: CellState[],
+  autoCandidates: boolean,
+  contract: MarkContract
+): Grid {
+  const g = engineGrid(cells);
+  if (autoCandidates || contract !== 'exhaustive') return g;
+  for (let i = 0; i < 81; i++) {
+    if (cells[i].value) continue;
+    const marks = cells[i].corner | cells[i].center;
+    if (!marks) continue;
+    const folded = g.cands[i] & marks;
+    if (folded) g.cands[i] = folded;
+  }
+  return g;
+}
+
+/** Under the exhaustive contract: the first marked cell whose marks omit its
+ *  true solution digit, or -1. Reasoning from such a set would be reasoning
+ *  from a corrupted position — Check exists to pinpoint exactly this. */
+export function markSlip(cells: CellState[], solution: string): number {
+  for (let i = 0; i < 81; i++) {
+    const c = cells[i];
+    if (c.value) continue;
+    const marks = c.corner | c.center;
+    if (marks && !(marks & bit(Number(solution[i])))) return i;
+  }
+  return -1;
+}
+
+/** True when a step cannot contradict the known solution: every placement
+ *  is the solution digit and no elimination removes one. Any elimination of
+ *  a non-solution digit is a true fact about the puzzle, so a step passing
+ *  this check can never damage the board — the last line of the no-mistakes
+ *  defence for hints derived from player-declared candidates. */
+export function stepMatchesSolution(step: Step, solution: string): boolean {
+  for (const { cell, digit } of step.placements) {
+    if (Number(solution[cell]) !== digit) return false;
+  }
+  for (const { cell, digit } of step.eliminations) {
+    if (Number(solution[cell]) === digit) return false;
+  }
+  return true;
+}
+
 export interface GameInfo {
   puzzle: string;
   solution: string;
@@ -102,6 +178,10 @@ interface GameStore {
   assisted: boolean;
   hint: Step | null;
   hintStage: 'hidden' | 'tech' | 'full';
+  /** how manual pencil marks are to be read (see MarkContract); per game */
+  markContract: MarkContract;
+  /** the one-time contract question is being shown (set by requestHint) */
+  contractPrompt: boolean;
   errors: number[];
   /** transient toast message */
   notice: string | null;
@@ -132,6 +212,11 @@ interface GameStore {
   fillCandidates: () => void;
   convertMarks: () => void;
   requestHint: () => void;
+  /** declare the marks' meaning without any follow-up action (Scan) */
+  setMarkContract: (contract: 'exhaustive' | 'open') => void;
+  /** answer the contract question and continue with the pending hint */
+  answerContract: (contract: 'exhaustive' | 'open') => void;
+  dismissContractPrompt: () => void;
   revealHint: () => void;
   applyHint: () => void;
   dismissHint: () => void;
@@ -181,6 +266,8 @@ export const useGame = create<GameStore>()(
       assisted: false,
       hint: null,
       hintStage: 'hidden' as const,
+      markContract: 'unknown' as MarkContract,
+      contractPrompt: false,
       errors: [],
       notice: null,
       revertIndex: null as number | null,
@@ -240,6 +327,10 @@ export const useGame = create<GameStore>()(
           assisted: !!fastForward,
           hint: null,
           hintStage: 'hidden',
+          // a fresh game means fresh marks — the contract question is asked
+          // anew the first time assistance meets manual marks
+          markContract: 'unknown',
+          contractPrompt: false,
           errors: [],
           // after a jump the candidate state must be visible to spot the pattern
           ...(fastForward ? { autoCandidates: true } : {})
@@ -590,6 +681,7 @@ export const useGame = create<GameStore>()(
             notice = 'Auto candidates off';
           }
         }
+        const materialized = s.autoCandidates && useSettings.getState().autoOffMaterialize;
         set({
           autoCandidates: !s.autoCandidates,
           cells,
@@ -598,6 +690,9 @@ export const useGame = create<GameStore>()(
           // machine-maintained candidates are assistance: the bookkeeping
           // (and its materialised marks on the way out) was done for you
           assisted: true,
+          // marks the machine just wrote ARE the remaining candidates — the
+          // contract question answers itself
+          ...(materialized ? { markContract: 'exhaustive' as MarkContract } : {}),
           notice
         });
       },
@@ -631,6 +726,9 @@ export const useGame = create<GameStore>()(
           history: [...s.history, cloneCells(s.cells)],
           future: [],
           assisted: true, // the machine wrote your candidates for you
+          // a full-board fill makes every mark machine-complete; a partial
+          // fill says nothing about the player's other marks
+          ...(partial ? {} : { markContract: 'exhaustive' as MarkContract }),
           notice: `Filled ${layerName} marks${partial ? ' in selection' : ''}${
             corrected ? ` — corrected ${corrected} cell${corrected > 1 ? 's' : ''}` : ''
           }`
@@ -673,16 +771,57 @@ export const useGame = create<GameStore>()(
       requestHint: () => {
         const s = get();
         if (!s.info || s.won) return;
-        const g = engineGrid(s.cells);
-        const step = findNextStep(g);
-        if (step) {
+        // manual marks whose meaning was never declared: ask the one-time
+        // contract question first (the answer re-enters this action)
+        if (!s.autoCandidates && s.markContract === 'unknown' && hasManualMarks(s.cells)) {
+          set({ contractPrompt: true });
+          return;
+        }
+        const sol = s.info.solution;
+        // under the exhaustive contract a marked cell that lost its true
+        // digit is a corrupted position — Check pinpoints it; we won't
+        // reason from it
+        if (!s.autoCandidates && s.markContract === 'exhaustive') {
+          const slip = markSlip(s.cells, sol);
+          if (slip >= 0) {
+            set({
+              hint: null,
+              hintStage: 'hidden',
+              assisted: true,
+              notice:
+                'A pencil mark somewhere dropped a digit that belongs — run Check to find it'
+            });
+            return;
+          }
+        }
+        const step = findNextStep(contractGrid(s.cells, s.autoCandidates, s.markContract));
+        if (step && stepMatchesSolution(step, sol)) {
           // even the technique's name is information — the solve is no
           // longer clean
           set({ hint: step, hintStage: 'tech', assisted: true });
+        } else if (step) {
+          // a technique fired from the declared marks but contradicts the
+          // solution — the marks misled it; never show an unsound hint
+          set({
+            hint: null,
+            hintStage: 'hidden',
+            assisted: true,
+            notice: 'Your pencil marks lead to an impossible deduction — run Check'
+          });
         } else {
           set({ hint: null, hintStage: 'hidden' });
         }
       },
+
+      setMarkContract: (contract) => set({ markContract: contract, contractPrompt: false }),
+
+      answerContract: (contract) => {
+        set({ markContract: contract, contractPrompt: false });
+        // the question was only ever raised on the way to a hint
+        get().requestHint();
+      },
+
+      dismissContractPrompt: () => set({ contractPrompt: false }),
 
       revealHint: () => set({ hintStage: 'full' }),
 
@@ -719,8 +858,9 @@ export const useGame = create<GameStore>()(
 
       dismissHint: () => set({ hint: null, hintStage: 'hidden' }),
 
-      /** Flags wrong values, plus cells whose candidate list (auto view or
-       *  centre marks) no longer contains the solution digit. */
+      /** Flags wrong values, plus cells whose candidate list (auto view, or
+       *  pencil marks under their declared contract) no longer contains the
+       *  solution digit. */
       check: () => {
         const s = get();
         if (!s.info) return;
@@ -730,11 +870,15 @@ export const useGame = create<GameStore>()(
         for (let i = 0; i < 81; i++) {
           const sol = Number(s.info.solution[i]);
           const c = s.cells[i];
+          // which marks claim to be the cell's remaining candidates: centre
+          // by convention; both layers once declared exhaustive
+          const claimed =
+            s.markContract === 'exhaustive' ? c.corner | c.center : c.center;
           if (c.value) {
             if (c.value !== sol) errors.push(i);
           } else if (eg) {
             if (!(eg.cands[i] & bit(sol))) errors.push(i);
-          } else if (c.center && !(c.center & bit(sol))) {
+          } else if (claimed && !(claimed & bit(sol))) {
             errors.push(i);
           }
         }
@@ -871,7 +1015,9 @@ export const useGame = create<GameStore>()(
         autoCandidates: s.autoCandidates,
         elapsedBefore: s.elapsedMs(),
         won: s.won,
-        assisted: s.assisted
+        assisted: s.assisted,
+        // the declared meaning of the marks survives a reload with them
+        markContract: s.markContract
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
