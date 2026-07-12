@@ -62,6 +62,25 @@
   --peer-bg: rgba(212, 86, 138, 0.07);
 }
 
+/* Forest: rosé's counterpart — deep pine greens with brass digits, built on
+   the dark theme's contrast rules. Candidates and hint colours stay
+   untouched so nothing about solving reads differently. */
+:root[data-theme='forest'] {
+  --bg: #0f1b14;
+  --bg-soft: #15231a;
+  --panel: #1b2d21;
+  --text: #e8efe6;
+  --muted: #96a89a;
+  --accent: #c9963d;
+  --cell-bg: #16241a;
+  --line: #4e6354;
+  --given: #f2ecd9;
+  --entered: #dfb15e;
+  --sel-bg: rgba(201, 150, 61, 0.22);
+  --sel-border: #c9963d;
+  --peer-bg: rgba(201, 150, 61, 0.08);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -156,6 +175,8 @@ body {
 .level-unfair { background: #c0541530; color: #e8934a; }
 .level-extreme { background: #b3123030; color: #e05563; }
 .level-nightmare { background: #6a1b9a30; color: #b78ae8; }
+/* hide-rating pill: deliberately playful, not an error state */
+.level-hidden { background: rgba(128, 128, 160, 0.18); color: var(--muted); font-style: italic; }
 
 /* daylight theme needs darker badge text for contrast */
 :root[data-theme='light'] .level-beginner,
@@ -721,6 +742,17 @@ body {
   font-weight: 700;
 }
 
+/* last resorts: the solver uses them, but there is no pattern to practise */
+.practice-btns button.tech-lastresort {
+  opacity: 0.6;
+  cursor: help;
+  border-style: dashed;
+}
+
+.tech-gear {
+  color: var(--muted);
+}
+
 .tech-score {
   margin-left: 6px;
   color: var(--muted);
@@ -833,6 +865,11 @@ textarea {
   0% { opacity: 0; transform: translateX(4px); }
   10%, 80% { opacity: 1; transform: translateX(0); }
   100% { opacity: 0; }
+}
+
+/* the daily wears a thin accent ring — the one appointment of the day */
+.level-btn.daily {
+  border: 1.5px solid var(--accent);
 }
 
 /* "Surprise me" carries a whisper of every difficulty colour */
@@ -1230,5 +1267,21 @@ kbd {
   .num-btn {
     aspect-ratio: 0.9;
     font-size: 20px;
+  }
+}
+
+/* tablet portrait (e.g. iPad, 768px): the stacked layout gets room to
+   breathe — a larger board and a wider control panel with shallower keys */
+@media (min-width: 700px) and (max-width: 860px) {
+  .board-col {
+    max-width: min(88vw, 62vh);
+  }
+
+  .side {
+    max-width: 660px;
+  }
+
+  .num-btn {
+    aspect-ratio: 1.5;
   }
 }

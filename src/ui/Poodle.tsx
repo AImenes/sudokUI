@@ -2,10 +2,19 @@
  * Nutella, the resident black poodle — an optional companion sitting beneath
  * the board (Settings → Appearance). She can be dragged back and forth along
  * the board's bottom edge (mouse or touch) for restless thinking moments;
- * a small bubble hints at that the first time she appears in a session.
+ * a small bubble points that out every time she is switched on.
  * Purely decorative, hidden from screen readers; artwork in public/poodle.png.
  */
 import { useEffect, useRef, useState } from 'react';
+import { useSettings } from '../state/settings';
+
+// The tip shows once per ACTIVATION of the setting, not per mount: the
+// component also remounts on pause/resume, which should stay silent. The
+// flag arms when the setting turns off, so the next appearance re-tips.
+let tipArmed = true;
+useSettings.subscribe((s) => {
+  if (!s.showPoodle) tipArmed = true;
+});
 
 export function Poodle() {
   // horizontal offset from her home at the board's right edge (always ≤ 0)
@@ -15,8 +24,8 @@ export function Poodle() {
   const drag = useRef<{ pointerX: number; baseX: number } | null>(null);
 
   useEffect(() => {
-    if (sessionStorage.getItem('sudokui-poodle-tip')) return;
-    sessionStorage.setItem('sudokui-poodle-tip', '1');
+    if (!tipArmed) return;
+    tipArmed = false;
     setTip(true);
     const t = setTimeout(() => setTip(false), 3500);
     return () => clearTimeout(t);

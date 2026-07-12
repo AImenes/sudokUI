@@ -46,8 +46,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         <div className="setting-text">
           <span>Theme</span>
           <small>
-            Rosé keeps candidate and hint colours unchanged, so nothing about
-            solving reads differently
+            Rosé and Forest keep candidate and hint colours unchanged, so
+            nothing about solving reads differently
           </small>
         </div>
         <div className="segmented">
@@ -55,7 +55,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             [
               ['dark', 'Dark'],
               ['light', 'Daylight'],
-              ['rose', 'Rosé']
+              ['rose', 'Rosé'],
+              ['forest', 'Forest']
             ] as const
           ).map(([value, label]) => (
             <button
@@ -79,6 +80,12 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         hint="Tint every cell holding the selected digit — and light up its pencil marks, wherever you have written them"
         value={s.highlightSameDigit}
         onChange={(v) => s.set({ highlightSameDigit: v })}
+      />
+      <Toggle
+        label="Frame highlighted pencil marks"
+        hint="Draw a thin box around the lit-up candidates too — colour and bold alone can be easy to miss"
+        value={s.frameHighlights}
+        onChange={(v) => s.set({ frameHighlights: v })}
       />
       <Toggle
         label="Show timer"
