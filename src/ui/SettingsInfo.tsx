@@ -187,7 +187,9 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
         only those. <em>Auto</em> computes and maintains candidates for you;
         your centre-mark eliminations are adopted when you turn it on, and
         pencil input strikes candidates through while it's active. Turning it
-        off can hand the state back as marks (see Settings). <em>Swap</em>{' '}
+        off can hand the state back as marks (see Settings). Every new game
+        starts with Auto off, so switching it on is a per-game choice and the
+        daily is a fair race. <em>Swap</em>{' '}
         exchanges corner and centre layers. <em>Check</em> flags wrong digits
         and candidate lists that lost the true digit.
       </p>
