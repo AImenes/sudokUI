@@ -332,8 +332,13 @@ export const useGame = create<GameStore>()(
           markContract: 'unknown',
           contractPrompt: false,
           errors: [],
-          // after a jump the candidate state must be visible to spot the pattern
-          ...(fastForward ? { autoCandidates: true } : {})
+          // Every new game starts with auto candidates OFF, even when the
+          // previous game had them on: assists are chosen per game, and a
+          // sticky auto would silently cost the clean badge (and give daily
+          // players an unequal start). Fast-forwarded practice is the
+          // exception; there the candidate state must be visible to spot
+          // the pattern, and the game is already marked assisted above.
+          autoCandidates: !!fastForward
         });
       },
 
