@@ -6,11 +6,13 @@ import { Step, CellDigit } from '../steps';
  *
  * Two bivalue cells with the same pair {a,b} in one chute (band of 3 rows or
  * stack of 3 columns), not seeing each other. Look at the 3 cells in the
- * remaining box ∩ remaining line of the chute. If only one of a/b occurs
- * there (as candidate or placed value), that digit can be removed from every
- * cell seeing both pair cells: placing it there would force both pair cells
- * to the other digit, leaving the first digit with no home in the third box.
- * If neither occurs, both digits can be removed.
+ * remaining box ∩ remaining line of the chute. If digit a occurs nowhere in
+ * them (neither as candidate nor placed value), the remaining box must place
+ * its a on one of the two pair lines, which forces that line's pair cell to
+ * b. At least one pair cell is therefore b, so b, the digit that DOES occur
+ * in those 3 cells, can be removed from every cell seeing both pair cells.
+ * If neither digit occurs, the argument runs both ways: the pair cells hold
+ * opposite digits and both can be removed.
  */
 export function findChuteRemotePair(g: Grid): Step | null {
   const bivalue: number[] = [];
@@ -67,6 +69,13 @@ export function findChuteRemotePair(g: Grid): Step | null {
         }
         if (!elims.length) continue;
         const digits = digitsOf(pairMask);
+        const missing = digitsOf(pairMask & ~present);
+        const removed = digitsOf(elimMask);
+        const line = horizontal ? 'row' : 'column';
+        const description =
+          present === 0
+            ? `Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('')} in one chute, and neither digit appears in ${cellNames(mini)}. Each absent digit forces one pair cell to the other digit, so the pair cells hold opposite digits, and both ${removed.join(' and ')} can be removed from cells seeing both pair cells.`
+            : `Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('')} in one chute; ${missing[0]} appears nowhere in ${cellNames(mini)}, so the chute's third box must place its ${missing[0]} in a ${line} shared with a pair cell, forcing that cell to ${removed[0]}. One pair cell is therefore ${removed[0]}, so ${removed[0]} can be removed from cells seeing both pair cells.`;
         return {
           tech: 'CHUTE_REMOTE_PAIR',
           placements: [],
@@ -75,7 +84,7 @@ export function findChuteRemotePair(g: Grid): Step | null {
           secondary: mini
             .filter((c) => g.values[c] === 0)
             .flatMap((cell) => digitsOf(g.cands[cell] & pairMask).map((digit) => ({ cell, digit }))),
-          description: `Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('')} in one chute; ${digitsOf(elimMask).join(' and ')} ${popcount(elimMask) === 1 ? 'is' : 'are'} missing from ${cellNames(mini)}, so ${popcount(elimMask) === 1 ? 'it' : 'they'} can be removed from cells seeing both pair cells.`
+          description
         };
       }
     }
