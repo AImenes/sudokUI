@@ -117,3 +117,44 @@ describe('synthetic rare-pattern positions', () => {
     expect(findAvoidableRectangle(g, 2)).toBeNull();
   });
 });
+
+// Regression for the Chute Remote Pair explanation: the ELIMINATED digit is
+// the one PRESENT in the third box's remaining-line cells; the description
+// must name the ABSENT digit as the reason (it once claimed the eliminated
+// digit was the missing one, which is the exact opposite of the logic).
+describe('chute remote pair polarity', () => {
+  it('eliminates the digit present in the mini-line, description names the absent one', async () => {
+    const { findChuteRemotePair } = await import('../src/engine/techniques/chuteRemotePair');
+    const g = emptyGrid();
+    const pair = bit(7) | bit(8);
+    g.cands[6] = pair; // r1c7 {7,8}, box 3
+    g.cands[9] = pair; // r2c1 {7,8}, box 1: same band, no shared unit
+    // third box of the band is box 2; remaining row is row 3.
+    // Make 7 absent from r3c4..r3c6 while 8 stays present.
+    for (const c of [21, 22, 23]) g.cands[c] &= ~bit(7);
+    const step = findChuteRemotePair(g);
+    expect(step).not.toBeNull();
+    expect(step!.tech).toBe('CHUTE_REMOTE_PAIR');
+    // one pair cell must be 8, so 8 falls from cells seeing both,
+    // e.g. r1c2 (cell 1) and r2c7 (cell 15); never 7.
+    expect(step!.eliminations.every((e) => e.digit === 8)).toBe(true);
+    expect(step!.eliminations).toContainEqual({ cell: 1, digit: 8 });
+    expect(step!.eliminations).toContainEqual({ cell: 15, digit: 8 });
+    expect(step!.description).toContain('7 appears nowhere in r3c4, r3c5, r3c6');
+    expect(step!.description).toContain('8 can be removed');
+  });
+
+  it('with neither digit in the mini-line, both digits fall from common peers', async () => {
+    const { findChuteRemotePair } = await import('../src/engine/techniques/chuteRemotePair');
+    const g = emptyGrid();
+    const pair = bit(7) | bit(8);
+    g.cands[6] = pair;
+    g.cands[9] = pair;
+    for (const c of [21, 22, 23]) g.cands[c] &= ~pair;
+    const step = findChuteRemotePair(g);
+    expect(step).not.toBeNull();
+    expect(step!.eliminations).toContainEqual({ cell: 1, digit: 7 });
+    expect(step!.eliminations).toContainEqual({ cell: 1, digit: 8 });
+    expect(step!.description).toContain('neither digit appears');
+  });
+});
