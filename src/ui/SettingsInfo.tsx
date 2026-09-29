@@ -72,13 +72,10 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </div>
-      <div className="setting-row stack" role="group" aria-label="Typeface">
+      <div className="setting-row stack" role="group" aria-label="Board typeface">
         <div className="setting-text">
-          <span>Typeface</span>
-          <small>
-            For the whole app, digits on the board included. Handwritten
-            changes the board and number pad only
-          </small>
+          <span>Board typeface</span>
+          <small>For the digits and pencil marks on the board</small>
         </div>
         <div className="segmented">
           {(

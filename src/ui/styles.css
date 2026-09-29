@@ -109,8 +109,10 @@ body,
   overflow-x: hidden;
 }
 
-/* typefaces: only ones already on the device, so nothing is downloaded
-   and the choice works offline. Each falls back gracefully elsewhere. */
+/* typefaces for the board: only ones already on the device, so nothing is
+   downloaded and the choice works offline. Each falls back gracefully.
+   The choice changes the board alone: menus, hints and explanations always
+   keep the face made for reading. */
 :root {
   --font-classic: 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-rounded: ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', 'Nunito',
@@ -123,11 +125,8 @@ body,
   --font: var(--font-classic);
 }
 
-/* handwriting is for the puzzle, as on paper: the board and the number
-   pad take it, while menus and explanations keep a face made for reading */
-:root[data-font='hand'] .board text,
-:root[data-font='hand'] .num-btn {
-  font-family: var(--font-hand);
+:root[data-font='hand'] {
+  --font: var(--font-hand);
 }
 
 :root[data-font='rounded'] {
@@ -145,7 +144,7 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font);
+  font-family: var(--font-classic);
   -webkit-user-select: none;
   user-select: none;
 }
@@ -383,7 +382,7 @@ button {
 
 .board text {
   pointer-events: none;
-  font-family: inherit;
+  font-family: var(--font);
 }
 
 /* pause: a calm frosted card floating over the blank board */

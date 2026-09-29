@@ -13,8 +13,8 @@ export type Font = 'classic' | 'rounded' | 'serif' | 'mono' | 'hand';
 interface Settings {
   /** board theme: dark, daylight or rosé */
   theme: Theme;
-  /** typeface of the whole app, board digits included; 'hand' changes
-   *  the board and number pad only, so the text stays easy to read */
+  /** typeface of the board (digits and pencil marks); all other text
+   *  keeps the face made for reading */
   font: Font;
   /** tint the row/column/box of a single selected cell */
   highlightPeers: boolean;
