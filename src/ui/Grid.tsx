@@ -343,7 +343,7 @@ export function Grid() {
   const paused = useGame((s) => s.paused);
   const won = useGame((s) => s.won);
   const togglePause = useGame((s) => s.togglePause);
-  const { highlightPeers, highlightSameDigit, showPoodle, frameHighlights, digitTints } =
+  const { highlightPeers, highlightSameDigit, showPoodle, frameHighlights, digitTints, tintStrength } =
     useSettings();
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -441,11 +441,20 @@ export function Grid() {
     }
   };
 
+  // Alt + drag selects a rectangle: it spans from the cell where the drag
+  // began to the cell under the pointer, and follows the pointer both ways
+  const anchor = useRef<number | null>(null);
+  const before = useRef<number[]>([]);
+
   const onPointerDown = (e: React.PointerEvent) => {
     const cell = cellFromEvent(e);
     if (cell === null) return;
     dragging.current = true;
     additive.current = e.ctrlKey || e.metaKey || e.shiftKey;
+    anchor.current = cell;
+    // with Ctrl/Cmd or Shift held as well, the rectangle adds to what was
+    // selected already
+    before.current = additive.current ? useGame.getState().selection : [];
     (e.target as Element).setPointerCapture?.(e.pointerId);
     if (cells[cell].value) {
       longPress.current = {
@@ -479,11 +488,22 @@ export function Grid() {
     if (cell !== null) {
       // leaving the press cell turns the gesture into a drag-select
       if (longPress.current && cell !== longPress.current.cell) cancelLongPress();
+      if (e.altKey && anchor.current !== null) {
+        const [r0, c0] = [Math.floor(anchor.current / 9), anchor.current % 9];
+        const [r1, c1] = [Math.floor(cell / 9), cell % 9];
+        const rect: number[] = [];
+        for (let r = Math.min(r0, r1); r <= Math.max(r0, r1); r++) {
+          for (let c = Math.min(c0, c1); c <= Math.max(c0, c1); c++) rect.push(r * 9 + c);
+        }
+        select([...new Set([...before.current, ...rect])], false);
+        return;
+      }
       select([cell], true);
     }
   };
   const onPointerUp = () => {
     dragging.current = false;
+    anchor.current = null;
     cancelLongPress();
   };
   const onDoubleClick = (e: React.MouseEvent) => {
@@ -608,7 +628,7 @@ export function Grid() {
                         ? {
                             fill: `color-mix(in srgb, var(${
                               cell.given ? '--given' : '--entered'
-                            }) 70%, var(--tint-${cell.value}))`
+                            }) ${100 - tintStrength}%, var(--tint-${cell.value}))`
                           }
                         : undefined
                     }

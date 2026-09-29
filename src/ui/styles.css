@@ -1271,6 +1271,27 @@ textarea {
   cursor: pointer;
 }
 
+/* a slider row: text, the slider, and its value in figures */
+.setting-slider {
+  cursor: default;
+}
+
+.setting-slider input[type='range'] {
+  flex: 0 1 140px;
+  min-width: 90px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.setting-slider output {
+  flex-shrink: 0;
+  width: 38px;
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
 .setting-row.disabled {
   opacity: 0.45;
   cursor: default;
@@ -1900,6 +1921,21 @@ kbd {
 
   .setting-row.stack .segmented {
     align-self: flex-start;
+  }
+
+  /* a slider needs room for a thumb: its text above, the slider below */
+  .setting-slider {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .setting-slider .setting-text {
+    flex-basis: 100%;
+  }
+
+  .setting-slider input[type='range'] {
+    flex: 1;
+    min-height: 32px;
   }
 
   /* five typefaces side by side need slightly narrower buttons */

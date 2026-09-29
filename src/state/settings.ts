@@ -47,6 +47,8 @@ interface Settings {
   confirmAssist: boolean;
   /** give each digit 1 to 9 a slight colour of its own on the board */
   digitTints: boolean;
+  /** how much of the digit's own hue is mixed in, in percent */
+  tintStrength: number;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -69,6 +71,7 @@ export const useSettings = create<Settings>()(
       frameHighlights: true,
       confirmAssist: true,
       digitTints: false,
+      tintStrength: 50,
       toggleTheme: () =>
         set((s) => ({
           theme:
