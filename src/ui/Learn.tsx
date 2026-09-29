@@ -11,6 +11,7 @@ import { RATING_SUMMARY, RATING_POINTS, BAND_NOTES } from '../content/rating';
 import { techSlug, slugify } from '../content/slugs';
 import { linkGlossary } from '../content/glossaryLinks';
 import { boardSvg, legendOf, Example } from '../content/boardSvg';
+import { frequencyLabel } from '../content/frequency';
 
 type Examples = Partial<Record<Tech, Example>>;
 
@@ -47,6 +48,7 @@ function WorkedExample({
           ))}
         </span>
         {example.step.description}
+        {example.credit && <span className="learn-see"> Puzzle: {example.credit}.</span>}
       </figcaption>
       <button className="learn-link" onClick={() => onOpen(tech)}>
         Open this position on the board
@@ -254,6 +256,11 @@ function TechniqueList({
                   </p>
                   {examples[tech] && (open.has(tech) || (!!query && matches <= 3)) && (
                     <WorkedExample tech={tech} example={examples[tech]!} onOpen={onExample} />
+                  )}
+                  {frequencyLabel(tech) && (
+                    <p className="learn-aka">
+                      Needed in {frequencyLabel(tech)} that sudokUI generates.
+                    </p>
                   )}
                   {doc.aka.length > 0 && (
                     <p className="learn-aka">Also called {doc.aka.join(', ')}.</p>

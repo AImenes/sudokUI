@@ -16,6 +16,8 @@ export interface Example {
   /** candidate bitmask of every cell in that position */
   cands: number[];
   step: Step;
+  /** where the puzzle comes from, when it is a published one */
+  credit?: string;
 }
 
 const S = 60; // cell size

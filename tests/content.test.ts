@@ -333,3 +333,34 @@ describe('glossary links in running text', () => {
     expect(linkedIn('The signals are false.')).toEqual([]);
   });
 });
+
+describe('technique frequencies', () => {
+  it('are measured on a real sample and cover the whole solve order', async () => {
+    const { FREQUENCY } = await import('../src/content/frequency');
+    const { SOLVE_ORDER } = await import('../src/engine/ratings');
+    expect(FREQUENCY.sample).toBeGreaterThanOrEqual(10_000);
+    expect(Object.keys(FREQUENCY.counts).sort()).toEqual([...SOLVE_ORDER].sort());
+    for (const [tech, count] of Object.entries(FREQUENCY.counts)) {
+      expect(count, tech).toBeGreaterThanOrEqual(0);
+      expect(count, tech).toBeLessThanOrEqual(FREQUENCY.sample);
+    }
+    // every puzzle needs singles, and no generated puzzle may need guessing
+    expect(FREQUENCY.counts.HIDDEN_SINGLE! / FREQUENCY.sample).toBeGreaterThan(0.9);
+    expect(FREQUENCY.counts.BRUTE_FORCE).toBe(0);
+  });
+
+  it('read as plain statements', async () => {
+    const { frequencyLabel } = await import('../src/content/frequency');
+    const f = {
+      sample: 50_000,
+      counts: { NAKED_SINGLE: 50_000, NAKED_PAIR: 17_000, X_WING: 1_234, EXOCET: 3, TRIDAGON: 0 }
+    };
+    expect(frequencyLabel('NAKED_SINGLE', f)).toBe('every puzzle');
+    expect(frequencyLabel('NAKED_PAIR', f)).toBe('34% of puzzles');
+    expect(frequencyLabel('X_WING', f)).toBe('1 in 41 puzzles');
+    expect(frequencyLabel('EXOCET', f)).toBe('1 in 17,000 puzzles');
+    expect(frequencyLabel('TRIDAGON', f)).toBe('fewer than 1 in 50,000 puzzles');
+    // a technique the solver never uses has no frequency at all
+    expect(frequencyLabel('SK_LOOP', f)).toBeNull();
+  });
+});

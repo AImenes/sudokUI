@@ -53,6 +53,17 @@ with nothing harder before it, keeps the clearest position found so far (a
 small pattern on a well-filled board). It only ever improves on what is
 stored.
 
+Random generation almost never produces the rarest patterns, so the hunt
+starts from a list of published puzzles known to need them (`SEEDS` in the
+script). A seed is only a candidate: the example is still what the sudokUI
+engine does with that puzzle, and it carries a credit line.
+
+The same run counts how often each technique is needed and writes
+`frequency.json`: the share of generated puzzles whose solve path uses the
+technique at least once. The guide and the pages show it as "1 in 19
+puzzles". A technique that scores zero over tens of thousands of puzzles
+cannot be generated on demand for practice either.
+
 `tests/examples.test.ts` re-derives every stored example from its puzzle. It
 fails when a finder, or the wording of its description, has changed since
 the examples were stored. Run `refresh` to bring them back in line: it keeps

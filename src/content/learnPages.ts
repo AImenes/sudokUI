@@ -23,6 +23,7 @@ import { linkGlossary } from './glossaryLinks';
 import { LANDING_PAGES, LandingPage, RATING_URL } from './landing';
 import { EXAMPLES } from './examples';
 import { boardSvg, legendOf, BOARD_SIZE } from './boardSvg';
+import { FREQUENCY, frequencyLabel } from './frequency';
 
 export const SITE = 'https://sudokui.app';
 
@@ -285,7 +286,9 @@ function workedExample(tech: Tech): string {
         <figcaption>${legend}</figcaption>
       </figure>
       <p>${esc(example.step.description)}</p>
-      <p class="meta">Step ${example.stepIndex + 1} of this puzzle's solution, found and verified by the sudokUI engine. Cells are named by row and column: r2c3 is row 2, column 3. <a href="/#p=${example.puzzle}">Play this puzzle from the start</a>.</p>
+      <p class="meta">Step ${example.stepIndex + 1} of this puzzle's solution, found and verified by the sudokUI engine. Cells are named by row and column: r2c3 is row 2, column 3.${
+        example.credit ? ` Puzzle: ${esc(example.credit)}.` : ''
+      } <a href="/#p=${example.puzzle}">Play this puzzle from the start</a>.</p>
 `;
 }
 
@@ -321,7 +324,9 @@ ${workedExample(tech)}      <div class="card">
         }
       </div>
       <h2>In a puzzle's rating</h2>
-      <p>Each time the solver needs ${esc(info.name)}, the puzzle's difficulty rating grows by ${info.score}. It is a ${info.level}-class technique. <a href="${RATING_URL}">How the rating works</a>.</p>
+      <p>Each time the solver needs ${esc(info.name)}, the puzzle's difficulty rating grows by ${info.score}. It is a ${info.level}-class technique.${
+        frequencyLabel(tech) ? ` It is needed in ${frequencyLabel(tech)} that sudokUI generates.` : ''
+      } <a href="${RATING_URL}">How the rating works</a>.</p>
 ${
   siblings.length
     ? `      <h2>More ${esc(categoryLabel(info.category).toLowerCase())}</h2>
@@ -499,11 +504,11 @@ function ratingPage(): Page {
   const scores = byCategory()
     .map(
       ([cat, techs]) =>
-        `        <tr><th colspan="3">${esc(categoryLabel(cat))}</th></tr>
+        `        <tr><th colspan="4">${esc(categoryLabel(cat))}</th></tr>
 ${techs
   .map(
     (t) =>
-      `        <tr><td><a href="${techUrl(t)}">${esc(TECHS[t].name)}</a></td><td>${TECHS[t].level}</td><td class="n">${TECHS[t].score}</td></tr>`
+      `        <tr><td><a href="${techUrl(t)}">${esc(TECHS[t].name)}</a></td><td>${TECHS[t].level}</td><td class="n">${TECHS[t].score}</td><td>${frequencyLabel(t) ?? ''}</td></tr>`
   )
   .join('\n')}`
     )
@@ -520,9 +525,9 @@ ${RATING_POINTS.map((p) => `      <h2>${esc(p.title)}</h2>\n      <p>${esc(p.tex
 ${bands}
       </table>
       <h2 id="scores">Score of every technique</h2>
-      <p>The cost added to a puzzle's rating each time the solver needs the technique.</p>
+      <p>The cost added to a puzzle's rating each time the solver needs the technique, and how many of the puzzles sudokUI generates need it at least once (measured on ${FREQUENCY.sample.toLocaleString('en')} puzzles).</p>
       <table>
-        <tr><th>Technique</th><th>Class</th><th class="n">Score</th></tr>
+        <tr><th>Technique</th><th>Class</th><th class="n">Score</th><th>Needed in</th></tr>
 ${scores}
       </table>`;
   return {
