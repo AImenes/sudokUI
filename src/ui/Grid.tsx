@@ -166,7 +166,7 @@ const TIPS = [
   'Double-click a digit to select all of its cells',
   'The address bar link always carries this exact puzzle',
   'Practice can start from the very beginning (see Settings)',
-  'Finish without Hint, Check, Auto or Fill to earn a clean solve',
+  'Finish without anything from the Assist box for an unassisted solve',
   'Hold a placed digit and its pencil marks light up too',
   'Ctrl+A selects the board, and Fill rebuilds every mark',
   'Hint reads your centre marks, so your eliminations carry over'
@@ -343,7 +343,8 @@ export function Grid() {
   const paused = useGame((s) => s.paused);
   const won = useGame((s) => s.won);
   const togglePause = useGame((s) => s.togglePause);
-  const { highlightPeers, highlightSameDigit, showPoodle, frameHighlights } = useSettings();
+  const { highlightPeers, highlightSameDigit, showPoodle, frameHighlights, digitTints } =
+    useSettings();
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragging = useRef(false);
@@ -599,6 +600,18 @@ export function Grid() {
                     fontSize={58}
                     fontWeight={cell.given ? 700 : 500}
                     fill={cell.given ? 'var(--given)' : 'var(--entered)'}
+                    // an opt-in slight colour per digit, mixed into the theme's
+                    // own digit colour so every theme keeps its character; a
+                    // browser without color-mix ignores this and keeps `fill`
+                    style={
+                      digitTints
+                        ? {
+                            fill: `color-mix(in srgb, var(${
+                              cell.given ? '--given' : '--entered'
+                            }) 70%, var(--tint-${cell.value}))`
+                          }
+                        : undefined
+                    }
                   >
                     {cell.value}
                   </text>

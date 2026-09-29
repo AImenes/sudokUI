@@ -501,8 +501,9 @@ export default function App() {
           )}
           <footer className="app-footer">
             <nav className="footer-learn" aria-label="Learn sudoku">
+              <span>Learn: </span>
               <a href="/learn/" onClick={learnLink({ tab: 'techniques' })}>
-                Techniques explained
+                Techniques
               </a>
               <span aria-hidden="true"> · </span>
               <a href="/learn/glossary/" onClick={learnLink({ tab: 'glossary' })}>
@@ -510,13 +511,13 @@ export default function App() {
               </a>
               <span aria-hidden="true"> · </span>
               <a href={RATING_URL} onClick={learnLink({ tab: 'rating' })}>
-                How rating works
+                Rating
               </a>
             </nav>
             <a href="https://github.com/AImenes/sudokUI" target="_blank" rel="noreferrer">
               Open source on GitHub
             </a>
-            <span> · feature requests & issues welcome</span>
+            <span> · feedback welcome</span>
             <span className="dedication">for thth ♥</span>
           </footer>
         </aside>

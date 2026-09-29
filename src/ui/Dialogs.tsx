@@ -660,8 +660,8 @@ export function VictoryDialog({
         </p>
         <p className={assisted ? 'solve-assisted' : 'solve-clean'}>
           {assisted
-            ? 'Solved with assistance. Restart the puzzle for a clean run'
-            : '✨ Clean solve: no assists, every mark your own'}
+            ? 'Solved with assistance. Restart the puzzle for an unassisted run'
+            : '✨ Unassisted solve: no help, every mark your own'}
         </p>
         <div className="hint-actions">
           {info.practiceTech && onAnother && (

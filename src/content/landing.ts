@@ -55,7 +55,7 @@ export const LANDING_PAGES: LandingPage[] = [
       {
         heading: 'A fair race',
         paragraphs: [
-          'Every game starts with automatic candidates off. Finish without hints, checks or automatic candidates and the result counts as a clean solve.',
+          'Every game starts with automatic candidates off. Finish without hints, checks or automatic candidates and the result counts as an unassisted solve.',
           'When you finish, Challenge a friend copies a message with your time and a link that carries the puzzle itself.'
         ]
       }

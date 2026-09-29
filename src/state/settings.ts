@@ -45,6 +45,8 @@ interface Settings {
   /** the first assist in a clean game asks first: it says what the button
    *  does (touch screens have no hover) and guards against a stray tap */
   confirmAssist: boolean;
+  /** give each digit 1 to 9 a slight colour of its own on the board */
+  digitTints: boolean;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -66,6 +68,7 @@ export const useSettings = create<Settings>()(
       showPoodle: false,
       frameHighlights: true,
       confirmAssist: true,
+      digitTints: false,
       toggleTheme: () =>
         set((s) => ({
           theme:

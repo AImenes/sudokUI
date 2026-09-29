@@ -118,6 +118,12 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         onChange={(v) => s.set({ frameHighlights: v })}
       />
       <Toggle
+        label="Tint digits by value"
+        hint="Each digit from 1 to 9 gets a slight colour of its own on the board, which makes patterns easier to see"
+        value={s.digitTints}
+        onChange={(v) => s.set({ digitTints: v })}
+      />
+      <Toggle
         label="Show timer"
         value={s.showTimer}
         onChange={(v) => s.set({ showTimer: v })}
@@ -138,7 +144,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <h4 className="setting-group">Assist</h4>
       <Toggle
         label="Ask before the first assist"
-        hint="Says what the button does, and protects a clean solve from a stray tap"
+        hint="Says what the button does, and protects an unassisted solve from a stray tap"
         value={s.confirmAssist}
         onChange={(v) => s.set({ confirmAssist: v })}
       />
@@ -303,7 +309,7 @@ export function InfoDialog({
         hint.
       </p>
       <p className="dialog-note">
-        A <strong>clean solve</strong> means finishing without anything from
+        An <strong>unassisted solve</strong> means finishing without anything from
         the Assist box: no hint, check, steps, scan, auto candidates or fill.
       </p>
       <p className="dialog-note">
