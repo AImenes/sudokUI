@@ -38,12 +38,23 @@ natively for iOS and Android via Capacitor.
   puzzle that genuinely requires it — with nothing harder needed before it.
   The game fast-forwards through the routine steps so the chosen pattern is
   the very next move
+- **The guide** (📖 in the top bar): every one of the 80 techniques explained
+  in three short parts (what the pattern is, why it works, how to spot it),
+  most with a worked example drawn on a real board that you can open and
+  play. A **glossary** defines the language of solving (strong link,
+  conjugate pair, almost locked set…), and the terms inside every
+  explanation link to it
+- The same content is published as plain web pages:
+  [sudokui.app/learn](https://sudokui.app/learn/) has one page per
+  technique, the glossary, and
+  [how the difficulty rating works](https://sudokui.app/sudoku-difficulty-rating/)
+  with the full score table
 - The complete technique catalogue is visible in-app with its ratings;
   unimplemented techniques are shown crossed out, so you always see the whole
   map of sudoku solving
 
 **Rate**
-- Every puzzle gets a difficulty score: the solver plays it with the cheapest
+- Every puzzle gets a difficulty score: the solver plays it with the easiest
   applicable technique at each step and sums per-technique scores
   (HoDoKu-compatible model)
 - Eight bands: Beginner (≤400), Easy (≤800), Medium (≤1000), Tricky (≤1150),
@@ -114,8 +125,14 @@ Requires Node 18+.
 npm install
 npm run dev        # http://localhost:5173
 npm test           # engine, generator, practice and soundness tests
-npm run build      # production build + PWA service worker
+npm run build      # production build + PWA service worker + static pages
 ```
+
+`npm run build` ends by generating the static pages (the technique guide,
+glossary, rating explainer and landing pages) and `sitemap.xml` into `dist/`.
+They are not served by `npm run dev`; to look at them, build and then run
+`npx wrangler dev`. How they are made, and what to do after adding or
+renaming a technique, is in [docs/search.md](docs/search.md).
 
 ## Architecture
 
@@ -133,8 +150,13 @@ src/
     generator.ts     full-grid + hole-digging generator with filters
     worker.ts        Web Worker for background generation & pooling
     techniques/      one module per technique family, documented finders
+  content/           the written content: technique explanations, glossary,
+                     rating explainer, worked examples, and the builder
+                     that turns them into static pages
   state/             zustand stores: game, settings, puzzle pools
   ui/                React components: SVG board, controls, dialogs
+scripts/             build-learn (static pages), hunt-examples (worked
+                     examples), og-card, promo screenshots
 tests/               vitest suites incl. the soundness harness & hunts
 ```
 
@@ -163,6 +185,10 @@ meant to double as a course in advanced sudoku solving.
 3. Run `npm test` — the soundness harness automatically validates the new
    finder wherever it fires. Add a synthetic-position test if the pattern is
    rare in random puzzles.
+4. Explain it: add its entry to `src/content/techniqueDocs.ts` (the type
+   system insists on one per technique) and its address to the slug
+   snapshot in `tests/content.test.ts`. Run
+   `npx vite-node scripts/hunt-examples.ts` to find it a worked example.
 
 ## Mobile builds
 
@@ -184,8 +210,8 @@ Toward the best open-source sudoku tool anywhere:
   the board for streams and classroom use
 - **Statistics & streaks** — local solve history, per-technique mastery
   tracking; optional accounts (Cloudflare D1) for sync across devices
-- **Daily puzzles & curated library** — a hand-picked puzzle of the day per
-  difficulty band, plus classic named puzzles (Escargot, Golden Nugget…)
+- **Curated library** — classic named puzzles (Escargot, Golden Nugget…) and
+  a daily puzzle per difficulty band, next to today's shared daily
 - **Custom solve-order editor** — reorder/disable techniques and see how
   ratings change; export your own rating profile
 - **Accessibility & i18n** — full screen-reader support, colour-blind-safe

@@ -149,7 +149,7 @@ export const TECHS = {
   DEATH_BLOSSOM: t(6000, 'Death Blossom', 'Unfair', 'Almost Locked Sets', 360),
   FRANKEN_X_WING: t(6100, 'Franken X-Wing', 'Unfair', 'Complex Fish', 300),
   FRANKEN_SWORDFISH: t(6200, 'Franken Swordfish', 'Unfair', 'Complex Fish', 350),
-  // --- not yet implemented; shown in the app for the full picture ---
+  // --- additions beyond the original port (mostly sudokUI extensions) ---
   X_CYCLES: t(5450, 'X-Cycles (loops)', 'Unfair', 'Chains and Loops', 280),
   GROUPED_X_CYCLES: t(5460, 'Grouped X-Cycles', 'Unfair', 'Chains and Loops', 300),
   TWINNED_XY_CHAIN: t(5550, 'Twinned XY-Chains', 'Unfair', 'Chains and Loops', 300, false),

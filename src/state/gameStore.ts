@@ -576,7 +576,7 @@ export const useGame = create<GameStore>()(
         });
       },
 
-      /** Wipe everything from the selected cells (Shift+Erase). */
+      /** Wipe everything from the selected cells (W). */
       wipe: () => {
         const s = get();
         if (s.won || s.paused || !s.selection.length) return;

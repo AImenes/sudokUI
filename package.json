@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && vite-node scripts/build-learn.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
