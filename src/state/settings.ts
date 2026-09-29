@@ -7,9 +7,14 @@ export type MarkLayer = 'center' | 'corner';
 
 export type Theme = 'dark' | 'light' | 'rose' | 'forest';
 
+/** typefaces already on the device: nothing to download, works offline */
+export type Font = 'classic' | 'rounded' | 'serif' | 'mono';
+
 interface Settings {
   /** board theme: dark, daylight or rosé */
   theme: Theme;
+  /** typeface of the whole app, board digits included */
+  font: Font;
   /** tint the row/column/box of a single selected cell */
   highlightPeers: boolean;
   /** tint all cells holding the same digit as the selection */
@@ -45,6 +50,7 @@ export const useSettings = create<Settings>()(
   persist(
     (set) => ({
       theme: 'dark',
+      font: 'classic',
       highlightPeers: true,
       highlightSameDigit: true,
       showTimer: true,

@@ -109,10 +109,34 @@ body,
   overflow-x: hidden;
 }
 
+/* typefaces: only ones already on the device, so nothing is downloaded
+   and the choice works offline. Each falls back gracefully elsewhere. */
+:root {
+  --font-classic: 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-rounded: ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', 'Nunito',
+    'Varela Round', system-ui, sans-serif;
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia,
+    serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --font: var(--font-classic);
+}
+
+:root[data-font='rounded'] {
+  --font: var(--font-rounded);
+}
+
+:root[data-font='serif'] {
+  --font: var(--font-serif);
+}
+
+:root[data-font='mono'] {
+  --font: var(--font-mono);
+}
+
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font);
   -webkit-user-select: none;
   user-select: none;
 }
