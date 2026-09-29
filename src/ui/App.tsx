@@ -87,7 +87,7 @@ export default function App() {
   const givenCount = useGame((s) =>
     s.custom ? s.cells.filter((c) => c.value > 0).length : 0
   );
-  const { theme, toggleTheme, showTimer, hideRating, showPoodle } = useSettings();
+  const { theme, font, toggleTheme, showTimer, hideRating, showPoodle } = useSettings();
   const { start, genState, cancel } = useNewGame();
 
   const [dialog, setDialog] = useState<
@@ -128,6 +128,10 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.font = font;
+  }, [font]);
 
   // boot: a shared link wins over everything — #s= carries a full position
   // (entries, marks, colours), #p= just the puzzle; otherwise a saved game

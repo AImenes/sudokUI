@@ -1,7 +1,7 @@
 // Settings dialog (gear) and help dialog (ⓘ): user preferences and a
 // reference for modes, shortcuts and the candidate model.
 import React from 'react';
-import { useSettings, MarkLayer } from '../state/settings';
+import { useSettings, MarkLayer, Font } from '../state/settings';
 import { Modal } from './Dialogs';
 import { BandTable, LearnTarget } from './Learn';
 import { RATING_SUMMARY } from '../content/rating';
@@ -66,6 +66,33 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               className={s.theme === value ? 'active' : ''}
               aria-pressed={s.theme === value}
               onClick={() => s.set({ theme: value })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="setting-row stack" role="group" aria-label="Board typeface">
+        <div className="setting-text">
+          <span>Board typeface</span>
+          <small>For the digits and pencil marks on the board</small>
+        </div>
+        <div className="segmented">
+          {(
+            [
+              ['classic', 'Classic'],
+              ['rounded', 'Rounded'],
+              ['serif', 'Serif'],
+              ['mono', 'Mono'],
+              ['hand', 'Hand']
+            ] as [Font, string][]
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              className={s.font === value ? 'active' : ''}
+              aria-pressed={s.font === value}
+              style={{ fontFamily: `var(--font-${value})` }}
+              onClick={() => s.set({ font: value })}
             >
               {label}
             </button>

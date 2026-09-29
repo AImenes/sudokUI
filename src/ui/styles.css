@@ -109,10 +109,42 @@ body,
   overflow-x: hidden;
 }
 
+/* typefaces for the board: only ones already on the device, so nothing is
+   downloaded and the choice works offline. Each falls back gracefully.
+   The choice changes the board alone: menus, hints and explanations always
+   keep the face made for reading. */
+:root {
+  --font-classic: 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-rounded: ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', 'Nunito',
+    'Varela Round', system-ui, sans-serif;
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia,
+    serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-hand: 'Noteworthy', 'Bradley Hand', 'Segoe Print', 'Ink Free', 'Chalkboard SE',
+    'Comic Sans MS', casual, cursive;
+  --font: var(--font-classic);
+}
+
+:root[data-font='hand'] {
+  --font: var(--font-hand);
+}
+
+:root[data-font='rounded'] {
+  --font: var(--font-rounded);
+}
+
+:root[data-font='serif'] {
+  --font: var(--font-serif);
+}
+
+:root[data-font='mono'] {
+  --font: var(--font-mono);
+}
+
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-classic);
   -webkit-user-select: none;
   user-select: none;
 }
@@ -350,7 +382,7 @@ button {
 
 .board text {
   pointer-events: none;
-  font-family: inherit;
+  font-family: var(--font);
 }
 
 /* pause: a calm frosted card floating over the blank board */
@@ -1781,6 +1813,12 @@ kbd {
 
   .setting-row.stack .segmented {
     align-self: flex-start;
+  }
+
+  /* five typefaces side by side need slightly narrower buttons */
+  .setting-row.stack .segmented button {
+    padding-left: 9px;
+    padding-right: 9px;
   }
 
   /* keys above, meaning below: two cramped columns become one */
