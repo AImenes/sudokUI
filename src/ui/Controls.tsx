@@ -31,8 +31,8 @@ const BUTTONS: { name: string; icon: string; text: string; assist?: true }[] = [
   { name: 'Check', icon: '✓', text: 'Marks wrong digits, and pencil marks that have lost the true digit.', assist: true },
   { name: 'Steps', icon: '≡', text: 'Lists every step of one complete solution. You can jump to any of them.', assist: true },
   { name: 'Scan', icon: '🔎', text: 'Lists every technique that works in this exact position, not only the easiest.', assist: true },
-  { name: 'Auto', icon: '⌗', text: 'Works out the candidates of every cell and keeps them up to date as you play.', assist: true },
-  { name: 'Fill', icon: '✎', text: 'Writes every candidate into the empty cells as pencil marks, once.', assist: true }
+  { name: 'Auto candidates', icon: '⌗', text: 'Works out the candidates of every cell and keeps them up to date as you play.', assist: true },
+  { name: 'Fill candidates', icon: '✎', text: 'Writes every candidate into the empty cells as pencil marks, once.', assist: true }
 ];
 
 const textOf = (name: string) => BUTTONS.find((b) => b.name === name)!.text;
@@ -137,24 +137,25 @@ export function Controls({
         ))}
       </div>
 
-      {/* history & notation — none of these touch a clean solve */}
+      {/* history & notation: none of these count as help */}
       <div className="action-row">
         <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩ Undo</button>
         <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪ Redo</button>
         <button onClick={erase} title={eraseTitle(effectiveMode, autoCandidates)}>⌫ Erase</button>
         <button
           onClick={convertMarks}
-          title="Swap corner and centre marks (S). Pure notation, never breaks a clean solve"
+          title="Swap corner and centre marks (S). Pure notation, never counts as help"
         >
           ⇄ Swap
         </button>
       </div>
 
-      {/* everything inside this zone ends a clean solve the moment it is used */}
+      {/* one group, one caption: everything inside counts as help, and
+          the solve is no longer unassisted the moment any of it is used */}
       <div className="assist-zone">
         <div className="row-caption zone-head">
           <span>
-            Assist <span className="zone-note">using these ends a clean solve</span>
+            Assist <span className="zone-note">everything in this box counts as help</span>
           </span>
           <button
             className="zone-help"
@@ -186,24 +187,23 @@ export function Controls({
           )}
         </div>
 
-        <div className="row-caption">Candidates</div>
         <div className="action-row">
           <button
             className={autoCandidates ? 'toggled' : ''}
-            onClick={autoCandidates ? onAutoToggle : guarded('Auto', onAutoToggle)}
+            onClick={autoCandidates ? onAutoToggle : guarded('Auto candidates', onAutoToggle)}
             title={
               autoCandidates
                 ? 'Turn off. Where the candidates go is configurable in Settings, and Ctrl+Z reverts'
                 : 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
             }
           >
-            ⌗ Auto
+            ⌗ Auto candidates
           </button>
           <button
-            onClick={guarded('Fill', fillCandidates)}
+            onClick={guarded('Fill candidates', fillCandidates)}
             title={`Fill ${effectiveMode === 'corner' ? 'corner' : 'centre'} marks with all candidates. With several cells selected, only those are filled`}
           >
-            ✎ Fill
+            ✎ Fill candidates
           </button>
         </div>
       </div>
@@ -212,8 +212,8 @@ export function Controls({
         <Modal title={`Use ${pending.name}?`} onClose={() => setPending(null)}>
           <p className="dialog-note">{textOf(pending.name)}</p>
           <p className="dialog-note">
-            Using it ends the clean solve for this puzzle. Everything else
-            stays as it is.
+            Using it counts as help, so this solve will no longer be
+            unassisted. Everything else stays as it is.
           </p>
           <div className="hint-actions">
             <button onClick={() => use(false)}>Use {pending.name}</button>
@@ -237,7 +237,7 @@ export function Controls({
                     {b.icon}
                   </span>
                   {b.name}
-                  {b.assist && <span className="zone-note">ends a clean solve</span>}
+                  {b.assist && <span className="zone-note">counts as help</span>}
                 </dt>
                 <dd>{b.text}</dd>
               </React.Fragment>

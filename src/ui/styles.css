@@ -123,6 +123,34 @@ body,
   --font-hand: 'Noteworthy', 'Bradley Hand', 'Segoe Print', 'Ink Free', 'Chalkboard SE',
     'Comic Sans MS', casual, cursive;
   --font: var(--font-classic);
+
+  /* one hue per digit for the opt-in digit tints. They are mixed into the
+     theme's own digit colour (see Grid), never used pure, so the same nine
+     hues serve every theme */
+  --tint-1: #4f8fe8;
+  --tint-2: #2fb3a3;
+  --tint-3: #4caf50;
+  --tint-4: #a3b52c;
+  --tint-5: #e0b030;
+  --tint-6: #ee8a3c;
+  --tint-7: #b06fdc;
+  --tint-8: #e06aa8;
+  --tint-9: #e05563;
+}
+
+/* on a light board the digits are dark, so their hues are darker too:
+   a pale hue would wash an entered digit out */
+:root[data-theme='light'],
+:root[data-theme='rose'] {
+  --tint-1: #2563c9;
+  --tint-2: #0f8577;
+  --tint-3: #2e7d32;
+  --tint-4: #6b7a10;
+  --tint-5: #9a7100;
+  --tint-6: #b85a12;
+  --tint-7: #7b3fb5;
+  --tint-8: #b83a7e;
+  --tint-9: #c02a3c;
 }
 
 :root[data-font='hand'] {
@@ -1362,6 +1390,12 @@ kbd {
   font-size: 12px;
   color: var(--muted);
   padding: 4px 0 8px;
+  /* if a line ever has to wrap, split it evenly: no lone last word */
+  text-wrap: balance;
+}
+
+.app-footer a {
+  white-space: nowrap;
 }
 
 .app-footer a {
