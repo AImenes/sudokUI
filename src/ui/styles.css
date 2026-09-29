@@ -190,6 +190,11 @@ button {
   align-items: center;
   gap: 16px;
   padding: 10px 18px;
+  /* installed on a phone the page reaches under the notch and the rounded
+     corners: keep the bar's content clear of them */
+  padding-top: max(10px, env(safe-area-inset-top));
+  padding-left: max(18px, env(safe-area-inset-left));
+  padding-right: max(18px, env(safe-area-inset-right));
   background: var(--bg-soft);
   border-bottom: 1px solid rgba(128, 128, 160, 0.15);
 }
@@ -487,8 +492,8 @@ button {
   margin: 2px 2px -4px;
 }
 
-/* everything inside this zone costs the clean-solve badge — a translucent
-   amber wash marks the boundary without shouting */
+/* everything inside this zone costs the clean-solve badge: a plain outline
+   groups it, and the caption says what the group means */
 .assist-zone {
   display: flex;
   flex-direction: column;
@@ -496,12 +501,51 @@ button {
   margin: 0 -8px;
   padding: 8px 8px 10px;
   border-radius: 12px;
-  border: 1px solid rgba(217, 161, 60, 0.16);
-  background: linear-gradient(
-    180deg,
-    rgba(217, 161, 60, 0.09),
-    rgba(217, 161, 60, 0.02)
-  );
+  border: 1px solid rgba(128, 128, 160, 0.22);
+}
+
+.zone-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+/* explains every button without pressing any of them */
+.zone-help {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(128, 128, 160, 0.35);
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.zone-help:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.button-help dt {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.button-help-icon {
+  display: inline-block;
+  width: 20px;
+  text-align: center;
+}
+
+.button-help dd {
+  margin-left: 26px;
 }
 
 .zone-note {
@@ -1689,7 +1733,7 @@ kbd {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 26px;
+  bottom: calc(26px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   background: var(--panel);
   color: var(--text);
@@ -1748,6 +1792,12 @@ kbd {
     min-height: 32px;
   }
 
+  /* a small mark with a finger-sized target around it */
+  .zone-help {
+    width: 32px;
+    height: 32px;
+  }
+
   .practice-btns,
   .learn-chips {
     gap: 8px;
@@ -1763,6 +1813,9 @@ kbd {
   .topbar {
     gap: 8px;
     padding: 5px 10px;
+    padding-top: max(5px, env(safe-area-inset-top));
+    padding-left: max(10px, env(safe-area-inset-left));
+    padding-right: max(10px, env(safe-area-inset-right));
   }
 
   .brand h1 {
@@ -1854,6 +1907,8 @@ kbd {
     justify-content: flex-start;
     gap: 14px;
     padding: 10px;
+    /* room for the home bar under the last control */
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
   }
 
   .board-col {

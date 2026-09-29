@@ -135,6 +135,14 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         onChange={(v) => s.set({ showPoodle: v })}
       />
 
+      <h4 className="setting-group">Assist</h4>
+      <Toggle
+        label="Ask before the first assist"
+        hint="Says what the button does, and protects a clean solve from a stray tap"
+        value={s.confirmAssist}
+        onChange={(v) => s.set({ confirmAssist: v })}
+      />
+
       <h4 className="setting-group">Practice</h4>
       <Toggle
         label="Jump to the technique"
