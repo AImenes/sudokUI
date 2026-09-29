@@ -6,19 +6,34 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
     <meta name="theme-color" content="#1a1d29" />
     <title>sudokUI</title>
     <meta
       name="description"
-      content="sudokUI is a free, open-source sudoku app: beautiful SudokuPad-style play, practice mode for 65 named techniques (X-Wing to Exocet), HoDoKu-compatible difficulty ratings, hints that explain every step, and shareable puzzle links. Works offline."
+      content="Play free sudoku, rate the difficulty of any puzzle (HoDoKu-compatible scores) and practise 65 solving techniques with hints that explain every step."
     />
     <link rel="canonical" href="https://sudokui.app/" />
-    <meta property="og:title" content="sudokUI: the open-source sudoku studio" />
+    <style>
+      /* the pre-hydration view: on a slow connection this is on screen for a
+         moment before the app mounts, so it wears the app's colours */
+      html { background: #14161f; }
+      .boot {
+        max-width: 620px;
+        margin: 72px auto;
+        padding: 0 20px;
+        font: 16px/1.6 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
+        color: #e8eaf2;
+      }
+      .boot a { color: #8ab6f7; }
+      .boot li { margin: 4px 0; }
+    </style>
+    <meta property="og:site_name" content="sudokUI" />
+    <meta property="og:title" content="sudokUI: free sudoku, technique trainer and difficulty rating" />
     <meta
       property="og:description"
-      content="Play, practise and rate sudoku puzzles with the deepest verified technique library in a browser. Free, offline-capable, no ads."
+      content="Play sudoku, rate the difficulty of any puzzle with HoDoKu-compatible scores, and practise 65 solving techniques with hints that explain every step. Free, works offline, no ads."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://sudokui.app/" />
@@ -34,21 +49,39 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "sudokUI",
-        "url": "https://sudokui.app/",
-        "applicationCategory": "GameApplication",
-        "operatingSystem": "Any",
-        "offers": { "@type": "Offer", "price": "0" },
-        "featureList": [
-          "77 machine-verified solving techniques with step-by-step hints",
-          "Practice mode for 65 named techniques, X-Wing to Exocet",
-          "A shared daily puzzle, identical worldwide",
-          "HoDoKu-compatible difficulty ratings across eight bands",
-          "Shareable puzzle and position links",
-          "Offline play, no ads, no account"
-        ],
-        "description": "Free open-source sudoku app with practice mode for 65 named solving techniques, explainable hints and HoDoKu-compatible difficulty ratings."
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://sudokui.app/#website",
+            "name": "sudokUI",
+            "alternateName": ["sudokui"],
+            "url": "https://sudokui.app/",
+            "inLanguage": "en"
+          },
+          {
+            "@type": "WebApplication",
+            "name": "sudokUI",
+            "url": "https://sudokui.app/",
+            "applicationCategory": "GameApplication",
+            "operatingSystem": "Any",
+            "browserRequirements": "Requires JavaScript",
+            "isAccessibleForFree": true,
+            "inLanguage": "en",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "sameAs": ["https://github.com/AImenes/sudokUI"],
+            "isPartOf": { "@id": "https://sudokui.app/#website" },
+            "featureList": [
+              "Difficulty rating for any sudoku, with HoDoKu-compatible scores and eight bands",
+              "77 machine-verified solving techniques with step-by-step hints",
+              "Practice mode for 65 named techniques, X-Wing to Exocet",
+              "A step-by-step solver that names and explains every step",
+              "A shared daily puzzle, identical worldwide",
+              "Shareable puzzle and position links",
+              "Offline play, no ads, no account"
+            ],
+            "description": "Free open-source sudoku app that rates the difficulty of any puzzle with HoDoKu-compatible scores and teaches 65 named solving techniques with hints that explain every step."
+          }
+        ]
       }
     </script>
   </head>
@@ -56,15 +89,24 @@
     <div id="root">
       <!-- pre-hydration content: what crawlers and slow connections see;
            React replaces this the moment the app mounts -->
-      <div style="max-width: 620px; margin: 72px auto; padding: 0 20px; line-height: 1.6">
+      <div class="boot">
         <h1>sudokUI</h1>
         <p>
           A free, open-source sudoku app for playing, practising and rating
-          puzzles. 77 solving techniques with hints that explain every step,
-          practice mode for everything from X-Wings to Exocets, a shared
-          daily puzzle, and difficulty ratings you can trust. No ads, no
+          puzzles. It rates the difficulty of any sudoku with
+          HoDoKu-compatible scores, knows 77 solving techniques with hints
+          that explain every step, and has a practice mode for 65 of them,
+          from X-Wings to Exocets. One shared daily puzzle, no ads, no
           account, works offline.
         </p>
+        <ul>
+          <li><a href="/learn/">Sudoku solving techniques explained</a></li>
+          <li><a href="/sudoku-difficulty-rating/">How the sudoku difficulty rating works</a></li>
+          <li><a href="/sudoku-solver/">A sudoku solver that explains every step</a></li>
+          <li><a href="/daily-sudoku/">Daily sudoku</a></li>
+          <li><a href="/hodoku/">HoDoKu-compatible ratings in your browser</a></li>
+          <li><a href="/learn/glossary/">Sudoku glossary</a></li>
+        </ul>
         <p>Loading the board&hellip;</p>
         <noscript>
           <p>

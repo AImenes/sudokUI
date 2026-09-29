@@ -3,6 +3,8 @@
 import React from 'react';
 import { useSettings, MarkLayer } from '../state/settings';
 import { Modal } from './Dialogs';
+import { BandTable, LearnTarget } from './Learn';
+import { RATING_SUMMARY } from '../content/rating';
 
 function Toggle({
   label,
@@ -42,7 +44,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Settings" onClose={onClose}>
       <h4 className="setting-group">Appearance</h4>
-      <label className="setting-row">
+      <div className="setting-row stack" role="group" aria-label="Theme">
         <div className="setting-text">
           <span>Theme</span>
           <small>
@@ -62,16 +64,17 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             <button
               key={value}
               className={s.theme === value ? 'active' : ''}
+              aria-pressed={s.theme === value}
               onClick={() => s.set({ theme: value })}
             >
               {label}
             </button>
           ))}
         </div>
-      </label>
+      </div>
       <Toggle
         label="Highlight row, column and box"
-        hint="Tint the units of the selected cell"
+        hint="Shows which cells share a row, column or box with the selected cell"
         value={s.highlightPeers}
         onChange={(v) => s.set({ highlightPeers: v })}
       />
@@ -115,17 +118,21 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
 
       <h4 className="setting-group">Candidates</h4>
       <Toggle
-        label="Keep candidates when turning auto off"
-        hint="Writes the current candidate state into pencil marks so you continue where auto left off"
+        label="Keep candidates when Auto is switched off"
+        hint="The candidates Auto was showing stay on the board as your own pencil marks"
         value={s.autoOffMaterialize}
         onChange={(v) => s.set({ autoOffMaterialize: v })}
       />
-      <label className={`setting-row ${s.autoOffMaterialize ? '' : 'disabled'}`}>
+      <div
+        className={`setting-row stack ${s.autoOffMaterialize ? '' : 'disabled'}`}
+        role="group"
+        aria-label="Write candidates as"
+      >
         <div className="setting-text">
           <span>Write them as</span>
           <small>
-            Centre is the convention for exhaustive candidate lists; corner
-            uses the digit-bound 3×3 layout that hint highlights align with
+            Centre: a compact list in the middle of the cell. Corner: each
+            digit in its own fixed spot, which is where hints highlight it
           </small>
         </div>
         <div className="segmented">
@@ -134,13 +141,14 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               key={layer}
               disabled={!s.autoOffMaterialize}
               className={s.materializeLayer === layer ? 'active' : ''}
+              aria-pressed={s.materializeLayer === layer}
               onClick={() => s.set({ materializeLayer: layer })}
             >
               {layer === 'center' ? 'Centre' : 'Corner'}
             </button>
           ))}
         </div>
-      </label>
+      </div>
     </Modal>
   );
 }
@@ -161,6 +169,7 @@ const SHORTCUTS: [string, string][] = [
   ['Ctrl/Cmd + A', 'Select every cell (Erase and W then act board-wide)'],
   ['Ctrl/Cmd + Z · Y', 'Undo · Redo'],
   ['H', 'Hint'],
+  ['L', 'Learn: every technique explained, glossary, rating'],
   ['S', 'Swap corner ↔ centre marks (selection, or the whole board)'],
   ['N', 'Next practice puzzle (in practice mode)'],
   ['P', 'Pause'],
@@ -168,15 +177,41 @@ const SHORTCUTS: [string, string][] = [
   ['Shift + click', 'Add a cell to the selection, or remove one that is already selected']
 ];
 
-export function InfoDialog({ onClose }: { onClose: () => void }) {
+export function InfoDialog({
+  onClose,
+  onLearn
+}: {
+  onClose: () => void;
+  /** jump to the Learn dialog (techniques, glossary, rating) */
+  onLearn: (target: LearnTarget) => void;
+}) {
   return (
     <Modal title="How to play sudokUI" onClose={onClose}>
+      <h4 className="setting-group">The basics</h4>
+      <p className="dialog-note">
+        Fill the grid so that every row, every column and every 3×3 box holds
+        the digits 1 to 9 once each. Select a cell, then type or tap a digit.
+        Pencil marks, also called candidates, are small notes of the digits a
+        cell could still hold.
+      </p>
+      <p className="dialog-note">
+        New to a word or a technique?{' '}
+        <button className="learn-link" onClick={() => onLearn({ tab: 'techniques' })}>
+          Every technique explained
+        </button>{' '}
+        and the{' '}
+        <button className="learn-link" onClick={() => onLearn({ tab: 'glossary' })}>
+          glossary
+        </button>{' '}
+        live under 📖 in the top bar.
+      </p>
       <h4 className="setting-group">Entry modes</h4>
       <p className="dialog-note">
-        <strong>Digit</strong> places big numbers. <strong>Corner</strong> is
-        for Snyder-style notation: small marks at the digit's fixed 3×3 spot,
-        meaningful by presence. <strong>Centre</strong> holds an exhaustive
-        candidate list, where a missing digit means you have eliminated it.{' '}
+        <strong>Digit</strong> places big numbers. <strong>Corner</strong>{' '}
+        and <strong>Centre</strong> are two places to write pencil marks:
+        corner marks sit at each digit's fixed spot in a 3×3 layout, centre
+        marks are listed in the middle of the cell. Use either or both; what
+        they mean is yours to decide.{' '}
         <strong>Colour</strong> paints cells from a nine-colour palette (a
         cell can hold several colours).
       </p>
@@ -196,23 +231,12 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
 
       <h4 className="setting-group">Difficulty rating</h4>
       <p className="dialog-note">
-        The rating is the summed cost of solving the puzzle: sudokUI plays it
-        using the cheapest applicable technique at every step and adds each
-        technique's score (naked single 4 … Death Blossom 360). Scores follow
-        HoDoKu, so ratings are directly comparable. The bands:
+        {RATING_SUMMARY}{' '}
+        <button className="learn-link" onClick={() => onLearn({ tab: 'rating' })}>
+          How rating works, in full
+        </button>
       </p>
-      <table className="shortcut-table">
-        <tbody>
-          <tr><td><kbd>Beginner</kbd></td><td>≤ 400: full houses and easy singles</td></tr>
-          <tr><td><kbd>Easy</kbd></td><td>≤ 800: singles only territory</td></tr>
-          <tr><td><kbd>Medium</kbd></td><td>≤ 1000: locked candidates, subsets</td></tr>
-          <tr><td><kbd>Tricky</kbd></td><td>≤ 1150: a first fish, wing or kite</td></tr>
-          <tr><td><kbd>Hard</kbd></td><td>≤ 1600: fish, wings, patterns in force</td></tr>
-          <tr><td><kbd>Unfair</kbd></td><td>≤ 1800: chains, ALS, finned fish</td></tr>
-          <tr><td><kbd>Extreme</kbd></td><td>≤ 3000: long chains, colouring, nets</td></tr>
-          <tr><td><kbd>Nightmare</kbd></td><td>above that: forcing nets and Exocets</td></tr>
-        </tbody>
-      </table>
+      <BandTable />
 
       <h4 className="setting-group">Hints & practice</h4>
       <p className="dialog-note">
@@ -220,7 +244,7 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
         it on the board, then applies it if you want. <em>Steps</em> lists a
         complete solution path with its crux, and <em>Scan</em> lists every
         technique available in the exact current position, not just the
-        cheapest, so you can hunt the pattern you prefer. <em>Practice</em>{' '}
+        easiest, so you can hunt the pattern you prefer. <em>Practice</em>{' '}
         generates a puzzle that genuinely requires a chosen technique and
         skips you to the position where it applies (optional, see Settings);
         press N for the next one.
@@ -229,14 +253,35 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
         <strong>Hints follow your own play.</strong> A missing pencil mark can
         mean "eliminated" or just "not written yet", and only you know which, so
         the first time Hint or Scan meets your manual marks it asks once, and
-        remembers for the rest of the puzzle. Say your marks are your{' '}
-        <em>remaining candidates</em> and hints continue from exactly where
-        you are. Corner or centre makes no difference, since those are
-        positions, not meanings (Snyder notation is a <em>method</em>: partial
-        corner marks, which is the other answer). Auto and Fill answer the
-        question automatically. Every hint is verified against the true
-        solution before it is shown, so a stray mark can point you to Check
-        but can never produce a wrong hint.
+        remembers for the rest of the puzzle.
+      </p>
+      <p className="dialog-note">
+        Say your marks are your <em>remaining candidates</em> and hints
+        continue from exactly where you are. Corner or centre makes no
+        difference, since those are positions, not meanings (Snyder notation
+        is a <em>method</em>: partial corner marks, which is the other
+        answer). Auto and Fill answer the question automatically.
+      </p>
+      <p className="dialog-note">
+        Every hint is verified against the true solution before it is shown,
+        so a stray mark can point you to Check but can never produce a wrong
+        hint.
+      </p>
+      <p className="dialog-note">
+        A <strong>clean solve</strong> means finishing without anything from
+        the Assist box: no hint, check, steps, scan, auto candidates or fill.
+      </p>
+      <p className="dialog-note">
+        Hints name cells by row and column: r2c3 is row 2, column 3, counted
+        from the top left.
+      </p>
+
+      <h4 className="setting-group">Touch</h4>
+      <p className="dialog-note">
+        Tap to select, drag to multi-select, and use the on-screen mode and
+        number buttons. Tap the selected cell again, or anywhere beside the
+        board, to clear the highlight, and long-press a digit to highlight
+        all of its cells.
       </p>
 
       <h4 className="setting-group">Keyboard</h4>
@@ -252,13 +297,11 @@ export function InfoDialog({ onClose }: { onClose: () => void }) {
           ))}
         </tbody>
       </table>
+      <h4 className="setting-group">Offline and install</h4>
       <p className="dialog-note">
-        On touch devices: tap to select, drag to multi-select, and use the
-        on-screen mode and number buttons. Tap the selected cell again, or
-        anywhere beside the board, to clear the highlight, and long-press a
-        digit to highlight all of its cells. Everything works
-        offline once the app has loaded. Install it from your browser menu
-        (on iPhone: Share → Add to Home Screen) for a full-screen experience.
+        Everything works offline once the app has loaded. Install it from
+        your browser menu (on iPhone: Share → Add to Home Screen) for a
+        full-screen experience.
       </p>
       <p className="dialog-note">
         sudokUI is open source at{' '}

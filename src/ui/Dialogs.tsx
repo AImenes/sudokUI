@@ -16,6 +16,9 @@ import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
+import { TECH_DOCS } from '../content/techniqueDocs';
+import { BAND_LEADS, BAND_NOTES } from '../content/rating';
+import { categoryLabel } from '../content/categories';
 
 interface GenState {
   label: string;
@@ -57,16 +60,8 @@ export function useNewGame() {
   return { start, genState, cancel: () => genState?.handle.cancel() };
 }
 
-const LEVEL_DESCRIPTIONS: Record<Level, string> = {
-  Beginner: 'Full houses and easy singles to learn the ropes',
-  Easy: 'Singles only, a relaxed solve',
-  Medium: 'Locked candidates and subsets',
-  Tricky: 'One new trick: a first fish, wing or kite',
-  Hard: 'Fish, wings and single-digit patterns in force',
-  Unfair: 'Chains, ALS and finned fish',
-  Extreme: 'Long chains, colouring and nets',
-  Nightmare: 'Forcing nets and Exocet territory, with ratings past 3000'
-};
+/** what a level asks of you, in plain words, then the techniques behind it */
+const levelDescription = (level: Level) => `${BAND_LEADS[level]}: ${BAND_NOTES[level]}`;
 
 export function NewGameDialog({
   onClose,
@@ -106,7 +101,7 @@ export function NewGameDialog({
             onClick={() => onStart(level)}
           >
             <strong>{level}</strong>
-            <span>{LEVEL_DESCRIPTIONS[level]}</span>
+            <span>{levelDescription(level)}</span>
           </button>
         ))}
         <button className="level-btn" onClick={onCustom}>
@@ -121,7 +116,16 @@ export function NewGameDialog({
   );
 }
 
-export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onStart: (tech: Tech) => void }) {
+export function PracticeDialog({
+  onClose,
+  onStart,
+  onLearn
+}: {
+  onClose: () => void;
+  onStart: (tech: Tech) => void;
+  /** open the technique guide (every technique explained) */
+  onLearn: () => void;
+}) {
   const byCategory = new Map<Category, Tech[]>();
   for (const tech of ALL_TECHS) {
     const cat = TECHS[tech].category;
@@ -133,20 +137,42 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
   return (
     <Modal title="Practice a technique" onClose={onClose}>
       <p className="dialog-note">
-        sudokUI generates a puzzle whose solution path requires the chosen
-        technique, with nothing harder needed before it, and skips you to
-        the position where it applies. Techniques marked ✗, ≈ or ⚙ are shown
-        for completeness but deliberately not playable: hover them to see
-        why. The number on each technique is its rating cost: a puzzle's
-        difficulty rating is the sum of these over its solve path.
+        Pick a technique. sudokUI builds a puzzle that needs it, with nothing
+        harder before it, and takes you to the move where it applies.
+      </p>
+      <p className="dialog-note">
+        The number on each button is the technique's cost. A puzzle's
+        difficulty rating is the sum of the costs of every step needed to
+        solve it.
       </p>
       <p className="tech-count">
         <strong>{playable.length}</strong> of {shown.length} techniques playable
+        {' · '}
+        <button className="learn-link" onClick={onLearn}>
+          What do these techniques do?
+        </button>
       </p>
+      <ul className="tech-legend">
+        <li>
+          <span className="pool-dot" /> a puzzle is ready and starts instantly
+        </li>
+        <li>
+          <span className="tech-gear">⚙</span> solver only: there is no pattern to spot, so
+          nothing to practise
+        </li>
+        <li>
+          <span className="tech-tilde">≈</span> never needed: an easier technique always gets
+          there first
+        </li>
+        <li>
+          <span className="tech-x">✗</span> not implemented: the chain techniques already
+          cover it
+        </li>
+      </ul>
       <div className="practice-list">
         {[...byCategory.entries()].map(([cat, techs]) => (
           <div key={cat} className="practice-group">
-            <h4>{cat}</h4>
+            <h4>{categoryLabel(cat)}</h4>
             <div className="practice-btns">
               {techs.map((tech) => {
                 const info = TECHS[tech];
@@ -170,7 +196,7 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
                     onClick={() => ok && onStart(tech)}
                     title={
                       ok
-                        ? `Score ${info.score} · ${info.level}`
+                        ? `${TECH_DOCS[tech].what} (${info.level}, score ${info.score})`
                         : lastResort
                           ? `${info.name} is implemented and the solver uses it on the hardest puzzles. But there is nothing to spot: it assumes candidates and propagates, so practising it would just be trial and error`
                           : redundant
@@ -202,6 +228,15 @@ export function PracticeDialog({ onClose, onStart }: { onClose: () => void; onSt
     </Modal>
   );
 }
+
+/** Enter or Space on a focused row does what a click does */
+const onActivate = (action: () => void) => (e: React.KeyboardEvent) => {
+  if (e.target !== e.currentTarget) return; // a nested button handles its own keys
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    action();
+  }
+};
 
 /** a run of consecutive Easy-level steps, collapsed to one row */
 type PathRow = { kind: 'single'; index: number; step: Step } | { kind: 'group'; index: number; steps: Step[] };
@@ -260,9 +295,10 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Solution path" onClose={onClose}>
       <p className="dialog-note">
-        Every step of one complete solution, cheapest technique first. Click a
-        step to set the board to the position just before it, and the crux is
-        highlighted. Viewing this counts as assistance.
+        Every step of one complete solution, easiest technique first. Click a
+        step to set the board to the position just before it. The crux, the
+        single most expensive step, is highlighted. Viewing this counts as
+        assistance.
       </p>
       {!steps ? (
         <div className="spinner" />
@@ -275,8 +311,10 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
                 key={row.index}
                 className="path-row path-group"
                 role="button"
+                tabIndex={0}
                 title="Expand these steps"
                 onClick={() => setExpanded(new Set([...expanded, row.index]))}
+                onKeyDown={onActivate(() => setExpanded(new Set([...expanded, row.index])))}
               >
                 <button
                   className="path-jump"
@@ -298,8 +336,10 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
                 key={row.index}
                 className={`path-row ${row.index === cruxIndex ? 'path-crux' : ''}`}
                 role="button"
+                tabIndex={0}
                 title={row.step.description}
                 onClick={() => jump(row.index)}
+                onKeyDown={onActivate(() => jump(row.index))}
               >
                 <span className="path-jump">{row.index + 1}</span>
                 <span className="path-label">
@@ -317,8 +357,8 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
 }
 
 /**
- * Scan: every technique that fires in the CURRENT position, cheapest first —
- * not just the cheapest one the solve path would take. For players who are
+ * Scan: every technique that fires in the CURRENT position, easiest first —
+ * not just the one the solve path would take. For players who are
  * better at spotting, say, uniqueness patterns than wings: pick the step you
  * want and it is shown as a full hint on the board.
  */
@@ -422,7 +462,7 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
         <>
           <p className="dialog-note">
             Every technique the solver can apply right now, with your exact
-            candidates, cheapest first. Click one to see it highlighted on
+            candidates, easiest first. Click one to see it highlighted on
             the board. Counts as assistance.
           </p>
           {!steps ? (
@@ -445,11 +485,16 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
                   key={i}
                   className="path-row"
                   role="button"
+                  tabIndex={0}
                   title={step.description}
                   onClick={() => {
                     showStep(step);
                     onClose();
                   }}
+                  onKeyDown={onActivate(() => {
+                    showStep(step);
+                    onClose();
+                  })}
                 >
                   <span className="path-jump">+{TECHS[step.tech].score}</span>
                   <span className="path-label">{TECHS[step.tech].name}</span>
@@ -558,7 +603,7 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
 export function GeneratingDialog({ label, attempts, onCancel }: { label: string; attempts: number; onCancel: () => void }) {
   return (
     <div className="modal-backdrop">
-      <div className="modal">
+      <div className="modal" role="dialog" aria-modal="true" aria-label={`Generating ${label}`}>
         <h3>Generating {label}…</h3>
         <div className="spinner" />
         <p className="dialog-note">
@@ -608,7 +653,7 @@ export function VictoryDialog({
           <i key={i} style={{ '--n': i } as React.CSSProperties} />
         ))}
       </div>
-      <div className="modal victory">
+      <div className="modal victory" role="dialog" aria-modal="true" aria-label="Puzzle solved">
         <h3>Solved! 🎉</h3>
         <p>
           {info.level} · score {info.score} · {mm}:{ss}
@@ -631,7 +676,18 @@ export function VictoryDialog({
   );
 }
 
-export function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+export function Modal({
+  title,
+  children,
+  onClose,
+  wide = false
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+  /** reading-width dialog for long-form content (the Learn dialog) */
+  wide?: boolean;
+}) {
   // Escape closes the dialog (capture phase so the app's own Escape
   // handling — clearing the selection — doesn't also fire)
   React.useEffect(() => {
@@ -645,9 +701,25 @@ export function Modal({ title, children, onClose }: { title: string; children: R
     return () => window.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
+  // without this, Tab keeps walking the controls hidden behind the dialog
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    ref.current?.focus({ preventScroll: true });
+    return () => opener?.focus?.({ preventScroll: true });
+  }, []);
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={ref}
+        tabIndex={-1}
+        className={wide ? 'modal wide' : 'modal'}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-head">
           <h3>{title}</h3>
           <button className="close-btn" onClick={onClose} aria-label="Close dialog">✕</button>

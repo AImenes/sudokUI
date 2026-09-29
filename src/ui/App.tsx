@@ -23,7 +23,18 @@ import {
 } from './Dialogs';
 import { SettingsDialog, InfoDialog } from './SettingsInfo';
 import { Modal } from './Dialogs';
-import { TECHS } from '../engine/ratings';
+import { LearnDialog, LearnTarget } from './Learn';
+import { TECHS, PRACTICE_TECHS } from '../engine/ratings';
+import { techFromParam } from '../content/slugs';
+import { RATING_URL } from '../content/staticRoutes';
+
+/** #learn=<technique key or slug> | glossary | rating | term:<glossary term> */
+function parseLearnParam(param: string): LearnTarget {
+  if (param === 'glossary') return { tab: 'glossary' };
+  if (param === 'rating') return { tab: 'rating' };
+  if (param.startsWith('term:')) return { tab: 'glossary', term: param.slice(5) };
+  return { tab: 'techniques', tech: techFromParam(param) };
+}
 
 function Timer() {
   const elapsedMs = useGame((s) => s.elapsedMs);
@@ -80,14 +91,29 @@ export default function App() {
   const { start, genState, cancel } = useNewGame();
 
   const [dialog, setDialog] = useState<
-    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart' | 'steps' | 'scan'
+    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart' | 'steps' | 'scan' | 'learn'
   >('none');
+  const [learnTarget, setLearnTarget] = useState<LearnTarget>({ tab: 'techniques' });
+  const openLearn = (target: LearnTarget = { tab: 'techniques' }) => {
+    setLearnTarget(target);
+    setDialog('learn');
+  };
+  // footer links are real URLs (crawlable, and they open the static page in
+  // a new tab on a modified click); a plain click opens the in-app dialog
+  const learnLink = (target: LearnTarget) => (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    openLearn(target);
+  };
   const restart = useGame((s) => s.restart);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null);
-  // first visit only, and never over a shared puzzle link
+  // first visit only, and never over a shared or deep link: those visitors
+  // arrived with a purpose
   const [welcome, setWelcome] = useState(
-    () => !localStorage.getItem('sudokui-welcomed') && !window.location.hash.match(/[ps]=/)
+    () =>
+      !localStorage.getItem('sudokui-welcomed') &&
+      !window.location.hash.match(/(^#|&)(p=|s=|learn=|practice=|daily)/)
   );
   const dismissWelcome = () => {
     localStorage.setItem('sudokui-welcomed', '1');
@@ -105,13 +131,27 @@ export default function App() {
 
   // boot: a shared link wins over everything — #s= carries a full position
   // (entries, marks, colours), #p= just the puzzle; otherwise a saved game
-  // resumes, otherwise start an easy one. StrictMode-guarded.
+  // resumes, otherwise start an easy one. The /learn/ pages deep-link in
+  // with #practice=<technique> (start practising it) and #learn=<topic>
+  // (open the guide there). StrictMode-guarded.
   useEffect(() => {
     if ((window as any).__sudokuiBooted) return;
     (window as any).__sudokuiBooted = true;
-    const sharedPosition = new URLSearchParams(window.location.hash.slice(1)).get('s');
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const learn = params.get('learn');
+    if (learn) openLearn(parseLearnParam(learn));
+    const practice = techFromParam(params.get('practice') ?? '');
+    if (practice && PRACTICE_TECHS.includes(practice)) {
+      start({ kind: 'tech', tech: practice });
+      return;
+    }
+    if (params.has('daily')) {
+      startDaily();
+      return;
+    }
+    const sharedPosition = params.get('s');
     if (sharedPosition && useGame.getState().loadPosition(sharedPosition)) return;
-    const shared = new URLSearchParams(window.location.hash.slice(1)).get('p');
+    const shared = params.get('p');
     if (shared && shared !== useGame.getState().info?.puzzle) {
       const cleaned = shared.replace(/[^0-9.]/g, '');
       const rating = cleaned.length === 81 ? rateImport(cleaned) : null;
@@ -136,7 +176,8 @@ export default function App() {
   // toasts fade after a few seconds
   useEffect(() => {
     if (!notice) return;
-    const id = setTimeout(clearNotice, 3500);
+    // long notices stay long enough to be read
+    const id = setTimeout(clearNotice, Math.max(3500, notice.length * 70));
     return () => clearTimeout(id);
   }, [notice, clearNotice]);
 
@@ -162,6 +203,9 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // a dialog is open: its keys must not act on the board behind it
+      // (N stays live, for "next puzzle" from the victory dialog)
+      if (document.querySelector('.modal-backdrop') && e.code !== 'KeyN') return;
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
       if (!e.metaKey) {
         const other = e.ctrlKey || e.altKey;
@@ -232,6 +276,9 @@ export default function App() {
         case 'KeyP':
           togglePause();
           break;
+        case 'KeyL':
+          openLearn();
+          break;
         case 'Escape':
           select([], false);
           break;
@@ -270,8 +317,8 @@ export default function App() {
             {hideRating && !won ? (
               <button
                 className="score-btn hidden-rating"
-                onClick={() => setDialog('info')}
-                title="Difficulty hidden until you solve the puzzle (change in Settings)"
+                onClick={() => setDialog('settings')}
+                title="Difficulty is hidden until you solve the puzzle. Change this in Settings"
               >
                 <span className="level-badge level-hidden">🎲 hidden</span>
               </button>
@@ -280,8 +327,9 @@ export default function App() {
                 <span className={`level-badge level-${info.level.toLowerCase()}`}>{info.level}</span>
                 <button
                   className="score-btn"
-                  onClick={() => setDialog('info')}
-                  title="Difficulty rating: the summed technique cost of solving this puzzle. Click to learn more."
+                  onClick={() => openLearn({ tab: 'rating' })}
+                  title="How this rating is calculated"
+                  aria-label={`Rating ${info.score}. How the rating is calculated`}
                 >
                   <span className="rating-word">Rating&nbsp;</span><strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
                 </button>
@@ -303,7 +351,7 @@ export default function App() {
             {paused ? '⏵' : '⏸'}
           </button>
           <button
-            className="icon-btn"
+            className="icon-btn theme-btn"
             onClick={toggleTheme}
             title="Cycle theme: dark → daylight → rosé → forest"
             aria-label={
@@ -317,6 +365,14 @@ export default function App() {
             }
           >
             {theme === 'dark' ? '☀️' : theme === 'light' ? '🌸' : theme === 'rose' ? '🌲' : '🌙'}
+          </button>
+          <button
+            className="icon-btn"
+            onClick={() => openLearn()}
+            title="Learn: every technique explained, glossary, rating (L)"
+            aria-label="Learn: techniques, glossary and rating"
+          >
+            📖
           </button>
           <button
             className="icon-btn"
@@ -388,7 +444,7 @@ export default function App() {
               </button>
             </div>
           )}
-          <HintPanel />
+          <HintPanel onLearn={(tech) => openLearn({ tab: 'techniques', tech })} />
           {custom && (
             <div className="hint-panel">
               <div className="hint-head">
@@ -440,6 +496,19 @@ export default function App() {
             </div>
           )}
           <footer className="app-footer">
+            <nav className="footer-learn" aria-label="Learn sudoku">
+              <a href="/learn/" onClick={learnLink({ tab: 'techniques' })}>
+                Techniques explained
+              </a>
+              <span aria-hidden="true"> · </span>
+              <a href="/learn/glossary/" onClick={learnLink({ tab: 'glossary' })}>
+                Glossary
+              </a>
+              <span aria-hidden="true"> · </span>
+              <a href={RATING_URL} onClick={learnLink({ tab: 'rating' })}>
+                How rating works
+              </a>
+            </nav>
             <a href="https://github.com/AImenes/sudokUI" target="_blank" rel="noreferrer">
               Open source on GitHub
             </a>
@@ -474,6 +543,27 @@ export default function App() {
             setDialog('none');
             start({ kind: 'tech', tech });
           }}
+          onLearn={() => openLearn()}
+        />
+      )}
+      {dialog === 'learn' && (
+        <LearnDialog
+          target={learnTarget}
+          onClose={() => setDialog('none')}
+          onPractice={(tech) => {
+            setDialog('none');
+            start({ kind: 'tech', tech });
+          }}
+          onExample={async (tech) => {
+            // the example's own puzzle, started as practice of its technique:
+            // with "Jump to the technique" on, that is the pictured position
+            const { EXAMPLES } = await import('../content/examples');
+            const example = EXAMPLES[tech];
+            const rating = example && rateImport(example.puzzle);
+            if (!example || !rating) return;
+            setDialog('none');
+            useGame.getState().startGame(example.puzzle, rating.score, rating.level, tech);
+          }}
         />
       )}
       {dialog === 'io' && <ImportDialog onClose={() => setDialog('none')} />}
@@ -504,8 +594,8 @@ export default function App() {
             </li>
           </ul>
           <p className="dialog-note">
-            Press ⓘ in the top bar anytime for modes, shortcuts and the
-            candidate system.
+            In the top bar, 📖 explains every technique and the words solvers
+            use, and ⓘ covers modes, shortcuts and the candidate system.
           </p>
           <div className="hint-actions">
             <button
@@ -523,7 +613,7 @@ export default function App() {
         </Modal>
       )}
       {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
-      {dialog === 'info' && <InfoDialog onClose={() => setDialog('none')} />}
+      {dialog === 'info' && <InfoDialog onClose={() => setDialog('none')} onLearn={openLearn} />}
       {dialog === 'restart' && (
         <Modal title="Restart puzzle?" onClose={() => setDialog('none')}>
           <p className="dialog-note">
@@ -546,7 +636,7 @@ export default function App() {
           </div>
         </Modal>
       )}
-      {genState && (
+      {genState && !welcome && (
         <GeneratingDialog label={genState.label} attempts={genState.attempts} onCancel={cancel} />
       )}
       {won && !victoryDismissed && (
@@ -566,7 +656,11 @@ export default function App() {
           onClose={() => setVictoryDismissed(true)}
         />
       )}
-      {notice && <div className="toast">{notice}</div>}
+      {notice && (
+        <div className="toast" role="status" aria-live="polite">
+          {notice}
+        </div>
+      )}
     </div>
   );
 }

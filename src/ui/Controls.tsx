@@ -8,13 +8,13 @@ import { Modal } from './Dialogs';
 import { PALETTE } from './Grid';
 
 function eraseTitle(mode: EntryMode, auto: boolean): string {
-  if (mode === 'color') return 'Erase colours in selected cells (Backspace) · Shift+Backspace wipes everything';
+  if (mode === 'color') return 'Erase colours in selected cells (Backspace) · W wipes everything';
   if (mode === 'corner' || mode === 'center') {
     return auto
-      ? 'Restore struck candidates in selected cells (Backspace) · Shift+Backspace wipes everything'
-      : `Erase ${mode === 'corner' ? 'corner' : 'centre'} marks in selected cells (Backspace) · Shift+Backspace wipes everything`;
+      ? 'Restore struck candidates in selected cells (Backspace) · W wipes everything'
+      : `Erase ${mode === 'corner' ? 'corner' : 'centre'} marks in selected cells (Backspace) · W wipes everything`;
   }
-  return 'Erase value, then marks, then colours (Backspace) · Shift+Backspace wipes everything';
+  return 'Erase value, then marks, then colours (Backspace) · W wipes everything';
 }
 
 const MODES: { id: EntryMode; label: string; key: string }[] = [
@@ -134,7 +134,7 @@ export function Controls({
           {onScan && (
             <button
               onClick={onScan}
-              title="List every technique available in this exact position, not just the cheapest. Counts as assistance"
+              title="List every technique available in this exact position, not just the easiest. Counts as assistance"
             >
               🔎 Scan
             </button>
@@ -166,18 +166,19 @@ export function Controls({
       {autoOffPrompt && (
         <Modal title="Keep your candidates?" onClose={() => setAutoOffPrompt(false)}>
           <p className="dialog-note">
-            Turning auto candidates off can write the current candidate state
-            into pencil marks, so you continue exactly where auto left off.
-            Your choice becomes the default. Change it anytime in Settings.
+            When Auto is switched off, the candidates it was showing can stay
+            on the board as your own pencil marks, so you continue exactly
+            where Auto left off. Your choice becomes the default. Change it
+            anytime in Settings.
           </p>
           <div className="level-list">
             <button className="level-btn" onClick={() => chooseAutoOff('center')}>
               <strong>Centre marks</strong>
-              <span>The convention for full candidate lists (recommended)</span>
+              <span>A compact list in the middle of the cell (recommended)</span>
             </button>
             <button className="level-btn" onClick={() => chooseAutoOff('corner')}>
               <strong>Corner marks</strong>
-              <span>The digit-bound 3×3 layout that hint highlights align with</span>
+              <span>Each digit in its own fixed spot, where hints highlight it</span>
             </button>
             <button className="level-btn" onClick={() => chooseAutoOff('none')}>
               <strong>Don't fill anything</strong>

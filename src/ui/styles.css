@@ -22,6 +22,13 @@
   --hint-elim: #e05563;
   --hint-place: #52ab58;
   --hint-chain: #d9a13c;
+  /* --accent doubles as a text colour and as a button fill, and no single
+     colour is readable in both roles: fills and their lettering, accent
+     text and error text each get their own token (all 4.5:1 or better) */
+  --accent-fill: #4173c8;
+  --on-accent: #ffffff;
+  --accent-text: #5b8fe0;
+  --danger-text: #f07a86;
 }
 
 :root[data-theme='light'],
@@ -41,6 +48,10 @@
   --sel-border: #3467c0;
   --peer-bg: rgba(52, 103, 192, 0.07);
   --same-bg: rgba(212, 168, 32, 0.22);
+  --accent-fill: #3467c0;
+  --on-accent: #ffffff;
+  --accent-text: #3467c0;
+  --danger-text: #b3263a;
 }
 
 /* Rosé: daylight's contrast rules with a pink wash and red digits.
@@ -51,8 +62,10 @@
   --bg-soft: #f6e2ea;
   --panel: #fff7fa;
   --text: #3a2733;
-  --muted: #8a6f7d;
+  --muted: #725a67;
   --accent: #d4568a;
+  --accent-fill: #b93a70;
+  --accent-text: #b5366c;
   --cell-bg: #fffbfd;
   --line: #57414d;
   --given: #a81d47;
@@ -72,6 +85,9 @@
   --text: #e8efe6;
   --muted: #96a89a;
   --accent: #c9963d;
+  --accent-fill: #c9963d;
+  --on-accent: #0f1b14;
+  --accent-text: #c9963d;
   --cell-bg: #16241a;
   --line: #4e6354;
   --given: #f2ecd9;
@@ -99,6 +115,35 @@ body {
   font-family: 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* buttons do not inherit the page font by default */
+button {
+  font-family: inherit;
+  touch-action: manipulation; /* no double-tap zoom on rapid taps */
+}
+
+/* explanations can be selected, to copy, look up or translate a word */
+.dialog-note,
+.hint-body p,
+.welcome-list,
+.shortcut-table,
+.learn-body,
+.learn-glossary,
+.learn-points,
+.learn-what {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* one visible focus ring everywhere (zero specificity: local rings win) */
+:where(button, a, summary, input, [role='button'], [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.modal:focus {
+  outline: none;
 }
 
 .app {
@@ -173,7 +218,7 @@ body {
 .level-tricky { background: #8a8a2030; color: #d3d36a; }
 .level-hard { background: #b8860b30; color: #e6c74c; }
 .level-unfair { background: #c0541530; color: #e8934a; }
-.level-extreme { background: #b3123030; color: #e05563; }
+.level-extreme { background: #b3123030; color: #ef7783; }
 .level-nightmare { background: #6a1b9a30; color: #b78ae8; }
 /* hide-rating pill: deliberately playful, not an error state */
 .level-hidden { background: rgba(128, 128, 160, 0.18); color: var(--muted); font-style: italic; }
@@ -188,13 +233,18 @@ body {
 :root[data-theme='light'] .level-tricky,
 :root[data-theme='rose'] .level-tricky { background: #8a8a202e; color: #5c5c08; }
 :root[data-theme='light'] .level-hard,
-:root[data-theme='rose'] .level-hard { background: #b8860b2e; color: #7a5800; }
+:root[data-theme='rose'] .level-hard { background: #b8860b2e; color: #735300; }
 :root[data-theme='light'] .level-unfair,
 :root[data-theme='rose'] .level-unfair { background: #c054152e; color: #93400e; }
 :root[data-theme='light'] .level-extreme,
 :root[data-theme='rose'] .level-extreme { background: #b312302e; color: #8f0e24; }
 :root[data-theme='light'] .level-nightmare,
 :root[data-theme='rose'] .level-nightmare { background: #6a1b9a2e; color: #4d1470; }
+:root[data-theme='light'] .level-hidden,
+:root[data-theme='rose'] .level-hidden { color: var(--text); }
+/* the dark theme's amber is unreadable on a light bar */
+:root[data-theme='light'] .practice-badge,
+:root[data-theme='rose'] .practice-badge { color: #7a5800; }
 
 .score-btn {
   white-space: nowrap;
@@ -222,7 +272,6 @@ body {
 
 .mini-i {
   font-size: 12px;
-  opacity: 0.6;
 }
 
 .practice-badge {
@@ -352,8 +401,8 @@ body {
   font-weight: 600;
   border-radius: 12px;
   border: none;
-  background: var(--accent);
-  color: white;
+  background: var(--accent-fill);
+  color: var(--on-accent);
   cursor: pointer;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
@@ -400,9 +449,9 @@ body {
 
 .row-caption {
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 1.2px;
+  letter-spacing: 1px;
   margin: 2px 2px -4px;
 }
 
@@ -427,7 +476,6 @@ body {
   text-transform: none;
   letter-spacing: normal;
   font-weight: 400;
-  opacity: 0.75;
   margin-left: 6px;
 }
 
@@ -452,9 +500,9 @@ body {
 
 /* Practice stays lit while a practice puzzle is running */
 .menu-row button.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  border-color: var(--accent-fill);
 }
 
 /* practice mode: technique name + one-click next puzzle */
@@ -478,8 +526,8 @@ body {
   padding: 6px 12px;
   border-radius: 8px;
   border: none;
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-fill);
+  color: var(--on-accent);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -490,8 +538,8 @@ body {
 }
 
 .action-row button.toggled {
-  background: var(--accent);
-  color: white;
+  background: var(--accent-fill);
+  color: var(--on-accent);
 }
 
 .controls {
@@ -516,20 +564,31 @@ body {
 }
 
 .mode-btn.active {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  border-color: var(--accent-fill);
 }
 
 /* mode held via modifier key: same colour, dashed outline says "temporary" */
 .mode-btn.held {
-  outline: 2px dashed rgba(255, 255, 255, 0.75);
+  outline: 2px dashed var(--on-accent);
   outline-offset: -4px;
 }
 
 .key-hint {
-  font-size: 10px;
-  opacity: 0.6;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.mode-btn.active .key-hint {
+  opacity: 1;
+}
+
+/* the letters name keyboard keys: no use on a touch-only device */
+@media (hover: none) and (pointer: coarse) {
+  .key-hint {
+    display: none;
+  }
 }
 
 .numpad {
@@ -564,18 +623,51 @@ body {
 .hint-head {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 10px;
   margin-bottom: 8px;
 }
 
 .hint-score {
   color: var(--muted);
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .hint-body p {
   margin: 0 0 12px;
   font-size: 14px;
   line-height: 1.5;
+  max-width: 62ch;
+}
+
+/* how to read a cell name such as r2c3 */
+.hint-body p.hint-key {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin-top: -4px;
+}
+
+/* which highlight colour means what, for the colours in this step */
+.hint-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hint-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: -1px;
 }
 
 .hint-actions {
@@ -593,8 +685,8 @@ body {
   padding: 8px 14px;
   border-radius: 8px;
   border: none;
-  background: var(--accent);
-  color: white;
+  background: var(--accent-fill);
+  color: var(--on-accent);
   cursor: pointer;
   font-size: 13px;
 }
@@ -667,6 +759,7 @@ body {
 .level-btn span {
   color: var(--muted);
   font-size: 12.5px;
+  line-height: 1.45;
 }
 
 .level-btn:hover {
@@ -680,7 +773,7 @@ body {
 }
 
 .dialog-error {
-  color: var(--hint-elim);
+  color: var(--danger-text);
   font-size: 13px;
 }
 
@@ -719,20 +812,36 @@ body {
   margin: 4px 0 0;
 }
 
+/* what the marks on the technique buttons mean */
+.tech-legend {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.tech-legend .pool-dot {
+  margin: 0 6px 0 2px;
+}
+
 .practice-btns button.tech-missing {
-  opacity: 0.45;
+  color: var(--muted);
   cursor: not-allowed;
   border-style: dashed;
 }
 
 .tech-x {
-  color: var(--hint-elim);
+  color: var(--danger-text);
   font-weight: 700;
 }
 
 /* implemented but mathematically redundant (large fish) */
 .practice-btns button.tech-redundant {
-  opacity: 0.6;
+  color: var(--muted);
   cursor: help;
   border-style: dotted;
 }
@@ -744,7 +853,7 @@ body {
 
 /* last resorts: the solver uses them, but there is no pattern to practise */
 .practice-btns button.tech-lastresort {
-  opacity: 0.6;
+  color: var(--muted);
   cursor: help;
   border-style: dashed;
 }
@@ -756,7 +865,7 @@ body {
 .tech-score {
   margin-left: 6px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -803,7 +912,7 @@ textarea {
 }
 
 .solve-clean {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
   font-size: 13px;
 }
@@ -906,6 +1015,11 @@ textarea {
     var(--panel);
 }
 
+/* muted text fails on the gradient */
+.level-btn.surprise span {
+  color: var(--text);
+}
+
 /* ---------- solution path ---------- */
 .path-list {
   display: flex;
@@ -966,9 +1080,9 @@ textarea {
   margin-left: 8px;
   padding: 1px 7px;
   border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 11px;
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  font-size: 11.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -978,6 +1092,11 @@ textarea {
   color: var(--muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+/* muted text fails on the tinted crux row */
+.path-crux .path-score {
+  color: var(--text);
 }
 
 .dedication {
@@ -1027,7 +1146,7 @@ textarea {
 
 .version-note {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* ---------- settings & info ---------- */
@@ -1050,6 +1169,11 @@ textarea {
 
 .setting-row.disabled {
   opacity: 0.45;
+  cursor: default;
+}
+
+/* a row holding a segmented control is a group, not one clickable label */
+.setting-row.stack {
   cursor: default;
 }
 
@@ -1085,6 +1209,15 @@ textarea {
   background: var(--accent);
 }
 
+/* the default track is too pale to show the white knob on a light panel */
+:root[data-theme='light'] .switch:not(.on) {
+  background: #888ba3;
+}
+
+:root[data-theme='rose'] .switch:not(.on) {
+  background: #957b89;
+}
+
 .switch .knob {
   position: absolute;
   top: 3px;
@@ -1118,8 +1251,8 @@ textarea {
 }
 
 .segmented button.active {
-  background: var(--accent);
-  color: white;
+  background: var(--accent-fill);
+  color: var(--on-accent);
 }
 
 .shortcut-table {
@@ -1131,6 +1264,7 @@ textarea {
 .shortcut-table td {
   padding: 5px 8px 5px 0;
   vertical-align: top;
+  line-height: 1.45;
 }
 
 .shortcut-table td:first-child {
@@ -1155,7 +1289,7 @@ kbd {
 }
 
 .app-footer a {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: none;
 }
 
@@ -1164,7 +1298,359 @@ kbd {
 }
 
 .dialog-note a {
+  color: var(--accent-text);
+}
+
+.footer-learn {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+/* ---------- learn: techniques, glossary, rating ---------- */
+/* long-form reading: a wider dialog, body-colour text and a roomier line */
+.modal.wide {
+  width: min(720px, calc(100vw - 24px));
+  max-height: 88vh;
+}
+
+/* an inline text button that reads as a link */
+.learn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent-text);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(128, 128, 160, 0.5);
+  text-underline-offset: 2px;
+}
+
+.learn-link:hover {
+  text-decoration-color: currentColor;
+}
+
+/* glossary terms inside running text: quieter than a navigation link */
+.learn-link.term {
+  color: inherit;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--accent);
+}
+
+.learn-tabs {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.learn-tabs button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.learn-search {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px solid rgba(128, 128, 160, 0.3);
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.learn-search:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.learn-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.learn-chips button {
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(128, 128, 160, 0.28);
+  background: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.learn-chips button:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.learn-group h4 {
+  margin: 22px 0 2px;
+  font-size: 15px;
+  scroll-margin-top: 8px;
+}
+
+.learn-cat-note {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.learn-tech {
+  border: 1px solid rgba(128, 128, 160, 0.2);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  margin-bottom: 6px;
+  scroll-margin-top: 8px;
+}
+
+.learn-tech.focus,
+.learn-glossary .focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.learn-tech summary {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 2px 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.learn-tech summary::-webkit-details-marker {
+  display: none;
+}
+
+.learn-tech summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 10px;
+}
+
+.learn-name {
+  font-weight: 650;
+  font-size: 14.5px;
+}
+
+.learn-name::before {
+  content: '▸';
+  display: inline-block;
+  width: 14px;
+  color: var(--muted);
+  transition: transform 0.12s;
+}
+
+.learn-tech[open] .learn-name::before {
+  transform: rotate(90deg);
+}
+
+.learn-mark {
+  color: var(--muted);
+}
+
+.learn-tech .level-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+}
+
+/* a comfortable measure for reading, however wide the dialog */
+.learn-what,
+.learn-body p,
+.learn-glossary dd,
+.learn-points dd,
+.learn-lead,
+.learn-cat-note {
+  max-width: 68ch;
+}
+
+.learn-score {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  min-width: 56px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.learn-what {
+  grid-column: 1 / -1;
+  padding-left: 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.learn-body {
+  padding: 2px 12px 12px 26px;
+  border-top: 1px solid rgba(128, 128, 160, 0.16);
+}
+
+.learn-body p {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.learn-label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+.learn-body .learn-aka,
+.learn-aka {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
+.learn-body .hint-actions {
+  margin-top: 12px;
+  align-items: center;
+}
+
+.learn-example {
+  margin: 12px 0 0;
+}
+
+.learn-example img {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.learn-example figcaption {
+  margin-top: 8px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  max-width: 68ch;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.learn-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.learn-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+.learn-example .learn-link {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.learn-permalink {
+  color: var(--muted);
+  font-size: 12.5px;
+  text-decoration: none;
+}
+
+.learn-permalink:hover {
   color: var(--accent);
+}
+
+.learn-glossary {
+  margin: 0;
+}
+
+.learn-glossary > div {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  scroll-margin-top: 8px;
+}
+
+.learn-glossary dt {
+  font-weight: 650;
+  font-size: 14.5px;
+}
+
+.learn-glossary dd {
+  margin: 2px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.learn-see {
+  color: var(--muted);
+}
+
+.learn-lead {
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 4px 0 6px;
+}
+
+.learn-points dt {
+  font-weight: 650;
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+.learn-points dd {
+  margin: 2px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.band-table {
+  margin-top: 12px;
+}
+
+.band-table td {
+  padding: 4px 10px 4px 0;
+  vertical-align: middle;
+}
+
+/* the hint panel's technique name opens its entry in the guide */
+.hint-tech {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.hint-tech:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* what the technique is in general, shown before the step is revealed */
+.hint-body p.hint-what {
+  color: var(--muted);
+  font-size: 13.5px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(128, 128, 160, 0.35);
 }
 
 /* ---------- toast ---------- */
@@ -1185,6 +1671,7 @@ kbd {
   pointer-events: none;
   max-width: min(90vw, 480px);
   text-align: center;
+  line-height: 1.4;
 }
 
 @keyframes toast-in {
@@ -1198,11 +1685,52 @@ kbd {
   }
 }
 
+/* ---------- touch targets ---------- */
+/* fingers need about 40px; mouse layouts keep their compact look */
+@media (pointer: coarse) {
+  .close-btn {
+    min-width: 44px;
+    min-height: 44px;
+    margin: -10px -12px -10px 0;
+  }
+
+  .score-btn,
+  .action-row button,
+  .practice-btns button,
+  .practice-bar button,
+  .segmented button,
+  .learn-chips button {
+    min-height: 40px;
+  }
+
+  .hint-actions button {
+    min-height: 40px;
+    padding: 10px 16px;
+  }
+
+  .path-row {
+    min-height: 44px;
+  }
+
+  .path-jump {
+    min-height: 32px;
+  }
+
+  .practice-btns,
+  .learn-chips {
+    gap: 8px;
+  }
+
+  .learn-tech summary {
+    min-height: 44px;
+  }
+}
+
 /* ---------- responsive ---------- */
 @media (max-width: 560px) {
   .topbar {
     gap: 8px;
-    padding: 8px 10px;
+    padding: 5px 10px;
   }
 
   .brand h1 {
@@ -1231,9 +1759,43 @@ kbd {
   }
 
   .icon-btn {
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 40px;
     font-size: 16px;
+  }
+
+  /* the theme also lives in Settings; its place goes to the guide */
+  .icon-btn.theme-btn {
+    display: none;
+  }
+
+  .numpad {
+    gap: 4px;
+  }
+
+  .setting-row.stack {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .setting-row.stack .segmented {
+    align-self: flex-start;
+  }
+
+  /* keys above, meaning below: two cramped columns become one */
+  .shortcut-table:not(.band-table) td {
+    display: block;
+    padding: 0;
+  }
+
+  .shortcut-table:not(.band-table) td:first-child {
+    white-space: normal;
+    padding-top: 8px;
+  }
+
+  .shortcut-table:not(.band-table) td:last-child {
+    padding: 3px 0 4px;
   }
 
   .icon-btn.gear {
@@ -1249,6 +1811,9 @@ kbd {
   .layout {
     flex-direction: column;
     align-items: center;
+    /* from the top, never centred: centred content that outgrows the
+       screen loses its top edge beyond the reach of scrolling */
+    justify-content: flex-start;
     gap: 14px;
     padding: 10px;
   }
@@ -1279,6 +1844,18 @@ kbd {
     max-width: 520px;
   }
 
+  /* a hint must appear next to the board it talks about, not below the
+     whole control panel where it opens off screen */
+  .side > .hint-panel {
+    order: -1;
+  }
+
+  /* and the browser must not scroll the board away to keep the tapped
+     button where it was when the panel opens above it */
+  .layout {
+    overflow-anchor: none;
+  }
+
   .numpad {
     grid-template-columns: repeat(9, 1fr);
   }
@@ -1302,5 +1879,14 @@ kbd {
 
   .num-btn {
     aspect-ratio: 1.5;
+  }
+}
+
+/* phones: nine keys cannot be 40px wide on a 375px screen, so they grow
+   taller instead (placed last: the 860px block above also sizes them) */
+@media (max-width: 560px) {
+  .num-btn {
+    aspect-ratio: 0.78;
+    border-radius: 10px;
   }
 }
