@@ -221,6 +221,7 @@ const SHORTCUTS: [string, string][] = [
   ['Z / X / C / V', 'Switch mode: Digit / Corner / Centre / Colour'],
   ['Arrow keys', 'Move the selection (Shift extends it)'],
   ['Click + drag', 'Select multiple cells'],
+  ['Alt + drag', 'Select a rectangle, from the first cell to the one under the pointer (Option on a Mac)'],
   ['Ctrl/Cmd + click', 'Add cells to the selection'],
   ['Double-click / long-press a digit', 'Select every cell with that digit'],
   ['Backspace / Delete', 'Erase the active layer: hold Shift for corner marks, Ctrl for centre, both for colours'],
