@@ -343,7 +343,7 @@ export function Grid() {
   const paused = useGame((s) => s.paused);
   const won = useGame((s) => s.won);
   const togglePause = useGame((s) => s.togglePause);
-  const { highlightPeers, highlightSameDigit, showPoodle, frameHighlights, digitTints } =
+  const { highlightPeers, highlightSameDigit, showPoodle, frameHighlights, digitTints, tintStrength } =
     useSettings();
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -608,7 +608,7 @@ export function Grid() {
                         ? {
                             fill: `color-mix(in srgb, var(${
                               cell.given ? '--given' : '--entered'
-                            }) 70%, var(--tint-${cell.value}))`
+                            }) ${100 - tintStrength}%, var(--tint-${cell.value}))`
                           }
                         : undefined
                     }

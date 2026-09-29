@@ -123,6 +123,24 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         value={s.digitTints}
         onChange={(v) => s.set({ digitTints: v })}
       />
+      {s.digitTints && (
+        <label className="setting-row setting-slider">
+          <div className="setting-text">
+            <span>Tint strength</span>
+            <small>From a hint of colour to a clearly coloured digit</small>
+          </div>
+          <input
+            type="range"
+            min={10}
+            max={80}
+            step={5}
+            value={s.tintStrength}
+            onChange={(e) => s.set({ tintStrength: Number(e.target.value) })}
+            aria-valuetext={`${s.tintStrength} percent`}
+          />
+          <output>{s.tintStrength}%</output>
+        </label>
+      )}
       <Toggle
         label="Show timer"
         value={s.showTimer}
