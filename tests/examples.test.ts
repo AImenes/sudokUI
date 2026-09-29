@@ -31,6 +31,7 @@ describe('worked examples', () => {
     it(`${tech}: is what the engine does with this puzzle`, { timeout: 120_000 }, () => {
       const ex = EXAMPLES[tech]!;
       expect(ex.puzzle).toMatch(/^[0-9.]{81}$/);
+      if (ex.credit !== undefined) expect(ex.credit.trim()).not.toBe('');
       const rating = ratePuzzle(ex.puzzle)!;
       expect(rating, 'puzzle must be valid').not.toBeNull();
       expect(rating.solvable, 'solved by techniques alone').toBe(true);
