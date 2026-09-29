@@ -17,6 +17,26 @@ function eraseTitle(mode: EntryMode, auto: boolean): string {
   return 'Erase value, then marks, then colours (Backspace) · W wipes everything';
 }
 
+/**
+ * What every button does, in one line each. Shown by the "?" in the assist
+ * box and, for the assists, in the question asked before the first one: a
+ * touch screen has no hover, so a tooltip alone explains nothing there.
+ */
+const BUTTONS: { name: string; icon: string; text: string; assist?: true }[] = [
+  { name: 'Undo', icon: '↩', text: 'Takes back your last action.' },
+  { name: 'Redo', icon: '↪', text: 'Brings back what Undo took away.' },
+  { name: 'Erase', icon: '⌫', text: 'Clears the selected cells: the digit first, then pencil marks, then colours.' },
+  { name: 'Swap', icon: '⇄', text: 'Moves corner marks to the centre and centre marks to the corner. Notation only.' },
+  { name: 'Hint', icon: '💡', text: 'Names the technique for the next step. It shows the step itself only if you ask.', assist: true },
+  { name: 'Check', icon: '✓', text: 'Marks wrong digits, and pencil marks that have lost the true digit.', assist: true },
+  { name: 'Steps', icon: '≡', text: 'Lists every step of one complete solution. You can jump to any of them.', assist: true },
+  { name: 'Scan', icon: '🔎', text: 'Lists every technique that works in this exact position, not only the easiest.', assist: true },
+  { name: 'Auto', icon: '⌗', text: 'Works out the candidates of every cell and keeps them up to date as you play.', assist: true },
+  { name: 'Fill', icon: '✎', text: 'Writes every candidate into the empty cells as pencil marks, once.', assist: true }
+];
+
+const textOf = (name: string) => BUTTONS.find((b) => b.name === name)!.text;
+
 const MODES: { id: EntryMode; label: string; key: string }[] = [
   { id: 'digit', label: 'Digit', key: 'Z' },
   { id: 'corner', label: 'Corner', key: 'X' },
@@ -48,6 +68,21 @@ export function Controls({
   const requestHint = useGame((s) => s.requestHint);
   const check = useGame((s) => s.check);
   const [autoOffPrompt, setAutoOffPrompt] = useState(false);
+  const assisted = useGame((s) => s.assisted);
+  const [pending, setPending] = useState<{ name: string; run: () => void } | null>(null);
+  const [help, setHelp] = useState(false);
+
+  // the first assist of a clean game asks first; after that, and for
+  // anyone who has switched the question off, the buttons act at once
+  const guarded = (name: string, run: () => void) => () => {
+    if (assisted || !useSettings.getState().confirmAssist) return run();
+    setPending({ name, run });
+  };
+  const use = (stopAsking: boolean) => {
+    if (stopAsking) useSettings.getState().set({ confirmAssist: false });
+    pending?.run();
+    setPending(null);
+  };
 
   // first time auto candidates are switched OFF, let the user decide what
   // happens to the candidate state (the answer becomes their setting)
@@ -117,15 +152,25 @@ export function Controls({
 
       {/* everything inside this zone ends a clean solve the moment it is used */}
       <div className="assist-zone">
-        <div className="row-caption">
-          Assist <span className="zone-note">using these ends a clean solve</span>
+        <div className="row-caption zone-head">
+          <span>
+            Assist <span className="zone-note">using these ends a clean solve</span>
+          </span>
+          <button
+            className="zone-help"
+            onClick={() => setHelp(true)}
+            aria-label="What the buttons do"
+            title="What the buttons do"
+          >
+            ?
+          </button>
         </div>
         <div className="action-row">
-          <button onClick={requestHint} title="Hint (H): names the technique first, reveals it only if you ask">💡 Hint</button>
-          <button onClick={check} title="Check values and candidate lists against the solution">✓ Check</button>
+          <button onClick={guarded('Hint', requestHint)} title="Hint (H): names the technique first, reveals it only if you ask">💡 Hint</button>
+          <button onClick={guarded('Check', check)} title="Check values and candidate lists against the solution">✓ Check</button>
           {onShowSteps && (
             <button
-              onClick={onShowSteps}
+              onClick={guarded('Steps', onShowSteps)}
               title="Show every step of one complete solution and jump to any point. Counts as assistance"
             >
               ≡ Steps
@@ -133,7 +178,7 @@ export function Controls({
           )}
           {onScan && (
             <button
-              onClick={onScan}
+              onClick={guarded('Scan', onScan)}
               title="List every technique available in this exact position, not just the easiest. Counts as assistance"
             >
               🔎 Scan
@@ -145,7 +190,7 @@ export function Controls({
         <div className="action-row">
           <button
             className={autoCandidates ? 'toggled' : ''}
-            onClick={onAutoToggle}
+            onClick={autoCandidates ? onAutoToggle : guarded('Auto', onAutoToggle)}
             title={
               autoCandidates
                 ? 'Turn off. Where the candidates go is configurable in Settings, and Ctrl+Z reverts'
@@ -155,13 +200,51 @@ export function Controls({
             ⌗ Auto
           </button>
           <button
-            onClick={fillCandidates}
+            onClick={guarded('Fill', fillCandidates)}
             title={`Fill ${effectiveMode === 'corner' ? 'corner' : 'centre'} marks with all candidates. With several cells selected, only those are filled`}
           >
             ✎ Fill
           </button>
         </div>
       </div>
+
+      {pending && (
+        <Modal title={`Use ${pending.name}?`} onClose={() => setPending(null)}>
+          <p className="dialog-note">{textOf(pending.name)}</p>
+          <p className="dialog-note">
+            Using it ends the clean solve for this puzzle. Everything else
+            stays as it is.
+          </p>
+          <div className="hint-actions">
+            <button onClick={() => use(false)}>Use {pending.name}</button>
+            <button className="ghost" onClick={() => setPending(null)}>
+              Cancel
+            </button>
+            <button className="ghost" onClick={() => use(true)}>
+              Use, and stop asking
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {help && (
+        <Modal title="What the buttons do" onClose={() => setHelp(false)}>
+          <dl className="learn-points button-help">
+            {BUTTONS.map((b) => (
+              <React.Fragment key={b.name}>
+                <dt>
+                  <span className="button-help-icon" aria-hidden="true">
+                    {b.icon}
+                  </span>
+                  {b.name}
+                  {b.assist && <span className="zone-note">ends a clean solve</span>}
+                </dt>
+                <dd>{b.text}</dd>
+              </React.Fragment>
+            ))}
+          </dl>
+        </Modal>
+      )}
 
       {autoOffPrompt && (
         <Modal title="Keep your candidates?" onClose={() => setAutoOffPrompt(false)}>

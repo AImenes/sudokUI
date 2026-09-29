@@ -42,6 +42,9 @@ interface Settings {
   /** draw a thin frame around highlighted candidates (the held digit's
    *  pencil occurrences) — bold + colour alone can be hard to spot */
   frameHighlights: boolean;
+  /** the first assist in a clean game asks first: it says what the button
+   *  does (touch screens have no hover) and guards against a stray tap */
+  confirmAssist: boolean;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -62,6 +65,7 @@ export const useSettings = create<Settings>()(
       hideRating: false,
       showPoodle: false,
       frameHighlights: true,
+      confirmAssist: true,
       toggleTheme: () =>
         set((s) => ({
           theme:
