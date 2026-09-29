@@ -118,7 +118,16 @@ body,
   --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia,
     serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-hand: 'Noteworthy', 'Bradley Hand', 'Segoe Print', 'Ink Free', 'Chalkboard SE',
+    'Comic Sans MS', casual, cursive;
   --font: var(--font-classic);
+}
+
+/* handwriting is for the puzzle, as on paper: the board and the number
+   pad take it, while menus and explanations keep a face made for reading */
+:root[data-font='hand'] .board text,
+:root[data-font='hand'] .num-btn {
+  font-family: var(--font-hand);
 }
 
 :root[data-font='rounded'] {
@@ -1805,6 +1814,12 @@ kbd {
 
   .setting-row.stack .segmented {
     align-self: flex-start;
+  }
+
+  /* five typefaces side by side need slightly narrower buttons */
+  .setting-row.stack .segmented button {
+    padding-left: 9px;
+    padding-right: 9px;
   }
 
   /* keys above, meaning below: two cramped columns become one */

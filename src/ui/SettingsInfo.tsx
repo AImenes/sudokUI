@@ -75,7 +75,10 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <div className="setting-row stack" role="group" aria-label="Typeface">
         <div className="setting-text">
           <span>Typeface</span>
-          <small>For the whole app, digits on the board included</small>
+          <small>
+            For the whole app, digits on the board included. Handwritten
+            changes the board and number pad only
+          </small>
         </div>
         <div className="segmented">
           {(
@@ -83,7 +86,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               ['classic', 'Classic'],
               ['rounded', 'Rounded'],
               ['serif', 'Serif'],
-              ['mono', 'Mono']
+              ['mono', 'Mono'],
+              ['hand', 'Hand']
             ] as [Font, string][]
           ).map(([value, label]) => (
             <button

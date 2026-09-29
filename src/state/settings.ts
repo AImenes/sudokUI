@@ -8,12 +8,13 @@ export type MarkLayer = 'center' | 'corner';
 export type Theme = 'dark' | 'light' | 'rose' | 'forest';
 
 /** typefaces already on the device: nothing to download, works offline */
-export type Font = 'classic' | 'rounded' | 'serif' | 'mono';
+export type Font = 'classic' | 'rounded' | 'serif' | 'mono' | 'hand';
 
 interface Settings {
   /** board theme: dark, daylight or rosé */
   theme: Theme;
-  /** typeface of the whole app, board digits included */
+  /** typeface of the whole app, board digits included; 'hand' changes
+   *  the board and number pad only, so the text stays easy to read */
   font: Font;
   /** tint the row/column/box of a single selected cell */
   highlightPeers: boolean;
