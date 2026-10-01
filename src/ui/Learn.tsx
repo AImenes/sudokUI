@@ -12,6 +12,7 @@ import { techSlug, slugify } from '../content/slugs';
 import { linkGlossary } from '../content/glossaryLinks';
 import { boardSvg, legendOf, Example } from '../content/boardSvg';
 import { frequencyLabel, share, worth } from '../content/frequency';
+import { LANDING_PAGES } from '../content/landing';
 
 type Examples = Partial<Record<Tech, Example>>;
 
@@ -64,7 +65,7 @@ function WorkedExample({
   );
 }
 
-export type LearnTab = 'techniques' | 'glossary' | 'rating';
+export type LearnTab = 'techniques' | 'method' | 'glossary' | 'rating';
 
 /** running text whose glossary terms open their definition */
 function Linked({
@@ -280,9 +281,6 @@ function TechniqueList({
         aria-label="Search techniques"
       />
       <div className="learn-tools">
-        <a className="learn-permalink" href="/how-the-best-solve/" target="_blank" rel="noopener">
-          How the best solvers play ↗
-        </a>
         <label>
           Sort{' '}
           <select value={sort} onChange={(e) => setSort(e.target.value as LearnSort)}>
@@ -446,8 +444,37 @@ function GlossaryList({
   );
 }
 
+/** how the best solvers play: the same copy as the /how-the-best-solve/ page */
+const METHOD = LANDING_PAGES.find((p) => p.url === '/how-the-best-solve/')!;
+
+function MethodGuide({ onTerm }: { onTerm: (term: string) => void }) {
+  return (
+    <>
+      <p className="learn-lead">
+        <Linked text={METHOD.lead} onTerm={onTerm} />
+      </p>
+      {METHOD.sections.map((s) => (
+        <section key={s.heading} className="learn-group">
+          <h4>{s.heading}</h4>
+          {s.paragraphs.map((p, i) => (
+            <p key={i} className="learn-prose">
+              <Linked text={p} onTerm={onTerm} />
+            </p>
+          ))}
+        </section>
+      ))}
+      <p className="learn-aka">
+        <a className="learn-permalink" href={METHOD.url} target="_blank" rel="noopener">
+          Open as a page ↗
+        </a>
+      </p>
+    </>
+  );
+}
+
 const TAB_LABELS: Record<LearnTab, string> = {
   techniques: 'Techniques',
+  method: 'How to solve',
   glossary: 'Glossary',
   rating: 'Rating'
 };
@@ -546,6 +573,7 @@ export function LearnDialog({
             <GlossaryList focus={term} restored={scrolls.current.glossary !== undefined} onTerm={openTerm} />
           </>
         )}
+        {tab === 'method' && <MethodGuide onTerm={openTerm} />}
         {tab === 'rating' && <RatingExplainer />}
       </div>
     </Modal>
