@@ -20,7 +20,9 @@ into `dist/`:
 | `/learn/glossary/` | the glossary |
 | `/sudoku-difficulty-rating/` | how the rating works, the bands, every score, and a paste-a-puzzle box |
 | `/sudoku-solver/`, `/daily-sudoku/`, `/hodoku/` | landing pages |
-| `/sitemap.xml` | the home page plus all of the above |
+| `/nb/…`, `/es/…` | the Learn pages above (techniques, Intuition, glossary, rating, How the best solve) in Norwegian and Spanish, linked to each other with `hreflang` (see `docs/translations.md`) |
+| `/learn/img/intuition-<diagram>.<lang>.svg` | the Intuition diagrams with Norwegian and Spanish labels |
+| `/sitemap.xml` | the home page plus all of the above, with each Learn page's language versions |
 
 The pages are self-contained HTML with one inline stylesheet: no React, no
 service worker, and script only on the paste-a-puzzle box.

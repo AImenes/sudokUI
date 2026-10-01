@@ -76,43 +76,36 @@ const and = (items: string[]) =>
   items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 
 /**
- * A WXYZ-Wing drawn by role. The single cell is bivalue with the restricted
- * digit x and the removed digit z. The pivot is the cell of the three-cell
- * set holding x; now and then two cells hold it (three only where a Naked
- * Quad comes first), and the bivalue cell sees every one of them. The
- * set's other cells share the pivot's unit and lack x. Those cells are not
- * called pincers: about four in ten hold no z, and the removal never has
- * to see those.
- * Only the drawing and the wording differ from ALS-XZ: the search and the
- * removals are the same.
+ * A WXYZ-Wing drawn by role, in the terms of docs/glossary_input.md: the
+ * bivalue cell, holding the restricted digit x and the removed digit z,
+ * and the three cells of the other set. The three cells holding x (now and
+ * then two, three only where a Naked Quad comes first) are told apart,
+ * because the bivalue cell sees every one of them; the other cells of the
+ * three lack x. Only the drawing and the wording differ from ALS-XZ: the
+ * search and the removals are the same.
  */
 function wxyzStep(g: Grid, A: Als, B: Als, x: number, z: number, elims: CellDigit[]): Step {
   const [linked] = (A.cells.length === 1 ? A : B).cells;
   const set = A.cells.length === 1 ? B : A;
-  const pivots = set.cells.filter((c) => g.cands[c] & bit(x));
-  const mates = set.cells.filter((c) => !(g.cands[c] & bit(x)));
+  const seen = set.cells.filter((c) => g.cands[c] & bit(x));
+  const rest = set.cells.filter((c) => !(g.cands[c] & bit(x)));
   const unit = unitName(UNITS.findIndex((u) => set.cells.every((c) => u.includes(c))));
-  const one = pivots.length === 1;
-  const pivotsX = `${one ? "the pivot's" : "the pivots'"} ${x}`;
-  const head = mates.length
-    ? `${one ? 'pivot' : 'pivots'} ${and(pivots.map(cellName))} ${one ? 'shares' : 'share'} ${unit} with ${and(mates.map(cellName))}, the three holding ${digitsOf(set.mask).join('')}`
-    : `pivots ${and(pivots.map(cellName))} in ${unit} hold ${digitsOf(set.mask).join('')}`;
-  const rest = digitsOf(set.mask & ~bit(x)).map(String);
+  const three = [...set.cells].sort((a, b) => a - b).map(cellName);
+  const others = digitsOf(set.mask & ~bit(x)).map(String);
+  const name = cellName(linked);
   return {
     tech: 'WXYZ_WING',
     placements: [],
     eliminations: elims,
-    primary: allCands(g, pivots),
-    secondary: allCands(g, mates),
+    primary: allCands(g, seen),
+    secondary: allCands(g, rest),
     fins: allCands(g, [linked]),
     labels: {
-      primary: one ? 'pivot' : 'pivots',
-      ...(mates.length > 0 && {
-        secondary: `${mates.length === 1 ? 'cell' : 'cells'} sharing ${one ? 'its' : 'their'} unit`
-      }),
-      fins: `bivalue cell seeing ${pivotsX}`
+      primary: `${seen.length === 1 ? 'cell' : 'cells'} whose ${x} the bivalue cell sees`,
+      ...(rest.length > 0 && { secondary: rest.length === 1 ? 'other cell of the three' : 'other cells of the three' }),
+      fins: 'bivalue cell'
     },
-    description: `WXYZ-Wing: ${head}; bivalue cell ${cellName(linked)} (${digitsOf(g.cands[linked]).join('')}) sees ${pivotsX}. Either ${cellName(linked)} is ${z}, or it is ${x} and the three cells in ${unit} must be ${and(rest)}. At least one of the four cells is therefore ${z}, so ${z} is removed from every other cell that sees all the ${z}s among them.`
+    description: `WXYZ-Wing: bivalue cell ${name} (${digitsOf(g.cands[linked]).join('')}) and the three cells ${and(three)} in ${unit}, which hold ${digitsOf(set.mask).join('')} between them. The ${x} in ${name} sees every ${x} in the three cells. Either ${name} is ${z}, or it is ${x} and the three cells in ${unit} must be ${and(others)}. At least one of the four cells is therefore ${z}, so ${z} is removed from every other cell that sees all the ${z}s among them.`
   };
 }
 

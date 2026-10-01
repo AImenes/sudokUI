@@ -1,23 +1,24 @@
 // The Learn dialog: every technique explained (what it is, why it works,
-// how to spot it), the glossary of sudoku language, and how the rating
-// works. The same content feeds the static /learn/ pages.
+// how to spot it), the ideas behind them, the glossary of sudoku language,
+// and how the rating works, in the player's language. The same content
+// feeds the static /learn/ pages.
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Modal } from './Dialogs';
-import { TECHS, ALL_TECHS, SOLVE_ORDER, LEVELS, LEVEL_MAX_SCORE, Tech, Category } from '../engine/ratings';
-import { CATEGORY_NOTES, categoryLabel, techStatus, techniquesByFamily } from '../content/categories';
-import { TECH_DOCS } from '../content/techniqueDocs';
-import { KIN, kinLine } from '../content/kin';
-import { INTUITION, INTUITION_LEAD, INTUITION_URL } from '../content/intuition';
+import { TECHS, ALL_TECHS, SOLVE_ORDER, LEVELS, LEVEL_MAX_SCORE, Tech } from '../engine/ratings';
+import { techStatus, techniquesByFamily } from '../content/categories';
+import { KIN } from '../content/kin';
+import { INTUITION, INTUITION_URL } from '../content/intuition';
 import { intuitionDiagram, DIAGRAM_IDS } from '../content/intuitionDiagrams';
 import { GLOSSARY, GLOSSARY_GROUPS } from '../content/glossary';
-import { RATING_SUMMARY, RATING_POINTS, BAND_NOTES } from '../content/rating';
 import { techSlug, slugify } from '../content/slugs';
 import { linkGlossary } from '../content/glossaryLinks';
 import { boardSvg, legendOf, Example } from '../content/boardSvg';
-import { frequencyLabel, share, worth } from '../content/frequency';
-import { LANDING_PAGES } from '../content/landing';
-import { SOLVE_TIME_TABLES, SOLVE_TIME_NOTE } from '../content/solveTimes';
+import { share, worth } from '../content/frequency';
+import { SOLVE_TIME_TABLES } from '../content/solveTimes';
+import { LearnText, langPrefix } from '../content/learnLocale';
+import type { LearnString } from '../content/learnStrings';
 import { useT } from '../content/i18n';
+import { useLearnText } from './useLearnText';
 
 type Examples = Partial<Record<Tech, Example>>;
 
@@ -28,25 +29,28 @@ let loadedExamples: Examples | undefined;
 /**
  * A real position where the technique applies, drawn by the same renderer
  * as the static pages. The drawing goes through an image so that its
- * styles cannot leak into the live board, which is SVG too.
+ * styles cannot leak into the live board, which is SVG too. The step's own
+ * wording comes from the solver and is English for now.
  */
 function WorkedExample({
   tech,
   example,
-  onOpen
+  onOpen,
+  lt
 }: {
   tech: Tech;
   example: Example;
   onOpen: (tech: Tech) => void;
+  lt: LearnText;
 }) {
-  const title = `${TECHS[tech].name} example on a sudoku board`;
+  const title = lt.s('{name} example on a sudoku board', { name: lt.techName(tech) });
   const src = useMemo(
     () => `data:image/svg+xml;utf8,${encodeURIComponent(boardSvg(example, title))}`,
     [example, title]
   );
   return (
     <figure className="learn-example">
-      <span className="learn-label">Worked example</span>
+      <span className="learn-label">{lt.s('Worked example')}</span>
       <img src={src} alt={`${title}. ${example.step.description}`} />
       <figcaption>
         <span className="learn-legend">
@@ -57,14 +61,14 @@ function WorkedExample({
             </span>
           ))}
         </span>
-        {example.step.description}
-        {example.credit && <span className="learn-see"> Puzzle: {example.credit}.</span>}
+        <span lang="en">{example.step.description}</span>
+        {example.credit && <span className="learn-see"> {lt.s('Puzzle: {credit}.', { credit: example.credit })}</span>}
         {example.afterHarder && (
-          <span className="learn-see"> In this puzzle the position comes after harder steps.</span>
+          <span className="learn-see"> {lt.s('In this puzzle the position comes after harder steps.')}</span>
         )}
       </figcaption>
       <button className="learn-link" onClick={() => onOpen(tech)}>
-        Open this position on the board
+        {lt.s('Open this position on the board')}
       </button>
     </figure>
   );
@@ -76,20 +80,23 @@ export type LearnTab = 'techniques' | 'intuition' | 'method' | 'glossary' | 'rat
 function Linked({
   text,
   onTerm,
-  exclude
+  exclude,
+  lt
 }: {
   text: string;
-  onTerm: (term: string) => void;
+  /** called with the glossary entry's id */
+  onTerm: (id: string) => void;
   exclude?: string;
+  lt: LearnText;
 }) {
   return (
     <>
-      {linkGlossary(text, exclude).map((seg, i) =>
+      {linkGlossary(text, exclude, lt.lang, lt.loc.glossary).map((seg, i) =>
         seg.term ? (
           <button
             key={i}
             className="learn-link term"
-            title={`Glossary: ${seg.term}`}
+            title={lt.s('Glossary: {term}', { term: lt.glossary(seg.term).term })}
             onClick={(e) => {
               // inside a <summary>, the click must not also fold the technique
               e.preventDefault();
@@ -110,24 +117,33 @@ function Linked({
 export interface LearnTarget {
   tab: LearnTab;
   tech?: Tech;
+  /** a glossary entry: its id, or its English term */
   term?: string;
+}
+
+/** the glossary entry a link or a #learn=term: address means */
+export function glossaryId(term: string | undefined): string | undefined {
+  if (!term) return undefined;
+  const t = term.toLowerCase();
+  return GLOSSARY.find((e) => e.id === t || e.term.toLowerCase() === t || slugify(e.term) === slugify(term))?.id;
 }
 
 /** the eight difficulty bands with their score ceilings */
 export function BandTable() {
+  const lt = useLearnText();
   return (
     <table className="shortcut-table band-table">
       <tbody>
         {LEVELS.map((level, i) => (
           <tr key={level}>
             <td>
-              <span className={`level-badge level-${level.toLowerCase()}`}>{level}</span>
+              <span className={`level-badge level-${level.toLowerCase()}`}>{lt.level(level)}</span>
             </td>
             <td>
               {i === LEVELS.length - 1
-                ? `above ${LEVEL_MAX_SCORE[LEVELS[i - 1]]}`
-                : `up to ${LEVEL_MAX_SCORE[level]}`}
-              : {BAND_NOTES[level]}
+                ? lt.s('above {n}', { n: LEVEL_MAX_SCORE[LEVELS[i - 1]] })
+                : lt.s('up to {n}', { n: LEVEL_MAX_SCORE[level] })}
+              : {lt.loc.bandNotes[level]}
             </td>
           </tr>
         ))}
@@ -137,11 +153,13 @@ export function BandTable() {
 }
 
 export function RatingExplainer() {
+  const lt = useLearnText();
+  const { rating } = lt.loc;
   return (
     <>
-      <p className="learn-lead">{RATING_SUMMARY}</p>
+      <p className="learn-lead">{rating.summary}</p>
       <dl className="learn-points">
-        {RATING_POINTS.map((p) => (
+        {rating.points.map((p) => (
           <React.Fragment key={p.title}>
             <dt>{p.title}</dt>
             <dd>{p.text}</dd>
@@ -150,43 +168,47 @@ export function RatingExplainer() {
       </dl>
       <BandTable />
       <section className="learn-group">
-      <h4>How fast is fast?</h4>
-      <p className="learn-prose">{SOLVE_TIME_NOTE}</p>
-      <table className="shortcut-table band-table time-table">
-        <thead>
-          <tr>
-            <th></th>
-            <th>Slow</th>
-            <th>Typical</th>
-            <th>Fast</th>
-            <th>Expert</th>
-            <th>World class</th>
-          </tr>
-        </thead>
-        {SOLVE_TIME_TABLES.map((t) => (
-          <tbody key={t.mode}>
-            <tr className="time-mode">
-              <th colSpan={6}>{t.label[0].toUpperCase() + t.label.slice(1)}</th>
+        <h4>{lt.s('How fast is fast?')}</h4>
+        <p className="learn-prose">{rating.solveTimeNote}</p>
+        <table className="shortcut-table band-table time-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>{lt.s('Slow')}</th>
+              <th>{lt.s('Typical')}</th>
+              <th>{lt.s('Fast')}</th>
+              <th>{lt.s('Expert')}</th>
+              <th>{lt.s('World class')}</th>
             </tr>
-            {t.rows.map((r) => (
-              <tr key={r.level}>
-                <td>
-                  <span className={`level-badge level-${r.level.toLowerCase()}`}>{r.level}</span>
-                </td>
-                <td>{r.slow}</td>
-                <td>{r.typical}</td>
-                <td>{r.fast}</td>
-                <td>{r.expert}</td>
-                <td>{r.worldClass}</td>
-              </tr>
-            ))}
-          </tbody>
-        ))}
-      </table>
-      <p className="learn-aka">
-        Slow is where the slowest fifth begins. Typical is the median solver. Fast is faster than four
-        solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000.
-      </p>
+          </thead>
+          {SOLVE_TIME_TABLES.map((t) => {
+            const label = rating.modes[t.mode];
+            return (
+              <tbody key={t.mode}>
+                <tr className="time-mode">
+                  <th colSpan={6}>{label[0].toUpperCase() + label.slice(1)}</th>
+                </tr>
+                {t.rows.map((r) => (
+                  <tr key={r.level}>
+                    <td>
+                      <span className={`level-badge level-${r.level.toLowerCase()}`}>{lt.level(r.level)}</span>
+                    </td>
+                    <td>{r.slow}</td>
+                    <td>{r.typical}</td>
+                    <td>{r.fast}</td>
+                    <td>{r.expert}</td>
+                    <td>{r.worldClass}</td>
+                  </tr>
+                ))}
+              </tbody>
+            );
+          })}
+        </table>
+        <p className="learn-aka">
+          {lt.s(
+            'Slow is where the slowest fifth begins. Typical is the median solver. Fast is faster than four solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000.'
+          )}
+        </p>
       </section>
     </>
   );
@@ -196,8 +218,8 @@ export function RatingExplainer() {
 export type LearnSort = 'family' | 'easiest' | 'common' | 'worth';
 
 /** label: the heading of the sorted list; menu: how the option reads in the closed select */
-const SORTS: { value: LearnSort; label: string; menu: string; note: string }[] = [
-  { value: 'family', label: 'By family', menu: 'By family', note: '' },
+const SORTS: { value: LearnSort; label: LearnString; menu: LearnString; note?: LearnString }[] = [
+  { value: 'family', label: 'By family', menu: 'By family' },
   {
     value: 'easiest',
     label: 'Easiest first',
@@ -237,7 +259,8 @@ function TechniqueList({
   onPractice,
   onExample,
   onScan,
-  onTerm
+  onTerm,
+  lt
 }: {
   focus?: Tech;
   /** the list was open before: keep its scroll position instead of jumping to `focus` */
@@ -252,7 +275,8 @@ function TechniqueList({
   onExample: (tech: Tech) => void;
   /** look for the technique in the running game; absent when no game is on */
   onScan?: (tech: Tech) => void;
-  onTerm: (term: string) => void;
+  onTerm: (id: string) => void;
+  lt: LearnText;
 }) {
   const [examples, setExamples] = useState<Examples>(() => loadedExamples ?? {});
   useEffect(() => {
@@ -269,22 +293,27 @@ function TechniqueList({
 
   const groups = useMemo((): Group[] => {
     const q = query.trim().toLowerCase();
+    // a search matches the name, family, aliases and kin line in the
+    // reader's language and in English
     const visible = ALL_TECHS.filter((tech) => {
+      if (!q) return true;
       const info = TECHS[tech];
-      const doc = TECH_DOCS[tech];
-      return (
-        !q ||
-        info.name.toLowerCase().includes(q) ||
-        info.category.toLowerCase().includes(q) ||
-        doc.aka.some((a) => a.toLowerCase().includes(q)) ||
-        (KIN[tech] ?? []).some((k) => k.toLowerCase().includes(q))
-      );
+      const words = [
+        lt.techName(tech),
+        info.name,
+        lt.category(info.category),
+        info.category,
+        ...lt.techAka(tech),
+        ...lt.kin(tech),
+        ...(KIN[tech] ?? [])
+      ];
+      return words.some((w) => w.toLowerCase().includes(q));
     });
     if (sort === 'family') {
       return techniquesByFamily(visible).map(([cat, techs]) => ({
         key: slugify(cat),
-        title: categoryLabel(cat),
-        note: CATEGORY_NOTES[cat],
+        title: lt.category(cat),
+        note: lt.categoryNote(cat),
         techs
       }));
     }
@@ -296,8 +325,8 @@ function TechniqueList({
           ? (a: Tech, b: Tech) => worth(b) - worth(a) || byIndex(a, b)
           : byIndex;
     const { label, note } = SORTS.find((s) => s.value === sort)!;
-    return [{ key: sort, title: label, note, techs: [...visible].sort(order) }];
-  }, [query, sort]);
+    return [{ key: sort, title: lt.s(label), note: note ? lt.s(note) : '', techs: [...visible].sort(order) }];
+  }, [query, sort, lt]);
   const matches = groups.reduce((n, g) => n + g.techs.length, 0);
 
   useEffect(() => {
@@ -321,25 +350,25 @@ function TechniqueList({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={`Search ${ALL_TECHS.length} techniques`}
-          aria-label="Search techniques"
+          placeholder={lt.s('Search {n} techniques', { n: ALL_TECHS.length })}
+          aria-label={lt.s('Search techniques')}
         />
         <select
           className="learn-sort"
           value={sort}
           onChange={(e) => setSort(e.target.value as LearnSort)}
-          aria-label="Order of the list"
-          title="Order of the list"
+          aria-label={lt.s('Order of the list')}
+          title={lt.s('Order of the list')}
         >
           {SORTS.map((s) => (
             <option key={s.value} value={s.value}>
-              {s.menu}
+              {lt.s(s.menu)}
             </option>
           ))}
         </select>
       </div>
       {!query && sort === 'family' && (
-        <nav className="learn-chips" aria-label="Technique families">
+        <nav className="learn-chips" aria-label={lt.s('Technique families')}>
           {groups.map((g) => (
             <button
               key={g.key}
@@ -350,16 +379,17 @@ function TechniqueList({
           ))}
         </nav>
       )}
-      {matches === 0 && <p className="dialog-note">No technique matches “{query}”.</p>}
+      {matches === 0 && <p className="dialog-note">{lt.s('No technique matches “{q}”.', { q: query })}</p>}
       {groups.map((group) => (
         <section key={group.key} className="learn-group" id={`learn-cat-${group.key}`}>
           <h4>{group.title}</h4>
           <p className="learn-cat-note">{group.note}</p>
           {group.techs.map((tech) => {
             const info = TECHS[tech];
-            const doc = TECH_DOCS[tech];
+            const doc = lt.techDoc(tech);
             const status = techStatus(tech);
-            const needed = frequencyLabel(tech);
+            const needed = lt.frequency(tech);
+            const aka = lt.techAka(tech);
             return (
               <details
                 key={tech}
@@ -371,46 +401,44 @@ function TechniqueList({
                 <summary>
                   <span className="learn-name">
                     {status && <span className="learn-mark">{status.mark} </span>}
-                    {info.name}
+                    {lt.techName(tech)}
                   </span>
-                  <span className={`level-badge level-${info.level.toLowerCase()}`}>{info.level}</span>
-                  <span className="learn-score" title="Added to a puzzle's rating each time the solver needs this technique">
+                  <span className={`level-badge level-${info.level.toLowerCase()}`}>{lt.level(info.level)}</span>
+                  <span className="learn-score" title={lt.s("Added to a puzzle's rating each time the solver needs this technique")}>
                     +{info.score}
                   </span>
-                  {kinLine(tech) && <span className="learn-kin">{kinLine(tech)}</span>}
+                  {lt.kinLine(tech) && <span className="learn-kin">{lt.kinLine(tech)}</span>}
                   <span className="learn-what">
-                    <Linked text={doc.what} onTerm={onTerm} />
+                    <Linked text={doc.what} onTerm={onTerm} lt={lt} />
                   </span>
                   {sort !== 'family' && (
-                    <span className="learn-freq">{needed ? `Needed in ${needed}` : 'Never needed'}</span>
+                    <span className="learn-freq">{needed ? lt.s('Needed in {freq}', { freq: needed }) : lt.s('Never needed')}</span>
                   )}
                 </summary>
                 <div className="learn-body">
                   <p>
-                    <span className="learn-label">Why it works</span>
-                    <Linked text={doc.why} onTerm={onTerm} />
+                    <span className="learn-label">{lt.s('Why it works')}</span>
+                    <Linked text={doc.why} onTerm={onTerm} lt={lt} />
                   </p>
                   <p>
-                    <span className="learn-label">How to spot it</span>
-                    <Linked text={doc.spot} onTerm={onTerm} />
+                    <span className="learn-label">{lt.s('How to spot it')}</span>
+                    <Linked text={doc.spot} onTerm={onTerm} lt={lt} />
                   </p>
                   {examples[tech] && (open.has(tech) || (!!query && matches <= 3)) && (
-                    <WorkedExample tech={tech} example={examples[tech]!} onOpen={onExample} />
+                    <WorkedExample tech={tech} example={examples[tech]!} onOpen={onExample} lt={lt} />
                   )}
-                  {needed && <p className="learn-aka">Needed in {needed} that sudokUI generates.</p>}
-                  {doc.aka.length > 0 && (
-                    <p className="learn-aka">Also called {doc.aka.join(', ')}.</p>
-                  )}
-                  {status && <p className="learn-aka">{status.note}</p>}
+                  {needed && <p className="learn-aka">{lt.s('Needed in {freq} that sudokUI generates.', { freq: needed })}</p>}
+                  {aka.length > 0 && <p className="learn-aka">{lt.s('Also called {list}.', { list: aka.join(', ') })}</p>}
+                  {status && <p className="learn-aka">{lt.s(status.note as LearnString)}</p>}
                   <div className="hint-actions">
-                    {!status && <button onClick={() => onPractice(tech)}>Practice this technique</button>}
+                    {!status && <button onClick={() => onPractice(tech)}>{lt.s('Practice this technique')}</button>}
                     {onScan && SOLVE_ORDER.includes(tech) && (
-                      <button className="ghost" onClick={() => onScan(tech)} title="Scan the running game for this technique (counts as assistance)">
-                        Is it on my board?
+                      <button className="ghost" onClick={() => onScan(tech)} title={lt.s('Scan the running game for this technique (counts as assistance)')}>
+                        {lt.s('Is it on my board?')}
                       </button>
                     )}
-                    <a className="learn-permalink" href={`/learn/${techSlug(tech)}/`} target="_blank" rel="noopener">
-                      Open as a page ↗
+                    <a className="learn-permalink" href={`${langPrefix(lt.lang)}/learn/${techSlug(tech)}/`} target="_blank" rel="noopener">
+                      {lt.s('Open as a page ↗')}
                     </a>
                   </div>
                 </div>
@@ -426,64 +454,64 @@ function TechniqueList({
 function GlossaryList({
   focus,
   restored,
-  onTerm
+  onTerm,
+  lt
 }: {
+  /** the entry to show, by id */
   focus?: string;
   /** the glossary was open before: keep its scroll position instead of jumping to `focus` */
   restored: boolean;
-  onTerm: (term: string) => void;
+  onTerm: (id: string) => void;
+  lt: LearnText;
 }) {
-  const known = useMemo(() => new Set(GLOSSARY.map((e) => e.term)), []);
-  const jump = onTerm;
+  const known = useMemo(() => new Set(GLOSSARY.map((e) => e.id)), []);
 
   useEffect(() => {
     if (focus && !restored) {
-      document.getElementById(`term-${slugify(focus)}`)?.scrollIntoView({ block: 'center' });
+      document.getElementById(`term-${focus}`)?.scrollIntoView({ block: 'center' });
     }
   }, [focus, restored]);
 
   return (
     <>
-      <p className="dialog-note">
-        The words sudoku solvers use, and that the hints in sudokUI use, each
-        defined once.
-      </p>
+      <p className="dialog-note">{lt.s('The words sudoku solvers use, and that the hints in sudokUI use, each defined once.')}</p>
       {GLOSSARY_GROUPS.map((group) => (
         <section key={group} className="learn-group">
-          <h4>{group}</h4>
+          <h4>{lt.loc.glossaryGroups[group] ?? group}</h4>
           <dl className="learn-glossary">
-            {GLOSSARY.filter((e) => e.group === group).map((e) => (
-              <div
-                key={e.term}
-                id={`term-${slugify(e.term)}`}
-                className={focus && slugify(focus) === slugify(e.term) ? 'focus' : ''}
-              >
-                <dt>
-                  {e.term}
-                  {e.aka.length > 0 && <span className="learn-aka"> · {e.aka.join(', ')}</span>}
-                </dt>
-                <dd>
-                  <Linked text={e.definition} onTerm={onTerm} exclude={e.term} />
-                  {e.see.filter((s) => known.has(s)).length > 0 && (
-                    <span className="learn-see">
-                      {' '}
-                      See{' '}
-                      {e.see
-                        .filter((s) => known.has(s))
-                        .map((s, i) => (
+            {GLOSSARY.filter((e) => e.group === group).map((e) => {
+              const g = lt.glossary(e.id);
+              const see = e.see.filter((s) => known.has(s));
+              // in another language, the English word too: it is what most
+              // sources and the hints use
+              const aka = [...g.aka, ...(lt.lang !== 'en' && e.term.toLowerCase() !== g.term.toLowerCase() ? [lt.s('In English: {term}', { term: e.term })] : [])];
+              return (
+                <div key={e.id} id={`term-${e.id}`} className={focus === e.id ? 'focus' : ''}>
+                  <dt>
+                    {g.term}
+                    {aka.length > 0 && <span className="learn-aka"> · {aka.join(', ')}</span>}
+                  </dt>
+                  <dd>
+                    <Linked text={g.definition} onTerm={onTerm} exclude={e.id} lt={lt} />
+                    {see.length > 0 && (
+                      <span className="learn-see">
+                        {' '}
+                        {lt.s('See')}{' '}
+                        {see.map((s, i) => (
                           <React.Fragment key={s}>
                             {i > 0 && ', '}
-                            <button className="learn-link" onClick={() => jump(s)}>
-                              {s}
+                            <button className="learn-link" onClick={() => onTerm(s)}>
+                              {lt.glossary(s).term}
                             </button>
                           </React.Fragment>
                         ))}
-                      .
-                    </span>
-                  )}
-                </dd>
-              </div>
-            ))}
+                        .
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              );
+            })}
           </dl>
         </section>
       ))}
@@ -492,27 +520,26 @@ function GlossaryList({
 }
 
 /** how the best solvers play: the same copy as the /how-the-best-solve/ page */
-const METHOD = LANDING_PAGES.find((p) => p.url === '/how-the-best-solve/')!;
-
-function MethodGuide({ onTerm }: { onTerm: (term: string) => void }) {
+function MethodGuide({ onTerm, lt }: { onTerm: (id: string) => void; lt: LearnText }) {
+  const { method } = lt.loc;
   return (
     <>
       <p className="learn-lead">
-        <Linked text={METHOD.lead} onTerm={onTerm} />
+        <Linked text={method.lead} onTerm={onTerm} lt={lt} />
       </p>
-      {METHOD.sections.map((s) => (
+      {method.sections.map((s) => (
         <section key={s.heading} className="learn-group">
           <h4>{s.heading}</h4>
           {s.paragraphs.map((p, i) => (
             <p key={i} className="learn-prose">
-              <Linked text={p} onTerm={onTerm} />
+              <Linked text={p} onTerm={onTerm} lt={lt} />
             </p>
           ))}
         </section>
       ))}
       <p className="learn-aka">
-        <a className="learn-permalink" href={METHOD.url} target="_blank" rel="noopener">
-          Open as a page ↗
+        <a className="learn-permalink" href={`${langPrefix(lt.lang)}/how-the-best-solve/`} target="_blank" rel="noopener">
+          {lt.s('Open as a page ↗')}
         </a>
       </p>
     </>
@@ -523,81 +550,85 @@ function MethodGuide({ onTerm }: { onTerm: (term: string) => void }) {
  * The few ideas under the catalogue, each explained properly and then
  * "like I'm 12": the same copy as the /learn/intuition/ page.
  */
-function IntuitionGuide({ onTerm, onTech }: { onTerm: (term: string) => void; onTech: (tech: Tech) => void }) {
+function IntuitionGuide({ onTerm, onTech, lt }: { onTerm: (id: string) => void; onTech: (tech: Tech) => void; lt: LearnText }) {
   const diagrams = useMemo(
     () =>
       Object.fromEntries(
-        DIAGRAM_IDS.map((id) => [id, `data:image/svg+xml;utf8,${encodeURIComponent(intuitionDiagram(id))}`])
+        DIAGRAM_IDS.map((id) => [id, `data:image/svg+xml;utf8,${encodeURIComponent(intuitionDiagram(id, lt.s))}`])
       ),
-    []
+    [lt]
   );
+  const { intuition } = lt.loc;
   const jump = (id: string) => document.getElementById(`intuition-${id}`)?.scrollIntoView({ block: 'start' });
   return (
     <>
       <p className="learn-lead">
-        <Linked text={INTUITION_LEAD} onTerm={onTerm} />
+        <Linked text={intuition.lead} onTerm={onTerm} lt={lt} />
       </p>
-      <nav className="learn-chips" aria-label="Ideas on this page">
+      <nav className="learn-chips" aria-label={lt.s('Ideas on this page')}>
         {INTUITION.map((part) => (
           <button key={part.id} onClick={() => jump(part.id)}>
-            {part.nav}
+            {intuition.parts[part.id].nav}
           </button>
         ))}
       </nav>
       {INTUITION.map((part) => (
         <section key={part.id} className="learn-group intuition-part" id={`intuition-${part.id}`}>
-          <h4>{part.heading}</h4>
-          <p className="learn-cat-note">{part.intro}</p>
-          {part.sections.map((s) => (
-            <section key={s.id} className="intuition-section" id={`intuition-${s.id}`}>
-              <h5>{s.heading}</h5>
-              {s.paragraphs.map((p, i) => (
-                <p key={i} className="learn-prose">
-                  <Linked text={p} onTerm={onTerm} />
-                </p>
-              ))}
-              {s.points && (
-                <dl className="intuition-timeline">
-                  {s.points.map((pt) => (
-                    <div key={pt.when}>
-                      <dt>{pt.when}</dt>
-                      <dd>{pt.what}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-              {s.diagram && (
-                <figure className="intuition-figure">
-                  <img src={diagrams[s.diagram.id]} alt={s.diagram.caption} />
-                  <figcaption>{s.diagram.caption}</figcaption>
-                </figure>
-              )}
-              {s.eli12 && (
-                <aside className="intuition-eli12">
-                  <span className="learn-label">Explain it like I'm 12</span>
-                  <p>{s.eli12}</p>
-                </aside>
-              )}
-              {s.techs && (
-                <p className="intuition-techs">
-                  <span className="learn-label">In the catalogue</span>
-                  {s.techs.map((tech, i) => (
-                    <React.Fragment key={tech}>
-                      {i > 0 && ' · '}
-                      <button className="learn-link" onClick={() => onTech(tech)}>
-                        {TECHS[tech].name}
-                      </button>
-                    </React.Fragment>
-                  ))}
-                </p>
-              )}
-            </section>
-          ))}
+          <h4>{intuition.parts[part.id].heading}</h4>
+          <p className="learn-cat-note">{intuition.parts[part.id].intro}</p>
+          {part.sections.map((s) => {
+            const t = intuition.sections[s.id];
+            return (
+              <section key={s.id} className="intuition-section" id={`intuition-${s.id}`}>
+                <h5>{t.heading}</h5>
+                {t.paragraphs.map((p, i) => (
+                  <p key={i} className="learn-prose">
+                    <Linked text={p} onTerm={onTerm} lt={lt} />
+                  </p>
+                ))}
+                {t.points && (
+                  <dl className="intuition-timeline">
+                    {t.points.map((pt) => (
+                      <div key={pt.when}>
+                        <dt>{pt.when}</dt>
+                        <dd>{pt.what}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+                {s.diagram && (
+                  <figure className="intuition-figure">
+                    <img src={diagrams[s.diagram.id]} alt={t.caption} />
+                    <figcaption>{t.caption}</figcaption>
+                  </figure>
+                )}
+                {t.eli12 && (
+                  <aside className="intuition-eli12">
+                    <span className="learn-label">{lt.s("Explain it like I'm 12")}</span>
+                    <p>{t.eli12}</p>
+                  </aside>
+                )}
+                {s.techs && (
+                  <p className="intuition-techs">
+                    <span className="learn-label">{lt.s('In the catalogue')}</span>
+                    {s.techs.map((tech, i) => (
+                      <React.Fragment key={tech}>
+                        {i > 0 && ' · '}
+                        <button className="learn-link" onClick={() => onTech(tech)}>
+                          {lt.techName(tech)}
+                        </button>
+                      </React.Fragment>
+                    ))}
+                  </p>
+                )}
+              </section>
+            );
+          })}
         </section>
       ))}
       <p className="learn-aka">
-        <a className="learn-permalink" href={INTUITION_URL} target="_blank" rel="noopener">
-          Open as a page ↗
+        <a className="learn-permalink" href={`${langPrefix(lt.lang)}${INTUITION_URL}`} target="_blank" rel="noopener">
+          {lt.s('Open as a page ↗')}
         </a>
       </p>
     </>
@@ -628,8 +659,9 @@ export function LearnDialog({
   onScan?: (tech: Tech) => void;
 }) {
   const t = useT();
+  const lt = useLearnText();
   const [tab, setTab] = useState<LearnTab>(target.tab);
-  const [term, setTerm] = useState(target.term);
+  const [term, setTerm] = useState(() => glossaryId(target.term));
   const [focusTech, setFocusTech] = useState(target.tech);
   // the tab a glossary term or a technique was looked up from, for the way back
   const [from, setFrom] = useState<LearnTab | null>(null);
@@ -663,11 +695,11 @@ export function LearnDialog({
     setTab('techniques');
   };
   // a glossary term clicked anywhere lands on its definition
-  const openTerm = (t: string) => {
+  const openTerm = (id: string) => {
     leave();
     delete scrolls.current.glossary;
     if (tab !== 'glossary') setFrom(tab);
-    setTerm(t);
+    setTerm(id);
     setTab('glossary');
   };
   useLayoutEffect(() => {
@@ -679,7 +711,7 @@ export function LearnDialog({
   const tabs = Object.keys(TAB_LABELS) as LearnTab[];
   return (
     <Modal title={t('Learn')} onClose={onClose} wide>
-      <div ref={body}>
+      <div ref={body} lang={lt.lang}>
         <div className="segmented learn-tabs" role="tablist">
           {tabs.map((value) => (
             <button
@@ -695,7 +727,7 @@ export function LearnDialog({
         </div>
         {from && from !== tab && (
           <button className="learn-link learn-back" onClick={() => switchTab(from)}>
-            ← Back to {t(TAB_LABELS[from]).toLowerCase()}
+            ← {t(TAB_LABELS[from])}
           </button>
         )}
         {tab === 'techniques' && (
@@ -712,13 +744,14 @@ export function LearnDialog({
             onExample={onExample}
             onScan={onScan}
             onTerm={openTerm}
+            lt={lt}
           />
         )}
         {tab === 'glossary' && (
-          <GlossaryList focus={term} restored={scrolls.current.glossary !== undefined} onTerm={openTerm} />
+          <GlossaryList focus={term} restored={scrolls.current.glossary !== undefined} onTerm={openTerm} lt={lt} />
         )}
-        {tab === 'intuition' && <IntuitionGuide onTerm={openTerm} onTech={openTech} />}
-        {tab === 'method' && <MethodGuide onTerm={openTerm} />}
+        {tab === 'intuition' && <IntuitionGuide onTerm={openTerm} onTech={openTech} lt={lt} />}
+        {tab === 'method' && <MethodGuide onTerm={openTerm} lt={lt} />}
         {tab === 'rating' && <RatingExplainer />}
       </div>
     </Modal>

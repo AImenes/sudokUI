@@ -3533,11 +3533,11 @@
     }
    ],
    "labels": {
-    "primary": "pivot",
-    "secondary": "cells sharing its unit",
-    "fins": "bivalue cell seeing the pivot's 9"
+    "primary": "cell whose 9 the bivalue cell sees",
+    "secondary": "other cells of the three",
+    "fins": "bivalue cell"
    },
-   "description": "WXYZ-Wing: pivot r4c4 shares box 5 with r5c5 and r6c5, the three holding 1479; bivalue cell r4c3 (49) sees the pivot's 9. Either r4c3 is 4, or it is 9 and the three cells in box 5 must be 1, 4 and 7. At least one of the four cells is therefore 4, so 4 is removed from every other cell that sees all the 4s among them."
+   "description": "WXYZ-Wing: bivalue cell r4c3 (49) and the three cells r4c4, r5c5 and r6c5 in box 5, which hold 1479 between them. The 9 in r4c3 sees every 9 in the three cells. Either r4c3 is 4, or it is 9 and the three cells in box 5 must be 1, 4 and 7. At least one of the four cells is therefore 4, so 4 is removed from every other cell that sees all the 4s among them."
   }
  },
  "UNIQUENESS_1": {
