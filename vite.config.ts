@@ -2,7 +2,46 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { version } from './package.json';
+import type { Plugin } from 'vite';
 import { STATIC_ROUTES } from './src/content/staticRoutes';
+
+/**
+ * Serves the static pages (/learn/, the landing pages) on the dev server
+ * too. In production they are files written by scripts/build-learn.ts;
+ * here they are built on request from the live content modules, so a
+ * change to the copy shows on reload.
+ */
+function staticPagesDev(): Plugin {
+  return {
+    name: 'sudokui-static-pages-dev',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const url = (req.url ?? '').split(/[?#]/)[0];
+        if (!STATIC_ROUTES.test(url)) return next();
+        try {
+          const mod = await server.ssrLoadModule('/src/content/learnPages.ts');
+          const want = url.endsWith('/') ? url : url + '/';
+          const page = mod.buildLearnPages().find((p: { url: string }) => p.url === want);
+          if (page) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.end(page.html);
+            return;
+          }
+          const asset = mod.buildLearnAssets().find((a: { path: string }) => '/' + a.path === url);
+          if (asset) {
+            res.setHeader('Content-Type', 'image/svg+xml');
+            res.end(asset.content);
+            return;
+          }
+        } catch (err) {
+          server.config.logger.error(String(err));
+        }
+        next();
+      });
+    }
+  };
+}
 
 export default defineConfig({
   define: {
@@ -10,6 +49,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    staticPagesDev(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
