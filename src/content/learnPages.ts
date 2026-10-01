@@ -17,7 +17,7 @@ import {
 import { TECH_DOCS } from './techniqueDocs';
 import { GLOSSARY, GLOSSARY_GROUPS } from './glossary';
 import { RATING_SUMMARY, RATING_POINTS, BAND_NOTES } from './rating';
-import { CATEGORY_NOTES, categoryLabel, techStatus } from './categories';
+import { CATEGORY_NOTES, categoryLabel, techStatus, techniquesByFamily } from './categories';
 import { techSlug, slugify } from './slugs';
 import { linkGlossary } from './glossaryLinks';
 import { LANDING_PAGES, LandingPage, RATING_URL } from './landing';
@@ -25,6 +25,9 @@ import { EXAMPLES } from './examples';
 import { boardSvg, legendOf, BOARD_SIZE } from './boardSvg';
 import { FREQUENCY, frequencyLabel, byWorth } from './frequency';
 import { SOLVE_TIME_TABLES, SOLVE_TIME_NOTE } from './solveTimes';
+import { kinLine } from './kin';
+import { INTUITION, INTUITION_LEAD, INTUITION_URL } from './intuition';
+import { intuitionDiagram, intuitionDiagramUrl, DIAGRAM_IDS } from './intuitionDiagrams';
 
 export const SITE = 'https://sudokui.app';
 
@@ -47,12 +50,15 @@ const diagramUrl = (tech: Tech) => `/learn/img/${techSlug(tech)}.svg`;
 /** what a technique's diagram shows, for its alt text and caption */
 const diagramTitle = (tech: Tech) => `${TECHS[tech].name} example on a sudoku board`;
 
-/** one board diagram per technique that has a worked example */
+/** one board diagram per technique that has a worked example, and the Intuition guide's diagrams */
 export function buildLearnAssets(): Asset[] {
-  return ALL_TECHS.filter((tech) => EXAMPLES[tech]).map((tech) => ({
-    path: diagramUrl(tech).slice(1),
-    content: boardSvg(EXAMPLES[tech]!, diagramTitle(tech))
-  }));
+  return [
+    ...ALL_TECHS.filter((tech) => EXAMPLES[tech]).map((tech) => ({
+      path: diagramUrl(tech).slice(1),
+      content: boardSvg(EXAMPLES[tech]!, diagramTitle(tech))
+    })),
+    ...DIAGRAM_IDS.map((id) => ({ path: intuitionDiagramUrl(id).slice(1), content: intuitionDiagram(id) }))
+  ];
 }
 
 const esc = (s: string) =>
@@ -104,15 +110,7 @@ const puzzleForm = (button: string) => `      <form class="rate" id="rate">
 const techUrl = (tech: Tech) => `/learn/${techSlug(tech)}/`;
 const categoryAnchor = (cat: Category) => `/learn/#${slugify(cat)}`;
 
-const byCategory = (): [Category, Tech[]][] => {
-  const map = new Map<Category, Tech[]>();
-  for (const tech of ALL_TECHS) {
-    const cat = TECHS[tech].category;
-    if (!map.has(cat)) map.set(cat, []);
-    map.get(cat)!.push(tech);
-  }
-  return [...map.entries()];
-};
+const byCategory = (): [Category, Tech[]][] => techniquesByFamily();
 
 const STYLE = `
 :root{--bg:#14161f;--soft:#1c1f2b;--panel:#222636;--text:#e8eaf2;--muted:#a8b0c2;--accent:#8ab6f7;--line:rgba(128,128,160,.28)}
@@ -161,6 +159,13 @@ figure img{display:block;width:100%;max-width:520px;height:auto;border-radius:8p
 figcaption{color:var(--muted);font-size:15px;margin-top:8px}
 .key{display:inline-block;margin-right:14px;white-space:nowrap}
 .key i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+h3{font-size:18px;line-height:1.35;margin:26px 0 6px}
+.kin{color:var(--muted);font-size:15px;margin:-4px 0 6px}
+.techs .kin{font-size:14px;margin:0}
+.eli12{border-left:3px solid var(--accent);background:var(--panel);border-radius:0 10px 10px 0;padding:10px 16px;margin:14px 0}
+.eli12 strong{display:block;font-size:13px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.eli12 p{margin:4px 0 0}
+.timeline dt{margin-top:12px}
 `.trim();
 
 interface Crumb {
@@ -222,6 +227,7 @@ function layout(opts: {
       <a class="brand" href="/"><span class="mark">UI</span>sudokUI</a>
       <nav aria-label="Learn">
         <a href="/learn/">Techniques</a>
+        <a href="${INTUITION_URL}">Intuition</a>
         <a href="/learn/glossary/">Glossary</a>
         <a href="${RATING_URL}">Rating</a>
         <a href="/">Play</a>
@@ -239,6 +245,7 @@ ${opts.body}
         ...LANDING_PAGES.map((p) => ({ label: p.name, href: p.url })),
         { label: 'Difficulty rating', href: RATING_URL },
         { label: 'Techniques', href: '/learn/' },
+        { label: 'Intuition', href: INTUITION_URL },
         { label: 'Glossary', href: '/learn/glossary/' }
       ]
         .map((l) => `<a href="${l.href}">${esc(l.label)}</a>`)
@@ -313,7 +320,7 @@ function techniquePage(tech: Tech, prev?: Tech, next?: Tech): Page {
   );
 
   const body = `      <h1>${esc(info.name)} in sudoku</h1>
-      <p class="meta"><span class="badge">${info.level}</span> · <a href="${RATING_URL}#scores">rating cost ${info.score}</a> · <a href="${categoryAnchor(info.category)}">${esc(categoryLabel(info.category))}</a>${
+${kinLine(tech) ? `      <p class="kin">${esc(kinLine(tech))} · <a href="${INTUITION_URL}">how it fits</a></p>\n` : ''}      <p class="meta"><span class="badge">${info.level}</span> · <a href="${RATING_URL}#scores">rating cost ${info.score}</a> · <a href="${categoryAnchor(info.category)}">${esc(categoryLabel(info.category))}</a>${
         doc.aka.length ? ` · also called ${esc(doc.aka.join(', '))}` : ''
       }</p>
       <p class="lead">${linked(doc.what)}</p>
@@ -386,15 +393,17 @@ function indexPage(): Page {
 ${techs
   .map(
     (t) =>
-      `        <li><a href="${techUrl(t)}">${esc(TECHS[t].name)}</a><span>${esc(TECH_DOCS[t].what)}</span></li>`
+      `        <li><a href="${techUrl(t)}">${esc(TECHS[t].name)}</a>${
+        kinLine(t) ? `<span class="kin">${esc(kinLine(t))}</span>` : ''
+      }<span>${esc(TECH_DOCS[t].what)}</span></li>`
   )
   .join('\n')}
       </ul>`
     )
     .join('\n');
   const body = `      <h1>Sudoku solving techniques</h1>
-      <p class="lead">All ${n} solving techniques in sudokUI's catalogue, in the order a solver reaches for them. Each one says what the pattern is, why it works and how to spot it.</p>
-      <p><a class="cta" href="/">Play sudokUI</a><a class="cta ghost" href="/learn/glossary/">Glossary</a><a class="cta ghost" href="${RATING_URL}">How rating works</a></p>
+      <p class="lead">All ${n} solving techniques in sudokUI's catalogue, grouped by the idea behind them. Each one says what the pattern is, why it works and how to spot it.</p>
+      <p><a class="cta" href="/">Play sudokUI</a><a class="cta ghost" href="${INTUITION_URL}">How they fit together</a><a class="cta ghost" href="/learn/glossary/">Glossary</a><a class="cta ghost" href="${RATING_URL}">How rating works</a></p>
       <h2 id="worth-learning">Worth learning first</h2>
       <p>How often a technique is needed, weighted by its rating cost, over the ${FREQUENCY.sample.toLocaleString('en')} puzzles sudokUI has generated and rated. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it.</p>
       <ol class="techs">
@@ -612,11 +621,78 @@ ${page.sections
   };
 }
 
+/** the width and height an SVG document declares in its viewBox */
+const svgSize = (svg: string) => {
+  const [, , w, h] = /viewBox="([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+)"/.exec(svg)!.slice(1).map(Number);
+  return { w, h };
+};
+
+function intuitionPage(): Page {
+  const url = INTUITION_URL;
+  const title = fitTitle('How sudoku techniques fit together');
+  const description =
+    'Every sudoku technique comes down to three ideas: locked sets, almost locked sets and chains. Each one explained simply, plus where the names came from.';
+  const section = (s: (typeof INTUITION)[number]['sections'][number]) => {
+    const out = [`      <h3 id="${s.id}">${esc(s.heading)}</h3>`, ...s.paragraphs.map((p) => `      <p>${linked(p)}</p>`)];
+    if (s.points) {
+      out.push(
+        `      <dl class="timeline">\n${s.points
+          .map((pt) => `        <dt>${esc(pt.when)}</dt>\n        <dd>${esc(pt.what)}</dd>`)
+          .join('\n')}\n      </dl>`
+      );
+    }
+    if (s.diagram) {
+      const { w, h } = svgSize(intuitionDiagram(s.diagram.id));
+      out.push(`      <figure>
+        <img src="${intuitionDiagramUrl(s.diagram.id)}" width="${w}" height="${h}" alt="${esc(s.diagram.caption)}" loading="lazy" />
+        <figcaption>${esc(s.diagram.caption)}</figcaption>
+      </figure>`);
+    }
+    if (s.eli12) {
+      out.push(`      <aside class="eli12"><strong>Explain it like I'm 12</strong><p>${esc(s.eli12)}</p></aside>`);
+    }
+    if (s.techs) {
+      out.push(
+        `      <p class="meta">In the catalogue: ${s.techs.map((t) => `<a href="${techUrl(t)}">${esc(TECHS[t].name)}</a>`).join(' · ')}</p>`
+      );
+    }
+    return out.join('\n');
+  };
+  const body = `      <h1>How sudoku techniques fit together</h1>
+      <p class="lead">${linked(INTUITION_LEAD)}</p>
+      <p class="meta">${INTUITION.map((p) => `<a href="#${p.id}">${esc(p.nav)}</a>`).join(' · ')}</p>
+${INTUITION.map(
+  (part) => `      <h2 id="${part.id}">${esc(part.heading)}</h2>
+      <p class="meta">${esc(part.intro)}</p>
+${part.sections.map(section).join('\n')}`
+).join('\n')}
+      <div class="card">
+        <p><a class="cta" href="/#learn=intuition">Open in the app</a><a class="cta ghost" href="/learn/">All techniques</a><a class="cta ghost" href="/learn/glossary/">Glossary</a></p>
+      </div>`;
+  return {
+    path: `${url.slice(1)}index.html`,
+    url,
+    html: layout({
+      url,
+      title,
+      description,
+      crumbs: [
+        { name: 'sudokUI', url: '/' },
+        { name: 'Sudoku techniques', url: '/learn/' },
+        { name: 'How they fit together', url }
+      ],
+      jsonLd: [article(url, 'How sudoku techniques fit together', description)],
+      body
+    })
+  };
+}
+
 export function buildLearnPages(): Page[] {
   return [
     ...LANDING_PAGES.map(landingPage),
     ratingPage(),
     indexPage(),
+    intuitionPage(),
     glossaryPage(),
     ...ALL_TECHS.map((tech, i) => techniquePage(tech, ALL_TECHS[i - 1], ALL_TECHS[i + 1]))
   ];

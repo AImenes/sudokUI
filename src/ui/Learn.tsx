@@ -4,8 +4,11 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Modal } from './Dialogs';
 import { TECHS, ALL_TECHS, SOLVE_ORDER, LEVELS, LEVEL_MAX_SCORE, Tech, Category } from '../engine/ratings';
-import { CATEGORY_NOTES, categoryLabel, techStatus } from '../content/categories';
+import { CATEGORY_NOTES, categoryLabel, techStatus, techniquesByFamily } from '../content/categories';
 import { TECH_DOCS } from '../content/techniqueDocs';
+import { KIN, kinLine } from '../content/kin';
+import { INTUITION, INTUITION_LEAD, INTUITION_URL } from '../content/intuition';
+import { intuitionDiagram, DIAGRAM_IDS } from '../content/intuitionDiagrams';
 import { GLOSSARY, GLOSSARY_GROUPS } from '../content/glossary';
 import { RATING_SUMMARY, RATING_POINTS, BAND_NOTES } from '../content/rating';
 import { techSlug, slugify } from '../content/slugs';
@@ -67,7 +70,7 @@ function WorkedExample({
   );
 }
 
-export type LearnTab = 'techniques' | 'method' | 'glossary' | 'rating';
+export type LearnTab = 'techniques' | 'intuition' | 'method' | 'glossary' | 'rating';
 
 /** running text whose glossary terms open their definition */
 function Linked({
@@ -273,17 +276,12 @@ function TechniqueList({
         !q ||
         info.name.toLowerCase().includes(q) ||
         info.category.toLowerCase().includes(q) ||
-        doc.aka.some((a) => a.toLowerCase().includes(q))
+        doc.aka.some((a) => a.toLowerCase().includes(q)) ||
+        (KIN[tech] ?? []).some((k) => k.toLowerCase().includes(q))
       );
     });
     if (sort === 'family') {
-      const by = new Map<Category, Tech[]>();
-      for (const tech of visible) {
-        const cat = TECHS[tech].category;
-        if (!by.has(cat)) by.set(cat, []);
-        by.get(cat)!.push(tech);
-      }
-      return [...by.entries()].map(([cat, techs]) => ({
+      return techniquesByFamily(visible).map(([cat, techs]) => ({
         key: slugify(cat),
         title: categoryLabel(cat),
         note: CATEGORY_NOTES[cat],
@@ -379,6 +377,7 @@ function TechniqueList({
                   <span className="learn-score" title="Added to a puzzle's rating each time the solver needs this technique">
                     +{info.score}
                   </span>
+                  {kinLine(tech) && <span className="learn-kin">{kinLine(tech)}</span>}
                   <span className="learn-what">
                     <Linked text={doc.what} onTerm={onTerm} />
                   </span>
@@ -520,8 +519,94 @@ function MethodGuide({ onTerm }: { onTerm: (term: string) => void }) {
   );
 }
 
+/**
+ * The few ideas under the catalogue, each explained properly and then
+ * "like I'm 12": the same copy as the /learn/intuition/ page.
+ */
+function IntuitionGuide({ onTerm, onTech }: { onTerm: (term: string) => void; onTech: (tech: Tech) => void }) {
+  const diagrams = useMemo(
+    () =>
+      Object.fromEntries(
+        DIAGRAM_IDS.map((id) => [id, `data:image/svg+xml;utf8,${encodeURIComponent(intuitionDiagram(id))}`])
+      ),
+    []
+  );
+  const jump = (id: string) => document.getElementById(`intuition-${id}`)?.scrollIntoView({ block: 'start' });
+  return (
+    <>
+      <p className="learn-lead">
+        <Linked text={INTUITION_LEAD} onTerm={onTerm} />
+      </p>
+      <nav className="learn-chips" aria-label="Ideas on this page">
+        {INTUITION.map((part) => (
+          <button key={part.id} onClick={() => jump(part.id)}>
+            {part.nav}
+          </button>
+        ))}
+      </nav>
+      {INTUITION.map((part) => (
+        <section key={part.id} className="learn-group intuition-part" id={`intuition-${part.id}`}>
+          <h4>{part.heading}</h4>
+          <p className="learn-cat-note">{part.intro}</p>
+          {part.sections.map((s) => (
+            <section key={s.id} className="intuition-section" id={`intuition-${s.id}`}>
+              <h5>{s.heading}</h5>
+              {s.paragraphs.map((p, i) => (
+                <p key={i} className="learn-prose">
+                  <Linked text={p} onTerm={onTerm} />
+                </p>
+              ))}
+              {s.points && (
+                <dl className="intuition-timeline">
+                  {s.points.map((pt) => (
+                    <div key={pt.when}>
+                      <dt>{pt.when}</dt>
+                      <dd>{pt.what}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {s.diagram && (
+                <figure className="intuition-figure">
+                  <img src={diagrams[s.diagram.id]} alt={s.diagram.caption} />
+                  <figcaption>{s.diagram.caption}</figcaption>
+                </figure>
+              )}
+              {s.eli12 && (
+                <aside className="intuition-eli12">
+                  <span className="learn-label">Explain it like I'm 12</span>
+                  <p>{s.eli12}</p>
+                </aside>
+              )}
+              {s.techs && (
+                <p className="intuition-techs">
+                  <span className="learn-label">In the catalogue</span>
+                  {s.techs.map((tech, i) => (
+                    <React.Fragment key={tech}>
+                      {i > 0 && ' · '}
+                      <button className="learn-link" onClick={() => onTech(tech)}>
+                        {TECHS[tech].name}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </p>
+              )}
+            </section>
+          ))}
+        </section>
+      ))}
+      <p className="learn-aka">
+        <a className="learn-permalink" href={INTUITION_URL} target="_blank" rel="noopener">
+          Open as a page ↗
+        </a>
+      </p>
+    </>
+  );
+}
+
 const TAB_LABELS: Record<LearnTab, string> = {
   techniques: 'Techniques',
+  intuition: 'Intuition',
   method: 'How to solve',
   glossary: 'Glossary',
   rating: 'Rating'
@@ -545,7 +630,8 @@ export function LearnDialog({
   const t = useT();
   const [tab, setTab] = useState<LearnTab>(target.tab);
   const [term, setTerm] = useState(target.term);
-  // the tab a glossary term was looked up from, for the way back
+  const [focusTech, setFocusTech] = useState(target.tech);
+  // the tab a glossary term or a technique was looked up from, for the way back
   const [from, setFrom] = useState<LearnTab | null>(null);
 
   // what the technique list looks like survives a trip to the glossary:
@@ -563,7 +649,18 @@ export function LearnDialog({
   const switchTab = (next: LearnTab) => {
     if (next === tab) return;
     leave();
+    setFrom(null);
     setTab(next);
+  };
+  // a technique named in the Intuition guide opens unfolded in the list
+  const openTech = (tech: Tech) => {
+    leave();
+    delete scrolls.current.techniques;
+    setFrom(tab);
+    setQuery('');
+    setOpen((prev) => new Set(prev).add(tech));
+    setFocusTech(tech);
+    setTab('techniques');
   };
   // a glossary term clicked anywhere lands on its definition
   const openTerm = (t: string) => {
@@ -596,9 +693,14 @@ export function LearnDialog({
             </button>
           ))}
         </div>
+        {from && from !== tab && (
+          <button className="learn-link learn-back" onClick={() => switchTab(from)}>
+            ← Back to {t(TAB_LABELS[from]).toLowerCase()}
+          </button>
+        )}
         {tab === 'techniques' && (
           <TechniqueList
-            focus={target.tech}
+            focus={focusTech}
             restored={scrolls.current.techniques !== undefined}
             query={query}
             setQuery={setQuery}
@@ -613,15 +715,9 @@ export function LearnDialog({
           />
         )}
         {tab === 'glossary' && (
-          <>
-            {from && (
-              <button className="learn-link learn-back" onClick={() => switchTab(from)}>
-                ← Back to {t(TAB_LABELS[from]).toLowerCase()}
-              </button>
-            )}
-            <GlossaryList focus={term} restored={scrolls.current.glossary !== undefined} onTerm={openTerm} />
-          </>
+          <GlossaryList focus={term} restored={scrolls.current.glossary !== undefined} onTerm={openTerm} />
         )}
+        {tab === 'intuition' && <IntuitionGuide onTerm={openTerm} onTech={openTech} />}
         {tab === 'method' && <MethodGuide onTerm={openTerm} />}
         {tab === 'rating' && <RatingExplainer />}
       </div>

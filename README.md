@@ -190,7 +190,8 @@ meant to double as a course in advanced sudoku solving.
    rare in random puzzles.
 4. Explain it: add its entry to `src/content/techniqueDocs.ts` (the type
    system insists on one per technique) and its address to the slug
-   snapshot in `tests/content.test.ts`. Run
+   snapshot in `tests/content.test.ts`. If it is another technique in
+   disguise (a Hidden Single is a 1-fish), say so in `src/content/kin.ts`. Run
    `npx vite-node scripts/hunt-examples.ts` to find it a worked example.
 
 ## Mobile builds

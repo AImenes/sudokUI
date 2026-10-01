@@ -102,7 +102,8 @@ describe('worked examples', () => {
   });
 
   it('ship one diagram per example', () => {
-    const assets = buildLearnAssets();
+    // the Intuition guide's schematic diagrams ship alongside (tests/intuition.test.ts)
+    const assets = buildLearnAssets().filter((a) => !a.path.startsWith('learn/img/intuition-'));
     expect(assets).toHaveLength(techs.length);
     for (const a of assets) expect(a.path).toMatch(/^learn\/img\/[a-z0-9-]+\.svg$/);
   });

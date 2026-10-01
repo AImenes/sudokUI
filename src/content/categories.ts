@@ -1,6 +1,6 @@
 // One line per technique family, and why some catalogued techniques cannot
 // be practised. Shared by the Learn dialog and the static /learn/ pages.
-import { Category, PRACTICE_TECHS, TECHS, Tech } from '../engine/ratings';
+import { ALL_TECHS, Category, PRACTICE_TECHS, TECHS, Tech } from '../engine/ratings';
 
 export const CATEGORY_NOTES: Record<Category, string> = {
   Singles:
@@ -29,6 +29,37 @@ export const CATEGORY_NOTES: Record<Category, string> = {
   Miscellaneous: 'Rare patterns that fit no other family.',
   'Last Resort': 'Trial-based methods for positions where no pattern is left to spot.'
 };
+
+/**
+ * The order families are listed in, wherever techniques are shown by
+ * family. It follows the ideas rather than the solver's search order:
+ * locked sets (singles to fish, all fish together), the one-digit chains,
+ * the almost locked sets with the wings first, the general chains, then
+ * the uniqueness side branch and what fits nowhere else.
+ */
+export const FAMILY_ORDER: Category[] = [
+  'Singles',
+  'Intersections',
+  'Subsets',
+  'Basic Fish',
+  'Finned Fish',
+  'Complex Fish',
+  'Single Digit Patterns',
+  'Coloring',
+  'Wings',
+  'Almost Locked Sets',
+  'Chains and Loops',
+  'Uniqueness',
+  'Miscellaneous',
+  'Last Resort'
+];
+
+/** the techniques grouped by family, families in FAMILY_ORDER, techniques in catalogue order */
+export function techniquesByFamily(techs: Tech[] = ALL_TECHS): [Category, Tech[]][] {
+  return FAMILY_ORDER.map((cat) => [cat, techs.filter((t) => TECHS[t].category === cat)] as [Category, Tech[]]).filter(
+    ([, list]) => list.length > 0
+  );
+}
 
 /** family names as shown: the catalogue keeps HoDoKu's spelling as its key */
 export const categoryLabel = (category: Category): string =>

@@ -21,7 +21,8 @@ import { timeVerdict, percentileText, MODE_LABEL } from '../content/solveTimes';
 import { useT } from '../content/i18n';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { BAND_LEADS, BAND_NOTES } from '../content/rating';
-import { categoryLabel } from '../content/categories';
+import { categoryLabel, techniquesByFamily } from '../content/categories';
+import { kinLine } from '../content/kin';
 
 interface GenState {
   label: string;
@@ -138,13 +139,8 @@ export function PracticeDialog({
   /** open the technique guide (every technique explained) */
   onLearn: () => void;
 }) {
-  const byCategory = new Map<Category, Tech[]>();
-  for (const tech of ALL_TECHS) {
-    const cat = TECHS[tech].category;
-    if (!byCategory.has(cat)) byCategory.set(cat, []);
-    byCategory.get(cat)!.push(tech);
-  }
-  const shown = [...byCategory.values()].flat();
+  const byCategory = techniquesByFamily();
+  const shown = byCategory.flatMap(([, techs]) => techs);
   const playable = shown.filter((t) => PRACTICE_TECHS.includes(t));
   return (
     <Modal title="Practice a technique" onClose={onClose}>
@@ -182,7 +178,7 @@ export function PracticeDialog({
         </li>
       </ul>
       <div className="practice-list">
-        {[...byCategory.entries()].map(([cat, techs]) => (
+        {byCategory.map(([cat, techs]) => (
           <div key={cat} className="practice-group">
             <h4>{categoryLabel(cat)}</h4>
             <div className="practice-btns">
@@ -230,6 +226,7 @@ export function PracticeDialog({
                     {ok && poolSize(techKey(tech)) > 0 && (
                       <span className="pool-dot" title="cached puzzle ready" />
                     )}
+                    {kinLine(tech) && <span className="tech-kin">{kinLine(tech)}</span>}
                   </button>
                 );
               })}

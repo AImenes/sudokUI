@@ -15,6 +15,8 @@ into `dist/`:
 | `/learn/` | every technique, grouped by family |
 | `/learn/<technique>/` | one page per technique (80) |
 | `/learn/img/<technique>.svg` | the board diagram of its worked example |
+| `/learn/intuition/` | how the techniques fit together: the ideas behind the families, each also explained "like I'm 12", and where the names came from |
+| `/learn/img/intuition-<diagram>.svg` | the Intuition guide's schematic diagrams |
 | `/learn/glossary/` | the glossary |
 | `/sudoku-difficulty-rating/` | how the rating works, the bands, every score, and a paste-a-puzzle box |
 | `/sudoku-solver/`, `/daily-sudoku/`, `/hodoku/` | landing pages |
@@ -29,14 +31,23 @@ All of it is in `src/content/`, and the app reads the same modules:
 
 - `techniqueDocs.ts`: what / why / how to spot, per technique
 - `glossary.ts`: the terms; `glossaryLinks.ts` links them inside running text
-- `rating.ts`, `categories.ts`, `landing.ts`: supporting copy
+- `intuition.ts`: the Intuition guide, built from the research brief in
+  `docs/concepts_description.md`; `intuitionDiagrams.ts` draws its diagrams
+- `kin.ts`: the line under each technique's name: another name, or the same
+  logic in another family (a Hidden Single is a 1-fish), only where it holds
+  every time
+- `rating.ts`, `categories.ts`, `landing.ts`: supporting copy; `categories.ts`
+  also fixes the order families are listed in
 - `examples.json`: one real position per technique (see below)
 - `learnPages.ts`: turns the above into pages; `boardSvg.ts` draws the boards
 
 `tests/content.test.ts` holds the content to its rules: a documented entry
 for every technique, hard word limits, house style (British spelling, no
 dashes as punctuation), no dangling glossary references, and pages that are
-well-formed, self-canonical and fully linked.
+well-formed, self-canonical and fully linked. `tests/intuition.test.ts` does
+the same for the Intuition guide and the kin lines, and checks that no
+"like I'm 12" text uses notation: no cell names, no letters standing for
+digits.
 
 ## Worked examples
 

@@ -30,7 +30,7 @@ const L = 24; // room for the row and column labels
 const M = 6; // outer margin
 export const BOARD_SIZE = L + 9 * S + M;
 
-const COLOURS = {
+export const COLOURS = {
   primary: '#3f7fd4',
   secondary: '#d9a13c',
   fin: '#9b74d8',
@@ -39,7 +39,7 @@ const COLOURS = {
   link: '#a8741a'
 };
 
-const TINTS: Record<string, string> = {
+export const TINTS: Record<string, string> = {
   primary: '#dfeaf9',
   secondary: '#faf0d9',
   fin: '#ece4f8',
