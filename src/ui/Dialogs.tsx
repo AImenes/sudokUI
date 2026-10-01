@@ -434,6 +434,13 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
   const [query, setQuery] = useState(lookFor ? TECHS[lookFor].name : '');
   const q = query.trim().toLowerCase();
   const matching = SOLVE_ORDER.filter((t) => TECHS[t].name.toLowerCase().includes(q));
+  // the technique named exactly, when it does not fire: said in so many
+  // words even if its finned and franken cousins do
+  const exact = SOLVE_ORDER.find((t) => TECHS[t].name.toLowerCase() === q);
+  const missing =
+    exact && steps && !steps.some((st) => st.tech === exact)
+      ? `No ${TECHS[exact].name} fires in this position with your candidates.`
+      : null;
   const shown = steps?.filter((st) => !q || TECHS[st.tech].name.toLowerCase().includes(q)) ?? null;
 
   // manual marks with no declared meaning: ask before scanning
@@ -501,15 +508,24 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
               catalogue's reach from this position, or a candidate is off
               (run Check).
             </p>
-          ) : shown.length === 0 ? (
-            <p className="dialog-note">
-              {matching.length === 1
-                ? `No ${TECHS[matching[0]].name} fires in this position with your candidates. The pattern may still be there without removing anything, which is why the solver passes it by.`
-                : matching.length === 0
-                  ? `No technique called “${query.trim()}” is in the catalogue.`
-                  : `None of the ${matching.length} techniques matching “${query.trim()}” fires here.`}
-            </p>
           ) : (
+            <>
+              {missing && (
+                <p className="dialog-note">
+                  {missing}
+                  {shown.length > 0
+                    ? ' Related techniques that do:'
+                    : ' The pattern may still be there without removing anything, which is why the solver passes it by.'}
+                </p>
+              )}
+              {shown.length === 0 && !missing && (
+                <p className="dialog-note">
+                  {matching.length === 0
+                    ? `No technique called “${query.trim()}” is in the catalogue.`
+                    : `None of the ${matching.length} techniques matching “${query.trim()}” fires here.`}
+                </p>
+              )}
+              {shown.length > 0 && (
             <div className="path-list">
               {shown.map((step, i) => (
                 <div
@@ -537,6 +553,8 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
                 </div>
               ))}
             </div>
+              )}
+            </>
           )}
         </>
       )}
