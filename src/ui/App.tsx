@@ -24,7 +24,7 @@ import {
 import { SettingsDialog, InfoDialog } from './SettingsInfo';
 import { Modal } from './Dialogs';
 import { LearnDialog, LearnTarget } from './Learn';
-import { TECHS, PRACTICE_TECHS } from '../engine/ratings';
+import { TECHS, PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { RATING_URL } from '../content/staticRoutes';
 
@@ -94,6 +94,8 @@ export default function App() {
     'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart' | 'steps' | 'scan' | 'learn'
   >('none');
   const [learnTarget, setLearnTarget] = useState<LearnTarget>({ tab: 'techniques' });
+  // a technique the guide asked Scan to look for on the board
+  const [scanFor, setScanFor] = useState<Tech | null>(null);
   const openLearn = (target: LearnTarget = { tab: 'techniques' }) => {
     setLearnTarget(target);
     setDialog('learn');
@@ -559,6 +561,14 @@ export default function App() {
             setDialog('none');
             start({ kind: 'tech', tech });
           }}
+          onScan={
+            info && !custom
+              ? (tech) => {
+                  setScanFor(tech);
+                  setDialog('scan');
+                }
+              : undefined
+          }
           onExample={async (tech) => {
             // the example's own puzzle, started as practice of its technique:
             // with "Jump to the technique" on, that is the pictured position
@@ -574,7 +584,15 @@ export default function App() {
       {dialog === 'io' && <ImportDialog onClose={() => setDialog('none')} />}
       {dialog === 'share' && <ShareDialog onClose={() => setDialog('none')} />}
       {dialog === 'steps' && <SolutionPathDialog onClose={() => setDialog('none')} />}
-      {dialog === 'scan' && <ScanDialog onClose={() => setDialog('none')} />}
+      {dialog === 'scan' && (
+        <ScanDialog
+          lookFor={scanFor ?? undefined}
+          onClose={() => {
+            setScanFor(null);
+            setDialog('none');
+          }}
+        />
+      )}
       {contractPrompt && (
         <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} />
       )}

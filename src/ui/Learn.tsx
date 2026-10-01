@@ -3,7 +3,7 @@
 // works. The same content feeds the static /learn/ pages.
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Modal } from './Dialogs';
-import { TECHS, ALL_TECHS, LEVELS, LEVEL_MAX_SCORE, Tech, Category } from '../engine/ratings';
+import { TECHS, ALL_TECHS, SOLVE_ORDER, LEVELS, LEVEL_MAX_SCORE, Tech, Category } from '../engine/ratings';
 import { CATEGORY_NOTES, categoryLabel, techStatus } from '../content/categories';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { GLOSSARY, GLOSSARY_GROUPS } from '../content/glossary';
@@ -187,6 +187,7 @@ function TechniqueList({
   setOpen,
   onPractice,
   onExample,
+  onScan,
   onTerm
 }: {
   focus?: Tech;
@@ -200,6 +201,8 @@ function TechniqueList({
   setOpen: React.Dispatch<React.SetStateAction<Set<Tech>>>;
   onPractice: (tech: Tech) => void;
   onExample: (tech: Tech) => void;
+  /** look for the technique in the running game; absent when no game is on */
+  onScan?: (tech: Tech) => void;
   onTerm: (term: string) => void;
 }) {
   const [examples, setExamples] = useState<Examples>(() => loadedExamples ?? {});
@@ -353,6 +356,11 @@ function TechniqueList({
                   {status && <p className="learn-aka">{status.note}</p>}
                   <div className="hint-actions">
                     {!status && <button onClick={() => onPractice(tech)}>Practice this technique</button>}
+                    {onScan && SOLVE_ORDER.includes(tech) && (
+                      <button className="ghost" onClick={() => onScan(tech)} title="Scan the running game for this technique (counts as assistance)">
+                        Is it on my board?
+                      </button>
+                    )}
                     <a className="learn-permalink" href={`/learn/${techSlug(tech)}/`} target="_blank" rel="noopener">
                       Open as a page ↗
                     </a>
@@ -445,13 +453,16 @@ export function LearnDialog({
   target,
   onClose,
   onPractice,
-  onExample
+  onExample,
+  onScan
 }: {
   target: LearnTarget;
   onClose: () => void;
   onPractice: (tech: Tech) => void;
   /** put a technique's worked example on the board */
   onExample: (tech: Tech) => void;
+  /** scan the running game for a technique; absent when no game is on */
+  onScan?: (tech: Tech) => void;
 }) {
   const [tab, setTab] = useState<LearnTab>(target.tab);
   const [term, setTerm] = useState(target.term);
@@ -518,6 +529,7 @@ export function LearnDialog({
             setOpen={setOpen}
             onPractice={onPractice}
             onExample={onExample}
+            onScan={onScan}
             onTerm={openTerm}
           />
         )}

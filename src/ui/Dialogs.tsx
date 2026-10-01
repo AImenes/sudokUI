@@ -14,7 +14,7 @@ import {
 } from '../state/gameStore';
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
-import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
+import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
 import { storedPractice } from '../content/practicePuzzles';
 import { TECH_DOCS } from '../content/techniqueDocs';
@@ -420,7 +420,7 @@ export function ContractDialog({
   );
 }
 
-export function ScanDialog({ onClose }: { onClose: () => void }) {
+export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?: Tech }) {
   const cells = useGame((s) => s.cells);
   const auto = useGame((s) => s.autoCandidates);
   const solution = useGame((s) => s.info?.solution);
@@ -430,6 +430,11 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
   const showStep = useGame((s) => s.showStep);
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [slip, setSlip] = useState(false);
+  // "is there a Jellyfish here?": one technique by name, with a plain no
+  const [query, setQuery] = useState(lookFor ? TECHS[lookFor].name : '');
+  const q = query.trim().toLowerCase();
+  const matching = SOLVE_ORDER.filter((t) => TECHS[t].name.toLowerCase().includes(q));
+  const shown = steps?.filter((st) => !q || TECHS[st.tech].name.toLowerCase().includes(q)) ?? null;
 
   // manual marks with no declared meaning: ask before scanning
   const needsContract = !auto && contract === 'unknown' && hasManualMarks(cells);
@@ -475,7 +480,15 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
             candidates, easiest first. Click one to see it highlighted on
             the board. Counts as assistance.
           </p>
-          {!steps ? (
+          <input
+            className="learn-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Looking for one technique? Jellyfish, X-Wing…"
+            aria-label="Technique to look for"
+          />
+          {!steps || !shown ? (
             <div className="spinner" />
           ) : slip ? (
             <p className="dialog-note">
@@ -488,9 +501,17 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
               catalogue's reach from this position, or a candidate is off
               (run Check).
             </p>
+          ) : shown.length === 0 ? (
+            <p className="dialog-note">
+              {matching.length === 1
+                ? `No ${TECHS[matching[0]].name} fires in this position with your candidates. The pattern may still be there without removing anything, which is why the solver passes it by.`
+                : matching.length === 0
+                  ? `No technique called “${query.trim()}” is in the catalogue.`
+                  : `None of the ${matching.length} techniques matching “${query.trim()}” fires here.`}
+            </p>
           ) : (
             <div className="path-list">
-              {steps.map((step, i) => (
+              {shown.map((step, i) => (
                 <div
                   key={i}
                   className="path-row"
