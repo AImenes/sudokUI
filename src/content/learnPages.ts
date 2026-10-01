@@ -1,35 +1,41 @@
 // Builds the static /learn/ pages: one crawlable, shareable HTML page per
-// technique, plus an index, the glossary and the rating explainer. Pure
-// string building (no DOM, no filesystem) so it is unit-testable; the
-// build step in scripts/build-learn.ts writes the result into dist/.
+// technique, plus an index, the Intuition guide, the glossary, the rating
+// explainer and the landing pages. Pure string building (no DOM, no
+// filesystem) so it is unit-testable; the build step in
+// scripts/build-learn.ts writes the result into dist/.
+//
+// The Learn pages exist in English, Norwegian and Spanish: /learn/x-wing/,
+// /nb/learn/x-wing/, /es/learn/x-wing/. Each names the other two with
+// hreflang links and a language line, so search engines serve the right
+// one and readers can switch. The other landing pages are English only.
 //
 // The pages carry the same content as the in-app Learn dialog and deep-link
 // back into the app: /#practice=<KEY> starts a practice puzzle,
 // /#learn=<KEY> opens the guide at that technique.
-import {
-  TECHS,
-  ALL_TECHS,
-  LEVELS,
-  LEVEL_MAX_SCORE,
-  Tech,
-  Category
-} from '../engine/ratings';
-import { TECH_DOCS } from './techniqueDocs';
+import { TECHS, ALL_TECHS, LEVELS, LEVEL_MAX_SCORE, Tech, Category } from '../engine/ratings';
+import type { Lang } from '../state/settings';
 import { GLOSSARY, GLOSSARY_GROUPS } from './glossary';
-import { RATING_SUMMARY, RATING_POINTS, BAND_NOTES } from './rating';
-import { CATEGORY_NOTES, categoryLabel, techStatus, techniquesByFamily } from './categories';
+import { techStatus, techniquesByFamily } from './categories';
 import { techSlug, slugify } from './slugs';
 import { linkGlossary } from './glossaryLinks';
 import { LANDING_PAGES, LandingPage, RATING_URL } from './landing';
 import { EXAMPLES } from './examples';
 import { boardSvg, legendOf, BOARD_SIZE } from './boardSvg';
-import { FREQUENCY, frequencyLabel, byWorth } from './frequency';
-import { SOLVE_TIME_TABLES, SOLVE_TIME_NOTE } from './solveTimes';
-import { kinLine } from './kin';
-import { INTUITION, INTUITION_LEAD, INTUITION_URL } from './intuition';
+import { FREQUENCY, byWorth } from './frequency';
+import { SOLVE_TIME_TABLES } from './solveTimes';
+import { INTUITION, INTUITION_URL } from './intuition';
 import { intuitionDiagram, intuitionDiagramUrl, DIAGRAM_IDS } from './intuitionDiagrams';
+import { learnText, LearnText, langPrefix } from './learnLocale';
+import type { LearnString } from './learnStrings';
+import nb from './locales/nb';
+import es from './locales/es';
 
 export const SITE = 'https://sudokui.app';
+
+export const LEARN_LANGS: Lang[] = ['en', 'nb', 'es'];
+const TEXT: Record<Lang, LearnText> = { en: learnText('en'), nb: learnText('nb', nb), es: learnText('es', es) };
+const LANG_NAME: Record<Lang, string> = { en: 'English', nb: 'Norsk', es: 'Español' };
+const OG_LOCALE: Record<Lang, string> = { en: 'en_GB', nb: 'nb_NO', es: 'es_ES' };
 
 export interface Page {
   /** file path inside dist/, e.g. learn/x-wing/index.html */
@@ -37,6 +43,9 @@ export interface Page {
   /** canonical URL path, e.g. /learn/x-wing/ */
   url: string;
   html: string;
+  lang: Lang;
+  /** the English page's URL when the page exists in every Learn language */
+  alternateOf?: string;
 }
 
 /** a file that accompanies the pages, e.g. a technique's board diagram */
@@ -45,19 +54,23 @@ export interface Asset {
   content: string;
 }
 
+const METHOD_URL = '/how-the-best-solve/';
 const diagramUrl = (tech: Tech) => `/learn/img/${techSlug(tech)}.svg`;
 
 /** what a technique's diagram shows, for its alt text and caption */
-const diagramTitle = (tech: Tech) => `${TECHS[tech].name} example on a sudoku board`;
+const diagramTitle = (tech: Tech, lt: LearnText = TEXT.en) =>
+  lt.s('{name} example on a sudoku board', { name: lt.techName(tech) });
 
-/** one board diagram per technique that has a worked example, and the Intuition guide's diagrams */
+/** one board diagram per technique with a worked example; the Intuition diagrams in every language */
 export function buildLearnAssets(): Asset[] {
   return [
     ...ALL_TECHS.filter((tech) => EXAMPLES[tech]).map((tech) => ({
       path: diagramUrl(tech).slice(1),
       content: boardSvg(EXAMPLES[tech]!, diagramTitle(tech))
     })),
-    ...DIAGRAM_IDS.map((id) => ({ path: intuitionDiagramUrl(id).slice(1), content: intuitionDiagram(id) }))
+    ...LEARN_LANGS.flatMap((lang) =>
+      DIAGRAM_IDS.map((id) => ({ path: intuitionDiagramUrl(id, lang).slice(1), content: intuitionDiagram(id, TEXT[lang].s) }))
+    )
   ];
 }
 
@@ -68,19 +81,27 @@ const esc = (s: string) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
+/** a path in a language: /learn/ in English, /nb/learn/ in Norwegian */
+const at = (lang: Lang, path: string) => `${langPrefix(lang)}${path}`;
+const glossaryUrl = (lang: Lang) => at(lang, '/learn/glossary/');
+
 /** running text with its glossary terms linked to their definitions */
-const linked = (text: string, exclude?: string) =>
-  linkGlossary(text, exclude)
-    .map((seg) =>
-      seg.term
-        ? `<a href="/learn/glossary/#${slugify(seg.term)}">${esc(seg.text)}</a>`
-        : esc(seg.text)
-    )
+const linked = (lt: LearnText, text: string, exclude?: string) =>
+  linkGlossary(text, exclude, lt.lang, lt.loc.glossary)
+    .map((seg) => (seg.term ? `<a href="${glossaryUrl(lt.lang)}#${seg.term}">${esc(seg.text)}</a>` : esc(seg.text)))
     .join('');
 
-/** search results cut titles at about 60 characters: drop the brand first */
-const fitTitle = (title: string) =>
-  `${title} | sudokUI`.length <= 60 ? `${title} | sudokUI` : title;
+/**
+ * Search results cut titles at about 60 characters: the first candidate
+ * that fits, with the brand if there is room for it.
+ */
+const fitTitle = (...titles: string[]) => {
+  for (const t of titles) {
+    if (`${t} | sudokUI`.length <= 60) return `${t} | sudokUI`;
+    if (t.length <= 60) return t;
+  }
+  return titles[titles.length - 1];
+};
 
 /** the first candidate that fits a search result's description line */
 const fitDescription = (...candidates: string[]) =>
@@ -90,12 +111,15 @@ const fitDescription = (...candidates: string[]) =>
  * Paste a puzzle, land in the app with it loaded and rated. The app reads
  * the puzzle from the #p= fragment, so nothing is sent to any server.
  */
-const puzzleForm = (button: string) => `      <form class="rate" id="rate">
-        <label for="puzzle">Paste a puzzle: 81 characters, with 0 or . for empty cells</label>
+const puzzleForm = (lt: LearnText, button: string) => `      <form class="rate" id="rate">
+        <label for="puzzle">${esc(lt.s('Paste a puzzle: 81 characters, with 0 or . for empty cells'))}</label>
         <textarea id="puzzle" rows="3" autocomplete="off" spellcheck="false"></textarea>
         <button type="submit" class="cta">${esc(button)}</button>
         <p id="rate-error" role="alert"></p>
-        <noscript><p>This box needs JavaScript. You can also <a href="/">open sudokUI</a> and choose Import.</p></noscript>
+        <noscript><p>${esc(lt.s('This box needs JavaScript. You can also {open} and choose Import.')).replace(
+          '{open}',
+          `<a href="/">${esc(lt.s('open sudokUI'))}</a>`
+        )}</p></noscript>
       </form>
       <script>
         document.getElementById('rate').addEventListener('submit', function (e) {
@@ -103,14 +127,18 @@ const puzzleForm = (button: string) => `      <form class="rate" id="rate">
           var s = document.getElementById('puzzle').value.replace(/[^0-9.]/g, '');
           if (s.length === 81) location.href = '/#p=' + s;
           else document.getElementById('rate-error').textContent =
-            'A puzzle needs exactly 81 cells. This one has ' + s.length + '.';
+            ${JSON.stringify(lt.s('A puzzle needs exactly 81 cells. This one has {n}.')).replace('{n}', '" + s.length + "')};
         });
       </script>`;
 
-const techUrl = (tech: Tech) => `/learn/${techSlug(tech)}/`;
-const categoryAnchor = (cat: Category) => `/learn/#${slugify(cat)}`;
+const techUrl = (tech: Tech, lang: Lang = 'en') => at(lang, `/learn/${techSlug(tech)}/`);
+const categoryAnchor = (cat: Category, lang: Lang) => `${at(lang, '/learn/')}#${slugify(cat)}`;
 
 const byCategory = (): [Category, Tech[]][] => techniquesByFamily();
+
+/** a template string with {placeholders} that stand for HTML: everything else escaped */
+const withLinks = (text: string, links: Record<string, string>) =>
+  esc(text).replace(/\{(\w+)\}/g, (m, k) => (k in links ? links[k] : m));
 
 const STYLE = `
 :root{--bg:#14161f;--soft:#1c1f2b;--panel:#222636;--text:#e8eaf2;--muted:#a8b0c2;--accent:#8ab6f7;--line:rgba(128,128,160,.28)}
@@ -166,6 +194,8 @@ h3{font-size:18px;line-height:1.35;margin:26px 0 6px}
 .eli12 strong{display:block;font-size:13px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
 .eli12 p{margin:4px 0 0}
 .timeline dt{margin-top:12px}
+.langs{font-size:14px}
+.langs span{font-weight:600}
 `.trim();
 
 interface Crumb {
@@ -174,13 +204,17 @@ interface Crumb {
 }
 
 function layout(opts: {
+  lang: Lang;
   url: string;
   title: string;
   description: string;
   crumbs: Crumb[];
   jsonLd: object[];
   body: string;
+  /** the English URL of a page that exists in every Learn language */
+  alternateOf?: string;
 }): string {
+  const lt = TEXT[opts.lang];
   const canonical = SITE + opts.url;
   const breadcrumb = {
     '@context': 'https://schema.org',
@@ -201,19 +235,35 @@ function layout(opts: {
       i === opts.crumbs.length - 1 ? esc(c.name) : `<a href="${c.url}">${esc(c.name)}</a>`
     )
     .join(' › ');
+  const alternates = opts.alternateOf
+    ? [
+        ...LEARN_LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${SITE}${at(l, opts.alternateOf!)}" />`),
+        `<link rel="alternate" hreflang="x-default" href="${SITE}${opts.alternateOf}" />`
+      ].join('\n    ')
+    : '';
+  // the same page in the other languages, or their technique index
+  const languages = LEARN_LANGS.map((l) =>
+    l === opts.lang
+      ? `<span aria-current="true">${LANG_NAME[l]}</span>`
+      : `<a href="${opts.alternateOf ? at(l, opts.alternateOf) : at(l, '/learn/')}" hreflang="${l}" lang="${l}">${LANG_NAME[l]}</a>`
+  ).join(' · ');
+  const landing = LANDING_PAGES.filter((p) => p.url !== METHOD_URL);
+  const method = TEXT[opts.lang].loc.method;
   return `<!doctype html>
-<html lang="en">
+<html lang="${opts.lang}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${esc(opts.title)}</title>
     <meta name="description" content="${esc(opts.description)}" />
     <link rel="canonical" href="${canonical}" />
+    ${alternates}
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="theme-color" content="#1a1d29" />
     <meta property="og:site_name" content="sudokUI" />
     <meta property="og:type" content="article" />
+    <meta property="og:locale" content="${OG_LOCALE[opts.lang]}" />
     <meta property="og:title" content="${esc(opts.title)}" />
     <meta property="og:description" content="${esc(opts.description)}" />
     <meta property="og:url" content="${canonical}" />
@@ -225,12 +275,12 @@ function layout(opts: {
   <body>
     <header class="site">
       <a class="brand" href="/"><span class="mark">UI</span>sudokUI</a>
-      <nav aria-label="Learn">
-        <a href="/learn/">Techniques</a>
-        <a href="${INTUITION_URL}">Intuition</a>
-        <a href="/learn/glossary/">Glossary</a>
-        <a href="${RATING_URL}">Rating</a>
-        <a href="/">Play</a>
+      <nav aria-label="${esc(lt.s('Learn'))}">
+        <a href="${at(opts.lang, '/learn/')}">${esc(lt.s('Techniques'))}</a>
+        <a href="${at(opts.lang, INTUITION_URL)}">${esc(lt.s('Intuition'))}</a>
+        <a href="${glossaryUrl(opts.lang)}">${esc(lt.s('Glossary'))}</a>
+        <a href="${at(opts.lang, RATING_URL)}">${esc(lt.s('Rating'))}</a>
+        <a href="/">${esc(lt.s('Play'))}</a>
       </nav>
     </header>
     <main>
@@ -238,15 +288,17 @@ function layout(opts: {
 ${opts.body}
     </main>
     <footer>
-      <p>sudokUI is a free, open-source sudoku app: no ads, no account, works offline.
-      <a href="/">Play at sudokui.app</a> ·
-      <a href="https://github.com/AImenes/sudokUI">Source on GitHub</a></p>
+      <p class="langs" aria-label="${esc(lt.s('Language'))}">${languages}</p>
+      <p>${esc(lt.s('sudokUI is a free, open-source sudoku app: no ads, no account, works offline.'))}
+      <a href="/">${esc(lt.s('Play at sudokui.app'))}</a> ·
+      <a href="https://github.com/AImenes/sudokUI">${esc(lt.s('Source on GitHub'))}</a></p>
       <p>${[
-        ...LANDING_PAGES.map((p) => ({ label: p.name, href: p.url })),
-        { label: 'Difficulty rating', href: RATING_URL },
-        { label: 'Techniques', href: '/learn/' },
-        { label: 'Intuition', href: INTUITION_URL },
-        { label: 'Glossary', href: '/learn/glossary/' }
+        ...landing.map((p) => ({ label: p.name, href: p.url })),
+        { label: method.name, href: at(opts.lang, METHOD_URL) },
+        { label: lt.s('Difficulty rating'), href: at(opts.lang, RATING_URL) },
+        { label: lt.s('Techniques'), href: at(opts.lang, '/learn/') },
+        { label: lt.s('Intuition'), href: at(opts.lang, INTUITION_URL) },
+        { label: lt.s('Glossary'), href: glossaryUrl(opts.lang) }
       ]
         .map((l) => `<a href="${l.href}">${esc(l.label)}</a>`)
         .join(' · ')}</p>
@@ -258,13 +310,13 @@ ${opts.body}
 
 const website = { '@type': 'WebSite', name: 'sudokUI', url: SITE + '/' };
 
-function article(url: string, headline: string, description: string): object {
+function article(lang: Lang, url: string, headline: string, description: string): object {
   return {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline,
     description,
-    inLanguage: 'en',
+    inLanguage: lang,
     url: SITE + url,
     mainEntityOfPage: SITE + url,
     image: SITE + '/og-card.png',
@@ -281,97 +333,112 @@ function article(url: string, headline: string, description: string): object {
 
 /**
  * A real position where the technique applies, drawn and explained by the
- * engine itself: the explanation is the hint sudokUI gives at this step.
+ * engine itself: the explanation is the hint sudokUI gives at this step,
+ * which is English for now.
  */
-function workedExample(tech: Tech): string {
+function workedExample(lt: LearnText, tech: Tech): string {
   const example = EXAMPLES[tech];
   if (!example) return '';
-  const name = TECHS[tech].name;
   const legend = legendOf(example.step)
     .map((l) => `<span class="key"><i style="background:${l.colour}"></i>${esc(l.label)}</span>`)
     .join(' ');
-  return `      <h2>Worked example</h2>
+  const english = lt.lang === 'en' ? '' : ' lang="en"';
+  return `      <h2>${esc(lt.s('Worked example'))}</h2>
       <figure>
-        <img src="${diagramUrl(tech)}" width="${BOARD_SIZE}" height="${BOARD_SIZE}" alt="${esc(`${diagramTitle(tech)}. ${example.step.description}`)}" />
-        <figcaption>${legend}</figcaption>
+        <img src="${diagramUrl(tech)}" width="${BOARD_SIZE}" height="${BOARD_SIZE}" alt="${esc(`${diagramTitle(tech, lt)}. ${example.step.description}`)}" />
+        <figcaption${english}>${legend}</figcaption>
       </figure>
-      <p>${esc(example.step.description)}</p>
-      <p class="meta">Step ${example.stepIndex + 1} of this puzzle's solution, found and verified by the sudokUI engine. Cells are named by row and column: r2c3 is row 2, column 3.${
-        example.credit ? ` Puzzle: ${esc(example.credit)}.` : ''
+      <p${english}>${esc(example.step.description)}</p>
+      <p class="meta">${esc(lt.s("Step {n} of this puzzle's solution, found and verified by the sudokUI engine. Cells are named by row and column: r2c3 is row 2, column 3.", { n: example.stepIndex + 1 }))}${
+        example.credit ? ` ${esc(lt.s('Puzzle: {credit}.', { credit: example.credit }))}` : ''
       }${
-        example.afterHarder
-          ? ' In this puzzle the position comes after steps harder than the technique itself.'
-          : ''
-      } <a href="/#p=${example.puzzle}">Play this puzzle from the start</a>.</p>
+        example.afterHarder ? ` ${esc(lt.s('In this puzzle the position comes after steps harder than the technique itself.'))}` : ''
+      } <a href="/#p=${example.puzzle}">${esc(lt.s('Play this puzzle from the start'))}</a>.</p>
 `;
 }
 
-function techniquePage(tech: Tech, prev?: Tech, next?: Tech): Page {
+function techniquePage(lang: Lang, tech: Tech, prev?: Tech, next?: Tech): Page {
+  const lt = TEXT[lang];
   const info = TECHS[tech];
-  const doc = TECH_DOCS[tech];
+  const name = lt.techName(tech);
+  const doc = lt.techDoc(tech);
+  const aka = lt.techAka(tech);
   const status = techStatus(tech);
-  const url = techUrl(tech);
+  const url = techUrl(tech, lang);
+  const level = lt.level(info.level);
+  const freq = lt.frequency(tech);
   const siblings = ALL_TECHS.filter((t) => TECHS[t].category === info.category && t !== tech);
-  const title = fitTitle(`${info.name}: sudoku technique explained`);
+  const title = fitTitle(lt.s('{name}: sudoku technique explained', { name }), lt.s('{name} in sudoku', { name }), name);
   const description = fitDescription(
-    `${doc.what} Why it works, how to spot it, and a puzzle to practise on.`,
+    lt.s('{what} Why it works, how to spot it, and a puzzle to practise on.', { what: doc.what }),
     doc.what,
-    `How the ${info.name} works in sudoku: the pattern, why it is valid and how to spot it. ${info.level} technique, rating score ${info.score}.`
+    lt.s('How the {name} works in sudoku: the pattern, why it is valid and how to spot it. {level} technique, rating score {score}.', {
+      name,
+      level,
+      score: info.score
+    })
   );
+  const kin = lt.kinLine(tech);
 
-  const body = `      <h1>${esc(info.name)} in sudoku</h1>
-${kinLine(tech) ? `      <p class="kin">${esc(kinLine(tech))} · <a href="${INTUITION_URL}">how it fits</a></p>\n` : ''}      <p class="meta"><span class="badge">${info.level}</span> · <a href="${RATING_URL}#scores">rating cost ${info.score}</a> · <a href="${categoryAnchor(info.category)}">${esc(categoryLabel(info.category))}</a>${
-        doc.aka.length ? ` · also called ${esc(doc.aka.join(', '))}` : ''
+  const body = `      <h1>${esc(lt.s('{name} in sudoku', { name }))}</h1>
+${kin ? `      <p class="kin">${esc(kin)} · <a href="${at(lang, INTUITION_URL)}">${esc(lt.s('how it fits'))}</a></p>\n` : ''}      <p class="meta"><span class="badge">${esc(level)}</span> · <a href="${at(lang, RATING_URL)}#scores">${esc(lt.s('rating cost {score}', { score: info.score }))}</a> · <a href="${categoryAnchor(info.category, lang)}">${esc(lt.category(info.category))}</a>${
+        aka.length ? ` · ${esc(lt.s('also called {list}', { list: aka.join(', ') }))}` : ''
       }</p>
-      <p class="lead">${linked(doc.what)}</p>
-      <h2>Why it works</h2>
-      <p>${linked(doc.why)}</p>
-      <h2>How to spot it</h2>
-      <p>${linked(doc.spot)}</p>
-${workedExample(tech)}      <div class="card">
+      <p class="lead">${linked(lt, doc.what)}</p>
+      <h2>${esc(lt.s('Why it works'))}</h2>
+      <p>${linked(lt, doc.why)}</p>
+      <h2>${esc(lt.s('How to spot it'))}</h2>
+      <p>${linked(lt, doc.spot)}</p>
+${workedExample(lt, tech)}      <div class="card">
         ${
           status
-            ? `<p>${esc(status.note)}</p>
-        <p><a class="cta" href="/#learn=${tech}">Open the guide in sudokUI</a></p>`
-            : `<p><strong>Practise it on a real puzzle.</strong> sudokUI generates a puzzle that needs ${esc(info.name)} and takes you straight to the position where it applies. Hints draw the pattern on the board and explain the step.</p>
-        <p><a class="cta" href="/#practice=${tech}">Practice ${esc(info.name)}</a><a class="cta ghost" href="/#learn=${tech}">Open in the app's guide</a></p>`
+            ? `<p>${esc(lt.s(status.note as LearnString))}</p>
+        <p><a class="cta" href="/#learn=${tech}">${esc(lt.s('Open the guide in sudokUI'))}</a></p>`
+            : `<p><strong>${esc(lt.s('Practise it on a real puzzle.'))}</strong> ${esc(
+                lt.s('sudokUI generates a puzzle that needs {name} and takes you straight to the position where it applies. Hints draw the pattern on the board and explain the step.', { name })
+              )}</p>
+        <p><a class="cta" href="/#practice=${tech}">${esc(lt.s('Practice {name}', { name }))}</a><a class="cta ghost" href="/#learn=${tech}">${esc(lt.s("Open in the app's guide"))}</a></p>`
         }
       </div>
-      <h2>In a puzzle's rating</h2>
-      <p>Each time the solver needs ${esc(info.name)}, the puzzle's difficulty rating grows by ${info.score}. It is a ${info.level}-class technique.${
-        frequencyLabel(tech) ? ` It is needed in ${frequencyLabel(tech)} that sudokUI generates.` : ''
-      } <a href="${RATING_URL}">How the rating works</a>.</p>
+      <h2>${esc(lt.s("In a puzzle's rating"))}</h2>
+      <p>${esc(lt.s("Each time the solver needs {name}, the puzzle's difficulty rating grows by {score}. It is a {level}-class technique.", { name, score: info.score, level }))}${
+        freq ? ` ${esc(lt.s('It is needed in {freq} that sudokUI generates.', { freq }))}` : ''
+      } <a href="${at(lang, RATING_URL)}">${esc(lt.s('How the rating works'))}</a>.</p>
 ${
   siblings.length
-    ? `      <h2>More ${esc(categoryLabel(info.category).toLowerCase())}</h2>
-      <p>${siblings.map((t) => `<a href="${techUrl(t)}">${esc(TECHS[t].name)}</a>`).join(' · ')}</p>
+    ? `      <h2>${esc(lt.s('More {family}', { family: lt.category(info.category).toLowerCase() }))}</h2>
+      <p>${siblings.map((t) => `<a href="${techUrl(t, lang)}">${esc(lt.techName(t))}</a>`).join(' · ')}</p>
 `
     : ''
 }      <p class="pn"><span>${
-    prev ? `← <a href="${techUrl(prev)}">${esc(TECHS[prev].name)}</a>` : ''
-  }</span><span>${next ? `<a href="${techUrl(next)}">${esc(TECHS[next].name)}</a> →` : ''}</span></p>`;
+    prev ? `← <a href="${techUrl(prev, lang)}">${esc(lt.techName(prev))}</a>` : ''
+  }</span><span>${next ? `<a href="${techUrl(next, lang)}">${esc(lt.techName(next))}</a> →` : ''}</span></p>`;
 
   return {
-    path: `learn/${techSlug(tech)}/index.html`,
+    path: `${url.slice(1)}index.html`,
     url,
+    lang,
+    alternateOf: techUrl(tech),
     html: layout({
+      lang,
       url,
       title,
       description,
+      alternateOf: techUrl(tech),
       crumbs: [
         { name: 'sudokUI', url: '/' },
-        { name: 'Sudoku techniques', url: '/learn/' },
-        { name: info.name, url }
+        { name: lt.s('Sudoku techniques'), url: at(lang, '/learn/') },
+        { name, url }
       ],
       jsonLd: [
         {
-          ...article(url, `${info.name}: sudoku technique explained`, doc.what),
+          ...article(lang, url, lt.s('{name}: sudoku technique explained', { name }), doc.what),
           ...(EXAMPLES[tech] ? { image: [SITE + diagramUrl(tech), SITE + '/og-card.png'] } : {}),
           about: {
             '@type': 'DefinedTerm',
-            name: info.name,
-            ...(doc.aka.length ? { alternateName: doc.aka } : {}),
-            inDefinedTermSet: `${SITE}/learn/`
+            name,
+            ...(aka.length ? { alternateName: aka } : {}),
+            inDefinedTermSet: `${SITE}${at(lang, '/learn/')}`
           }
         }
       ],
@@ -380,59 +447,68 @@ ${
   };
 }
 
-function indexPage(): Page {
-  const url = '/learn/';
+function indexPage(lang: Lang): Page {
+  const lt = TEXT[lang];
+  const url = at(lang, '/learn/');
   const n = ALL_TECHS.length;
-  const title = fitTitle(`Sudoku solving techniques: all ${n} explained`);
-  const description = `All ${n} sudoku solving techniques explained in plain words, from Naked Single to Exocet, grouped by family. Practise each one free in the app.`;
+  const title = fitTitle(lt.s('Sudoku solving techniques: all {n} explained', { n }));
+  const description = lt.s(
+    'All {n} sudoku solving techniques explained in plain words, from Naked Single to Exocet, grouped by family. Practise each one free in the app.',
+    { n }
+  );
   const sections = byCategory()
     .map(
-      ([cat, techs]) => `      <h2 id="${slugify(cat)}">${esc(categoryLabel(cat))}</h2>
-      <p>${esc(CATEGORY_NOTES[cat])}</p>
+      ([cat, techs]) => `      <h2 id="${slugify(cat)}">${esc(lt.category(cat))}</h2>
+      <p>${esc(lt.categoryNote(cat))}</p>
       <ul class="techs">
 ${techs
   .map(
     (t) =>
-      `        <li><a href="${techUrl(t)}">${esc(TECHS[t].name)}</a>${
-        kinLine(t) ? `<span class="kin">${esc(kinLine(t))}</span>` : ''
-      }<span>${esc(TECH_DOCS[t].what)}</span></li>`
+      `        <li><a href="${techUrl(t, lang)}">${esc(lt.techName(t))}</a>${
+        lt.kinLine(t) ? `<span class="kin">${esc(lt.kinLine(t))}</span>` : ''
+      }<span>${esc(lt.techDoc(t).what)}</span></li>`
   )
   .join('\n')}
       </ul>`
     )
     .join('\n');
-  const body = `      <h1>Sudoku solving techniques</h1>
-      <p class="lead">All ${n} solving techniques in sudokUI's catalogue, grouped by the idea behind them. Each one says what the pattern is, why it works and how to spot it.</p>
-      <p><a class="cta" href="/">Play sudokUI</a><a class="cta ghost" href="${INTUITION_URL}">How they fit together</a><a class="cta ghost" href="/learn/glossary/">Glossary</a><a class="cta ghost" href="${RATING_URL}">How rating works</a></p>
-      <h2 id="worth-learning">Worth learning first</h2>
-      <p>How often a technique is needed, weighted by its rating cost, over the ${FREQUENCY.sample.toLocaleString('en')} puzzles sudokUI has generated and rated. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it.</p>
+  const body = `      <h1>${esc(lt.s('Sudoku solving techniques'))}</h1>
+      <p class="lead">${esc(lt.s("All {n} solving techniques in sudokUI's catalogue, grouped by the idea behind them. Each one says what the pattern is, why it works and how to spot it.", { n }))}</p>
+      <p><a class="cta" href="/">${esc(lt.s('Play sudokUI'))}</a><a class="cta ghost" href="${at(lang, INTUITION_URL)}">${esc(lt.s('How they fit together'))}</a><a class="cta ghost" href="${glossaryUrl(lang)}">${esc(lt.s('Glossary'))}</a><a class="cta ghost" href="${at(lang, RATING_URL)}">${esc(lt.s('How rating works'))}</a></p>
+      <h2 id="worth-learning">${esc(lt.s('Worth learning first'))}</h2>
+      <p>${esc(lt.s('How often a technique is needed, weighted by its rating cost, over the {sample} puzzles sudokUI has generated and rated. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it.', { sample: lt.num(FREQUENCY.sample) }))}</p>
       <ol class="techs">
 ${byWorth(ALL_TECHS)
   .slice(0, 12)
   .map(
     (t) =>
-      `        <li><a href="${techUrl(t)}">${esc(TECHS[t].name)}</a><span>${TECHS[t].level}, needed in ${esc(frequencyLabel(t) ?? '')}</span></li>`
+      `        <li><a href="${techUrl(t, lang)}">${esc(lt.techName(t))}</a><span>${esc(lt.s('{level}, needed in {freq}', { level: lt.level(TECHS[t].level), freq: lt.frequency(t) ?? '' }))}</span></li>`
   )
   .join('\n')}
       </ol>
 ${sections}`;
   return {
-    path: 'learn/index.html',
+    path: `${url.slice(1)}index.html`,
     url,
+    lang,
+    alternateOf: '/learn/',
     html: layout({
+      lang,
       url,
       title,
       description,
+      alternateOf: '/learn/',
       crumbs: [
         { name: 'sudokUI', url: '/' },
-        { name: 'Sudoku techniques', url }
+        { name: lt.s('Sudoku techniques'), url }
       ],
       jsonLd: [
         {
           '@context': 'https://schema.org',
           '@type': 'CollectionPage',
-          name: 'Sudoku solving techniques',
+          name: lt.s('Sudoku solving techniques'),
           description,
+          inLanguage: lang,
           url: SITE + url,
           isPartOf: website,
           mainEntity: {
@@ -441,8 +517,8 @@ ${sections}`;
             itemListElement: ALL_TECHS.map((t, i) => ({
               '@type': 'ListItem',
               position: i + 1,
-              name: TECHS[t].name,
-              url: SITE + techUrl(t)
+              name: lt.techName(t),
+              url: SITE + techUrl(t, lang)
             }))
           }
         }
@@ -452,24 +528,29 @@ ${sections}`;
   };
 }
 
-function glossaryPage(): Page {
-  const url = '/learn/glossary/';
-  const title = fitTitle('Sudoku glossary: every solving term explained');
-  const description =
-    'Plain-English definitions of sudoku solving terms: candidates, strong and weak links, conjugate pairs, almost locked sets, fins, deadly patterns and more.';
+function glossaryPage(lang: Lang): Page {
+  const lt = TEXT[lang];
+  const url = glossaryUrl(lang);
+  const title = fitTitle(lt.s('Sudoku glossary: every solving term explained'));
+  const description = lt.s(
+    'Plain-English definitions of sudoku solving terms: candidates, strong and weak links, conjugate pairs, almost locked sets, fins, deadly patterns and more.'
+  );
+  const known = new Set(GLOSSARY.map((e) => e.id));
   const sections = GLOSSARY_GROUPS.map(
-    (group) => `      <h2 id="${slugify(group)}">${esc(group)}</h2>
+    (group) => `      <h2 id="${slugify(group)}">${esc(lt.loc.glossaryGroups[group] ?? group)}</h2>
       <dl>
 ${GLOSSARY.filter((e) => e.group === group)
   .map((e) => {
-    const see = e.see.filter((s) => GLOSSARY.some((g) => g.term === s));
-    return `        <dt id="${slugify(e.term)}">${esc(e.term)}${
-      e.aka.length ? ` <span class="aka">also ${esc(e.aka.join(', '))}</span>` : ''
+    const g = lt.glossary(e.id);
+    const see = e.see.filter((s) => known.has(s));
+    const aka = [...g.aka, ...(lang !== 'en' && e.term.toLowerCase() !== g.term.toLowerCase() ? [lt.s('In English: {term}', { term: e.term })] : [])];
+    return `        <dt id="${e.id}">${esc(g.term)}${
+      aka.length ? ` <span class="aka">${esc(lt.s('also {list}', { list: aka.join(', ') }))}</span>` : ''
     }</dt>
-        <dd>${linked(e.definition, e.term)}${
+        <dd>${linked(lt, g.definition, e.id)}${
           see.length
-            ? ` <span class="aka">See ${see
-                .map((s) => `<a href="#${slugify(s)}">${esc(s)}</a>`)
+            ? ` <span class="aka">${esc(lt.s('See'))} ${see
+                .map((s) => `<a href="#${s}">${esc(lt.glossary(s).term)}</a>`)
                 .join(', ')}.</span>`
             : ''
         }</dd>`;
@@ -477,36 +558,44 @@ ${GLOSSARY.filter((e) => e.group === group)
   .join('\n')}
       </dl>`
   ).join('\n');
-  const body = `      <h1>Sudoku glossary</h1>
-      <p class="lead">The words sudoku solvers use, and that sudokUI's hints use, each defined once and precisely.</p>
+  const body = `      <h1>${esc(lt.s('Sudoku glossary'))}</h1>
+      <p class="lead">${esc(lt.s("The words sudoku solvers use, and that sudokUI's hints use, each defined once and precisely."))}</p>
 ${sections}
       <div class="card">
-        <p>See the terms at work: <a href="/learn/">every technique explained</a>, or <a href="/">play sudokUI</a> and ask for a hint.</p>
+        <p>${withLinks(lt.s('See the terms at work: {techniques}, or {play} and ask for a hint.'), {
+          techniques: `<a href="${at(lang, '/learn/')}">${esc(lt.s('every technique explained'))}</a>`,
+          play: `<a href="/">${esc(lt.s('play sudokUI'))}</a>`
+        })}</p>
       </div>`;
   return {
-    path: 'learn/glossary/index.html',
+    path: `${url.slice(1)}index.html`,
     url,
+    lang,
+    alternateOf: '/learn/glossary/',
     html: layout({
+      lang,
       url,
       title,
       description,
+      alternateOf: '/learn/glossary/',
       crumbs: [
         { name: 'sudokUI', url: '/' },
-        { name: 'Sudoku techniques', url: '/learn/' },
-        { name: 'Glossary', url }
+        { name: lt.s('Sudoku techniques'), url: at(lang, '/learn/') },
+        { name: lt.s('Glossary'), url }
       ],
       jsonLd: [
         {
           '@context': 'https://schema.org',
           '@type': 'DefinedTermSet',
-          name: 'Sudoku glossary',
+          name: lt.s('Sudoku glossary'),
           description,
+          inLanguage: lang,
           url: SITE + url,
           hasDefinedTerm: GLOSSARY.map((e) => ({
             '@type': 'DefinedTerm',
-            name: e.term,
-            description: e.definition,
-            url: `${SITE}${url}#${slugify(e.term)}`
+            name: lt.glossary(e.id).term,
+            description: lt.glossary(e.id).definition,
+            url: `${SITE}${url}#${e.id}`
           }))
         }
       ],
@@ -515,198 +604,252 @@ ${sections}
   };
 }
 
-function ratingPage(): Page {
-  const url = RATING_URL;
-  const title = fitTitle('Sudoku difficulty rating: how hard is your puzzle?');
-  const description =
-    'How sudoku difficulty is rated: HoDoKu-compatible technique scores, eight bands from Beginner to Nightmare and the full score table. Rate any puzzle free.';
+function ratingPage(lang: Lang): Page {
+  const lt = TEXT[lang];
+  const { rating } = lt.loc;
+  const url = at(lang, RATING_URL);
+  const title = fitTitle(lt.s('Sudoku difficulty rating: how hard is your puzzle?'));
+  const description = lt.s(
+    'How sudoku difficulty is rated: HoDoKu-compatible technique scores, eight bands from Beginner to Nightmare and the full score table. Rate any puzzle free.'
+  );
   const bands = LEVELS.map(
     (level, i) =>
-      `        <tr><td><span class="badge">${level}</span></td><td class="n">${
+      `        <tr><td><span class="badge">${esc(lt.level(level))}</span></td><td class="n">${
         i === LEVELS.length - 1
-          ? `above ${LEVEL_MAX_SCORE[LEVELS[i - 1]]}`
-          : `up to ${LEVEL_MAX_SCORE[level]}`
-      }</td><td>${esc(BAND_NOTES[level])}</td></tr>`
+          ? esc(lt.s('above {n}', { n: LEVEL_MAX_SCORE[LEVELS[i - 1]] }))
+          : esc(lt.s('up to {n}', { n: LEVEL_MAX_SCORE[level] }))
+      }</td><td>${esc(lt.loc.bandNotes[level])}</td></tr>`
   ).join('\n');
   const scores = byCategory()
     .map(
       ([cat, techs]) =>
-        `        <tr><th colspan="4">${esc(categoryLabel(cat))}</th></tr>
+        `        <tr><th colspan="4">${esc(lt.category(cat))}</th></tr>
 ${techs
   .map(
     (t) =>
-      `        <tr><td><a href="${techUrl(t)}">${esc(TECHS[t].name)}</a></td><td>${TECHS[t].level}</td><td class="n">${TECHS[t].score}</td><td>${frequencyLabel(t) ?? ''}</td></tr>`
+      `        <tr><td><a href="${techUrl(t, lang)}">${esc(lt.techName(t))}</a></td><td>${esc(lt.level(TECHS[t].level))}</td><td class="n">${TECHS[t].score}</td><td>${esc(lt.frequency(t) ?? '')}</td></tr>`
   )
   .join('\n')}`
     )
     .join('\n');
-  const body = `      <h1>Sudoku difficulty rating</h1>
-      <p class="lead">${esc(RATING_SUMMARY)}</p>
-      <h2 id="rate-your-puzzle">Rate your own sudoku</h2>
-${puzzleForm('Rate this puzzle')}
-      <p>The puzzle opens in sudokUI with its rating and band in the top bar. Nothing is uploaded: the rating is computed on your own device. No string at hand? <a href="/">Open sudokUI</a>, choose New, then Custom, and type the puzzle onto the board. See also <a href="/hodoku/">how this compares with HoDoKu</a>.</p>
-${RATING_POINTS.map((p) => `      <h2>${esc(p.title)}</h2>\n      <p>${esc(p.text)}</p>`).join('\n')}
-      <h2 id="bands">The eight difficulty bands</h2>
+  const body = `      <h1>${esc(lt.s('Sudoku difficulty rating'))}</h1>
+      <p class="lead">${esc(rating.summary)}</p>
+      <h2 id="rate-your-puzzle">${esc(lt.s('Rate your own sudoku'))}</h2>
+${puzzleForm(lt, lt.s('Rate this puzzle'))}
+      <p>${withLinks(
+        lt.s(
+          'The puzzle opens in sudokUI with its rating and band in the top bar. Nothing is uploaded: the rating is computed on your own device. No string at hand? {open}, choose New, then Custom, and type the puzzle onto the board. See also {hodoku}.'
+        ),
+        {
+          open: `<a href="/">${esc(lt.s('Open sudokUI'))}</a>`,
+          hodoku: `<a href="/hodoku/">${esc(lt.s('how this compares with HoDoKu'))}</a>`
+        }
+      )}</p>
+${rating.points.map((p) => `      <h2>${esc(p.title)}</h2>\n      <p>${esc(p.text)}</p>`).join('\n')}
+      <h2 id="bands">${esc(lt.s('The eight difficulty bands'))}</h2>
       <table>
-        <tr><th>Band</th><th class="n">Total score</th><th>Typical techniques</th></tr>
+        <tr><th>${esc(lt.s('Band'))}</th><th class="n">${esc(lt.s('Total score'))}</th><th>${esc(lt.s('Typical techniques'))}</th></tr>
 ${bands}
       </table>
-      <h2 id="solve-times">How fast is fast?</h2>
-      <p>${esc(SOLVE_TIME_NOTE)}</p>
+      <h2 id="solve-times">${esc(lt.s('How fast is fast?'))}</h2>
+      <p>${esc(rating.solveTimeNote)}</p>
       <table>
-        <tr><th>Band</th><th class="n">Slow</th><th class="n">Typical</th><th class="n">Fast</th><th class="n">Expert</th><th class="n">World class</th></tr>
-${SOLVE_TIME_TABLES.map(
-  (t) => `        <tr><th colspan="6">${esc(t.label[0].toUpperCase() + t.label.slice(1))}</th></tr>
+        <tr><th>${esc(lt.s('Band'))}</th><th class="n">${esc(lt.s('Slow'))}</th><th class="n">${esc(lt.s('Typical'))}</th><th class="n">${esc(lt.s('Fast'))}</th><th class="n">${esc(lt.s('Expert'))}</th><th class="n">${esc(lt.s('World class'))}</th></tr>
+${SOLVE_TIME_TABLES.map((t) => {
+  const label = rating.modes[t.mode];
+  return `        <tr><th colspan="6">${esc(label[0].toUpperCase() + label.slice(1))}</th></tr>
 ${t.rows
   .map(
     (r) =>
-      `        <tr><td><span class="badge">${r.level}</span></td><td class="n">${r.slow}</td><td class="n">${r.typical}</td><td class="n">${r.fast}</td><td class="n">${r.expert}</td><td class="n">${r.worldClass}</td></tr>`
+      `        <tr><td><span class="badge">${esc(lt.level(r.level))}</span></td><td class="n">${r.slow}</td><td class="n">${r.typical}</td><td class="n">${r.fast}</td><td class="n">${r.expert}</td><td class="n">${r.worldClass}</td></tr>`
   )
-  .join('\n')}`
-).join('\n')}
+  .join('\n')}`;
+}).join('\n')}
       </table>
-      <p>Slow is where the slowest fifth begins. Typical is the median solver. Fast is faster than four solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000. The app says where each of your solves lands.</p>
-      <h2 id="scores">Score of every technique</h2>
-      <p>The cost added to a puzzle's rating each time the solver needs the technique, and how many of the puzzles sudokUI generates need it at least once (measured on ${FREQUENCY.sample.toLocaleString('en')} puzzles).</p>
+      <p>${esc(lt.s('Slow is where the slowest fifth begins. Typical is the median solver. Fast is faster than four solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000.'))} ${esc(lt.s('The app says where each of your solves lands.'))}</p>
+      <h2 id="scores">${esc(lt.s('Score of every technique'))}</h2>
+      <p>${esc(lt.s("The cost added to a puzzle's rating each time the solver needs the technique, and how many of the puzzles sudokUI generates need it at least once (measured on {sample} puzzles).", { sample: lt.num(FREQUENCY.sample) }))}</p>
       <table>
-        <tr><th>Technique</th><th>Class</th><th class="n">Score</th><th>Needed in</th></tr>
+        <tr><th>${esc(lt.s('Technique'))}</th><th>${esc(lt.s('Class'))}</th><th class="n">${esc(lt.s('Score'))}</th><th>${esc(lt.s('Needed in'))}</th></tr>
 ${scores}
       </table>`;
   return {
     path: `${url.slice(1)}index.html`,
     url,
+    lang,
+    alternateOf: RATING_URL,
     html: layout({
+      lang,
       url,
       title,
       description,
+      alternateOf: RATING_URL,
       crumbs: [
         { name: 'sudokUI', url: '/' },
-        { name: 'Sudoku difficulty rating', url }
+        { name: lt.s('Sudoku difficulty rating'), url }
       ],
-      jsonLd: [article(url, 'Sudoku difficulty rating', description)],
+      jsonLd: [article(lang, url, lt.s('Sudoku difficulty rating'), description)],
       body
     })
   };
 }
 
-function landingPage(page: LandingPage): Page {
+/** the English landing pages; How the best solve also in the other languages */
+function landingPage(page: LandingPage, lang: Lang = 'en'): Page {
+  const lt = TEXT[lang];
+  const isMethod = page.url === METHOD_URL;
+  const m = isMethod ? lt.loc.method : null;
+  const url = at(lang, page.url);
   const link = (l: { label: string; href: string }) =>
     `<a href="${l.href}"${l.href.startsWith('http') ? ' rel="noopener"' : ''}>${esc(l.label)}</a>`;
-  const body = `      <h1>${esc(page.h1)}</h1>
-      <p class="lead">${esc(page.lead)}</p>
-${page.puzzleBox ? puzzleForm(page.puzzleBox) : `      <p><a class="cta" href="${page.cta.href}">${esc(page.cta.label)}</a></p>`}
-${page.sections
+  const sections = m ? m.sections : page.sections;
+  const related = isMethod
+    ? [
+        { label: lt.s('Every technique explained'), href: at(lang, '/learn/') },
+        { label: lt.s('How the difficulty rating works'), href: at(lang, RATING_URL) }
+      ]
+    : page.related;
+  const body = `      <h1>${esc(m ? m.h1 : page.h1)}</h1>
+      <p class="lead">${esc(m ? m.lead : page.lead)}</p>
+${page.puzzleBox ? puzzleForm(lt, page.puzzleBox) : `      <p><a class="cta" href="${page.cta.href}">${esc(isMethod ? lt.s('Play sudokUI') : page.cta.label)}</a></p>`}
+${sections
   .map(
     (s) =>
       `      <h2>${esc(s.heading)}</h2>\n${s.paragraphs.map((p) => `      <p>${esc(p)}</p>`).join('\n')}`
   )
   .join('\n')}
       <div class="card">
-        <p>${page.related.map(link).join(' · ')}</p>
+        <p>${related.map(link).join(' · ')}</p>
       </div>`;
+  const title = m ? m.title : page.title;
+  const description = m ? m.description : page.description;
   return {
-    path: `${page.url.slice(1)}index.html`,
-    url: page.url,
+    path: `${url.slice(1)}index.html`,
+    url,
+    lang,
+    ...(isMethod ? { alternateOf: page.url } : {}),
     html: layout({
-      url: page.url,
-      title: page.title,
-      description: page.description,
+      lang,
+      url,
+      title,
+      description,
+      ...(isMethod ? { alternateOf: page.url } : {}),
       crumbs: [
         { name: 'sudokUI', url: '/' },
-        { name: page.name, url: page.url }
+        { name: m ? m.name : page.name, url }
       ],
-      jsonLd: [article(page.url, page.h1, page.description)],
+      jsonLd: [article(lang, url, m ? m.h1 : page.h1, description)],
       body
     })
   };
 }
 
-/** the width and height an SVG document declares in its viewBox */
+/** the svg's own size, for the img's width and height */
 const svgSize = (svg: string) => {
   const [, , w, h] = /viewBox="([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+)"/.exec(svg)!.slice(1).map(Number);
   return { w, h };
 };
 
-function intuitionPage(): Page {
-  const url = INTUITION_URL;
-  const title = fitTitle('How sudoku techniques fit together');
-  const description =
-    'Every sudoku technique comes down to three ideas: locked sets, almost locked sets and chains. Each one explained simply, plus where the names came from.';
+function intuitionPage(lang: Lang): Page {
+  const lt = TEXT[lang];
+  const { intuition } = lt.loc;
+  const url = at(lang, INTUITION_URL);
+  const title = fitTitle(lt.s('How sudoku techniques fit together'));
+  const description = lt.s(
+    'Every sudoku technique comes down to three ideas: locked sets, almost locked sets and chains. Each one explained simply, plus where the names came from.'
+  );
   const section = (s: (typeof INTUITION)[number]['sections'][number]) => {
-    const out = [`      <h3 id="${s.id}">${esc(s.heading)}</h3>`, ...s.paragraphs.map((p) => `      <p>${linked(p)}</p>`)];
-    if (s.points) {
+    const t = intuition.sections[s.id];
+    const out = [`      <h3 id="${s.id}">${esc(t.heading)}</h3>`, ...t.paragraphs.map((p) => `      <p>${linked(lt, p)}</p>`)];
+    if (t.points) {
       out.push(
-        `      <dl class="timeline">\n${s.points
+        `      <dl class="timeline">\n${t.points
           .map((pt) => `        <dt>${esc(pt.when)}</dt>\n        <dd>${esc(pt.what)}</dd>`)
           .join('\n')}\n      </dl>`
       );
     }
     if (s.diagram) {
-      const { w, h } = svgSize(intuitionDiagram(s.diagram.id));
+      const { w, h } = svgSize(intuitionDiagram(s.diagram.id, lt.s));
       out.push(`      <figure>
-        <img src="${intuitionDiagramUrl(s.diagram.id)}" width="${w}" height="${h}" alt="${esc(s.diagram.caption)}" loading="lazy" />
-        <figcaption>${esc(s.diagram.caption)}</figcaption>
+        <img src="${intuitionDiagramUrl(s.diagram.id, lang)}" width="${w}" height="${h}" alt="${esc(t.caption ?? '')}" loading="lazy" />
+        <figcaption>${esc(t.caption ?? '')}</figcaption>
       </figure>`);
     }
-    if (s.eli12) {
-      out.push(`      <aside class="eli12"><strong>Explain it like I'm 12</strong><p>${esc(s.eli12)}</p></aside>`);
+    if (t.eli12) {
+      out.push(`      <aside class="eli12"><strong>${esc(lt.s("Explain it like I'm 12"))}</strong><p>${esc(t.eli12)}</p></aside>`);
     }
     if (s.techs) {
       out.push(
-        `      <p class="meta">In the catalogue: ${s.techs.map((t) => `<a href="${techUrl(t)}">${esc(TECHS[t].name)}</a>`).join(' · ')}</p>`
+        `      <p class="meta">${esc(lt.s('In the catalogue:'))} ${s.techs
+          .map((tech) => `<a href="${techUrl(tech, lang)}">${esc(lt.techName(tech))}</a>`)
+          .join(' · ')}</p>`
       );
     }
     return out.join('\n');
   };
-  const body = `      <h1>How sudoku techniques fit together</h1>
-      <p class="lead">${linked(INTUITION_LEAD)}</p>
-      <p class="meta">${INTUITION.map((p) => `<a href="#${p.id}">${esc(p.nav)}</a>`).join(' · ')}</p>
+  const body = `      <h1>${esc(lt.s('How sudoku techniques fit together'))}</h1>
+      <p class="lead">${linked(lt, intuition.lead)}</p>
+      <p class="meta">${INTUITION.map((p) => `<a href="#${p.id}">${esc(intuition.parts[p.id].nav)}</a>`).join(' · ')}</p>
 ${INTUITION.map(
-  (part) => `      <h2 id="${part.id}">${esc(part.heading)}</h2>
-      <p class="meta">${esc(part.intro)}</p>
+  (part) => `      <h2 id="${part.id}">${esc(intuition.parts[part.id].heading)}</h2>
+      <p class="meta">${esc(intuition.parts[part.id].intro)}</p>
 ${part.sections.map(section).join('\n')}`
 ).join('\n')}
       <div class="card">
-        <p><a class="cta" href="/#learn=intuition">Open in the app</a><a class="cta ghost" href="/learn/">All techniques</a><a class="cta ghost" href="/learn/glossary/">Glossary</a></p>
+        <p><a class="cta" href="/#learn=intuition">${esc(lt.s('Open in the app'))}</a><a class="cta ghost" href="${at(lang, '/learn/')}">${esc(lt.s('All techniques'))}</a><a class="cta ghost" href="${glossaryUrl(lang)}">${esc(lt.s('Glossary'))}</a></p>
       </div>`;
   return {
     path: `${url.slice(1)}index.html`,
     url,
+    lang,
+    alternateOf: INTUITION_URL,
     html: layout({
+      lang,
       url,
       title,
       description,
+      alternateOf: INTUITION_URL,
       crumbs: [
         { name: 'sudokUI', url: '/' },
-        { name: 'Sudoku techniques', url: '/learn/' },
-        { name: 'How they fit together', url }
+        { name: lt.s('Sudoku techniques'), url: at(lang, '/learn/') },
+        { name: lt.s('How they fit together'), url }
       ],
-      jsonLd: [article(url, 'How sudoku techniques fit together', description)],
+      jsonLd: [article(lang, url, lt.s('How sudoku techniques fit together'), description)],
       body
     })
   };
 }
 
 export function buildLearnPages(): Page[] {
+  const method = LANDING_PAGES.find((p) => p.url === METHOD_URL)!;
   return [
-    ...LANDING_PAGES.map(landingPage),
-    ratingPage(),
-    indexPage(),
-    intuitionPage(),
-    glossaryPage(),
-    ...ALL_TECHS.map((tech, i) => techniquePage(tech, ALL_TECHS[i - 1], ALL_TECHS[i + 1]))
+    ...LANDING_PAGES.map((p) => landingPage(p)),
+    ...LEARN_LANGS.flatMap((lang) => [
+      ...(lang === 'en' ? [] : [landingPage(method, lang)]),
+      ratingPage(lang),
+      indexPage(lang),
+      intuitionPage(lang),
+      glossaryPage(lang),
+      ...ALL_TECHS.map((tech, i) => techniquePage(lang, tech, ALL_TECHS[i - 1], ALL_TECHS[i + 1]))
+    ])
   ];
 }
 
 /**
- * Sitemap for the app itself plus every static page. Locations only:
- * search engines ignore priority and changefreq, and a lastmod stamped
- * with the build date on every deploy teaches them to ignore that too.
+ * Sitemap for the app itself plus every static page. Locations only, plus
+ * the language versions of each Learn page: search engines ignore priority
+ * and changefreq, and a lastmod stamped with the build date on every deploy
+ * teaches them to ignore that too.
  */
 export function buildSitemap(pages: Page[]): string {
+  const alt = (p: Page) =>
+    p.alternateOf
+      ? LEARN_LANGS.map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${SITE}${at(l, p.alternateOf!)}"/>`).join('')
+      : '';
   return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${['/', ...pages.map((p) => p.url)].map((u) => `  <url><loc>${SITE}${u}</loc></url>`).join('\n')}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url><loc>${SITE}/</loc></url>
+${pages.map((p) => `  <url><loc>${SITE}${p.url}</loc>${alt(p)}</url>`).join('\n')}
 </urlset>
 `;
 }

@@ -4,6 +4,12 @@
 // image files on the static site.
 import { COLOURS, TINTS } from './boardSvg';
 import type { DiagramId } from './intuition';
+import { fill } from './learnStrings';
+import type { LearnString } from './learnStrings';
+
+/** the words drawn inside a diagram, in the page's language */
+export type DiagramWords = (key: LearnString, vars?: Record<string, string | number>) => string;
+const english: DiagramWords = (key, vars) => fill(key, vars);
 
 type Kind = 'primary' | 'secondary' | 'fin' | 'elim' | 'place';
 
@@ -177,11 +183,11 @@ const XW_COLS = [3, 8];
 const fiveKind = (row: number, col: number): Kind | undefined =>
   XW_COLS.includes(col) ? (XW_ROWS.includes(row) ? 'primary' : 'elim') : undefined;
 
-function fishSideways(): string {
+function fishSideways(w: DiagramWords): string {
   const grid: Panel = {
     rows: 9,
     cols: 9,
-    heading: 'Where 5 can go',
+    heading: w('Where 5 can go'),
     cells: FIVES.flatMap((cols, r) =>
       cols.map((col) => {
         const kind = fiveKind(r, col);
@@ -193,9 +199,9 @@ function fishSideways(): string {
     rows: 9,
     cols: 1,
     boxes: false,
-    heading: 'The same, by row',
-    rowLabels: range(9).map((n) => `row ${n}`),
-    colLabels: ['columns'],
+    heading: w('The same, by row'),
+    rowLabels: range(9).map((n) => w('row {n}', { n })),
+    colLabels: [w('columns')],
     cells: FIVES.map((cols, r) => ({
       r,
       c: 0,
@@ -206,17 +212,17 @@ function fishSideways(): string {
       })
     }))
   };
-  return compose([grid, list], 'row', 'An X-Wing on 5, and the same 5s listed by row as a naked pair');
+  return compose([grid, list], 'row', w('An X-Wing on 5, and the same 5s listed by row as a naked pair'));
 }
 
-function nakedHidden(): string {
+function nakedHidden(w: DiagramWords): string {
   const P = 'primary';
   const G = 'secondary';
   const X = 'elim';
   const row: Panel = {
     rows: 1,
     cols: 9,
-    rowLabels: ['row'],
+    rowLabels: [w('row')],
     cells: [
       { r: 0, c: 0, given: 8 },
       { r: 0, c: 1, tint: P, cands: [[1, P], [2, P]] },
@@ -229,18 +235,18 @@ function nakedHidden(): string {
       { r: 0, c: 8, tint: G, cands: [[1, X], [6, G], [7, G]] }
     ]
   };
-  return compose([row], 'row', 'A naked triple and a hidden quad in the same row');
+  return compose([row], 'row', w('A naked triple and a hidden quad in the same row'));
 }
 
-function bentTriple(): string {
+function bentTriple(w: DiagramWords): string {
   const P = 'primary';
   const G = 'secondary';
   const X = 'elim';
   const straight: Panel = {
     rows: 1,
     cols: 9,
-    heading: 'Naked triple: three cells in one row',
-    rowLabels: ['row'],
+    heading: w('Naked triple: three cells in one row'),
+    rowLabels: [w('row')],
     cells: [
       { r: 0, c: 1, tint: P, cands: [[1, P], [2, P]] },
       { r: 0, c: 2, cands: [[3, X], 6] },
@@ -252,7 +258,7 @@ function bentTriple(): string {
   const bent: Panel = {
     rows: 3,
     cols: 9,
-    heading: 'Bent triple: an XY-Wing',
+    heading: w('Bent triple: an XY-Wing'),
     cells: [
       { r: 0, c: 0, tint: P, cands: [[1, P], [2, P]] },
       { r: 0, c: 2, cands: [[3, X], 6] },
@@ -261,10 +267,10 @@ function bentTriple(): string {
       { r: 2, c: 7, cands: [[3, X], 9] }
     ]
   };
-  return compose([straight, bent], 'column', 'A naked triple in one row, and the same three digits bent round a corner as an XY-Wing');
+  return compose([straight, bent], 'column', w('A naked triple in one row, and the same three digits bent round a corner as an XY-Wing'));
 }
 
-function kite(): string {
+function kite(w: DiagramWords): string {
   const P = 'primary';
   const G = 'secondary';
   const panel: Panel = {
@@ -283,10 +289,10 @@ function kite(): string {
       { from: [1, 1, 4], to: [2, 2, 4], strong: false }
     ]
   };
-  return compose([panel], 'row', 'A 2-String Kite on 4');
+  return compose([panel], 'row', w('A 2-String Kite on 4'));
 }
 
-function deadly(): string {
+function deadly(w: DiagramWords): string {
   const P = 'primary';
   const panel: Panel = {
     rows: 2,
@@ -298,10 +304,10 @@ function deadly(): string {
       { r: 1, c: 3, tint: 'place', cands: [[1, 'elim'], [2, 'elim'], [5, 'place']] }
     ]
   };
-  return compose([panel], 'row', 'A Unique Rectangle in rows 1 and 2, columns 1 and 4');
+  return compose([panel], 'row', w('A Unique Rectangle in rows 1 and 2, columns 1 and 4'));
 }
 
-const DIAGRAMS: Record<DiagramId, () => string> = {
+const DIAGRAMS: Record<DiagramId, (w: DiagramWords) => string> = {
   'fish-sideways': fishSideways,
   'naked-hidden': nakedHidden,
   'bent-triple': bentTriple,
@@ -310,8 +316,10 @@ const DIAGRAMS: Record<DiagramId, () => string> = {
 };
 
 /** the diagram as a standalone SVG document */
-export const intuitionDiagram = (id: DiagramId): string => DIAGRAMS[id]();
+export const intuitionDiagram = (id: DiagramId, w: DiagramWords = english): string => DIAGRAMS[id](w);
 
-export const intuitionDiagramUrl = (id: DiagramId) => `/learn/img/intuition-${id}.svg`;
+/** English at /learn/img/intuition-<id>.svg, other languages at intuition-<id>.<lang>.svg */
+export const intuitionDiagramUrl = (id: DiagramId, lang: string = 'en') =>
+  `/learn/img/intuition-${id}${lang === 'en' ? '' : '.' + lang}.svg`;
 
 export const DIAGRAM_IDS = Object.keys(DIAGRAMS) as DiagramId[];

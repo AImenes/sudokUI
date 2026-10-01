@@ -22,18 +22,41 @@ function rounded(n: number): string {
   return (Math.round(n / step) * step).toLocaleString('en');
 }
 
+/** how often, before it is put into words: see frequencyLabel */
+export type FrequencyParts =
+  | { kind: 'fewer'; n: number }
+  | { kind: 'every' }
+  | { kind: 'share'; percent: number }
+  | { kind: 'oneIn'; n: number };
+
+/** null for a technique the solver never uses (not implemented, or switched off as redundant) */
+export function frequencyParts(tech: Tech, f: Frequency = FREQUENCY): FrequencyParts | null {
+  const count = f.counts[tech];
+  if (count === undefined || f.sample === 0) return null;
+  if (count === 0) return { kind: 'fewer', n: roundedNumber(f.sample) };
+  const share = count / f.sample;
+  if (share >= 0.995) return { kind: 'every' };
+  if (share >= 0.1) return { kind: 'share', percent: Math.round(share * 100) };
+  return { kind: 'oneIn', n: roundedNumber(1 / share) };
+}
+
+/** two significant digits, as a number */
+function roundedNumber(n: number): number {
+  const step = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 1));
+  return Math.round(n / step) * step;
+}
+
 /**
  * "34% of puzzles", "1 in 120 puzzles", or null for a technique the solver
  * never uses (not implemented, or switched off as redundant).
  */
 export function frequencyLabel(tech: Tech, f: Frequency = FREQUENCY): string | null {
-  const count = f.counts[tech];
-  if (count === undefined || f.sample === 0) return null;
-  if (count === 0) return `fewer than 1 in ${rounded(f.sample)} puzzles`;
-  const share = count / f.sample;
-  if (share >= 0.995) return 'every puzzle';
-  if (share >= 0.1) return `${Math.round(share * 100)}% of puzzles`;
-  return `1 in ${rounded(1 / share)} puzzles`;
+  const p = frequencyParts(tech, f);
+  if (!p) return null;
+  if (p.kind === 'fewer') return `fewer than 1 in ${rounded(f.sample)} puzzles`;
+  if (p.kind === 'every') return 'every puzzle';
+  if (p.kind === 'share') return `${p.percent}% of puzzles`;
+  return `1 in ${p.n.toLocaleString('en')} puzzles`;
 }
 
 /** share of generated puzzles needing the technique; below zero when never measured */

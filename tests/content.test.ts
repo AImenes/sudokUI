@@ -70,16 +70,19 @@ describe('glossary', () => {
       expect(seen.has(key), `duplicate term ${e.term}`).toBe(false);
       seen.add(key);
       expect(GLOSSARY_GROUPS, e.term).toContain(e.group);
-      expect(words(e.definition), `${e.term}: at most 40 words`).toBeLessThanOrEqual(40);
-      expect(sentences(e.definition), `${e.term}: one or two sentences`).toBeLessThanOrEqual(2);
+      // the audited definitions of docs/glossary_input.md: precise, so some need three sentences
+      expect(words(e.definition), `${e.term}: at most 70 words`).toBeLessThanOrEqual(70);
+      expect(sentences(e.definition), `${e.term}: at most three sentences`).toBeLessThanOrEqual(3);
       expectHouseStyle(e.definition, e.term);
     }
   });
 
-  it('only cross-references terms that exist', () => {
-    const terms = new Set(GLOSSARY.map((e) => e.term));
+  it('only cross-references entries that exist', () => {
+    const ids = new Set(GLOSSARY.map((e) => e.id));
+    expect(ids.size, 'ids are unique').toBe(GLOSSARY.length);
     for (const e of GLOSSARY) {
-      for (const ref of e.see) expect(terms.has(ref), `${e.term} -> ${ref}`).toBe(true);
+      expect(e.id, 'ids are lower-case slugs').toMatch(/^[a-z0-9-]+$/);
+      for (const ref of e.see) expect(ids.has(ref), `${e.id} -> ${ref}`).toBe(true);
     }
   });
 
@@ -103,14 +106,14 @@ describe('glossary', () => {
 
   it('links terms inside running text, once each and never to itself', () => {
     const segs = linkGlossary('A strong link and another strong link meet a weak link.');
-    const linked = segs.filter((s) => s.term).map((s) => s.term!.toLowerCase());
-    expect(linked.filter((t) => t.startsWith('strong link'))).toHaveLength(1);
-    expect(linked.some((t) => t.startsWith('weak link'))).toBe(true);
+    const linked = segs.filter((s) => s.term).map((s) => s.term!);
+    expect(linked.filter((t) => t === 'strong-link')).toHaveLength(1);
+    expect(linked).toContain('weak-link');
     expect(segs.map((s) => s.text).join('')).toBe(
       'A strong link and another strong link meet a weak link.'
     );
     const strong = GLOSSARY.find((e) => e.term.toLowerCase().startsWith('strong link'))!;
-    expect(linkGlossary(strong.definition, strong.term).some((s) => s.term === strong.term)).toBe(false);
+    expect(linkGlossary(strong.definition, strong.id).some((s) => s.term === strong.id)).toBe(false);
   });
 });
 
@@ -255,7 +258,12 @@ describe('static pages', () => {
 
   it('builds one page per technique plus the hubs and landing pages', () => {
     // hubs: the technique index, the Intuition guide, the glossary and the rating page
-    expect(pages).toHaveLength(ALL_TECHS.length + 4 + LANDING_PAGES.length);
+    // in English, Norwegian and Spanish: every technique, the four hubs and How the best solve;
+    // the other landing pages are English only
+    expect(pages).toHaveLength(3 * (ALL_TECHS.length + 4) + LANDING_PAGES.length + 2);
+    for (const lang of ['nb', 'es']) {
+      for (const tech of ALL_TECHS) expect(urls.has(`/${lang}/learn/${techSlug(tech)}/`), `${lang} ${tech}`).toBe(true);
+    }
     for (const tech of ALL_TECHS) expect(urls.has(`/learn/${techSlug(tech)}/`), tech).toBe(true);
     expect(urls.size).toBe(pages.length);
   });
@@ -306,7 +314,7 @@ describe('static pages', () => {
     const glossary = pages.find((p) => p.url === '/learn/glossary/')!.html;
     const ids = new Set([...glossary.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
     for (const page of pages) {
-      for (const m of page.html.matchAll(/href="\/learn\/glossary\/#([^"]+)"/g)) {
+      for (const m of page.html.matchAll(/href="(?:\/(?:nb|es))?\/learn\/glossary\/#([^"]+)"/g)) {
         expect(ids.has(m[1]), `${page.url} -> #${m[1]}`).toBe(true);
       }
     }
