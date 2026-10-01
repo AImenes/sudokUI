@@ -29,9 +29,10 @@ import { TECHS, PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { RATING_URL } from '../content/staticRoutes';
 
-/** #learn=<technique key or slug> | glossary | rating | term:<glossary term> */
+/** #learn=<technique key or slug> | intuition | glossary | rating | term:<glossary term> */
 function parseLearnParam(param: string): LearnTarget {
   if (param === 'glossary') return { tab: 'glossary' };
+  if (param === 'intuition') return { tab: 'intuition' };
   if (param === 'rating') return { tab: 'rating' };
   if (param.startsWith('term:')) return { tab: 'glossary', term: param.slice(5) };
   return { tab: 'techniques', tech: techFromParam(param) };
@@ -512,6 +513,10 @@ export default function App() {
               <span>Learn: </span>
               <a href="/learn/" onClick={learnLink({ tab: 'techniques' })}>
                 Techniques
+              </a>
+              <span aria-hidden="true"> · </span>
+              <a href="/learn/intuition/" onClick={learnLink({ tab: 'intuition' })}>
+                Intuition
               </a>
               <span aria-hidden="true"> · </span>
               <a href="/learn/glossary/" onClick={learnLink({ tab: 'glossary' })}>

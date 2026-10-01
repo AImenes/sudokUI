@@ -254,7 +254,8 @@ describe('static pages', () => {
   const urls = new Set(pages.map((p) => p.url));
 
   it('builds one page per technique plus the hubs and landing pages', () => {
-    expect(pages).toHaveLength(ALL_TECHS.length + 3 + LANDING_PAGES.length);
+    // hubs: the technique index, the Intuition guide, the glossary and the rating page
+    expect(pages).toHaveLength(ALL_TECHS.length + 4 + LANDING_PAGES.length);
     for (const tech of ALL_TECHS) expect(urls.has(`/learn/${techSlug(tech)}/`), tech).toBe(true);
     expect(urls.size).toBe(pages.length);
   });

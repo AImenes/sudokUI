@@ -974,6 +974,19 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+/* the same idea under another name: a second line under the technique */
+.practice-btns button:has(.tech-kin) {
+  text-align: left;
+}
+
+.tech-kin {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
 .pool-dot {
   display: inline-block;
   width: 7px;
@@ -2229,5 +2242,111 @@ html:not([lang='en']) .zone-note {
     font-size: 11px;
     padding-left: 2px;
     padding-right: 2px;
+  }
+}
+
+/* the same idea under another name, under a technique's name in the guide */
+.learn-kin {
+  grid-column: 1 / -1;
+  padding-left: 14px;
+  margin-top: -2px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* the Intuition guide: ideas, each explained twice */
+.intuition-part h4 {
+  margin-top: 28px;
+  font-size: 16px;
+}
+
+.intuition-section {
+  margin: 14px 0 0;
+  scroll-margin-top: 8px;
+}
+
+.intuition-section h5 {
+  margin: 0 0 6px;
+  font-size: 14.5px;
+  font-weight: 650;
+}
+
+.intuition-section .learn-prose {
+  max-width: 68ch;
+}
+
+.intuition-eli12 {
+  max-width: 68ch;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  background: var(--sel-bg);
+}
+
+.intuition-eli12 p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.intuition-figure {
+  margin: 10px 0 0;
+}
+
+.intuition-figure img {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  border-radius: 8px;
+}
+
+.intuition-figure figcaption {
+  margin-top: 6px;
+  max-width: 68ch;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.intuition-techs {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.intuition-techs .learn-link {
+  font-size: 13px;
+}
+
+.intuition-timeline {
+  margin: 4px 0 0;
+  max-width: 68ch;
+}
+
+.intuition-timeline > div {
+  display: grid;
+  grid-template-columns: 8.5em 1fr;
+  gap: 2px 12px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(128, 128, 160, 0.16);
+}
+
+.intuition-timeline dt {
+  font-weight: 650;
+  font-size: 13px;
+}
+
+.intuition-timeline dd {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .intuition-timeline > div {
+    grid-template-columns: 1fr;
   }
 }

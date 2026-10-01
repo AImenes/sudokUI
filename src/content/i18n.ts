@@ -60,6 +60,7 @@ const nb: Dictionary = {
   // learn
   Learn: 'Lær',
   Techniques: 'Teknikker',
+  Intuition: 'Intuisjon',
   'How to solve': 'Slik løser du',
   Glossary: 'Ordliste',
   Rating: 'Vurdering'
@@ -102,6 +103,7 @@ const es: Dictionary = {
   'Show timer': 'Mostrar el cronómetro',
   Learn: 'Aprender',
   Techniques: 'Técnicas',
+  Intuition: 'Intuición',
   'How to solve': 'Cómo resolver',
   Glossary: 'Glosario',
   Rating: 'Dificultad'
