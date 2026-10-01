@@ -1,0 +1,87 @@
+# Goals
+
+## The mission
+
+sudokUI exists to make its player the fastest solver in the room: someone
+for whom no newspaper, airport or expert-website sudoku is an obstacle. It
+gets there by skill, never by search, and it teaches easiest first.
+
+The app does not say this anywhere. It is simply built so that a player
+who follows it ends up there.
+
+## What "every sudoku" means
+
+Every valid sudoku yields to logic, but the hardest few hundred ever
+published (the Golden Nugget class) need forcing nets: branching chains
+that nobody spots as a pattern, and that the engine itself files under
+last resort. Those are search, not skill, and the mission stops short of
+them on purpose.
+
+Everything else, which is every puzzle anyone meets in daily life and on
+the expert sites, is covered by the catalogue through AICs with ALSs, the
+uniqueness family and Exocets. That is the ground the app must own.
+
+## Principles
+
+1. **Easiest first.** The solver takes the cheapest technique at every
+   step, the guide ranks by solver order, practice fast-forwards to the
+   target move. Nothing asks the player for a harder idea than the
+   position needs.
+2. **Skill, not search.** Forcing chains and nets exist in the engine so
+   every puzzle can be rated, but they are never the thing being taught.
+   Hints, practice and the learning path stop at what a human can see.
+3. **Chains are the skill that generalises.** X-Wing, Skyscraper, W-Wing,
+   Nice Loop and AIC are one idea at rising generality: strong and weak
+   links. A player who builds chains from scratch solves puzzles that need
+   any named pattern. The named techniques are the vocabulary; chain
+   building is the fluency.
+4. **Measured, not asserted.** Frequencies come from millions of rated
+   puzzles, examples are re-derived by the engine, and every claim the
+   guide makes is held by a test. The same goes for the player: what they
+   can do is observed from their play, not assumed from a level badge.
+5. **Speed is the output.** The fastest solver is the one who recognises
+   the pattern first. Everything the app teaches should end as recognition,
+   which is why practice puts the target move next and why the stats will
+   measure time to the first non-single move.
+6. **Offline, free, private.** Everything runs on the device. No account,
+   no upload, no ads. Learning data stays with the player.
+
+## The road, in order
+
+1. **Learning path from the player's own play.** Attribute every unaided
+   move to the easiest technique that justifies it, keep the counts, and
+   let the guide say "learn this next": high worth (frequency weighted by
+   cost), low unaided use. Design: [technique-stats.md](technique-stats.md).
+2. **Chain trainer.** The player builds a chain on the board link by link;
+   the engine checks each link and says what the chain proves so far. The
+   reverse of the hint renderer that draws chains today.
+3. **"Why not?" on every mistake.** When Check flags a placement, show the
+   technique that proves the correct digit. Mistakes are where learning
+   happens, and today they only get a red mark.
+4. **A generator that serves the player's level.** Rating-guided digging so
+   any band arrives in under a second, a shipped seed library with
+   transformations so nothing repeats, minimality and path-quality
+   filters. Design to come under docs/generator.md.
+5. **The hardest puzzles, collected.** Published extremes with credits and
+   the engine's step-by-step, so the top of the ladder has real opponents.
+   Exocets and their kin are collected, not generated; nobody generates
+   them live.
+6. **Speed training.** Timed recognition drills on single patterns, then
+   whole puzzles against the player's own best, once the stats exist to
+   make the numbers mean something.
+
+Variants (killer, thermo, arrows) wait behind all of this. They would
+double the engine and teach nothing the mission needs.
+
+## What is already in place
+
+- 80 techniques catalogued and explained, 77 implemented, each with a
+  worked example where one exists, and frequencies from 2.8 million rated
+  puzzles.
+- Progressive hints that reason from the player's own candidates, with the
+  assisted and unassisted solve tiers.
+- Practice mode for 65 techniques, with saved puzzles for the rarest.
+- Scan: every technique that fires in the position, or one asked for by
+  name.
+- The guide sorted by family, difficulty, frequency or worth, with every
+  term linked to the glossary.

@@ -137,9 +137,10 @@ renaming a technique, is in [docs/search.md](docs/search.md).
 
 ## Architecture
 
-A guided tour lives in [docs/architecture.md](docs/architecture.md); the
-production deployment runbook (Cloudflare Workers Builds) is
-[docs/deployment.md](docs/deployment.md).
+What the app is for, and the road ahead in order, is in
+[docs/goals.md](docs/goals.md). A guided tour lives in
+[docs/architecture.md](docs/architecture.md); the production deployment
+runbook (Cloudflare Workers Builds) is [docs/deployment.md](docs/deployment.md).
 
 ```
 src/
