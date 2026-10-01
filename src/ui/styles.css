@@ -2084,3 +2084,9 @@ kbd {
   display: inline-block;
   margin: 8px 0 4px;
 }
+
+.hint-body p.hint-freq {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin-top: -4px;
+}

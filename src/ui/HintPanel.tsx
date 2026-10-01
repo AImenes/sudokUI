@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '../state/gameStore';
 import { TECHS, Tech } from '../engine/ratings';
 import { TECH_DOCS } from '../content/techniqueDocs';
+import { frequencyLabel } from '../content/frequency';
 
 const KEY_SEEN = 'sudokui-cellkey-seen';
 const KEY_VIEWS = 8;
@@ -63,6 +64,9 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
             The next step uses <strong>{info.name}</strong>.
           </p>
           <p className="hint-what">{TECH_DOCS[hint.tech].what}</p>
+          {frequencyLabel(hint.tech) && (
+            <p className="hint-freq">Needed in {frequencyLabel(hint.tech)} that sudokUI generates.</p>
+          )}
           <div className="hint-actions">
             <button onClick={revealHint}>Show me</button>
             <button className="ghost" onClick={dismissHint}>Close</button>

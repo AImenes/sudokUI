@@ -1437,6 +1437,157 @@
    "description": "Naked Quadruple: cells r1c9, r2c9, r3c9, r8c9 contain only 5/6/7/9, removing those digits from the cells they all see."
   }
  },
+ "HIDDEN_QUADRUPLE": {
+  "puzzle": "..7.3....5..4...6.8..1....9.925..7............3...951.3....8..7.7...6..8....2.6..",
+  "stepIndex": 30,
+  "values": "967832451500497860800165079092500780000000000030009510306908007270306008089720635",
+  "cands": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   3,
+   5,
+   0,
+   0,
+   0,
+   0,
+   0,
+   6,
+   0,
+   10,
+   12,
+   0,
+   0,
+   0,
+   6,
+   0,
+   0,
+   40,
+   0,
+   0,
+   0,
+   9,
+   13,
+   0,
+   0,
+   44,
+   105,
+   25,
+   153,
+   34,
+   192,
+   12,
+   262,
+   258,
+   46,
+   104,
+   0,
+   136,
+   34,
+   192,
+   0,
+   0,
+   0,
+   42,
+   0,
+   25,
+   0,
+   0,
+   25,
+   0,
+   3,
+   10,
+   0,
+   0,
+   0,
+   25,
+   0,
+   25,
+   0,
+   257,
+   264,
+   0,
+   9,
+   0,
+   0,
+   0,
+   0,
+   9,
+   0,
+   0,
+   0
+  ],
+  "step": {
+   "tech": "HIDDEN_QUADRUPLE",
+   "placements": [],
+   "eliminations": [
+    {
+     "cell": 36,
+     "digit": 4
+    },
+    {
+     "cell": 36,
+     "digit": 6
+    },
+    {
+     "cell": 37,
+     "digit": 4
+    },
+    {
+     "cell": 38,
+     "digit": 4
+    }
+   ],
+   "primary": [
+    {
+     "cell": 36,
+     "digit": 1
+    },
+    {
+     "cell": 36,
+     "digit": 7
+    },
+    {
+     "cell": 37,
+     "digit": 1
+    },
+    {
+     "cell": 37,
+     "digit": 5
+    },
+    {
+     "cell": 38,
+     "digit": 1
+    },
+    {
+     "cell": 38,
+     "digit": 5
+    },
+    {
+     "cell": 38,
+     "digit": 8
+    },
+    {
+     "cell": 40,
+     "digit": 7
+    },
+    {
+     "cell": 40,
+     "digit": 8
+    }
+   ],
+   "description": "Hidden Quadruple: in row 5, digits 1/5/7/8 fit only in r5c1, r5c2, r5c3, r5c5, so all other candidates there can be removed."
+  },
+  "credit": "sudokuwiki.org",
+  "afterHarder": true
+ },
  "X_WING": {
   "puzzle": "...795...........59..61...879..3.8..1.3...5.7..6.5..298...71..63...........246...",
   "stepIndex": 40,

@@ -37,7 +37,8 @@ natively for iOS and Android via Capacitor.
 - **Practice mode** for 65 named techniques: pick one and get a generated
   puzzle that genuinely requires it — with nothing harder needed before it.
   The game fast-forwards through the routine steps so the chosen pattern is
-  the very next move
+  the very next move. The rarest techniques come from puzzles found in
+  advance by a multi-hour search, so they start instantly too
 - **The guide** (📖 in the top bar): every one of the 80 techniques explained
   in three short parts (what the pattern is, why it works, how to spot it),
   most with a worked example drawn on a real board that you can open and

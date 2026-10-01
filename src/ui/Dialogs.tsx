@@ -16,6 +16,7 @@ import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
+import { storedPractice } from '../content/practicePuzzles';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { BAND_LEADS, BAND_NOTES } from '../content/rating';
 import { categoryLabel } from '../content/categories';
@@ -43,6 +44,15 @@ export function useNewGame() {
         promise.then((entry) => entry && filePoolEntry(entry));
       }
       return true;
+    }
+    // the rarest techniques come from puzzles saved at build time: finding
+    // one here could take minutes
+    if (req.kind === 'tech') {
+      const saved = await storedPractice(req.tech);
+      if (saved) {
+        startGame(saved.puzzle, saved.score, saved.level, req.tech);
+        return true;
+      }
     }
     const { promise, handle } = requestPuzzle(req, (attempts) =>
       setGenState((g) => (g ? { ...g, attempts } : g))

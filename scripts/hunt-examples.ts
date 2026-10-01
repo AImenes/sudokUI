@@ -94,8 +94,7 @@ const wanted = SOLVE_ORDER.filter((t) => t !== 'BRUTE_FORCE');
 const isSingle = (tech: Tech) => TECHS[tech].category === 'Singles';
 
 /** the example for `tech` at its first occurrence in the solve path */
-function exampleFrom(puzzle: string, tech: Tech, credit?: string): Example | null {
-  const rating = ratePuzzle(puzzle);
+function exampleFrom(puzzle: string, tech: Tech, credit?: string, rating = ratePuzzle(puzzle)): Example | null {
   if (!rating || !rating.solvable) return null;
   const stepIndex = rating.steps.findIndex((s) => s.tech === tech);
   if (stepIndex < 0) return null;
@@ -107,7 +106,8 @@ function exampleFrom(puzzle: string, tech: Tech, credit?: string): Example | nul
     values: Array.from(g.values).join(''),
     cands: Array.from(g.cands).map((c, i) => (g.values[i] ? 0 : c)),
     step: rating.steps[stepIndex],
-    ...(credit ? { credit } : {})
+    ...(credit ? { credit } : {}),
+    ...(isSingle(tech) || cleanTechniques(rating).includes(tech) ? {} : { afterHarder: true })
   };
 }
 
@@ -124,16 +124,23 @@ function clutter(e: Example): number {
 function consider(puzzle: string, credit?: string): Tech[] {
   const rating = ratePuzzle(puzzle);
   if (!rating || !rating.solvable) return [];
-  // only techniques reached without anything harder before them, as in
-  // practice mode: the example position is then within a learner's reach
-  for (const tech of cleanTechniques(rating)) {
+  // the example position should be within a learner's reach, as in practice
+  // mode: nothing harder before it. The rarest techniques may never turn up
+  // that way, so a position reached after harder steps is kept until a
+  // clean one does
+  for (const tech of Object.keys(rating.techniques) as Tech[]) {
     if (!wanted.includes(tech) || isSingle(tech)) continue;
-    const candidate = exampleFrom(puzzle, tech, credit);
+    const candidate = exampleFrom(puzzle, tech, credit, rating);
     if (!candidate) continue;
     const current = stored[tech];
-    // a generated puzzle beats a published one: it carries no credit line
-    if (!current || (!credit && current.credit) || (!!credit === !!current.credit && clutter(candidate) < clutter(current))) {
-      if (!current) console.log(`+ ${tech}${credit ? ` (${credit})` : ''}`);
+    const better =
+      !current ||
+      (!!current.afterHarder && !candidate.afterHarder) ||
+      (!!current.afterHarder === !!candidate.afterHarder &&
+        // a generated puzzle beats a published one: it carries no credit line
+        ((!credit && !!current.credit) || (!!credit === !!current.credit && clutter(candidate) < clutter(current))));
+    if (better) {
+      if (!current) console.log(`+ ${tech}${credit ? ` (${credit})` : ''}${candidate.afterHarder ? ' (after harder steps)' : ''}`);
       stored[tech] = candidate;
     }
   }

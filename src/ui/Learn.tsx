@@ -11,7 +11,7 @@ import { RATING_SUMMARY, RATING_POINTS, BAND_NOTES } from '../content/rating';
 import { techSlug, slugify } from '../content/slugs';
 import { linkGlossary } from '../content/glossaryLinks';
 import { boardSvg, legendOf, Example } from '../content/boardSvg';
-import { FREQUENCY, frequencyLabel } from '../content/frequency';
+import { frequencyLabel, share, worth } from '../content/frequency';
 
 type Examples = Partial<Record<Tech, Example>>;
 
@@ -53,6 +53,9 @@ function WorkedExample({
         </span>
         {example.step.description}
         {example.credit && <span className="learn-see"> Puzzle: {example.credit}.</span>}
+        {example.afterHarder && (
+          <span className="learn-see"> In this puzzle the position comes after harder steps.</span>
+        )}
       </figcaption>
       <button className="learn-link" onClick={() => onOpen(tech)}>
         Open this position on the board
@@ -165,15 +168,6 @@ const SORTS: { value: LearnSort; label: string; note: string }[] = [
     note: 'How often a technique is needed, weighted by its rating cost. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it, and those come first.'
   }
 ];
-
-/** share of generated puzzles needing the technique; below zero when never measured */
-const share = (tech: Tech): number => {
-  const n = FREQUENCY.counts[tech];
-  return n === undefined || FREQUENCY.sample === 0 ? -1 : n / FREQUENCY.sample;
-};
-
-/** rating points per generated puzzle that this technique accounts for */
-const worth = (tech: Tech): number => share(tech) * TECHS[tech].score;
 
 interface Group {
   key: string;

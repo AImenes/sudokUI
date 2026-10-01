@@ -18,6 +18,11 @@ export interface Example {
   step: Step;
   /** where the puzzle comes from, when it is a published one */
   credit?: string;
+  /**
+   * the position was reached only after steps harder than the technique:
+   * kept for the rarest techniques, which have no cleaner example
+   */
+  afterHarder?: boolean;
 }
 
 const S = 60; // cell size

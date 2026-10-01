@@ -69,10 +69,13 @@ npx vite-node scripts/measure-frequency.ts 120     # 120 minutes on all cores
 npx vite-node scripts/measure-frequency.ts 120 8   # eight workers
 ```
 
-It also prints the puzzles that reached a still-unexampled technique
-cleanly, ready to paste into the hunt's seed list. A technique that scores
-zero over millions of puzzles cannot be generated on demand for practice
-either.
+It also prints puzzles that need a still-unexampled technique, ready to
+paste into the hunt's seed list, and saves practice puzzles for the rarest
+techniques to `practicePuzzles.json`: puzzles that need the technique with
+nothing harder before it, exactly as the browser pools them, for the
+techniques its generator would take minutes to find. Practice mode serves
+these before asking the generator; `tests/practicePuzzles.test.ts` holds them to
+the engine like the worked examples.
 
 `tests/examples.test.ts` re-derives every stored example from its puzzle. It
 fails when a finder, or the wording of its description, has changed since
