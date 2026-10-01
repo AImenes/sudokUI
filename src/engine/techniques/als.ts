@@ -1,6 +1,6 @@
 import { Grid, UNITS, bit, digitsOf, popcount, sees, cellName, cellNames } from '../board';
 import { Step, CellDigit } from '../steps';
-import { combinations } from './subsets';
+import { combinations, unitName } from './subsets';
 
 export interface Als {
   cells: number[];
@@ -57,18 +57,62 @@ function alsXzStep(
     if (zCells.every((zc) => sees(c, zc))) elims.push({ cell: c, digit: z });
   }
   if (!elims.length) return null;
-  const name = tech === 'WXYZ_WING' ? 'WXYZ-Wing' : 'ALS-XZ';
+  if (tech === 'WXYZ_WING') return wxyzStep(g, A, B, x, z, elims);
   return {
     tech,
     placements: [],
     eliminations: elims,
-    primary: A.cells.flatMap((cell) =>
-      digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
-    ),
-    secondary: B.cells.flatMap((cell) =>
-      digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
-    ),
-    description: `${name}: sets ${cellNames(A.cells)} and ${cellNames(B.cells)} share restricted common ${x}; digit ${z} can be removed from cells seeing every ${z} of both sets.`
+    primary: allCands(g, A.cells),
+    secondary: allCands(g, B.cells),
+    description: `ALS-XZ: sets ${cellNames(A.cells)} and ${cellNames(B.cells)} share restricted common ${x}; digit ${z} can be removed from cells seeing every ${z} of both sets.`
+  };
+}
+
+const allCands = (g: Grid, cells: number[]): CellDigit[] =>
+  cells.flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit })));
+
+/** "a", "a and b", "a, b and c" */
+const and = (items: string[]) =>
+  items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+
+/**
+ * A WXYZ-Wing drawn by role. The single cell is bivalue with the restricted
+ * digit x and the removed digit z. The pivot is the cell of the three-cell
+ * set holding x; now and then two cells hold it (three only where a Naked
+ * Quad comes first), and the bivalue cell sees every one of them. The
+ * set's other cells share the pivot's unit and lack x. Those cells are not
+ * called pincers: about four in ten hold no z, and the removal never has
+ * to see those.
+ * Only the drawing and the wording differ from ALS-XZ: the search and the
+ * removals are the same.
+ */
+function wxyzStep(g: Grid, A: Als, B: Als, x: number, z: number, elims: CellDigit[]): Step {
+  const [linked] = (A.cells.length === 1 ? A : B).cells;
+  const set = A.cells.length === 1 ? B : A;
+  const pivots = set.cells.filter((c) => g.cands[c] & bit(x));
+  const mates = set.cells.filter((c) => !(g.cands[c] & bit(x)));
+  const unit = unitName(UNITS.findIndex((u) => set.cells.every((c) => u.includes(c))));
+  const one = pivots.length === 1;
+  const pivotsX = `${one ? "the pivot's" : "the pivots'"} ${x}`;
+  const head = mates.length
+    ? `${one ? 'pivot' : 'pivots'} ${and(pivots.map(cellName))} ${one ? 'shares' : 'share'} ${unit} with ${and(mates.map(cellName))}, the three holding ${digitsOf(set.mask).join('')}`
+    : `pivots ${and(pivots.map(cellName))} in ${unit} hold ${digitsOf(set.mask).join('')}`;
+  const rest = digitsOf(set.mask & ~bit(x)).map(String);
+  return {
+    tech: 'WXYZ_WING',
+    placements: [],
+    eliminations: elims,
+    primary: allCands(g, pivots),
+    secondary: allCands(g, mates),
+    fins: allCands(g, [linked]),
+    labels: {
+      primary: one ? 'pivot' : 'pivots',
+      ...(mates.length > 0 && {
+        secondary: `${mates.length === 1 ? 'cell' : 'cells'} sharing ${one ? 'its' : 'their'} unit`
+      }),
+      fins: `bivalue cell seeing ${pivotsX}`
+    },
+    description: `WXYZ-Wing: ${head}; bivalue cell ${cellName(linked)} (${digitsOf(g.cands[linked]).join('')}) sees ${pivotsX}. Either ${cellName(linked)} is ${z}, or it is ${x} and the three cells in ${unit} must be ${and(rest)}. At least one of the four cells is therefore ${z}, so ${z} is removed from every other cell that sees all the ${z}s among them.`
   };
 }
 
@@ -196,6 +240,7 @@ export function findAlsXyWing(g: Grid): Step | null {
             fins: C.cells.flatMap((cell) =>
               digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
             ),
+            labels: { primary: `set linked via ${l1.x}`, secondary: `set linked via ${l2.x}`, fins: 'hinge' },
             description: `ALS-XY-Wing: hinge ${cellNames(C.cells)} links ${cellNames(A.cells)} (via ${l1.x}) and ${cellNames(B.cells)} (via ${l2.x}); digit ${z} can be removed from cells seeing every ${z} of both outer sets.`
           };
         }

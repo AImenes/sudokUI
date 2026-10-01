@@ -53,6 +53,7 @@ export function findXYWing(g: Grid): Step | null {
           eliminations: elims,
           primary: [{ cell: pivot, digit: x }, { cell: pivot, digit: y }],
           secondary: [{ cell: w1, digit: z }, { cell: w2, digit: z }],
+          labels: { primary: 'pivot', secondary: 'pincers' },
           description: `XY-Wing: pivot ${cellName(pivot)} (${x}${y}) with pincers ${cellName(w1)} (${x}${z}) and ${cellName(w2)} (${y}${z}); one pincer must be ${z}, so ${z} is removed from cells seeing both.`
         };
       }
@@ -88,6 +89,7 @@ export function findXYZWing(g: Grid): Step | null {
             { cell: wings[i], digit: z },
             { cell: wings[j], digit: z }
           ],
+          labels: { primary: 'pivot', secondary: 'pincers' },
           description: `XYZ-Wing: pivot ${cellName(pivot)} with pincers ${cellName(wings[i])} and ${cellName(wings[j])}; ${z} is removed from cells seeing all three.`
         };
       }
@@ -132,6 +134,7 @@ export function findWWing(g: Grid): Step | null {
               { cell: e1, digit: linkDigit },
               { cell: e2, digit: linkDigit }
             ],
+            labels: { primary: `cells holding ${x} and ${y}`, secondary: `strong link on ${linkDigit}` },
             // full AIC: z@A =s= w@A -w- w@e1 =s= w@e2 -w- w@B =s= z@B
             links: alternatingLinks(
               (sees(e1, A)

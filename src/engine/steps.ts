@@ -51,6 +51,11 @@ export interface Step {
   secondary?: CellDigit[];
   /** fins / special cells highlighted purple */
   fins?: CellDigit[];
+  /**
+   * what each colour means in this step, for the legend; a colour without a
+   * label here is named generically ("the pattern", "supporting cells", "fin")
+   */
+  labels?: { primary?: string; secondary?: string; fins?: string };
   /** ordered chain of cells — legacy centre-to-centre fallback drawing */
   chainCells?: number[];
   /** candidate-anchored arrows; when present they replace `chainCells` */

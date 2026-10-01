@@ -96,19 +96,19 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
               {(!!hint.primary?.length || !!hint.links?.length) && (
                 <li>
                   <i style={{ background: 'var(--hint-primary)' }} />
-                  the pattern
+                  {hint.labels?.primary ?? 'the pattern'}
                 </li>
               )}
               {!!hint.secondary?.length && (
                 <li>
                   <i style={{ background: 'var(--hint-secondary)' }} />
-                  supporting cells
+                  {hint.labels?.secondary ?? 'supporting cells'}
                 </li>
               )}
               {!!hint.fins?.length && (
                 <li>
                   <i style={{ background: 'var(--hint-fin)' }} />
-                  fin
+                  {hint.labels?.fins ?? 'fin'}
                 </li>
               )}
             </ul>
