@@ -166,6 +166,7 @@ export function Controls({
             ?
           </button>
         </div>
+        <span className="row-sub">Reveals logic</span>
         <div className="action-row">
           <button onClick={guarded('Hint', requestHint)} title="Hint (H): names the technique first, reveals it only if you ask">💡 Hint</button>
           <button onClick={guarded('Check', check)} title="Check values and candidate lists against the solution">✓ Check</button>
@@ -187,6 +188,7 @@ export function Controls({
           )}
         </div>
 
+        <span className="row-sub">Writes marks for you</span>
         <div className="action-row">
           <button
             className={autoCandidates ? 'toggled' : ''}

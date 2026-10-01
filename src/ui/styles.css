@@ -525,7 +525,7 @@ button {
 .assist-zone {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   margin: 0 -8px;
   padding: 8px 8px 10px;
   border-radius: 12px;
@@ -654,13 +654,13 @@ button {
 
 .mode-btn {
   flex: 1;
-  padding: 8px 4px;
+  padding: 6px 4px;
   border-radius: 10px;
   border: 1px solid rgba(128, 128, 160, 0.2);
-  background: var(--panel);
+  background: none;
   color: var(--text);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12.5px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -702,14 +702,15 @@ button {
 }
 
 .num-btn {
-  aspect-ratio: 1.35;
-  font-size: 26px;
-  font-weight: 600;
+  aspect-ratio: 1.3;
+  font-size: 30px;
+  font-weight: 650;
   border-radius: 12px;
-  border: 1px solid rgba(128, 128, 160, 0.2);
+  border: 1px solid rgba(128, 128, 160, 0.32);
   background: var(--panel);
   color: var(--text);
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
 }
 
 .num-btn:hover {
@@ -2147,5 +2148,24 @@ kbd {
   padding-top: 14px;
   text-align: left;
   color: var(--muted);
+  font-weight: 600;
+}
+
+/* inside the assist box: the two kinds of help, named */
+.row-sub {
+  margin: 2px 2px -4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.assist-zone .action-row button {
+  padding: 8px 6px;
+  background: none;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.assist-zone .action-row button.toggled {
+  background: var(--accent-fill);
   font-weight: 600;
 }
