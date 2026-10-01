@@ -280,6 +280,9 @@ function TechniqueList({
         aria-label="Search techniques"
       />
       <div className="learn-tools">
+        <a className="learn-permalink" href="/how-the-best-solve/" target="_blank" rel="noopener">
+          How the best solvers play ↗
+        </a>
         <label>
           Sort{' '}
           <select value={sort} onChange={(e) => setSort(e.target.value as LearnSort)}>

@@ -2090,3 +2090,7 @@ kbd {
   font-size: 12.5px;
   margin-top: -4px;
 }
+
+.learn-tools label {
+  margin-left: auto;
+}

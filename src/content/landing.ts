@@ -156,6 +156,63 @@ export const LANDING_PAGES: LandingPage[] = [
       { label: 'Score of every technique', href: `${RATING_URL}#scores` },
       { label: 'HoDoKu’s own site', href: 'https://hodoku.sourceforge.net/' }
     ]
+  },
+  {
+    url: '/how-the-best-solve/',
+    name: 'How the best solve',
+    title: 'How the best sudoku solvers play | sudokUI',
+    description:
+      'Champion sudoku solvers do not fill in candidates first. They scan for singles, mark only certain pairs, and bring in harder techniques in a fixed order. The order, and how to train it.',
+    h1: 'How the best sudoku solvers play',
+    lead: 'The fastest solvers write almost nothing down. They scan, mark only what is certain, and reach for notation and harder techniques only when the puzzle forces them to. The order they work in is the order sudokUI teaches.',
+    sections: [
+      {
+        heading: 'Start with nothing written',
+        paragraphs: [
+          'A competition solver places the first ten digits before a beginner has finished writing candidates. They take one digit at a time and sweep the grid for it: wherever its rows and columns leave a single free cell in a box, that is a hidden single, and in it goes. Then the next digit. This cross-hatching finds most of an easy puzzle on its own, and it works on paper, on a phone, anywhere.',
+          'A full candidate grid is the opposite of this. It costs minutes to write, it hides the few marks that matter among dozens that do not, and every placement means erasing. The best solvers never start there.'
+        ]
+      },
+      {
+        heading: 'Mark only pairs: Snyder notation',
+        paragraphs: [
+          'When a digit has exactly two places left in a box, and no more, they write it small in the corner of both cells. Nothing else gets a mark. These corner pairs, named after the champion Thomas Snyder who made the habit famous, are the raw material of the next stage: two corner marks in one row of a box are a pointing pair, two digits sharing the same two cells are a hidden pair, and two boxes whose pairs line up are the start of an X-Wing.',
+          'In sudokUI the corner mark mode is built for this: marks are bound to their digit, the pair stays visible when the cell is selected, and hints reason from your marks rather than from a candidate grid you never wrote.'
+        ]
+      },
+      {
+        heading: 'The order the puzzle asks for',
+        paragraphs: [
+          'Singles first, until none remain. Then the box pairs: pointing and claiming, which cost nothing once the corner marks are there. Then naked and hidden pairs and triples in the lines. Only when all of that is exhausted do the best solvers fill in the remaining candidates, and they fill them for the whole grid at once, never cell by cell.',
+          'With candidates in, the search widens: X-Wings, Skyscrapers and kites on one digit, then XY-Wings and W-Wings on bivalue cells, then chains. This is the same order the sudokUI solver follows when it rates a puzzle, which is why the technique guide is sorted that way and why a hint names the easiest technique that works, never a harder one.'
+        ]
+      },
+      {
+        heading: 'Expert puzzles: candidates, then links',
+        paragraphs: [
+          'On the puzzles that expert websites publish, the opening is the same but short: the singles run out early. From there the strongest solvers think in links rather than in named patterns. A digit with two places in a unit is a strong link; a bivalue cell is a strong link between two digits. Chains of strong and weak links prove eliminations, and the named techniques from X-Wing up to the alternating inference chain are all special cases of one chain. Colouring is the same idea with paint instead of arrows.',
+          'Uniqueness patterns are the other expert shortcut: a published puzzle has one solution, so any arrangement that would allow two is forbidden, and the unique rectangle family turns that into eliminations in seconds.'
+        ]
+      },
+      {
+        heading: 'Speed is recognition',
+        paragraphs: [
+          'The fastest solver at a given difficulty is not the one who writes fastest but the one who sees the pattern first. Champions report seeing an X-Wing the way a reader sees a word, without spelling it out. That comes from repetition on the specific pattern, which is what practice mode is for: pick a technique, get a puzzle that needs it with nothing harder in the way, and meet the pattern as the very next move, again and again.',
+          'Two habits keep the time down. Do not undo good work by filling candidates too early, and do not search for a hard technique while an easy one is still available. The worth sort in the guide shows which techniques repay practice most: the ones that are needed often, weighted by how much they cost.'
+        ]
+      },
+      {
+        heading: 'How to train it here',
+        paragraphs: [
+          'Every game starts with automatic candidates off, as a champion would start. Use corner marks for Snyder pairs and leave the rest blank. When you are stuck, Scan shows every technique that works in the exact position with your own marks, so you learn what you missed rather than what a candidate grid would have shown. Finish without hints, checks or automatic candidates and the result counts as an unassisted solve.'
+        ]
+      }
+    ],
+    cta: { label: 'Play sudokUI', href: '/' },
+    related: [
+      { label: 'Every technique explained', href: '/learn/' },
+      { label: 'How the difficulty rating works', href: RATING_URL }
+    ]
   }
 ];
 
