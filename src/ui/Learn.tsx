@@ -191,21 +191,25 @@ export function RatingExplainer() {
 /** the orders the technique list can be read in */
 export type LearnSort = 'family' | 'easiest' | 'common' | 'worth';
 
-const SORTS: { value: LearnSort; label: string; note: string }[] = [
-  { value: 'family', label: 'By family', note: '' },
+/** label: the heading of the sorted list; menu: how the option reads in the closed select */
+const SORTS: { value: LearnSort; label: string; menu: string; note: string }[] = [
+  { value: 'family', label: 'By family', menu: 'By family', note: '' },
   {
     value: 'easiest',
     label: 'Easiest first',
+    menu: 'Easiest first',
     note: 'In the order the solver tries them: a technique is only needed once everything above it has run dry.'
   },
   {
     value: 'common',
     label: 'Most often needed',
+    menu: 'Most often needed first',
     note: 'The techniques that turn up in the most puzzles sudokUI generates, whatever their difficulty.'
   },
   {
     value: 'worth',
     label: 'Most worth learning',
+    menu: 'Most worth learning first',
     note: 'How often a technique is needed, weighted by its rating cost. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it, and those come first.'
   }
 ];
@@ -312,25 +316,28 @@ function TechniqueList({
 
   return (
     <>
-      <input
-        className="learn-search"
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder={`Search ${ALL_TECHS.length} techniques`}
-        aria-label="Search techniques"
-      />
-      <div className="learn-tools">
-        <label>
-          Sort{' '}
-          <select value={sort} onChange={(e) => setSort(e.target.value as LearnSort)}>
-            {SORTS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="learn-toolbar">
+        <input
+          className="learn-search"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={`Search ${ALL_TECHS.length} techniques`}
+          aria-label="Search techniques"
+        />
+        <select
+          className="learn-sort"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as LearnSort)}
+          aria-label="Order of the list"
+          title="Order of the list"
+        >
+          {SORTS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.menu}
+            </option>
+          ))}
+        </select>
       </div>
       {!query && sort === 'family' && (
         <nav className="learn-chips" aria-label="Technique families">
@@ -369,7 +376,7 @@ function TechniqueList({
                   </span>
                   <span className={`level-badge level-${info.level.toLowerCase()}`}>{info.level}</span>
                   <span className="learn-score" title="Added to a puzzle's rating each time the solver needs this technique">
-                    cost {info.score}
+                    +{info.score}
                   </span>
                   <span className="learn-what">
                     <Linked text={doc.what} onTerm={onTerm} />

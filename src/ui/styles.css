@@ -1601,12 +1601,16 @@ kbd {
   max-width: 68ch;
 }
 
+/* the technique's rating cost, the same chip as in Scan and the solve path */
 .learn-score {
-  color: var(--muted);
-  font-size: 12.5px;
+  min-width: 44px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--sel-bg);
+  color: var(--text);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
-  min-width: 56px;
-  text-align: right;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -2055,24 +2059,48 @@ kbd {
   }
 }
 
-/* Learn: sort order, and the frequency shown beside each technique when sorted */
-.learn-tools {
+/* Learn: the search and the order of the list share one toolbar */
+.learn-toolbar {
   display: flex;
-  align-items: center;
   gap: 8px;
-  margin-top: 8px;
-  font-size: 12.5px;
-  color: var(--muted);
 }
 
-.learn-tools select {
-  font: inherit;
-  font-size: 12.5px;
-  padding: 4px 8px;
-  border-radius: 8px;
+.learn-toolbar .learn-search {
+  flex: 1;
+  min-width: 150px;
+  width: auto;
+}
+
+.learn-sort {
+  flex: none;
+  padding: 0 10px;
+  border-radius: 9px;
   border: 1px solid rgba(128, 128, 160, 0.3);
   background: var(--bg-soft);
   color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.learn-sort:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+@media (max-width: 480px) {
+  .learn-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .learn-sort {
+    flex: 1;
+    padding: 8px 10px;
+  }
+
+  .learn-tabs button {
+    padding: 7px 4px;
+    font-size: 12.5px;
+  }
 }
 
 .learn-freq {
