@@ -81,7 +81,8 @@ const and = (items: string[]) =>
  * set holding x; now and then two cells hold it (three only where a Naked
  * Quad comes first), and the bivalue cell sees every one of them. The
  * set's other cells share the pivot's unit and lack x. Those cells are not
- * called pincers: most hold no z, so the removal never has to see them.
+ * called pincers: about four in ten hold no z, and the removal never has
+ * to see those.
  * Only the drawing and the wording differ from ALS-XZ: the search and the
  * removals are the same.
  */
