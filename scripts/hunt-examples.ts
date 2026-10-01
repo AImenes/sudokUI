@@ -25,6 +25,8 @@ import { countSolutions } from '../src/engine/bruteForce';
 import { ratePuzzle, applyStep } from '../src/engine/humanSolver';
 import { SOLVE_ORDER, TECHS, Tech } from '../src/engine/ratings';
 import { Example } from '../src/content/boardSvg';
+import practice from '../src/content/practicePuzzles.json';
+import type { StoredPractice } from '../src/content/practicePuzzles';
 
 const WIKI = 'sudokuwiki.org';
 const HODOKU = 'HoDoKu';
@@ -185,7 +187,10 @@ if (process.argv.includes('refresh')) {
   const fixtures = readdirSync('tests')
     .filter((f) => f.endsWith('.test.ts'))
     .flatMap((f) => readFileSync(join('tests', f), 'utf8').match(/(?<![0-9.])[0-9.]{81}(?![0-9.])/g) ?? []);
-  const seeds = [...SEEDS, ...[...new Set(fixtures)].map((puzzle) => ({ puzzle, credit: '' }))];
+  // ...and the saved practice puzzles: generated, so uncredited, and each
+  // one reaches a rare technique cleanly
+  const saved = Object.values(practice as StoredPractice).flat().map((e) => e.puzzle);
+  const seeds = [...SEEDS, ...[...new Set([...fixtures, ...saved])].map((puzzle) => ({ puzzle, credit: '' }))];
   let usable = 0;
   for (const seed of seeds) {
     const grid = parseGrid(seed.puzzle);
