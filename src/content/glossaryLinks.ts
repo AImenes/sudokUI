@@ -9,17 +9,10 @@ export interface Segment {
   term?: string;
 }
 
-// Everyday words (cell, row, candidate) would turn every sentence into a
-// wall of links, so only the vocabulary of actual solving logic is linked.
-const LINKED_GROUPS = new Set(['Basic logic', 'Links and chains', 'Patterns', 'Uniqueness']);
+// Every glossary term links, but each at most once per text, so a sentence
+// about cells and candidates carries one link for each, not a wall of them.
+// Bare parts of technique names (the 'wing' in XY-Wing) stay plain.
 const UNLINKED = new Set([
-  'candidate',
-  'single',
-  'naked',
-  'hidden',
-  'subset',
-  'placement',
-  'elimination',
   'chain',
   'node',
   'wing',
@@ -57,9 +50,7 @@ function labelsOf(term: string, aka: string[]): string[] {
   return [...out];
 }
 
-const LABELS: Label[] = GLOSSARY.filter(
-  (e) => LINKED_GROUPS.has(e.group) && !UNLINKED.has(e.term.toLowerCase())
-).flatMap((e) =>
+const LABELS: Label[] = GLOSSARY.filter((e) => !UNLINKED.has(e.term.toLowerCase())).flatMap((e) =>
   labelsOf(e.term, e.aka)
     .filter((l) => !UNLINKED.has(l.toLowerCase()))
     .map((label) => ({

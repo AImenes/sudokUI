@@ -326,8 +326,10 @@ describe('glossary links in running text', () => {
       linkGlossary(text)
         .filter((s) => s.term)
         .map((s) => s.text.toLowerCase());
-    // "group" and "link" are aliases of glossary terms, but ordinary words
-    expect(linkedIn('Any group of nine cells, each candidate a possible link.')).toEqual([]);
+    // "group" and "link" are aliases of glossary terms, but ordinary words;
+    // the headwords themselves link, once each
+    expect(linkedIn('Any group of nine cells, each candidate a possible link.')).toEqual(['cells', 'candidate']);
+    expect(linkedIn('A unit is a row, a column or a box, and every unit has nine cells.')).toEqual(['unit', 'row', 'column', 'box', 'cells']);
     expect(linkedIn('An ALS and a conjugate pair.').sort()).toEqual(['als', 'conjugate pair']);
     // abbreviations only in capitals: "als" inside a word or in lower case is not one
     expect(linkedIn('The signals are false.')).toEqual([]);

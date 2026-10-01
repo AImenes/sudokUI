@@ -61,8 +61,18 @@ engine does with that puzzle, and it carries a credit line.
 The same run counts how often each technique is needed and writes
 `frequency.json`: the share of generated puzzles whose solve path uses the
 technique at least once. The guide and the pages show it as "1 in 19
-puzzles". A technique that scores zero over tens of thousands of puzzles
-cannot be generated on demand for practice either.
+puzzles". For the big numbers there is a parallel counter that uses every
+core and adds to what is stored (it never resets the count):
+
+```bash
+npx vite-node scripts/measure-frequency.ts 120     # 120 minutes on all cores
+npx vite-node scripts/measure-frequency.ts 120 8   # eight workers
+```
+
+It also prints the puzzles that reached a still-unexampled technique
+cleanly, ready to paste into the hunt's seed list. A technique that scores
+zero over millions of puzzles cannot be generated on demand for practice
+either.
 
 `tests/examples.test.ts` re-derives every stored example from its puzzle. It
 fails when a finder, or the wording of its description, has changed since

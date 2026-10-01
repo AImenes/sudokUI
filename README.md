@@ -156,7 +156,8 @@ src/
   state/             zustand stores: game, settings, puzzle pools
   ui/                React components: SVG board, controls, dialogs
 scripts/             build-learn (static pages), hunt-examples (worked
-                     examples), og-card, promo screenshots
+                     examples), measure-frequency (how often each
+                     technique is needed), og-card, promo screenshots
 tests/               vitest suites incl. the soundness harness & hunts
 ```
 
