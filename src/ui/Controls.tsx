@@ -2,6 +2,7 @@
 // (doubles as the colour palette in colour mode), undo/redo/erase and the
 // candidate tools (hint, check, auto candidates, fill, convert).
 import React, { useState } from 'react';
+import { useT } from '../content/i18n';
 import { useGame, EntryMode } from '../state/gameStore';
 import { useSettings, MarkLayer } from '../state/settings';
 import { Modal } from './Dialogs';
@@ -104,6 +105,7 @@ export function Controls({
     toggleAutoCandidates();
   };
 
+  const t = useT();
   return (
     <div className="controls">
       <div className="mode-row">
@@ -114,7 +116,7 @@ export function Controls({
             onClick={() => setMode(m.id)}
             title={`${m.label} (${m.key})`}
           >
-            {m.label}
+            {t(m.label)}
             <span className="key-hint">{m.key}</span>
           </button>
         ))}
@@ -139,14 +141,14 @@ export function Controls({
 
       {/* history & notation: none of these count as help */}
       <div className="action-row">
-        <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩ Undo</button>
-        <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪ Redo</button>
-        <button onClick={erase} title={eraseTitle(effectiveMode, autoCandidates)}>⌫ Erase</button>
+        <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩ {t('Undo')}</button>
+        <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪ {t('Redo')}</button>
+        <button onClick={erase} title={eraseTitle(effectiveMode, autoCandidates)}>⌫ {t('Erase')}</button>
         <button
           onClick={convertMarks}
           title="Swap corner and centre marks (S). Pure notation, never counts as help"
         >
-          ⇄ Swap
+          ⇄ {t('Swap')}
         </button>
       </div>
 
@@ -155,27 +157,27 @@ export function Controls({
       <div className="assist-zone">
         <div className="row-caption zone-head">
           <span>
-            Assist <span className="zone-note">everything in this box counts as help</span>
+            {t('Assist')} <span className="zone-note">{t('everything in this box counts as help')}</span>
           </span>
           <button
             className="zone-help"
             onClick={() => setHelp(true)}
-            aria-label="What the buttons do"
-            title="What the buttons do"
+            aria-label={t('What the buttons do')}
+            title={t('What the buttons do')}
           >
             ?
           </button>
         </div>
-        <span className="row-sub">Reveals logic</span>
+        <span className="row-sub">{t('Reveals logic')}</span>
         <div className="action-row">
-          <button onClick={guarded('Hint', requestHint)} title="Hint (H): names the technique first, reveals it only if you ask">💡 Hint</button>
-          <button onClick={guarded('Check', check)} title="Check values and candidate lists against the solution">✓ Check</button>
+          <button onClick={guarded('Hint', requestHint)} title="Hint (H): names the technique first, reveals it only if you ask">💡 {t('Hint')}</button>
+          <button onClick={guarded('Check', check)} title="Check values and candidate lists against the solution">✓ {t('Check')}</button>
           {onShowSteps && (
             <button
               onClick={guarded('Steps', onShowSteps)}
               title="Show every step of one complete solution and jump to any point. Counts as assistance"
             >
-              ≡ Steps
+              ≡ {t('Steps')}
             </button>
           )}
           {onScan && (
@@ -183,12 +185,12 @@ export function Controls({
               onClick={guarded('Scan', onScan)}
               title="List every technique available in this exact position, not just the easiest. Counts as assistance"
             >
-              🔎 Scan
+              🔎 {t('Scan')}
             </button>
           )}
         </div>
 
-        <span className="row-sub">Writes marks for you</span>
+        <span className="row-sub">{t('Writes marks for you')}</span>
         <div className="action-row">
           <button
             className={autoCandidates ? 'toggled' : ''}
@@ -199,13 +201,13 @@ export function Controls({
                 : 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
             }
           >
-            ⌗ Auto candidates
+            ⌗ {t('Auto candidates')}
           </button>
           <button
             onClick={guarded('Fill candidates', fillCandidates)}
             title={`Fill ${effectiveMode === 'corner' ? 'corner' : 'centre'} marks with all candidates. With several cells selected, only those are filled`}
           >
-            ✎ Fill candidates
+            ✎ {t('Fill candidates')}
           </button>
         </div>
       </div>

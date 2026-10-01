@@ -18,6 +18,7 @@ import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
 import { storedPractice } from '../content/practicePuzzles';
 import { timeVerdict, percentileText, MODE_LABEL } from '../content/solveTimes';
+import { useT } from '../content/i18n';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { BAND_LEADS, BAND_NOTES } from '../content/rating';
 import { categoryLabel } from '../content/categories';
@@ -682,6 +683,7 @@ export function VictoryDialog({
   const elapsedMs = useGame((s) => s.elapsedMs);
   const autoCandidates = useGame((s) => s.autoCandidates);
   const [copied, setCopied] = useState(false);
+  const t = useT();
   if (!info) return null;
   const secs = Math.floor(elapsedMs() / 1000);
   const mm = Math.floor(secs / 60);
@@ -709,7 +711,7 @@ export function VictoryDialog({
         ))}
       </div>
       <div className="modal victory" role="dialog" aria-modal="true" aria-label="Puzzle solved">
-        <h3>Solved! 🎉</h3>
+        <h3>{t('Solved!')} 🎉</h3>
         <p>
           {info.level} · score {info.score} · {mm}:{ss}
         </p>
@@ -720,16 +722,16 @@ export function VictoryDialog({
         )}
         <p className={assisted ? 'solve-assisted' : 'solve-clean'}>
           {assisted
-            ? 'Solved with assistance. Restart the puzzle for an unassisted run'
-            : '✨ Unassisted solve: no help, every mark your own'}
+            ? t('Solved with assistance. Restart the puzzle for an unassisted run')
+            : `✨ ${t('Unassisted solve: no help, every mark your own')}`}
         </p>
         <div className="hint-actions">
           {info.practiceTech && onAnother && (
             <button onClick={onAnother}>Another {TECHS[info.practiceTech].name}</button>
           )}
-          <button onClick={onNewGame}>New game</button>
-          <button onClick={shareResult}>{copied ? '✓ Copied' : '🔗 Challenge a friend'}</button>
-          <button className="ghost" onClick={onClose}>Admire the grid</button>
+          <button onClick={onNewGame}>{t('New game')}</button>
+          <button onClick={shareResult}>{copied ? `✓ ${t('Copied')}` : `🔗 ${t('Challenge a friend')}`}</button>
+          <button className="ghost" onClick={onClose}>{t('Admire the grid')}</button>
         </div>
       </div>
     </div>

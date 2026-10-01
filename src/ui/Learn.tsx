@@ -14,6 +14,7 @@ import { boardSvg, legendOf, Example } from '../content/boardSvg';
 import { frequencyLabel, share, worth } from '../content/frequency';
 import { LANDING_PAGES } from '../content/landing';
 import { SOLVE_TIME_TABLES, SOLVE_TIME_NOTE } from '../content/solveTimes';
+import { useT } from '../content/i18n';
 
 type Examples = Partial<Record<Tech, Example>>;
 
@@ -541,6 +542,7 @@ export function LearnDialog({
   /** scan the running game for a technique; absent when no game is on */
   onScan?: (tech: Tech) => void;
 }) {
+  const t = useT();
   const [tab, setTab] = useState<LearnTab>(target.tab);
   const [term, setTerm] = useState(target.term);
   // the tab a glossary term was looked up from, for the way back
@@ -579,7 +581,7 @@ export function LearnDialog({
 
   const tabs = Object.keys(TAB_LABELS) as LearnTab[];
   return (
-    <Modal title="Learn" onClose={onClose} wide>
+    <Modal title={t('Learn')} onClose={onClose} wide>
       <div ref={body}>
         <div className="segmented learn-tabs" role="tablist">
           {tabs.map((value) => (
@@ -590,7 +592,7 @@ export function LearnDialog({
               className={tab === value ? 'active' : ''}
               onClick={() => switchTab(value)}
             >
-              {TAB_LABELS[value]}
+              {t(TAB_LABELS[value])}
             </button>
           ))}
         </div>
@@ -614,7 +616,7 @@ export function LearnDialog({
           <>
             {from && (
               <button className="learn-link learn-back" onClick={() => switchTab(from)}>
-                ← Back to {TAB_LABELS[from].toLowerCase()}
+                ← Back to {t(TAB_LABELS[from]).toLowerCase()}
               </button>
             )}
             <GlossaryList focus={term} restored={scrolls.current.glossary !== undefined} onTerm={openTerm} />
