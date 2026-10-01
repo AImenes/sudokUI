@@ -41,8 +41,12 @@ describe('worked examples', () => {
       expect(rating.steps.findIndex((s) => s.tech === tech), 'its first occurrence').toBe(ex.stepIndex);
       expect(JSON.parse(JSON.stringify(rating.steps[ex.stepIndex]))).toEqual(ex.step);
       // ...reached without anything harder before it (singles are the
-      // floor of every puzzle, so their order among themselves is free)
-      if (TECHS[tech].category !== 'Singles') expect(cleanTechniques(rating)).toContain(tech);
+      // floor of every puzzle, so their order among themselves is free),
+      // unless it says so: the rarest techniques have no clean position
+      if (TECHS[tech].category !== 'Singles') {
+        if (ex.afterHarder) expect(cleanTechniques(rating), 'honest about harder steps').not.toContain(tech);
+        else expect(cleanTechniques(rating)).toContain(tech);
+      }
 
       // the stored position is the solver's position just before that step
       const g = parseGrid(ex.puzzle) as Grid;

@@ -14,8 +14,10 @@ import {
 } from '../state/gameStore';
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
-import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category } from '../engine/ratings';
+import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
+import { storedPractice } from '../content/practicePuzzles';
+import { timeVerdict, percentileText, MODE_LABEL } from '../content/solveTimes';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { BAND_LEADS, BAND_NOTES } from '../content/rating';
 import { categoryLabel } from '../content/categories';
@@ -43,6 +45,15 @@ export function useNewGame() {
         promise.then((entry) => entry && filePoolEntry(entry));
       }
       return true;
+    }
+    // the rarest techniques come from puzzles saved at build time: finding
+    // one here could take minutes
+    if (req.kind === 'tech') {
+      const saved = await storedPractice(req.tech);
+      if (saved) {
+        startGame(saved.puzzle, saved.score, saved.level, req.tech);
+        return true;
+      }
     }
     const { promise, handle } = requestPuzzle(req, (attempts) =>
       setGenState((g) => (g ? { ...g, attempts } : g))
@@ -410,7 +421,7 @@ export function ContractDialog({
   );
 }
 
-export function ScanDialog({ onClose }: { onClose: () => void }) {
+export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?: Tech }) {
   const cells = useGame((s) => s.cells);
   const auto = useGame((s) => s.autoCandidates);
   const solution = useGame((s) => s.info?.solution);
@@ -420,6 +431,18 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
   const showStep = useGame((s) => s.showStep);
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [slip, setSlip] = useState(false);
+  // "is there a Jellyfish here?": one technique by name, with a plain no
+  const [query, setQuery] = useState(lookFor ? TECHS[lookFor].name : '');
+  const q = query.trim().toLowerCase();
+  const matching = SOLVE_ORDER.filter((t) => TECHS[t].name.toLowerCase().includes(q));
+  // the technique named exactly, when it does not fire: said in so many
+  // words even if its finned and franken cousins do
+  const exact = SOLVE_ORDER.find((t) => TECHS[t].name.toLowerCase() === q);
+  const missing =
+    exact && steps && !steps.some((st) => st.tech === exact)
+      ? `No ${TECHS[exact].name} fires in this position with your candidates.`
+      : null;
+  const shown = steps?.filter((st) => !q || TECHS[st.tech].name.toLowerCase().includes(q)) ?? null;
 
   // manual marks with no declared meaning: ask before scanning
   const needsContract = !auto && contract === 'unknown' && hasManualMarks(cells);
@@ -465,7 +488,15 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
             candidates, easiest first. Click one to see it highlighted on
             the board. Counts as assistance.
           </p>
-          {!steps ? (
+          <input
+            className="learn-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Looking for one technique? Jellyfish, X-Wing…"
+            aria-label="Technique to look for"
+          />
+          {!steps || !shown ? (
             <div className="spinner" />
           ) : slip ? (
             <p className="dialog-note">
@@ -479,8 +510,25 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
               (run Check).
             </p>
           ) : (
+            <>
+              {missing && (
+                <p className="dialog-note">
+                  {missing}
+                  {shown.length > 0
+                    ? ' Related techniques that do:'
+                    : ' The pattern may still be there without removing anything, which is why the solver passes it by.'}
+                </p>
+              )}
+              {shown.length === 0 && !missing && (
+                <p className="dialog-note">
+                  {matching.length === 0
+                    ? `No technique called “${query.trim()}” is in the catalogue.`
+                    : `None of the ${matching.length} techniques matching “${query.trim()}” fires here.`}
+                </p>
+              )}
+              {shown.length > 0 && (
             <div className="path-list">
-              {steps.map((step, i) => (
+              {shown.map((step, i) => (
                 <div
                   key={i}
                   className="path-row"
@@ -506,6 +554,8 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
                 </div>
               ))}
             </div>
+              )}
+            </>
           )}
         </>
       )}
@@ -630,17 +680,22 @@ export function VictoryDialog({
   const info = useGame((s) => s.info);
   const assisted = useGame((s) => s.assisted);
   const elapsedMs = useGame((s) => s.elapsedMs);
+  const autoCandidates = useGame((s) => s.autoCandidates);
   const [copied, setCopied] = useState(false);
   if (!info) return null;
   const secs = Math.floor(elapsedMs() / 1000);
   const mm = Math.floor(secs / 60);
   const ss = String(secs % 60).padStart(2, '0');
+  // a practice game starts part-way through, so its time compares with nothing
+  const mode = autoCandidates ? 'auto' : 'marks';
+  const verdict = info.practiceTech ? null : timeVerdict(info.level, secs, mode);
 
   // same-puzzle challenge: the share text carries the seed link, so the
   // recipient plays exactly this grid
   const shareResult = () => {
     const clean = assisted ? '' : ', no assists, every mark my own';
-    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss}${clean} on sudokUI. Can you beat that? https://sudokui.app/#p=${info.puzzle}`;
+    const standing = verdict ? `, ${percentileText(verdict.percentile)}` : '';
+    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss}${standing}${clean} on sudokUI. Can you beat that? https://sudokui.app/#p=${info.puzzle}`;
     navigator.clipboard?.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -658,6 +713,11 @@ export function VictoryDialog({
         <p>
           {info.level} · score {info.score} · {mm}:{ss}
         </p>
+        {verdict && (
+          <p className="solve-verdict" title="Against typical times of online solvers of this band. See Learn, Rating">
+            <strong>{verdict.label}</strong>: {percentileText(verdict.percentile)} of {info.level} puzzles {MODE_LABEL[mode]}
+          </p>
+        )}
         <p className={assisted ? 'solve-assisted' : 'solve-clean'}>
           {assisted
             ? 'Solved with assistance. Restart the puzzle for an unassisted run'

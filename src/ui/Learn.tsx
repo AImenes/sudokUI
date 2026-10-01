@@ -3,7 +3,7 @@
 // works. The same content feeds the static /learn/ pages.
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Modal } from './Dialogs';
-import { TECHS, ALL_TECHS, LEVELS, LEVEL_MAX_SCORE, Tech, Category } from '../engine/ratings';
+import { TECHS, ALL_TECHS, SOLVE_ORDER, LEVELS, LEVEL_MAX_SCORE, Tech, Category } from '../engine/ratings';
 import { CATEGORY_NOTES, categoryLabel, techStatus } from '../content/categories';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { GLOSSARY, GLOSSARY_GROUPS } from '../content/glossary';
@@ -11,7 +11,9 @@ import { RATING_SUMMARY, RATING_POINTS, BAND_NOTES } from '../content/rating';
 import { techSlug, slugify } from '../content/slugs';
 import { linkGlossary } from '../content/glossaryLinks';
 import { boardSvg, legendOf, Example } from '../content/boardSvg';
-import { FREQUENCY, frequencyLabel } from '../content/frequency';
+import { frequencyLabel, share, worth } from '../content/frequency';
+import { LANDING_PAGES } from '../content/landing';
+import { SOLVE_TIME_TABLES, SOLVE_TIME_NOTE } from '../content/solveTimes';
 
 type Examples = Partial<Record<Tech, Example>>;
 
@@ -53,6 +55,9 @@ function WorkedExample({
         </span>
         {example.step.description}
         {example.credit && <span className="learn-see"> Puzzle: {example.credit}.</span>}
+        {example.afterHarder && (
+          <span className="learn-see"> In this puzzle the position comes after harder steps.</span>
+        )}
       </figcaption>
       <button className="learn-link" onClick={() => onOpen(tech)}>
         Open this position on the board
@@ -61,7 +66,7 @@ function WorkedExample({
   );
 }
 
-export type LearnTab = 'techniques' | 'glossary' | 'rating';
+export type LearnTab = 'techniques' | 'method' | 'glossary' | 'rating';
 
 /** running text whose glossary terms open their definition */
 function Linked({
@@ -140,6 +145,45 @@ export function RatingExplainer() {
         ))}
       </dl>
       <BandTable />
+      <section className="learn-group">
+      <h4>How fast is fast?</h4>
+      <p className="learn-prose">{SOLVE_TIME_NOTE}</p>
+      <table className="shortcut-table band-table time-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Slow</th>
+            <th>Typical</th>
+            <th>Fast</th>
+            <th>Expert</th>
+            <th>World class</th>
+          </tr>
+        </thead>
+        {SOLVE_TIME_TABLES.map((t) => (
+          <tbody key={t.mode}>
+            <tr className="time-mode">
+              <th colSpan={6}>{t.label[0].toUpperCase() + t.label.slice(1)}</th>
+            </tr>
+            {t.rows.map((r) => (
+              <tr key={r.level}>
+                <td>
+                  <span className={`level-badge level-${r.level.toLowerCase()}`}>{r.level}</span>
+                </td>
+                <td>{r.slow}</td>
+                <td>{r.typical}</td>
+                <td>{r.fast}</td>
+                <td>{r.expert}</td>
+                <td>{r.worldClass}</td>
+              </tr>
+            ))}
+          </tbody>
+        ))}
+      </table>
+      <p className="learn-aka">
+        Slow is where the slowest fifth begins. Typical is the median solver. Fast is faster than four
+        solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000.
+      </p>
+      </section>
     </>
   );
 }
@@ -166,15 +210,6 @@ const SORTS: { value: LearnSort; label: string; note: string }[] = [
   }
 ];
 
-/** share of generated puzzles needing the technique; below zero when never measured */
-const share = (tech: Tech): number => {
-  const n = FREQUENCY.counts[tech];
-  return n === undefined || FREQUENCY.sample === 0 ? -1 : n / FREQUENCY.sample;
-};
-
-/** rating points per generated puzzle that this technique accounts for */
-const worth = (tech: Tech): number => share(tech) * TECHS[tech].score;
-
 interface Group {
   key: string;
   title: string;
@@ -193,6 +228,7 @@ function TechniqueList({
   setOpen,
   onPractice,
   onExample,
+  onScan,
   onTerm
 }: {
   focus?: Tech;
@@ -206,6 +242,8 @@ function TechniqueList({
   setOpen: React.Dispatch<React.SetStateAction<Set<Tech>>>;
   onPractice: (tech: Tech) => void;
   onExample: (tech: Tech) => void;
+  /** look for the technique in the running game; absent when no game is on */
+  onScan?: (tech: Tech) => void;
   onTerm: (term: string) => void;
 }) {
   const [examples, setExamples] = useState<Examples>(() => loadedExamples ?? {});
@@ -359,6 +397,11 @@ function TechniqueList({
                   {status && <p className="learn-aka">{status.note}</p>}
                   <div className="hint-actions">
                     {!status && <button onClick={() => onPractice(tech)}>Practice this technique</button>}
+                    {onScan && SOLVE_ORDER.includes(tech) && (
+                      <button className="ghost" onClick={() => onScan(tech)} title="Scan the running game for this technique (counts as assistance)">
+                        Is it on my board?
+                      </button>
+                    )}
                     <a className="learn-permalink" href={`/learn/${techSlug(tech)}/`} target="_blank" rel="noopener">
                       Open as a page ↗
                     </a>
@@ -441,8 +484,37 @@ function GlossaryList({
   );
 }
 
+/** how the best solvers play: the same copy as the /how-the-best-solve/ page */
+const METHOD = LANDING_PAGES.find((p) => p.url === '/how-the-best-solve/')!;
+
+function MethodGuide({ onTerm }: { onTerm: (term: string) => void }) {
+  return (
+    <>
+      <p className="learn-lead">
+        <Linked text={METHOD.lead} onTerm={onTerm} />
+      </p>
+      {METHOD.sections.map((s) => (
+        <section key={s.heading} className="learn-group">
+          <h4>{s.heading}</h4>
+          {s.paragraphs.map((p, i) => (
+            <p key={i} className="learn-prose">
+              <Linked text={p} onTerm={onTerm} />
+            </p>
+          ))}
+        </section>
+      ))}
+      <p className="learn-aka">
+        <a className="learn-permalink" href={METHOD.url} target="_blank" rel="noopener">
+          Open as a page ↗
+        </a>
+      </p>
+    </>
+  );
+}
+
 const TAB_LABELS: Record<LearnTab, string> = {
   techniques: 'Techniques',
+  method: 'How to solve',
   glossary: 'Glossary',
   rating: 'Rating'
 };
@@ -451,13 +523,16 @@ export function LearnDialog({
   target,
   onClose,
   onPractice,
-  onExample
+  onExample,
+  onScan
 }: {
   target: LearnTarget;
   onClose: () => void;
   onPractice: (tech: Tech) => void;
   /** put a technique's worked example on the board */
   onExample: (tech: Tech) => void;
+  /** scan the running game for a technique; absent when no game is on */
+  onScan?: (tech: Tech) => void;
 }) {
   const [tab, setTab] = useState<LearnTab>(target.tab);
   const [term, setTerm] = useState(target.term);
@@ -524,6 +599,7 @@ export function LearnDialog({
             setOpen={setOpen}
             onPractice={onPractice}
             onExample={onExample}
+            onScan={onScan}
             onTerm={openTerm}
           />
         )}
@@ -537,6 +613,7 @@ export function LearnDialog({
             <GlossaryList focus={term} restored={scrolls.current.glossary !== undefined} onTerm={openTerm} />
           </>
         )}
+        {tab === 'method' && <MethodGuide onTerm={openTerm} />}
         {tab === 'rating' && <RatingExplainer />}
       </div>
     </Modal>

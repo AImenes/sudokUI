@@ -23,7 +23,8 @@ import { linkGlossary } from './glossaryLinks';
 import { LANDING_PAGES, LandingPage, RATING_URL } from './landing';
 import { EXAMPLES } from './examples';
 import { boardSvg, legendOf, BOARD_SIZE } from './boardSvg';
-import { FREQUENCY, frequencyLabel } from './frequency';
+import { FREQUENCY, frequencyLabel, byWorth } from './frequency';
+import { SOLVE_TIME_TABLES, SOLVE_TIME_NOTE } from './solveTimes';
 
 export const SITE = 'https://sudokui.app';
 
@@ -143,6 +144,8 @@ td,th{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;verti
 .techs li{padding:10px 0;border-bottom:1px solid var(--line)}
 .techs a{font-weight:600}
 .techs span{display:block;color:var(--muted);font-size:15px}
+ol.techs{list-style:decimal;padding-left:28px}
+ol.techs li{padding-left:4px}
 dt{font-weight:700;margin-top:16px;scroll-margin-top:12px}
 dd{margin:2px 0 0}
 .aka{color:var(--muted);font-size:14px;font-weight:400}
@@ -288,6 +291,10 @@ function workedExample(tech: Tech): string {
       <p>${esc(example.step.description)}</p>
       <p class="meta">Step ${example.stepIndex + 1} of this puzzle's solution, found and verified by the sudokUI engine. Cells are named by row and column: r2c3 is row 2, column 3.${
         example.credit ? ` Puzzle: ${esc(example.credit)}.` : ''
+      }${
+        example.afterHarder
+          ? ' In this puzzle the position comes after steps harder than the technique itself.'
+          : ''
       } <a href="/#p=${example.puzzle}">Play this puzzle from the start</a>.</p>
 `;
 }
@@ -388,6 +395,17 @@ ${techs
   const body = `      <h1>Sudoku solving techniques</h1>
       <p class="lead">All ${n} solving techniques in sudokUI's catalogue, in the order a solver reaches for them. Each one says what the pattern is, why it works and how to spot it.</p>
       <p><a class="cta" href="/">Play sudokUI</a><a class="cta ghost" href="/learn/glossary/">Glossary</a><a class="cta ghost" href="${RATING_URL}">How rating works</a></p>
+      <h2 id="worth-learning">Worth learning first</h2>
+      <p>How often a technique is needed, weighted by its rating cost, over the ${FREQUENCY.sample.toLocaleString('en')} puzzles sudokUI has generated and rated. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it.</p>
+      <ol class="techs">
+${byWorth(ALL_TECHS)
+  .slice(0, 12)
+  .map(
+    (t) =>
+      `        <li><a href="${techUrl(t)}">${esc(TECHS[t].name)}</a><span>${TECHS[t].level}, needed in ${esc(frequencyLabel(t) ?? '')}</span></li>`
+  )
+  .join('\n')}
+      </ol>
 ${sections}`;
   return {
     path: 'learn/index.html',
@@ -524,6 +542,21 @@ ${RATING_POINTS.map((p) => `      <h2>${esc(p.title)}</h2>\n      <p>${esc(p.tex
         <tr><th>Band</th><th class="n">Total score</th><th>Typical techniques</th></tr>
 ${bands}
       </table>
+      <h2 id="solve-times">How fast is fast?</h2>
+      <p>${esc(SOLVE_TIME_NOTE)}</p>
+      <table>
+        <tr><th>Band</th><th class="n">Slow</th><th class="n">Typical</th><th class="n">Fast</th><th class="n">Expert</th><th class="n">World class</th></tr>
+${SOLVE_TIME_TABLES.map(
+  (t) => `        <tr><th colspan="6">${esc(t.label[0].toUpperCase() + t.label.slice(1))}</th></tr>
+${t.rows
+  .map(
+    (r) =>
+      `        <tr><td><span class="badge">${r.level}</span></td><td class="n">${r.slow}</td><td class="n">${r.typical}</td><td class="n">${r.fast}</td><td class="n">${r.expert}</td><td class="n">${r.worldClass}</td></tr>`
+  )
+  .join('\n')}`
+).join('\n')}
+      </table>
+      <p>Slow is where the slowest fifth begins. Typical is the median solver. Fast is faster than four solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000. The app says where each of your solves lands.</p>
       <h2 id="scores">Score of every technique</h2>
       <p>The cost added to a puzzle's rating each time the solver needs the technique, and how many of the puzzles sudokUI generates need it at least once (measured on ${FREQUENCY.sample.toLocaleString('en')} puzzles).</p>
       <table>
