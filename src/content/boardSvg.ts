@@ -192,8 +192,8 @@ export function legendOf(step: Step): { colour: string; label: string }[] {
   if (step.placements.length) out.push({ colour: COLOURS.place, label: 'place' });
   if (step.eliminations.length) out.push({ colour: COLOURS.elim, label: 'remove' });
   if (colouring) return out;
-  if (step.primary?.length || step.links?.length) out.push({ colour: COLOURS.primary, label: 'the pattern' });
-  if (step.secondary?.length) out.push({ colour: COLOURS.secondary, label: 'supporting cells' });
-  if (step.fins?.length) out.push({ colour: COLOURS.fin, label: 'fin' });
+  if (step.primary?.length || step.links?.length) out.push({ colour: COLOURS.primary, label: step.labels?.primary ?? 'the pattern' });
+  if (step.secondary?.length) out.push({ colour: COLOURS.secondary, label: step.labels?.secondary ?? 'supporting cells' });
+  if (step.fins?.length) out.push({ colour: COLOURS.fin, label: step.labels?.fins ?? 'fin' });
   return out;
 }

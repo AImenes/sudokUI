@@ -445,7 +445,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   },
   {
     term: 'pivot',
-    definition: 'The middle cell of an XY-wing or XYZ-wing, which sees both pincers. In an XY-wing it holds the candidates X and Y, and whichever it takes forces one pincer to be Z.',
+    definition: 'The middle cell of an XY-wing or XYZ-wing, which sees both pincers. In a WXYZ-wing it is the cell holding X (rarely two) among the three sharing a unit, seen by the fourth cell, bivalue with X and Z.',
     aka: ['hinge'],
     see: ['wing', 'pincer'],
     group: 'Patterns'

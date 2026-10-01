@@ -3056,6 +3056,10 @@
      "digit": 4
     }
    ],
+   "labels": {
+    "primary": "cells holding 4 and 6",
+    "secondary": "strong link on 4"
+   },
    "links": [
     {
      "from": [
@@ -3256,6 +3260,10 @@
      "digit": 6
     }
    ],
+   "labels": {
+    "primary": "pivot",
+    "secondary": "pincers"
+   },
    "description": "XY-Wing: pivot r7c7 (79) with pincers r7c6 (76) and r8c9 (96); one pincer must be 6, so 6 is removed from cells seeing both."
   }
  },
@@ -3379,6 +3387,10 @@
      "digit": 4
     }
    ],
+   "labels": {
+    "primary": "pivot",
+    "secondary": "pincers"
+   },
    "description": "XYZ-Wing: pivot r2c5 with pincers r3c6 and r7c5; 4 is removed from cells seeing all three."
   }
  },
@@ -3484,24 +3496,16 @@
    ],
    "primary": [
     {
-     "cell": 29,
-     "digit": 4
+     "cell": 30,
+     "digit": 1
     },
     {
-     "cell": 29,
+     "cell": 30,
      "digit": 9
     }
    ],
    "secondary": [
     {
-     "cell": 30,
-     "digit": 1
-    },
-    {
-     "cell": 30,
-     "digit": 9
-    },
-    {
      "cell": 40,
      "digit": 4
     },
@@ -3518,7 +3522,22 @@
      "digit": 7
     }
    ],
-   "description": "WXYZ-Wing: sets r4c3 and r4c4, r5c5, r6c5 share restricted common 9; digit 4 can be removed from cells seeing every 4 of both sets."
+   "fins": [
+    {
+     "cell": 29,
+     "digit": 4
+    },
+    {
+     "cell": 29,
+     "digit": 9
+    }
+   ],
+   "labels": {
+    "primary": "pivot",
+    "secondary": "cells sharing its unit",
+    "fins": "bivalue cell seeing the pivot's 9"
+   },
+   "description": "WXYZ-Wing: pivot r4c4 shares box 5 with r5c5 and r6c5, the three holding 1479; bivalue cell r4c3 (49) sees the pivot's 9. Either r4c3 is 4, or it is 9 and the three cells in box 5 must be 1, 4 and 7. At least one of the four cells is therefore 4, so 4 is removed from every other cell that sees all the 4s among them."
   }
  },
  "UNIQUENESS_1": {
@@ -7827,6 +7846,11 @@
      "digit": 6
     }
    ],
+   "labels": {
+    "primary": "set linked via 4",
+    "secondary": "set linked via 6",
+    "fins": "hinge"
+   },
    "description": "ALS-XY-Wing: hinge r6c3 links r8c3, r8c8 (via 4) and r4c9, r6c8 (via 6); digit 7 can be removed from cells seeing every 7 of both outer sets."
   }
  },
