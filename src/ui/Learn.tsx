@@ -1,7 +1,7 @@
 // The Learn dialog: every technique explained (what it is, why it works,
 // how to spot it), the glossary of sudoku language, and how the rating
 // works. The same content feeds the static /learn/ pages.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Modal } from './Dialogs';
 import { TECHS, ALL_TECHS, LEVELS, LEVEL_MAX_SCORE, Tech, Category } from '../engine/ratings';
 import { CATEGORY_NOTES, categoryLabel, techStatus } from '../content/categories';
@@ -11,9 +11,13 @@ import { RATING_SUMMARY, RATING_POINTS, BAND_NOTES } from '../content/rating';
 import { techSlug, slugify } from '../content/slugs';
 import { linkGlossary } from '../content/glossaryLinks';
 import { boardSvg, legendOf, Example } from '../content/boardSvg';
-import { frequencyLabel } from '../content/frequency';
+import { FREQUENCY, frequencyLabel } from '../content/frequency';
 
 type Examples = Partial<Record<Tech, Example>>;
+
+// the examples are a sizeable file: fetched when the guide is first opened,
+// never as part of loading the game, and kept for the next opening
+let loadedExamples: Examples | undefined;
 
 /**
  * A real position where the technique applies, drawn by the same renderer
@@ -77,7 +81,12 @@ function Linked({
             key={i}
             className="learn-link term"
             title={`Glossary: ${seg.term}`}
-            onClick={() => onTerm(seg.term!)}
+            onClick={(e) => {
+              // inside a <summary>, the click must not also fold the technique
+              e.preventDefault();
+              e.stopPropagation();
+              onTerm(seg.term!);
+            }}
           >
             {seg.text}
           </button>
@@ -135,55 +144,125 @@ export function RatingExplainer() {
   );
 }
 
+/** the orders the technique list can be read in */
+export type LearnSort = 'family' | 'easiest' | 'common' | 'worth';
+
+const SORTS: { value: LearnSort; label: string; note: string }[] = [
+  { value: 'family', label: 'By family', note: '' },
+  {
+    value: 'easiest',
+    label: 'Easiest first',
+    note: 'In the order the solver tries them: a technique is only needed once everything above it has run dry.'
+  },
+  {
+    value: 'common',
+    label: 'Most often needed',
+    note: 'The techniques that turn up in the most puzzles sudokUI generates, whatever their difficulty.'
+  },
+  {
+    value: 'worth',
+    label: 'Most worth learning',
+    note: 'How often a technique is needed, weighted by its rating cost. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it, and those come first.'
+  }
+];
+
+/** share of generated puzzles needing the technique; below zero when never measured */
+const share = (tech: Tech): number => {
+  const n = FREQUENCY.counts[tech];
+  return n === undefined || FREQUENCY.sample === 0 ? -1 : n / FREQUENCY.sample;
+};
+
+/** rating points per generated puzzle that this technique accounts for */
+const worth = (tech: Tech): number => share(tech) * TECHS[tech].score;
+
+interface Group {
+  key: string;
+  title: string;
+  note: string;
+  techs: Tech[];
+}
+
 function TechniqueList({
   focus,
+  restored,
+  query,
+  setQuery,
+  sort,
+  setSort,
+  open,
+  setOpen,
   onPractice,
   onExample,
   onTerm
 }: {
   focus?: Tech;
+  /** the list was open before: keep its scroll position instead of jumping to `focus` */
+  restored: boolean;
+  query: string;
+  setQuery: (q: string) => void;
+  sort: LearnSort;
+  setSort: (s: LearnSort) => void;
+  open: Set<Tech>;
+  setOpen: React.Dispatch<React.SetStateAction<Set<Tech>>>;
   onPractice: (tech: Tech) => void;
   onExample: (tech: Tech) => void;
   onTerm: (term: string) => void;
 }) {
-  const [query, setQuery] = useState('');
-  // the examples are a sizeable file: fetched when the guide is opened,
-  // never as part of loading the game
-  const [examples, setExamples] = useState<Examples>({});
+  const [examples, setExamples] = useState<Examples>(() => loadedExamples ?? {});
   useEffect(() => {
+    if (loadedExamples) return;
     let live = true;
-    import('../content/examples').then((m) => live && setExamples(m.EXAMPLES));
+    import('../content/examples').then((m) => {
+      loadedExamples = m.EXAMPLES;
+      if (live) setExamples(m.EXAMPLES);
+    });
     return () => {
       live = false;
     };
   }, []);
-  const [open, setOpen] = useState<Set<Tech>>(() => new Set(focus ? [focus] : []));
 
-  const groups = useMemo(() => {
+  const groups = useMemo((): Group[] => {
     const q = query.trim().toLowerCase();
-    const by = new Map<Category, Tech[]>();
-    for (const tech of ALL_TECHS) {
+    const visible = ALL_TECHS.filter((tech) => {
       const info = TECHS[tech];
       const doc = TECH_DOCS[tech];
-      if (
-        q &&
-        !info.name.toLowerCase().includes(q) &&
-        !info.category.toLowerCase().includes(q) &&
-        !doc.aka.some((a) => a.toLowerCase().includes(q))
-      ) {
-        continue;
+      return (
+        !q ||
+        info.name.toLowerCase().includes(q) ||
+        info.category.toLowerCase().includes(q) ||
+        doc.aka.some((a) => a.toLowerCase().includes(q))
+      );
+    });
+    if (sort === 'family') {
+      const by = new Map<Category, Tech[]>();
+      for (const tech of visible) {
+        const cat = TECHS[tech].category;
+        if (!by.has(cat)) by.set(cat, []);
+        by.get(cat)!.push(tech);
       }
-      if (!by.has(info.category)) by.set(info.category, []);
-      by.get(info.category)!.push(tech);
+      return [...by.entries()].map(([cat, techs]) => ({
+        key: slugify(cat),
+        title: categoryLabel(cat),
+        note: CATEGORY_NOTES[cat],
+        techs
+      }));
     }
-    return [...by.entries()];
-  }, [query]);
-  const matches = groups.reduce((n, [, techs]) => n + techs.length, 0);
+    const byIndex = (a: Tech, b: Tech) => TECHS[a].index - TECHS[b].index;
+    const order =
+      sort === 'common'
+        ? (a: Tech, b: Tech) => share(b) - share(a) || byIndex(a, b)
+        : sort === 'worth'
+          ? (a: Tech, b: Tech) => worth(b) - worth(a) || byIndex(a, b)
+          : byIndex;
+    const { label, note } = SORTS.find((s) => s.value === sort)!;
+    return [{ key: sort, title: label, note, techs: [...visible].sort(order) }];
+  }, [query, sort]);
+  const matches = groups.reduce((n, g) => n + g.techs.length, 0);
 
   useEffect(() => {
-    if (!focus) return;
+    if (!focus || restored) return;
     document.getElementById(`learn-${focus}`)?.scrollIntoView({ block: 'start' });
-  }, [focus]);
+  }, [focus, restored]);
 
   const toggle = (tech: Tech, isOpen: boolean) =>
     setOpen((prev) => {
@@ -203,29 +282,40 @@ function TechniqueList({
         placeholder={`Search ${ALL_TECHS.length} techniques`}
         aria-label="Search techniques"
       />
-      {!query && (
+      <div className="learn-tools">
+        <label>
+          Sort{' '}
+          <select value={sort} onChange={(e) => setSort(e.target.value as LearnSort)}>
+            {SORTS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {!query && sort === 'family' && (
         <nav className="learn-chips" aria-label="Technique families">
-          {groups.map(([cat]) => (
+          {groups.map((g) => (
             <button
-              key={cat}
-              onClick={() =>
-                document.getElementById(`learn-cat-${slugify(cat)}`)?.scrollIntoView({ block: 'start' })
-              }
+              key={g.key}
+              onClick={() => document.getElementById(`learn-cat-${g.key}`)?.scrollIntoView({ block: 'start' })}
             >
-              {categoryLabel(cat)}
+              {g.title}
             </button>
           ))}
         </nav>
       )}
       {matches === 0 && <p className="dialog-note">No technique matches “{query}”.</p>}
-      {groups.map(([cat, techs]) => (
-        <section key={cat} className="learn-group" id={`learn-cat-${slugify(cat)}`}>
-          <h4>{categoryLabel(cat)}</h4>
-          <p className="learn-cat-note">{CATEGORY_NOTES[cat]}</p>
-          {techs.map((tech) => {
+      {groups.map((group) => (
+        <section key={group.key} className="learn-group" id={`learn-cat-${group.key}`}>
+          <h4>{group.title}</h4>
+          <p className="learn-cat-note">{group.note}</p>
+          {group.techs.map((tech) => {
             const info = TECHS[tech];
             const doc = TECH_DOCS[tech];
             const status = techStatus(tech);
+            const needed = frequencyLabel(tech);
             return (
               <details
                 key={tech}
@@ -243,7 +333,12 @@ function TechniqueList({
                   <span className="learn-score" title="Added to a puzzle's rating each time the solver needs this technique">
                     cost {info.score}
                   </span>
-                  <span className="learn-what">{doc.what}</span>
+                  <span className="learn-what">
+                    <Linked text={doc.what} onTerm={onTerm} />
+                  </span>
+                  {sort !== 'family' && (
+                    <span className="learn-freq">{needed ? `Needed in ${needed}` : 'Never needed'}</span>
+                  )}
                 </summary>
                 <div className="learn-body">
                   <p>
@@ -257,11 +352,7 @@ function TechniqueList({
                   {examples[tech] && (open.has(tech) || (!!query && matches <= 3)) && (
                     <WorkedExample tech={tech} example={examples[tech]!} onOpen={onExample} />
                   )}
-                  {frequencyLabel(tech) && (
-                    <p className="learn-aka">
-                      Needed in {frequencyLabel(tech)} that sudokUI generates.
-                    </p>
-                  )}
+                  {needed && <p className="learn-aka">Needed in {needed} that sudokUI generates.</p>}
                   {doc.aka.length > 0 && (
                     <p className="learn-aka">Also called {doc.aka.join(', ')}.</p>
                   )}
@@ -282,15 +373,24 @@ function TechniqueList({
   );
 }
 
-function GlossaryList({ focus, onTerm }: { focus?: string; onTerm: (term: string) => void }) {
+function GlossaryList({
+  focus,
+  restored,
+  onTerm
+}: {
+  focus?: string;
+  /** the glossary was open before: keep its scroll position instead of jumping to `focus` */
+  restored: boolean;
+  onTerm: (term: string) => void;
+}) {
   const known = useMemo(() => new Set(GLOSSARY.map((e) => e.term)), []);
   const jump = onTerm;
 
   useEffect(() => {
-    if (focus) {
+    if (focus && !restored) {
       document.getElementById(`term-${slugify(focus)}`)?.scrollIntoView({ block: 'center' });
     }
-  }, [focus]);
+  }, [focus, restored]);
 
   return (
     <>
@@ -341,6 +441,12 @@ function GlossaryList({ focus, onTerm }: { focus?: string; onTerm: (term: string
   );
 }
 
+const TAB_LABELS: Record<LearnTab, string> = {
+  techniques: 'Techniques',
+  glossary: 'Glossary',
+  rating: 'Rating'
+};
+
 export function LearnDialog({
   target,
   onClose,
@@ -355,41 +461,84 @@ export function LearnDialog({
 }) {
   const [tab, setTab] = useState<LearnTab>(target.tab);
   const [term, setTerm] = useState(target.term);
+  // the tab a glossary term was looked up from, for the way back
+  const [from, setFrom] = useState<LearnTab | null>(null);
+
+  // what the technique list looks like survives a trip to the glossary:
+  // the search, the sort order, which techniques are unfolded...
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<LearnSort>('family');
+  const [open, setOpen] = useState<Set<Tech>>(() => new Set(target.tech ? [target.tech] : []));
+  // ...and how far down each tab was scrolled (the dialog is the scroller)
+  const body = useRef<HTMLDivElement>(null);
+  const scrolls = useRef<Partial<Record<LearnTab, number>>>({});
+  const scroller = () => body.current?.closest('.modal') as HTMLElement | null;
+  const leave = () => {
+    scrolls.current[tab] = scroller()?.scrollTop ?? 0;
+  };
+  const switchTab = (next: LearnTab) => {
+    if (next === tab) return;
+    leave();
+    setTab(next);
+  };
   // a glossary term clicked anywhere lands on its definition
   const openTerm = (t: string) => {
+    leave();
+    delete scrolls.current.glossary;
+    if (tab !== 'glossary') setFrom(tab);
     setTerm(t);
     setTab('glossary');
   };
-  const tabs: [LearnTab, string][] = [
-    ['techniques', 'Techniques'],
-    ['glossary', 'Glossary'],
-    ['rating', 'Rating']
-  ];
+  useLayoutEffect(() => {
+    const saved = scrolls.current[tab];
+    const el = scroller();
+    if (saved !== undefined && el) el.scrollTop = saved;
+  }, [tab]);
+
+  const tabs = Object.keys(TAB_LABELS) as LearnTab[];
   return (
     <Modal title="Learn" onClose={onClose} wide>
-      <div className="segmented learn-tabs" role="tablist">
-        {tabs.map(([value, label]) => (
-          <button
-            key={value}
-            role="tab"
-            aria-selected={tab === value}
-            className={tab === value ? 'active' : ''}
-            onClick={() => setTab(value)}
-          >
-            {label}
-          </button>
-        ))}
+      <div ref={body}>
+        <div className="segmented learn-tabs" role="tablist">
+          {tabs.map((value) => (
+            <button
+              key={value}
+              role="tab"
+              aria-selected={tab === value}
+              className={tab === value ? 'active' : ''}
+              onClick={() => switchTab(value)}
+            >
+              {TAB_LABELS[value]}
+            </button>
+          ))}
+        </div>
+        {tab === 'techniques' && (
+          <TechniqueList
+            focus={target.tech}
+            restored={scrolls.current.techniques !== undefined}
+            query={query}
+            setQuery={setQuery}
+            sort={sort}
+            setSort={setSort}
+            open={open}
+            setOpen={setOpen}
+            onPractice={onPractice}
+            onExample={onExample}
+            onTerm={openTerm}
+          />
+        )}
+        {tab === 'glossary' && (
+          <>
+            {from && (
+              <button className="learn-link learn-back" onClick={() => switchTab(from)}>
+                ← Back to {TAB_LABELS[from].toLowerCase()}
+              </button>
+            )}
+            <GlossaryList focus={term} restored={scrolls.current.glossary !== undefined} onTerm={openTerm} />
+          </>
+        )}
+        {tab === 'rating' && <RatingExplainer />}
       </div>
-      {tab === 'techniques' && (
-        <TechniqueList
-          focus={target.tech}
-          onPractice={onPractice}
-          onExample={onExample}
-          onTerm={openTerm}
-        />
-      )}
-      {tab === 'glossary' && <GlossaryList focus={term} onTerm={openTerm} />}
-      {tab === 'rating' && <RatingExplainer />}
     </Modal>
   );
 }
