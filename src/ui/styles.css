@@ -2197,3 +2197,37 @@ kbd {
   background: var(--accent-fill);
   font-weight: 600;
 }
+
+/* Translated labels run longer than English: every button row must take a
+   longer word without breaking its line or its neighbours */
+.menu-row button,
+.action-row button,
+.mode-btn {
+  min-width: 0;
+  line-height: 1.2;
+}
+
+html:not([lang='en']) .menu-row button,
+html:not([lang='en']) .action-row button {
+  font-size: 12px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+html:not([lang='en']) .mode-btn {
+  font-size: 12px;
+}
+
+html:not([lang='en']) .zone-note {
+  display: block;
+  margin-left: 0;
+}
+
+@media (max-width: 480px) {
+  html:not([lang='en']) .menu-row button,
+  html:not([lang='en']) .action-row button {
+    font-size: 11px;
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+}
