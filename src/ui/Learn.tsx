@@ -13,7 +13,7 @@ import { linkGlossary } from '../content/glossaryLinks';
 import { boardSvg, legendOf, Example } from '../content/boardSvg';
 import { frequencyLabel, share, worth } from '../content/frequency';
 import { LANDING_PAGES } from '../content/landing';
-import { SOLVE_TIME_ROWS, SOLVE_TIME_NOTE } from '../content/solveTimes';
+import { SOLVE_TIME_TABLES, SOLVE_TIME_NOTE } from '../content/solveTimes';
 
 type Examples = Partial<Record<Tech, Example>>;
 
@@ -152,29 +152,36 @@ export function RatingExplainer() {
         <thead>
           <tr>
             <th></th>
+            <th>Slow</th>
             <th>Typical</th>
             <th>Fast</th>
             <th>Expert</th>
             <th>World class</th>
           </tr>
         </thead>
-        <tbody>
-          {SOLVE_TIME_ROWS.map((r) => (
-            <tr key={r.level}>
-              <td>
-                <span className={`level-badge level-${r.level.toLowerCase()}`}>{r.level}</span>
-              </td>
-              <td>{r.typical}</td>
-              <td>{r.fast}</td>
-              <td>{r.expert}</td>
-              <td>{r.worldClass}</td>
+        {SOLVE_TIME_TABLES.map((t) => (
+          <tbody key={t.mode}>
+            <tr className="time-mode">
+              <th colSpan={6}>{t.label[0].toUpperCase() + t.label.slice(1)}</th>
             </tr>
-          ))}
-        </tbody>
+            {t.rows.map((r) => (
+              <tr key={r.level}>
+                <td>
+                  <span className={`level-badge level-${r.level.toLowerCase()}`}>{r.level}</span>
+                </td>
+                <td>{r.slow}</td>
+                <td>{r.typical}</td>
+                <td>{r.fast}</td>
+                <td>{r.expert}</td>
+                <td>{r.worldClass}</td>
+              </tr>
+            ))}
+          </tbody>
+        ))}
       </table>
       <p className="learn-aka">
-        Typical is the median solver. Fast is faster than four solvers in five, Expert faster than 99 in
-        100, World class faster than 999 in 1,000.
+        Slow is where the slowest fifth begins. Typical is the median solver. Fast is faster than four
+        solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000.
       </p>
       </section>
     </>

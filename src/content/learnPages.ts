@@ -24,7 +24,7 @@ import { LANDING_PAGES, LandingPage, RATING_URL } from './landing';
 import { EXAMPLES } from './examples';
 import { boardSvg, legendOf, BOARD_SIZE } from './boardSvg';
 import { FREQUENCY, frequencyLabel, byWorth } from './frequency';
-import { SOLVE_TIME_ROWS, SOLVE_TIME_NOTE } from './solveTimes';
+import { SOLVE_TIME_TABLES, SOLVE_TIME_NOTE } from './solveTimes';
 
 export const SITE = 'https://sudokui.app';
 
@@ -545,13 +545,18 @@ ${bands}
       <h2 id="solve-times">How fast is fast?</h2>
       <p>${esc(SOLVE_TIME_NOTE)}</p>
       <table>
-        <tr><th>Band</th><th class="n">Typical</th><th class="n">Fast</th><th class="n">Expert</th><th class="n">World class</th></tr>
-${SOLVE_TIME_ROWS.map(
-  (r) =>
-    `        <tr><td><span class="badge">${r.level}</span></td><td class="n">${r.typical}</td><td class="n">${r.fast}</td><td class="n">${r.expert}</td><td class="n">${r.worldClass}</td></tr>`
+        <tr><th>Band</th><th class="n">Slow</th><th class="n">Typical</th><th class="n">Fast</th><th class="n">Expert</th><th class="n">World class</th></tr>
+${SOLVE_TIME_TABLES.map(
+  (t) => `        <tr><th colspan="6">${esc(t.label[0].toUpperCase() + t.label.slice(1))}</th></tr>
+${t.rows
+  .map(
+    (r) =>
+      `        <tr><td><span class="badge">${r.level}</span></td><td class="n">${r.slow}</td><td class="n">${r.typical}</td><td class="n">${r.fast}</td><td class="n">${r.expert}</td><td class="n">${r.worldClass}</td></tr>`
+  )
+  .join('\n')}`
 ).join('\n')}
       </table>
-      <p>Typical is the median solver. Fast is faster than four solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000. The app says where each of your solves lands.</p>
+      <p>Slow is where the slowest fifth begins. Typical is the median solver. Fast is faster than four solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000. The app says where each of your solves lands.</p>
       <h2 id="scores">Score of every technique</h2>
       <p>The cost added to a puzzle's rating each time the solver needs the technique, and how many of the puzzles sudokUI generates need it at least once (measured on ${FREQUENCY.sample.toLocaleString('en')} puzzles).</p>
       <table>
