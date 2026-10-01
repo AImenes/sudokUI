@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useGame, rateImport } from '../state/gameStore';
 import { dailyPuzzle } from '../engine/daily';
 import { useSettings } from '../state/settings';
+import { useT } from '../content/i18n';
 import { Grid } from './Grid';
 import { Poodle } from './Poodle';
 import { Controls } from './Controls';
@@ -88,6 +89,11 @@ export default function App() {
     s.custom ? s.cells.filter((c) => c.value > 0).length : 0
   );
   const { theme, font, toggleTheme, showTimer, hideRating, showPoodle } = useSettings();
+  const lang = useSettings((s) => s.lang);
+  const t = useT();
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
   const { start, genState, cancel } = useNewGame();
 
   const [dialog, setDialog] = useState<
@@ -418,22 +424,22 @@ export default function App() {
         <aside className="side">
           <div className="menu-row">
             <button onClick={() => setDialog('new')}>
-              <span className="menu-icon">▦</span>New
+              <span className="menu-icon">▦</span>{t('New')}
             </button>
             <button
               className={info?.practiceTech ? 'active' : ''}
               onClick={() => setDialog('practice')}
             >
-              <span className="menu-icon">🎯</span>Practice
+              <span className="menu-icon">🎯</span>{t('Practice')}
             </button>
             <button onClick={() => setDialog('io')}>
-              <span className="menu-icon">⇅</span>Import
+              <span className="menu-icon">⇅</span>{t('Import')}
             </button>
             <button onClick={() => setDialog('share')}>
-              <span className="menu-icon">🔗</span>Share
+              <span className="menu-icon">🔗</span>{t('Share')}
             </button>
             <button onClick={() => setDialog('restart')} title="Reset this puzzle and the timer">
-              <span className="menu-icon">↺</span>Restart
+              <span className="menu-icon">↺</span>{t('Restart')}
             </button>
           </div>
           <Controls

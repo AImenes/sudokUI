@@ -2,6 +2,7 @@
 // reference for modes, shortcuts and the candidate model.
 import React from 'react';
 import { useSettings, MarkLayer, Font } from '../state/settings';
+import { LANGS, useT } from '../content/i18n';
 import { Modal } from './Dialogs';
 import { BandTable, LearnTarget } from './Learn';
 import { RATING_SUMMARY } from '../content/rating';
@@ -40,9 +41,29 @@ function Toggle({
 
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const s = useSettings();
+  const t = useT();
 
   return (
     <Modal title="Settings" onClose={onClose}>
+      <div className="setting-row stack" role="group" aria-label={t('Language')}>
+        <div className="setting-text">
+          <span>{t('Language')}</span>
+          <small>Menus and buttons. The technique guide and hints are in English for now</small>
+        </div>
+        <div className="segmented">
+          {LANGS.map((l) => (
+            <button
+              key={l.value}
+              lang={l.tag}
+              className={s.lang === l.value ? 'active' : ''}
+              aria-pressed={s.lang === l.value}
+              onClick={() => s.set({ lang: l.value })}
+            >
+              {l.name}
+            </button>
+          ))}
+        </div>
+      </div>
       <h4 className="setting-group">Appearance</h4>
       <div className="setting-row stack" role="group" aria-label="Theme">
         <div className="setting-text">
@@ -142,7 +163,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </label>
       )}
       <Toggle
-        label="Show timer"
+        label={t('Show timer')}
         value={s.showTimer}
         onChange={(v) => s.set({ showTimer: v })}
       />

@@ -10,7 +10,20 @@ export type Theme = 'dark' | 'light' | 'rose' | 'forest';
 /** typefaces already on the device: nothing to download, works offline */
 export type Font = 'classic' | 'rounded' | 'serif' | 'mono' | 'hand';
 
+/** interface language; the solving content stays English for now */
+export type Lang = 'en' | 'nb' | 'es';
+
+/** the device's language, when it is one we have */
+export function deviceLang(): Lang {
+  const tag = (typeof navigator !== 'undefined' ? navigator.language : 'en').toLowerCase();
+  if (tag.startsWith('nb') || tag.startsWith('nn') || tag.startsWith('no')) return 'nb';
+  if (tag.startsWith('es')) return 'es';
+  return 'en';
+}
+
 interface Settings {
+  /** interface language */
+  lang: Lang;
   /** board theme: dark, daylight or rosé */
   theme: Theme;
   /** typeface of the board (digits and pencil marks); all other text
@@ -57,6 +70,7 @@ interface Settings {
 export const useSettings = create<Settings>()(
   persist(
     (set) => ({
+      lang: deviceLang(),
       theme: 'dark',
       font: 'classic',
       highlightPeers: true,
