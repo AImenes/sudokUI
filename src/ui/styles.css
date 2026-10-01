@@ -2096,3 +2096,17 @@ kbd {
   font-size: 14px;
   line-height: 1.55;
 }
+
+.solve-verdict {
+  margin: -6px 0 10px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.solve-verdict strong {
+  color: var(--text);
+}
+
+.time-table td {
+  font-variant-numeric: tabular-nums;
+}

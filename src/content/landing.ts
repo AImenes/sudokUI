@@ -170,7 +170,8 @@ export const LANDING_PAGES: LandingPage[] = [
         heading: 'Start with nothing written',
         paragraphs: [
           'A competition solver places the first ten digits before a beginner has finished writing candidates. They take one digit at a time and sweep the grid for it: wherever its rows and columns leave a single free cell in a box, that is a hidden single, and in it goes. Then the next digit. This cross-hatching finds most of an easy puzzle on its own, and it works on paper, on a phone, anywhere.',
-          'A full candidate grid is the opposite of this. It costs minutes to write, it hides the few marks that matter among dozens that do not, and every placement means erasing. The best solvers never start there.'
+          'A full candidate grid is the opposite of this. It costs minutes to write, it hides the few marks that matter among dozens that do not, and every placement means erasing. The best solvers never start there.',
+          'A placement is not the end of a sweep but the start of a smaller one. Each digit placed changes its row, its column and its box, so the fast solver looks there first: is that digit now a single in a neighbouring box, and did the cell it filled leave a single somewhere in its lines? Only then does the sweep continue with the next digit. A full pass from 1 to 9 that places nothing is the signal that the singles are gone, and not before.'
         ]
       },
       {
@@ -184,7 +185,8 @@ export const LANDING_PAGES: LandingPage[] = [
         heading: 'The order the puzzle asks for',
         paragraphs: [
           'Singles first, until none remain. Then the box pairs: pointing and claiming, which cost nothing once the corner marks are there. Then naked and hidden pairs and triples in the lines. Only when all of that is exhausted do the best solvers fill in the remaining candidates, and they fill them for the whole grid at once, never cell by cell.',
-          'With candidates in, the search widens: X-Wings, Skyscrapers and kites on one digit, then XY-Wings and W-Wings on bivalue cells, then chains. This is the same order the sudokUI solver follows when it rates a puzzle, which is why the technique guide is sorted that way and why a hint names the easiest technique that works, never a harder one.'
+          'With candidates in, the search widens: X-Wings, Skyscrapers and kites on one digit, then XY-Wings and W-Wings on bivalue cells, then chains. This is the same order the sudokUI solver follows when it rates a puzzle, which is why the technique guide is sorted that way and why a hint names the easiest technique that works, never a harder one.',
+          'The order is a ladder climbed from the bottom every time, not a sequence walked once. After any success on a higher rung, a pointing pair, a hidden pair, an X-Wing, go straight back to singles: one elimination often frees a single, and that single frees three more. Nobody keeps hunting for X-Wings while a single is available. The solver works the same way, restarting from the easiest technique after every step.'
         ]
       },
       {

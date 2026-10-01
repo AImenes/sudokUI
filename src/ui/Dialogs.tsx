@@ -17,6 +17,7 @@ import { Step } from '../engine/steps';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
 import { storedPractice } from '../content/practicePuzzles';
+import { timeVerdict, percentileText } from '../content/solveTimes';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { BAND_LEADS, BAND_NOTES } from '../content/rating';
 import { categoryLabel } from '../content/categories';
@@ -684,12 +685,15 @@ export function VictoryDialog({
   const secs = Math.floor(elapsedMs() / 1000);
   const mm = Math.floor(secs / 60);
   const ss = String(secs % 60).padStart(2, '0');
+  // a practice game starts part-way through, so its time compares with nothing
+  const verdict = info.practiceTech ? null : timeVerdict(info.level, secs);
 
   // same-puzzle challenge: the share text carries the seed link, so the
   // recipient plays exactly this grid
   const shareResult = () => {
     const clean = assisted ? '' : ', no assists, every mark my own';
-    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss}${clean} on sudokUI. Can you beat that? https://sudokui.app/#p=${info.puzzle}`;
+    const standing = verdict ? `, ${percentileText(verdict.percentile)}` : '';
+    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss}${standing}${clean} on sudokUI. Can you beat that? https://sudokui.app/#p=${info.puzzle}`;
     navigator.clipboard?.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -707,6 +711,11 @@ export function VictoryDialog({
         <p>
           {info.level} · score {info.score} · {mm}:{ss}
         </p>
+        {verdict && (
+          <p className="solve-verdict" title="Against typical times of online solvers of this band. See Learn, Rating">
+            <strong>{verdict.label}</strong>: {percentileText(verdict.percentile)} of {info.level} puzzles
+          </p>
+        )}
         <p className={assisted ? 'solve-assisted' : 'solve-clean'}>
           {assisted
             ? 'Solved with assistance. Restart the puzzle for an unassisted run'
