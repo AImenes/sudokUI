@@ -6,6 +6,7 @@ import { useGame, rateImport, Proof } from '../state/gameStore';
 import { cellName, PEERS } from '../engine/board';
 import { dailyPuzzle } from '../engine/daily';
 import { useSettings } from '../state/settings';
+import { useAppStatus } from '../state/appStatus';
 import { useT } from '../content/i18n';
 import { Grid } from './Grid';
 import { Poodle } from './Poodle';
@@ -57,6 +58,42 @@ function proofText(p: Proof): string {
   return peer
     ? `${at} cannot be ${p.wrong}: a ${TECHS[p.tech].name} puts the ${p.wrong} in ${cellName(peer.cell)}${after}.`
     : `${at} cannot be ${p.wrong}: a ${TECHS[p.tech].name} removes it${after}.`;
+}
+
+/** a new version waiting, or a file this version can no longer load: the
+ *  player decides when to reload; the game is saved either way */
+function UpdateBar() {
+  const updateReady = useAppStatus((s) => s.updateReady);
+  const reason = useAppStatus((s) => s.reason);
+  const offlineReady = useAppStatus((s) => s.offlineReady);
+  const reload = useAppStatus((s) => s.reload);
+  const dismiss = useAppStatus((s) => s.dismiss);
+  if (updateReady) {
+    return (
+      <div className="update-bar" role="status">
+        <span>
+          {reason === 'chunk'
+            ? 'sudokUI was updated while this tab was open, and a part of it could not load. Reload to continue; your game is saved.'
+            : 'A new version of sudokUI is ready. Reload when it suits you; your game is saved.'}
+        </span>
+        <button onClick={reload}>Reload</button>
+        <button className="ghost" onClick={dismiss}>
+          Later
+        </button>
+      </div>
+    );
+  }
+  if (offlineReady) {
+    return (
+      <div className="update-bar" role="status">
+        <span>sudokUI is ready to play offline.</span>
+        <button className="ghost" onClick={dismiss}>
+          OK
+        </button>
+      </div>
+    );
+  }
+  return null;
 }
 
 function Timer() {
@@ -667,8 +704,8 @@ export default function App() {
           onExample={async (tech) => {
             // the example's own puzzle, started as practice of its technique:
             // with "Jump to the technique" on, that is the pictured position
-            const { EXAMPLES } = await import('../content/examples');
-            const example = EXAMPLES[tech];
+            const EXAMPLES = await import('../content/examples').then((m) => m.EXAMPLES).catch(() => null);
+            const example = EXAMPLES?.[tech];
             const rating = example && rateImport(example.puzzle);
             if (!example || !rating) return;
             setDialog('none');
@@ -774,6 +811,7 @@ export default function App() {
           onClose={() => setVictoryDismissed(true)}
         />
       )}
+      <UpdateBar />
       {notice && (
         <div className="toast" role="status" aria-live="polite">
           {notice}

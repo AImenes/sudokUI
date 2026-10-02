@@ -96,6 +96,39 @@ test.describe('why not', () => {
   });
 });
 
+test.describe('reachable by keyboard and screen reader', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test('the board takes focus, and the selected cell is read out', async ({ page }) => {
+    await open(page);
+    const board = page.locator('svg.board');
+    await expect(board).toHaveAttribute('tabindex', '0');
+    await expect(board).toHaveAttribute('aria-label', /Sudoku board/);
+    await board.focus();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#board-status')).toHaveText('No cell selected.');
+    await page.keyboard.press('ArrowRight'); // from the centre: r5c6
+    await expect(page.locator('#board-status')).toContainText('Row 5, column 6');
+    const c = await cellBox(page, 2); // r1c3 holds a given 3
+    await page.mouse.click(c.x, c.y);
+    await expect(page.locator('#board-status')).toHaveText('Row 1, column 3: 3, given.');
+  });
+
+  test('Tab stays inside an open dialog', async ({ page }) => {
+    await open(page);
+    await page.getByRole('button', { name: /New/ }).first().click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    for (let i = 0; i < 40; i++) {
+      await page.keyboard.press('Tab');
+      const inside = await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]'));
+      expect(inside, `Tab ${i + 1} left the dialog`).toBe(true);
+    }
+    await page.keyboard.press('Shift+Tab');
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[role=dialog]'))).toBe(true);
+  });
+});
+
 test.describe('the walk', () => {
   test.use({ viewport: { width: 1280, height: 1000 } });
 

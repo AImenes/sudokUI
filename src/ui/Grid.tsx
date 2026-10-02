@@ -4,7 +4,7 @@
 // line, or the auto-candidate 3×3 view), then hint candidate circles, chain
 // arrows and grid lines. Pointer events implement drag multi-select.
 import React, { useRef } from 'react';
-import { useGame, engineGrid } from '../state/gameStore';
+import { useGame, engineGrid, CellState } from '../state/gameStore';
 import { useSettings } from '../state/settings';
 import { bit, digitsOf, PEERS, UNITS } from '../engine/board';
 import { ChainLink, CellDigit } from '../engine/steps';
@@ -374,6 +374,25 @@ function renderMarks(
   return <>{centerDs.map((d) => gridText(d, false))}</>;
 }
 
+/** the selected cell in words, for the live region beside the board */
+export function describeSelection(cells: CellState[], selection: number[], autoCandidates: boolean): string {
+  if (!selection.length) return 'No cell selected.';
+  if (selection.length > 1) return `${selection.length} cells selected.`;
+  const i = selection[0];
+  const c = cells[i];
+  const where = `Row ${Math.floor(i / 9) + 1}, column ${(i % 9) + 1}`;
+  if (c.value) return `${where}: ${c.value}${c.given ? ', given' : ''}.`;
+  const digits = (mask: number) => [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => mask & (1 << (d - 1))).join(' ');
+  if (autoCandidates) {
+    const cands = engineGrid(cells).cands[i];
+    return `${where}: empty, candidates ${digits(cands) || 'none'}.`;
+  }
+  const parts: string[] = [];
+  if (c.corner) parts.push(`corner marks ${digits(c.corner)}`);
+  if (c.center) parts.push(`centre marks ${digits(c.center)}`);
+  return `${where}: empty${parts.length ? ', ' + parts.join(', ') : ''}.`;
+}
+
 export function Grid() {
   const cells = useGame((s) => s.cells);
   const selection = useGame((s) => s.selection);
@@ -610,6 +629,10 @@ export function Grid() {
     place: 'var(--hint-place)'
   };
 
+  // what a screen reader hears: the selected cell and what is in it, read
+  // out as the selection moves (the arrow keys move it; digits enter)
+  const announced = describeSelection(cells, selection, autoCandidates);
+
   return (
     <div className="grid-wrap">
       <svg
@@ -621,6 +644,10 @@ export function Grid() {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onDoubleClick={onDoubleClick}
+        tabIndex={0}
+        role="application"
+        aria-label="Sudoku board. Arrow keys move between cells, digits enter, Backspace erases."
+        aria-describedby="board-status"
       >
         {/* cell layers */}
         {cells.map((cell, i) => {
@@ -854,6 +881,9 @@ export function Grid() {
           </React.Fragment>
         ))}
       </svg>
+      <div id="board-status" className="sr-only" aria-live="polite" aria-atomic="true">
+        {announced}
+      </div>
       {paused && !won && (
         <div className="pause-card">
           <h3>Paused</h3>

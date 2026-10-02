@@ -80,8 +80,23 @@ Separate store so settings changes never touch game history.
 
 **Pools** ([pools.ts](../src/state/pools.ts)). localStorage-backed puzzle
 pools keyed per difficulty and per technique, plus the worker plumbing
-(`requestPuzzle` with progress + cancel). New games and practice sessions
-usually start instantly from a pool; the worker restocks in the background.
+(`requestPuzzle` with progress + cancel, `justifyMove`). New games and
+practice sessions usually start instantly from a pool; the worker restocks
+in the background. A worker that dies settles every request waiting on it
+with null and is replaced on the next request.
+
+**Stats** ([stats.ts](../src/state/stats.ts)). The player's record, on the
+device: unaided and hinted uses per technique (every unaided move credited
+by `src/engine/justify.ts`), the running game's tally, band records and
+the daily days ([technique-stats.md](technique-stats.md)).
+
+**App status** ([appStatus.ts](../src/state/appStatus.ts)). The app's own
+health: a new build waiting (the service worker registers in `prompt` mode
+from `src/main.tsx`, so a deploy never replaces a running tab until the
+player reloads), a lazily loaded file this version can no longer fetch
+(Vite's `vite:preloadError`), offline readiness. The update bar in App
+shows it; the error boundary in `src/ui/ErrorBoundary.tsx` catches a
+render error with a reload and a clear-the-board recovery.
 
 ## UI (`src/ui/`) — React components
 

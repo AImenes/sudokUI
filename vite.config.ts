@@ -51,7 +51,11 @@ export default defineConfig({
     react(),
     staticPagesDev(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // a new build waits until the player accepts it (src/main.tsx): an
+      // open tab keeps the files it started with, so a deploy never breaks
+      // a game in progress
+      registerType: 'prompt',
+      injectRegister: null,
       includeAssets: ['icon.svg'],
       workbox: {
         // The app lives at "/" only (hash routing), so only "/" may fall

@@ -1,7 +1,7 @@
 // Game dialogs: new game, practice (full technique catalogue), import/export,
 // generation progress and victory — plus useNewGame, the hook that ties the
 // puzzle pools, the generation worker and the game store together.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   useGame,
   validatePuzzle,
@@ -55,6 +55,7 @@ export async function warmSeededPools() {
 export function useNewGame() {
   const startGame = useGame((s) => s.startGame);
   const [genState, setGenState] = useState<GenState | null>(null);
+  const cancelled = useRef(false);
 
   const start = async (req: { kind: 'level'; level: Level } | { kind: 'tech'; tech: Tech }) => {
     const key = req.kind === 'level' ? levelKey(req.level) : techKey(req.tech);
@@ -86,10 +87,20 @@ export function useNewGame() {
       topUp(req);
       return true;
     }
+    // nothing found (the attempts ran out, or the worker died): say so,
+    // unless the player cancelled
+    if (!cancelled.current) {
+      useGame.setState({ notice: `No ${label} could be found this time. Please try again` });
+    }
+    cancelled.current = false;
     return false;
   };
 
-  return { start, genState, cancel: () => genState?.handle.cancel() };
+  const cancel = () => {
+    cancelled.current = true;
+    genState?.handle.cancel();
+  };
+  return { start, genState, cancel };
 }
 
 /** what a level asks of you, in plain words, then the techniques behind it */
@@ -795,6 +806,9 @@ export function VictoryDialog({
   );
 }
 
+/** what Tab can land on inside a dialog */
+const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
+
 export function Modal({
   title,
   children,
@@ -827,6 +841,24 @@ export function Modal({
     ref.current?.focus({ preventScroll: true });
     return () => opener?.focus?.({ preventScroll: true });
   }, []);
+  // and Tab stays inside: past the last control it wraps to the first
+  const onTab = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab' || !ref.current) return;
+    const items = [...ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+      (el) => !el.hasAttribute('disabled') && el.offsetParent !== null
+    );
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || active === ref.current)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -838,6 +870,7 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={onTab}
       >
         <div className="modal-head">
           <h3>{title}</h3>

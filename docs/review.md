@@ -146,7 +146,11 @@ confirmed in the code afterwards.
 - The service worker auto-updates and the lazy chunks (locales, seeds,
   practice puzzles, examples) have no failure path, no error boundary
   and no worker error handler: an open tab after a deploy can fail on a
-  chunk that no longer exists.
+  chunk that no longer exists. Fixed: a new build waits for the player
+  (the update bar, checked hourly), a chunk that fails to load offers
+  the same reload, every lazy loader fails soft, a worker that dies
+  settles its requests and is replaced, and a render error shows a
+  recovery panel instead of a blank page (`tests/resilience.test.ts`).
 - The main chunk is 483 KB: 131 KB react-dom, about 135 KB of English
   Learn prose that could load with the Learn tab, and the technique code
   once more in the worker. The precache installs the Norwegian and
@@ -193,9 +197,9 @@ touches the 70 daily players.
    to come: a path, an ordered ladder of milestone techniques with unlock
    criteria, and mastery in the practice picker.
 4. **Robustness** (engineering findings): update prompt, lazy-chunk
-   retry, error boundary, worker errors, focus traps, the accessible
-   board, Learn tab loaded on demand, locales precached on demand, lint
-   and a Playwright smoke test in CI.
+   retry, error boundary, worker errors (built), a Playwright smoke test
+   in CI (built); still to come: focus traps, the accessible board, the
+   Learn tab loaded on demand, locales precached on demand, lint.
 5. **Reach**: import of SudokuPad, f-puzzles and Sudoku Exchange links;
    statistics and streaks on top of step 3; print; a store build through
    Capacitor done for real or the claim removed; keyword-led titles and
