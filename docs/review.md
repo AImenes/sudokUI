@@ -139,7 +139,11 @@ confirmed in the code afterwards.
 **The engineer**
 
 - The SVG board has no role, label, tabindex or live region: a screen
-  reader user cannot reach a cell (measured: 60 Tab presses).
+  reader user cannot reach a cell (measured: 60 Tab presses). Partly
+  fixed: the board takes focus (one Tab from the top bar), names its
+  keys, and a live region reads out the selected cell and its contents;
+  the cells themselves are still not individual grid cells to a screen
+  reader.
 - A push to main deploys even when CI fails, and architecture.md says the
   opposite (verified). The seed-test flake this week went live for two
   minutes for exactly that reason.
@@ -154,9 +158,14 @@ confirmed in the code afterwards.
 - The main chunk is 483 KB: 131 KB react-dom, about 135 KB of English
   Learn prose that could load with the Learn tab, and the technique code
   once more in the worker. The precache installs the Norwegian and
-  Spanish bundles for every visitor (verified in dist/sw.js).
+  Spanish bundles for every visitor (verified in dist/sw.js). Partly
+  fixed: the guide is its own 111 KB chunk, fetched when it first opens
+  (the main chunk is 417 KB); the locales and the worker's copy of the
+  engine remain.
 - Dialogs do not trap focus; 80 nested-interactive axe violations in the
-  Learn guide; no lint, no UI test, no bundle budget.
+  Learn guide; no lint, no UI test, no bundle budget. Fixed: dialogs trap
+  Tab; a Playwright smoke suite (12 tests) runs in CI. Open: the axe
+  findings in the guide, lint, a bundle budget.
 - The README claims a Capacitor wrap that does not exist in the repo.
 
 **The market**
@@ -199,9 +208,10 @@ touches the 70 daily players.
    uses, the next one a click from its practice; with the band records and
    the daily streak. Still to come: mastery in the practice picker.
 4. **Robustness** (engineering findings): update prompt, lazy-chunk
-   retry, error boundary, worker errors (built), a Playwright smoke test
-   in CI (built); still to come: focus traps, the accessible board, the
-   Learn tab loaded on demand, locales precached on demand, lint.
+   retry, error boundary, worker errors, focus traps, a focusable board
+   that reads out its selection, the guide loaded on demand, a Playwright
+   smoke test in CI (all built); still to come: the board as a real grid
+   for screen readers, locales precached on demand, lint.
 5. **Reach**: import of SudokuPad, f-puzzles and Sudoku Exchange links;
    statistics and streaks on top of step 3; print; a store build through
    Capacitor done for real or the claim removed; keyword-led titles and

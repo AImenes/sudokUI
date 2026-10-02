@@ -129,6 +129,18 @@ test.describe('reachable by keyboard and screen reader', () => {
   });
 });
 
+test.describe('the guide', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test('loads on demand from a deep link, open at the technique', async ({ page }) => {
+    await open(page, '#learn=X_WING');
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await expect(dialog.locator('#learn-X_WING')).toBeVisible();
+    await expect(dialog.locator('#learn-X_WING')).toHaveAttribute('open', '');
+  });
+});
+
 test.describe('your path', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 

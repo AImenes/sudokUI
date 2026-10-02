@@ -4,7 +4,8 @@ import React from 'react';
 import { useSettings, MarkLayer, Font } from '../state/settings';
 import { LANGS, useT } from '../content/i18n';
 import { Modal } from './Dialogs';
-import { BandTable, LearnTarget } from './Learn';
+import type { LearnTarget } from './Learn';
+import { BandTable } from './BandTable';
 import { RATING_SUMMARY } from '../content/rating';
 
 function Toggle({

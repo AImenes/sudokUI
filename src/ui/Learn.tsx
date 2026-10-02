@@ -5,6 +5,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { describe } from '../engine/hintFrames';
 import { Modal } from './Dialogs';
+import { BandTable } from './BandTable';
 import { TECHS, ALL_TECHS, SOLVE_ORDER, LEVELS, LEVEL_MAX_SCORE, Tech } from '../engine/ratings';
 import { techStatus, techniquesByFamily } from '../content/categories';
 import { KIN } from '../content/kin';
@@ -131,29 +132,6 @@ export function glossaryId(term: string | undefined): string | undefined {
 }
 
 /** the eight difficulty bands with their score ceilings */
-export function BandTable() {
-  const lt = useLearnText();
-  return (
-    <table className="shortcut-table band-table">
-      <tbody>
-        {LEVELS.map((level, i) => (
-          <tr key={level}>
-            <td>
-              <span className={`level-badge level-${level.toLowerCase()}`}>{lt.level(level)}</span>
-            </td>
-            <td>
-              {i === LEVELS.length - 1
-                ? lt.s('above {n}', { n: LEVEL_MAX_SCORE[LEVELS[i - 1]] })
-                : lt.s('up to {n}', { n: LEVEL_MAX_SCORE[level] })}
-              : {lt.loc.bandNotes[level]}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
 export function RatingExplainer() {
   const lt = useLearnText();
   const { rating } = lt.loc;
@@ -168,7 +146,12 @@ export function RatingExplainer() {
           </React.Fragment>
         ))}
       </dl>
-      <BandTable />
+      <BandTable
+        level={lt.level}
+        note={(l) => lt.loc.bandNotes[l]}
+        upTo={(n) => lt.s('up to {n}', { n })}
+        above={(n) => lt.s('above {n}', { n })}
+      />
       <section className="learn-group">
         <h4>{lt.s('How fast is fast?')}</h4>
         <p className="learn-prose">{rating.solveTimeNote}</p>

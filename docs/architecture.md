@@ -101,7 +101,13 @@ render error with a reload and a clear-the-board recovery.
 ## UI (`src/ui/`) — React components
 
 - [App.tsx](../src/ui/App.tsx): layout shell, global keyboard handling,
-  dialog routing, toast display, first-visit bootstrap.
+  dialog routing, toast display, first-visit bootstrap. The Learn dialog
+  is loaded on demand (`React.lazy`), so the guide's prose and diagrams
+  are their own chunk, precached for offline but never parsed to start a
+  game.
+- [Progress.tsx](../src/ui/Progress.tsx): the path and the record
+  ([technique-stats.md](technique-stats.md)).
+- [ErrorBoundary.tsx](../src/ui/ErrorBoundary.tsx): the recovery panel.
 - [Grid.tsx](../src/ui/Grid.tsx): the SVG board. Layered per cell:
   background → user colours → peer/same-digit tints → hint tint → selection →
   error tint, then content (value, corner marks at digit-bound 3×3 positions,

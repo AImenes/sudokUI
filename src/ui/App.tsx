@@ -1,7 +1,7 @@
 // App shell: top bar (brand, difficulty/score, timer, quick toggles), the
 // board + side panel layout, global keyboard handling, dialog routing,
 // toast display and the first-visit bootstrap game.
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useGame, rateImport, Proof } from '../state/gameStore';
 import { cellName, PEERS } from '../engine/board';
 import { dailyPuzzle } from '../engine/daily';
@@ -28,7 +28,11 @@ import {
 import { SettingsDialog, InfoDialog } from './SettingsInfo';
 import { ProgressDialog } from './Progress';
 import { Modal } from './Dialogs';
-import { LearnDialog, LearnTarget } from './Learn';
+import type { LearnTarget } from './Learn';
+
+// the guide is a third of the app's code and prose: fetched the first time
+// it opens (and precached for offline), never as part of loading the game
+const LearnDialog = React.lazy(() => import('./Learn').then((m) => ({ default: m.LearnDialog })));
 import { TECHS, PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { RATING_URL } from '../content/staticRoutes';
@@ -701,32 +705,34 @@ export default function App() {
         />
       )}
       {dialog === 'learn' && (
-        <LearnDialog
-          target={learnTarget}
-          onClose={() => setDialog('none')}
-          onPractice={(tech) => {
-            setDialog('none');
-            start({ kind: 'tech', tech });
-          }}
-          onScan={
-            info && !custom
-              ? (tech) => {
-                  setScanFor(tech);
-                  setDialog('scan');
-                }
-              : undefined
-          }
-          onExample={async (tech) => {
-            // the example's own puzzle, started as practice of its technique:
-            // with "Jump to the technique" on, that is the pictured position
-            const EXAMPLES = await import('../content/examples').then((m) => m.EXAMPLES).catch(() => null);
-            const example = EXAMPLES?.[tech];
-            const rating = example && rateImport(example.puzzle);
-            if (!example || !rating) return;
-            setDialog('none');
-            useGame.getState().startGame(example.puzzle, rating.score, rating.level, tech);
-          }}
-        />
+        <Suspense fallback={null}>
+          <LearnDialog
+            target={learnTarget}
+            onClose={() => setDialog('none')}
+            onPractice={(tech) => {
+              setDialog('none');
+              start({ kind: 'tech', tech });
+            }}
+            onScan={
+              info && !custom
+                ? (tech) => {
+                    setScanFor(tech);
+                    setDialog('scan');
+                  }
+                : undefined
+            }
+            onExample={async (tech) => {
+              // the example's own puzzle, started as practice of its technique:
+              // with "Jump to the technique" on, that is the pictured position
+              const EXAMPLES = await import('../content/examples').then((m) => m.EXAMPLES).catch(() => null);
+              const example = EXAMPLES?.[tech];
+              const rating = example && rateImport(example.puzzle);
+              if (!example || !rating) return;
+              setDialog('none');
+              useGame.getState().startGame(example.puzzle, rating.score, rating.level, tech);
+            }}
+          />
+        </Suspense>
       )}
       {dialog === 'io' && <ImportDialog onClose={() => setDialog('none')} />}
       {dialog === 'share' && <ShareDialog onClose={() => setDialog('none')} />}
