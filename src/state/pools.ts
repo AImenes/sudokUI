@@ -81,14 +81,42 @@ export function poolSize(key: string): number {
 const workers: { urgent?: Worker; background?: Worker } = {};
 let nextId = 1;
 
+/** what to tell each request still waiting on a worker when that worker dies */
+const failers = new Map<Worker, Set<() => void>>();
+
 function getWorker(urgent: boolean): Worker {
   const slot = urgent ? 'urgent' : 'background';
   if (!workers[slot]) {
-    workers[slot] = new Worker(new URL('../engine/worker.ts', import.meta.url), {
+    const w = new Worker(new URL('../engine/worker.ts', import.meta.url), {
       type: 'module'
     });
+    failers.set(w, new Set());
+    // a worker that dies (its script gone after a deploy, an exception
+    // inside it) settles every request waiting on it and is replaced by a
+    // fresh one on the next request, so nothing waits forever
+    const died = () => {
+      if (workers[slot] !== w) return;
+      delete workers[slot];
+      const waiting = failers.get(w) ?? new Set();
+      failers.delete(w);
+      try {
+        w.terminate();
+      } catch {
+        /* already gone */
+      }
+      for (const fail of waiting) fail();
+    };
+    w.addEventListener('error', died);
+    w.addEventListener('messageerror', died);
+    workers[slot] = w;
   }
   return workers[slot]!;
+}
+
+/** register what to do if the worker dies while this request waits */
+function onDeath(w: Worker, fail: () => void): () => void {
+  failers.get(w)?.add(fail);
+  return () => failers.get(w)?.delete(fail);
 }
 
 export interface GenerationHandle {
@@ -118,6 +146,13 @@ export function requestPuzzle(
   let settled = false;
   let cancelFn: () => void = () => {};
   const promise = new Promise<PoolEntry | null>((resolve) => {
+    let forget = () => {};
+    const settle = (entry: PoolEntry | null) => {
+      settled = true;
+      w.removeEventListener('message', listener);
+      forget();
+      resolve(entry);
+    };
     const listener = (e: MessageEvent<WorkerResponse>) => {
       const msg = e.data;
       if (msg.id !== id) return;
@@ -126,23 +161,22 @@ export function requestPuzzle(
       } else if (msg.type === 'progress') {
         onProgress?.(msg.attempts);
       } else if (msg.type === 'done') {
-        settled = true;
-        w.removeEventListener('message', listener);
-        resolve(msg.entry);
+        settle(msg.entry);
       } else if (msg.type === 'failed') {
-        settled = true;
-        w.removeEventListener('message', listener);
-        resolve(null);
+        settle(null);
       }
     };
     w.addEventListener('message', listener);
+    forget = onDeath(w, () => settle(null));
     w.postMessage({ id, urgent: !!opts.urgent, ...req } satisfies WorkerRequest);
     cancelFn = () => {
       if (settled) return;
-      settled = true;
-      w.postMessage({ id, kind: 'cancel' } satisfies WorkerRequest);
-      w.removeEventListener('message', listener);
-      resolve(null);
+      try {
+        w.postMessage({ id, kind: 'cancel' } satisfies WorkerRequest);
+      } catch {
+        /* the worker is gone; nothing to cancel */
+      }
+      settle(null);
     };
   });
   return { promise, handle: { cancel: () => cancelFn() } };
@@ -174,13 +208,19 @@ export function justifyMove(
     cands.push(g.values[i] ? 0 : g.cands[i]);
   }
   return new Promise((resolve) => {
+    let forget = () => {};
     const listener = (e: MessageEvent<WorkerResponse>) => {
       const msg = e.data;
       if (msg.id !== id || msg.type !== 'justified') return;
       w.removeEventListener('message', listener);
+      forget();
       resolve({ tech: msg.tech, direct: msg.direct, steps: msg.steps });
     };
     w.addEventListener('message', listener);
+    forget = onDeath(w, () => {
+      w.removeEventListener('message', listener);
+      resolve(null);
+    });
     w.postMessage({ id, kind: 'justify', values, cands, move, budget } satisfies WorkerRequest);
   });
 }

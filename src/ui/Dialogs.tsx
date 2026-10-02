@@ -1,7 +1,7 @@
 // Game dialogs: new game, practice (full technique catalogue), import/export,
 // generation progress and victory — plus useNewGame, the hook that ties the
 // puzzle pools, the generation worker and the game store together.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   useGame,
   validatePuzzle,
@@ -55,6 +55,7 @@ export async function warmSeededPools() {
 export function useNewGame() {
   const startGame = useGame((s) => s.startGame);
   const [genState, setGenState] = useState<GenState | null>(null);
+  const cancelled = useRef(false);
 
   const start = async (req: { kind: 'level'; level: Level } | { kind: 'tech'; tech: Tech }) => {
     const key = req.kind === 'level' ? levelKey(req.level) : techKey(req.tech);
@@ -86,10 +87,20 @@ export function useNewGame() {
       topUp(req);
       return true;
     }
+    // nothing found (the attempts ran out, or the worker died): say so,
+    // unless the player cancelled
+    if (!cancelled.current) {
+      useGame.setState({ notice: `No ${label} could be found this time. Please try again` });
+    }
+    cancelled.current = false;
     return false;
   };
 
-  return { start, genState, cancel: () => genState?.handle.cancel() };
+  const cancel = () => {
+    cancelled.current = true;
+    genState?.handle.cancel();
+  };
+  return { start, genState, cancel };
 }
 
 /** what a level asks of you, in plain words, then the techniques behind it */

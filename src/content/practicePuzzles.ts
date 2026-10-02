@@ -13,7 +13,12 @@ export type StoredPractice = Partial<Record<Tech, PoolEntry[]>>;
 
 /** the technique's saved puzzles in random order, or none when none is saved */
 export async function practiceSeeds(tech: Tech): Promise<string[]> {
-  const stored = (await import('./practicePuzzles.json')).default as StoredPractice;
+  let stored: StoredPractice = {};
+  try {
+    stored = (await import('./practicePuzzles.json')).default as StoredPractice;
+  } catch {
+    // no stored puzzles to serve: the generator searches instead
+  }
   const puzzles = (stored[tech] ?? []).map((e) => e.puzzle);
   for (let i = puzzles.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

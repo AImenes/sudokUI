@@ -2499,3 +2499,75 @@ html:not([lang='en']) .zone-note {
   font-size: 12px;
   color: var(--accent-text);
 }
+
+/* a new version waiting, or a crash: never a blank page */
+.update-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(26px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid rgba(128, 128, 160, 0.3);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  z-index: 61;
+  max-width: min(92vw, 560px);
+}
+
+.update-bar span {
+  flex: 1;
+}
+
+.update-bar button {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.update-bar button.ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid rgba(128, 128, 160, 0.3);
+}
+
+.crash {
+  max-width: 560px;
+  margin: 72px auto;
+  padding: 0 20px;
+  color: var(--text, #e8eaf2);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.crash h1 {
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+
+.crash-detail {
+  color: var(--muted, #9aa0b4);
+  font-size: 13px;
+  word-break: break-word;
+}
+
+@media (max-width: 480px) {
+  .update-bar {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .update-bar span {
+    flex: 1 0 100%;
+  }
+}

@@ -19,7 +19,13 @@ export const SEEDED_LEVELS: Level[] = ['Unfair', 'Extreme', 'Nightmare'];
 export const SEEDS_PER_LEVEL = 48;
 
 export async function loadSeeds(): Promise<StoredSeeds> {
-  return (await import('./seeds.json')).default as StoredSeeds;
+  // a file that cannot be fetched (a deploy moved on, a flaky network)
+  // means no seeds: the generator takes longer, the game still starts
+  try {
+    return (await import('./seeds.json')).default as StoredSeeds;
+  } catch {
+    return {};
+  }
 }
 
 /** the band's seed puzzles in random order, or none for an unseeded band */

@@ -17,10 +17,13 @@ export function useLearnText(): LearnText {
   useEffect(() => {
     if (lang === 'en' || loaded[lang]) return;
     let live = true;
-    loaders[lang]().then((m) => {
-      loaded[lang] = m.default;
-      if (live) setLoads((n) => n + 1);
-    });
+    loaders[lang]()
+      .then((m) => {
+        loaded[lang] = m.default;
+        if (live) setLoads((n) => n + 1);
+      })
+      // a translation that cannot be fetched leaves the page in English
+      .catch(() => {});
     return () => {
       live = false;
     };

@@ -290,10 +290,13 @@ function TechniqueList({
   useEffect(() => {
     if (loadedExamples) return;
     let live = true;
-    import('../content/examples').then((m) => {
-      loadedExamples = m.EXAMPLES;
-      if (live) setExamples(m.EXAMPLES);
-    });
+    import('../content/examples')
+      .then((m) => {
+        loadedExamples = m.EXAMPLES;
+        if (live) setExamples(m.EXAMPLES);
+      })
+      // without the file the guide reads without its worked examples
+      .catch(() => {});
     return () => {
       live = false;
     };
