@@ -26,6 +26,7 @@ import {
   ContractDialog
 } from './Dialogs';
 import { SettingsDialog, InfoDialog } from './SettingsInfo';
+import { ProgressDialog } from './Progress';
 import { Modal } from './Dialogs';
 import { LearnDialog, LearnTarget } from './Learn';
 import { TECHS, PRACTICE_TECHS, Tech } from '../engine/ratings';
@@ -68,6 +69,12 @@ function UpdateBar() {
   const offlineReady = useAppStatus((s) => s.offlineReady);
   const reload = useAppStatus((s) => s.reload);
   const dismiss = useAppStatus((s) => s.dismiss);
+  // the offline note is good news, not a decision: it goes by itself
+  useEffect(() => {
+    if (!offlineReady || updateReady) return;
+    const id = setTimeout(dismiss, 6000);
+    return () => clearTimeout(id);
+  }, [offlineReady, updateReady, dismiss]);
   if (updateReady) {
     return (
       <div className="update-bar" role="status">
@@ -165,7 +172,7 @@ export default function App() {
   }, []);
 
   const [dialog, setDialog] = useState<
-    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart' | 'steps' | 'scan' | 'learn'
+    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart' | 'steps' | 'scan' | 'learn' | 'progress'
   >('none');
   const [learnTarget, setLearnTarget] = useState<LearnTarget>({ tab: 'techniques' });
   // a technique the guide asked Scan to look for on the board
@@ -493,6 +500,14 @@ export default function App() {
           </button>
           <button
             className="icon-btn"
+            onClick={() => setDialog('progress')}
+            title="Your path: the techniques to learn next, and your record"
+            aria-label="Your path and your record"
+          >
+            📈
+          </button>
+          <button
+            className="icon-btn"
             onClick={() => setDialog('info')}
             title="How to play, modes & shortcuts"
             aria-label="How to play, modes and shortcuts"
@@ -769,6 +784,16 @@ export default function App() {
       )}
       {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
       {dialog === 'info' && <InfoDialog onClose={() => setDialog('none')} onLearn={openLearn} />}
+      {dialog === 'progress' && (
+        <ProgressDialog
+          onClose={() => setDialog('none')}
+          onLearn={openLearn}
+          onPractice={(tech) => {
+            setDialog('none');
+            start({ kind: 'tech', tech });
+          }}
+        />
+      )}
       {dialog === 'restart' && (
         <Modal title="Restart puzzle?" onClose={() => setDialog('none')}>
           <p className="dialog-note">
@@ -809,6 +834,10 @@ export default function App() {
               : undefined
           }
           onClose={() => setVictoryDismissed(true)}
+          onProgress={() => {
+            setVictoryDismissed(true);
+            setDialog('progress');
+          }}
         />
       )}
       <UpdateBar />

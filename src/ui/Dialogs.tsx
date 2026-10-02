@@ -710,12 +710,15 @@ const clock = (ms: number) => {
 export function VictoryDialog({
   onNewGame,
   onClose,
-  onAnother
+  onAnother,
+  onProgress
 }: {
   onNewGame: () => void;
   onClose: () => void;
   /** start a fresh practice puzzle for the same technique */
   onAnother?: () => void;
+  /** open the path and the record */
+  onProgress?: () => void;
 }) {
   const info = useGame((s) => s.info);
   const assisted = useGame((s) => s.assisted);
@@ -799,6 +802,11 @@ export function VictoryDialog({
           )}
           <button onClick={onNewGame}>{t('New game')}</button>
           <button onClick={shareResult}>{copied ? `✓ ${t('Copied')}` : `🔗 ${t('Challenge a friend')}`}</button>
+          {onProgress && (
+            <button className="ghost" onClick={onProgress}>
+              📈 {t('Your path')}
+            </button>
+          )}
           <button className="ghost" onClick={onClose}>{t('Admire the grid')}</button>
         </div>
       </div>

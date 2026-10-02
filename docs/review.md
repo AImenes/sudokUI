@@ -193,9 +193,11 @@ touches the 70 daily players.
 3. **The learner's loop** (road items 1 and 3, technique-stats.md), built:
    every unaided move justified, "you found it" in practice, why-not on
    every mistake, the post-game summary, mastery in the guide, "learn
-   next", and practice puzzles within one band of their technique. Still
-   to come: a path, an ordered ladder of milestone techniques with unlock
-   criteria, and mastery in the practice picker.
+   next", and practice puzzles within one band of their technique. The
+   path (📈 in the top bar): the practisable techniques needed in at least
+   one puzzle in a hundred, in solver order, learned after three unaided
+   uses, the next one a click from its practice; with the band records and
+   the daily streak. Still to come: mastery in the practice picker.
 4. **Robustness** (engineering findings): update prompt, lazy-chunk
    retry, error boundary, worker errors (built), a Playwright smoke test
    in CI (built); still to come: focus traps, the accessible board, the

@@ -129,6 +129,21 @@ test.describe('reachable by keyboard and screen reader', () => {
   });
 });
 
+test.describe('your path', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test('opens from the top bar, names the next technique, and starts its practice', async ({ page }) => {
+    await open(page);
+    await page.getByRole('button', { name: 'Your path and your record' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Your path' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('.path-summary')).toContainText(/0 of \d+ learned · next: Naked Single/);
+    await expect(dialog.locator('.path-row.path-next')).toContainText('Naked Single');
+    await dialog.locator('.path-summary .path-go').click();
+    await expect(page.locator('.practice-bar')).toContainText('Naked Single', { timeout: 15_000 });
+  });
+});
+
 test.describe('the walk', () => {
   test.use({ viewport: { width: 1280, height: 1000 } });
 
