@@ -180,9 +180,22 @@ export const SOLVE_ORDER: Tech[] = (Object.keys(TECHS) as Tech[])
   .filter((k) => TECHS[k].implemented && TECHS[k].enabled)
   .sort((a, b) => TECHS[a].index - TECHS[b].index);
 
+/**
+ * Implemented, enabled techniques that practice cannot serve, with the
+ * reason the practice picker shows: in 5.5 million generated puzzles none
+ * of them was ever the step the solver took (docs/generator.md), so no
+ * puzzle could be generated or stored for them.
+ */
+export const NOT_PRACTISABLE: Partial<Record<Tech, string>> = {
+  X_CYCLES: 'never needed in practice: X-Chains, which run first, find the same loops',
+  FRANKEN_X_WING: 'never needed in practice: basic and finned fish, which run first, find what it finds',
+  FRANKEN_SWORDFISH: 'never needed in practice: basic and finned fish, which run first, find what it finds',
+  TRIDAGON: 'only ever needed in specially constructed puzzles; none can be generated'
+};
+
 /** Techniques offered in practice mode (implemented, excluding last resorts). */
 export const PRACTICE_TECHS: Tech[] = SOLVE_ORDER.filter(
-  (k) => TECHS[k].category !== 'Last Resort'
+  (k) => TECHS[k].category !== 'Last Resort' && !NOT_PRACTISABLE[k]
 );
 
 /** Full catalogue in solver order, for the technique overview UI. */

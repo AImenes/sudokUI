@@ -34,7 +34,7 @@ natively for iOS and Android via Capacitor.
   the pattern highlighted on the board, then one click to apply it. Chains
   draw as candidate-anchored arrows — solid for strong links, dashed for
   weak, HoDoKu-style
-- **Practice mode** for 65 named techniques: pick one and get a generated
+- **Practice mode** for 61 named techniques: pick one and get a generated
   puzzle that genuinely requires it — with nothing harder needed before it.
   The game fast-forwards through the routine steps so the chosen pattern is
   the very next move. The rarest techniques come from puzzles found in

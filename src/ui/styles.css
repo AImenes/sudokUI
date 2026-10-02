@@ -717,6 +717,19 @@ button {
   border-color: var(--accent);
 }
 
+/* number-first: the armed digit reads like an active mode button */
+.num-btn.armed {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  border-color: var(--accent-fill);
+}
+
+/* while the board is hidden behind the pause card, the controls rest too */
+.side.paused > *:not(.menu-row) {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
 /* ---------- hint panel ---------- */
 .hint-panel {
   background: var(--panel);
@@ -1986,6 +1999,19 @@ kbd {
   }
 }
 
+/* a short desktop window (a laptop at 1280 x 800): the control column is
+   taller than the viewport, so a hint opened at its foot would be out of
+   sight; the panel leads the column instead, next to the board it draws on */
+@media (min-width: 861px) and (max-height: 900px) {
+  .side > .hint-panel {
+    order: -1;
+  }
+
+  .layout {
+    overflow-anchor: none;
+  }
+}
+
 @media (max-width: 860px) {
   .layout {
     flex-direction: column;
@@ -2039,11 +2065,17 @@ kbd {
 
   .numpad {
     grid-template-columns: repeat(9, 1fr);
+    gap: 3px;
   }
 
   .num-btn {
     aspect-ratio: 0.9;
+    min-height: 44px;
     font-size: 20px;
+  }
+
+  .mode-btn {
+    min-height: 40px;
   }
 }
 
@@ -2348,5 +2380,50 @@ html:not([lang='en']) .zone-note {
 @media (max-width: 520px) {
   .intuition-timeline > div {
     grid-template-columns: 1fr;
+  }
+}
+
+/* a phone on its side: the board takes the height, the controls sit
+   beside it in a scrolling column, so the keypad is never off screen */
+@media (max-width: 1000px) and (max-height: 520px) and (orientation: landscape) {
+  .layout {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 10px;
+  }
+
+  .board-col {
+    flex: none;
+    width: calc(100vh - 72px);
+    max-width: calc(100vh - 72px);
+  }
+
+  .side {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    max-width: 440px;
+    gap: 8px;
+  }
+
+  .side > .hint-panel {
+    order: 0;
+  }
+
+  .numpad {
+    grid-template-columns: repeat(9, 1fr);
+    gap: 3px;
+  }
+
+  .num-btn {
+    aspect-ratio: auto;
+    min-height: 40px;
+    font-size: 18px;
+  }
+
+  .poodle-wrap {
+    display: none;
   }
 }

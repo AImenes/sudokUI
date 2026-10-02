@@ -11,3 +11,5 @@ dist-ssr/
 
 # rendered marketing screenshots
 promo/
+test-results/
+playwright-report/

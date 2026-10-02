@@ -14,7 +14,7 @@ import {
 } from '../state/gameStore';
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
-import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER } from '../engine/ratings';
+import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER, NOT_PRACTISABLE } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntries, GenerationHandle } from '../state/pools';
 import { practiceSeeds } from '../content/practicePuzzles';
 import { seedPuzzles, SEEDED_LEVELS } from '../content/seeds';
@@ -225,7 +225,9 @@ export function PracticeDialog({
                         : lastResort
                           ? `${info.name} is implemented and the solver uses it on the hardest puzzles. But there is nothing to spot: it assumes candidates and propagates, so practising it would just be trial and error`
                           : redundant
-                            ? `${info.name} is implemented, but provably redundant: its conclusions are always found by earlier techniques, so it never appears in a solve path`
+                            ? NOT_PRACTISABLE[tech]
+                              ? `${info.name} is implemented and the solver uses it, but it cannot be practised: ${NOT_PRACTISABLE[tech]}`
+                              : `${info.name} is implemented, but provably redundant: its conclusions are always found by earlier techniques, so it never appears in a solve path`
                             : `${info.name} is deliberately not implemented. Everything it can find, the AIC/ALS chain engines already find. It stays in the catalogue (score ${info.score}, ${info.level}) so the map of sudoku techniques is complete.`
                     }
                   >
@@ -309,7 +311,9 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
       }
     }
   }
-  const crux = steps ? cruxIndex(steps) : -1;
+  // the crux badge means something only when the path needed more than singles
+  const cruxAt = steps ? cruxIndex(steps) : -1;
+  const crux = cruxAt >= 0 && TECHS[steps![cruxAt].tech].category !== 'Singles' ? cruxAt : -1;
 
   const jump = (k: number) => {
     jumpToStep(k);

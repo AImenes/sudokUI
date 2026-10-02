@@ -528,6 +528,540 @@
    ]
   }
  ],
+ "BUG_PLUS_1": [
+  {
+   "puzzle": "3..8.....7...5.92..4..2..135....3.8.18.....39.7.2....641..3..7..57.8...1.....7..2",
+   "score": 440,
+   "level": "Tricky",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  },
+  {
+   "puzzle": "..32.....58..6..29..9..........4..832....9..7..5......4..........7..45...6..27..8",
+   "score": 508,
+   "level": "Tricky",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  },
+  {
+   "puzzle": ".......9.....15.2315..2...45.....1.9..2.4.6..8.7.....56...3..1778.29.....3.......",
+   "score": 562,
+   "level": "Tricky",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "NAKED_PAIR",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  },
+  {
+   "puzzle": "3.9.5.....26..9......4.7..3.1...3..968.....759..6...8.4..9.1......7..46.....4.2.1",
+   "score": 568,
+   "level": "Hard",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "X_WING",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  },
+  {
+   "puzzle": "..1.4.....84..7...3.......5........1.36....58..5.....6.1.5..6.2.9.2...3..4..6..9.",
+   "score": 594,
+   "level": "Tricky",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_TRIPLE",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  },
+  {
+   "puzzle": "6.85..31.....37....3....6..2...51.4...........4.72...8..5....2....37.....26..59.3",
+   "score": 606,
+   "level": "Tricky",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "NAKED_TRIPLE",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  },
+  {
+   "puzzle": "....94..2...85..........64572....98....2.1....16....23285..........87...9..53....",
+   "score": 656,
+   "level": "Tricky",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_PAIR",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  },
+  {
+   "puzzle": "6....1.24...6..9....79....52.......6.8.2.3.....9...5...6.89..71...5...4..7.1.....",
+   "score": 710,
+   "level": "Tricky",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  },
+  {
+   "puzzle": "..64...2..3.............8.54.9..2.6....53....52...9.7.16.....54....1.9....2.5...6",
+   "score": 730,
+   "level": "Hard",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "X_WING",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  },
+  {
+   "puzzle": ".....24.18..5.4..3....7.9.8.1......9.6.4.3.1.2......4.7.6.8....5..1.7..41.83.....",
+   "score": 748,
+   "level": "Hard",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_PAIR",
+    "CHUTE_REMOTE_PAIR",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  },
+  {
+   "puzzle": ".3...2......8.75..8.29..4...8.3...6.57.....43.1...4.8...5..87.1..15.3......2...5.",
+   "score": 778,
+   "level": "Hard",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "SWORDFISH",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  },
+  {
+   "puzzle": "......3..83....5.24..39.6.....26......51.9.........4....4.8...7.28.36...3...1...5",
+   "score": 800,
+   "level": "Hard",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "SWORDFISH",
+    "CHUTE_REMOTE_PAIR",
+    "BUG_PLUS_1"
+   ],
+   "fit": false
+  }
+ ],
+ "UNIQUENESS_2": [
+  {
+   "puzzle": ".6.........3.627....2..7..11...5...7.7...362...8...3....9..5...351.8......64.....",
+   "score": 774,
+   "level": "Hard",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "CHUTE_REMOTE_PAIR",
+    "XY_WING",
+    "UNIQUENESS_2"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "6.5....3.49.........3...5.1...39..2...27....5.8..51.6...1....8..5.6..2...64.2....",
+   "score": 930,
+   "level": "Hard",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "TWO_STRING_KITE",
+    "XY_WING",
+    "UNIQUENESS_2"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..691.8.3......65.2...3......2...37...78....5...12..8.74..9..6..........6.175.9..",
+   "score": 1046,
+   "level": "Hard",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "TWO_STRING_KITE",
+    "XY_WING",
+    "UNIQUENESS_2"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".....931......2..5.8...3.921.4...9...3..1..2...7...4.162.3...4.3..8......952.....",
+   "score": 1156,
+   "level": "Hard",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_PAIR",
+    "NAKED_TRIPLE",
+    "CHUTE_REMOTE_PAIR",
+    "UNIQUENESS_2"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "......26..8.......96....1.4...24..97.1.6.....5.4..9.1..2.1..97.......3....1.78...",
+   "score": 1424,
+   "level": "Hard",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "CHUTE_REMOTE_PAIR",
+    "TWO_STRING_KITE",
+    "WXYZ_WING",
+    "UNIQUENESS_2"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "...3.9.6..6..71.3...7.....452....6..9...5...7..4....833.....4...4.78..2..9.6.4...",
+   "score": 1596,
+   "level": "Hard",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_TRIPLE",
+    "CHUTE_REMOTE_PAIR",
+    "UNIQUENESS_2"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".......7.2..7.8....64.5...8..9.75..6.8..4..1.3..61.7..8...3.94....2.4..5.5.......",
+   "score": 1646,
+   "level": "Unfair",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "WXYZ_WING",
+    "UNIQUENESS_2",
+    "MEDUSA_3D",
+    "XY_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "2.17....5...45.....6...9...5.6...2....32.78....9...1.4...9...8.....32...9....57.3",
+   "score": 1830,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_PAIR",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_PAIR",
+    "NAKED_TRIPLE",
+    "NAKED_QUADRUPLE",
+    "TWO_STRING_KITE",
+    "TURBOT_FISH",
+    "EMPTY_RECTANGLE",
+    "UNIQUENESS_2",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "...6..2.7.4....8...1897..3...6....7.1...62....9......4.6.2...8..29.8...18....3...",
+   "score": 1850,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "X_WING",
+    "CHUTE_REMOTE_PAIR",
+    "XYZ_WING",
+    "WXYZ_WING",
+    "UNIQUENESS_2"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..6....7854...7...3......1.....234......4.......9...3.6.1...2.9.8751.3..2.....7..",
+   "score": 1934,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "UNIQUENESS_2",
+    "HIDDEN_RECTANGLE",
+    "EXTENDED_RECTANGLE",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..91.5.6.52......1......7......3...948..2..731...7......4......2......34.3.2.61..",
+   "score": 3444,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_PAIR",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_TRIPLE",
+    "CHUTE_REMOTE_PAIR",
+    "UNIQUENESS_1",
+    "UNIQUENESS_2",
+    "SASHIMI_X_WING",
+    "XY_CHAIN",
+    "ALS_XZ"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".5.....3....6..5.1.1.43.......9.2.7..8.........457.8.........8...21..6.393.......",
+   "score": 3792,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_PAIR",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_PAIR",
+    "X_WING",
+    "UNIQUENESS_2",
+    "XY_CHAIN",
+    "NICE_LOOP",
+    "ALS_XZ"
+   ],
+   "fit": true
+  }
+ ],
+ "UNIQUENESS_3": [
+  {
+   "puzzle": "..3.8..........3.1.....7..9.2.5.3...9.8.6.......7...5....1....6...4...7.71...9..2",
+   "score": 1076,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "WXYZ_WING",
+    "UNIQUENESS_3",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".6.75......1..6.49.7...1..53.....9.7.97...86.8.6.....31..2...7.72.6..3......74.1.",
+   "score": 1084,
+   "level": "Hard",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_PAIR",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "XY_WING",
+    "UNIQUENESS_3"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..8..6..29.4....8.2....9.3.....35.6.5...4...8.4.69.....9.7....6.1....5.97..9..3..",
+   "score": 1176,
+   "level": "Unfair",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "UNIQUENESS_3",
+    "HIDDEN_RECTANGLE",
+    "XY_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "......12........568.1.....4.6.3...1.92.........4...5..3...5.76......6...2..419.3.",
+   "score": 1314,
+   "level": "Hard",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_PAIR",
+    "HIDDEN_PAIR",
+    "WXYZ_WING",
+    "UNIQUENESS_1",
+    "UNIQUENESS_3"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "1...89....42..7.....83..5....392.4.7.7..3..5.4.9.782....1..57.....7..92....26...5",
+   "score": 1506,
+   "level": "Hard",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_PAIR",
+    "W_WING",
+    "XY_WING",
+    "UNIQUENESS_3"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".4.8.57...3......8..7...26........2....197....75..34..98..........5.1.....4..98..",
+   "score": 1528,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "WXYZ_WING",
+    "UNIQUENESS_3",
+    "HIDDEN_RECTANGLE",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".29..5...8.....59.....76.2....84...1..2...7..4...27....9.13.....34.....8...7..36.",
+   "score": 1960,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_TRIPLE",
+    "TWO_STRING_KITE",
+    "UNIQUENESS_3",
+    "FINNED_SWORDFISH",
+    "SUE_DE_COQ",
+    "MEDUSA_3D",
+    "XY_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "2...4.7...7..6..3.......8.9..82...53.........12...56..4.3.......1..9..7...5.3...1",
+   "score": 1994,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_TRIPLE",
+    "LOCKED_CANDIDATES_1",
+    "HIDDEN_PAIR",
+    "SKYSCRAPER",
+    "UNIQUENESS_3",
+    "UNIQUENESS_4",
+    "ALS_XY_WING"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..8..5.6.2.4..7...9...1.....4.7..91.8.......3.73..6.4.....5...1...1..2.9.2.8..7..",
+   "score": 2570,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "HIDDEN_PAIR",
+    "WXYZ_WING",
+    "UNIQUENESS_3",
+    "HIDDEN_RECTANGLE",
+    "SUE_DE_COQ",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "6.........18.4...7..2..139....6..12.2.......8.51..9....371..8..8...3.91.........4",
+   "score": 2596,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "NAKED_PAIR",
+    "NAKED_TRIPLE",
+    "SKYSCRAPER",
+    "TWO_STRING_KITE",
+    "UNIQUENESS_3",
+    "FINNED_X_WING",
+    "MEDUSA_3D",
+    "NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".8.7...4.2.1...........8.31..5..34783.61..........2.......4.9....46......5..3..1.",
+   "score": 2698,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "X_WING",
+    "CHUTE_REMOTE_PAIR",
+    "XY_WING",
+    "WXYZ_WING",
+    "UNIQUENESS_3",
+    "HIDDEN_RECTANGLE",
+    "XY_CHAIN",
+    "NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".....45..7.4.2..8...5..3..75..4.....1.69.87.4.....6..29..6..4...4..8.6.9..72.....",
+   "score": 3078,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_PAIR",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_TRIPLE",
+    "TWO_STRING_KITE",
+    "W_WING",
+    "UNIQUENESS_3",
+    "UNIQUENESS_4",
+    "AIC",
+    "PATTERN_OVERLAY",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
+  }
+ ],
  "UNIQUENESS_5": [
   {
    "puzzle": ".81.67..4.34.1....5..4.8...15....6...9.....2...6....49...8.9..1....5.86.8..13.97.",
@@ -686,6 +1220,193 @@
     "UNIQUENESS_5",
     "FINNED_SWORDFISH"
    ]
+  }
+ ],
+ "UNIQUENESS_6": [
+  {
+   "puzzle": "...4.65377..9..6..........4......1.6.465.238.8.3......4..........9..5..22853.4...",
+   "score": 982,
+   "level": "Hard",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_TRIPLE",
+    "HIDDEN_TRIPLE",
+    "UNIQUENESS_6",
+    "AVOIDABLE_RECTANGLE_1"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "4.6.59...3.9.........7....6.43...8.2...3.....8.....1.47.8.2...3.9..6..4....8..9..",
+   "score": 1184,
+   "level": "Hard",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "UNIQUENESS_2",
+    "UNIQUENESS_6"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "8.57.....7.....6.8.23........7.34..1..9....4.....687...1.6.3...4...1...79......2.",
+   "score": 1214,
+   "level": "Unfair",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "UNIQUENESS_1",
+    "UNIQUENESS_6",
+    "HIDDEN_RECTANGLE",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".8.........4.1.7832...7.....4.5..3....8..71.9.3.29..7.9......64............128...",
+   "score": 1324,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "EMPTY_RECTANGLE",
+    "WXYZ_WING",
+    "UNIQUENESS_6",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "9..71...2.6.....7..7.9..1....85..6....3.9.2....6..84....7..1.6..4.....2.6...87..4",
+   "score": 1686,
+   "level": "Unfair",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "X_WING",
+    "EMPTY_RECTANGLE",
+    "WXYZ_WING",
+    "UNIQUENESS_6"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "....61..7......9...973..48...9.8.....5...7..9....1..6...5...7..6..7...3..8...2...",
+   "score": 1802,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_PAIR",
+    "HIDDEN_PAIR",
+    "X_WING",
+    "W_WING",
+    "WXYZ_WING",
+    "UNIQUENESS_6"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "...81..4..7...69....6..9..8.....2.8..529.........7.15......3..7.4.....9..2.56....",
+   "score": 1868,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_TRIPLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_TRIPLE",
+    "EMPTY_RECTANGLE",
+    "XYZ_WING",
+    "UNIQUENESS_6",
+    "XY_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".79..5.812.1..4....6..7....93..1......7.9.8......5..69....8..3....5..4.839.6..72.",
+   "score": 2158,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_TRIPLE",
+    "TWO_STRING_KITE",
+    "UNIQUENESS_6",
+    "ALS_XZ"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..9..8.3.8.629.4..34.7.......49....7....6....6....29.......1.59..5.371.4.1.5..3..",
+   "score": 2258,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "X_WING",
+    "TWO_STRING_KITE",
+    "W_WING",
+    "UNIQUENESS_6",
+    "HIDDEN_RECTANGLE",
+    "MULTI_COLORS",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "3286..9......8.5.......9..48.4.7.2.............1.5.8.74..2.......6.9......2..1456",
+   "score": 2422,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_PAIR",
+    "TWO_STRING_KITE",
+    "UNIQUENESS_6",
+    "NICE_LOOP",
+    "ALS_XY_WING"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".....3..4..19...3..65.......5............9.7..26...9......8.....1.6...45.4.1.739.",
+   "score": 2522,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "SKYSCRAPER",
+    "W_WING",
+    "WXYZ_WING",
+    "UNIQUENESS_6",
+    "HIDDEN_RECTANGLE"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".4......6..5.9...2.9.1...87...64.7...6.....3...1.35...28...9.5.3...6.1..9......7.",
+   "score": 4766,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "HIDDEN_PAIR",
+    "TWO_STRING_KITE",
+    "UNIQUENESS_6",
+    "XY_CHAIN",
+    "ALS_XZ"
+   ],
+   "fit": true
   }
  ],
  "AVOIDABLE_RECTANGLE_1": [
@@ -1166,6 +1887,191 @@
    ]
   }
  ],
+ "SASHIMI_X_WING": [
+  {
+   "puzzle": "........32....74..94..3...6...7.5....6...3..2....84..5.1.9..........2.8753.......",
+   "score": 1092,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_PAIR",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "TWO_STRING_KITE",
+    "SASHIMI_X_WING",
+    "XY_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".68..........19.24.9...61..8.3.5.....5..3..6.....4.2.5..17...9.97.28..........75.",
+   "score": 1096,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_PAIR",
+    "UNIQUENESS_1",
+    "HIDDEN_RECTANGLE",
+    "SASHIMI_X_WING",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".7.8.9....9.46.5.......2.49.28...1..6.......2..5...69.36.2.......9.75.1....3.4.2.",
+   "score": 1388,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "SASHIMI_X_WING",
+    "NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "...37.5.17.14...6...68...7........133.5...8.681........8...16...6...42.59.2.63...",
+   "score": 1854,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "WXYZ_WING",
+    "SASHIMI_X_WING",
+    "NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..4...1.....9....852.....7...8.4...3..37612..2...3.6...7.....216....4.....1...8..",
+   "score": 1934,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "SASHIMI_X_WING",
+    "ALS_XY_WING"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "...4.......9..2.5.8.23.....5..82.6...7..1......86.75...9..6.8.1...1.....3..5..42.",
+   "score": 2190,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_PAIR",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_PAIR",
+    "NAKED_TRIPLE",
+    "SASHIMI_X_WING",
+    "ALS_XZ"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "12..7....6....3..8..4.1.....51..7.2..7..2..6..3.1..95.....6.2..9..7....6....3..81",
+   "score": 2386,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "TWO_STRING_KITE",
+    "UNIQUENESS_4",
+    "SASHIMI_X_WING",
+    "FINNED_SWORDFISH",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".2....391......4...395........9...82...47.........6.....4..92..8...1..7.3.6.8..1.",
+   "score": 3308,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "HIDDEN_PAIR",
+    "WXYZ_WING",
+    "HIDDEN_RECTANGLE",
+    "FINNED_X_WING",
+    "SASHIMI_X_WING",
+    "GROUPED_NICE_LOOP",
+    "ALS_XZ"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "5.....48....4...3..8..5...2.91.7.2..2...4...1..6.2.87.7...8..9..1...5....28.....7",
+   "score": 4136,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_TRIPLE",
+    "TWO_STRING_KITE",
+    "SASHIMI_X_WING",
+    "FINNED_SWORDFISH",
+    "MEDUSA_3D",
+    "X_CHAIN",
+    "XY_CHAIN",
+    "NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..3...9..54.......7...8..4113..42......8...2....1.7...3...5.4....6..1..3....6875.",
+   "score": 4810,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_PAIR",
+    "LOCKED_CANDIDATES_1",
+    "TWO_STRING_KITE",
+    "SASHIMI_X_WING",
+    "ALS_XZ"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..4.7..9..3........1.8.52.6..1..2..8...6.7...9..5..1..2.51.4.8........1..9..2.5..",
+   "score": 5026,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "SASHIMI_X_WING",
+    "ALS_XY_WING"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "....7.8.22....8......4...36..9....2148..6..7917....6..85...6......7....56.4.2....",
+   "score": 5204,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "SKYSCRAPER",
+    "EMPTY_RECTANGLE",
+    "SASHIMI_X_WING",
+    "ALS_XZ",
+    "PATTERN_OVERLAY",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
+  }
+ ],
  "SASHIMI_SWORDFISH": [
   {
    "puzzle": "5..3........4..6.8.4..8..7.9.1.524.6.........4.283.9.5.1..6..4.7.8..9........3..1",
@@ -1640,6 +2546,189 @@
    ]
   }
  ],
+ "SUE_DE_COQ": [
+  {
+   "puzzle": "6.....8.9..827.6....9....43....57..........1....46..2..6..3...473..41............",
+   "score": 1102,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_PAIR",
+    "SUE_DE_COQ"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".4....52395..286........8...1.57.......8.4.......63.8...7........513..42423....6.",
+   "score": 1132,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "WXYZ_WING",
+    "SUE_DE_COQ",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".123.........4......9...824..8.52.1.......95...7..14.......5.76..5.67....6....2..",
+   "score": 1184,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "XY_WING",
+    "XYZ_WING",
+    "FINNED_X_WING",
+    "SUE_DE_COQ"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "5...8......4...5..9.3..5.76....3...5..2.1.9..8...6....67.1..3.8..5...1......2...7",
+   "score": 1434,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "W_WING",
+    "XYZ_WING",
+    "HIDDEN_RECTANGLE",
+    "SUE_DE_COQ"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "...16......6.9..32..7..3..41.....29.....8.....39.....78..4..5..79..2.3......76...",
+   "score": 1600,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_TRIPLE",
+    "UNIQUENESS_4",
+    "SUE_DE_COQ",
+    "NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "....1.63..5.......2...73....9......8..7.......8..4...7.2..38..554.....9....92.7..",
+   "score": 1888,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "W_WING",
+    "UNIQUENESS_4",
+    "SUE_DE_COQ",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..8.....664....5...2...61...8..93....9.1.2.8....47..5...58...9...4....131.....8..",
+   "score": 1976,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_PAIR",
+    "X_WING",
+    "EMPTY_RECTANGLE",
+    "XYZ_WING",
+    "SUE_DE_COQ",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "85......7....8..12.4........1...5...2.....74.4......38.9.2..1......94.8..243.....",
+   "score": 2098,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "TWO_STRING_KITE",
+    "W_WING",
+    "XY_WING",
+    "UNIQUENESS_1",
+    "SUE_DE_COQ",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..7...2.9...76.....4...31.7.195....3.........3....851.4.12...8.....56...2.5...6..",
+   "score": 2400,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "EMPTY_RECTANGLE",
+    "SUE_DE_COQ",
+    "XY_CHAIN",
+    "ALS_XZ"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..78..4.2...37.........23.67...58....83...15....63...71.42.........93...3.5..19..",
+   "score": 2722,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_PAIR",
+    "REMOTE_PAIR",
+    "EMPTY_RECTANGLE",
+    "SUE_DE_COQ",
+    "MEDUSA_3D"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "...4.......5..7....6892.74...2....371...5...479....1...79.8432....6..4.......3...",
+   "score": 2816,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "SKYSCRAPER",
+    "WXYZ_WING",
+    "SUE_DE_COQ",
+    "MEDUSA_3D",
+    "XY_CHAIN",
+    "NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "3......8..5..2.3.18.....6.5...7......6...3.5..9.6..7.2....39...9..4.6..7..4..1..6",
+   "score": 4916,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "HIDDEN_PAIR",
+    "SUE_DE_COQ",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
+  }
+ ],
  "SIMPLE_COLORS": [
   {
    "puzzle": ".6...3.8..5.....6.8..9..7.5.4..15..7....945....7...84...6...3.1.7.2........6.1...",
@@ -1970,6 +3059,197 @@
    ]
   }
  ],
+ "X_CHAIN": [
+  {
+   "puzzle": ".7...5.9...98.4...1....6...26..3.8..48.....19..1.8..53...1....7...7.81...1.6...3.",
+   "score": 1122,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "X_CHAIN",
+    "XY_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "94....2.......65...36.8..47..41.....2.......6...6..35.8....3...6...47.25.2....7..",
+   "score": 1616,
+   "level": "Unfair",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "HIDDEN_PAIR",
+    "TURBOT_FISH",
+    "FINNED_X_WING",
+    "X_CHAIN",
+    "NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "9...1..3..2.6.8...63..79.81.4...1...2.......3...9...2.19.34..58...8.7.4..8..5...6",
+   "score": 1790,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "REMOTE_PAIR",
+    "WXYZ_WING",
+    "X_CHAIN",
+    "XY_CHAIN",
+    "NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".6..79..8..8........3.8..6.....347.1.1.....3.4.279.....5..2.1........3..2..95..4.",
+   "score": 2292,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "HIDDEN_PAIR",
+    "TWO_STRING_KITE",
+    "X_CHAIN",
+    "XY_CHAIN",
+    "NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "8...2..7...59....4..2..1..9.....631.5...7..4..4....8.............8..39..634....2.",
+   "score": 2304,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_PAIR",
+    "TWO_STRING_KITE",
+    "X_CHAIN",
+    "NICE_LOOP",
+    "ALS_XZ"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..6.......728.3.......42...........195..7.34...3...9..1......7.6.71..8..48.3...5.",
+   "score": 2354,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "NAKED_PAIR",
+    "NAKED_TRIPLE",
+    "REMOTE_PAIR",
+    "W_WING",
+    "XY_WING",
+    "XYZ_WING",
+    "X_CHAIN",
+    "NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".5...612...9.....6....95...84..5...1..7...8..3...7..64...78....1.....9...359...8.",
+   "score": 2480,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "TURBOT_FISH",
+    "HIDDEN_RECTANGLE",
+    "X_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "2...7........5.84...13...96....176.3.6.....1.1.356....34...29...26.3........9...4",
+   "score": 2692,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_TRIPLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "HIDDEN_PAIR",
+    "TWO_STRING_KITE",
+    "TURBOT_FISH",
+    "WXYZ_WING",
+    "X_CHAIN",
+    "ALS_XZ"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".........95...2......7...8.......3....7.1...92..956.1.....4.7....4..38..7.61.5...",
+   "score": 2692,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "HIDDEN_PAIR",
+    "WXYZ_WING",
+    "FINNED_X_WING",
+    "X_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".834.7.9........5...19.5..3..9..3..4.6.5.2.1.3..7..5..8..1.46...3........2.3.697.",
+   "score": 2814,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "TWO_STRING_KITE",
+    "TURBOT_FISH",
+    "FINNED_SWORDFISH",
+    "MEDUSA_3D",
+    "X_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".84..2....1...7..87...4..6.....5.4..9..6.1..5..8.7.....9..2...11..7...5....3..87.",
+   "score": 3060,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "EMPTY_RECTANGLE",
+    "XYZ_WING",
+    "FINNED_SWORDFISH",
+    "X_CHAIN",
+    "XY_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "...8.5.3.....69....98..4.....3....5.4...3.6...7.9..2...4....71...92..58.........9",
+   "score": 5128,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_TRIPLE",
+    "SKYSCRAPER",
+    "FINNED_SWORDFISH",
+    "X_CHAIN",
+    "XY_CHAIN",
+    "ALS_XZ"
+   ],
+   "fit": true
+  }
+ ],
  "GROUPED_X_CYCLES": [
   {
    "puzzle": "4....7.6......478..1.9....4.396.......1.....8.72..8...7...5...2..6.7..1..2......7",
@@ -2121,6 +3401,395 @@
     "EMPTY_RECTANGLE",
     "GROUPED_X_CYCLES"
    ]
+  }
+ ],
+ "GROUPED_NICE_LOOP": [
+  {
+   "puzzle": ".9.............1.7.4...3....5...2...98.6...7...1.39..5..924..8...2..1.5.....7...6",
+   "score": 804,
+   "level": "Unfair",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "EMPTY_RECTANGLE",
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".....56...3...8....8.9..7.219.....7.......84.8..71.......8.29.....4....6..3....5.",
+   "score": 998,
+   "level": "Unfair",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "X_WING",
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".4...673.6..3.......8..2..65....36.7.1.....5.8.69....22..7..3.......9..1.831...7.",
+   "score": 1248,
+   "level": "Unfair",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_PAIR",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "EMPTY_RECTANGLE",
+    "UNIQUENESS_4",
+    "HIDDEN_RECTANGLE",
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "9....7..46......71.1..3.8...2....61.....85.9...32....8..8..25......6....3..4.....",
+   "score": 1354,
+   "level": "Unfair",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "HIDDEN_PAIR",
+    "EMPTY_RECTANGLE",
+    "HIDDEN_RECTANGLE",
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "2..49..6....7.6583..6.5.......3...........418.94.1....6.....7.4.....7.9.45.9.....",
+   "score": 1576,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "TWO_STRING_KITE",
+    "XYZ_WING",
+    "UNIQUENESS_4",
+    "FINNED_X_WING",
+    "SASHIMI_X_WING",
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..9.2..6....56........714..3.......6.5...2.98..4...5..4.........3.7..1....7.5..32",
+   "score": 2104,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_TRIPLE",
+    "FINNED_X_WING",
+    "MEDUSA_3D",
+    "GROUPED_NICE_LOOP",
+    "ALS_XY_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".13.5......6...8.......34...2..6...5...2.1....39....6.68..7..2.1..8....4......9..",
+   "score": 2142,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_PAIR",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_TRIPLE",
+    "FINNED_X_WING",
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..72834...3......6.1....7....2..4.9.5..6.1....6....2......98..7.4.5....3.......8.",
+   "score": 3434,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "XYZ_WING",
+    "NICE_LOOP",
+    "GROUPED_NICE_LOOP",
+    "ALS_XZ",
+    "ALS_XY_WING"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..7.3..1.14......76.....5.8.............8.2...1.9..7.6.....7..4...8...9.48..23...",
+   "score": 4074,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "TWO_STRING_KITE",
+    "GROUPED_NICE_LOOP",
+    "ALS_XZ",
+    "ALS_XY_WING",
+    "ALS_XY_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".......5.4...821...82...9..9.7..5.2.....9.....1.2..6.9..3...49...891...3.5.......",
+   "score": 4940,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "HIDDEN_PAIR",
+    "TWO_STRING_KITE",
+    "FINNED_SWORDFISH",
+    "GROUPED_NICE_LOOP",
+    "ALS_XZ",
+    "ALS_XY_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..68..79......7...9..4.68...9...8..5...1..2......7...1.37..4.5.4...2.3...5.3.....",
+   "score": 6146,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "WXYZ_WING",
+    "FINNED_X_WING",
+    "GROUPED_NICE_LOOP",
+    "ALS_XZ",
+    "ALS_XY_WING",
+    "ALS_XY_CHAIN",
+    "PATTERN_OVERLAY",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..8.....1.61.9.......7..5...7.5....431..8..756....3.8...3..6.......4.23.1.....8..",
+   "score": 7946,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_TRIPLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_TRIPLE",
+    "X_WING",
+    "XY_WING",
+    "WXYZ_WING",
+    "HIDDEN_RECTANGLE",
+    "GROUPED_NICE_LOOP",
+    "ALS_XZ",
+    "ALS_XY_WING",
+    "AIC",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
+  }
+ ],
+ "AIC": [
+  {
+   "puzzle": "..3.9.......3.5..6.....6.4..9..3.....72......84.51.2.37..4........1.37......2.65.",
+   "score": 3220,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "FINNED_SWORDFISH",
+    "ALS_XZ",
+    "ALS_XY_WING",
+    "AIC",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "7..1.4..9....694....25.....56.....1...4...7...1.....24.....69....591....3..2.5..6",
+   "score": 3424,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_TRIPLE",
+    "CHUTE_REMOTE_PAIR",
+    "HIDDEN_RECTANGLE",
+    "ALS_XY_WING",
+    "ALS_XY_CHAIN",
+    "AIC",
+    "PATTERN_OVERLAY"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "...1...9.....5..8.16...3..4.3..28..59.4........2...7...1.7..5.3....3...6..7......",
+   "score": 3438,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_PAIR",
+    "UNIQUENESS_6",
+    "XY_CHAIN",
+    "ALS_XZ",
+    "ALS_XY_CHAIN",
+    "AIC",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "....84.21...2.5.....2.69..364.....35..7...1..25.....789..84.5.....5.1...18.69....",
+   "score": 3608,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_PAIR",
+    "TWO_STRING_KITE",
+    "EMPTY_RECTANGLE",
+    "FINNED_X_WING",
+    "FINNED_SWORDFISH",
+    "NICE_LOOP",
+    "AIC",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..1.86....6..4..2..8.1..93....86..9...2...8...4..27....29..8.5..3..5..8....79.6..",
+   "score": 3698,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "HIDDEN_PAIR",
+    "HIDDEN_TRIPLE",
+    "SKYSCRAPER",
+    "NICE_LOOP",
+    "ALS_XZ",
+    "ALS_XY_WING",
+    "AIC"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".8..5.........465.5.2.96..3.78...3.1..5...8..1.9...57.8..41.2.7.917.........8..1.",
+   "score": 3984,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_PAIR",
+    "WXYZ_WING",
+    "ALS_XY_WING",
+    "ALS_XY_CHAIN",
+    "AIC"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".........2......7.3...8.421....3.....4.2.68...3.1...9646.3....21..5..9.......75..",
+   "score": 4146,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "WXYZ_WING",
+    "ALS_XZ",
+    "ALS_XY_CHAIN",
+    "AIC"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".....1.8.......47...345.....5.9..6...7...3....69.7..2...8..2..........6.2....9.14",
+   "score": 4238,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "ALS_XZ",
+    "ALS_XY_CHAIN",
+    "AIC"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "......4...5...9.3.2.93...7..8.9....136...8..44...6.78......2.53..65....752....9..",
+   "score": 5248,
+   "level": "Nightmare",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "CHUTE_REMOTE_PAIR",
+    "SKYSCRAPER",
+    "W_WING",
+    "GROUPED_NICE_LOOP",
+    "AIC",
+    "AIC_ALS"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".....6.7.3.5....8.......9..8.46....2.2.1..5.....2.8.4..4.5..7...7...2..6..1.7....",
+   "score": 6210,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "FINNED_X_WING",
+    "ALS_XZ",
+    "ALS_XY_CHAIN",
+    "AIC",
+    "AIC_ALS",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".83....5..6...4...1.2......37..1...6.51......6..5...7.....41.6....85..494..7.983.",
+   "score": 6862,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "ALS_XZ",
+    "ALS_XY_WING",
+    "ALS_XY_CHAIN",
+    "AIC"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..6...19..5.2.....1.2........5.2..41..45.98..26..4.5........6.3.....3.1..27...9..",
+   "score": 6994,
+   "level": "Nightmare",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "TWO_STRING_KITE",
+    "TURBOT_FISH",
+    "FINNED_X_WING",
+    "ALS_XY_CHAIN",
+    "AIC",
+    "AIC_ALS",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
   }
  ],
  "AIC_GROUPED": [

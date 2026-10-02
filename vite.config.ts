@@ -88,6 +88,8 @@ export default defineConfig({
     })
   ],
   test: {
-    environment: 'node'
+    environment: 'node',
+    // the browser smoke test is Playwright's (npm run test:e2e)
+    exclude: ['**/node_modules/**', 'tests/e2e/**']
   }
 } as any);

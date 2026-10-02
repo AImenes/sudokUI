@@ -6,7 +6,7 @@
 import React, { useRef } from 'react';
 import { useGame, engineGrid } from '../state/gameStore';
 import { useSettings } from '../state/settings';
-import { bit, digitsOf } from '../engine/board';
+import { bit, digitsOf, PEERS } from '../engine/board';
 import { ChainLink, CellDigit } from '../engine/steps';
 
 const SIZE = 100;
@@ -343,8 +343,30 @@ export function Grid() {
   const paused = useGame((s) => s.paused);
   const won = useGame((s) => s.won);
   const togglePause = useGame((s) => s.togglePause);
-  const { highlightPeers, highlightSameDigit, showPoodle, frameHighlights, digitTints, tintStrength } =
-    useSettings();
+  const armedDigit = useGame((s) => s.armedDigit);
+  const input = useGame((s) => s.input);
+  const {
+    highlightPeers,
+    highlightSameDigit,
+    showConflicts,
+    showPoodle,
+    frameHighlights,
+    digitTints,
+    tintStrength
+  } = useSettings();
+
+  // entered digits that repeat within a row, column or box: a rule check
+  // against the board alone, nothing to do with the solution
+  const conflicts = React.useMemo(() => {
+    const out = new Set<number>();
+    if (!showConflicts) return out;
+    for (let i = 0; i < 81; i++) {
+      const v = cells[i].value;
+      if (!v || cells[i].given) continue;
+      if (PEERS[i].some((p) => cells[p].value === v)) out.add(i);
+    }
+    return out;
+  }, [cells, showConflicts]);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragging = useRef(false);
@@ -362,14 +384,15 @@ export function Grid() {
   );
 
   const selSet = new Set(selection);
-  const selectedValues = new Set(
-    selection.map((i) => cells[i].value).filter((v) => v > 0)
-  );
+  // an armed digit (number-first entry) is tracked like a selected one
+  const selectedValues = armedDigit
+    ? new Set([armedDigit])
+    : new Set(selection.map((i) => cells[i].value).filter((v) => v > 0));
+  const trackDigits = highlightSameDigit || armedDigit !== null;
   // the digit being tracked (one distinct value selected — a click on a
   // placed digit, or the hold/double-click select-all gesture): its pencil
   // occurrences light up too, wherever the player has actually marked them
-  const hlDigit =
-    highlightSameDigit && selectedValues.size === 1 ? [...selectedValues][0] : 0;
+  const hlDigit = trackDigits && selectedValues.size === 1 ? [...selectedValues][0] : 0;
   const peerSet = new Set<number>();
   if (highlightPeers && selection.length === 1) {
     const i = selection[0];
@@ -449,6 +472,13 @@ export function Grid() {
   const onPointerDown = (e: React.PointerEvent) => {
     const cell = cellFromEvent(e);
     if (cell === null) return;
+    // number-first: with a digit armed, a plain tap enters it here
+    const armed = useGame.getState().armedDigit;
+    if (armed && !(e.ctrlKey || e.metaKey || e.shiftKey)) {
+      select([cell], false);
+      input(armed);
+      return;
+    }
     dragging.current = true;
     additive.current = e.ctrlKey || e.metaKey || e.shiftKey;
     anchor.current = cell;
@@ -538,8 +568,7 @@ export function Grid() {
           const isSel = selSet.has(i);
           const isErr = errors.includes(i);
           const samePeer = peerSet.has(i) && !isSel;
-          const sameDigit =
-            highlightSameDigit && !isSel && cell.value > 0 && selectedValues.has(cell.value);
+          const sameDigit = trackDigits && !isSel && cell.value > 0 && selectedValues.has(cell.value);
           return (
             <g key={i}>
               <rect x={x} y={y} width={SIZE} height={SIZE} fill="var(--cell-bg)" />
@@ -593,6 +622,7 @@ export function Grid() {
         {/* content (hidden while paused) */}
         {!paused || won ? (
           cells.map((cell, i) => {
+            const conflict = conflicts.has(i);
             const x = M + (i % 9) * SIZE;
             const y = M + Math.floor(i / 9) * SIZE;
             const marks = hintMarks.get(i);
@@ -619,12 +649,12 @@ export function Grid() {
                     textAnchor="middle"
                     fontSize={58}
                     fontWeight={cell.given ? 700 : 500}
-                    fill={cell.given ? 'var(--given)' : 'var(--entered)'}
+                    fill={conflict ? 'var(--error-bg)' : cell.given ? 'var(--given)' : 'var(--entered)'}
                     // an opt-in slight colour per digit, mixed into the theme's
                     // own digit colour so every theme keeps its character; a
                     // browser without color-mix ignores this and keeps `fill`
                     style={
-                      digitTints
+                      digitTints && !conflict
                         ? {
                             fill: `color-mix(in srgb, var(${
                               cell.given ? '--given' : '--entered'

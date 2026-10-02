@@ -33,6 +33,9 @@ interface Settings {
   highlightPeers: boolean;
   /** tint all cells holding the same digit as the selection */
   highlightSameDigit: boolean;
+  /** show an entered digit in red while it repeats within its row, column
+   *  or box: a rule check, not a solution lookup, so it never counts as help */
+  showConflicts: boolean;
   showTimer: boolean;
   /** when auto candidates are switched off, write the current candidate
    *  state into pencil marks so play continues seamlessly */
@@ -75,6 +78,7 @@ export const useSettings = create<Settings>()(
       font: 'classic',
       highlightPeers: true,
       highlightSameDigit: true,
+      showConflicts: true,
       showTimer: true,
       autoOffMaterialize: true,
       materializeLayer: 'center',

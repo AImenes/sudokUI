@@ -38,6 +38,7 @@ export const LEARN_STRINGS = [
   'Open this position on the board',
   'The solver uses this on the hardest puzzles. It has no pattern to spot, so it is not offered in practice.',
   'Implemented, but never needed: an easier technique always reaches the same result first.',
+  'Only ever needed in puzzles made by hand for it: none can be generated, so it is not offered in practice.',
   'Not implemented in sudokUI: the chain engines already find everything it can.',
   // the glossary
   'Glossary: {term}',
@@ -107,7 +108,7 @@ export const LEARN_STRINGS = [
   'Practice {name}',
   "Open in the app's guide",
   "In a puzzle's rating",
-  "Each time the solver needs {name}, the puzzle's difficulty rating grows by {score}. It is a {level}-class technique.",
+  "Each time the solver needs {name}, the puzzle's difficulty rating grows by {score}. Its class is {level}.",
   'It is needed in {freq} that sudokUI generates.',
   'How the rating works',
   'More {family}',

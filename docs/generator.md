@@ -118,10 +118,13 @@ one isomorph per seeded band in the background, and a top-up follows
 every game, so the urgent path is the exception, a cold start on a device
 that was never idle.
 
-The saved practice puzzles for the rarest techniques
-(`src/content/practicePuzzles.json`) are served the same way, through an
-isomorphism, rated with the technique cap, and only if the technique
-still comes cleanly.
+The saved practice puzzles (`src/content/practicePuzzles.json`) are
+served the same way, through an isomorphism, rated with the technique
+cap, and only if the technique still comes cleanly. They exist for every
+technique a clean puzzle takes more than about 120 attempts to find, a
+second or so on a phone: `scripts/build-practice.ts` measures each
+technique and stores a dozen for the slow ones, in minutes, on every
+core; `scripts/measure-frequency.ts` adds the rarest from its long runs.
 
 ```bash
 npx vite-node scripts/build-seeds.ts          # all cores, 15 minutes

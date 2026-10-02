@@ -159,6 +159,13 @@ interface GameStore {
   custom: boolean;
   customBackup: GameBackup | null;
   selection: number[];
+  /** number-first entry: a digit pressed with nothing selected arms it;
+   *  every cell and pencil mark of that digit lights up (a digit filter)
+   *  and a tap on a cell enters it. Escape, or the digit again, disarms. */
+  armedDigit: number | null;
+  /** an assist the keyboard asked for while the first-assist question is
+   *  on: the control panel shows the question and runs it on yes */
+  pendingAssist: string | null;
   mode: EntryMode;
   /** hold-modifier override (Shift = corner, Ctrl/Alt = centre, both =
    *  colour); null = use `mode`. Never persisted. */
@@ -198,6 +205,8 @@ interface GameStore {
   /** reset the current puzzle to its starting position, timer included */
   restart: () => void;
   select: (cells: number[], additive: boolean) => void;
+  armDigit: (digit: number | null) => void;
+  askAssist: (name: string | null) => void;
   selectAllOf: (digit: number) => void;
   setMode: (mode: EntryMode) => void;
   setTempMode: (mode: EntryMode | null) => void;
@@ -253,6 +262,8 @@ export const useGame = create<GameStore>()(
       custom: false,
       customBackup: null as GameBackup | null,
       selection: [],
+      armedDigit: null,
+      pendingAssist: null,
       mode: 'digit' as EntryMode,
       tempMode: null,
       activeColor: 0,
@@ -316,6 +327,7 @@ export const useGame = create<GameStore>()(
           customBackup: null,
           cells,
           selection: [],
+          armedDigit: null,
           history: [],
           future: [],
           startedAt: Date.now(),
@@ -414,9 +426,16 @@ export const useGame = create<GameStore>()(
           selection: additive
             ? [...new Set([...s.selection, ...cells])]
             : cells,
+          // clearing the selection (Escape, a tap beside the board) also
+          // puts down an armed digit
+          armedDigit: cells.length === 0 && !additive ? null : s.armedDigit,
           hint: s.hint,
           errors: s.errors
         })),
+
+      armDigit: (digit) => set({ armedDigit: digit }),
+
+      askAssist: (name) => set({ pendingAssist: name }),
 
       selectAllOf: (digit) =>
         set((s) => ({
@@ -434,6 +453,12 @@ export const useGame = create<GameStore>()(
         const s = get();
         if (s.won || s.paused) return;
         const mode = s.tempMode ?? s.mode;
+        // nothing selected: the digit is armed (number-first), or put down
+        // again if it was the armed one
+        if (s.selection.length === 0) {
+          set({ armedDigit: s.armedDigit === digit ? null : digit });
+          return;
+        }
         const targets = s.selection.filter((i) => !s.cells[i].given || mode === 'color');
         if (!targets.length) return;
         const cells = cloneCells(s.cells);
@@ -783,6 +808,17 @@ export const useGame = create<GameStore>()(
           return;
         }
         const sol = s.info.solution;
+        // a wrong digit on the board: no technique can reason from it, and
+        // the player should hear that it is a digit, not their marks
+        if (s.cells.some((c, i) => c.value && !c.given && c.value !== Number(sol[i]))) {
+          set({
+            hint: null,
+            hintStage: 'hidden',
+            assisted: true,
+            notice: 'A placed digit is wrong, so no hint can be trusted. Run Check to find it'
+          });
+          return;
+        }
         // under the exhaustive contract a marked cell that lost its true
         // digit is a corrupted position — Check pinpoints it; we won't
         // reason from it
