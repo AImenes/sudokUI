@@ -20,11 +20,20 @@ export function findLockedCandidates1(g: Grid): Step | null {
           .filter((c) => boxOf(c) !== b && g.values[c] === 0 && g.cands[c] & mask)
           .map((cell) => ({ cell, digit: d }));
         if (elims.length) {
+          const lineWord = lineOf === rowOf ? 'row' : 'column';
           return {
             tech: 'LOCKED_CANDIDATES_1',
             placements: [],
             eliminations: elims,
             primary: cells.map((cell) => ({ cell, digit: d })),
+            units: [
+              { unit: 18 + b, role: 'primary' },
+              { unit: lineOf === rowOf ? line : 9 + line, role: 'secondary' }
+            ],
+            labels: {
+              primary: `box ${b + 1}: every ${d} in it sits on one ${lineWord}`,
+              secondary: `the ${lineWord}, which loses ${d} outside the box`
+            },
             description: `Locked Candidates (Pointing): in box ${b + 1}, digit ${d} is confined to ${cellNames(cells)}, so it can be removed from the rest of the ${lineOf === rowOf ? 'row' : 'column'}.`
           };
         }
@@ -51,11 +60,20 @@ export function findLockedCandidates2(g: Grid): Step | null {
         .filter((c) => !lineCells.includes(c) && g.values[c] === 0 && g.cands[c] & mask)
         .map((cell) => ({ cell, digit: d }));
       if (elims.length) {
+        const lineName = u < 9 ? `row ${u + 1}` : `column ${u - 8}`;
         return {
           tech: 'LOCKED_CANDIDATES_2',
           placements: [],
           eliminations: elims,
           primary: cells.map((cell) => ({ cell, digit: d })),
+          units: [
+            { unit: u, role: 'primary' },
+            { unit: 18 + b, role: 'secondary' }
+          ],
+          labels: {
+            primary: `${lineName}: every ${d} in it sits in one box`,
+            secondary: `box ${b + 1}, which loses ${d} outside the ${u < 9 ? 'row' : 'column'}`
+          },
           description: `Locked Candidates (Claiming): in ${u < 9 ? `row ${u + 1}` : `column ${u - 8}`}, digit ${d} is confined to box ${b + 1}, so it can be removed from the rest of the box.`
         };
       }

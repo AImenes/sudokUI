@@ -90,6 +90,7 @@ function rule2(g: Grid, d: number, path: number[]): Step | null {
   const start = path[0];
   return {
     tech: 'X_CYCLES',
+    labels: { primary: `the loop on ${d}` },
     placements: [{ cell: start, digit: d }],
     eliminations: [],
     primary: path.map((cell) => ({ cell, digit: d })),
@@ -121,6 +122,7 @@ function rule1(g: Grid, d: number, path: number[]): Step | null {
   if (!elims.length) return null;
   return {
     tech: 'X_CYCLES',
+    labels: { primary: `the loop on ${d}` },
     placements: [],
     eliminations: elims,
     primary: path.map((cell) => ({ cell, digit: d })),

@@ -87,6 +87,7 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
             { cell, digit: x },
             { cell, digit: y }
           ]),
+          labels: { primary: `the three corners holding only ${x}/${y}: the fourth must not join them` },
           description: `Unique Rectangle Type 1: ${cellNames(cells)} would form a deadly pattern on ${x}/${y}; ${cellName(target)} cannot be ${x} or ${y}.`
         };
       }
@@ -117,6 +118,10 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
             { cell: e1, digit: z },
             { cell: e2, digit: z }
           ],
+          labels: {
+            primary: `the rectangle: ${x}/${y} in all four corners`,
+            secondary: `${z}, the roof's extra candidate: one of the two roof cells must be it`
+          },
           description: `Unique Rectangle Type 2: to avoid the deadly pattern on ${x}/${y}, one of ${cellName(e1)}/${cellName(e2)} must be ${z}, so ${z} is removed from cells seeing both.`
         };
       }
@@ -153,6 +158,7 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
               { cell, digit: x },
               { cell, digit: y }
             ]),
+            labels: { primary: `the rectangle: ${x}/${y} in all four corners, with ${keep} locked into the roof` },
             description: `Unique Rectangle Type 4: ${keep} is locked into ${cellName(e1)}/${cellName(e2)}; keeping ${kill} there would force the deadly pattern, so ${kill} is removed from both.`
           };
         }
@@ -199,6 +205,10 @@ function uniqueness3(g: Grid, rect: Rect, pairMask: number, extra: number[]): St
           secondary: S.flatMap((cell) =>
             digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
           ),
+          labels: {
+            primary: `the rectangle: ${rect.x}/${rect.y} in all four corners`,
+            secondary: 'the cells that form a locked set with the roof extras'
+          },
           description: `Unique Rectangle Type 3: the roof extras of ${cellNames(rect.cells)} act as one pseudo-cell and form a locked set with ${cellNames(S)}, clearing those digits from the rest of the unit.`
         };
       }
@@ -237,6 +247,10 @@ function uniqueness5(
       { cell, digit: rect.y }
     ]),
     secondary: extra.map((cell) => ({ cell, digit: z })),
+    labels: {
+      primary: `the rectangle: ${rect.x}/${rect.y} in all four corners`,
+      secondary: `${z} in the roof cells: one of them must be it`
+    },
     description: `Unique Rectangle Type 5: one of ${cellNames(extra)} must be ${z} to avoid the deadly pattern, so ${z} is removed from cells seeing all of them.`
   };
 }
@@ -280,6 +294,9 @@ function uniqueness6(
         { cell, digit: rect.x },
         { cell, digit: rect.y }
       ]),
+      labels: {
+        primary: `the rectangle: ${rect.x}/${rect.y} in all four corners, with ${d} confined to it in both ${rowsStrong ? 'rows' : 'columns'}`
+      },
       description: `Unique Rectangle Type 6: ${d} is confined to the rectangle in both ${rowsStrong ? 'rows' : 'columns'}; placing it in a roof corner would force the deadly pattern, so ${d} is removed from ${cellNames(extra)}.`
     };
   }
@@ -328,6 +345,10 @@ export function findHiddenRectangle(g: Grid): Step | null {
             { cell, digit: y }
           ]),
           secondary: [{ cell: A, digit: strong }],
+          labels: {
+            primary: `the rectangle: ${x}/${y} in all four corners`,
+            secondary: `${strong} in the bivalue corner: confined to the rectangle in ${cellName(B)}'s row and column`
+          },
           description: `Hidden Rectangle: ${cellName(A)} holds only ${x}${y}, and ${strong} is confined to the rectangle in ${cellName(B)}'s row and column; ${cellName(B)} cannot be ${weak} or the deadly pattern appears.`
         };
       }
@@ -366,7 +387,13 @@ export function findAvoidableRectangle(g: Grid, type: 1 | 2): Step | null {
               tech: 'AVOIDABLE_RECTANGLE_1',
               placements: [],
               eliminations: [{ cell: U, digit: a }],
-              primary: [{ cell: U, digit: a }],
+              // the three solved corners, shown by their digits
+              primary: solved.map((cell) => ({ cell, digit: g.values[cell] })),
+              secondary: [{ cell: U, digit: a }],
+              labels: {
+                primary: 'the three solved corners, none of them a given',
+                secondary: `the cell that would complete the rectangle with ${a}`
+              },
               description: `Avoidable Rectangle Type 1: setting ${cellName(U)} to ${a} would complete an interchangeable rectangle of solved (non-given) cells, contradicting the puzzle's unique solution.`
             };
           }
@@ -399,6 +426,12 @@ export function findAvoidableRectangle(g: Grid, type: 1 | 2): Step | null {
                 { cell: u1, digit: cDigit },
                 { cell: u2, digit: cDigit }
               ],
+              // the two solved corners, shown by their digits
+              secondary: solved.map((cell) => ({ cell, digit: g.values[cell] })),
+              labels: {
+                primary: `${cDigit} in the two unsolved corners: one of them must be it`,
+                secondary: 'the two solved corners, neither of them a given'
+              },
               description: `Avoidable Rectangle Type 2: to avoid an interchangeable rectangle with the solved cells ${cellNames(solved)}, one of ${cellName(u1)}/${cellName(u2)} must be ${cDigit}, so ${cDigit} is removed from cells seeing both.`
             };
           }
@@ -432,6 +465,11 @@ export function findBugPlus1(g: Grid): Step | null {
         placements: [{ cell: triCell, digit: d }],
         eliminations: [],
         primary: [{ cell: triCell, digit: d }],
+        units: CELL_UNITS[triCell].map((unit) => ({ unit, role: 'secondary' as const })),
+        labels: {
+          primary: `the one cell with three candidates; ${d} is the extra`,
+          secondary: `its row, column and box, each holding ${d} three times`
+        },
         description: `BUG+1: removing ${d} from ${cellName(triCell)} would leave a bivalue grid with two solutions, so ${cellName(triCell)} must be ${d}.`
       };
     }

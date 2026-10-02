@@ -82,6 +82,7 @@ export function findRemotePair(g: Grid): Step | null {
       const path = orderAsPath(component, sees);
       return {
         tech: 'REMOTE_PAIR',
+        labels: { primary: `the chain of ${digits.join('')} pairs` },
         placements: [],
         eliminations: elims,
         primary: component.flatMap((cell) =>
@@ -161,6 +162,7 @@ export function findXChain(g: Grid, maxLen = 9): Step | null {
             if (elims.length) {
               return {
                 tech: 'X_CHAIN',
+                labels: { primary: `the chain on ${d}` },
                 placements: [],
                 eliminations: elims,
                 primary: newPath.map((cell) => ({ cell, digit: d })),
@@ -208,6 +210,7 @@ export function findXYChain(g: Grid, maxLen = 10): Step | null {
             if (elims.length) {
               return {
                 tech: 'XY_CHAIN',
+                labels: { primary: 'the chain of bivalue cells' },
                 placements: [],
                 eliminations: elims,
                 primary: newPath.map((cell) => ({

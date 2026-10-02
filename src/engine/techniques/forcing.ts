@@ -1,5 +1,13 @@
 import { Grid, UNITS, bit, digitsOf, popcount, cloneGrid, setValue, cellName } from '../board';
-import { Step, CellDigit } from '../steps';
+import { Step, CellDigit, ChainLink } from '../steps';
+import { contradictionDrawing, conclusionDrawing } from './forcingTrail';
+
+/** the colour grammar of a forcing step: the line of forced singles, and where it breaks */
+const FORCING_LABELS = {
+  primary: 'the assumption and the singles it forces: one line of the reasoning, read along the arrows',
+  secondary: 'the house that would be left with no place for a digit',
+  fins: 'where the board would break'
+};
 
 /**
  * Forcing techniques (net-style): assume a candidate, propagate naked and
@@ -123,6 +131,7 @@ export function findForcingNet(g: Grid): Step | null {
           placements: [],
           eliminations: [{ cell, digit: d }],
           primary: [{ cell, digit: d }],
+          labels: { primary: 'the assumption; the net it sets off is search, not a pattern, and is not drawn' },
           description: `Forcing net: assuming ${cellName(cell)} = ${d} and following singles plus box/line intersections leads to a contradiction, so ${d} is impossible there.`
         };
       }
@@ -144,11 +153,16 @@ export function findNishio(g: Grid): Step | null {
     if (g.values[cell] !== 0) continue;
     for (const d of digitsOf(g.cands[cell])) {
       if (branch(g, cell, d) === null) {
+        const drawn = contradictionDrawing(g, cell, d, true);
         return {
           tech: 'NISHIO_FORCING_CHAIN',
           placements: [],
           eliminations: [{ cell, digit: d }],
           primary: [{ cell, digit: d }],
+          fins: drawn?.fins,
+          links: drawn?.links,
+          units: drawn?.unit !== undefined ? [{ unit: drawn.unit, role: 'secondary' }] : undefined,
+          labels: FORCING_LABELS,
           description: `Nishio: assuming ${cellName(cell)} = ${d} and following the forced singles leads to a contradiction, so ${d} is impossible there.`
         };
       }
@@ -187,11 +201,18 @@ function verityStep(
 ): Step | null {
   const { places, elims } = intersectBranches(g, branches);
   if (!places.length && !elims.length) return null;
+  // every branch drawn to the first conclusion, one line each
+  const conclusion = places.length ? { place: places[0] } : { elim: elims[0] };
+  const links: ChainLink[] = origin.flatMap((o) => conclusionDrawing(g, o.cell, o.digit, true, conclusion));
   return {
     tech,
     placements: places,
     eliminations: elims,
     primary: origin,
+    links: links.length ? links : undefined,
+    labels: {
+      primary: `every possibility for ${what}, each followed along its own line to the same conclusion`
+    },
     description: `${tech === 'CELL_FORCING_CHAIN' ? 'Cell' : 'Unit'} forcing: every possibility for ${what} leads, via forced singles, to the same conclusion${places.length + elims.length > 1 ? 's' : ''}.`
   };
 }
@@ -211,22 +232,37 @@ export function findDigitForcing(g: Grid): Step | null {
       off.cands[cell] &= ~bit(d);
       const offOk = propagate(off);
       if (!offOk && on) {
+        const drawn = contradictionDrawing(g, cell, d, false);
         return {
           tech: 'DIGIT_FORCING_CHAIN',
           placements: [{ cell, digit: d }],
           eliminations: [],
           primary: [{ cell, digit: d }],
+          fins: drawn?.fins,
+          links: drawn?.links,
+          units: drawn?.unit !== undefined ? [{ unit: drawn.unit, role: 'secondary' }] : undefined,
+          labels: FORCING_LABELS,
           description: `Digit forcing: removing ${d} from ${cellName(cell)} collapses the puzzle via forced singles, so ${cellName(cell)} must be ${d}.`
         };
       }
       if (!on || !offOk) continue;
       const { places, elims } = intersectBranches(g, [on, off]);
       if (!places.length && !elims.length) continue;
+      // both ways drawn to the first conclusion: placed, then removed
+      const conclusion = places.length ? { place: places[0] } : { elim: elims[0] };
+      const links = [
+        ...conclusionDrawing(g, cell, d, true, conclusion),
+        ...conclusionDrawing(g, cell, d, false, conclusion)
+      ];
       return {
         tech: 'DIGIT_FORCING_CHAIN',
         placements: places,
         eliminations: elims,
         primary: [{ cell, digit: d }],
+        links: links.length ? links : undefined,
+        labels: {
+          primary: `${cellName(cell)} = ${d} and its opposite, each followed along its own line to the same conclusion`
+        },
         description: `Digit forcing: whether ${cellName(cell)} is ${d} or not, the forced singles agree on the same conclusion${places.length + elims.length > 1 ? 's' : ''}.`
       };
     }

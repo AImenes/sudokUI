@@ -95,6 +95,15 @@
     }
    ],
    "eliminations": [],
+   "units": [
+    {
+     "unit": 3,
+     "role": "primary"
+    }
+   ],
+   "labels": {
+    "primary": "row 4, with one cell left"
+   },
    "description": "Full House: r4c9 is the last empty cell in row 4, so it must be 8."
   }
  },
@@ -194,6 +203,50 @@
     }
    ],
    "eliminations": [],
+   "primary": [
+    {
+     "cell": 27,
+     "digit": 1
+    }
+   ],
+   "secondary": [
+    {
+     "cell": 46,
+     "digit": 2
+    },
+    {
+     "cell": 33,
+     "digit": 3
+    },
+    {
+     "cell": 32,
+     "digit": 4
+    },
+    {
+     "cell": 72,
+     "digit": 5
+    },
+    {
+     "cell": 18,
+     "digit": 6
+    },
+    {
+     "cell": 30,
+     "digit": 7
+    },
+    {
+     "cell": 47,
+     "digit": 8
+    },
+    {
+     "cell": 34,
+     "digit": 9
+    }
+   ],
+   "labels": {
+    "primary": "the cell with one candidate left",
+    "secondary": "the other eight digits, each already in its row, column or box"
+   },
    "description": "Naked Single: r4c1 has only one candidate left, 1."
   }
  },
@@ -293,6 +346,52 @@
     }
    ],
    "eliminations": [],
+   "primary": [
+    {
+     "cell": 10,
+     "digit": 1
+    }
+   ],
+   "secondary": [
+    {
+     "cell": 27,
+     "digit": 1
+    },
+    {
+     "cell": 4,
+     "digit": 1
+    },
+    {
+     "cell": 62,
+     "digit": 1
+    }
+   ],
+   "units": [
+    {
+     "unit": 1,
+     "role": "primary"
+    },
+    {
+     "unit": 9,
+     "role": "secondary"
+    },
+    {
+     "unit": 13,
+     "role": "secondary"
+    },
+    {
+     "unit": 19,
+     "role": "secondary"
+    },
+    {
+     "unit": 17,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "row 2: 1 has one place left in it",
+    "secondary": "the 1s that rule out its other cells, shaded along their lines"
+   },
    "description": "Hidden Single: 1 fits only in r2c2 within row 2."
   }
  },
@@ -426,6 +525,19 @@
      "digit": 7
     }
    ],
+   "units": [
+    {
+     "unit": 9,
+     "role": "primary"
+    },
+    {
+     "unit": 18,
+     "role": "primary"
+    }
+   ],
+   "labels": {
+    "primary": "2 cells that hold only 3/7 between them, in column 1 and box 1"
+   },
    "description": "Locked Pair: cells r1c1, r2c1 contain only 3/7, removing those digits from the cells they all see."
   }
  },
@@ -571,6 +683,19 @@
      "digit": 7
     }
    ],
+   "units": [
+    {
+     "unit": 7,
+     "role": "primary"
+    },
+    {
+     "unit": 24,
+     "role": "primary"
+    }
+   ],
+   "labels": {
+    "primary": "3 cells that hold only 2/3/7 between them, in row 8 and box 7"
+   },
    "description": "Locked Triple: cells r8c1, r8c2, r8c3 contain only 2/3/7, removing those digits from the cells they all see."
   }
  },
@@ -680,6 +805,20 @@
      "digit": 3
     }
    ],
+   "units": [
+    {
+     "unit": 21,
+     "role": "primary"
+    },
+    {
+     "unit": 4,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "box 4: every 3 in it sits on one row",
+    "secondary": "the row, which loses 3 outside the box"
+   },
    "description": "Locked Candidates (Pointing): in box 4, digit 3 is confined to r5c1, r5c3, so it can be removed from the rest of the row."
   }
  },
@@ -789,6 +928,20 @@
      "digit": 5
     }
    ],
+   "units": [
+    {
+     "unit": 0,
+     "role": "primary"
+    },
+    {
+     "unit": 19,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "row 1: every 5 in it sits in one box",
+    "secondary": "box 2, which loses 5 outside the row"
+   },
    "description": "Locked Candidates (Claiming): in row 1, digit 5 is confined to box 2, so it can be removed from the rest of the box."
   }
  },
@@ -906,6 +1059,15 @@
      "digit": 5
     }
    ],
+   "units": [
+    {
+     "unit": 8,
+     "role": "primary"
+    }
+   ],
+   "labels": {
+    "primary": "2 cells that hold only 2/5 between them, in row 9"
+   },
    "description": "Naked Pair: cells r9c2, r9c7 contain only 2/5, removing those digits from the cells they all see."
   }
  },
@@ -1035,6 +1197,15 @@
      "digit": 7
     }
    ],
+   "units": [
+    {
+     "unit": 25,
+     "role": "primary"
+    }
+   ],
+   "labels": {
+    "primary": "3 cells that hold only 2/6/7 between them, in box 8"
+   },
    "description": "Naked Triple: cells r7c4, r8c6, r9c4 contain only 2/6/7, removing those digits from the cells they all see."
   }
  },
@@ -1156,6 +1327,15 @@
      "digit": 8
     }
    ],
+   "units": [
+    {
+     "unit": 3,
+     "role": "primary"
+    }
+   ],
+   "labels": {
+    "primary": "the only 2 cells of row 4 that can take 6/8"
+   },
    "description": "Hidden Pair: in row 4, digits 6/8 fit only in r4c3, r4c7, so all other candidates there can be removed."
   }
  },
@@ -1293,6 +1473,15 @@
      "digit": 9
     }
    ],
+   "units": [
+    {
+     "unit": 7,
+     "role": "primary"
+    }
+   ],
+   "labels": {
+    "primary": "the only 3 cells of row 8 that can take 3/5/9"
+   },
    "description": "Hidden Triple: in row 8, digits 3/5/9 fit only in r8c4, r8c6, r8c9, so all other candidates there can be removed."
   }
  },
@@ -1434,6 +1623,15 @@
      "digit": 9
     }
    ],
+   "units": [
+    {
+     "unit": 4,
+     "role": "primary"
+    }
+   ],
+   "labels": {
+    "primary": "4 cells that hold only 5/6/8/9 between them, in row 5"
+   },
    "description": "Naked Quadruple: cells r5c4, r5c5, r5c6, r5c9 contain only 5/6/8/9, removing those digits from the cells they all see."
   }
  },
@@ -1575,6 +1773,15 @@
      "digit": 8
     }
    ],
+   "units": [
+    {
+     "unit": 22,
+     "role": "primary"
+    }
+   ],
+   "labels": {
+    "primary": "the only 4 cells of box 5 that can take 1/2/5/8"
+   },
    "description": "Hidden Quadruple: in box 5, digits 1/2/5/8 fit only in r4c5, r4c6, r5c5, r5c6, so all other candidates there can be removed."
   }
  },
@@ -1692,7 +1899,29 @@
      "digit": 7
     }
    ],
-   "description": "X-Wing: digit 7 in 2 rows (r3c3, r3c8, r8c3, r8c8) is confined to 2 columns, eliminating 7 elsewhere in them."
+   "units": [
+    {
+     "unit": 2,
+     "role": "primary"
+    },
+    {
+     "unit": 7,
+     "role": "primary"
+    },
+    {
+     "unit": 11,
+     "role": "secondary"
+    },
+    {
+     "unit": 16,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "base rows: the 7s of the fish, 2 rows with 7 only in the cover columns",
+    "secondary": "cover columns: 2 of them take the base's 7s, so 7 goes nowhere else in them"
+   },
+   "description": "X-Wing on 7: in rows 3, 8, 7 can only go in columns 3, 8 (r3c3, r3c8, r8c3, r8c8). Those 2 rows will use up 7 in those 2 columns, so 7 can go nowhere else in them."
   }
  },
  "SWORDFISH": {
@@ -1817,7 +2046,37 @@
      "digit": 9
     }
    ],
-   "description": "Swordfish: digit 9 in 3 columns (r3c1, r5c1, r4c4, r5c4, r3c8, r4c8) is confined to 3 rows, eliminating 9 elsewhere in them."
+   "units": [
+    {
+     "unit": 9,
+     "role": "primary"
+    },
+    {
+     "unit": 12,
+     "role": "primary"
+    },
+    {
+     "unit": 16,
+     "role": "primary"
+    },
+    {
+     "unit": 2,
+     "role": "secondary"
+    },
+    {
+     "unit": 3,
+     "role": "secondary"
+    },
+    {
+     "unit": 4,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "base columns: the 9s of the fish, 3 columns with 9 only in the cover rows",
+    "secondary": "cover rows: 3 of them take the base's 9s, so 9 goes nowhere else in them"
+   },
+   "description": "Swordfish on 9: in columns 1, 4, 8, 9 can only go in rows 3, 4, 5 (r3c1, r5c1, r4c4, r5c4, r3c8, r4c8). Those 3 columns will use up 9 in those 3 rows, so 9 can go nowhere else in them."
   }
  },
  "JELLYFISH": {
@@ -1950,7 +2209,45 @@
      "digit": 6
     }
    ],
-   "description": "Jellyfish: digit 6 in 4 rows (r2c5, r2c9, r6c5, r6c8, r8c6, r8c9, r9c6, r9c8) is confined to 4 columns, eliminating 6 elsewhere in them."
+   "units": [
+    {
+     "unit": 1,
+     "role": "primary"
+    },
+    {
+     "unit": 5,
+     "role": "primary"
+    },
+    {
+     "unit": 7,
+     "role": "primary"
+    },
+    {
+     "unit": 8,
+     "role": "primary"
+    },
+    {
+     "unit": 13,
+     "role": "secondary"
+    },
+    {
+     "unit": 14,
+     "role": "secondary"
+    },
+    {
+     "unit": 16,
+     "role": "secondary"
+    },
+    {
+     "unit": 17,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "base rows: the 6s of the fish, 4 rows with 6 only in the cover columns",
+    "secondary": "cover columns: 4 of them take the base's 6s, so 6 goes nowhere else in them"
+   },
+   "description": "Jellyfish on 6: in rows 2, 6, 8, 9, 6 can only go in columns 5, 6, 8, 9 (r2c5, r2c9, r6c5, r6c8, r8c6, r8c9, r9c6, r9c8). Those 4 rows will use up 6 in those 4 columns, so 6 can go nowhere else in them."
   }
  },
  "REMOTE_PAIR": {
@@ -2042,6 +2339,9 @@
   ],
   "step": {
    "tech": "REMOTE_PAIR",
+   "labels": {
+    "primary": "the chain of 35 pairs"
+   },
    "placements": [],
    "eliminations": [
     {
@@ -2212,6 +2512,10 @@
      "digit": 6
     }
    ],
+   "labels": {
+    "primary": "the pair: 56 in both cells, one chute apart",
+    "secondary": "the third box's mini-line, where 6 is missing"
+   },
    "secondary": [],
    "description": "Chute Remote Pair: r4c6 and r5c8 both hold 56 in one chute; 6 appears nowhere in r6c1, r6c2, r6c3, so the chute's third box must place its 6 in a row shared with a pair cell, forcing that cell to 5. One pair cell is therefore 5, so 5 can be removed from cells seeing both pair cells."
   }
@@ -2318,6 +2622,24 @@
      "digit": 3
     }
    ],
+   "units": [
+    {
+     "unit": 4,
+     "role": "secondary"
+    },
+    {
+     "unit": 14,
+     "role": "secondary"
+    },
+    {
+     "unit": 22,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "the one cell with three candidates; 3 is the extra",
+    "secondary": "its row, column and box, each holding 3 three times"
+   },
    "description": "BUG+1: removing 3 from r5c6 would leave a bivalue grid with two solutions, so r5c6 must be 3."
   }
  },
@@ -2439,6 +2761,9 @@
      "digit": 1
     }
    ],
+   "labels": {
+    "primary": "the two strong links on 1"
+   },
    "links": [
     {
      "from": [
@@ -2486,7 +2811,7 @@
      "strong": true
     }
    ],
-   "description": "Skyscraper: strong links on 1 (r2c3–r2c7 and r9c3–r9c9) are weakly connected, so 1 can be removed from cells seeing both r2c7 and r9c9."
+   "description": "Skyscraper on 1: r2c3 and r2c7 are the only places for 1 in their line, as are r9c3 and r9c9, and r2c3 sees r9c3. If r2c7 is not 1, r2c3 is, so r9c3 is not, so r9c9 is: one of r2c7 and r9c9 is 1, and 1 is removed from every cell that sees both."
   }
  },
  "TWO_STRING_KITE": {
@@ -2603,6 +2928,9 @@
      "digit": 8
     }
    ],
+   "labels": {
+    "primary": "the two strong links on 8"
+   },
    "links": [
     {
      "from": [
@@ -2650,7 +2978,7 @@
      "strong": true
     }
    ],
-   "description": "2-String Kite: strong links on 8 (r1c6–r1c8 and r3c4–r7c4) are weakly connected, so 8 can be removed from cells seeing both r1c8 and r7c4."
+   "description": "2-String Kite on 8: r1c6 and r1c8 are the only places for 8 in their line, as are r3c4 and r7c4, and r1c6 sees r3c4. If r1c8 is not 8, r1c6 is, so r3c4 is not, so r7c4 is: one of r1c8 and r7c4 is 8, and 8 is removed from every cell that sees both."
   }
  },
  "TURBOT_FISH": {
@@ -2767,6 +3095,9 @@
      "digit": 2
     }
    ],
+   "labels": {
+    "primary": "the two strong links on 2"
+   },
    "links": [
     {
      "from": [
@@ -2814,7 +3145,7 @@
      "strong": true
     }
    ],
-   "description": "Turbot Fish: strong links on 2 (r5c7–r9c7 and r7c6–r9c5) are weakly connected, so 2 can be removed from cells seeing both r5c7 and r7c6."
+   "description": "Turbot Fish on 2: r5c7 and r9c7 are the only places for 2 in their line, as are r7c6 and r9c5, and r9c7 sees r9c5. If r5c7 is not 2, r9c7 is, so r9c5 is not, so r7c6 is: one of r5c7 and r7c6 is 2, and 2 is removed from every cell that sees both."
   }
  },
  "EMPTY_RECTANGLE": {
@@ -2937,7 +3268,17 @@
      "digit": 5
     }
    ],
-   "description": "Empty Rectangle: in box 1 digit 5 sits on a row/column cross; with the conjugate pair r1c5, r6c5, 5 can be removed from r6c2."
+   "units": [
+    {
+     "unit": 18,
+     "role": "primary"
+    }
+   ],
+   "labels": {
+    "primary": "box 1: every 5 in it lies on one row and one column",
+    "secondary": "the conjugate pair on 5"
+   },
+   "description": "Empty Rectangle on 5: in box 1 every 5 lies on one row and one column, and r1c5, r6c5 are the only two places for 5 in their line. If r6c5 is 5, r6c2 in its column is not. If not, r1c5 is 5, so the box's 5 cannot share its column and must lie on the row through r6c2, which again is not 5. So 5 is removed from r6c2."
   }
  },
  "W_WING": {
@@ -3391,7 +3732,7 @@
     "primary": "pivot",
     "secondary": "pincers"
    },
-   "description": "XYZ-Wing: pivot r2c5 with pincers r3c6 and r7c5; 4 is removed from cells seeing all three."
+   "description": "XYZ-Wing: pivot r2c5 (459) with pincers r3c6 (45) and r7c5 (49). Whichever digit the pivot takes, one of the three cells is 4, so 4 is removed from every cell that sees all three."
   }
  },
  "WXYZ_WING": {
@@ -3666,6 +4007,9 @@
      "digit": 8
     }
    ],
+   "labels": {
+    "primary": "the three corners holding only 5/8: the fourth must not join them"
+   },
    "description": "Unique Rectangle Type 1: r4c1, r4c8, r5c1, r5c8 would form a deadly pattern on 5/8; r4c8 cannot be 5 or 8."
   }
  },
@@ -3809,6 +4153,10 @@
      "digit": 6
     }
    ],
+   "labels": {
+    "primary": "the rectangle: 4/7 in all four corners",
+    "secondary": "6, the roof's extra candidate: one of the two roof cells must be it"
+   },
    "description": "Unique Rectangle Type 2: to avoid the deadly pattern on 4/7, one of r5c4/r6c4 must be 6, so 6 is removed from cells seeing both."
   }
  },
@@ -3952,6 +4300,10 @@
      "digit": 6
     }
    ],
+   "labels": {
+    "primary": "the rectangle: 7/8 in all four corners",
+    "secondary": "the cells that form a locked set with the roof extras"
+   },
    "description": "Unique Rectangle Type 3: the roof extras of r3c4, r3c5, r7c4, r7c5 act as one pseudo-cell and form a locked set with r7c6, clearing those digits from the rest of the unit."
   }
  },
@@ -4089,6 +4441,9 @@
      "digit": 6
     }
    ],
+   "labels": {
+    "primary": "the rectangle: 4/6 in all four corners, with 6 locked into the roof"
+   },
    "description": "Unique Rectangle Type 4: 6 is locked into r2c9/r8c9; keeping 4 there would force the deadly pattern, so 4 is removed from both."
   }
  },
@@ -4236,6 +4591,10 @@
      "digit": 5
     }
    ],
+   "labels": {
+    "primary": "the rectangle: 4/8 in all four corners",
+    "secondary": "5 in the roof cells: one of them must be it"
+   },
    "description": "Unique Rectangle Type 5: one of r5c9, r8c8, r8c9 must be 5 to avoid the deadly pattern, so 5 is removed from cells seeing all of them."
   }
  },
@@ -4373,6 +4732,9 @@
      "digit": 6
     }
    ],
+   "labels": {
+    "primary": "the rectangle: 5/6 in all four corners, with 6 confined to it in both rows"
+   },
    "description": "Unique Rectangle Type 6: 6 is confined to the rectangle in both rows; placing it in a roof corner would force the deadly pattern, so 6 is removed from r5c9, r6c6."
   }
  },
@@ -4512,6 +4874,10 @@
      "digit": 5
     }
    ],
+   "labels": {
+    "primary": "the rectangle: 3/5 in all four corners",
+    "secondary": "5 in the bivalue corner: confined to the rectangle in r6c5's row and column"
+   },
    "description": "Hidden Rectangle: r9c6 holds only 35, and 5 is confined to the rectangle in r6c5's row and column; r6c5 cannot be 3 or the deadly pattern appears."
   }
  },
@@ -4613,10 +4979,28 @@
    ],
    "primary": [
     {
+     "cell": 15,
+     "digit": 3
+    },
+    {
+     "cell": 60,
+     "digit": 2
+    },
+    {
+     "cell": 62,
+     "digit": 3
+    }
+   ],
+   "secondary": [
+    {
      "cell": 17,
      "digit": 2
     }
    ],
+   "labels": {
+    "primary": "the three solved corners, none of them a given",
+    "secondary": "the cell that would complete the rectangle with 2"
+   },
    "description": "Avoidable Rectangle Type 1: setting r2c9 to 2 would complete an interchangeable rectangle of solved (non-given) cells, contradicting the puzzle's unique solution."
   }
  },
@@ -4726,6 +5110,20 @@
      "digit": 3
     }
    ],
+   "secondary": [
+    {
+     "cell": 47,
+     "digit": 5
+    },
+    {
+     "cell": 74,
+     "digit": 4
+    }
+   ],
+   "labels": {
+    "primary": "3 in the two unsolved corners: one of them must be it",
+    "secondary": "the two solved corners, neither of them a given"
+   },
    "description": "Avoidable Rectangle Type 2: to avoid an interchangeable rectangle with the solved cells r6c3, r9c3, one of r6c2/r9c2 must be 3, so 3 is removed from cells seeing both."
   }
  },
@@ -4871,6 +5269,9 @@
      "digit": 9
     }
    ],
+   "labels": {
+    "primary": "the cells that would form a deadly 249 loop"
+   },
    "description": "Extended Rectangle Type 1: r8c1, r9c1, r8c5, r9c5, r8c9, r9c9 would form a deadly 249 loop; r9c5 must take one of its extra candidates."
   }
  },
@@ -4994,7 +5395,30 @@
      "digit": 8
     }
    ],
-   "description": "Finned X-Wing: digit 8 forms a x-wing in 2 columns with fin(s) r4c3; 8 can be removed from cover cells that see all fins."
+   "units": [
+    {
+     "unit": 11,
+     "role": "primary"
+    },
+    {
+     "unit": 17,
+     "role": "primary"
+    },
+    {
+     "unit": 4,
+     "role": "secondary"
+    },
+    {
+     "unit": 7,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "base columns: the 8s of the fish",
+    "secondary": "cover rows: where the base's 8s must land",
+    "fins": "fin: 8s outside the fish, in one box; a removal must see every fin"
+   },
+   "description": "Finned X-Wing on 8: in columns 3, 9, 8 sits in rows 5, 8 (r5c3, r8c3, r5c9, r8c9) except for the fin r4c3. Either the fin is false and the fish holds, or the fin is true; a 8 that sees every fin and lies in the cover rows outside the base is false both ways."
   }
  },
  "SASHIMI_X_WING": {
@@ -5117,7 +5541,30 @@
      "digit": 1
     }
    ],
-   "description": "Sashimi X-Wing: digit 1 forms a x-wing in 2 columns with fin(s) r7c4, r8c4; 1 can be removed from cover cells that see all fins."
+   "units": [
+    {
+     "unit": 12,
+     "role": "primary"
+    },
+    {
+     "unit": 16,
+     "role": "primary"
+    },
+    {
+     "unit": 5,
+     "role": "secondary"
+    },
+    {
+     "unit": 8,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "base columns: the 1s of the fish",
+    "secondary": "cover rows: where the base's 1s must land",
+    "fins": "fin: 1s outside the fish, in one box; a removal must see every fin"
+   },
+   "description": "Sashimi X-Wing on 1: in columns 4, 8, 1 sits in rows 6, 9 (r6c4, r6c8, r9c8) except for the fins r7c4, r8c4. Either the fins are false and the fish holds, or a fin is true; a 1 that sees every fin and lies in the cover rows outside the base is false both ways."
   }
  },
  "FINNED_SWORDFISH": {
@@ -5248,7 +5695,38 @@
      "digit": 3
     }
    ],
-   "description": "Finned Swordfish: digit 3 forms a swordfish in 3 rows with fin(s) r7c3; 3 can be removed from cover cells that see all fins."
+   "units": [
+    {
+     "unit": 1,
+     "role": "primary"
+    },
+    {
+     "unit": 2,
+     "role": "primary"
+    },
+    {
+     "unit": 6,
+     "role": "primary"
+    },
+    {
+     "unit": 10,
+     "role": "secondary"
+    },
+    {
+     "unit": 12,
+     "role": "secondary"
+    },
+    {
+     "unit": 15,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "base rows: the 3s of the fish",
+    "secondary": "cover columns: where the base's 3s must land",
+    "fins": "fin: 3s outside the fish, in one box; a removal must see every fin"
+   },
+   "description": "Finned Swordfish on 3: in rows 2, 3, 7, 3 sits in columns 2, 4, 7 (r2c2, r2c4, r3c4, r3c7, r7c4, r7c7) except for the fin r7c3. Either the fin is false and the fish holds, or the fin is true; a 3 that sees every fin and lies in the cover columns outside the base is false both ways."
   }
  },
  "SASHIMI_SWORDFISH": {
@@ -5375,7 +5853,38 @@
      "digit": 1
     }
    ],
-   "description": "Sashimi Swordfish: digit 1 forms a swordfish in 3 rows with fin(s) r6c2; 1 can be removed from cover cells that see all fins."
+   "units": [
+    {
+     "unit": 4,
+     "role": "primary"
+    },
+    {
+     "unit": 5,
+     "role": "primary"
+    },
+    {
+     "unit": 7,
+     "role": "primary"
+    },
+    {
+     "unit": 11,
+     "role": "secondary"
+    },
+    {
+     "unit": 13,
+     "role": "secondary"
+    },
+    {
+     "unit": 15,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "base rows: the 1s of the fish",
+    "secondary": "cover columns: where the base's 1s must land",
+    "fins": "fin: 1s outside the fish, in one box; a removal must see every fin"
+   },
+   "description": "Sashimi Swordfish on 1: in rows 5, 6, 8, 1 sits in columns 3, 5, 7 (r5c3, r5c7, r6c5, r8c5, r8c7) except for the fin r6c2. Either the fin is false and the fish holds, or the fin is true; a 1 that sees every fin and lies in the cover columns outside the base is false both ways."
   }
  },
  "FINNED_JELLYFISH": {
@@ -5514,7 +6023,46 @@
      "digit": 1
     }
    ],
-   "description": "Finned Jellyfish: digit 1 forms a jellyfish in 4 rows with fin(s) r4c7; 1 can be removed from cover cells that see all fins."
+   "units": [
+    {
+     "unit": 0,
+     "role": "primary"
+    },
+    {
+     "unit": 3,
+     "role": "primary"
+    },
+    {
+     "unit": 6,
+     "role": "primary"
+    },
+    {
+     "unit": 7,
+     "role": "primary"
+    },
+    {
+     "unit": 9,
+     "role": "secondary"
+    },
+    {
+     "unit": 11,
+     "role": "secondary"
+    },
+    {
+     "unit": 12,
+     "role": "secondary"
+    },
+    {
+     "unit": 16,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "base rows: the 1s of the fish",
+    "secondary": "cover columns: where the base's 1s must land",
+    "fins": "fin: 1s outside the fish, in one box; a removal must see every fin"
+   },
+   "description": "Finned Jellyfish on 1: in rows 1, 4, 7, 8, 1 sits in columns 1, 3, 4, 8 (r1c1, r1c4, r4c1, r4c8, r7c3, r7c4, r8c3, r8c8) except for the fin r4c7. Either the fin is false and the fish holds, or the fin is true; a 1 that sees every fin and lies in the cover columns outside the base is false both ways."
   }
  },
  "SASHIMI_JELLYFISH": {
@@ -5649,7 +6197,46 @@
      "digit": 6
     }
    ],
-   "description": "Sashimi Jellyfish: digit 6 forms a jellyfish in 4 rows with fin(s) r3c6; 6 can be removed from cover cells that see all fins."
+   "units": [
+    {
+     "unit": 2,
+     "role": "primary"
+    },
+    {
+     "unit": 3,
+     "role": "primary"
+    },
+    {
+     "unit": 6,
+     "role": "primary"
+    },
+    {
+     "unit": 7,
+     "role": "primary"
+    },
+    {
+     "unit": 9,
+     "role": "secondary"
+    },
+    {
+     "unit": 10,
+     "role": "secondary"
+    },
+    {
+     "unit": 12,
+     "role": "secondary"
+    },
+    {
+     "unit": 17,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "base rows: the 6s of the fish",
+    "secondary": "cover columns: where the base's 6s must land",
+    "fins": "fin: 6s outside the fish, in one box; a removal must see every fin"
+   },
+   "description": "Sashimi Jellyfish on 6: in rows 3, 4, 7, 8, 6 sits in columns 1, 2, 4, 9 (r3c1, r4c2, r4c4, r7c2, r7c9, r8c1, r8c9) except for the fin r3c6. Either the fin is false and the fish holds, or the fin is true; a 6 that sees every fin and lies in the cover columns outside the base is false both ways."
   }
  },
  "SUE_DE_COQ": {
@@ -5804,6 +6391,10 @@
      "digit": 7
     }
    ],
+   "labels": {
+    "primary": "the intersection cells, holding 24678",
+    "secondary": "the line cell and the box cell that complete the locked set"
+   },
    "description": "Sue de Coq: r9c7, r9c8, r9c9 (24678) with r9c4 in the line and r7c7 in the box form a locked set; line digits are cleared from the rest of the line, box digits from the rest of the box."
   }
  },
@@ -5931,6 +6522,10 @@
      "digit": 4
     }
    ],
+   "labels": {
+    "primary": "blue: one colour of the conjugate pairs on 4, all true or all false together",
+    "secondary": "gold: the other colour, true exactly when blue is false"
+   },
    "links": [
     {
      "from": [
@@ -5945,7 +6540,8 @@
        "digit": 4
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -5960,7 +6556,8 @@
        "digit": 4
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -5975,7 +6572,8 @@
        "digit": 4
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -5990,7 +6588,8 @@
        "digit": 4
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -6005,7 +6604,38 @@
        "digit": 4
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
+    },
+    {
+     "from": [
+      {
+       "cell": 48,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 52,
+       "digit": 4
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 70,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 52,
+       "digit": 4
+      }
+     ],
+     "strong": false
     }
    ],
    "description": "Simple Colors on 4: its conjugate pairs (the solid links) are coloured blue and gold, and either every blue 4 is true or every gold one is. The 4 in r6c8 sees a blue 4 in r6c4 and a gold 4 in r8c8, so it is false either way."
@@ -6141,6 +6771,11 @@
      "digit": 5
     }
    ],
+   "labels": {
+    "primary": "blue: a colour of the first cluster",
+    "secondary": "gold: a colour of the second cluster",
+    "fins": "purple: the two colours that see each other across the bridge; at most one is true"
+   },
    "links": [
     {
      "from": [
@@ -6155,7 +6790,8 @@
        "digit": 5
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -6170,7 +6806,8 @@
        "digit": 5
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -6185,7 +6822,8 @@
        "digit": 5
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -6200,7 +6838,8 @@
        "digit": 5
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -6215,7 +6854,8 @@
        "digit": 5
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -6227,6 +6867,36 @@
      "to": [
       {
        "cell": 32,
+       "digit": 5
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 65,
+       "digit": 5
+      }
+     ],
+     "to": [
+      {
+       "cell": 55,
+       "digit": 5
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 59,
+       "digit": 5
+      }
+     ],
+     "to": [
+      {
+       "cell": 55,
        "digit": 5
       }
      ],
@@ -6360,6 +7030,10 @@
      "digit": 1
     }
    ],
+   "labels": {
+    "primary": "blue: one colour, all its candidates true or all false together",
+    "secondary": "gold: the other colour, true exactly when blue is false"
+   },
    "links": [
     {
      "from": [
@@ -6374,7 +7048,8 @@
        "digit": 8
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -6389,7 +7064,8 @@
        "digit": 1
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -6404,7 +7080,8 @@
        "digit": 8
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -6419,7 +7096,8 @@
        "digit": 1
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
@@ -6434,7 +7112,38 @@
        "digit": 1
       }
      ],
-     "strong": true
+     "strong": true,
+     "undirected": true
+    },
+    {
+     "from": [
+      {
+       "cell": 54,
+       "digit": 1
+      }
+     ],
+     "to": [
+      {
+       "cell": 55,
+       "digit": 1
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 56,
+       "digit": 1
+      }
+     ],
+     "to": [
+      {
+       "cell": 55,
+       "digit": 1
+      }
+     ],
+     "strong": false
     }
    ],
    "description": "3D Medusa: candidates joined by conjugate pairs and bivalue cells (the solid links) are coloured blue and gold, and either every blue candidate is true or every gold one is. The 1 in r7c2 sees a blue 1 in r7c1 and a gold 1 in r7c3, so it is false either way."
@@ -6529,6 +7238,9 @@
   ],
   "step": {
    "tech": "X_CHAIN",
+   "labels": {
+    "primary": "the chain on 1"
+   },
    "placements": [],
    "eliminations": [
     {
@@ -6731,6 +7443,9 @@
   ],
   "step": {
    "tech": "GROUPED_X_CYCLES",
+   "labels": {
+    "primary": "the loop on 2, with grouped nodes"
+   },
    "placements": [],
    "eliminations": [
     {
@@ -6968,6 +7683,9 @@
   ],
   "step": {
    "tech": "XY_CHAIN",
+   "labels": {
+    "primary": "the chain of bivalue cells"
+   },
    "placements": [],
    "eliminations": [
     {
@@ -7184,6 +7902,9 @@
   ],
   "step": {
    "tech": "NICE_LOOP",
+   "labels": {
+    "primary": "the loop"
+   },
    "placements": [],
    "eliminations": [
     {
@@ -7417,6 +8138,9 @@
   ],
   "step": {
    "tech": "GROUPED_NICE_LOOP",
+   "labels": {
+    "primary": "the loop, with grouped nodes"
+   },
    "placements": [],
    "eliminations": [
     {
@@ -7697,6 +8421,27 @@
      "digit": 9
     }
    ],
+   "labels": {
+    "primary": "set A: one digit short of locked; 1 is its restricted common with set B",
+    "secondary": "set B: whichever set loses 1 locks and places 5"
+   },
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 64,
+       "digit": 1
+      }
+     ],
+     "to": [
+      {
+       "cell": 71,
+       "digit": 1
+      }
+     ],
+     "strong": false
+    }
+   ],
    "description": "ALS-XZ: sets r8c2, r9c1 and r7c8, r8c9 share restricted common 1; digit 5 can be removed from cells seeing every 5 of both sets."
   }
  },
@@ -7851,6 +8596,38 @@
     "secondary": "set linked via 6",
     "fins": "hinge"
    },
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 65,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 47,
+       "digit": 4
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 47,
+       "digit": 6
+      }
+     ],
+     "to": [
+      {
+       "cell": 52,
+       "digit": 6
+      }
+     ],
+     "strong": false
+    }
+   ],
    "description": "ALS-XY-Wing: hinge r6c3 links r8c3, r8c8 (via 4) and r4c9, r6c8 (via 6); digit 7 can be removed from cells seeing every 7 of both outer sets."
   }
  },
@@ -8006,6 +8783,61 @@
      "digit": 3
     }
    ],
+   "labels": {
+    "primary": "the end sets, which both hold 4",
+    "secondary": "the middle sets, each linked to its neighbours by a restricted common digit"
+   },
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 33,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 6,
+       "digit": 9
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 6,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 4,
+       "digit": 3
+      },
+      {
+       "cell": 5,
+       "digit": 3
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 4,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 58,
+       "digit": 9
+      }
+     ],
+     "strong": false
+    }
+   ],
    "description": "ALS-XY-Chain: r4c2, r4c7 –9– r1c7 –3– r1c5, r1c6 –9– r7c5; digit 4 falls from cells seeing every 4 of both end sets."
   }
  },
@@ -8098,6 +8930,9 @@
   ],
   "step": {
    "tech": "AIC",
+   "labels": {
+    "primary": "the chain"
+   },
    "placements": [],
    "eliminations": [
     {
@@ -8799,6 +9634,57 @@
      "digit": 7
     }
    ],
+   "labels": {
+    "primary": "the stem: each of its candidates leads to a petal",
+    "secondary": "the petals: one set per stem digit, all holding 4"
+   },
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 71,
+       "digit": 2
+      }
+     ],
+     "to": [
+      {
+       "cell": 78,
+       "digit": 2
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 71,
+       "digit": 5
+      }
+     ],
+     "to": [
+      {
+       "cell": 67,
+       "digit": 5
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 71,
+       "digit": 7
+      }
+     ],
+     "to": [
+      {
+       "cell": 63,
+       "digit": 7
+      }
+     ],
+     "strong": false
+    }
+   ],
    "description": "Death Blossom: stem r8c9 links each of its candidates to a petal set; whichever digit the stem takes, some petal locks and places 4, so 4 is removed from cells seeing every 4 of all petals."
   }
  },
@@ -8932,6 +9818,9 @@
      "digit": 8
     }
    ],
+   "labels": {
+    "primary": "the cross and its two wings: the only cells 1/4/8 can land on"
+   },
    "description": "Fireworks: digits 1/4/8 each must land on one of r8c6 (cross), r8c3 (row wing) or r2c6 (column wing), locking those three cells, so all other candidates there are removed."
   }
  },
@@ -9095,6 +9984,10 @@
      "digit": 8
     }
    ],
+   "labels": {
+    "primary": "the aligned pair",
+    "secondary": "the almost locked sets both cells see, which rule out pairings"
+   },
    "description": "Aligned Pair Exclusion: every candidate pairing of r7c4 and r8c4 that survives the sets they both see leaves no place for the removed candidate."
   }
  },
@@ -9234,6 +10127,10 @@
      "digit": 2
     }
    ],
+   "labels": {
+    "primary": "the base cells, holding 256",
+    "secondary": "the target cells: the base digits must land here"
+   },
    "description": "Exocet: base r9c8, r9c9 (256) with targets r7c3 and r8c5: a complete placement analysis proves the base digits must land in the targets, so the targets keep only base candidates."
   },
   "credit": "sudokuwiki.org"
@@ -9340,6 +10237,9 @@
      "digit": 9
     }
    ],
+   "labels": {
+    "primary": "cells no complete placement of 9 uses"
+   },
    "description": "Pattern Overlay: of the 6 complete placements possible for digit 9, none uses r9c1."
   }
  },
@@ -9449,6 +10349,187 @@
      "digit": 8
     }
    ],
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 0,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 0,
+       "digit": 3
+      }
+     ],
+     "strong": false,
+     "text": "r1c1 = 8, so 3 is removed from r1c1."
+    },
+    {
+     "from": [
+      {
+       "cell": 0,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 2,
+       "digit": 8
+      }
+     ],
+     "strong": true,
+     "text": "If r1c1 is not 8, then r1c3 must be 8: the only place left for 8 in row 1."
+    },
+    {
+     "from": [
+      {
+       "cell": 2,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 66,
+       "digit": 8
+      }
+     ],
+     "strong": true,
+     "text": "r1c3 = 8, then r8c4 must be 8: the only place left for 8 in row 8."
+    },
+    {
+     "from": [
+      {
+       "cell": 66,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 75,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "text": "r8c4 = 8, then r9c4 must be 4: the only place left for 4 in column 4."
+    },
+    {
+     "from": [
+      {
+       "cell": 75,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 71,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "text": "r9c4 = 4, then r8c9 must be 4: the only place left for 4 in column 9."
+    },
+    {
+     "from": [
+      {
+       "cell": 71,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 69,
+       "digit": 1
+      }
+     ],
+     "strong": true,
+     "text": "r8c9 = 4, then r8c7 must be 1: the only place left for 1 in box 9."
+    },
+    {
+     "from": [
+      {
+       "cell": 69,
+       "digit": 1
+      }
+     ],
+     "to": [
+      {
+       "cell": 80,
+       "digit": 6
+      }
+     ],
+     "strong": true,
+     "text": "r8c7 = 1, then r9c9 must be 6: the only place left for 6 in box 9."
+    },
+    {
+     "from": [
+      {
+       "cell": 80,
+       "digit": 6
+      }
+     ],
+     "to": [
+      {
+       "cell": 17,
+       "digit": 9
+      }
+     ],
+     "strong": true,
+     "text": "r9c9 = 6, then r2c9 must be 9: the only candidate left in r2c9."
+    },
+    {
+     "from": [
+      {
+       "cell": 17,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 14,
+       "digit": 6
+      }
+     ],
+     "strong": true,
+     "text": "r2c9 = 9, then r2c6 must be 6: the only place left for 6 in row 2."
+    },
+    {
+     "from": [
+      {
+       "cell": 14,
+       "digit": 6
+      }
+     ],
+     "to": [
+      {
+       "cell": 5,
+       "digit": 3
+      }
+     ],
+     "strong": true,
+     "text": "r2c6 = 6, then r1c6 must be 3: the only place left for 3 in column 6."
+    },
+    {
+     "from": [
+      {
+       "cell": 5,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 0,
+       "digit": 3
+      }
+     ],
+     "strong": false,
+     "text": "r1c6 = 3, so 3 is removed from r1c1."
+    }
+   ],
+   "labels": {
+    "primary": "r1c1 = 8 and its opposite, each followed along its own line to the same conclusion"
+   },
    "description": "Digit forcing: whether r1c1 is 8 or not, the forced singles agree on the same conclusions."
   }
  },
@@ -9554,6 +10635,153 @@
      "digit": 4
     }
    ],
+   "fins": [
+    {
+     "cell": 27,
+     "digit": 7
+    },
+    {
+     "cell": 33,
+     "digit": 7
+    },
+    {
+     "cell": 34,
+     "digit": 7
+    }
+   ],
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 3,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 1,
+       "digit": 9
+      }
+     ],
+     "strong": true,
+     "text": "r1c4 = 4, then r1c2 must be 9: the only candidate left in r1c2."
+    },
+    {
+     "from": [
+      {
+       "cell": 1,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 37,
+       "digit": 2
+      }
+     ],
+     "strong": true,
+     "text": "r1c2 = 9, then r5c2 must be 2: the only candidate left in r5c2."
+    },
+    {
+     "from": [
+      {
+       "cell": 37,
+       "digit": 2
+      }
+     ],
+     "to": [
+      {
+       "cell": 46,
+       "digit": 7
+      }
+     ],
+     "strong": true,
+     "text": "r5c2 = 2, then r6c2 must be 7: the only candidate left in r6c2."
+    },
+    {
+     "from": [
+      {
+       "cell": 46,
+       "digit": 7
+      }
+     ],
+     "to": [
+      {
+       "cell": 53,
+       "digit": 2
+      }
+     ],
+     "strong": true,
+     "text": "r6c2 = 7, then r6c9 must be 2: the only candidate left in r6c9."
+    },
+    {
+     "from": [
+      {
+       "cell": 53,
+       "digit": 2
+      }
+     ],
+     "to": [
+      {
+       "cell": 32,
+       "digit": 2
+      }
+     ],
+     "strong": true,
+     "text": "r6c9 = 2, then r4c6 must be 2: the only place left for 2 in row 4."
+    },
+    {
+     "from": [
+      {
+       "cell": 32,
+       "digit": 2
+      }
+     ],
+     "to": [
+      {
+       "cell": 33,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "text": "r4c6 = 2, then r4c7 must be 4: the only place left for 4 in row 4."
+    },
+    {
+     "from": [
+      {
+       "cell": 33,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 27,
+       "digit": 7
+      },
+      {
+       "cell": 33,
+       "digit": 7
+      },
+      {
+       "cell": 34,
+       "digit": 7
+      }
+     ],
+     "strong": false,
+     "text": "r4c7 = 4, then row 4 would have no place left for 7: a contradiction."
+    }
+   ],
+   "units": [
+    {
+     "unit": 3,
+     "role": "secondary"
+    }
+   ],
+   "labels": {
+    "primary": "the assumption and the singles it forces: one line of the reasoning, read along the arrows",
+    "secondary": "the house that would be left with no place for a digit",
+    "fins": "where the board would break"
+   },
    "description": "Nishio: assuming r1c4 = 4 and following the forced singles leads to a contradiction, so 4 is impossible there."
   }
  }

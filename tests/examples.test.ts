@@ -69,8 +69,19 @@ describe('worked examples', () => {
         ...(ex.step.links ?? []).flatMap((l) => [...l.from, ...l.to])
       ];
       for (const { cell, digit } of marked) {
-        expect(ex.values[cell], `${TECHS[tech].name}: marked cell is empty`).toBe('0');
+        if (ex.values[cell] !== '0') {
+          // a solved cell may be part of a drawing (the digits that force a
+          // single, the solved corners of an avoidable rectangle), shown by
+          // its own digit and nothing else
+          expect(ex.values[cell], `${TECHS[tech].name}: a solved cell is marked with its own digit`).toBe(String(digit));
+          continue;
+        }
         expect((ex.cands[cell] & bit(digit)) !== 0, `${TECHS[tech].name}: marked candidate exists`).toBe(true);
+      }
+      // and every band is a real house
+      for (const band of ex.step.units ?? []) {
+        expect(band.unit).toBeGreaterThanOrEqual(0);
+        expect(band.unit).toBeLessThan(27);
       }
     });
   }
@@ -82,6 +93,8 @@ describe('worked examples', () => {
       expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
       expect(svg.trim().endsWith('</svg>')).toBe(true);
       expect(svg).not.toMatch(/NaN|undefined/);
+      // one marker per highlighted candidate of an empty cell (a solved
+      // cell shows its colour on the digit), plus the dot where a chain starts
       const marked = new Set(
         [
           ...(ex.step.primary ?? []),
@@ -90,12 +103,15 @@ describe('worked examples', () => {
           ...ex.step.eliminations,
           ...ex.step.placements,
           ...(ex.step.links ?? []).flatMap((l) => [...l.from, ...l.to])
-        ].map((cd) => `${cd.cell}:${cd.digit}`)
+        ]
+          .filter((cd) => ex.values[cd.cell] === '0')
+          .map((cd) => `${cd.cell}:${cd.digit}`)
       );
-      expect((svg.match(/<circle /g) ?? []).length, tech).toBe(marked.size);
-      expect((svg.match(/<path d="[^"]+" fill="none"/g) ?? []).length, tech).toBe(
-        ex.step.links?.length ?? 0
-      );
+      const links = ex.step.links?.length ?? 0;
+      const arrows = (ex.step.links ?? []).filter((l) => !l.undirected).length;
+      expect((svg.match(/<circle /g) ?? []).length, tech).toBe(marked.size + (arrows ? 1 : 0));
+      // every link is drawn twice: a halo under the arrow
+      expect((svg.match(/<path d="[^"]+" fill="none"/g) ?? []).length, tech).toBe(2 * links);
       const givens = ex.puzzle.replace(/[^1-9]/g, '').length;
       expect((svg.match(/class="giv"/g) ?? []).length, tech).toBe(givens);
     }

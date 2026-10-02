@@ -15,6 +15,15 @@ export interface ChainLink {
   from: CellDigit[];
   to: CellDigit[];
   strong: boolean;
+  /** the sentence the walk reads for this link, when the generic one would not do */
+  text?: string;
+  /**
+   * a tie rather than an inference: the two ends are a conjugate pair or
+   * the two candidates of a bivalue cell, exactly one of them true, so
+   * they take opposite colours. Drawn as a quiet line without an arrowhead;
+   * the walk shows all of a step's ties in one frame.
+   */
+  undirected?: boolean;
 }
 
 /**
@@ -40,7 +49,26 @@ export function alternatingLinks(
   return links;
 }
 
-/** One solving step: what to do, plus everything needed to visualise it. */
+/**
+ * A whole row, column or box shaded as a band: a fish's base and cover
+ * lines, the house a locked set lives in, the house a single was found in.
+ * Primary and secondary follow the step's colour grammar and its labels.
+ */
+export interface UnitBand {
+  /** index into UNITS: rows 0-8, columns 9-17, boxes 18-26 */
+  unit: number;
+  role: 'primary' | 'secondary';
+}
+
+/**
+ * One solving step: what to do, plus everything needed to visualise it.
+ *
+ * The colour grammar every step follows (docs/highlighting.md): blue is
+ * the pattern itself, amber is what the pattern acts through, purple is
+ * the exception (a fin, the extra candidate), red is removed and green is
+ * placed. A step names what its colours mean in `labels`, so the legend
+ * always speaks; a solved cell listed in a colour is shown by its digit.
+ */
 export interface Step {
   tech: Tech;
   placements: CellDigit[];
@@ -56,6 +84,8 @@ export interface Step {
    * label here is named generically ("the pattern", "supporting cells", "fin")
    */
   labels?: { primary?: string; secondary?: string; fins?: string };
+  /** whole houses shaded as bands, under the candidate marks */
+  units?: UnitBand[];
   /** ordered chain of cells — legacy centre-to-centre fallback drawing */
   chainCells?: number[];
   /** candidate-anchored arrows; when present they replace `chainCells` */

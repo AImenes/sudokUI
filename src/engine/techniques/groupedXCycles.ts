@@ -117,6 +117,7 @@ export function findGroupedXCycles(g: Grid, maxLen = 10): Step | null {
           if (startCells.length >= 2) {
             return {
               tech: 'GROUPED_X_CYCLES',
+              labels: { primary: `the loop on ${d}, with grouped nodes` },
               placements: [],
               eliminations: startCells.map((cell) => ({ cell, digit: d })),
               primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
@@ -176,6 +177,7 @@ function rule2(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
   if (start.cells.length === 1) {
     return {
       tech: 'GROUPED_X_CYCLES',
+      labels: { primary: `the loop on ${d}, with grouped nodes` },
       placements: [{ cell: start.cells[0], digit: d }],
       eliminations: [],
       primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
@@ -193,6 +195,7 @@ function rule2(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
   if (!elims.length) return null;
   return {
     tech: 'GROUPED_X_CYCLES',
+    labels: { primary: `the loop on ${d}, with grouped nodes` },
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
@@ -221,6 +224,7 @@ function rule1(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
   if (!elims.length) return null;
   return {
     tech: 'GROUPED_X_CYCLES',
+    labels: { primary: `the loop on ${d}, with grouped nodes` },
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),

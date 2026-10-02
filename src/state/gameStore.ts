@@ -19,6 +19,7 @@ import {
 import { solve, countSolutions } from '../engine/bruteForce';
 import { findNextStep, applyStep, ratePuzzle } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
+import { walkFrames } from '../engine/hintFrames';
 import { Level, Tech } from '../engine/ratings';
 import { useSettings } from './settings';
 
@@ -184,7 +185,11 @@ interface GameStore {
    *  restart/new. */
   assisted: boolean;
   hint: Step | null;
-  hintStage: 'hidden' | 'tech' | 'full';
+  /** tech: the name only; full: the drawing and the explanation; walk: the
+   *  drawing revealed one frame at a time (src/engine/hintFrames.ts) */
+  hintStage: 'hidden' | 'tech' | 'full' | 'walk';
+  /** the frame shown while walking */
+  walkIndex: number;
   /** how manual pencil marks are to be read (see MarkContract); per game */
   markContract: MarkContract;
   /** the one-time contract question is being shown (set by requestHint) */
@@ -227,6 +232,8 @@ interface GameStore {
   answerContract: (contract: 'exhaustive' | 'open') => void;
   dismissContractPrompt: () => void;
   revealHint: () => void;
+  /** start the walk, or move through it by a number of frames */
+  walkHint: (delta?: number) => void;
   applyHint: () => void;
   dismissHint: () => void;
   check: () => void;
@@ -277,6 +284,7 @@ export const useGame = create<GameStore>()(
       assisted: false,
       hint: null,
       hintStage: 'hidden' as const,
+      walkIndex: 0,
       markContract: 'unknown' as MarkContract,
       contractPrompt: false,
       errors: [],
@@ -865,6 +873,18 @@ export const useGame = create<GameStore>()(
       dismissContractPrompt: () => set({ contractPrompt: false }),
 
       revealHint: () => set({ hintStage: 'full' }),
+
+      walkHint: (delta) => {
+        const s = get();
+        if (!s.hint) return;
+        const frames = walkFrames(s.hint).length;
+        if (s.hintStage !== 'walk') {
+          set({ hintStage: 'walk', walkIndex: 0 });
+          return;
+        }
+        const next = Math.max(0, Math.min(frames - 1, s.walkIndex + (delta ?? 0)));
+        set({ walkIndex: next });
+      },
 
       applyHint: () => {
         const s = get();

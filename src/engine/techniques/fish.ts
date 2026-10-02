@@ -57,12 +57,22 @@ export function findBasicFish(g: Grid, size: number): Step | null {
         const baseCells = baseLines.flatMap((l) =>
           bitsOf(positions[l]).map((p) => cellAt(rows, l, p))
         );
+        const baseWord = rows ? 'rows' : 'columns';
+        const coverWord = rows ? 'columns' : 'rows';
         return {
           tech: FISH_NAMES[size].toUpperCase().replace('-', '_') as Tech,
           placements: [],
           eliminations: elims,
           primary: baseCells.map((cell) => ({ cell, digit: d })),
-          description: `${FISH_NAMES[size]}: digit ${d} in ${size} ${rows ? 'rows' : 'columns'} (${cellNames(baseCells)}) is confined to ${size} ${rows ? 'columns' : 'rows'}, eliminating ${d} elsewhere in them.`
+          units: [
+            ...baseLines.map((l) => ({ unit: rows ? l : 9 + l, role: 'primary' as const })),
+            ...bitsOf(cover).map((p) => ({ unit: rows ? 9 + p : p, role: 'secondary' as const }))
+          ],
+          labels: {
+            primary: `base ${baseWord}: the ${d}s of the fish, ${size} ${baseWord} with ${d} only in the cover ${coverWord}`,
+            secondary: `cover ${coverWord}: ${size} of them take the base's ${d}s, so ${d} goes nowhere else in them`
+          },
+          description: `${FISH_NAMES[size]} on ${d}: in ${baseWord} ${baseLines.map((l) => l + 1).join(', ')}, ${d} can only go in ${coverWord} ${bitsOf(cover).map((p) => p + 1).join(', ')} (${cellNames(baseCells)}). Those ${size} ${baseWord} will use up ${d} in those ${size} ${coverWord}, so ${d} can go nowhere else in them.`
         };
       }
     }
@@ -123,13 +133,24 @@ export function findFinnedFish(g: Grid, size: number, sashimi: boolean): Step | 
             bitsOf(positions[l] & cover).map((p) => cellAt(rows, l, p))
           );
           const prefix = sashimi ? 'Sashimi' : 'Finned';
+          const baseWord = rows ? 'rows' : 'columns';
+          const coverWord = rows ? 'columns' : 'rows';
           return {
             tech: `${prefix.toUpperCase()}_${FISH_NAMES[size].toUpperCase().replace('-', '_')}` as Tech,
             placements: [],
             eliminations: elims,
             primary: baseCells.map((cell) => ({ cell, digit: d })),
             fins: finCells.map((cell) => ({ cell, digit: d })),
-            description: `${prefix} ${FISH_NAMES[size]}: digit ${d} forms a ${FISH_NAMES[size].toLowerCase()} in ${size} ${rows ? 'rows' : 'columns'} with fin(s) ${cellNames(finCells)}; ${d} can be removed from cover cells that see all fins.`
+            units: [
+              ...baseLines.map((l) => ({ unit: rows ? l : 9 + l, role: 'primary' as const })),
+              ...coverPositions.map((p) => ({ unit: rows ? 9 + p : p, role: 'secondary' as const }))
+            ],
+            labels: {
+              primary: `base ${baseWord}: the ${d}s of the fish`,
+              secondary: `cover ${coverWord}: where the base's ${d}s must land`,
+              fins: `fin: ${d}s outside the fish, in one box; a removal must see every fin`
+            },
+            description: `${prefix} ${FISH_NAMES[size]} on ${d}: in ${baseWord} ${baseLines.map((l) => l + 1).join(', ')}, ${d} sits in ${coverWord} ${coverPositions.map((p) => p + 1).join(', ')} (${cellNames(baseCells)}) except for the fin${finCells.length > 1 ? 's' : ''} ${cellNames(finCells)}. Either the fin${finCells.length > 1 ? 's are' : ' is'} false and the fish holds, or ${finCells.length > 1 ? 'a fin' : 'the fin'} is true; a ${d} that sees every fin and lies in the cover ${coverWord} outside the base is false both ways.`
           };
         }
       }

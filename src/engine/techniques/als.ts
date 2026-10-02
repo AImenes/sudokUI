@@ -64,6 +64,18 @@ function alsXzStep(
     eliminations: elims,
     primary: allCands(g, A.cells),
     secondary: allCands(g, B.cells),
+    labels: {
+      primary: `set A: one digit short of locked; ${x} is its restricted common with set B`,
+      secondary: `set B: whichever set loses ${x} locks and places ${z}`
+    },
+    // the restricted common: every x of one set sees every x of the other
+    links: [
+      {
+        from: A.cells.filter((c) => g.cands[c] & bit(x)).map((cell) => ({ cell, digit: x })),
+        to: B.cells.filter((c) => g.cands[c] & bit(x)).map((cell) => ({ cell, digit: x })),
+        strong: false
+      }
+    ],
     description: `ALS-XZ: sets ${cellNames(A.cells)} and ${cellNames(B.cells)} share restricted common ${x}; digit ${z} can be removed from cells seeing every ${z} of both sets.`
   };
 }
@@ -234,6 +246,18 @@ export function findAlsXyWing(g: Grid): Step | null {
               digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
             ),
             labels: { primary: `set linked via ${l1.x}`, secondary: `set linked via ${l2.x}`, fins: 'hinge' },
+            links: [
+              {
+                from: A.cells.filter((c) => g.cands[c] & bit(l1.x)).map((cell) => ({ cell, digit: l1.x })),
+                to: C.cells.filter((c) => g.cands[c] & bit(l1.x)).map((cell) => ({ cell, digit: l1.x })),
+                strong: false
+              },
+              {
+                from: C.cells.filter((c) => g.cands[c] & bit(l2.x)).map((cell) => ({ cell, digit: l2.x })),
+                to: B.cells.filter((c) => g.cands[c] & bit(l2.x)).map((cell) => ({ cell, digit: l2.x })),
+                strong: false
+              }
+            ],
             description: `ALS-XY-Wing: hinge ${cellNames(C.cells)} links ${cellNames(A.cells)} (via ${l1.x}) and ${cellNames(B.cells)} (via ${l2.x}); digit ${z} can be removed from cells seeing every ${z} of both outer sets.`
           };
         }
@@ -301,6 +325,19 @@ export function findAlsXyChain(g: Grid): Step | null {
               secondary: [...B.cells, ...C.cells].flatMap((cell) =>
                 digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
               ),
+              labels: {
+                primary: `the end sets, which both hold ${z}`,
+                secondary: 'the middle sets, each linked to its neighbours by a restricted common digit'
+              },
+              links: [
+                [A, B, l1.x],
+                [B, C, l2.x],
+                [C, D, l3.x]
+              ].map(([P, Q, x]) => ({
+                from: (P as Als).cells.filter((c) => g.cands[c] & bit(x as number)).map((cell) => ({ cell, digit: x as number })),
+                to: (Q as Als).cells.filter((c) => g.cands[c] & bit(x as number)).map((cell) => ({ cell, digit: x as number })),
+                strong: false
+              })),
               description: `ALS-XY-Chain: ${cellNames(A.cells)} –${l1.x}– ${cellNames(B.cells)} –${l2.x}– ${cellNames(C.cells)} –${l3.x}– ${cellNames(D.cells)}; digit ${z} falls from cells seeing every ${z} of both end sets.`
             };
           }
@@ -366,6 +403,16 @@ export function findDeathBlossom(g: Grid): Step | null {
                   digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
                 )
               ),
+              labels: {
+                primary: 'the stem: each of its candidates leads to a petal',
+                secondary: `the petals: one set per stem digit, all holding ${z}`
+              },
+              // each stem digit reaches the petal that holds it
+              links: stemDigits.map((p, i) => ({
+                from: [{ cell: stem, digit: p }],
+                to: chosen[i].cells.filter((c) => g.cands[c] & bit(p)).map((cell) => ({ cell, digit: p })),
+                strong: false
+              })),
               description: `Death Blossom: stem ${cellName(stem)} links each of its candidates to a petal set; whichever digit the stem takes, some petal locks and places ${z}, so ${z} is removed from cells seeing every ${z} of all petals.`
             };
           }

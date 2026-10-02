@@ -90,7 +90,7 @@ export function findXYZWing(g: Grid): Step | null {
             { cell: wings[j], digit: z }
           ],
           labels: { primary: 'pivot', secondary: 'pincers' },
-          description: `XYZ-Wing: pivot ${cellName(pivot)} with pincers ${cellName(wings[i])} and ${cellName(wings[j])}; ${z} is removed from cells seeing all three.`
+          description: `XYZ-Wing: pivot ${cellName(pivot)} (${digitsOf(pivotMask).join('')}) with pincers ${cellName(wings[i])} (${digitsOf(g.cands[wings[i]]).join('')}) and ${cellName(wings[j])} (${digitsOf(g.cands[wings[j]]).join('')}). Whichever digit the pivot takes, one of the three cells is ${z}, so ${z} is removed from every cell that sees all three.`
         };
       }
     }

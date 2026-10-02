@@ -155,6 +155,10 @@ export function findExocet(g: Grid): Step | null {
       secondary: targets.flatMap((cell) =>
         digitsOf(g.cands[cell] & S).map((digit) => ({ cell, digit }))
       ),
+      labels: {
+        primary: `the base cells, holding ${digitsOf(S).join('')}`,
+        secondary: 'the target cells: the base digits must land here'
+      },
       description: `Exocet: base ${cellNames(base)} (${digitsOf(S).join('')}) with targets ${cellName(targets[0])} and ${cellName(targets[1])}: a complete placement analysis proves the base digits must land in the targets, so the targets keep only base candidates.`
     };
   }

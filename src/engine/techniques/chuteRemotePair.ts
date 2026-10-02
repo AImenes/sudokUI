@@ -81,6 +81,10 @@ export function findChuteRemotePair(g: Grid): Step | null {
           placements: [],
           eliminations: elims,
           primary: [c1, c2].flatMap((cell) => digits.map((digit) => ({ cell, digit }))),
+          labels: {
+            primary: `the pair: ${digits.join('')} in both cells, one chute apart`,
+            secondary: `the third box's mini-line, where ${missing.length ? missing.join(' and ') : 'the pair digits'} ${missing.length === 1 ? 'is' : 'are'} missing`
+          },
           secondary: mini
             .filter((c) => g.values[c] === 0)
             .flatMap((cell) => digitsOf(g.cands[cell] & pairMask).map((digit) => ({ cell, digit }))),

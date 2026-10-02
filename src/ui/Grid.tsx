@@ -6,8 +6,9 @@
 import React, { useRef } from 'react';
 import { useGame, engineGrid } from '../state/gameStore';
 import { useSettings } from '../state/settings';
-import { bit, digitsOf, PEERS } from '../engine/board';
+import { bit, digitsOf, PEERS, UNITS } from '../engine/board';
 import { ChainLink, CellDigit } from '../engine/steps';
+import { walkFrames, Part } from '../engine/hintFrames';
 
 const SIZE = 100;
 const M = 4; // outer margin
@@ -37,11 +38,14 @@ const candY = (d: number) => 30 + Math.floor((d - 1) / 3) * 28;
  */
 function ChainArrows({
   links,
-  cellCands
+  cellCands,
+  numbered = false
 }: {
   links: ChainLink[];
   /** digits currently displayed in a cell, for routing in-cell arcs */
   cellCands: (cell: number) => number[];
+  /** badge each link with its place in the reading order (the walk) */
+  numbered?: boolean;
 }) {
   const R = 17; // hint circle radius + breathing room
 
@@ -57,6 +61,9 @@ function ChainArrows({
 
   // every node anchor is an obstacle no other arrow may pass through
   const anchors = links.flatMap((l) => [anchor(l.from), anchor(l.to)]);
+  // reading starts at the first inference (ties have no direction)
+  const firstArrow = links.findIndex((l) => !l.undirected);
+  let arrowNo = 0;
 
   return (
     <g className="chain-arrows">
@@ -141,21 +148,57 @@ function ChainArrows({
         }
         const mx = (p0.x + p1.x) / 2 - uy * bow;
         const my = (p0.y + p1.y) / 2 + ux * bow;
+        const d = `M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
+        // the curve's midpoint, where a number badge sits
+        const bx = 0.25 * p0.x + 0.5 * mx + 0.25 * p1.x;
+        const by = 0.25 * p0.y + 0.5 * my + 0.25 * p1.y;
+        if (l.undirected) {
+          // a tie: a quiet line between two candidates, no direction
+          return (
+            <g key={i}>
+              <path d={d} fill="none" stroke="var(--cell-bg)" strokeWidth={7} opacity={0.6} strokeLinecap="round" />
+              <path d={d} fill="none" stroke="var(--hint-chain)" strokeWidth={2.4} strokeLinecap="round" opacity={0.6} />
+            </g>
+          );
+        }
+        const no = ++arrowNo;
         return (
-          <path
-            key={i}
-            d={`M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`}
-            fill="none"
-            stroke="var(--hint-chain)"
-            strokeWidth={short ? 3.2 : 4.5}
-            strokeDasharray={l.strong ? undefined : short ? '6 5' : '11 8'}
-            opacity={0.9}
-            markerEnd={short ? 'url(#chain-arrowhead-sm)' : 'url(#chain-arrowhead)'}
-          />
+          <g key={i}>
+            {/* a halo in the board colour keeps the arrow legible over pencil marks */}
+            <path d={d} fill="none" stroke="var(--cell-bg)" strokeWidth={(short ? 3.2 : 4.5) + 5} opacity={0.7} strokeLinecap="round" />
+            <path
+              d={d}
+              fill="none"
+              stroke="var(--hint-chain)"
+              strokeWidth={short ? 3.2 : 4.5}
+              strokeDasharray={l.strong ? undefined : short ? '6 5' : '11 8'}
+              strokeLinecap="round"
+              opacity={l.strong ? 0.92 : 0.8}
+              markerEnd={short ? 'url(#chain-arrowhead-sm)' : 'url(#chain-arrowhead)'}
+            />
+            {/* the chain's first node wears a dot: this is where reading starts */}
+            {i === firstArrow && <circle cx={p0.x} cy={p0.y} r={5.5} fill="var(--hint-chain)" />}
+            {numbered && (
+              <g>
+                <circle cx={bx} cy={by} r={10.5} fill="var(--hint-chain)" stroke="var(--cell-bg)" strokeWidth={2} />
+                <text x={bx} y={by + 4.5} textAnchor="middle" fontSize={13.5} fontWeight={700} fill="#ffffff">
+                  {no}
+                </text>
+              </g>
+            )}
+          </g>
         );
       })}
     </g>
   );
+}
+
+/** the rectangle a unit band covers */
+function unitRect(unit: number): { x: number; y: number; w: number; h: number } {
+  if (unit < 9) return { x: M, y: M + unit * SIZE, w: 9 * SIZE, h: SIZE };
+  if (unit < 18) return { x: M + (unit - 9) * SIZE, y: M, w: SIZE, h: 9 * SIZE };
+  const b = unit - 18;
+  return { x: M + (b % 3) * 3 * SIZE, y: M + Math.floor(b / 3) * 3 * SIZE, w: 3 * SIZE, h: 3 * SIZE };
 }
 
 /** One shows on each pause — the only place a tip never interrupts play. */
@@ -339,6 +382,7 @@ export function Grid() {
   const autoCandidates = useGame((s) => s.autoCandidates);
   const hint = useGame((s) => s.hint);
   const hintStage = useGame((s) => s.hintStage);
+  const walkIndex = useGame((s) => s.walkIndex);
   const errors = useGame((s) => s.errors);
   const paused = useGame((s) => s.paused);
   const won = useGame((s) => s.won);
@@ -372,7 +416,13 @@ export function Grid() {
   const dragging = useRef(false);
   const additive = useRef(false);
 
-  const showHint = hint && hintStage === 'full';
+  const walking = !!hint && hintStage === 'walk';
+  const showHint = hint && (hintStage === 'full' || walking);
+  // the walk shows the drawing one frame at a time
+  const frame = walking && hint ? walkFrames(hint)[walkIndex] : null;
+  const showPart = (part: Part) => !frame || frame.show.has(part);
+  const visibleLinks: ChainLink[] =
+    showHint && hint.links ? (frame ? hint.links.slice(0, frame.links) : hint.links) : [];
   // a fresh tip each time the game pauses
   const pauseTip = React.useMemo(
     () => TIPS[Math.floor(Math.random() * TIPS.length)],
@@ -407,39 +457,50 @@ export function Grid() {
     for (let rr = 0; rr < 3; rr++) for (let cc = 0; cc < 3; cc++) peerSet.add((br + rr) * 9 + bc + cc);
   }
 
-  // hint candidate markers: cell -> digit -> kind
+  // hint candidate markers: cell -> digit -> kind; a solved cell listed in
+  // a colour shows it on its digit instead (valueMarks) and never gets a
+  // candidate circle
   const hintMarks = new Map<number, Map<number, string>>();
   const hintCells = new Map<number, string>();
+  const valueMarks = new Map<number, string>();
+  const bands = showHint && showPart('units') ? (hint.units ?? []) : [];
   if (showHint) {
-    const mark = (cell: number, digit: number, kind: string) => {
-      if (!hintMarks.has(cell)) hintMarks.set(cell, new Map());
-      const m = hintMarks.get(cell)!;
-      if (!m.has(digit) || kind === 'elim') m.set(digit, kind);
-    };
-    for (const cd of hint.primary ?? []) {
-      mark(cd.cell, cd.digit, 'primary');
-      if (!hintCells.has(cd.cell)) hintCells.set(cd.cell, 'primary');
-    }
-    for (const cd of hint.secondary ?? []) {
-      mark(cd.cell, cd.digit, 'secondary');
-      if (!hintCells.has(cd.cell)) hintCells.set(cd.cell, 'secondary');
-    }
-    // every chain-node candidate gets a circle so arrows root on one
-    for (const link of hint.links ?? []) {
-      for (const cd of [...link.from, ...link.to]) {
-        mark(cd.cell, cd.digit, 'primary');
-        if (!hintCells.has(cd.cell)) hintCells.set(cd.cell, 'primary');
+    const mark = (cell: number, digit: number, kind: string, cellToo = true) => {
+      if (cells[cell].value) {
+        if (!valueMarks.has(cell) || kind === 'elim') valueMarks.set(cell, kind);
+      } else {
+        if (!hintMarks.has(cell)) hintMarks.set(cell, new Map());
+        const m = hintMarks.get(cell)!;
+        if (!m.has(digit) || kind === 'elim') m.set(digit, kind);
       }
+      if (cellToo && (!hintCells.has(cell) || kind === 'elim')) hintCells.set(cell, kind);
+    };
+    const has = (list: CellDigit[] | undefined, cd: CellDigit) =>
+      !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
+    // the class a chain node belongs to: colouring techniques list their
+    // nodes under the colour they carry
+    const classOf = (cd: CellDigit) =>
+      has(hint.fins, cd) ? 'fin' : has(hint.secondary, cd) ? 'secondary' : 'primary';
+    if (frame && hint.links?.length) {
+      // walking a chain: only the nodes of the links drawn so far
+      for (const link of visibleLinks) for (const cd of [...link.from, ...link.to]) mark(cd.cell, cd.digit, classOf(cd));
+    } else {
+      if (showPart('primary')) for (const cd of hint.primary ?? []) mark(cd.cell, cd.digit, 'primary');
+      if (showPart('secondary')) for (const cd of hint.secondary ?? []) mark(cd.cell, cd.digit, 'secondary');
+      // every chain-node candidate gets a circle so arrows root on one
+      for (const link of visibleLinks) for (const cd of [...link.from, ...link.to]) mark(cd.cell, cd.digit, classOf(cd));
+      if (showPart('fins')) for (const cd of hint.fins ?? []) mark(cd.cell, cd.digit, 'fin');
     }
-    for (const cd of hint.fins ?? []) {
-      mark(cd.cell, cd.digit, 'fin');
-      if (!hintCells.has(cd.cell)) hintCells.set(cd.cell, 'fin');
+    if (showPart('conclusion')) {
+      if (frame) {
+        // the last frame of a walk: the whole pattern, then the conclusion
+        for (const cd of hint.primary ?? []) mark(cd.cell, cd.digit, 'primary');
+        for (const cd of hint.secondary ?? []) mark(cd.cell, cd.digit, 'secondary');
+        for (const cd of hint.fins ?? []) mark(cd.cell, cd.digit, 'fin');
+      }
+      for (const cd of hint.eliminations) mark(cd.cell, cd.digit, 'elim');
+      for (const cd of hint.placements) hintCells.set(cd.cell, 'place');
     }
-    for (const cd of hint.eliminations) {
-      mark(cd.cell, cd.digit, 'elim');
-      hintCells.set(cd.cell, 'elim');
-    }
-    for (const cd of hint.placements) hintCells.set(cd.cell, 'place');
   }
 
   const cellFromEvent = (e: React.PointerEvent): number | null => {
@@ -619,6 +680,27 @@ export function Grid() {
           );
         })}
 
+        {/* unit bands: the houses a pattern lives in, under its marks */}
+        {bands.map(({ unit, role }, k) => {
+          const r = unitRect(unit);
+          return (
+            <g key={`band-${k}`} className="hint-band">
+              <rect x={r.x} y={r.y} width={r.w} height={r.h} fill={hintFill[role]} opacity={0.14} />
+              <rect
+                x={r.x + 2}
+                y={r.y + 2}
+                width={r.w - 4}
+                height={r.h - 4}
+                fill="none"
+                stroke={hintFill[role]}
+                strokeWidth={3}
+                opacity={0.55}
+                rx={4}
+              />
+            </g>
+          );
+        })}
+
         {/* content (hidden while paused) */}
         {!paused || won ? (
           cells.map((cell, i) => {
@@ -649,12 +731,20 @@ export function Grid() {
                     textAnchor="middle"
                     fontSize={58}
                     fontWeight={cell.given ? 700 : 500}
-                    fill={conflict ? 'var(--error-bg)' : cell.given ? 'var(--given)' : 'var(--entered)'}
+                    fill={
+                      valueMarks.has(i)
+                        ? hintFill[valueMarks.get(i)!]
+                        : conflict
+                          ? 'var(--error-bg)'
+                          : cell.given
+                            ? 'var(--given)'
+                            : 'var(--entered)'
+                    }
                     // an opt-in slight colour per digit, mixed into the theme's
                     // own digit colour so every theme keeps its character; a
                     // browser without color-mix ignores this and keeps `fill`
                     style={
-                      digitTints && !conflict
+                      digitTints && !conflict && !valueMarks.has(i)
                         ? {
                             fill: `color-mix(in srgb, var(${
                               cell.given ? '--given' : '--entered'
@@ -708,9 +798,10 @@ export function Grid() {
 
         {/* chain arrows (candidate-anchored), with the legacy centre-to-centre
             polyline as fallback for steps that only carry chainCells */}
-        {showHint && hint.links && hint.links.length > 0 && (!paused || won) && (
+        {showHint && visibleLinks.length > 0 && (!paused || won) && (
           <ChainArrows
-            links={hint.links}
+            links={visibleLinks}
+            numbered={walking}
             cellCands={(c) =>
               cells[c].value
                 ? []

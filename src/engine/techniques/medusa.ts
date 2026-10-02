@@ -93,7 +93,8 @@ export function findMedusa3d(g: Grid): Step | null {
           return medusaStep(
             cl,
             nodes.map(cd),
-            `${cap(HUE[col])} colours both ${ds[0]} and ${ds[1]} in ${cellName(cell)}, ${tail}`
+            `${cap(HUE[col])} colours both ${ds[0]} and ${ds[1]} in ${cellName(cell)}, ${tail}`,
+            [witness({ cell, digit: ds[0] }, { cell, digit: ds[1] })]
           );
         }
       }
@@ -105,7 +106,8 @@ export function findMedusa3d(g: Grid): Step | null {
             return medusaStep(
               cl,
               nodes.map(cd),
-              `${cap(HUE[col])} puts ${d} twice in ${unitName(u)} (${cellName(twice[0])} and ${cellName(twice[1])}), ${tail}`
+              `${cap(HUE[col])} puts ${d} twice in ${unitName(u)} (${cellName(twice[0])} and ${cellName(twice[1])}), ${tail}`,
+              [witness({ cell: twice[0], digit: d }, { cell: twice[1], digit: d })]
             );
           }
         }
@@ -115,6 +117,7 @@ export function findMedusa3d(g: Grid): Step | null {
     // Rule 3: cell holding both colours -> uncoloured candidates there go
     const elims3: CellDigit[] = [];
     let why3 = '';
+    const witnesses3: ChainLink[] = [];
     for (let c = 0; c < 81; c++) {
       if (g.values[c] !== 0) continue;
       const colorDigit: (number | undefined)[] = [undefined, undefined];
@@ -129,6 +132,11 @@ export function findMedusa3d(g: Grid): Step | null {
       }
       if (elims3.length > before && !why3) {
         why3 = `${cellName(c)} holds both a blue ${colorDigit[0]} and a gold ${colorDigit[1]}; one of those two is true, so the cell's other candidates are removed`;
+        const first = elims3[before];
+        witnesses3.push(
+          witness({ cell: c, digit: colorDigit[0] }, first),
+          witness({ cell: c, digit: colorDigit[1] }, first)
+        );
       }
     }
     if (elims3.length) {
@@ -136,13 +144,15 @@ export function findMedusa3d(g: Grid): Step | null {
       return medusaStep(
         cl,
         elims3,
-        why3 + (cellsHit > 1 ? ` (${cellsHit} cells are decided this way)` : '')
+        why3 + (cellsHit > 1 ? ` (${cellsHit} cells are decided this way)` : ''),
+        witnesses3
       );
     }
 
     // Rules 4 & 5: uncoloured candidate eliminated by what it sees
     const elims45: CellDigit[] = [];
     let why45 = '';
+    const witnesses45: ChainLink[] = [];
     for (let c = 0; c < 81; c++) {
       if (g.values[c] !== 0) continue;
       // one representative coloured digit of each colour in this cell (rule 5)
@@ -162,6 +172,10 @@ export function findMedusa3d(g: Grid): Step | null {
           elims45.push({ cell: c, digit: d });
           if (!why45) {
             why45 = `The ${d} in ${cellName(c)} sees a blue ${d} in ${cellName(seen[0])} and a gold ${d} in ${cellName(seen[1])}, so it is false either way`;
+            witnesses45.push(
+              witness({ cell: seen[0], digit: d }, { cell: c, digit: d }),
+              witness({ cell: seen[1], digit: d }, { cell: c, digit: d })
+            );
           }
           continue;
         }
@@ -171,6 +185,10 @@ export function findMedusa3d(g: Grid): Step | null {
             elims45.push({ cell: c, digit: d });
             if (!why45) {
               why45 = `The ${d} in ${cellName(c)} sees a ${HUE[A]} ${d} in ${cellName(seen[A]!)} while its own cell holds a ${HUE[1 - A]} ${colorDigit[1 - A]}, so whichever colour is true removes it`;
+              witnesses45.push(
+                witness({ cell: seen[A]!, digit: d }, { cell: c, digit: d }),
+                witness({ cell: c, digit: colorDigit[1 - A]! }, { cell: c, digit: d })
+              );
             }
             break;
           }
@@ -181,7 +199,8 @@ export function findMedusa3d(g: Grid): Step | null {
       return medusaStep(
         cl,
         elims45,
-        why45 + (elims45.length > 1 ? `; ${elims45.length} candidates fall this way` : '')
+        why45 + (elims45.length > 1 ? `; ${elims45.length} candidates fall this way` : ''),
+        witnesses45
       );
     }
 
@@ -197,10 +216,16 @@ export function findMedusa3d(g: Grid): Step | null {
           cl.nodes.some((n) => nDigit(n) === d && cl.color.get(n) === A && sees(c, nCell(n)))
         );
         if (emptied) {
+          // one colour-A candidate per digit, the one that would remove it
+          const witnesses6 = ds.map((d) => {
+            const n = cl.nodes.find((x) => nDigit(x) === d && cl.color.get(x) === A && sees(c, nCell(x)))!;
+            return witness(cd(n), { cell: c, digit: d });
+          });
           return medusaStep(
             cl,
             colored(A).map(cd),
-            `If ${HUE[A]} were true, ${cellName(c)} would lose every one of its candidates (${ds.join(', ')}), so ${HUE[A]} is false: all its candidates are removed (circled red) and every ${HUE[1 - A]} candidate is true`
+            `If ${HUE[A]} were true, ${cellName(c)} would lose every one of its candidates (${ds.join(', ')}), so ${HUE[A]} is false: all its candidates are removed (circled red) and every ${HUE[1 - A]} candidate is true`,
+            witnesses6
           );
         }
       }
@@ -211,18 +236,30 @@ export function findMedusa3d(g: Grid): Step | null {
 
 const clusters = buildClusters;
 
-function medusaStep(cl: Cluster, eliminations: CellDigit[], reason: string): Step {
-  const links: ChainLink[] = cl.edges.map(([a, b]) => ({
-    from: [cd(a)],
-    to: [cd(b)],
-    strong: true
-  }));
+/** a weak link from a witness to the candidate it helps rule out */
+const witness = (from: CellDigit, to: CellDigit): ChainLink => ({ from: [from], to: [to], strong: false });
+
+function medusaStep(cl: Cluster, eliminations: CellDigit[], reason: string, witnesses: ChainLink[] = []): Step {
+  // the cluster's ties, then the witnesses the explanation names
+  const links: ChainLink[] = [
+    ...cl.edges.map(([a, b]) => ({
+      from: [cd(a)],
+      to: [cd(b)],
+      strong: true,
+      undirected: true
+    })),
+    ...witnesses
+  ];
   return {
     tech: 'MEDUSA_3D',
     placements: [],
     eliminations,
     primary: cl.nodes.filter((n) => cl.color.get(n) === 0).map(cd),
     secondary: cl.nodes.filter((n) => cl.color.get(n) === 1).map(cd),
+    labels: {
+      primary: 'blue: one colour, all its candidates true or all false together',
+      secondary: 'gold: the other colour, true exactly when blue is false'
+    },
     links,
     description: `3D Medusa: candidates joined by conjugate pairs and bivalue cells (the solid links) are coloured blue and gold, and either every blue candidate is true or every gold one is. ${reason}.`
   };

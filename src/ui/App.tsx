@@ -252,6 +252,18 @@ export default function App() {
         );
       }
       const mod = e.metaKey || e.ctrlKey;
+      // walking a hint: the arrow keys step through its frames, Escape
+      // returns to the whole drawing
+      const walking = useGame.getState().hintStage === 'walk';
+      if (walking && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+        e.preventDefault();
+        useGame.getState().walkHint(e.code === 'ArrowRight' ? 1 : -1);
+        return;
+      }
+      if (walking && e.code === 'Escape') {
+        useGame.getState().revealHint();
+        return;
+      }
       if (mod && e.code === 'KeyZ' && !e.shiftKey) return void (e.preventDefault(), undo());
       if (mod && (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey)))
         return void (e.preventDefault(), redo());
@@ -310,7 +322,7 @@ export default function App() {
           // assist of a clean game asks the same question the button does
           const g = useGame.getState();
           if (g.hintStage === 'tech') g.revealHint();
-          else if (g.hintStage === 'full') g.applyHint();
+          else if (g.hintStage === 'full' || g.hintStage === 'walk') g.applyHint();
           else if (g.assisted || !useSettings.getState().confirmAssist) requestHint();
           else g.askAssist('Hint');
           break;

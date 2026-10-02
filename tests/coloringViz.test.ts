@@ -49,14 +49,20 @@ describe('coloring visual explanations', () => {
     const m = step!.description.match(/The 7 in r1c5 sees a blue 7 in (r1c[28]) and a gold 7 in (r1c[28])/);
     expect(m, step!.description).not.toBeNull();
     expect(m![1]).not.toBe(m![2]);
-    // the chain of 4 cells is drawn as its 3 conjugate links, all strong
-    expect(step!.links).toHaveLength(3);
-    expect(step!.links!.every((l) => l.strong)).toBe(true);
+    // the chain of 4 cells is drawn as its 3 conjugate ties, all strong and
+    // undirected; the two witnesses the trapped 7 sees are the only arrows
+    const ties = step!.links!.filter((l) => l.undirected);
+    const arrows = step!.links!.filter((l) => !l.undirected);
+    expect(ties).toHaveLength(3);
+    expect(ties.every((l) => l.strong)).toBe(true);
     const chain = new Set([1, 7, 37, 43]);
-    for (const l of step!.links!) {
+    for (const l of ties) {
       expect(chain.has(l.from[0].cell)).toBe(true);
       expect(chain.has(l.to[0].cell)).toBe(true);
     }
+    expect(arrows).toHaveLength(2);
+    expect(arrows.every((l) => !l.strong && l.to[0].cell === 4 && l.to[0].digit === 7)).toBe(true);
+    expect(new Set(arrows.map((l) => l.from[0].cell))).toEqual(new Set([1, 7]));
   });
 
   it('3D Medusa rule 4: bivalue hop joins the cluster, witnesses named', () => {
@@ -69,13 +75,18 @@ describe('coloring visual explanations', () => {
     const m = step!.description.match(/The 7 in r1c5 sees a blue 7 in (r1c[28]) and a gold 7 in (r1c[28])/);
     expect(m, step!.description).not.toBeNull();
     expect(m![1]).not.toBe(m![2]);
-    // 5 nodes (four 7s + the 9), so 4 spanning-tree links, all strong
+    // 5 nodes (four 7s + the 9), so 4 spanning-tree ties, all strong and
+    // undirected, plus the two witness arrows into the trapped 7
     expect((step!.primary ?? []).length + (step!.secondary ?? []).length).toBe(5);
-    expect(step!.links).toHaveLength(4);
-    expect(step!.links!.every((l) => l.strong)).toBe(true);
-    const inCell = step!.links!.filter((l) => l.from[0].cell === l.to[0].cell);
+    const ties = step!.links!.filter((l) => l.undirected);
+    const arrows = step!.links!.filter((l) => !l.undirected);
+    expect(ties).toHaveLength(4);
+    expect(ties.every((l) => l.strong)).toBe(true);
+    const inCell = ties.filter((l) => l.from[0].cell === l.to[0].cell);
     expect(inCell).toHaveLength(1);
     expect(inCell[0].from[0].cell).toBe(37);
+    expect(arrows).toHaveLength(2);
+    expect(arrows.every((l) => !l.strong && l.to[0].cell === 4 && l.to[0].digit === 7)).toBe(true);
     expectLinksReal(g, step!, step!.description);
   });
 
