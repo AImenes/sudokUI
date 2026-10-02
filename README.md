@@ -49,8 +49,10 @@ natively for iOS and Android via Capacitor.
   easiest technique that justifies it, a finished game is summed up
   ("45 moves of your own: 31 Naked Singles, 12 Hidden Singles, 1 X-Wing.
   From hints: 1 XY-Wing."), the guide shows what you have used unaided and
-  sorts by **learn next**, and the win dialog keeps your band records and
-  the daily streak. **Why not?**: when Check finds a wrong digit it says
+  sorts by **learn next**, the path (📈) shows the techniques worth
+  learning in the order puzzles need them with the next one a click from
+  its practice, and the win dialog keeps your band records and the daily
+  streak. **Why not?**: when Check finds a wrong digit it says
   why, from a peer that already holds it to the forced singles that would
   break the board, and shows it (see
   [docs/technique-stats.md](docs/technique-stats.md))

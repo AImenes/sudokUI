@@ -51,9 +51,10 @@ uniqueness family and Exocets. That is the ground the app must own.
 1. **Learning path from the player's own play.** Attribute every unaided
    move to the easiest technique that justifies it, keep the counts, and
    let the guide say "learn this next": high worth (frequency weighted by
-   cost), low unaided use. Built: [technique-stats.md](technique-stats.md).
-   Still to come on top of it: an ordered ladder of milestone techniques
-   with unlock criteria.
+   cost), low unaided use. Built: [technique-stats.md](technique-stats.md),
+   with the path on top of it: the techniques needed in at least one
+   puzzle in a hundred, in solver order, each learned after three unaided
+   uses, the next one a click from its practice (`src/content/path.ts`).
 2. **Chain trainer.** The player builds a chain on the board link by link;
    the engine checks each link and says what the chain proves so far. The
    reverse of the hint renderer that draws chains today.

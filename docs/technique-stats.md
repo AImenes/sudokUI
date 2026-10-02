@@ -82,6 +82,13 @@ Nothing leaves the device.
   by cost) divided by one plus the unaided uses, so a technique the
   player has shown they can do moves down the list.
 
+- **The path** (📈 in the top bar, `src/content/path.ts`): the
+  practisable techniques needed in at least one generated puzzle in a
+  hundred, in solver order, grouped by class. A technique is learned
+  after three unaided uses; the first unlearned one is next, with its
+  practice a click away. Below it, the record: solves, unassisted solves,
+  best and average time per band, and the daily streak.
+
 ## The practice ceiling
 
 A practice puzzle needs nothing harder than its technique before the
