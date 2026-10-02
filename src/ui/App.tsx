@@ -12,6 +12,7 @@ import { Controls } from './Controls';
 import { HintPanel } from './HintPanel';
 import {
   useNewGame,
+  warmSeededPools,
   NewGameDialog,
   PracticeDialog,
   ImportDialog,
@@ -96,6 +97,12 @@ export default function App() {
     document.documentElement.lang = lang;
   }, [lang]);
   const { start, genState, cancel } = useNewGame();
+  // the hardest bands start from seeds: stock their pools while idle, so
+  // even the first Nightmare on this device starts at once
+  useEffect(() => {
+    const t = setTimeout(() => warmSeededPools(), 4000);
+    return () => clearTimeout(t);
+  }, []);
 
   const [dialog, setDialog] = useState<
     'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart' | 'steps' | 'scan' | 'learn'

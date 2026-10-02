@@ -174,10 +174,43 @@ export interface Rating {
 }
 
 /**
- * Rate a puzzle HoDoKu-style: solve with the cheapest applicable technique
- * each step, sum the scores, and derive the difficulty level.
+ * Where a rating may stop early. A puzzle's band only ever rises along the
+ * solve path, so once it is past the band a caller wants there is nothing
+ * left to learn; likewise a practice puzzle is lost the moment a step
+ * harder than the target technique comes before the target (it could no
+ * longer need the technique cleanly, see `cleanTechniques`). The generator
+ * uses this: most of the time rating a puzzle goes to puzzles nobody asked
+ * for, and the hardest ones cost the most to rate.
  */
-export function ratePuzzle(input: Grid | string, order: Tech[] = SOLVE_ORDER): Rating | null {
+export interface RatingLimit {
+  /** stop as soon as the band exceeds this one */
+  maxLevel?: Level;
+  /** stop at the first step harder than this technique before the technique itself */
+  cleanTech?: Tech;
+}
+
+/**
+ * The band of a path so far: the hardest technique's band floor, Hard once
+ * two Hard-class steps are in, then bumped while the score exceeds a cap.
+ * Monotone in all three inputs, which is what lets a rating stop early.
+ */
+function bandOf(techBand: Level, hardSteps: number, score: number): Level {
+  const level = hardSteps >= 2 ? maxLevel(techBand, 'Hard') : techBand;
+  let li = LEVELS.indexOf(level);
+  while (li < LEVELS.length - 1 && score > LEVEL_MAX_SCORE[LEVELS[li]]) li++;
+  return LEVELS[li];
+}
+
+/**
+ * Rate a puzzle HoDoKu-style: solve with the cheapest applicable technique
+ * each step, sum the scores, and derive the difficulty level. With a
+ * `limit`, returns null as soon as the puzzle is past it.
+ */
+export function ratePuzzle(
+  input: Grid | string,
+  order: Tech[] = SOLVE_ORDER,
+  limit?: RatingLimit
+): Rating | null {
   const start = typeof input === 'string' ? parseGrid(input) : cloneGrid(input);
   if (!start) return null;
   const solution = solve(start);
@@ -188,7 +221,11 @@ export function ratePuzzle(input: Grid | string, order: Tech[] = SOLVE_ORDER): R
   const techniques: Partial<Record<Tech, number>> = {};
   let score = 0;
   let level: Level = 'Beginner';
+  let hardSteps = 0;
   let solvable = true;
+  const maxLevelIndex = limit?.maxLevel ? LEVELS.indexOf(limit.maxLevel) : -1;
+  const cleanIndex = limit?.cleanTech ? TECHS[limit.cleanTech].index : -1;
+  let cleanSeen = false;
 
   while (!isSolved(g)) {
     if (isBroken(g)) return null;
@@ -213,20 +250,21 @@ export function ratePuzzle(input: Grid | string, order: Tech[] = SOLVE_ORDER): R
     applyStep(g, step);
     steps.push(step);
     techniques[step.tech] = (techniques[step.tech] ?? 0) + 1;
-    score += TECHS[step.tech].score;
-    level = maxLevel(level, bandFloor(TECHS[step.tech].level));
+    const info = TECHS[step.tech];
+    score += info.score;
+    level = maxLevel(level, bandFloor(info.level));
+    // one Hard-class step (a single fish/wing/kite) floors at Tricky via
+    // bandFloor; needing SEVERAL of them is what Hard proper means
+    if (info.level === 'Hard') hardSteps++;
     if (steps.length > 400) return null; // safety
+    if (maxLevelIndex >= 0 && LEVELS.indexOf(bandOf(level, hardSteps, score)) > maxLevelIndex) {
+      return null;
+    }
+    if (cleanIndex >= 0 && !cleanSeen) {
+      if (info.index === cleanIndex) cleanSeen = true;
+      else if (info.index > cleanIndex) return null;
+    }
   }
 
-  // one Hard-class step (a single fish/wing/kite) floors at Tricky via
-  // bandFloor; needing SEVERAL of them is what Hard proper means
-  const hardSteps = steps.filter((s) => TECHS[s.tech].level === 'Hard').length;
-  if (hardSteps >= 2) level = maxLevel(level, 'Hard');
-
-  // HoDoKu: bump the level while the total score exceeds the level cap
-  let li = LEVELS.indexOf(level);
-  while (li < LEVELS.length - 1 && score > LEVEL_MAX_SCORE[LEVELS[li]]) li++;
-  level = LEVELS[li];
-
-  return { score, level, steps, techniques, solvable };
+  return { score, level: bandOf(level, hardSteps, score), steps, techniques, solvable };
 }

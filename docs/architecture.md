@@ -19,8 +19,9 @@ columns 9–17, boxes 18–26) and the 20 peers of every cell are precomputed
 constants. `setValue` places a digit and strips it from all peers' masks.
 
 **Brute force** ([bruteForce.ts](../src/engine/bruteForce.ts)). Bitmask
-backtracking with minimum-remaining-values cell choice. Used for: solving,
-counting solutions (uniqueness checks), and as ground truth in tests.
+backtracking with minimum-remaining-values cell choice, propagating naked
+and hidden singles before every branch. Used for: solving, counting
+solutions (uniqueness checks), and as ground truth in tests.
 
 **Technique catalogue** ([ratings.ts](../src/engine/ratings.ts)). Every
 strategy — implemented or not — with its HoDoKu-compatible score, difficulty
@@ -42,15 +43,21 @@ into the final score and difficulty band (brute-force placements as last
 resort mark the puzzle "not human-solvable").
 
 **Generator** ([generator.ts](../src/engine/generator.ts)). Random full grid
-→ dig holes (optionally symmetrically) while the solution stays unique →
-rate. `generateWhere` retries until a predicate on the rating matches:
-`matchesLevel` for difficulty, `requiresTechniqueCleanly` for practice mode
-(the target technique must appear before anything harder is needed).
+→ dig holes (optionally symmetrically) while the solution stays unique, so
+the result is minimal (as pairs, with symmetry) → rate. `generateFor` retries until a puzzle hits a
+`Target`: a band (in the band, and the crux on a live board) or a technique
+(needed before anything harder). The rating is capped at the target, so a
+puzzle past it costs nothing more. [transform.ts](../src/engine/transform.ts)
+holds the grid isomorphisms that serve the seed library. The design and
+the numbers are in [generator.md](generator.md).
 
 **Worker** ([worker.ts](../src/engine/worker.ts)). Generation is CPU-heavy,
-so it runs in a Web Worker, in small batches per macrotask (so cancel
-messages get through). Every rated puzzle is reported back and pooled — a
-search for an X-Wing puzzle also stocks the Easy pool it stumbled over.
+so it runs in Web Workers, in time slices per macrotask (so cancel
+messages get through). Every rated puzzle but the answer is reported back
+and pooled — a background search for an X-Wing puzzle, rated in full, also
+stocks the Easy pool it stumbled over. An urgent request, from a waiting
+player, has a worker of its own, rates only as far as its target and
+serves seeds first.
 
 ## State (`src/state/`) — zustand stores
 
@@ -103,6 +110,11 @@ usually start instantly from a pool; the worker restocks in the background.
 - `engine.test.ts` — solver/generator basics against known puzzles.
 - `practice.test.ts` — technique-targeted generation really produces puzzles
   requiring the technique.
+- `bruteForce.test.ts`, `generator.test.ts`, `worker.test.ts`,
+  `seeds.test.ts` — the generator's promises (docs/generator.md): counts
+  agree with plain backtracking, puzzles are proper and minimal, capped
+  ratings agree with full ones, the worker reports the answer once, the
+  seed library is what it says it is.
 - `soundness.test.ts` — the core guarantee: solve batches of random puzzles;
   every step's placements must match the brute-force solution and no
   elimination may remove a solution digit.

@@ -15,8 +15,10 @@ import {
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER } from '../engine/ratings';
-import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntry, GenerationHandle } from '../state/pools';
-import { storedPractice } from '../content/practicePuzzles';
+import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntries, GenerationHandle } from '../state/pools';
+import { practiceSeeds } from '../content/practicePuzzles';
+import { seedPuzzles, SEEDED_LEVELS } from '../content/seeds';
+import { cruxIndex } from '../engine/generator';
 import { timeVerdict, percentileText, MODE_LABEL } from '../content/solveTimes';
 import { useT } from '../content/i18n';
 import { TECH_DOCS } from '../content/techniqueDocs';
@@ -30,6 +32,25 @@ interface GenState {
   handle: GenerationHandle;
 }
 
+/** keep the pool of a band or technique stocked, in the background and rated in full */
+function topUp(req: { kind: 'level'; level: Level } | { kind: 'tech'; tech: Tech }) {
+  const key = req.kind === 'level' ? levelKey(req.level) : techKey(req.tech);
+  if (poolSize(key) >= 2) return;
+  requestPuzzle(req).promise.then((entry) => entry && filePoolEntries([entry]));
+}
+
+/**
+ * Stock the seeded bands' pools from seed isomorphs while the app is idle,
+ * so even the first Nightmare starts at once. Called once after start-up.
+ */
+export async function warmSeededPools() {
+  for (const level of SEEDED_LEVELS) {
+    if (poolSize(levelKey(level)) > 0) continue;
+    const seeds = await seedPuzzles(level);
+    requestPuzzle({ kind: 'level', level, seeds }).promise.then((entry) => entry && filePoolEntries([entry]));
+  }
+}
+
 export function useNewGame() {
   const startGame = useGame((s) => s.startGame);
   const [genState, setGenState] = useState<GenState | null>(null);
@@ -41,30 +62,26 @@ export function useNewGame() {
     const pooled = takePoolEntry(key);
     if (pooled) {
       startGame(pooled.puzzle, pooled.score, pooled.level, req.kind === 'tech' ? req.tech : null);
-      // top up the pool in the background
-      if (poolSize(key) < 2) {
-        const { promise } = requestPuzzle(req);
-        promise.then((entry) => entry && filePoolEntry(entry));
-      }
+      topUp(req);
       return true;
     }
-    // the rarest techniques come from puzzles saved at build time: finding
-    // one here could take minutes
-    if (req.kind === 'tech') {
-      const saved = await storedPractice(req.tech);
-      if (saved) {
-        startGame(saved.puzzle, saved.score, saved.level, req.tech);
-        return true;
-      }
-    }
-    const { promise, handle } = requestPuzzle(req, (attempts) =>
-      setGenState((g) => (g ? { ...g, attempts } : g))
+    // the player is waiting. The hardest bands and the rarest techniques
+    // come from puzzles saved at build time, each served through a random
+    // isomorphism, so they start at once and never repeat; the rest is
+    // generated, with the rating capped at what was asked for
+    const seeds = req.kind === 'level' ? await seedPuzzles(req.level) : await practiceSeeds(req.tech);
+    const { promise, handle } = requestPuzzle(
+      { ...req, seeds },
+      { urgent: true, onProgress: (attempts) => setGenState((g) => (g ? { ...g, attempts } : g)) }
     );
-    setGenState({ label, attempts: 0, handle });
+    // the dialog only once the wait is noticeable: a seed answers in milliseconds
+    const show = setTimeout(() => setGenState({ label, attempts: 0, handle }), 250);
     const entry = await promise;
+    clearTimeout(show);
     setGenState(null);
     if (entry) {
       startGame(entry.puzzle, entry.score, entry.level, req.kind === 'tech' ? req.tech : null);
+      topUp(req);
       return true;
     }
     return false;
@@ -252,7 +269,7 @@ type PathRow = { kind: 'single'; index: number; step: Step } | { kind: 'group'; 
 
 /**
  * The solution path: every solver step from the puzzle's start, with runs of
- * singles collapsed and the most expensive step marked as the crux. Clicking
+ * singles collapsed and the hardest technique's first step marked as the crux. Clicking
  * a row sets the board to the position just before that step (and flags the
  * game as assisted — opening this dialog already does).
  */
@@ -292,9 +309,7 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
       }
     }
   }
-  const cruxIndex = steps?.length
-    ? steps.reduce((best, s, i) => (TECHS[s.tech].score > TECHS[steps[best].tech].score ? i : best), 0)
-    : -1;
+  const crux = steps ? cruxIndex(steps) : -1;
 
   const jump = (k: number) => {
     jumpToStep(k);
@@ -343,7 +358,7 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
               // the whole step row jumps to the position before the step
               <div
                 key={row.index}
-                className={`path-row ${row.index === cruxIndex ? 'path-crux' : ''}`}
+                className={`path-row ${row.index === crux ? 'path-crux' : ''}`}
                 role="button"
                 tabIndex={0}
                 title={row.step.description}
@@ -353,7 +368,7 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
                 <span className="path-jump">{row.index + 1}</span>
                 <span className="path-label">
                   {TECHS[row.step.tech].name}
-                  {row.index === cruxIndex && <span className="crux-badge">crux</span>}
+                  {row.index === crux && <span className="crux-badge">crux</span>}
                 </span>
                 <span className="path-score">+{TECHS[row.step.tech].score}</span>
               </div>
