@@ -219,6 +219,19 @@ export function maxLevel(a: Level, b: Level): Level {
  * proper means those techniques in force (score past 1300). Every other
  * class floors at itself.
  */
+/**
+ * The hardest band a practice puzzle for a technique may be. A class up to
+ * Hard gets one band above its own, so a player drilling X-Wings is never
+ * dropped into an Extreme puzzle after the move. The chain techniques of
+ * Unfair class and above have no ceiling but the top: a puzzle that needs
+ * an AIC is an Extreme or a Nightmare by nature, and that is the point.
+ */
+export function practiceCeiling(tech: Tech): Level {
+  const at = LEVELS.indexOf(TECHS[tech].level);
+  const top = LEVELS.length - 1;
+  return LEVELS[Math.min(at >= LEVELS.indexOf('Unfair') ? top : at + 1, top)];
+}
+
 export function bandFloor(l: Level): Level {
   return l === 'Hard' ? 'Tricky' : l;
 }

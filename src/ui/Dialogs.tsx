@@ -15,7 +15,8 @@ import {
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER, NOT_PRACTISABLE } from '../engine/ratings';
-import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntries, GenerationHandle } from '../state/pools';
+import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntries, practisable, GenerationHandle } from '../state/pools';
+import { useStats, gameSummary, dailyStreak } from '../state/stats';
 import { practiceSeeds } from '../content/practicePuzzles';
 import { seedPuzzles, SEEDED_LEVELS } from '../content/seeds';
 import { cruxIndex } from '../engine/generator';
@@ -59,7 +60,8 @@ export function useNewGame() {
     const key = req.kind === 'level' ? levelKey(req.level) : techKey(req.tech);
     const label =
       req.kind === 'level' ? `${req.level} puzzle` : TECHS[req.tech].name + ' practice';
-    const pooled = takePoolEntry(key);
+    // a pooled puzzle filed before the practice ceiling existed may be above it
+    const pooled = takePoolEntry(key, (e) => req.kind !== 'tech' || practisable(e, req.tech));
     if (pooled) {
       startGame(pooled.puzzle, pooled.score, pooled.level, req.kind === 'tech' ? req.tech : null);
       topUp(req);
@@ -684,6 +686,16 @@ export function GeneratingDialog({ label, attempts, onCancel }: { label: string;
   );
 }
 
+const ordinal = (n: number) => {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
+};
+const clock = (ms: number) => {
+  const secs = Math.floor(ms / 1000);
+  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+};
+
 export function VictoryDialog({
   onNewGame,
   onClose,
@@ -698,6 +710,10 @@ export function VictoryDialog({
   const assisted = useGame((s) => s.assisted);
   const elapsedMs = useGame((s) => s.elapsedMs);
   const autoCandidates = useGame((s) => s.autoCandidates);
+  const practiceFound = useGame((s) => s.practiceFound);
+  const game = useStats((s) => s.game);
+  const bands = useStats((s) => s.bands);
+  const dailyDays = useStats((s) => s.dailyDays);
   const [copied, setCopied] = useState(false);
   const t = useT();
   if (!info) return null;
@@ -707,6 +723,18 @@ export function VictoryDialog({
   // a practice game starts part-way through, so its time compares with nothing
   const mode = autoCandidates ? 'auto' : 'marks';
   const verdict = info.practiceTech ? null : timeVerdict(info.level, secs, mode);
+  // what the player did, technique by technique (docs/technique-stats.md)
+  const summary = gameSummary(game);
+  const band = info.practiceTech ? null : bands[info.level];
+  const newBest = !!band && band.solves > 1 && band.bestMs === elapsedMs();
+  const streak = info.dailyKey ? dailyStreak(dailyDays) : 0;
+  const practiceLine = info.practiceTech
+    ? practiceFound
+      ? `🎯 ${t('You found the')} ${TECHS[info.practiceTech].name} ${t('yourself')}`
+      : game.hinted[info.practiceTech]
+        ? `${t('The')} ${TECHS[info.practiceTech].name} ${t('came from a hint. Next time, look for it first')}`
+        : `${t('You solved it without playing the')} ${TECHS[info.practiceTech].name}. ${t('Next time, look for it first')}`
+    : null;
 
   // same-puzzle challenge: the share text carries the seed link, so the
   // recipient plays exactly this grid
@@ -741,6 +769,19 @@ export function VictoryDialog({
             ? t('Solved with assistance. Restart the puzzle for an unassisted run')
             : `✨ ${t('Unassisted solve: no help, every mark your own')}`}
         </p>
+        {practiceLine && <p className={practiceFound ? 'solve-clean' : 'solve-assisted'}>{practiceLine}</p>}
+        {summary && (
+          <p className="solve-summary" title={t('Every move of your own is credited with the easiest technique that justifies it')}>
+            {summary}
+          </p>
+        )}
+        {band && band.solves > 1 && (
+          <p className="solve-record">
+            {t('Your')} {ordinal(band.solves)} {info.level} {t('solve')}
+            {newBest ? `, ${t('a new best')}` : `; ${t('best')} ${clock(band.bestMs)}`}
+          </p>
+        )}
+        {streak > 1 && <p className="solve-record">🔥 {t('Daily streak')}: {streak} {t('days')}</p>}
         <div className="hint-actions">
           {info.practiceTech && onAnother && (
             <button onClick={onAnother}>Another {TECHS[info.practiceTech].name}</button>

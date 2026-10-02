@@ -51,13 +51,17 @@ uniqueness family and Exocets. That is the ground the app must own.
 1. **Learning path from the player's own play.** Attribute every unaided
    move to the easiest technique that justifies it, keep the counts, and
    let the guide say "learn this next": high worth (frequency weighted by
-   cost), low unaided use. Design: [technique-stats.md](technique-stats.md).
+   cost), low unaided use. Built: [technique-stats.md](technique-stats.md).
+   Still to come on top of it: an ordered ladder of milestone techniques
+   with unlock criteria.
 2. **Chain trainer.** The player builds a chain on the board link by link;
    the engine checks each link and says what the chain proves so far. The
    reverse of the hint renderer that draws chains today.
 3. **"Why not?" on every mistake.** When Check flags a placement, show the
-   technique that proves the correct digit. Mistakes are where learning
-   happens, and today they only get a red mark.
+   technique that proves the digit wrong. Mistakes are where learning
+   happens. Built: Check names the peer that already holds the digit or
+   the easiest technique that removes it, and "show me" plays the proof
+   ([technique-stats.md](technique-stats.md)).
 4. **A generator that serves the player's level.** Any band in under a
    second, a shipped seed library with transformations so nothing repeats,
    minimality and path-quality filters. Built: [generator.md](generator.md).
@@ -82,7 +86,13 @@ double the engine and teach nothing the mission needs.
   puzzles.
 - Progressive hints that reason from the player's own candidates, with the
   assisted and unassisted solve tiers.
-- Practice mode for 65 techniques, with saved puzzles for the rarest.
+- Practice mode for 65 techniques, with saved puzzles for the rarest,
+  each puzzle within one band of its technique's class, and "you found
+  it" when the player's own move is the target.
+- The player's record: every unaided move credited with the easiest
+  technique that justifies it, the game summed up at the end, mastery
+  per technique in the guide and a "learn next" order, the band records
+  and the daily streak. On the device only.
 - Scan: every technique that fires in the position, or one asked for by
   name.
 - The guide sorted by family, difficulty, frequency or worth, with every

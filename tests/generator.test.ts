@@ -18,8 +18,7 @@ import {
   cleanTechniques,
   generateFor,
   hits,
-  CRUX_MIN_EMPTIES
-} from '../src/engine/generator';
+  CRUX_MIN_EMPTIES, practiceCeiling, limitFor } from '../src/engine/generator';
 import { ratePuzzle } from '../src/engine/humanSolver';
 import { LEVELS, TECHS, Tech } from '../src/engine/ratings';
 import { applyIsomorphism, randomIsomorphism, transformPuzzle, IDENTITY } from '../src/engine/transform';
@@ -130,6 +129,15 @@ describe('capped rating', () => {
 });
 
 describe('filters and targets', () => {
+  it('the practice ceiling is one band above the class, and the top for Unfair and above', () => {
+    expect(practiceCeiling('FULL_HOUSE')).toBe('Easy');
+    expect(practiceCeiling('X_WING')).toBe(LEVELS[LEVELS.indexOf(TECHS.X_WING.level) + 1]);
+    expect(practiceCeiling('BUG_PLUS_1')).toBe('Unfair');
+    expect(practiceCeiling('AIC')).toBe('Nightmare');
+    expect(practiceCeiling('FIREWORKS')).toBe('Nightmare');
+    expect(limitFor({ kind: 'tech', tech: 'X_WING' })).toEqual({ cleanTech: 'X_WING', maxLevel: practiceCeiling('X_WING') });
+  });
+
   it('the crux is the first step of the hardest technique, and cruxEmpties counts the empties there', () => {
     const g = generatePuzzle('none');
     const puzzle = gridToString(g);

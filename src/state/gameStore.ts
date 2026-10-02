@@ -14,14 +14,19 @@ import {
   gridToString,
   bit,
   PEERS,
-  UNITS
+  UNITS,
+  cellName
 } from '../engine/board';
 import { solve, countSolutions } from '../engine/bruteForce';
 import { findNextStep, applyStep, ratePuzzle } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { walkFrames } from '../engine/hintFrames';
-import { Level, Tech } from '../engine/ratings';
+import { justify, Move } from '../engine/justify';
+import { contradictionStep } from '../engine/techniques/forcing';
+import { Level, Tech, TECHS } from '../engine/ratings';
 import { useSettings } from './settings';
+import { useStats } from './stats';
+import { justifyMove } from './pools';
 
 export type EntryMode = 'digit' | 'corner' | 'center' | 'color';
 
@@ -142,6 +147,93 @@ export interface GameInfo {
   score: number;
   level: Level;
   practiceTech: Tech | null;
+  /** the date of the daily puzzle this game is, for the streak */
+  dailyKey?: string;
+}
+
+/**
+ * Why a wrong digit is wrong, found by Check (docs/technique-stats.md,
+ * "why not?"). The shortest argument wins: a peer that already holds the
+ * digit; a technique that removes it in a step or two; else the digit
+ * assumed and the singles it forces followed to the contradiction (a
+ * Nishio trail, drawn with arrows); else the solver's longer path to the
+ * removal, or to the right digit placed.
+ */
+export interface Proof {
+  cell: number;
+  wrong: number;
+  right: number;
+  /** a peer holding the wrong digit: no technique needed */
+  conflict: number | null;
+  tech: Tech | null;
+  /** the steps played to the proof; the last one is the proof itself */
+  steps: Step[];
+  /** the proof places the right digit rather than removing the wrong one */
+  places: boolean;
+  /** the proof assumes the wrong digit and follows the forced singles to a contradiction */
+  trail: boolean;
+}
+
+/** the solver's budget per wrong digit, so Check never stalls */
+const PROOF_BUDGET = { steps: 40, ms: 120 };
+const PROOFS_MAX = 3;
+
+/**
+ * Prove every wrong digit wrong, from the position with the wrong digits
+ * taken off the board (a true position, so the solver's reasoning holds).
+ */
+export function proveWrong(cells: CellState[], solution: string, wrongCells: number[]): Proof[] {
+  const clean = cells.map((c, i) => (c.value && c.value === Number(solution[i]) ? String(c.value) : '.')).join('');
+  const g = parseGrid(clean);
+  if (!g) return [];
+  const proofs: Proof[] = [];
+  for (const cell of wrongCells.slice(0, PROOFS_MAX)) {
+    const wrong = cells[cell].value;
+    const right = Number(solution[cell]);
+    const base = { cell, wrong, right, conflict: null, places: false, trail: false };
+    if (!(g.cands[cell] & bit(wrong))) {
+      const conflict = PEERS[cell].find((p) => Number(clean[p]) === wrong) ?? null;
+      proofs.push({ ...base, conflict, tech: null, steps: [] });
+      continue;
+    }
+    const out = justify(g, { cell, digit: wrong, placed: false }, PROOF_BUDGET);
+    if (out.tech && out.steps.length <= 2) {
+      proofs.push({ ...base, tech: out.tech, steps: out.steps });
+      continue;
+    }
+    // no short technique: assume the digit and watch the board break
+    const trail = contradictionStep(g, cell, wrong);
+    if (trail) {
+      proofs.push({ ...base, tech: trail.tech, steps: [trail], trail: true });
+      continue;
+    }
+    if (out.tech) {
+      proofs.push({ ...base, tech: out.tech, steps: out.steps });
+      continue;
+    }
+    const inn = justify(g, { cell, digit: right, placed: true }, PROOF_BUDGET);
+    proofs.push({ ...base, tech: inn.tech, steps: inn.steps, places: true });
+  }
+  return proofs;
+}
+
+/** Does the player's move do what the practice target does? A placement
+ *  the target makes, a candidate it removes, or a digit placed where the
+ *  target's removals leave only it. */
+export function matchesTarget(target: Step, before: Grid, move: Move): boolean {
+  if (!move.placed) return target.eliminations.some((e) => e.cell === move.cell && e.digit === move.digit);
+  if (target.placements.some((p) => p.cell === move.cell && p.digit === move.digit)) return true;
+  let mask = before.cands[move.cell];
+  for (const e of target.eliminations) if (e.cell === move.cell) mask &= ~bit(e.digit);
+  return mask !== before.cands[move.cell] && mask === bit(move.digit);
+}
+
+/** Credit the player's own moves with the easiest technique that justifies
+ *  each, worked out in the worker (docs/technique-stats.md). */
+function credit(before: Grid, moves: Move[]) {
+  for (const move of moves) {
+    justifyMove(before, move).then((j) => j && useStats.getState().recordUnaided(j.tech));
+  }
 }
 
 /** snapshot of the running game, restored if custom entry is cancelled */
@@ -195,12 +287,18 @@ interface GameStore {
   /** the one-time contract question is being shown (set by requestHint) */
   contractPrompt: boolean;
   errors: number[];
+  /** why each wrong digit found by check() is wrong */
+  proofs: Proof[];
   /** transient toast message */
   notice: string | null;
   /** history index of the last error-free position, set by check() */
   revertIndex: number | null;
+  /** practice: the step the puzzle was prepared for, and whether the
+   *  player's own move did what it does */
+  practiceTarget: Step | null;
+  practiceFound: boolean;
 
-  startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null) => void;
+  startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null, dailyKey?: string) => void;
   /** blank board the user types givens onto; the running game is backed up */
   startCustomEntry: () => void;
   cancelCustomEntry: () => void;
@@ -250,6 +348,10 @@ interface GameStore {
   /** jump back to the most recent error-free position (offered by check) */
   revertToValid: () => void;
   dismissRevert: () => void;
+  /** show why wrong digit `k` of the last check is wrong: the wrong digits
+   *  come off the board, the easier steps on the way are played, and the
+   *  proving step is shown as a hint */
+  showProof: (k: number) => void;
   togglePause: () => void;
   elapsedMs: () => number;
 }
@@ -259,6 +361,13 @@ function checkWin(cells: CellState[], solution: string): boolean {
     if (cells[i].value !== Number(solution[i])) return false;
   }
   return true;
+}
+
+/** a finished game goes into the band record; practice starts part-way
+ *  through and compares with nothing */
+function recordWin(s: GameStore) {
+  if (!s.info || s.info.practiceTech) return;
+  useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
 }
 
 export const useGame = create<GameStore>()(
@@ -288,10 +397,13 @@ export const useGame = create<GameStore>()(
       markContract: 'unknown' as MarkContract,
       contractPrompt: false,
       errors: [],
+      proofs: [],
       notice: null,
       revertIndex: null as number | null,
+      practiceTarget: null,
+      practiceFound: false,
 
-      startGame: (puzzle, score, level, practiceTech = null) => {
+      startGame: (puzzle, score, level, practiceTech = null, dailyKey) => {
         const g = parseGrid(puzzle);
         if (!g) return;
         const solved = solve(g);
@@ -309,10 +421,12 @@ export const useGame = create<GameStore>()(
         // technique is the next step (unless the user prefers playing from
         // the very start — see Settings)
         const fastForward = practiceTech && useSettings.getState().practiceFastForward;
+        let practiceTarget: Step | null = null;
         if (fastForward) {
           const eg = engineGrid(cells);
           for (let guard = 0; guard < 200; guard++) {
             const step = findNextStep(eg);
+            if (step?.tech === practiceTech) practiceTarget = step;
             if (!step || step.tech === practiceTech) break;
             applyStep(eg, step);
             for (const { cell, digit } of step.eliminations) {
@@ -322,15 +436,25 @@ export const useGame = create<GameStore>()(
               cells[cell].value = digit;
             }
           }
+        } else if (practiceTech) {
+          // played from the start: the target is where the technique first
+          // appears on the solver's path
+          practiceTarget = solvePath(puzzle).find((step) => step.tech === practiceTech) ?? null;
         }
+        useStats.getState().newGame();
         set({
           info: {
             puzzle,
             solution: gridToString(solved),
             score,
             level,
-            practiceTech
+            practiceTech,
+            ...(dailyKey ? { dailyKey } : {})
           },
+          practiceTarget,
+          practiceFound: false,
+          proofs: [],
+          revertIndex: null,
           custom: false,
           customBackup: null,
           cells,
@@ -365,7 +489,7 @@ export const useGame = create<GameStore>()(
       restart: () => {
         const s = get();
         if (!s.info) return;
-        get().startGame(s.info.puzzle, s.info.score, s.info.level, s.info.practiceTech);
+        get().startGame(s.info.puzzle, s.info.score, s.info.level, s.info.practiceTech, s.info.dailyKey);
         set({ notice: 'Puzzle restarted' });
       },
 
@@ -472,6 +596,12 @@ export const useGame = create<GameStore>()(
         const cells = cloneCells(s.cells);
         const history = [...s.history, cloneCells(s.cells)];
         let changed = false;
+        // the player's own moves, credited after the board is updated: the
+        // position before them, the correct ones, the wrong ones
+        const before = s.info ? contractGrid(s.cells, s.autoCandidates, s.markContract) : null;
+        const moves: Move[] = [];
+        let wrong = 0;
+        const sol = s.info?.solution ?? '';
 
         if (mode === 'digit') {
           const editable = targets.filter((i) => !cells[i].given);
@@ -481,6 +611,10 @@ export const useGame = create<GameStore>()(
               cells[i].value = 0;
               changed = true;
             } else {
+              if (sol) {
+                if (Number(sol[i]) === digit) moves.push({ cell: i, digit, placed: true });
+                else wrong++;
+              }
               cells[i].value = digit;
               cells[i].corner = 0;
               cells[i].center = 0;
@@ -506,7 +640,14 @@ export const useGame = create<GameStore>()(
               relevant.every((i) => cells[i].excluded & bit(digit));
             for (const i of relevant) {
               if (allExcluded) cells[i].excluded &= ~bit(digit);
-              else cells[i].excluded |= bit(digit);
+              else {
+                cells[i].excluded |= bit(digit);
+                // a candidate struck out is a move: a removal, or a mistake
+                if (sol && cells[i].excluded !== s.cells[i].excluded) {
+                  if (Number(sol[i]) === digit) wrong++;
+                  else moves.push({ cell: i, digit, placed: false });
+                }
+              }
               changed = true;
             }
           } else {
@@ -514,8 +655,15 @@ export const useGame = create<GameStore>()(
             const allHave =
               editable.length > 0 && editable.every((i) => cells[i][key] & bit(digit));
             for (const i of editable) {
-              if (allHave) cells[i][key] &= ~bit(digit);
-              else cells[i][key] |= bit(digit);
+              if (allHave) {
+                cells[i][key] &= ~bit(digit);
+                // under the exhaustive contract a mark taken away is a
+                // candidate removed; otherwise marks are notes
+                if (sol && s.markContract === 'exhaustive' && !((cells[i].corner | cells[i].center) & bit(digit))) {
+                  if (Number(sol[i]) === digit) wrong++;
+                  else moves.push({ cell: i, digit, placed: false });
+                }
+              } else cells[i][key] |= bit(digit);
               changed = true;
             }
           }
@@ -530,6 +678,12 @@ export const useGame = create<GameStore>()(
         }
         if (!changed) return;
         const won = s.info ? checkWin(cells, s.info.solution) : false;
+        // practice: did one of these moves do what the target does?
+        const found =
+          !s.practiceFound &&
+          !!s.practiceTarget &&
+          !!before &&
+          moves.some((m) => matchesTarget(s.practiceTarget!, before, m));
         set({
           cells,
           history,
@@ -538,8 +692,13 @@ export const useGame = create<GameStore>()(
           hint: null,
           hintStage: 'hidden',
           errors: [],
+          ...(found ? { practiceFound: true, notice: `You found the ${TECHS[s.info!.practiceTech!].name} 🎯` } : {}),
           ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {})
         });
+        if (before) credit(before, moves);
+        const stats = useStats.getState();
+        for (let k = 0; k < wrong; k++) stats.recordError();
+        if (won) recordWin(get());
       },
 
       /** Erase only the layer belonging to the current mode. Digit mode keeps
@@ -915,6 +1074,8 @@ export const useGame = create<GameStore>()(
           won,
           ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {})
         });
+        useStats.getState().recordHinted(step.tech);
+        if (won) recordWin(get());
       },
 
       dismissHint: () => set({ hint: null, hintStage: 'hidden' }),
@@ -958,9 +1119,13 @@ export const useGame = create<GameStore>()(
             }
           }
         }
+        // why each wrong digit is wrong: the learning is in the mistake
+        const wrongCells = errors.filter((i) => s.cells[i].value);
+        const proofs = wrongCells.length ? proveWrong(s.cells, s.info.solution, wrongCells) : [];
         set({
           errors,
           revertIndex,
+          proofs,
           notice:
             errors.length === 0
               ? 'Everything checks out so far'
@@ -977,13 +1142,67 @@ export const useGame = create<GameStore>()(
           future: [],
           errors: [],
           revertIndex: null,
+          proofs: [],
           hint: null,
           hintStage: 'hidden',
           notice: 'Back to the last correct position (Ctrl+Z restores your entries)'
         });
       },
 
-      dismissRevert: () => set({ revertIndex: null }),
+      dismissRevert: () => set({ revertIndex: null, proofs: [] }),
+
+      showProof: (k) => {
+        const s = get();
+        const proof = s.proofs[k];
+        if (!proof || !s.info) return;
+        if (proof.conflict !== null) {
+          set({
+            selection: [proof.cell, proof.conflict],
+            notice: `${cellName(proof.cell)} cannot be ${proof.wrong}: ${cellName(proof.conflict)} already holds it`
+          });
+          return;
+        }
+        if (!proof.steps.length) return;
+        const sol = s.info.solution;
+        const cells = cloneCells(s.cells);
+        // the wrong digits come off the board: the proof reasons from a true position
+        for (let i = 0; i < 81; i++) {
+          if (cells[i].value && !cells[i].given && cells[i].value !== Number(sol[i])) cells[i].value = 0;
+        }
+        const path = proof.steps.slice(0, -1);
+        const last = proof.steps[proof.steps.length - 1];
+        for (const step of path) {
+          for (const { cell, digit } of step.eliminations) cells[cell].excluded |= bit(digit);
+          for (const { cell, digit } of step.placements) {
+            cells[cell].value = digit;
+            cells[cell].corner = 0;
+            cells[cell].center = 0;
+          }
+        }
+        // the easier steps, and a trail's forced singles, are visible only
+        // with their candidates on the board
+        const autoCandidates = s.autoCandidates || path.length > 0 || proof.trail;
+        const candidatesOn = autoCandidates && !s.autoCandidates ? '; auto candidates on' : '';
+        set({
+          cells,
+          selection: [],
+          history: [...s.history, cloneCells(s.cells)],
+          future: [],
+          errors: [],
+          revertIndex: null,
+          proofs: [],
+          hint: last,
+          hintStage: 'full',
+          walkIndex: 0,
+          assisted: true,
+          autoCandidates,
+          notice: path.length
+            ? `${path.length} easier step${path.length > 1 ? 's' : ''} played first, then the ${TECHS[last.tech].name}${candidatesOn} (Ctrl+Z goes back)`
+            : proof.trail
+              ? `The wrong digit is off the board. Walk through it to see what placing it would force${candidatesOn}`
+              : `The wrong digit is off the board; the ${TECHS[last.tech].name} shows why${candidatesOn}`
+        });
+      },
 
       loadPosition: (encoded) => {
         const decoded = decodePosition(encoded);
@@ -1078,7 +1297,9 @@ export const useGame = create<GameStore>()(
         won: s.won,
         assisted: s.assisted,
         // the declared meaning of the marks survives a reload with them
-        markContract: s.markContract
+        markContract: s.markContract,
+        practiceTarget: s.practiceTarget,
+        practiceFound: s.practiceFound
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

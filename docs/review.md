@@ -121,12 +121,15 @@ confirmed in the code afterwards.
 
 - Practice puzzles need nothing harder before the target, but anything
   after it: 7 of 10 X-Wing practice puzzles continued into Unfair or
-  Extreme (measured), so "Another X-Wing" is rarely reachable.
+  Extreme (measured), so "Another X-Wing" is rarely reachable. Fixed:
+  the practice ceiling (technique-stats.md).
 - Practice never says "you found it"; every fast-forwarded practice game
-  is flagged assisted.
-- A mistake gets a red square. Road item 3 of goals.md is unbuilt.
+  is flagged assisted. Fixed: the practice target and "found".
+- A mistake gets a red square. Road item 3 of goals.md is unbuilt. Built:
+  Check says why, and shows it.
 - Nothing is recorded about the player; the "worth learning first" order
-  puts 3D Medusa third for a beginner. Road item 1 is unbuilt.
+  puts 3D Medusa third for a beginner. Road item 1 is unbuilt. Built:
+  the stats, the summary, mastery in the guide and "learn next".
 - Four practice targets can never be served (X-Cycles, Franken X-Wing and
   Swordfish, Tridagon: zero in 5.5 million puzzles, no stored puzzle),
   and 15 techniques have no worked example.
@@ -183,12 +186,12 @@ touches the 70 daily players.
    and subsets, uniqueness and avoidable rectangles, ALS, forcing trails,
    the walk stage, the shared renderer. With it, the hint text standard
    and structured descriptions.
-3. **The learner's loop** (road items 1 and 3, designed in
-   technique-stats.md): justify every unaided move, "you found it" in
-   practice, why-not on every mistake, a post-game summary, mastery in
-   the guide and the practice picker, "learn next", and practice puzzles
-   that end at the target or stay within its band. Then a path: an
-   ordered ladder of milestone techniques with unlock criteria.
+3. **The learner's loop** (road items 1 and 3, technique-stats.md), built:
+   every unaided move justified, "you found it" in practice, why-not on
+   every mistake, the post-game summary, mastery in the guide, "learn
+   next", and practice puzzles within one band of their technique. Still
+   to come: a path, an ordered ladder of milestone techniques with unlock
+   criteria, and mastery in the practice picker.
 4. **Robustness** (engineering findings): update prompt, lazy-chunk
    retry, error boundary, worker errors, focus traps, the accessible
    board, Learn tab loaded on demand, locales precached on demand, lint

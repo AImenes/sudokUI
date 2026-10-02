@@ -2454,3 +2454,48 @@ html:not([lang='en']) .zone-note {
     display: none;
   }
 }
+
+/* the learner's loop (docs/technique-stats.md): the game summed up, the
+   player's record, why a wrong digit is wrong, the technique found */
+.solve-summary {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 34em;
+  margin: 6px auto;
+}
+
+.solve-record {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.proof-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.proof-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.proof-list button {
+  flex: none;
+}
+
+.practice-found {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.learn-mastery {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--accent-text);
+}

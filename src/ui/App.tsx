@@ -2,7 +2,8 @@
 // board + side panel layout, global keyboard handling, dialog routing,
 // toast display and the first-visit bootstrap game.
 import React, { useEffect, useState } from 'react';
-import { useGame, rateImport } from '../state/gameStore';
+import { useGame, rateImport, Proof } from '../state/gameStore';
+import { cellName, PEERS } from '../engine/board';
 import { dailyPuzzle } from '../engine/daily';
 import { useSettings } from '../state/settings';
 import { useT } from '../content/i18n';
@@ -37,6 +38,25 @@ function parseLearnParam(param: string): LearnTarget {
   if (param === 'rating') return { tab: 'rating' };
   if (param.startsWith('term:')) return { tab: 'glossary', term: param.slice(5) };
   return { tab: 'techniques', tech: techFromParam(param) };
+}
+
+/** why a wrong digit is wrong, in a line (docs/technique-stats.md) */
+function proofText(p: Proof): string {
+  const at = cellName(p.cell);
+  if (p.conflict !== null) return `${at} cannot be ${p.wrong}: ${cellName(p.conflict)} already holds it.`;
+  if (!p.tech) return `${at} should be ${p.right}, not ${p.wrong}. The proof is beyond a quick search.`;
+  const after = p.steps.length > 1 ? ` after ${p.steps.length - 1} easier step${p.steps.length > 2 ? 's' : ''}` : '';
+  const last = p.steps[p.steps.length - 1];
+  if (p.trail) {
+    const forced = Math.max(0, (last.links?.length ?? 1) - 1);
+    return `${at} cannot be ${p.wrong}: place it and the singles it forces break the board${forced ? ` within ${forced} move${forced > 1 ? 's' : ''}` : ''}.`;
+  }
+  if (p.places) return `${at} is ${p.right}, not ${p.wrong}: a ${TECHS[p.tech].name} places it${after}.`;
+  // the digit may go by a placement in a peer rather than by a removal
+  const peer = last.placements.find((q) => q.digit === p.wrong && PEERS[p.cell].includes(q.cell));
+  return peer
+    ? `${at} cannot be ${p.wrong}: a ${TECHS[p.tech].name} puts the ${p.wrong} in ${cellName(peer.cell)}${after}.`
+    : `${at} cannot be ${p.wrong}: a ${TECHS[p.tech].name} removes it${after}.`;
 }
 
 function Timer() {
@@ -76,6 +96,9 @@ export default function App() {
   const revertIndex = useGame((s) => s.revertIndex);
   const revertToValid = useGame((s) => s.revertToValid);
   const dismissRevert = useGame((s) => s.dismissRevert);
+  const proofs = useGame((s) => s.proofs);
+  const showProof = useGame((s) => s.showProof);
+  const practiceFound = useGame((s) => s.practiceFound);
   const requestHint = useGame((s) => s.requestHint);
   const selection = useGame((s) => s.selection);
   const select = useGame((s) => s.select);
@@ -137,7 +160,7 @@ export default function App() {
   };
   const startDaily = () => {
     const d = dailyPuzzle();
-    useGame.getState().startGame(d.puzzle, d.score, d.level);
+    useGame.getState().startGame(d.puzzle, d.score, d.level, null, d.dateKey);
     useGame.setState({ notice: `Daily puzzle for ${d.dateKey}. Everyone gets this same board today` });
   };
 
@@ -495,6 +518,7 @@ export default function App() {
             <div className="practice-bar">
               <span>
                 Practicing <strong>{TECHS[info.practiceTech].name}</strong>
+                {practiceFound && <span className="practice-found"> · found 🎯</span>}
               </span>
               <button onClick={() => start({ kind: 'tech', tech: info.practiceTech! })}>
                 Next puzzle (N)
@@ -533,18 +557,34 @@ export default function App() {
               </div>
             </div>
           )}
-          {revertIndex !== null && errors.length > 0 && (
-            <div className="hint-panel">
+          {errors.length > 0 && (revertIndex !== null || proofs.length > 0) && (
+            <div className="hint-panel" role="region" aria-label="Mistakes found">
               <div className="hint-head">
                 <strong>Mistakes found</strong>
               </div>
               <div className="hint-body">
-                <p>
-                  Jump back to the last position where everything was correct?
-                  Your later entries are removed. Ctrl+Z brings them back.
-                </p>
+                {proofs.length > 0 && (
+                  <ul className="proof-list">
+                    {proofs.map((p, k) => (
+                      <li key={p.cell}>
+                        <span>{proofText(p)}</span>
+                        {(p.conflict !== null || p.steps.length > 0) && (
+                          <button className="ghost" onClick={() => showProof(k)}>
+                            Show me
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {revertIndex !== null && (
+                  <p>
+                    Jump back to the last position where everything was correct?
+                    Your later entries are removed. Ctrl+Z brings them back.
+                  </p>
+                )}
                 <div className="hint-actions">
-                  <button onClick={revertToValid}>↩ Back to correct</button>
+                  {revertIndex !== null && <button onClick={revertToValid}>↩ Back to correct</button>}
                   <button className="ghost" onClick={dismissRevert}>
                     Keep looking
                   </button>
