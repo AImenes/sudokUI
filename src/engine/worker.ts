@@ -1,76 +1,132 @@
-// Background puzzle generation. Every rated candidate is reported so the
-// main thread can pool it for later (per level and per technique).
-import { generatePuzzle, cleanTechniques } from './generator';
-import { gridToString } from './board';
+// Background puzzle generation (docs/generator.md). A request names a band
+// or a technique. Urgent requests, from a player who is waiting, rate each
+// candidate only as far as the target allows; background top-ups rate
+// every candidate in full, so one search stocks the pools of every band
+// and technique it turns up. A request may carry seed puzzles, each served
+// through a random isomorphism and rated, before anything is generated.
+import {
+  attemptFor,
+  cleanTechniques,
+  fitForLevel,
+  hits,
+  limitFor,
+  GeneratedPuzzle,
+  Target
+} from './generator';
 import { ratePuzzle } from './humanSolver';
-import { Level, Tech } from './ratings';
+import { transformPuzzle } from './transform';
+import { Level, Tech, SOLVE_ORDER } from './ratings';
 
 export interface PoolEntry {
   puzzle: string;
   score: number;
   level: Level;
   techs: Tech[];
+  /** passes its band's filters, so it may be served for the band; absent means yes */
+  fit?: boolean;
 }
 
 export type WorkerRequest =
-  | { id: number; kind: 'level'; level: Level; maxAttempts?: number }
-  | { id: number; kind: 'tech'; tech: Tech; maxAttempts?: number }
+  | { id: number; kind: 'level'; level: Level; maxAttempts?: number; urgent?: boolean; seeds?: string[] }
+  | { id: number; kind: 'tech'; tech: Tech; maxAttempts?: number; urgent?: boolean; seeds?: string[] }
   | { id: number; kind: 'cancel' };
 
 export type WorkerResponse =
-  | { id: number; type: 'candidate'; entry: PoolEntry }
+  | { id: number; type: 'candidates'; entries: PoolEntry[] }
   | { id: number; type: 'progress'; attempts: number }
   | { id: number; type: 'done'; entry: PoolEntry }
   | { id: number; type: 'failed'; attempts: number };
 
-const cancelled = new Set<number>();
+export type GenerationRequest = Exclude<WorkerRequest, { kind: 'cancel' }>;
 
-self.onmessage = (e: MessageEvent<WorkerRequest>) => {
-  const req = e.data;
-  if (req.kind === 'cancel') {
-    cancelled.add(req.id);
-    return;
-  }
+/** work per macrotask, so a cancel message gets through within this long */
+const SLICE_MS = 40;
+
+export function toEntry({ puzzle, rating }: GeneratedPuzzle): PoolEntry {
+  return {
+    puzzle,
+    score: rating.score,
+    level: rating.level,
+    // pool under *clean* techniques only, so practice puzzles never need
+    // something harder than the target before it appears
+    techs: cleanTechniques(rating),
+    fit: fitForLevel(puzzle, rating)
+  };
+}
+
+/**
+ * Serve one request: seeds first, then generation, in time slices until a
+ * puzzle hits the target or the attempts run out (seeds do not count as
+ * attempts). Every rated puzzle that is not the answer is reported for
+ * pooling, once per slice; the answer is reported once, as done, so the
+ * player does not meet it again from the pool.
+ */
+export function serve(
+  req: GenerationRequest,
+  post: (msg: WorkerResponse) => void,
+  schedule: (next: () => void) => void,
+  cancelled: () => boolean
+): void {
+  const target: Target = req.kind === 'level' ? { kind: 'level', level: req.level } : { kind: 'tech', tech: req.tech };
   const maxAttempts = req.maxAttempts ?? (req.kind === 'tech' ? 3000 : 400);
+  const seeds = [...(req.seeds ?? [])];
+  const limit = limitFor(target);
   let attempts = 0;
 
-  const attempt = () => {
-    if (cancelled.has(req.id)) {
-      cancelled.delete(req.id);
-      return;
-    }
-    // a small batch per macrotask so cancel messages get through
-    for (let i = 0; i < 3 && attempts < maxAttempts; i++) {
+  const next = (): GeneratedPuzzle | null => {
+    const seed = seeds.pop();
+    if (seed === undefined) {
       attempts++;
-      const puzzle = generatePuzzle(Math.random() < 0.7 ? 'rotational' : 'none');
-      const rating = ratePuzzle(puzzle);
-      if (!rating || !rating.solvable) continue;
-      // pool under *clean* techniques only, so practice puzzles never need
-      // something harder than the target before it appears
-      const entry: PoolEntry = {
-        puzzle: gridToString(puzzle),
-        score: rating.score,
-        level: rating.level,
-        techs: cleanTechniques(rating)
-      };
-      postMessage({ id: req.id, type: 'candidate', entry } satisfies WorkerResponse);
-      const hit =
-        req.kind === 'level'
-          ? entry.level === req.level
-          : entry.techs.includes(req.tech);
-      if (hit) {
-        postMessage({ id: req.id, type: 'done', entry } satisfies WorkerResponse);
+      return attemptFor(target, !!req.urgent);
+    }
+    const puzzle = transformPuzzle(seed);
+    const rating = ratePuzzle(puzzle, SOLVE_ORDER, limit);
+    return rating ? { puzzle, rating } : null;
+  };
+
+  const slice = () => {
+    if (cancelled()) return;
+    const end = performance.now() + SLICE_MS;
+    const entries: PoolEntry[] = [];
+    const flush = () => entries.length && post({ id: req.id, type: 'candidates', entries });
+    do {
+      const result = next();
+      if (!result) continue;
+      const entry = toEntry(result);
+      if (hits(target, result.puzzle, result.rating)) {
+        flush();
+        post({ id: req.id, type: 'done', entry });
         return;
       }
-    }
+      entries.push(entry);
+    } while (attempts < maxAttempts && performance.now() < end);
+    flush();
     if (attempts >= maxAttempts) {
-      postMessage({ id: req.id, type: 'failed', attempts } satisfies WorkerResponse);
+      post({ id: req.id, type: 'failed', attempts });
       return;
     }
-    if (attempts % 15 === 0) {
-      postMessage({ id: req.id, type: 'progress', attempts } satisfies WorkerResponse);
-    }
-    setTimeout(attempt, 0);
+    post({ id: req.id, type: 'progress', attempts });
+    schedule(slice);
   };
-  attempt();
-};
+  slice();
+}
+
+// ---- the worker itself ----
+
+const cancelled = new Set<number>();
+
+if (typeof self !== 'undefined' && typeof WorkerGlobalScope !== 'undefined') {
+  self.onmessage = (e: MessageEvent<WorkerRequest>) => {
+    const req = e.data;
+    if (req.kind === 'cancel') {
+      cancelled.add(req.id);
+      return;
+    }
+    serve(
+      req,
+      (msg) => postMessage(msg),
+      (next) => setTimeout(next, 0),
+      () => cancelled.delete(req.id)
+    );
+  };
+}

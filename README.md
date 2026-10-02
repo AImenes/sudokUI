@@ -65,7 +65,14 @@ natively for iOS and Android via Capacitor.
 - Optional hidden-rating mode and "Surprise me"
 
 **Generate**
-- Unique-solution generator with rotational/mirror symmetry
+- Unique-solution generator with rotational symmetry; every puzzle is
+  minimal (no clue, or with symmetry no pair of clues, can be removed) and
+  solvable by the technique catalogue
+- Any difficulty band in well under a second: digging proves uniqueness
+  with a propagating solver, and rating stops the moment a puzzle is past
+  the band asked for. The hardest bands come from a shipped seed library,
+  served through one of 10^12 isomorphisms each time so nothing repeats
+  (see [docs/generator.md](docs/generator.md))
 - Background generation in a Web Worker — the UI never blocks
 - Puzzles are pooled per difficulty and per technique, so new games and
   practice sessions usually start instantly
@@ -149,7 +156,8 @@ src/
     bruteForce.ts    backtracking solver + solution counter
     ratings.ts       technique catalogue: scores, difficulty bands, ordering
     humanSolver.ts   applies techniques in order, rates puzzles
-    generator.ts     full-grid + hole-digging generator with filters
+    generator.ts     full-grid + hole-digging generator, targets, filters
+    transform.ts     grid isomorphisms (how a seed is served, never twice)
     worker.ts        Web Worker for background generation & pooling
     techniques/      one module per technique family, documented finders
   content/           the written content: technique explanations, glossary,
@@ -159,14 +167,16 @@ src/
   ui/                React components: SVG board, controls, dialogs
 scripts/             build-learn (static pages), hunt-examples (worked
                      examples), measure-frequency (how often each
-                     technique is needed), og-card, promo screenshots
+                     technique is needed), build-seeds (the seed library),
+                     bench-generator, og-card, promo screenshots
 tests/               vitest suites incl. the soundness harness & hunts
 ```
 
 The engine has no DOM or framework dependencies — it runs identically in the
 browser, in a worker, and under Node in tests. Grids are flat typed arrays
 (`Uint8Array` values, `Uint16Array` 9-bit candidate masks), so the whole
-solver is allocation-light and fast enough to rate a puzzle in ~50 ms.
+solver is allocation-light and rates most puzzles in a few milliseconds
+(the monsters past 3000 take most of a second).
 
 ## Contributing
 

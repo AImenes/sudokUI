@@ -58,10 +58,9 @@ uniqueness family and Exocets. That is the ground the app must own.
 3. **"Why not?" on every mistake.** When Check flags a placement, show the
    technique that proves the correct digit. Mistakes are where learning
    happens, and today they only get a red mark.
-4. **A generator that serves the player's level.** Rating-guided digging so
-   any band arrives in under a second, a shipped seed library with
-   transformations so nothing repeats, minimality and path-quality
-   filters. Design to come under docs/generator.md.
+4. **A generator that serves the player's level.** Any band in under a
+   second, a shipped seed library with transformations so nothing repeats,
+   minimality and path-quality filters. Built: [generator.md](generator.md).
 5. **The hardest puzzles, collected.** Published extremes with credits and
    the engine's step-by-step, so the top of the ladder has real opponents.
    Exocets and their kin are collected, not generated; nobody generates
@@ -75,6 +74,9 @@ double the engine and teach nothing the mission needs.
 
 ## What is already in place
 
+- A generator that serves any band in well under a second, the hardest
+  bands and the rarest practice techniques from saved puzzles through
+  random isomorphisms, so nothing repeats ([generator.md](generator.md)).
 - 80 techniques catalogued and explained, 77 implemented, each with a
   worked example where one exists, and frequencies from 2.8 million rated
   puzzles.

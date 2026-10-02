@@ -3,7 +3,7 @@
 import { Level, Tech } from '../engine/ratings';
 import type { PoolEntry, WorkerRequest, WorkerResponse } from '../engine/worker';
 
-const STORAGE_KEY = 'sudokui-pools-v10'; // v10: eight difficulty bands
+const STORAGE_KEY = 'sudokui-pools-v11'; // v11: entries carry the band filters' verdict
 const POOL_CAP = 8;
 
 type Pools = Record<string, PoolEntry[]>;
@@ -27,25 +27,34 @@ function save(pools: Pools) {
 export const levelKey = (level: Level) => `level:${level}`;
 export const techKey = (tech: Tech) => `tech:${tech}`;
 
-export function filePoolEntry(entry: PoolEntry) {
+/** File puzzles under their band and their clean techniques, in one write. */
+export function filePoolEntries(entries: PoolEntry[]) {
   const pools = load();
-  const keys = [levelKey(entry.level), ...entry.techs.map(techKey)];
-  for (const key of keys) {
-    const pool = pools[key] ?? [];
-    if (pool.some((p) => p.puzzle === entry.puzzle)) continue;
-    if (pool.length >= POOL_CAP) continue;
-    pool.push(entry);
-    pools[key] = pool;
+  for (const entry of entries) {
+    // a puzzle that fails its band's filters is still good practice material
+    const keys = [...(entry.fit === false ? [] : [levelKey(entry.level)]), ...entry.techs.map(techKey)];
+    for (const key of keys) {
+      const pool = pools[key] ?? [];
+      if (pool.some((p) => p.puzzle === entry.puzzle)) continue;
+      if (pool.length >= POOL_CAP) continue;
+      pool.push(entry);
+      pools[key] = pool;
+    }
   }
   save(pools);
 }
 
+/**
+ * Take the next puzzle from a pool. It leaves every pool it sits in: a
+ * puzzle is filed under its band and each of its techniques, and a player
+ * who has solved it as a Hard game should not meet it again as practice.
+ */
 export function takePoolEntry(key: string): PoolEntry | null {
   const pools = load();
   const pool = pools[key];
   if (!pool || pool.length === 0) return null;
-  const entry = pool.shift()!;
-  pools[key] = pool;
+  const entry = pool[0];
+  for (const k of Object.keys(pools)) pools[k] = pools[k].filter((p) => p.puzzle !== entry.puzzle);
   save(pools);
   return entry;
 }
@@ -56,16 +65,19 @@ export function poolSize(key: string): number {
 
 // ---- worker plumbing ----
 
-let worker: Worker | null = null;
+// two workers, so a waiting player never queues behind a background top-up
+// (one full rating of a monster can take a second)
+const workers: { urgent?: Worker; background?: Worker } = {};
 let nextId = 1;
 
-function getWorker(): Worker {
-  if (!worker) {
-    worker = new Worker(new URL('../engine/worker.ts', import.meta.url), {
+function getWorker(urgent: boolean): Worker {
+  const slot = urgent ? 'urgent' : 'background';
+  if (!workers[slot]) {
+    workers[slot] = new Worker(new URL('../engine/worker.ts', import.meta.url), {
       type: 'module'
     });
   }
-  return worker;
+  return workers[slot]!;
 }
 
 export interface GenerationHandle {
@@ -73,24 +85,33 @@ export interface GenerationHandle {
 }
 
 /**
- * Ask the worker for a puzzle matching a level or technique. All candidates
- * generated along the way are pooled. Resolves with the match, or null if
- * the attempt budget ran out or the request was cancelled.
+ * Ask a worker for a puzzle matching a level or technique. Candidates
+ * generated along the way are pooled; the match itself is not, it is for
+ * the caller. Resolves with the match, or null if the attempt budget ran
+ * out or the request was cancelled.
+ *
+ * Seeds, if given, are served first, through a random isomorphism. Mark
+ * the request urgent when a player is waiting: it then has a worker to
+ * itself and rates only as far as the target needs (docs/generator.md).
+ * A background top-up rates in full, so it stocks every pool it can.
  */
 export function requestPuzzle(
-  req: { kind: 'level'; level: Level } | { kind: 'tech'; tech: Tech },
-  onProgress?: (attempts: number) => void
+  req:
+    | { kind: 'level'; level: Level; seeds?: string[] }
+    | { kind: 'tech'; tech: Tech; seeds?: string[] },
+  opts: { urgent?: boolean; onProgress?: (attempts: number) => void } = {}
 ): { promise: Promise<PoolEntry | null>; handle: GenerationHandle } {
-  const w = getWorker();
+  const w = getWorker(!!opts.urgent);
   const id = nextId++;
+  const onProgress = opts.onProgress;
   let settled = false;
   let cancelFn: () => void = () => {};
   const promise = new Promise<PoolEntry | null>((resolve) => {
     const listener = (e: MessageEvent<WorkerResponse>) => {
       const msg = e.data;
       if (msg.id !== id) return;
-      if (msg.type === 'candidate') {
-        filePoolEntry(msg.entry);
+      if (msg.type === 'candidates') {
+        filePoolEntries(msg.entries);
       } else if (msg.type === 'progress') {
         onProgress?.(msg.attempts);
       } else if (msg.type === 'done') {
@@ -104,7 +125,7 @@ export function requestPuzzle(
       }
     };
     w.addEventListener('message', listener);
-    w.postMessage({ id, ...req } satisfies WorkerRequest);
+    w.postMessage({ id, urgent: !!opts.urgent, ...req } satisfies WorkerRequest);
     cancelFn = () => {
       if (settled) return;
       settled = true;

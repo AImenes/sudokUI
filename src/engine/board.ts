@@ -108,6 +108,18 @@ export function parseGrid(s: string): Grid | null {
   return g;
 }
 
+/** A grid from 81 values (0 = empty), every value a given, candidates derived. */
+export function gridFromValues(values: ArrayLike<number>): Grid {
+  const g = emptyGrid();
+  for (let i = 0; i < 81; i++) {
+    if (values[i]) {
+      setValue(g, i, values[i]);
+      g.given[i] = 1;
+    }
+  }
+  return g;
+}
+
 /** Serialise to the canonical 81-char form ('.' = empty) — the inverse of
  *  parseGrid for values (candidate state is not encoded). */
 export function gridToString(g: Grid): string {
