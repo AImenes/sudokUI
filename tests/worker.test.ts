@@ -71,10 +71,19 @@ describe('generation worker', () => {
     expect(entry.techs).toContain('X_WING');
   });
 
-  it('counts attempts without the seeds, and gives up after the attempts allowed', () => {
-    // a seed of the wrong band is tried, then three attempts, then failure
+  it('does not count seeds as attempts', () => {
+    // no generation allowed: the seed of the wrong band is tried and
+    // pooled, and the request fails with no attempt counted
     const wrong = generateFor({ kind: 'level', level: 'Beginner' }, 100)!.puzzle;
-    const out = run({ id: 5, kind: 'level', level: 'Nightmare', urgent: true, seeds: [wrong], maxAttempts: 3 });
-    expect(out[out.length - 1]).toEqual({ id: 5, type: 'failed', attempts: 3 });
+    const out = run({ id: 5, kind: 'level', level: 'Nightmare', urgent: true, seeds: [wrong], maxAttempts: 0 });
+    expect(candidates(out)).toHaveLength(1);
+    expect(out[out.length - 1]).toEqual({ id: 5, type: 'failed', attempts: 0 });
+  });
+
+  it('gives up after the attempts allowed', () => {
+    // a target no puzzle can hit (brute force is not a technique the
+    // catalogue solves with), so the outcome does not depend on luck
+    const out = run({ id: 6, kind: 'tech', tech: 'BRUTE_FORCE', maxAttempts: 3 });
+    expect(out[out.length - 1]).toEqual({ id: 6, type: 'failed', attempts: 3 });
   });
 });
