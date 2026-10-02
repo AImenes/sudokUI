@@ -2571,3 +2571,22 @@ html:not([lang='en']) .zone-note {
     flex: 1 0 100%;
   }
 }
+
+/* spoken, not seen: the live region beside the board */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.board:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}

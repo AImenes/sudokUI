@@ -806,6 +806,9 @@ export function VictoryDialog({
   );
 }
 
+/** what Tab can land on inside a dialog */
+const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
+
 export function Modal({
   title,
   children,
@@ -838,6 +841,24 @@ export function Modal({
     ref.current?.focus({ preventScroll: true });
     return () => opener?.focus?.({ preventScroll: true });
   }, []);
+  // and Tab stays inside: past the last control it wraps to the first
+  const onTab = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab' || !ref.current) return;
+    const items = [...ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+      (el) => !el.hasAttribute('disabled') && el.offsetParent !== null
+    );
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || active === ref.current)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -849,6 +870,7 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={onTab}
       >
         <div className="modal-head">
           <h3>{title}</h3>
