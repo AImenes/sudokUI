@@ -70,21 +70,13 @@ export function Controls({
   const check = useGame((s) => s.check);
   const [autoOffPrompt, setAutoOffPrompt] = useState(false);
   const assisted = useGame((s) => s.assisted);
-  const [pending, setPending] = useState<{ name: string; run: () => void } | null>(null);
+  const pending = useGame((s) => s.pendingAssist);
+  const askAssist = useGame((s) => s.askAssist);
+  const armedDigit = useGame((s) => s.armedDigit);
   const [help, setHelp] = useState(false);
 
   // the first assist of a clean game asks first; after that, and for
   // anyone who has switched the question off, the buttons act at once
-  const guarded = (name: string, run: () => void) => () => {
-    if (assisted || !useSettings.getState().confirmAssist) return run();
-    setPending({ name, run });
-  };
-  const use = (stopAsking: boolean) => {
-    if (stopAsking) useSettings.getState().set({ confirmAssist: false });
-    pending?.run();
-    setPending(null);
-  };
-
   // first time auto candidates are switched OFF, let the user decide what
   // happens to the candidate state (the answer becomes their setting)
   const onAutoToggle = () => {
@@ -103,6 +95,26 @@ export function Controls({
     );
     setAutoOffPrompt(false);
     toggleAutoCandidates();
+  };
+
+  const guarded = (name: string, run: () => void) => () => {
+    if (assisted || !useSettings.getState().confirmAssist) return run();
+    askAssist(name);
+  };
+  // what each named assist runs once the question is answered; the keyboard
+  // asks through the store (H for a hint), so the answer must find its action here
+  const actions: Record<string, (() => void) | undefined> = {
+    Hint: requestHint,
+    Check: check,
+    Steps: onShowSteps,
+    Scan: onScan,
+    'Auto candidates': onAutoToggle,
+    'Fill candidates': fillCandidates
+  };
+  const use = (stopAsking: boolean) => {
+    if (stopAsking) useSettings.getState().set({ confirmAssist: false });
+    if (pending) actions[pending]?.();
+    askAssist(null);
   };
 
   const t = useT();
@@ -126,7 +138,9 @@ export function Controls({
         {Array.from({ length: 9 }, (_, k) => k + 1).map((d) => (
           <button
             key={d}
-            className={`num-btn ${effectiveMode === 'color' ? 'color-btn' : ''}`}
+            className={`num-btn ${effectiveMode === 'color' ? 'color-btn' : ''}${armedDigit === d ? ' armed' : ''}`}
+            aria-pressed={armedDigit === d}
+            title={armedDigit === d ? `${d} is armed: tap a cell to enter it, tap ${d} again to put it down` : `${d}. With nothing selected, arms ${d}: every ${d} lights up and a tap on a cell enters it`}
             style={
               effectiveMode === 'color'
                 ? { background: PALETTE[d - 1], color: '#10131c' }
@@ -213,15 +227,15 @@ export function Controls({
       </div>
 
       {pending && (
-        <Modal title={`Use ${pending.name}?`} onClose={() => setPending(null)}>
-          <p className="dialog-note">{textOf(pending.name)}</p>
+        <Modal title={`Use ${pending}?`} onClose={() => askAssist(null)}>
+          <p className="dialog-note">{textOf(pending)}</p>
           <p className="dialog-note">
             Using it counts as help, so this solve will no longer be
             unassisted. Everything else stays as it is.
           </p>
           <div className="hint-actions">
-            <button onClick={() => use(false)}>Use {pending.name}</button>
-            <button className="ghost" onClick={() => setPending(null)}>
+            <button onClick={() => use(false)}>Use {pending}</button>
+            <button className="ghost" onClick={() => askAssist(null)}>
               Cancel
             </button>
             <button className="ghost" onClick={() => use(true)}>

@@ -28,12 +28,13 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
     }
   }, [hint, stage, showKey]);
 
-  // stacked layouts (phone, tablet): the hint opens under the board, so
-  // bring the board back to the top where both can be seen together
+  // stacked layouts (phone, tablet) and short desktop windows: the panel
+  // moves to the top of the column (styles.css), so bring the page back to
+  // the top where the board and the panel can be seen together
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!hint || stage === 'hidden') return;
-    if (!window.matchMedia('(max-width: 860px)').matches) return;
+    if (!window.matchMedia('(max-width: 860px), (max-height: 900px)').matches) return;
     panel.current?.closest('.layout')?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [hint, stage]);
 

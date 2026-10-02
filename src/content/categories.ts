@@ -69,6 +69,12 @@ export const categoryLabel = (category: Category): string =>
 export function techStatus(tech: Tech): { mark: string; note: string } | null {
   const info = TECHS[tech];
   if (PRACTICE_TECHS.includes(tech)) return null;
+  if (tech === 'TRIDAGON') {
+    return {
+      mark: '≈',
+      note: 'Only ever needed in puzzles made by hand for it: none can be generated, so it is not offered in practice.'
+    };
+  }
   if (info.category === 'Last Resort' && info.implemented && info.enabled) {
     return {
       mark: '⚙',

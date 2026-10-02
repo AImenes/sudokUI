@@ -186,6 +186,24 @@ export default function App() {
 
   useEffect(() => setVictoryDismissed(false), [info?.puzzle]);
 
+  // a shared link opened in this tab: load it, unless a game is under way
+  useEffect(() => {
+    const onHash = () => {
+      const params = new URLSearchParams(window.location.hash.slice(1));
+      const shared = (params.get('p') ?? '').replace(/[^0-9.]/g, '');
+      const g = useGame.getState();
+      if (shared.length !== 81 || shared === g.info?.puzzle) return;
+      if (g.history.length > 0 && !g.won) {
+        useGame.setState({ notice: 'A puzzle link was opened. Finish or restart this game first, or open the link in a new tab' });
+        return;
+      }
+      const rating = rateImport(shared);
+      if (rating) g.startGame(shared, rating.score, rating.level);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
   // keep the address bar shareable: it always points at the current puzzle
   useEffect(() => {
     if (info?.puzzle) {
@@ -287,9 +305,16 @@ export default function App() {
         case 'KeyV':
           setMode('color');
           break;
-        case 'KeyH':
-          requestHint();
+        case 'KeyH': {
+          // H walks the hint: ask, then reveal, then apply; the first
+          // assist of a clean game asks the same question the button does
+          const g = useGame.getState();
+          if (g.hintStage === 'tech') g.revealHint();
+          else if (g.hintStage === 'full') g.applyHint();
+          else if (g.assisted || !useSettings.getState().confirmAssist) requestHint();
+          else g.askAssist('Hint');
           break;
+        }
         case 'KeyS':
           convertMarks(); // swap corner ↔ centre marks (selection or board)
           break;
@@ -429,7 +454,7 @@ export default function App() {
           {/* while paused, Nutella moves onto the pause card instead */}
           {showPoodle && (!paused || won) && <Poodle />}
         </div>
-        <aside className="side">
+        <aside className={`side${paused && !won ? ' paused' : ''}`}>
           <div className="menu-row">
             <button onClick={() => setDialog('new')}>
               <span className="menu-icon">▦</span>{t('New')}
@@ -626,7 +651,7 @@ export default function App() {
               one explained and drawn on the board when you ask.
             </li>
             <li>
-              <strong>Practice what you struggle with.</strong> Pick any of 65
+              <strong>Practice what you struggle with.</strong> Pick any of {PRACTICE_TECHS.length}
               techniques and get a puzzle that truly needs it.
             </li>
             <li>

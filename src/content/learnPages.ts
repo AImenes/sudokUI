@@ -401,7 +401,7 @@ ${workedExample(lt, tech)}      <div class="card">
         }
       </div>
       <h2>${esc(lt.s("In a puzzle's rating"))}</h2>
-      <p>${esc(lt.s("Each time the solver needs {name}, the puzzle's difficulty rating grows by {score}. It is a {level}-class technique.", { name, score: info.score, level }))}${
+      <p>${esc(lt.s("Each time the solver needs {name}, the puzzle's difficulty rating grows by {score}. Its class is {level}.", { name, score: info.score, level }))}${
         freq ? ` ${esc(lt.s('It is needed in {freq} that sudokUI generates.', { freq }))}` : ''
       } <a href="${at(lang, RATING_URL)}">${esc(lt.s('How the rating works'))}</a>.</p>
 ${

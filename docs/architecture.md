@@ -125,7 +125,9 @@ usually start instantly from a pool; the worker restocks in the background.
 - `hunt-sdc.test.ts` — Sue de Coq occurrence hunt.
 
 CI (`.github/workflows/ci.yml`) runs typecheck + all tests + build on every
-push; an unsound technique cannot reach a deploy.
+push and pull request; the browser smoke test runs on the production build.
+Deployment is separate (docs/deployment.md): a push to `main` deploys whether
+or not CI passed, so `main` should carry a required CI status check.
 
 ## Adding a technique (the whole loop)
 

@@ -139,6 +139,12 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         onChange={(v) => s.set({ frameHighlights: v })}
       />
       <Toggle
+        label="Show conflicts"
+        hint="Show a digit in red while it repeats within its row, column or box. A rule check on the board alone, never a look at the solution, so it does not count as help"
+        value={s.showConflicts}
+        onChange={(v) => s.set({ showConflicts: v })}
+      />
+      <Toggle
         label="Tint digits by value"
         hint="Each digit from 1 to 9 gets a slight colour of its own on the board, which makes patterns easier to see"
         value={s.digitTints}
@@ -235,6 +241,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
 
 const SHORTCUTS: [string, string][] = [
   ['1–9', 'Enter digit / mark / colour, depending on the mode'],
+  ['1–9 with nothing selected', 'Arm the digit: every cell and pencil mark of it lights up, and a tap on a cell enters it. The digit again, or Escape, puts it down'],
   ['Hold Shift', 'Corner-mark mode while held'],
   ['Hold Ctrl or Alt', 'Centre-mark mode while held'],
   ['Hold Shift + Ctrl/Alt', 'Colour mode while held'],
@@ -249,7 +256,7 @@ const SHORTCUTS: [string, string][] = [
   ['W', 'Wipe the selected cells completely'],
   ['Ctrl/Cmd + A', 'Select every cell (Erase and W then act board-wide)'],
   ['Ctrl/Cmd + Z · Y', 'Undo · Redo'],
-  ['H', 'Hint'],
+  ['H', 'Hint: names the technique; again shows it on the board; again applies it'],
   ['L', 'Learn: every technique explained, glossary, rating'],
   ['S', 'Swap corner ↔ centre marks (selection, or the whole board)'],
   ['N', 'Next practice puzzle (in practice mode)'],

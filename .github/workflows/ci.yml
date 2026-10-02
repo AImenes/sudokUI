@@ -36,5 +36,25 @@ jobs:
           path: dist/
           retention-days: 7
 
+  # the first minute in a real browser, against the production build
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
+
   # Deployment happens on Cloudflare (Workers Builds) on every push to main;
   # see docs/deployment.md. This workflow is the quality gate.
