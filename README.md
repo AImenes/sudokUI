@@ -41,8 +41,19 @@ natively for iOS and Android via Capacitor.
 - **Practice mode** for 61 named techniques: pick one and get a generated
   puzzle that genuinely requires it — with nothing harder needed before it.
   The game fast-forwards through the routine steps so the chosen pattern is
-  the very next move. The rarest techniques come from puzzles found in
-  advance by a multi-hour search, so they start instantly too
+  the very next move, the puzzle stays within one band of the technique,
+  and the bar says **found** when your own move is the one it was prepared
+  for. The rarest techniques come from puzzles found in advance by a
+  multi-hour search, so they start instantly too
+- **Your record, on your device**: every move you make is credited with the
+  easiest technique that justifies it, a finished game is summed up
+  ("45 moves of your own: 31 Naked Singles, 12 Hidden Singles, 1 X-Wing.
+  From hints: 1 XY-Wing."), the guide shows what you have used unaided and
+  sorts by **learn next**, and the win dialog keeps your band records and
+  the daily streak. **Why not?**: when Check finds a wrong digit it says
+  why, from a peer that already holds it to the forced singles that would
+  break the board, and shows it (see
+  [docs/technique-stats.md](docs/technique-stats.md))
 - **The guide** (📖 in the top bar): every one of the 80 techniques explained
   in three short parts (what the pattern is, why it works, how to spot it),
   most with a worked example drawn on a real board that you can open and

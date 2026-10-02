@@ -76,6 +76,26 @@ test.describe('desktop, 1280 x 800', () => {
   });
 });
 
+test.describe('why not', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test('Check says why a wrong digit is wrong, and can show it', async ({ page }) => {
+    await open(page);
+    // r1c1 is 4; a 3 already sits in r1c3
+    const c = await cellBox(page, 0);
+    await page.mouse.click(c.x, c.y);
+    await page.keyboard.press('Digit3');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: /Check/ }).first().click();
+    await page.getByRole('button', { name: 'Use Check' }).click();
+    const panel = page.getByRole('region', { name: 'Mistakes found' });
+    await expect(panel).toBeVisible();
+    await expect(panel.locator('.proof-list li')).toHaveText(/r1c1 cannot be 3: r1c3 already holds it/);
+    await panel.getByRole('button', { name: 'Show me' }).click();
+    await expect(page.locator('.toast, [role=status]').filter({ hasText: 'already holds it' })).toBeVisible();
+  });
+});
+
 test.describe('the walk', () => {
   test.use({ viewport: { width: 1280, height: 1000 } });
 

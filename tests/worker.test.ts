@@ -7,7 +7,9 @@
  * target holds; seeds do not count as attempts.
  */
 import { describe, it, expect } from 'vitest';
-import { serve, WorkerResponse, PoolEntry } from '../src/engine/worker';
+import { serve, serveJustify, WorkerResponse, PoolEntry } from '../src/engine/worker';
+import { parseGrid } from '../src/engine/board';
+import { singleAt } from '../src/engine/justify';
 import { ratePuzzle } from '../src/engine/humanSolver';
 import { generateFor, cleanTechniques, clueCount } from '../src/engine/generator';
 
@@ -85,5 +87,24 @@ describe('generation worker', () => {
     // catalogue solves with), so the outcome does not depend on luck
     const out = run({ id: 6, kind: 'tech', tech: 'BRUTE_FORCE', maxAttempts: 3 });
     expect(out[out.length - 1]).toEqual({ id: 6, type: 'failed', attempts: 3 });
+  });
+
+  it('justifies a move from the position sent, candidates included', () => {
+    const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
+    const g = parseGrid(EASY)!;
+    const out: WorkerResponse[] = [];
+    const cands = [...g.cands].map((c, i) => (g.values[i] ? 0 : c));
+    // the first single of the start position
+    let move = { cell: -1, digit: 0, placed: true };
+    for (let cell = 0; cell < 81 && move.cell < 0; cell++) {
+      for (let d = 1; d <= 9; d++) if (singleAt(g, cell, d)) { move = { cell, digit: d, placed: true }; break; }
+    }
+    expect(move.cell).toBeGreaterThanOrEqual(0);
+    serveJustify({ id: 7, kind: 'justify', values: EASY, cands, move }, (m) => out.push(m));
+    expect(out).toEqual([{ id: 7, type: 'justified', tech: expect.stringMatching(/SINGLE|FULL_HOUSE/), direct: true, steps: 1 }]);
+    // a corrupt position answers "nothing"
+    out.length = 0;
+    serveJustify({ id: 8, kind: 'justify', values: 'x', cands, move }, (m) => out.push(m));
+    expect(out).toEqual([{ id: 8, type: 'justified', tech: null, direct: false, steps: 0 }]);
   });
 });

@@ -7,7 +7,9 @@ import { Grid, emptyGrid, cloneGrid, setValue, gridToString, gridFromValues, dig
 import { solve } from './bruteForce';
 import { ratePuzzle, Rating, RatingLimit } from './humanSolver';
 import { Step } from './steps';
-import { Level, Tech, TECHS, SOLVE_ORDER } from './ratings';
+import { Level, LEVELS, Tech, TECHS, SOLVE_ORDER, practiceCeiling } from './ratings';
+
+export { practiceCeiling };
 
 export type Symmetry = 'rotational' | 'mirror' | 'none';
 
@@ -246,14 +248,18 @@ export type Target = { kind: 'level'; level: Level } | { kind: 'tech'; tech: Tec
 
 /** Where the rating of a candidate for this target may stop early. */
 export const limitFor = (target: Target): RatingLimit =>
-  target.kind === 'level' ? { maxLevel: target.level } : { cleanTech: target.tech };
+  target.kind === 'level'
+    ? { maxLevel: target.level }
+    : { cleanTech: target.tech, maxLevel: practiceCeiling(target.tech) };
 
 /** Whether a rated puzzle is what the target asked for. */
 export function hits(target: Target, puzzle: string, rating: Rating): boolean {
   if (!rating.solvable) return false;
-  return target.kind === 'level'
-    ? rating.level === target.level && fitForLevel(puzzle, rating)
-    : cleanTechniques(rating).includes(target.tech);
+  if (target.kind === 'level') return rating.level === target.level && fitForLevel(puzzle, rating);
+  return (
+    cleanTechniques(rating).includes(target.tech) &&
+    LEVELS.indexOf(rating.level) <= LEVELS.indexOf(practiceCeiling(target.tech))
+  );
 }
 
 /**

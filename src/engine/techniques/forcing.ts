@@ -147,24 +147,38 @@ function branch(g: Grid, cell: number, digit: number): Grid | null {
   return propagate(b) ? b : null;
 }
 
+/**
+ * The Nishio step for one candidate: the assumption, the forced singles it
+ * sets off, and the contradiction they run into. Null when the singles
+ * alone do not break the board. Also the "why not?" of a wrong digit
+ * (docs/technique-stats.md).
+ */
+export function contradictionStep(g: Grid, cell: number, d: number): Step | null {
+  if (g.values[cell] !== 0 || !(g.cands[cell] & bit(d))) return null;
+  const drawn = contradictionDrawing(g, cell, d, true);
+  if (!drawn) return null;
+  return {
+    tech: 'NISHIO_FORCING_CHAIN',
+    placements: [],
+    eliminations: [{ cell, digit: d }],
+    primary: [{ cell, digit: d }],
+    fins: drawn.fins,
+    links: drawn.links,
+    units: drawn.unit !== undefined ? [{ unit: drawn.unit, role: 'secondary' }] : undefined,
+    labels: FORCING_LABELS,
+    description: `Nishio: assuming ${cellName(cell)} = ${d} and following the forced singles leads to a contradiction, so ${d} is impossible there.`
+  };
+}
+
 /** Nishio: a candidate whose assumption self-destructs is eliminated. */
 export function findNishio(g: Grid): Step | null {
   for (let cell = 0; cell < 81; cell++) {
     if (g.values[cell] !== 0) continue;
     for (const d of digitsOf(g.cands[cell])) {
       if (branch(g, cell, d) === null) {
-        const drawn = contradictionDrawing(g, cell, d, true);
-        return {
-          tech: 'NISHIO_FORCING_CHAIN',
-          placements: [],
-          eliminations: [{ cell, digit: d }],
-          primary: [{ cell, digit: d }],
-          fins: drawn?.fins,
-          links: drawn?.links,
-          units: drawn?.unit !== undefined ? [{ unit: drawn.unit, role: 'secondary' }] : undefined,
-          labels: FORCING_LABELS,
-          description: `Nishio: assuming ${cellName(cell)} = ${d} and following the forced singles leads to a contradiction, so ${d} is impossible there.`
-        };
+        // the branch broke by singles, so the trail finds the same break
+        const step = contradictionStep(g, cell, d);
+        if (step) return step;
       }
     }
   }

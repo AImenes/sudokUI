@@ -15,6 +15,7 @@ import { techSlug, slugify } from '../content/slugs';
 import { linkGlossary } from '../content/glossaryLinks';
 import { boardSvg, legendOf, Example } from '../content/boardSvg';
 import { share, worth } from '../content/frequency';
+import { useStats, learnNextScore } from '../state/stats';
 import { SOLVE_TIME_TABLES } from '../content/solveTimes';
 import { LearnText, langPrefix } from '../content/learnLocale';
 import type { LearnString } from '../content/learnStrings';
@@ -216,7 +217,7 @@ export function RatingExplainer() {
 }
 
 /** the orders the technique list can be read in */
-export type LearnSort = 'family' | 'easiest' | 'common' | 'worth';
+export type LearnSort = 'family' | 'easiest' | 'common' | 'worth' | 'next';
 
 /** label: the heading of the sorted list; menu: how the option reads in the closed select */
 const SORTS: { value: LearnSort; label: LearnString; menu: LearnString; note?: LearnString }[] = [
@@ -238,6 +239,12 @@ const SORTS: { value: LearnSort; label: LearnString; menu: LearnString; note?: L
     label: 'Most worth learning',
     menu: 'Most worth learning first',
     note: 'How often a technique is needed, weighted by its rating cost. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it, and those come first.'
+  },
+  {
+    value: 'next',
+    label: 'Learn next',
+    menu: 'Learn next first',
+    note: 'The techniques most worth learning that you have used least on your own. Every move you make is credited with the easiest technique that justifies it, and a technique you have played unaided moves down the list. Your play stays on this device.'
   }
 ];
 
@@ -292,6 +299,10 @@ function TechniqueList({
     };
   }, []);
 
+  // what the player has done with each technique, for the mastery line
+  // and the "learn next" order (src/state/stats.ts)
+  const techs = useStats((s) => s.techs);
+
   const groups = useMemo((): Group[] => {
     const q = query.trim().toLowerCase();
     // a search matches the name, family, aliases and kin line in the
@@ -324,10 +335,12 @@ function TechniqueList({
         ? (a: Tech, b: Tech) => share(b) - share(a) || byIndex(a, b)
         : sort === 'worth'
           ? (a: Tech, b: Tech) => worth(b) - worth(a) || byIndex(a, b)
-          : byIndex;
+          : sort === 'next'
+            ? (a: Tech, b: Tech) => learnNextScore(b, techs) - learnNextScore(a, techs) || byIndex(a, b)
+            : byIndex;
     const { label, note } = SORTS.find((s) => s.value === sort)!;
     return [{ key: sort, title: lt.s(label), note: note ? lt.s(note) : '', techs: [...visible].sort(order) }];
-  }, [query, sort, lt]);
+  }, [query, sort, lt, techs]);
   const matches = groups.reduce((n, g) => n + g.techs.length, 0);
 
   useEffect(() => {
@@ -414,6 +427,11 @@ function TechniqueList({
                   </span>
                   {sort !== 'family' && (
                     <span className="learn-freq">{needed ? lt.s('Needed in {freq}', { freq: needed }) : lt.s('Never needed')}</span>
+                  )}
+                  {techs[tech] && (
+                    <span className="learn-mastery">
+                      {lt.s('Your play: {n} unaided, {h} from hints', { n: techs[tech]!.unaided, h: techs[tech]!.hinted })}
+                    </span>
                   )}
                 </summary>
                 <div className="learn-body">

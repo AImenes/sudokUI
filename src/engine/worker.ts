@@ -15,6 +15,8 @@ import {
 } from './generator';
 import { ratePuzzle } from './humanSolver';
 import { transformPuzzle } from './transform';
+import { parseGrid } from './board';
+import { justify, Move, Budget } from './justify';
 import { Level, Tech, SOLVE_ORDER } from './ratings';
 
 export interface PoolEntry {
@@ -29,15 +31,32 @@ export interface PoolEntry {
 export type WorkerRequest =
   | { id: number; kind: 'level'; level: Level; maxAttempts?: number; urgent?: boolean; seeds?: string[] }
   | { id: number; kind: 'tech'; tech: Tech; maxAttempts?: number; urgent?: boolean; seeds?: string[] }
+  /** what justifies a move in a position: the values as 81 characters and
+   *  the candidates of the empty cells as masks (src/engine/justify.ts) */
+  | { id: number; kind: 'justify'; values: string; cands: number[]; move: Move; budget?: Budget }
   | { id: number; kind: 'cancel' };
 
 export type WorkerResponse =
   | { id: number; type: 'candidates'; entries: PoolEntry[] }
   | { id: number; type: 'progress'; attempts: number }
   | { id: number; type: 'done'; entry: PoolEntry }
-  | { id: number; type: 'failed'; attempts: number };
+  | { id: number; type: 'failed'; attempts: number }
+  | { id: number; type: 'justified'; tech: Tech | null; direct: boolean; steps: number };
 
-export type GenerationRequest = Exclude<WorkerRequest, { kind: 'cancel' }>;
+export type GenerationRequest = Exclude<WorkerRequest, { kind: 'cancel' | 'justify' }>;
+export type JustifyRequest = Extract<WorkerRequest, { kind: 'justify' }>;
+
+/** Serve a justify request: the position rebuilt from the message, the verdict posted. */
+export function serveJustify(req: JustifyRequest, post: (msg: WorkerResponse) => void): void {
+  const g = parseGrid(req.values);
+  if (!g) {
+    post({ id: req.id, type: 'justified', tech: null, direct: false, steps: 0 });
+    return;
+  }
+  for (let i = 0; i < 81; i++) if (!g.values[i] && req.cands[i]) g.cands[i] &= req.cands[i];
+  const j = justify(g, req.move, req.budget);
+  post({ id: req.id, type: 'justified', tech: j.tech, direct: j.direct, steps: j.steps.length });
+}
 
 /** work per macrotask, so a cancel message gets through within this long */
 const SLICE_MS = 40;
@@ -120,6 +139,10 @@ if (typeof self !== 'undefined' && typeof WorkerGlobalScope !== 'undefined') {
     const req = e.data;
     if (req.kind === 'cancel') {
       cancelled.add(req.id);
+      return;
+    }
+    if (req.kind === 'justify') {
+      serveJustify(req, (msg) => postMessage(msg));
       return;
     }
     serve(

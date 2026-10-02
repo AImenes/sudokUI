@@ -1,6 +1,8 @@
 // Puzzle pools: puzzles found during background generation, filed per
 // difficulty level and per technique so new games / practice start instantly.
-import { Level, Tech } from '../engine/ratings';
+import { Level, LEVELS, Tech, practiceCeiling } from '../engine/ratings';
+import type { Grid } from '../engine/board';
+import type { Move, Budget } from '../engine/justify';
 import type { PoolEntry, WorkerRequest, WorkerResponse } from '../engine/worker';
 
 const STORAGE_KEY = 'sudokui-pools-v11'; // v11: entries carry the band filters' verdict
@@ -27,12 +29,20 @@ function save(pools: Pools) {
 export const levelKey = (level: Level) => `level:${level}`;
 export const techKey = (tech: Tech) => `tech:${tech}`;
 
+/** May this puzzle be served as practice for the technique: within its ceiling? */
+export const practisable = (entry: PoolEntry, tech: Tech) =>
+  LEVELS.indexOf(entry.level) <= LEVELS.indexOf(practiceCeiling(tech));
+
 /** File puzzles under their band and their clean techniques, in one write. */
 export function filePoolEntries(entries: PoolEntry[]) {
   const pools = load();
   for (const entry of entries) {
-    // a puzzle that fails its band's filters is still good practice material
-    const keys = [...(entry.fit === false ? [] : [levelKey(entry.level)]), ...entry.techs.map(techKey)];
+    // a puzzle that fails its band's filters is still good practice material;
+    // one above a technique's ceiling is not practice for that technique
+    const keys = [
+      ...(entry.fit === false ? [] : [levelKey(entry.level)]),
+      ...entry.techs.filter((t) => practisable(entry, t)).map(techKey)
+    ];
     for (const key of keys) {
       const pool = pools[key] ?? [];
       if (pool.some((p) => p.puzzle === entry.puzzle)) continue;
@@ -49,11 +59,12 @@ export function filePoolEntries(entries: PoolEntry[]) {
  * puzzle is filed under its band and each of its techniques, and a player
  * who has solved it as a Hard game should not meet it again as practice.
  */
-export function takePoolEntry(key: string): PoolEntry | null {
+export function takePoolEntry(key: string, accept: (entry: PoolEntry) => boolean = () => true): PoolEntry | null {
   const pools = load();
   const pool = pools[key];
   if (!pool || pool.length === 0) return null;
-  const entry = pool[0];
+  const entry = pool.find(accept);
+  if (!entry) return null;
   for (const k of Object.keys(pools)) pools[k] = pools[k].filter((p) => p.puzzle !== entry.puzzle);
   save(pools);
   return entry;
@@ -135,4 +146,41 @@ export function requestPuzzle(
     };
   });
   return { promise, handle: { cancel: () => cancelFn() } };
+}
+
+/**
+ * What justifies a move the player just made, from the position before it
+ * (src/engine/justify.ts), worked out off the main thread so a placement
+ * never waits for the solver. Resolves to the verdict (tech null when
+ * nothing in budget justifies the move), or to null where there are no
+ * workers to ask.
+ */
+export function justifyMove(
+  g: Grid,
+  move: Move,
+  budget?: Budget
+): Promise<{ tech: Tech | null; direct: boolean; steps: number } | null> {
+  let w: Worker;
+  try {
+    w = getWorker(false);
+  } catch {
+    return Promise.resolve(null);
+  }
+  const id = nextId++;
+  let values = '';
+  const cands: number[] = [];
+  for (let i = 0; i < 81; i++) {
+    values += g.values[i] ? String(g.values[i]) : '.';
+    cands.push(g.values[i] ? 0 : g.cands[i]);
+  }
+  return new Promise((resolve) => {
+    const listener = (e: MessageEvent<WorkerResponse>) => {
+      const msg = e.data;
+      if (msg.id !== id || msg.type !== 'justified') return;
+      w.removeEventListener('message', listener);
+      resolve({ tech: msg.tech, direct: msg.direct, steps: msg.steps });
+    };
+    w.addEventListener('message', listener);
+    w.postMessage({ id, kind: 'justify', values, cands, move, budget } satisfies WorkerRequest);
+  });
 }
