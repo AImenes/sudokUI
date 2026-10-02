@@ -61,11 +61,13 @@ const treeLinks = (cl: Cluster, d: number): ChainLink[] =>
     undirected: true
   }));
 
-/** a weak link from a witness to the candidate it helps rule out */
-const witness = (from: number, to: number, d: number): ChainLink => ({
+/** a weak link from a witness to the candidate it helps rule out, with
+ *  the sentence the walk reads for it */
+const witness = (from: number, to: number, d: number, text: string): ChainLink => ({
   from: [{ cell: from, digit: d }],
   to: [{ cell: to, digit: d }],
-  strong: false
+  strong: false,
+  text
 });
 
 function simpleColorsStep(
@@ -110,7 +112,14 @@ export function findSimpleColors(g: Grid): Step | null {
               d,
               elims,
               `${cap(HUE[col])} puts ${d} twice in ${unitName(u)} (${cellName(same[0])} and ${cellName(same[1])}), so ${HUE[col]} is false: all its ${d}s are removed (circled red) and every ${HUE[1 - col]} ${d} is true`,
-              [witness(same[0], same[1], d)]
+              [
+                witness(
+                  same[0],
+                  same[1],
+                  d,
+                  `${cap(HUE[col])} puts ${d} in both ${cellName(same[0])} and ${cellName(same[1])} of ${unitName(u)}. A digit appears once per house, so ${HUE[col]} cannot be true.`
+                )
+              ]
             );
           }
         }
@@ -127,7 +136,15 @@ export function findSimpleColors(g: Grid): Step | null {
           elims.push({ cell: c, digit: d });
           if (!why) {
             why = `The ${d} in ${cellName(c)} sees a blue ${d} in ${cellName(seen[0])} and a gold ${d} in ${cellName(seen[1])}, so it is false either way`;
-            witnesses.push(witness(seen[0], c, d), witness(seen[1], c, d));
+            witnesses.push(
+              witness(seen[0], c, d, `If blue is true, the ${d} in ${cellName(seen[0])} is placed, and the ${d} in ${cellName(c)} goes.`),
+              witness(
+                seen[1],
+                c,
+                d,
+                `If gold is true, the ${d} in ${cellName(seen[1])} is placed, and the ${d} in ${cellName(c)} goes. Either way it is false.`
+              )
+            );
           }
         }
       }
@@ -236,7 +253,10 @@ export function findMultiColors(g: Grid): Step | null {
                 elims.push({ cell: c, digit: d });
                 if (!why) {
                   why = `The ${d} in ${cellName(c)} sees the blue ${d} in ${cellName(x)} and the gold ${d} in ${cellName(y)}, so it is false either way`;
-                  witnesses.push(witness(x, c, d), witness(y, c, d));
+                  witnesses.push(
+                    witness(x, c, d, `If blue is true, the ${d} in ${cellName(x)} is placed, and the ${d} in ${cellName(c)} goes.`),
+                    witness(y, c, d, `If gold is true, the ${d} in ${cellName(y)} is placed, and the ${d} in ${cellName(c)} goes. Either way it is false.`)
+                  );
                 }
               }
             }

@@ -130,7 +130,7 @@ function ChainArrows({
               r -= 100; // spilling outside the cell is worse than any glyph
             return r;
           };
-          bow = room(26) >= room(-26) ? 26 : -26;
+          bow = room(14) >= room(-14) ? 14 : -14;
         } else {
           // bow away from the nearest node the straight segment would graze
           let nearest = Infinity;
@@ -146,21 +146,28 @@ function ChainArrows({
             }
           }
         }
-        const mx = (p0.x + p1.x) / 2 - uy * bow;
-        const my = (p0.y + p1.y) / 2 + ux * bow;
-        const d = `M ${p0.x.toFixed(1)} ${p0.y.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
-        // the curve's midpoint, where a number badge sits
-        const bx = 0.25 * p0.x + 0.5 * mx + 0.25 * p1.x;
-        const by = 0.25 * p0.y + 0.5 * my + 0.25 * p1.y;
+        const f = (n: number) => n.toFixed(1);
         if (l.undirected) {
-          // a tie: a quiet line between two candidates, no direction
+          // a tie: a quiet straight line between two candidates, no
+          // direction and no routing; it may cross anything
+          const d = `M ${f(p0.x)} ${f(p0.y)} L ${f(p1.x)} ${f(p1.y)}`;
           return (
             <g key={i}>
-              <path d={d} fill="none" stroke="var(--cell-bg)" strokeWidth={7} opacity={0.6} strokeLinecap="round" />
-              <path d={d} fill="none" stroke="var(--hint-chain)" strokeWidth={2.4} strokeLinecap="round" opacity={0.6} />
+              <path d={d} fill="none" stroke="var(--cell-bg)" strokeWidth={5} opacity={0.5} strokeLinecap="round" />
+              <path d={d} fill="none" stroke="var(--hint-chain)" strokeWidth={2} strokeLinecap="round" opacity={0.5} />
             </g>
           );
         }
+        // an arrow swings out near its start and arrives straight along the
+        // line to its target, so the head points where the eye expects
+        const k = Math.min(len * 0.35, 60);
+        const swing = inCell ? bow : bow * 1.5;
+        const c1 = { x: p0.x + ux * k - uy * swing, y: p0.y + uy * k + ux * swing };
+        const c2 = { x: p1.x - ux * k, y: p1.y - uy * k };
+        const d = `M ${f(p0.x)} ${f(p0.y)} C ${f(c1.x)} ${f(c1.y)} ${f(c2.x)} ${f(c2.y)} ${f(p1.x)} ${f(p1.y)}`;
+        // the curve's midpoint, where a number badge sits
+        const bx = (p0.x + 3 * c1.x + 3 * c2.x + p1.x) / 8;
+        const by = (p0.y + 3 * c1.y + 3 * c2.y + p1.y) / 8;
         const no = ++arrowNo;
         return (
           <g key={i}>
@@ -480,19 +487,33 @@ export function Grid() {
   // a colour shows it on its digit instead (valueMarks) and never gets a
   // candidate circle
   const hintMarks = new Map<number, Map<number, string>>();
+  // a coloured candidate that is removed shows red with a ring in its
+  // colour, so a colour that is wholly removed is still there to be read
+  const hintRings = new Map<number, Map<number, string>>();
   const hintCells = new Map<number, string>();
   const valueMarks = new Map<number, string>();
   const bands = showHint && showPart('units') ? (hint.units ?? []) : [];
   if (showHint) {
+    const ring = (cell: number, digit: number, kind: string) => {
+      if (!hintRings.has(cell)) hintRings.set(cell, new Map());
+      hintRings.get(cell)!.set(digit, kind);
+    };
     const mark = (cell: number, digit: number, kind: string, cellToo = true) => {
       if (cells[cell].value) {
         if (!valueMarks.has(cell) || kind === 'elim') valueMarks.set(cell, kind);
       } else {
         if (!hintMarks.has(cell)) hintMarks.set(cell, new Map());
         const m = hintMarks.get(cell)!;
-        if (!m.has(digit) || kind === 'elim') m.set(digit, kind);
+        const prev = m.get(digit);
+        if (!prev) m.set(digit, kind);
+        else if (kind === 'elim' && prev !== 'elim') {
+          m.set(digit, 'elim');
+          if (prev !== 'place') ring(cell, digit, prev);
+        } else if (prev === 'elim' && kind !== 'elim' && kind !== 'place') ring(cell, digit, kind);
       }
-      if (cellToo && (!hintCells.has(cell) || kind === 'elim')) hintCells.set(cell, kind);
+      // a cell keeps the colour of what it holds; red tints only a cell
+      // with nothing else to say
+      if (cellToo && !hintCells.has(cell)) hintCells.set(cell, kind);
     };
     const has = (list: CellDigit[] | undefined, cd: CellDigit) =>
       !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
@@ -741,16 +762,21 @@ export function Grid() {
                 {/* hint candidate circles */}
                 {marks &&
                   !cell.value &&
-                  [...marks.entries()].map(([d, kind]) => (
-                    <circle
-                      key={d}
-                      cx={x + candX(d)}
-                      cy={y + candY(d) - 7}
-                      r={15}
-                      fill={hintFill[kind]}
-                      opacity={0.85}
-                    />
-                  ))}
+                  [...marks.entries()].map(([d, kind]) => {
+                    const ringKind = hintRings.get(i)?.get(d);
+                    return (
+                      <circle
+                        key={d}
+                        cx={x + candX(d)}
+                        cy={y + candY(d) - 7}
+                        r={ringKind ? 13.5 : 15}
+                        fill={hintFill[kind]}
+                        stroke={ringKind ? hintFill[ringKind] : undefined}
+                        strokeWidth={ringKind ? 3.5 : undefined}
+                        opacity={0.85}
+                      />
+                    );
+                  })}
                 {cell.value > 0 ? (
                   <text
                     x={x + SIZE / 2}
