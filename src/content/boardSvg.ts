@@ -79,13 +79,20 @@ function linkPath(link: ChainLink): string {
   const y1 = a.y + uy * (R + 1);
   const x2 = b.x - ux * (R + 5);
   const y2 = b.y - uy * (R + 5);
-  // a gentle bow keeps a link off the digits that lie straight between its
-  // ends; links inside one cell bow further so they clear the cell's marks
-  const bow = len < S ? 14 : Math.min(18, len * 0.08);
-  const mx = (x1 + x2) / 2 - uy * bow;
-  const my = (y1 + y2) / 2 + ux * bow;
   const f = (n: number) => n.toFixed(1);
-  return `M${f(x1)} ${f(y1)}Q${f(mx)} ${f(my)} ${f(x2)} ${f(y2)}`;
+  // a tie is a straight quiet line; it may cross anything
+  if (link.undirected) return `M${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}`;
+  // an arrow swings out near its start, to keep off the digits that lie
+  // straight between its ends, and arrives straight along the line to its
+  // target, so the head points where the eye expects; a link inside one
+  // cell swings further so it clears the cell's marks
+  const bow = len < S ? 8 : Math.min(18, len * 0.08) * 1.5;
+  const k = Math.min(len * 0.35, 40);
+  const c1x = x1 + ux * k - uy * bow;
+  const c1y = y1 + uy * k + ux * bow;
+  const c2x = x2 - ux * k;
+  const c2y = y2 - uy * k;
+  return `M${f(x1)} ${f(y1)}C${f(c1x)} ${f(c1y)} ${f(c2x)} ${f(c2y)} ${f(x2)} ${f(y2)}`;
 }
 
 /**
@@ -99,6 +106,8 @@ export function boardSvg(example: Example, title: string): string {
 
   // what is marked where; the same precedence the app's board uses
   const marks = new Map<string, Kind>();
+  // a coloured candidate that is removed: red, with a ring in its colour
+  const rings = new Map<string, Kind>();
   const tints = new Map<number, Kind>();
   // a solved cell listed in a colour shows it on its digit
   const valueMarks = new Map<number, Kind>();
@@ -108,9 +117,13 @@ export function boardSvg(example: Example, title: string): string {
     if (solved(cd.cell)) {
       if (force || !valueMarks.has(cd.cell)) valueMarks.set(cd.cell, kind);
     } else if (force || !marks.has(key)) {
+      const prev = marks.get(key);
+      if (prev && prev !== kind && prev !== 'place' && kind === 'elim') rings.set(key, prev);
       marks.set(key, kind);
     }
-    if (force || !tints.has(cd.cell)) tints.set(cd.cell, kind);
+    // a cell keeps the colour of what it holds; red tints only a cell with
+    // nothing else to say, a placement always tints
+    if (kind === 'place' || !tints.has(cd.cell)) tints.set(cd.cell, kind);
   };
   // the colours a step names win over the chain default (a node of a
   // link is blue unless the step says otherwise), as on the app's board
@@ -175,8 +188,10 @@ export function boardSvg(example: Example, title: string): string {
       const cd = { cell, digit };
       const kind = marks.get(`${cell}:${digit}`);
       if (kind) {
+        const ringKind = rings.get(`${cell}:${digit}`);
+        const ring = ringKind ? ` stroke="${COLOURS[ringKind as keyof typeof COLOURS]}" stroke-width="2.2"` : '';
         parts.push(
-          `<circle cx="${candX(cd).toFixed(1)}" cy="${candY(cd).toFixed(1)}" r="${R}" fill="${COLOURS[kind as keyof typeof COLOURS]}"/>`,
+          `<circle cx="${candX(cd).toFixed(1)}" cy="${candY(cd).toFixed(1)}" r="${ringKind ? R - 1 : R}" fill="${COLOURS[kind as keyof typeof COLOURS]}"${ring}/>`,
           `<text x="${candX(cd).toFixed(1)}" y="${(candY(cd) + 4.4).toFixed(1)}" class="mk">${digit}</text>`
         );
       } else {

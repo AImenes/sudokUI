@@ -6620,7 +6620,8 @@
        "digit": 4
       }
      ],
-     "strong": false
+     "strong": false,
+     "text": "If blue is true, the 4 in r6c4 is placed, and the 4 in r6c8 goes."
     },
     {
      "from": [
@@ -6635,7 +6636,8 @@
        "digit": 4
       }
      ],
-     "strong": false
+     "strong": false,
+     "text": "If gold is true, the 4 in r8c8 is placed, and the 4 in r6c8 goes. Either way it is false."
     }
    ],
    "description": "Simple Colors on 4: its conjugate pairs (the solid links) are coloured blue and gold, and either every blue 4 is true or every gold one is. The 4 in r6c8 sees a blue 4 in r6c4 and a gold 4 in r8c8, so it is false either way."
@@ -6885,7 +6887,8 @@
        "digit": 5
       }
      ],
-     "strong": false
+     "strong": false,
+     "text": "If blue is true, the 5 in r8c3 is placed, and the 5 in r7c2 goes."
     },
     {
      "from": [
@@ -6900,7 +6903,8 @@
        "digit": 5
       }
      ],
-     "strong": false
+     "strong": false,
+     "text": "If gold is true, the 5 in r7c6 is placed, and the 5 in r7c2 goes. Either way it is false."
     }
    ],
    "description": "Multi Colors on 5: two conjugate-pair clusters of 5. The purple 5s in r4c9 and r4c6 see each other (the dashed link), so they cannot both be true, and at least one of blue and gold is entirely true. The 5 in r7c2 sees the blue 5 in r8c3 and the gold 5 in r7c6, so it is false either way."
@@ -7128,7 +7132,8 @@
        "digit": 1
       }
      ],
-     "strong": false
+     "strong": false,
+     "text": "If blue is true, the 1 in r7c1 is placed, and the 1 in r7c2 goes."
     },
     {
      "from": [
@@ -7143,7 +7148,8 @@
        "digit": 1
       }
      ],
-     "strong": false
+     "strong": false,
+     "text": "If gold is true, the 1 in r7c3 is placed, and the 1 in r7c2 goes. Either way it is false."
     }
    ],
    "description": "3D Medusa: candidates joined by conjugate pairs and bivalue cells (the solid links) are coloured blue and gold, and either every blue candidate is true or every gold one is. The 1 in r7c2 sees a blue 1 in r7c1 and a gold 1 in r7c3, so it is false either way."

@@ -34,10 +34,18 @@ needs:
 - **Arrows and ties.** `links` are drawn between candidates. An inference
   is an arrow, solid for a strong link and dashed for a weak one, with a
   halo in the board colour so it stays legible over pencil marks, and a
-  dot on the first node, where reading starts. A tie (`undirected`) is a
-  quiet line without an arrowhead: a conjugate pair, or the two candidates
-  of a bivalue cell, exactly one of them true. Every link can carry its
-  own sentence (`text`).
+  dot on the first node, where reading starts. An arrow swings out near
+  its start, to keep off the digits that lie straight between its ends,
+  and arrives straight along the line to its target, so the head points
+  where the eye expects. A tie (`undirected`) is a quiet straight line
+  without an arrowhead, never routed: a conjugate pair, or the two
+  candidates of a bivalue cell, exactly one of them true. Every link can
+  carry its own sentence (`text`); the colouring witnesses do.
+- **Red over a colour.** A coloured candidate that the step removes is
+  drawn red with a ring in its colour, so a colour that is removed
+  entirely (a Medusa or colouring wrap) is still there to be read. A cell
+  keeps the tint of the colour it holds; red tints only a cell with
+  nothing else to say.
 - **The walk.** Every hint with more than one idea can be walked: "Walk
   through it" in the hint panel, then ← and →. A chain reveals one link
   per frame, numbered on the board, with its sentence; a run of ties is
@@ -68,11 +76,14 @@ needs:
   shades the three houses that hold the digit three times.
 - **Chains and loops.** Arrows, solid and dashed, from the first node to
   the last; the walk reads each link as the inference it is.
-- **Colouring.** The cluster's conjugate ties are quiet lines, blue and
-  gold candidates, and the only arrows are the witnesses the explanation
-  names: the blue and the gold candidate the removed one sees, the two
-  same-coloured candidates that clash, the bridge in Multi Colours. The
-  walk shows the cluster in one frame and the witnesses one by one.
+- **Colouring.** The cluster's conjugate ties are quiet straight lines,
+  blue and gold candidates, and the only arrows are the witnesses the
+  explanation names: the blue and the gold candidate the removed one
+  sees, the two same-coloured candidates that clash, the bridge in Multi
+  Colours. Each witness carries its sentence ("If blue is true, the 6 in
+  r3c3 is placed, and the 6 in r3c7 goes."). The walk shows the cluster
+  in one frame and the witnesses one by one. When a whole colour is
+  removed, its candidates are red with a ring in that colour.
 - **ALS.** Each set in its colour; the restricted common digits are drawn
   as links between the sets; a Death Blossom links each stem candidate to
   its petal; an ALS-XY-Wing links its hinge to both sets.
