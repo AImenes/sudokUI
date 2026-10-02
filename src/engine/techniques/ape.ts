@@ -66,6 +66,10 @@ export function findAlignedPairExclusion(g: Grid): Step | null {
         secondary: killers.flatMap((S) =>
           S.cells.flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit })))
         ),
+        labels: {
+          primary: 'the aligned pair',
+          secondary: 'the almost locked sets both cells see, which rule out pairings'
+        },
         description: `Aligned Pair Exclusion: every candidate pairing of ${cellName(a)} and ${cellName(b)} that survives the sets they both see leaves no place for the removed candidate${elims.length > 1 ? 's' : ''}.`
       };
     }

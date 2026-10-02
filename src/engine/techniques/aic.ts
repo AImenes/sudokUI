@@ -132,6 +132,7 @@ function searchAic(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | nu
           const b = cur;
           return {
             tech: 'AIC',
+            labels: { primary: 'the chain' },
             placements: [],
             eliminations: elims,
             primary: path.map((id) => ({ cell: nCell(id), digit: nDigit(id) })),
@@ -149,6 +150,7 @@ function searchAic(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | nu
           // weak entry + strong closure: single flaw at start -> start is TRUE
           return {
             tech: 'NICE_LOOP',
+            labels: { primary: 'the loop' },
             placements: [{ cell: nCell(start), digit: nDigit(start) }],
             eliminations: [],
             primary: path.map((id) => ({ cell: nCell(id), digit: nDigit(id) })),
@@ -219,6 +221,7 @@ function continuousLoop(g: Grid, path: number[]): Step | null {
   if (!elims.length) return null;
   return {
     tech: 'NICE_LOOP',
+    labels: { primary: 'the loop' },
     placements: [],
     eliminations: elims,
     primary: path.map((id) => ({ cell: nCell(id), digit: nDigit(id) })),

@@ -89,6 +89,11 @@ export function findNakedSubset(g: Grid, size: number, locked: boolean): Step | 
         primary: combo.flatMap((cell) =>
           digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
         ),
+        // the houses the set clears: both, for a locked set in an intersection
+        units: [...unitsWithElims].map((unit) => ({ unit, role: 'primary' as const })),
+        labels: {
+          primary: `${size} cells that hold only ${digits.join('/')} between them, in ${[...unitsWithElims].map(unitName).join(' and ')}`
+        },
         description: `${locked ? 'Locked' : 'Naked'} ${SUBSET_NAMES[size]}: cells ${cellNames(combo)} contain only ${digits.join('/')}, removing those digits from the cells they all see.`
       };
     }
@@ -124,6 +129,10 @@ export function findHiddenSubset(g: Grid, size: number): Step | null {
         primary: cells.flatMap((cell) =>
           digitsOf(g.cands[cell] & dmask).map((digit) => ({ cell, digit }))
         ),
+        units: [{ unit: u, role: 'primary' }],
+        labels: {
+          primary: `the only ${size} cells of ${unitName(u)} that can take ${digitCombo.join('/')}`
+        },
         description: `Hidden ${SUBSET_NAMES[size]}: in ${unitName(u)}, digits ${digitCombo.join('/')} fit only in ${cellNames(cells)}, so all other candidates there can be removed.`
       };
     }

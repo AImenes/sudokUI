@@ -135,6 +135,11 @@ export function findPatternOverlay(g: Grid, maxTemplates = 20000): Step | null {
       placements: places,
       eliminations: elims,
       primary: places.length ? places : elims,
+      labels: {
+        primary: places.length
+          ? `cells every complete placement of ${d} uses`
+          : `cells no complete placement of ${d} uses`
+      },
       description: `Pattern Overlay: of the ${count} complete placements possible for digit ${d}, ${
         places.length
           ? `every one uses ${places.map((p) => cellName(p.cell)).join(', ')}`

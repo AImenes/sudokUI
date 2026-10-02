@@ -76,6 +76,39 @@ test.describe('desktop, 1280 x 800', () => {
   });
 });
 
+test.describe('the walk', () => {
+  test.use({ viewport: { width: 1280, height: 1000 } });
+
+  test('reveals a chain one link at a time, by arrow keys, with a sentence each', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudokui-welcomed', '1');
+    });
+    // a practice technique served from stored puzzles, so it starts at once
+    await page.goto('/#practice=SIMPLE_COLORS');
+    await expect(page.locator('svg.board')).toBeVisible();
+    // the practice puzzle arrives from the worker; the bar appears with it
+    await expect(page.locator('.practice-bar')).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: /Hint/ }).first().click();
+    const use = page.getByRole('button', { name: 'Use Hint' });
+    if (await use.count()) await use.click();
+    await page.getByRole('button', { name: 'Show me' }).click();
+    const all = await page.locator('svg.board .chain-arrows path').count();
+    await page.getByRole('button', { name: 'Walk through it' }).click();
+    await expect(page.locator('.hint-walk-count')).toContainText('1 of');
+    const first = await page.locator('.hint-walk-text').innerText();
+    expect(first.length).toBeGreaterThan(10);
+    const shown = await page.locator('svg.board .chain-arrows path').count();
+    expect(shown).toBeLessThan(all);
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.hint-walk-count')).toContainText('2 of');
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('.hint-walk-count')).toContainText('1 of');
+    await page.getByRole('button', { name: 'Show all' }).click();
+    await expect(page.locator('.hint-walk-count')).toHaveCount(0);
+    expect(await page.locator('svg.board .chain-arrows path').count()).toBe(all);
+  });
+});
+
 test.describe('phone, 390 x 844', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 

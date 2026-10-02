@@ -768,6 +768,33 @@ button {
 }
 
 /* which highlight colour means what, for the colours in this step */
+/* the walk: one idea at a time, with its own navigation */
+.hint-walk-text {
+  font-size: 15px;
+  line-height: 1.45;
+  margin: 0 0 8px;
+}
+
+.hint-walk-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.hint-walk-nav button {
+  min-width: 40px;
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+.hint-walk-count {
+  font-size: 13px;
+  opacity: 0.75;
+  min-width: 56px;
+  text-align: center;
+}
+
 .hint-legend {
   list-style: none;
   display: flex;

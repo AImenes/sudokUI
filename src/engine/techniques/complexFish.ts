@@ -90,6 +90,14 @@ export function findFrankenFish(g: Grid, size: 2 | 3): Step | null {
             placements: [],
             eliminations: elims,
             primary: [...baseCells].map((cell) => ({ cell, digit: d })),
+            units: [
+              ...base.map((unit) => ({ unit, role: 'primary' as const })),
+              ...cover.map((unit) => ({ unit, role: 'secondary' as const }))
+            ],
+            labels: {
+              primary: `base sets (${base.map(unitLabel).join(', ')}): the ${d}s of the fish`,
+              secondary: `cover sets (${cover.map(unitLabel).join(', ')}): where the base's ${d}s must land`
+            },
             description: `${name}: digit ${d}'s candidates in ${base.map(unitLabel).join(' + ')} are confined to ${cover.map(unitLabel).join(' + ')}; the ${size} true cells use up the covers, so ${d} falls from ${cellNames(elims.map((e) => e.cell))}.`
           };
         }

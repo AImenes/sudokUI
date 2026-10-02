@@ -76,6 +76,7 @@ function checkFormation(g: Grid, cells: number[]): Step | null {
       primary: cells
         .filter((c) => c !== extrasCell)
         .flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))),
+      labels: { primary: `the cells that would form a deadly ${digitsOf(trio).join('')} loop` },
       description: `Extended Rectangle Type 1: ${cellNames(cells)} would form a deadly ${digitsOf(trio).join('')} loop; ${cellName(extrasCell)} must take one of its extra candidates.`
     };
   }
@@ -102,6 +103,10 @@ function checkFormation(g: Grid, cells: number[]): Step | null {
         digitsOf(g.cands[cell] & trio).map((digit) => ({ cell, digit }))
       ),
       secondary: zCells.map((cell) => ({ cell, digit: z })),
+      labels: {
+        primary: `the cells that would form a deadly ${digitsOf(trio).join('')} loop`,
+        secondary: `${z}, the extra candidate: one of these cells must be it`
+      },
       description: `Extended Rectangle Type 2: to avoid a deadly ${digitsOf(trio).join('')} loop in ${cellNames(cells)}, one of ${cellNames(zCells)} must be ${z}, so ${z} is removed from cells seeing all of them.`
     };
   }

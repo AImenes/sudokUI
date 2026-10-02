@@ -16,6 +16,7 @@ import { TECHS, ALL_TECHS, LEVELS, LEVEL_MAX_SCORE, Tech, Category } from '../en
 import type { Lang } from '../state/settings';
 import { GLOSSARY, GLOSSARY_GROUPS } from './glossary';
 import { techStatus, techniquesByFamily } from './categories';
+import { describe } from '../engine/hintFrames';
 import { techSlug, slugify } from './slugs';
 import { linkGlossary } from './glossaryLinks';
 import { LANDING_PAGES, LandingPage, RATING_URL } from './landing';
@@ -345,10 +346,10 @@ function workedExample(lt: LearnText, tech: Tech): string {
   const english = lt.lang === 'en' ? '' : ' lang="en"';
   return `      <h2>${esc(lt.s('Worked example'))}</h2>
       <figure>
-        <img src="${diagramUrl(tech)}" width="${BOARD_SIZE}" height="${BOARD_SIZE}" alt="${esc(`${diagramTitle(tech, lt)}. ${example.step.description}`)}" />
+        <img src="${diagramUrl(tech)}" width="${BOARD_SIZE}" height="${BOARD_SIZE}" alt="${esc(`${diagramTitle(tech, lt)}. ${describe(example.step)}`)}" />
         <figcaption${english}>${legend}</figcaption>
       </figure>
-      <p${english}>${esc(example.step.description)}</p>
+      <p${english}>${esc(describe(example.step))}</p>
       <p class="meta">${esc(lt.s("Step {n} of this puzzle's solution, found and verified by the sudokUI engine. Cells are named by row and column: r2c3 is row 2, column 3.", { n: example.stepIndex + 1 }))}${
         example.credit ? ` ${esc(lt.s('Puzzle: {credit}.', { credit: example.credit }))}` : ''
       }${

@@ -100,19 +100,41 @@ export function boardSvg(example: Example, title: string): string {
   // what is marked where; the same precedence the app's board uses
   const marks = new Map<string, Kind>();
   const tints = new Map<number, Kind>();
+  // a solved cell listed in a colour shows it on its digit
+  const valueMarks = new Map<number, Kind>();
+  const solved = (cell: number) => Number(example.values[cell]) > 0;
   const mark = (cd: CellDigit, kind: Kind, force = false) => {
     const key = `${cd.cell}:${cd.digit}`;
-    if (force || !marks.has(key)) marks.set(key, kind);
+    if (solved(cd.cell)) {
+      if (force || !valueMarks.has(cd.cell)) valueMarks.set(cd.cell, kind);
+    } else if (force || !marks.has(key)) {
+      marks.set(key, kind);
+    }
     if (force || !tints.has(cd.cell)) tints.set(cd.cell, kind);
   };
+  // the colours a step names win over the chain default (a node of a
+  // link is blue unless the step says otherwise), as on the app's board
   for (const cd of step.primary ?? []) mark(cd, 'primary');
   for (const cd of step.secondary ?? []) mark(cd, 'secondary');
-  for (const link of step.links ?? []) for (const cd of [...link.from, ...link.to]) mark(cd, 'primary');
   for (const cd of step.fins ?? []) mark(cd, 'fin');
+  for (const link of step.links ?? []) for (const cd of [...link.from, ...link.to]) mark(cd, 'primary');
   for (const cd of step.eliminations) mark(cd, 'elim', true);
   for (const cd of step.placements) mark(cd, 'place', true);
 
   parts.push(`<rect x="${L}" y="${L}" width="${9 * S}" height="${9 * S}" fill="#ffffff"/>`);
+  // the houses a pattern lives in, as bands under everything else
+  for (const { unit, role } of step.units ?? []) {
+    const r =
+      unit < 9
+        ? { x: L, y: L + unit * S, w: 9 * S, h: S }
+        : unit < 18
+          ? { x: L + (unit - 9) * S, y: L, w: S, h: 9 * S }
+          : { x: L + ((unit - 18) % 3) * 3 * S, y: L + Math.floor((unit - 18) / 3) * 3 * S, w: 3 * S, h: 3 * S };
+    parts.push(
+      `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${TINTS[role]}"/>`,
+      `<rect x="${r.x + 1.5}" y="${r.y + 1.5}" width="${r.w - 3}" height="${r.h - 3}" rx="3" fill="none" stroke="${COLOURS[role]}" stroke-width="2" opacity="0.55"/>`
+    );
+  }
   for (const [cell, kind] of tints) {
     parts.push(`<rect x="${cellX(cell)}" y="${cellY(cell)}" width="${S}" height="${S}" fill="${TINTS[kind]}"/>`);
   }
@@ -141,8 +163,10 @@ export function boardSvg(example: Example, title: string): string {
   for (let cell = 0; cell < 81; cell++) {
     const value = Number(example.values[cell]);
     if (value) {
+      const kind = valueMarks.get(cell);
+      const fill = kind ? ` fill="${COLOURS[kind as keyof typeof COLOURS]}"` : '';
       parts.push(
-        `<text x="${cellX(cell) + S / 2}" y="${cellY(cell) + S / 2 + 12}" class="${given[cell] ? 'giv' : 'ent'}">${value}</text>`
+        `<text x="${cellX(cell) + S / 2}" y="${cellY(cell) + S / 2 + 12}" class="${given[cell] ? 'giv' : 'ent'}"${fill}>${value}</text>`
       );
       continue;
     }
@@ -163,13 +187,31 @@ export function boardSvg(example: Example, title: string): string {
     }
   }
 
-  for (const link of step.links ?? []) {
+  const firstArrow = (step.links ?? []).findIndex((l) => !l.undirected);
+  (step.links ?? []).forEach((link, i) => {
+    const d = linkPath(link);
+    // a white halo keeps the arrow legible over the candidates it crosses
+    parts.push(`<path d="${d}" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.75"/>`);
+    if (link.undirected) {
+      // a tie: a quiet line, no direction
+      parts.push(`<path d="${d}" fill="none" stroke="${COLOURS.link}" stroke-width="1.4" stroke-linecap="round" opacity="0.7"/>`);
+      return;
+    }
     parts.push(
-      `<path d="${linkPath(link)}" fill="none" stroke="${COLOURS.link}" stroke-width="2.2" stroke-linecap="round"${
+      `<path d="${d}" fill="none" stroke="${COLOURS.link}" stroke-width="2.2" stroke-linecap="round"${
         link.strong ? '' : ' stroke-dasharray="5 4"'
       } marker-end="url(#arrow)"/>`
     );
-  }
+    if (i === firstArrow) {
+      // the chain's first node wears a dot: reading starts here
+      const a = centroid(link.from);
+      const b = centroid(link.to);
+      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      const x = a.x + ((b.x - a.x) / len) * (R + 1);
+      const y = a.y + ((b.y - a.y) / len) * (R + 1);
+      parts.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="${COLOURS.link}"/>`);
+    }
+  });
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOARD_SIZE} ${BOARD_SIZE}" role="img" aria-label="${esc(title)}">
 <title>${esc(title)}</title>
@@ -192,8 +234,9 @@ export function legendOf(step: Step): { colour: string; label: string }[] {
   if (step.placements.length) out.push({ colour: COLOURS.place, label: 'place' });
   if (step.eliminations.length) out.push({ colour: COLOURS.elim, label: 'remove' });
   if (colouring) return out;
-  if (step.primary?.length || step.links?.length) out.push({ colour: COLOURS.primary, label: step.labels?.primary ?? 'the pattern' });
-  if (step.secondary?.length) out.push({ colour: COLOURS.secondary, label: step.labels?.secondary ?? 'supporting cells' });
+  const banded = (role: 'primary' | 'secondary') => !!step.units?.some((u) => u.role === role);
+  if (step.primary?.length || step.links?.length || banded('primary')) out.push({ colour: COLOURS.primary, label: step.labels?.primary ?? 'the pattern' });
+  if (step.secondary?.length || banded('secondary')) out.push({ colour: COLOURS.secondary, label: step.labels?.secondary ?? 'supporting cells' });
   if (step.fins?.length) out.push({ colour: COLOURS.fin, label: step.labels?.fins ?? 'fin' });
   return out;
 }

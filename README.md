@@ -31,9 +31,13 @@ natively for iOS and Android via Capacitor.
 
 **Learn**
 - Progressive hints: first the technique name, then the full explanation with
-  the pattern highlighted on the board, then one click to apply it. Chains
-  draw as candidate-anchored arrows — solid for strong links, dashed for
-  weak, HoDoKu-style
+  the pattern drawn on the board, then one click to apply it. Every
+  technique draws its logic: the houses it lives in as bands, chains as
+  candidate-anchored arrows (solid for strong links, dashed for weak,
+  HoDoKu-style), colouring as quiet ties with the witnesses as arrows,
+  forcing chains as their line of forced singles. "Walk through it" reveals
+  any drawing one idea at a time, ← and →, with a sentence for each
+  (see [docs/highlighting.md](docs/highlighting.md))
 - **Practice mode** for 61 named techniques: pick one and get a generated
   puzzle that genuinely requires it — with nothing harder needed before it.
   The game fast-forwards through the routine steps so the chosen pattern is

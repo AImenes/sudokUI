@@ -95,8 +95,9 @@ export function findTurbotFamily(
               placements: [],
               eliminations: elims,
               primary: pattern.map((cell) => ({ cell, digit: d })),
+              labels: { primary: `the two strong links on ${d}` },
               links: alternatingLinks([a, p, q, b].map((cell) => [{ cell, digit: d }])),
-              description: `${names[variant]}: strong links on ${d} (${cellName(l1.a)}–${cellName(l1.b)} and ${cellName(l2.a)}–${cellName(l2.b)}) are weakly connected, so ${d} can be removed from cells seeing both ${cellName(a)} and ${cellName(b)}.`
+              description: `${names[variant]} on ${d}: ${cellName(l1.a)} and ${cellName(l1.b)} are the only places for ${d} in their line, as are ${cellName(l2.a)} and ${cellName(l2.b)}, and ${cellName(p)} sees ${cellName(q)}. If ${cellName(a)} is not ${d}, ${cellName(p)} is, so ${cellName(q)} is not, so ${cellName(b)} is: one of ${cellName(a)} and ${cellName(b)} is ${d}, and ${d} is removed from every cell that sees both.`
             };
           }
         }
@@ -178,6 +179,11 @@ function erStep(
     eliminations: [{ cell: target, digit: d }],
     primary: boxCells.map((cell) => ({ cell, digit: d })),
     secondary: pair.map((cell) => ({ cell, digit: d })),
-    description: `Empty Rectangle: in box ${box + 1} digit ${d} sits on a row/column cross; with the conjugate pair ${cellNames(pair)}, ${d} can be removed from ${cellName(target)}.`
+    units: [{ unit: 18 + box, role: 'primary' }],
+    labels: {
+      primary: `box ${box + 1}: every ${d} in it lies on one row and one column`,
+      secondary: `the conjugate pair on ${d}`
+    },
+    description: `Empty Rectangle on ${d}: in box ${box + 1} every ${d} lies on one row and one column, and ${cellNames(pair)} are the only two places for ${d} in their line. If ${cellName(pair[1])} is ${d}, ${cellName(target)} in its column is not. If not, ${cellName(pair[0])} is ${d}, so the box's ${d} cannot share its column and must lie on the row through ${cellName(target)}, which again is not ${d}. So ${d} is removed from ${cellName(target)}.`
   };
 }

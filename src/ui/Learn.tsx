@@ -3,6 +3,7 @@
 // and how the rating works, in the player's language. The same content
 // feeds the static /learn/ pages.
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { describe } from '../engine/hintFrames';
 import { Modal } from './Dialogs';
 import { TECHS, ALL_TECHS, SOLVE_ORDER, LEVELS, LEVEL_MAX_SCORE, Tech } from '../engine/ratings';
 import { techStatus, techniquesByFamily } from '../content/categories';
@@ -51,7 +52,7 @@ function WorkedExample({
   return (
     <figure className="learn-example">
       <span className="learn-label">{lt.s('Worked example')}</span>
-      <img src={src} alt={`${title}. ${example.step.description}`} />
+      <img src={src} alt={`${title}. ${describe(example.step)}`} />
       <figcaption>
         <span className="learn-legend">
           {legendOf(example.step).map((l) => (
@@ -61,7 +62,7 @@ function WorkedExample({
             </span>
           ))}
         </span>
-        <span lang="en">{example.step.description}</span>
+        <span lang="en">{describe(example.step)}</span>
         {example.credit && <span className="learn-see"> {lt.s('Puzzle: {credit}.', { credit: example.credit })}</span>}
         {example.afterHarder && (
           <span className="learn-see"> {lt.s('In this puzzle the position comes after harder steps.')}</span>

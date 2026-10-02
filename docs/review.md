@@ -55,6 +55,9 @@ target cell and shows nothing of the unit that forces it.
 
 ## The visual standard
 
+Built: see [highlighting.md](highlighting.md) for the standard as it stands
+in the code, family by family.
+
 What "world's best technique highlighter" means, concretely, so it can be
 built family by family and tested:
 

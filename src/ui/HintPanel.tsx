@@ -8,6 +8,7 @@ import { useGame } from '../state/gameStore';
 import { TECHS, Tech } from '../engine/ratings';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyLabel } from '../content/frequency';
+import { walkFrames, describe } from '../engine/hintFrames';
 
 const KEY_SEEN = 'sudokui-cellkey-seen';
 const KEY_VIEWS = 8;
@@ -16,6 +17,8 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
   const hint = useGame((s) => s.hint);
   const stage = useGame((s) => s.hintStage);
   const revealHint = useGame((s) => s.revealHint);
+  const walkHint = useGame((s) => s.walkHint);
+  const walkIndex = useGame((s) => s.walkIndex);
   const applyHint = useGame((s) => s.applyHint);
   const dismissHint = useGame((s) => s.dismissHint);
 
@@ -40,6 +43,10 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
 
   if (!hint || stage === 'hidden') return null;
   const info = TECHS[hint.tech];
+  const frames = walkFrames(hint);
+  const walking = stage === 'walk';
+  const banded = (role: 'primary' | 'secondary') => !!hint.units?.some((u) => u.role === role);
+  const frame = walking ? frames[Math.min(walkIndex, frames.length - 1)] : null;
 
   return (
     <div className="hint-panel" ref={panel} role="region" aria-label="Hint" aria-live="polite">
@@ -75,12 +82,40 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
         </div>
       ) : (
         <div className="hint-body">
-          <p>{hint.description}</p>
-          {showKey && /r\dc\d/.test(hint.description) && (
+          {frame ? (
+            <div className="hint-walk" aria-live="polite">
+              <p className="hint-walk-text">{frame.text}</p>
+              <div className="hint-walk-nav">
+                <button
+                  className="ghost"
+                  onClick={() => walkHint(-1)}
+                  disabled={walkIndex === 0}
+                  aria-label="Previous step of the explanation (left arrow)"
+                  title="Previous (←)"
+                >
+                  ◀
+                </button>
+                <span className="hint-walk-count">
+                  {Math.min(walkIndex, frames.length - 1) + 1} of {frames.length}
+                </span>
+                <button
+                  className="ghost"
+                  onClick={() => walkHint(1)}
+                  disabled={walkIndex >= frames.length - 1}
+                  aria-label="Next step of the explanation (right arrow)"
+                  title="Next (→)"
+                >
+                  ▶
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p>{describe(hint)}</p>
+          )}
+          {!frame && showKey && /r\dc\d/.test(hint.description) && (
             <p className="hint-key">r2c3 means row 2, column 3, counted from the top left.</p>
           )}
-          {/* colouring techniques name their own colours in the text */}
-          {info.category !== 'Coloring' && (
+          {(
             <ul className="hint-legend">
               {hint.placements.length > 0 && (
                 <li>
@@ -94,13 +129,13 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
                   remove
                 </li>
               )}
-              {(!!hint.primary?.length || !!hint.links?.length) && (
+              {(!!hint.primary?.length || !!hint.links?.length || banded('primary')) && (
                 <li>
                   <i style={{ background: 'var(--hint-primary)' }} />
                   {hint.labels?.primary ?? 'the pattern'}
                 </li>
               )}
-              {!!hint.secondary?.length && (
+              {(!!hint.secondary?.length || banded('secondary')) && (
                 <li>
                   <i style={{ background: 'var(--hint-secondary)' }} />
                   {hint.labels?.secondary ?? 'supporting cells'}
@@ -115,6 +150,16 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
             </ul>
           )}
           <div className="hint-actions">
+            {frames.length > 1 && !walking && (
+              <button className="ghost" onClick={() => walkHint()} title="Reveal the drawing one idea at a time (← and → step through it)">
+                Walk through it
+              </button>
+            )}
+            {walking && (
+              <button className="ghost" onClick={revealHint} title="Show the whole drawing and the explanation">
+                Show all
+              </button>
+            )}
             <button onClick={applyHint}>Apply step</button>
             <button className="ghost" onClick={dismissHint}>Close</button>
           </div>

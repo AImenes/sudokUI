@@ -72,6 +72,10 @@ export function findSueDeCoq(g: Grid): Step | null {
                   ...digitsOf(dMask).map((digit) => ({ cell: D, digit })),
                   ...digitsOf(eMask).map((digit) => ({ cell: E, digit }))
                 ],
+                labels: {
+                  primary: `the intersection cells, holding ${digitsOf(V).join('')}`,
+                  secondary: 'the line cell and the box cell that complete the locked set'
+                },
                 description: `Sue de Coq: ${cellNames(C)} (${digitsOf(V).join('')}) with ${cellName(D)} in the line and ${cellName(E)} in the box form a locked set; line digits are cleared from the rest of the line, box digits from the rest of the box.`
               };
             }

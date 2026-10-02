@@ -267,6 +267,7 @@ function loopRule2(
   if (start.cells.length === 1) {
     return {
       tech: 'GROUPED_NICE_LOOP',
+      labels: { primary: 'the loop, with grouped nodes' },
       placements: [{ cell: start.cells[0], digit: start.digit }],
       eliminations: [],
       primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
@@ -284,6 +285,7 @@ function loopRule2(
   if (!elims.length) return null;
   return {
     tech: 'GROUPED_NICE_LOOP',
+    labels: { primary: 'the loop, with grouped nodes' },
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
@@ -330,6 +332,7 @@ function loopRule1(
   if (!elims.length) return null;
   return {
     tech: 'GROUPED_NICE_LOOP',
+    labels: { primary: 'the loop, with grouped nodes' },
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
