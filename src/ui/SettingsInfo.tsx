@@ -292,7 +292,7 @@ export function InfoDialog({
         <button className="learn-link" onClick={() => onLearn({ tab: 'glossary' })}>
           glossary
         </button>{' '}
-        live under 📖 in the top bar.
+        live under Learn → Theory, below the board.
       </p>
       <h4 className="setting-group">Entry modes</h4>
       <p className="dialog-note">

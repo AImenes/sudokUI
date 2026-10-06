@@ -1946,8 +1946,13 @@ kbd {
     font-size: 13px;
   }
 
-  .score-btn .rating-word {
+  .score-btn .rating-word,
+  .score-btn .mini-i {
     display: none;
+  }
+
+  .score-btn {
+    white-space: nowrap;
   }
 
   .timer {
@@ -1956,6 +1961,7 @@ kbd {
 
   .topbar-right {
     gap: 2px;
+    flex-shrink: 0;
   }
 
   .icon-btn {
@@ -2774,4 +2780,16 @@ html:not([lang='en']) .zone-note {
   margin: 0;
   font-size: 13px;
   color: var(--muted);
+}
+
+/* Learn is one place with two halves: the practice list and the theory.
+   Both dialogs carry this switch at the top */
+.hub-tabs {
+  margin-bottom: 12px;
+}
+
+.hub-tabs button {
+  flex: 1;
+  padding: 8px 4px;
+  white-space: nowrap;
 }

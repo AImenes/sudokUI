@@ -507,22 +507,6 @@ export default function App() {
           </button>
           <button
             className="icon-btn"
-            onClick={() => openLearn()}
-            title="Learn: every technique explained, glossary, rating (L)"
-            aria-label="Learn: techniques, glossary and rating"
-          >
-            📖
-          </button>
-          <button
-            className="icon-btn"
-            onClick={() => setDialog('progress')}
-            title="Your path: the techniques to learn next, and your record"
-            aria-label="Your path and your record"
-          >
-            📈
-          </button>
-          <button
-            className="icon-btn"
             onClick={() => setDialog('info')}
             title="How to play, modes & shortcuts"
             aria-label="How to play, modes and shortcuts"
@@ -563,9 +547,10 @@ export default function App() {
             </button>
             <button
               className={info?.practiceTech ? 'active' : ''}
-              onClick={() => setDialog('practice')}
+              onClick={() => setDialog('progress')}
+              title="Your path, practice and the theory of every technique"
             >
-              <span className="menu-icon">🎯</span>{t('Practice')}
+              <span className="menu-icon">🎓</span>{t('Learn')}
             </button>
             <button onClick={() => setDialog('io')}>
               <span className="menu-icon">⇅</span>{t('Import')}
@@ -734,6 +719,7 @@ export default function App() {
             start({ kind: 'tech', tech });
           }}
           onLearn={() => openLearn()}
+          onPath={() => setDialog('progress')}
         />
       )}
       {dialog === 'learn' && (
@@ -745,6 +731,7 @@ export default function App() {
               setDialog('none');
               start({ kind: 'tech', tech });
             }}
+            hub={{ onPractice: () => setDialog('practice'), onPath: () => setDialog('progress') }}
             onScan={
               info && !custom
                 ? (tech) => {
@@ -802,8 +789,10 @@ export default function App() {
             </li>
           </ul>
           <p className="dialog-note">
-            In the top bar, 📖 explains every technique and the words solvers
-            use, and ⓘ covers modes, shortcuts and the candidate system.
+            Learn, under the board, is where you follow your path, practise a
+            technique and read the theory of every technique and the words
+            solvers use; ⓘ in the top bar covers modes, shortcuts and the
+            candidate system.
           </p>
           <div className="hint-actions">
             <button
@@ -826,6 +815,7 @@ export default function App() {
         <ProgressDialog
           onClose={() => setDialog('none')}
           onLearn={openLearn}
+          onPracticeList={() => setDialog('practice')}
           onPractice={(tech) => {
             setDialog('none');
             start({ kind: 'tech', tech });

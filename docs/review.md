@@ -13,30 +13,33 @@ comes from a reviewer's measurement it says so.
 
 Two columns: the rating when this review was written, and the rating
 after the work it set out (the first minute, the highlighter, the
-learner's loop, robustness, the path), re-measured on the production
-build at the end of the same week.
+learner's loop, robustness, the path) and what followed it (the chain
+trainer, the photo scanner, Learn as one place, the phone header and
+touch scrolling), re-measured on the production build.
 
 | | Then | Now | Why not higher |
 | --- | --- | --- | --- |
 | Engine and correctness | 9 | 9 | 77 verified techniques, a soundness harness, per-position proofs, every unaided move justified and every wrong digit proved wrong. 15 techniques still have no worked example and four practice targets can never be served. |
-| Technique highlighter | 5 | 8.5 | Every technique names its colours and draws its logic: bands for houses, arrows for inference with a start and an order, ties for conjugate pairs, forcing chains as their line of forced singles, and a walk through any drawing one idea at a time. The Forcing Net is not drawn, and the hand-made techniques (Exocet, Pattern Overlay) keep plainer drawings. |
-| Learning product | 6 | 8 | A teacher now, not only a textbook: every move credited, "you found it" in practice, why-not on every mistake with the proof shown, the game summed up, mastery in the guide, "learn next", and the path with the next technique a click from its practice. Still no chain trainer, no speed drills, and the hints read English in Norwegian and Spanish. |
-| Playing experience | 6.5 | 8 | Conflicts flagged, number-first entry, the hint in view, 44 px phone targets, a landscape layout, a tab that survives a deploy, nothing that goes blank, a printed puzzle scanned from a photo. No SudokuPad or f-puzzles link import yet, and no campaign-shaped way in for a newcomer. |
-| Engineering | 6 | 7.5 | Error boundary, update prompt, workers that die cleanly, every lazy file failing soft, dialogs that trap focus, a board that takes focus and reads out its cell, the guide loaded on demand, 12 browser tests in CI, 600 unit tests. The board is still not a real grid for a screen reader, deploys are not gated on CI, no lint, no bundle budget. |
-| Reach | 4 | 4.5 | Statistics, streaks and a path now exist. No store presence, no link import, a name that is hard to search, and the market work in search.md is still a plan. |
+| Technique highlighter | 5 | 8.5 | Every technique names its colours and draws its logic: bands for houses, arrows for inference with a start and an order, ties for conjugate pairs, forcing chains as their line of forced singles, Medusa's ties straight and its arrows arriving square, and a walk through any drawing one idea at a time. The Forcing Net is not drawn, and the hand-made techniques (Exocet, Pattern Overlay) keep plainer drawings. |
+| Learning product | 6 | 8.5 | A teacher now, not only a textbook: every move credited, "you found it" in practice, why-not on every mistake with the proof shown, the game summed up, mastery in the guide, "learn next", and Learn as one place under the board that lands on your path (what to learn next), with the practice list and the theory a tab away. The chain trainer: build a chain on the board, candidate by candidate, and the engine checks each link and says what it proves. Still no speed drills, and the hints read English in Norwegian and Spanish. |
+| Playing experience | 6.5 | 8.5 | Conflicts flagged, number-first entry, the hint in view, 44 px phone targets, a landscape layout, a header that fits an iPhone, a swipe over the board that scrolls, a tab that survives a deploy, nothing that goes blank, and a printed puzzle scanned from a photo or the camera, in any orientation, with the doubtful cells shown in red for the eye to settle. No SudokuPad or f-puzzles link import yet, and no campaign-shaped way in for a newcomer. |
+| Engineering | 6 | 7.5 | Error boundary, update prompt, workers that die cleanly, every lazy file failing soft, dialogs that trap focus, a board that takes focus and reads out its cell, the guide loaded on demand, a scanner with no dependency that is tested in node, 23 browser tests in CI, 609 unit tests. The board is still not a real grid for a screen reader, deploys are not gated on CI, no lint, no bundle budget. |
+| Reach | 4 | 5 | Statistics, streaks, a path and a reason to choose the app: point the camera at the newspaper and play. No store presence, no link import, a name that is hard to search, and the market work in search.md is still a plan. |
 
-**Overall: 7.5 of 10 as a product, today** (was 6). For a specialist, 9
-(was 8): nothing else rates any puzzle, explains 77 techniques, draws the
-logic of each one, drills 65 of them, proves a mistake wrong and knows
-what its player can do. For the general public, 7 (was 5.5): the first
-minute no longer hits the gaps every mainstream app has closed, and the
-learning the app is proud of is now on the board, in the win dialog and
-in the path; what is missing is the shape of a campaign, translated
-hints, and a way to be found.
+**Overall: 8 of 10 as a product, today** (was 6, then 7.5). For a
+specialist, 9 (was 8): nothing else rates any puzzle, explains 77
+techniques, draws the logic of each one, drills 65 of them, lets you
+build a chain and checks every link, proves a mistake wrong and knows
+what its player can do. For the general public, 7.5 (was 5.5): the first
+minute no longer hits the gaps every mainstream app has closed, the
+learning the app is proud of is one button under the board, and a
+newspaper puzzle is a photo away; what is missing is the shape of a
+campaign, translated hints, and a way to be found.
 
-The road to 8.5 is reach and shape, not engine: the chain trainer, speed
-drills on the stats that now exist, link import, translated hints, the
-board as a real grid, and the search and store work already planned.
+The road to 9 is reach and shape, not engine: speed drills on the stats
+that now exist, structured hint descriptions so the hints can be
+translated, link import, the board as a real grid, and the search and
+store work already planned.
 
 ## The technique highlighter, measured
 
@@ -213,7 +216,7 @@ touches the 70 daily players.
    every unaided move justified, "you found it" in practice, why-not on
    every mistake, the post-game summary, mastery in the guide, "learn
    next", and practice puzzles within one band of their technique. The
-   path (📈 in the top bar): the practisable techniques needed in at least
+   path (Learn → Your path, under the board): the practisable techniques needed in at least
    one puzzle in a hundred, in solver order, learned after three unaided
    uses, the next one a click from its practice; with the band records and
    the daily streak. Still to come: mastery in the practice picker.

@@ -259,8 +259,9 @@ test.describe('your path', () => {
 
   test('opens from the top bar, names the next technique, and starts its practice', async ({ page }) => {
     await open(page);
-    await page.getByRole('button', { name: 'Your path and your record' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Your path' });
+    await page.locator('.menu-row button', { hasText: 'Learn' }).click();
+    await page.getByRole('tab', { name: /Your path/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Learn' });
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('.path-summary')).toContainText(/0 of \d+ learned · next: Naked Single/);
     await expect(dialog.locator('.path-row.path-next')).toContainText('Naked Single');
@@ -313,6 +314,30 @@ test.describe('phone, 390 x 844', () => {
     expect(key.height).toBeGreaterThanOrEqual(44);
     const mode = (await page.locator('.mode-btn').first().boundingBox())!;
     expect(mode.height).toBeGreaterThanOrEqual(40);
+  });
+
+  test('the header fits, and Learn holds the path, practice and theory', async ({ page }) => {
+    await open(page);
+    await expect(page.locator('.score-btn')).toBeVisible();
+    const fits = await page.locator('.topbar').evaluate((el) => el.scrollWidth <= el.clientWidth);
+    expect(fits).toBe(true);
+    const score = (await page.locator('.score-btn').boundingBox())!;
+    const timer = (await page.locator('.timer').boundingBox())!;
+    expect(score.x + score.width).toBeLessThanOrEqual(timer.x);
+    await page.locator('.menu-row button', { hasText: 'Learn' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Learn' });
+    const selected = (name: RegExp) => expect(dialog.getByRole('tab', { name })).toHaveAttribute('aria-selected', 'true');
+    // it lands on the path: what to learn next
+    await selected(/Your path/);
+    await expect(dialog).toContainText('worth learning');
+    await dialog.getByRole('tab', { name: /Practice/ }).click();
+    await selected(/Practice/);
+    await expect(dialog).toContainText('Pick a technique');
+    await dialog.getByRole('tab', { name: /Theory/ }).click();
+    await selected(/Theory/);
+    await expect(dialog.getByRole('tab', { name: 'Glossary' })).toBeVisible();
+    await dialog.getByRole('tab', { name: /Your path/ }).click();
+    await selected(/Your path/);
   });
 
   test('a swipe over the board scrolls the page, a tap still selects', async ({ page }) => {

@@ -10,6 +10,7 @@ import { TECHS, LEVELS, Tech, Level } from '../engine/ratings';
 import { frequencyLabel } from '../content/frequency';
 import { BAND_LEADS } from '../content/rating';
 import { useT } from '../content/i18n';
+import { HubTabs } from './HubTabs';
 import type { LearnTarget } from './Learn';
 
 const clock = (ms: number) => {
@@ -22,11 +23,14 @@ const MARK: Record<PathRow['state'], string> = { learned: '✓', started: '◐',
 export function ProgressDialog({
   onClose,
   onLearn,
-  onPractice
+  onPractice,
+  onPracticeList
 }: {
   onClose: () => void;
   onLearn: (target: LearnTarget) => void;
   onPractice: (tech: Tech) => void;
+  /** the practice list, the first part of Learn */
+  onPracticeList: () => void;
 }) {
   const techs = useStats((s) => s.techs);
   const bands = useStats((s) => s.bands);
@@ -41,7 +45,8 @@ export function ProgressDialog({
   );
 
   return (
-    <Modal title={t('Your path')} onClose={onClose}>
+    <Modal title={t('Learn')} onClose={onClose} wide>
+      <HubTabs active="path" onPractice={onPracticeList} onTheory={() => onLearn({ tab: 'techniques' })} />
       <p className="dialog-note">
         {t('The techniques worth learning, in the order puzzles need them. A technique counts as learned once you have played it unaided')}{' '}
         {LEARNED_AT} {t('times; every move of your own is credited with the easiest technique that justifies it. Nothing leaves this device.')}
