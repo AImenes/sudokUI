@@ -250,6 +250,7 @@ const SHORTCUTS: [string, string][] = [
   ['Z / X / C / V', 'Switch mode: Digit / Corner / Centre / Colour'],
   ['Arrow keys', 'Move the selection (Shift extends it)'],
   ['Click + drag', 'Select multiple cells'],
+  ['Touch: hold, then drag', 'Select cells in any direction (a sideways drag selects at once; a swipe scrolls)'],
   ['Alt + drag', 'Select a rectangle, from the first cell to the one under the pointer (Option on a Mac)'],
   ['Ctrl/Cmd + click', 'Add cells to the selection'],
   ['Double-click / long-press a digit', 'Select every cell with that digit'],
@@ -367,8 +368,10 @@ export function InfoDialog({
 
       <h4 className="setting-group">Touch</h4>
       <p className="dialog-note">
-        Tap to select, drag to multi-select, and use the on-screen mode and
-        number buttons. Tap the selected cell again, or anywhere beside the
+        Tap to select, and use the on-screen mode and number buttons. A
+        swipe over the board scrolls the page; to select several cells,
+        drag sideways, or hold a cell still for a moment and then drag in
+        any direction. Tap the selected cell again, or anywhere beside the
         board, to clear the highlight, and long-press a digit to highlight
         all of its cells.
       </p>

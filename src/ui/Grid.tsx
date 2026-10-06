@@ -3,7 +3,7 @@
 // content (big digit, corner marks at digit-bound 3×3 positions, centre-mark
 // line, or the auto-candidate 3×3 view), then hint candidate circles, chain
 // arrows and grid lines. Pointer events implement drag multi-select.
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useGame, engineGrid, CellState } from '../state/gameStore';
 import { useSettings } from '../state/settings';
 import { bit, digitsOf, PEERS, UNITS } from '../engine/board';
@@ -600,7 +600,28 @@ export function Grid() {
   // lets a vertical swipe scroll the page (touch-action: pan-y), and the
   // browser reports that swipe as a pointercancel, which must leave the
   // selection alone. A horizontal drag still selects, from its first move.
+  // And a finger that holds still for a moment first may then drag any
+  // way it likes: the hold turns the touch into a drag-select, and from
+  // then on the page stays put under it.
   const touch = useRef<{ cell: number; additive: boolean; x: number; y: number; chain: { cell: number; digit: number } | null } | null>(null);
+  const hold = useRef<number | null>(null);
+  const holdDrag = useRef(false);
+  const cancelHold = () => {
+    if (hold.current !== null) window.clearTimeout(hold.current);
+    hold.current = null;
+    holdDrag.current = false;
+  };
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    // only a non-passive listener can still keep the page from scrolling
+    // once the held touch moves
+    const keep = (e: TouchEvent) => {
+      if (holdDrag.current && e.cancelable) e.preventDefault();
+    };
+    svg.addEventListener('touchmove', keep, { passive: false });
+    return () => svg.removeEventListener('touchmove', keep);
+  }, []);
 
   const startLongPress = (cell: number) => {
     if (!cells[cell].value) return;
@@ -658,6 +679,18 @@ export function Grid() {
       before.current = add ? useGame.getState().selection : [];
       (e.target as Element).setPointerCapture?.(e.pointerId);
       startLongPress(cell);
+      cancelHold();
+      hold.current = window.setTimeout(() => {
+        hold.current = null;
+        const t = touch.current;
+        if (!t || t.chain) return;
+        // held still: the press cell is selected now, and the drag that
+        // may follow extends from it in any direction
+        touch.current = null;
+        holdDrag.current = true;
+        dragging.current = true;
+        select([t.cell], t.additive);
+      }, 300);
       return;
     }
     // number-first: with a digit armed, a plain tap enters it here
@@ -689,6 +722,7 @@ export function Grid() {
       if (Math.abs(dx) <= Math.abs(dy) || cellFromEvent(e) === t.cell) return;
       touch.current = null;
       cancelLongPress();
+      cancelHold();
       dragging.current = true;
       select([t.cell], t.additive);
     }
@@ -715,6 +749,7 @@ export function Grid() {
     anchor.current = null;
     touch.current = null;
     cancelLongPress();
+    cancelHold();
   };
   const onPointerUp = (e: React.PointerEvent) => {
     const t = touch.current;

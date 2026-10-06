@@ -368,6 +368,19 @@ test.describe('phone, 390 x 844', () => {
     }
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.locator('#board-status')).toHaveText('5 cells selected.');
+    // and a finger that holds still first may then drag downwards: a
+    // column of cells, and the page stays put
+    const before = await scrolled();
+    const top = await cellBox(page, 4);
+    const bottom = await cellBox(page, 40);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: top.x, y: top.y }] });
+    await page.waitForTimeout(400);
+    for (let i = 1; i <= 8; i++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: top.x, y: top.y + ((bottom.y - top.y) * i) / 8 }] });
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.locator('#board-status')).toHaveText('5 cells selected.');
+    expect(await scrolled()).toBe(before);
   });
 });
 
