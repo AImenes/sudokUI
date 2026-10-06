@@ -56,8 +56,9 @@ template with numbered holes, `Full House: {0} is the last empty cell in
 {1}, so it must be {2}.`, to the sentence in the other language, holes in
 whatever order it needs. Words that change with a value (a plural, rows or
 columns) are separate templates chosen in the code, never fragments glued
-in, so every language can agree its words. `joinAnd` and `listAnd` join
-lists with the language's "and". Cell names (r1c1) and digits are the same
+in, so every language can agree its words. `unitName(u)` names a house
+(row 3, rad 3, fila 3, with no article: the sentence supplies one), and
+`joinAnd` and `listAnd` join lists with the language's "and". Cell names (r1c1) and digits are the same
 in every language.
 
 The engine never imports a translation; the app registers the chosen
