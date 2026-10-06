@@ -17,7 +17,9 @@
 //       the same placeholders / holes, and nothing left unwrapped in them
 //   npx vite-node scripts/i18n.ts merge <folder>
 //       adds every fragment in the folder to src/content/locales/
-//       ui.<lang>.ts and engine.<lang>.ts, and lists conflicts
+//       ui.<lang>.ts and engine.<lang>.ts (a fragment's text replaces the
+//       table's), removes entries the source no longer uses, and lists
+//       the changes, the removals and conflicts between fragments
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { readSource, placeholders, holes, Finding } from './i18n-source';
@@ -103,6 +105,9 @@ function rewrite(file: string, name: string, entries: Record<string, string>) {
 
 async function merge(folder: string) {
   const conflicts: string[] = [];
+  const changed: string[] = [];
+  const pruned: string[] = [];
+  const src = readSource();
   for (const kind of ['ui', 'engine'] as const) {
     for (const lang of LANGS) {
       const file = `src/content/locales/${kind}.${lang}.ts`;
@@ -113,19 +118,39 @@ async function merge(folder: string) {
         for (const [key, e] of Object.entries(frag[kind] ?? {})) {
           const text = e[lang];
           if (current[key] !== undefined && current[key] !== text) {
-            conflicts.push(`${kind}.${lang} ${JSON.stringify(key)}\n    ${origin[key]}: ${current[key]}\n    ${name}: ${text}`);
-            continue; // the first one stays
+            // a fragment improves what the table already says; two fragments that disagree are a conflict
+            if (origin[key] === 'existing') changed.push(`${kind}.${lang} ${JSON.stringify(key)}\n    was: ${current[key]}\n    now: ${text}`);
+            else {
+              conflicts.push(`${kind}.${lang} ${JSON.stringify(key)}\n    ${origin[key]}: ${current[key]}\n    ${name}: ${text}`);
+              continue; // the first fragment stays
+            }
           }
           current[key] = text;
-          origin[key] ??= name;
+          origin[key] = origin[key] === undefined || origin[key] === 'existing' ? name : origin[key];
+        }
+      }
+      // what the source no longer asks for goes (a template reworded, a string removed)
+      const used = kind === 'ui' ? src.uiKeys : src.engineKeys;
+      for (const key of Object.keys(current)) {
+        if (!used.has(key)) {
+          pruned.push(`${kind}.${lang} ${JSON.stringify(key)}`);
+          delete current[key];
         }
       }
       rewrite(file, kind, current);
       console.log(`${file}: ${Object.keys(current).length} entries`);
     }
   }
+  if (changed.length) {
+    console.log(`\n${changed.length} translations changed by a fragment:`);
+    for (const c of changed) console.log(`  ${c}`);
+  }
+  if (pruned.length) {
+    console.log(`\n${pruned.length} entries removed, no longer in the source:`);
+    for (const p of pruned) console.log(`  ${p}`);
+  }
   if (conflicts.length) {
-    console.log(`\n${conflicts.length} conflicts (the first translation was kept):`);
+    console.log(`\n${conflicts.length} conflicts between fragments (the first was kept):`);
     for (const c of conflicts) console.log(`  ${c}`);
   }
 }
