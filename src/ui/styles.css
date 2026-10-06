@@ -2722,3 +2722,41 @@ html:not([lang='en']) .zone-note {
   font-size: 13px;
   color: var(--text);
 }
+
+/* scanning a photo */
+.file-btn {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  cursor: pointer;
+  font-size: 13.5px;
+}
+
+.scan-camera video {
+  width: 100%;
+  border-radius: 10px;
+  background: #000;
+  margin-bottom: 8px;
+}
+
+.scan-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.scan-check img {
+  width: 120px;
+  height: 120px;
+  border-radius: 6px;
+  flex: none;
+}
+
+.scan-check p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}

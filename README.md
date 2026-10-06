@@ -26,7 +26,10 @@ natively for iOS and Android via Capacitor.
   multi-select; hold-modifier temporary input modes; undo/redo; timer & pause
 - Auto-candidates with per-cell strike-through exclusions, one-click candidate
   fill, error check with restore-to-last-correct
-- Import/export puzzles as 81-character strings — every import is rated
+- Import/export puzzles as 81-character strings, or **scan a photo** of a
+  printed puzzle (camera or file; turned, tilted or mirrored is fine) and
+  check the result on the board before playing (see
+  [docs/scan.md](docs/scan.md)) — every import is rated
 - **Shareable links**: `sudokui.app/#p=<81 chars>` opens the exact puzzle
 
 **Learn**

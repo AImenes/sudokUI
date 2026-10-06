@@ -148,6 +148,8 @@ export default function App() {
   const showProof = useGame((s) => s.showProof);
   const practiceFound = useGame((s) => s.practiceFound);
   const chain = useGame((s) => s.chain);
+  const scanPreview = useGame((s) => s.scanPreview);
+  const scanDoubts = useGame((s) => s.scanDoubts);
   const practiceTarget = useGame((s) => s.practiceTarget);
   const startChain = useGame((s) => s.startChain);
   const requestHint = useGame((s) => s.requestHint);
@@ -609,6 +611,15 @@ export default function App() {
                 <strong>Custom puzzle</strong>
               </div>
               <div className="hint-body">
+                {scanPreview && (
+                  <div className="scan-check">
+                    <img src={scanPreview} alt="The scanned grid, as the scanner saw it" />
+                    <p>
+                      The photo, straightened. Compare it with the board
+                      {scanDoubts.length > 0 && <>; the shaded cells are the scanner's doubts</>}.
+                    </p>
+                  </div>
+                )}
                 <p>
                   Type the givens onto the board ({givenCount} so far). When
                   you are done, sudokUI verifies the puzzle has exactly one

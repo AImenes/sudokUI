@@ -595,8 +595,61 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
 
 export function ImportDialog({ onClose }: { onClose: () => void }) {
   const startGame = useGame((s) => s.startGame);
+  const loadScan = useGame((s) => s.loadScan);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
+  // scanning a photo (src/scan): a file or a live camera frame
+  const [busy, setBusy] = useState(false);
+  const [scanError, setScanError] = useState('');
+  const [camera, setCamera] = useState<MediaStream | null>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const canCamera = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+  const closeCamera = () => {
+    camera?.getTracks().forEach((t) => t.stop());
+    setCamera(null);
+  };
+  useEffect(() => () => camera?.getTracks().forEach((t) => t.stop()), [camera]);
+  useEffect(() => {
+    if (camera && video.current) video.current.srcObject = camera;
+  }, [camera]);
+  const scan = async (blob: Blob) => {
+    setBusy(true);
+    setScanError('');
+    try {
+      const { scanImage } = await import('../scan/scanner');
+      const r = await scanImage(blob);
+      const found = r.digits.filter(Boolean).length;
+      if (found < 17) {
+        setScanError(
+          `Only ${found} digit${found === 1 ? '' : 's'} could be read${r.foundGrid ? '' : ', and no grid was found'}. Printed puzzles only; fill the frame with the grid, in good light, and try again.`
+        );
+        return;
+      }
+      closeCamera();
+      loadScan(r.digits, r.doubts, r.preview);
+      onClose();
+    } catch (e) {
+      setScanError(e instanceof Error ? e.message : 'The photo could not be read.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const openCamera = async () => {
+    setScanError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1600 }, height: { ideal: 1200 } }
+      });
+      setCamera(stream);
+    } catch {
+      setScanError('The camera could not be opened. Take a photo with the camera app and choose the file instead.');
+    }
+  };
+  const snap = async () => {
+    if (!video.current) return;
+    const { captureFrame } = await import('../scan/scanner');
+    await scan(await captureFrame(video.current));
+  };
 
   const doImport = () => {
     const cleaned = text.replace(/[^0-9.]/g, '');
@@ -629,6 +682,46 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       <div className="hint-actions">
         <button onClick={doImport}>Load puzzle</button>
       </div>
+      <h4 className="setting-group">Scan a photo</h4>
+      <p className="dialog-note">
+        Printed puzzles: a newspaper, a book, a screen. Fill the frame with the grid; a tilt, a turn or a mirror image
+        is read anyway. You check the result on the board before playing.
+      </p>
+      {camera ? (
+        <div className="scan-camera">
+          <video ref={video} autoPlay playsInline muted />
+          <div className="hint-actions">
+            <button onClick={snap} disabled={busy}>
+              {busy ? 'Reading…' : 'Snap'}
+            </button>
+            <button className="ghost" onClick={closeCamera}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="hint-actions">
+          <label className="file-btn">
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) scan(f);
+              }}
+            />
+            📷 {busy ? 'Reading…' : 'Photo or file'}
+          </label>
+          {canCamera && (
+            <button className="ghost" onClick={openCamera} disabled={busy}>
+              🎥 Use the camera
+            </button>
+          )}
+        </div>
+      )}
+      {scanError && <p className="dialog-error">{scanError}</p>}
     </Modal>
   );
 }
