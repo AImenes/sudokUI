@@ -45,6 +45,13 @@ natively for iOS and Android via Capacitor.
   and the bar says **found** when your own move is the one it was prepared
   for. The rarest techniques come from puzzles found in advance by a
   multi-hour search, so they start instantly too
+- **Build a chain** (⛓ in the Assist box): tap candidates one after
+  another and the engine says what each link is (a bivalue cell, a
+  conjugate pair, two candidates that see each other), draws the chain
+  the way hints draw theirs, reads it back ("if the 4 in r1c1 is false,
+  then the 5 in r1c1 is true, so...") and says what it proves; one click
+  removes what your chain rules out (see
+  [docs/chain-trainer.md](docs/chain-trainer.md))
 - **Your record, on your device**: every move you make is credited with the
   easiest technique that justifies it, a finished game is summed up
   ("45 moves of your own: 31 Naked Singles, 12 Hidden Singles, 1 X-Wing.

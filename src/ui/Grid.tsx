@@ -415,6 +415,7 @@ export function Grid() {
   const togglePause = useGame((s) => s.togglePause);
   const armedDigit = useGame((s) => s.armedDigit);
   const input = useGame((s) => s.input);
+  const chainTap = useGame((s) => s.chainTap);
   const {
     highlightPeers,
     highlightSameDigit,
@@ -543,6 +544,31 @@ export function Grid() {
     }
   }
 
+  /** the candidate glyph under the pointer, for the chain trainer */
+  const candidateFromEvent = (e: React.PointerEvent): { cell: number; digit: number } | null => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const rect = svg.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * (SIZE * 9 + M * 2) - M;
+    const y = ((e.clientY - rect.top) / rect.height) * (SIZE * 9 + M * 2) - M;
+    const c = Math.floor(x / SIZE);
+    const r = Math.floor(y / SIZE);
+    if (r < 0 || r > 8 || c < 0 || c > 8) return null;
+    const cell = r * 9 + c;
+    if (cells[cell].value) return null;
+    const mask = (canonical ?? engineGrid(cells)).cands[cell];
+    let best: { cell: number; digit: number } | null = null;
+    let nearest = 22;
+    for (let d = 1; d <= 9; d++) {
+      if (!(mask & (1 << (d - 1)))) continue;
+      const dist = Math.hypot(x - c * SIZE - candX(d), y - r * SIZE - (candY(d) - 7));
+      if (dist < nearest) {
+        nearest = dist;
+        best = { cell, digit: d };
+      }
+    }
+    return best;
+  };
   const cellFromEvent = (e: React.PointerEvent): number | null => {
     const svg = svgRef.current;
     if (!svg) return null;
@@ -571,6 +597,12 @@ export function Grid() {
   const before = useRef<number[]>([]);
 
   const onPointerDown = (e: React.PointerEvent) => {
+    // building a chain: a tap picks a candidate, not a cell
+    if (useGame.getState().chain) {
+      const hit = candidateFromEvent(e);
+      if (hit) chainTap(hit.cell, hit.digit);
+      return;
+    }
     const cell = cellFromEvent(e);
     if (cell === null) return;
     // number-first: with a digit armed, a plain tap enters it here

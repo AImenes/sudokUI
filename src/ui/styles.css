@@ -2716,3 +2716,9 @@ html:not([lang='en']) .zone-note {
     grid-column: 3;
   }
 }
+
+/* the chain trainer */
+.chain-note {
+  font-size: 13px;
+  color: var(--text);
+}
