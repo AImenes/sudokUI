@@ -4,33 +4,10 @@
 // follows docs/glossary_input.md. tests/learnLocale.test.ts checks that
 // every piece is here, in house style, with its placeholders and numbers.
 import type { LearnLocale } from '../learnLocale';
+import { techNames, levels, categoryLabels } from './names.nb';
 
 const nb: LearnLocale = {
-  "techNames": {
-    "NAKED_SINGLE": "Naken singel",
-    "HIDDEN_SINGLE": "Skjult singel",
-    "LOCKED_PAIR": "Låst par",
-    "LOCKED_TRIPLE": "Låst trippel",
-    "LOCKED_CANDIDATES_1": "Låste kandidater (pekende)",
-    "LOCKED_CANDIDATES_2": "Låste kandidater (hevdende)",
-    "NAKED_PAIR": "Naket par",
-    "NAKED_TRIPLE": "Naken trippel",
-    "HIDDEN_PAIR": "Skjult par",
-    "HIDDEN_TRIPLE": "Skjult trippel",
-    "NAKED_QUADRUPLE": "Naken kvartett",
-    "HIDDEN_QUADRUPLE": "Skjult kvartett",
-    "UNIQUENESS_1": "Unikt rektangel type 1",
-    "UNIQUENESS_2": "Unikt rektangel type 2",
-    "UNIQUENESS_3": "Unikt rektangel type 3",
-    "UNIQUENESS_4": "Unikt rektangel type 4",
-    "UNIQUENESS_5": "Unikt rektangel type 5",
-    "UNIQUENESS_6": "Unikt rektangel type 6",
-    "HIDDEN_RECTANGLE": "Skjult rektangel",
-    "AVOIDABLE_RECTANGLE_1": "Unngåelig rektangel type 1",
-    "AVOIDABLE_RECTANGLE_2": "Unngåelig rektangel type 2",
-    "EXTENDED_RECTANGLE": "Utvidet rektangel",
-    "BRUTE_FORCE": "Prøving og feiling"
-  },
+  "techNames": techNames,
   "techDocs": {
     "FULL_HOUSE": {
       "what": "En rad, kolonne eller boks har åtte av sine ni ruter fylt ut, så nøyaktig én rute står tom.",
@@ -648,72 +625,63 @@ const nb: LearnLocale = {
   },
   "categories": {
     "Singles": {
-      "label": "Singler",
+      "label": categoryLabels["Singles"],
       "note": "Grunnlaget i hver løsning: en rute med bare ett mulig tall, eller et tall med bare én mulig rute."
     },
     "Intersections": {
-      "label": "Skjæringer",
+      "label": categoryLabels["Intersections"],
       "note": "Der en boks krysser en rad eller kolonne: når alle kandidatene for et tall i den ene enheten ligger i skjæringen, fjernes tallet fra resten av den andre enheten."
     },
     "Subsets": {
-      "label": "Delmengder",
+      "label": categoryLabels["Subsets"],
       "note": "N ruter som til sammen bare har N tall, låser disse tallene til seg, enten mønsteret ligger i dagen eller er skjult."
     },
     "Basic Fish": {
-      "label": "Grunnleggende fisk",
+      "label": categoryLabels["Basic Fish"],
       "note": "Når et tall i N rader bare har plass i de samme N kolonnene (eller omvendt), fjernes tallet fra resten av de N kryssende linjene."
     },
     "Finned Fish": {
-      "label": "Fisk med finner",
+      "label": categoryLabels["Finned Fish"],
       "note": "En fisk med ekstra kandidater, finnen. Den virker fortsatt, men bare på ruter som også ser finnen."
     },
     "Complex Fish": {
-      "label": "Kompleks fisk",
+      "label": categoryLabels["Complex Fish"],
       "note": "Fisk som bruker bokser i tillegg til rader og kolonner."
     },
     "Single Digit Patterns": {
-      "label": "Mønstre på ett tall",
+      "label": categoryLabels["Single Digit Patterns"],
       "note": "Korte kjeder på ett enkelt tall, bygd av to sterke lenker forbundet med en svak."
     },
     "Wings": {
-      "label": "Wings",
+      "label": categoryLabels["Wings"],
       "note": "Noen få ruter der kandidatene garanterer at én av rutene har et bestemt tall. Derfor mister hver rute som ser alle sammen, det tallet."
     },
     "Uniqueness": {
-      "label": "Entydighet",
+      "label": categoryLabels["Uniqueness"],
       "note": "Mønstre som ville gi oppgaven to løsninger, og som derfor ikke kan forekomme i en oppgave som har nøyaktig én."
     },
     "Chains and Loops": {
-      "label": "Kjeder og sløyfer",
+      "label": categoryLabels["Chains and Loops"],
       "note": "Slutninger som føres videre langs sterke og svake lenker til de to endene avgjør noe."
     },
     "Coloring": {
-      "label": "Fargelegging",
+      "label": categoryLabels["Coloring"],
       "note": "Kandidater forbundet med sterke lenker får to farger: den ene fargen er sann overalt, den andre usann overalt."
     },
     "Almost Locked Sets": {
-      "label": "Nesten låste mengder",
+      "label": categoryLabels["Almost Locked Sets"],
       "note": "Grupper av ruter som har én kandidat for mye til å være låst, satt opp mot hverandre."
     },
     "Miscellaneous": {
-      "label": "Diverse",
+      "label": categoryLabels["Miscellaneous"],
       "note": "Sjeldne mønstre som ikke passer inn i noen annen familie."
     },
     "Last Resort": {
-      "label": "Siste utvei",
+      "label": categoryLabels["Last Resort"],
       "note": "Metoder som bygger på prøving, for stillinger der det ikke er noe mønster igjen å finne."
     }
   },
-  "levels": {
-    "Beginner": "Nybegynner",
-    "Easy": "Lett",
-    "Medium": "Middels",
-    "Tricky": "Lur",
-    "Hard": "Vanskelig",
-    "Unfair": "Urettferdig",
-    "Extreme": "Ekstrem",
-    "Nightmare": "Mareritt"
-  },
+  "levels": levels,
   "bandLeads": {
     "Beginner": "En rolig start",
     "Easy": "Avslappet",

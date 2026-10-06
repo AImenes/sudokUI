@@ -4,33 +4,10 @@
 // follows docs/glossary_input.md. tests/learnLocale.test.ts checks that
 // every piece is here, in house style, with its placeholders and numbers.
 import type { LearnLocale } from '../learnLocale';
+import { techNames, levels, categoryLabels } from './names.es';
 
 const es: LearnLocale = {
-  "techNames": {
-    "NAKED_SINGLE": "Único desnudo",
-    "HIDDEN_SINGLE": "Único oculto",
-    "LOCKED_PAIR": "Par bloqueado",
-    "LOCKED_TRIPLE": "Trío bloqueado",
-    "LOCKED_CANDIDATES_1": "Candidatos bloqueados (puntero)",
-    "LOCKED_CANDIDATES_2": "Candidatos bloqueados (reclamante)",
-    "NAKED_PAIR": "Par desnudo",
-    "NAKED_TRIPLE": "Trío desnudo",
-    "HIDDEN_PAIR": "Par oculto",
-    "HIDDEN_TRIPLE": "Trío oculto",
-    "NAKED_QUADRUPLE": "Cuarteto desnudo",
-    "HIDDEN_QUADRUPLE": "Cuarteto oculto",
-    "UNIQUENESS_1": "Rectángulo único tipo 1",
-    "UNIQUENESS_2": "Rectángulo único tipo 2",
-    "UNIQUENESS_3": "Rectángulo único tipo 3",
-    "UNIQUENESS_4": "Rectángulo único tipo 4",
-    "UNIQUENESS_5": "Rectángulo único tipo 5",
-    "UNIQUENESS_6": "Rectángulo único tipo 6",
-    "HIDDEN_RECTANGLE": "Rectángulo oculto",
-    "AVOIDABLE_RECTANGLE_1": "Rectángulo evitable tipo 1",
-    "AVOIDABLE_RECTANGLE_2": "Rectángulo evitable tipo 2",
-    "EXTENDED_RECTANGLE": "Rectángulo extendido",
-    "BRUTE_FORCE": "Fuerza bruta"
-  },
+  "techNames": techNames,
   "techDocs": {
     "FULL_HOUSE": {
       "what": "Una fila, columna o caja tiene ocho de sus nueve casillas llenas, así que queda exactamente una casilla vacía.",
@@ -700,72 +677,63 @@ const es: LearnLocale = {
   },
   "categories": {
     "Singles": {
-      "label": "Únicos",
+      "label": categoryLabels["Singles"],
       "note": "La base de toda resolución: una casilla con un solo número posible, o un número con una sola casilla posible."
     },
     "Intersections": {
-      "label": "Intersecciones",
+      "label": categoryLabels["Intersections"],
       "note": "Donde una caja cruza una fila o una columna: si los candidatos de un número quedan confinados a la intersección, ese número se elimina del resto de la otra unidad."
     },
     "Subsets": {
-      "label": "Subconjuntos",
+      "label": categoryLabels["Subsets"],
       "note": "N casillas que entre todas solo admiten N números dejan esos números bloqueados en ellas, tanto si el patrón está a la vista como si está oculto."
     },
     "Basic Fish": {
-      "label": "Peces básicos",
+      "label": categoryLabels["Basic Fish"],
       "note": "Un número cuyas posiciones en N filas caen en las mismas N columnas (o al revés), lo que lo elimina del resto de esas líneas."
     },
     "Finned Fish": {
-      "label": "Peces con aletas",
+      "label": categoryLabels["Finned Fish"],
       "note": "Un pez con candidatos de más: la aleta. Sigue funcionando, pero solo en las casillas que también ven la aleta."
     },
     "Complex Fish": {
-      "label": "Peces complejos",
+      "label": categoryLabels["Complex Fish"],
       "note": "Peces que usan cajas además de filas y columnas."
     },
     "Single Digit Patterns": {
-      "label": "Patrones de un solo número",
+      "label": categoryLabels["Single Digit Patterns"],
       "note": "Cadenas cortas sobre un solo número, formadas por dos enlaces fuertes unidos por uno débil."
     },
     "Wings": {
-      "label": "Wings",
+      "label": categoryLabels["Wings"],
       "note": "Unas pocas casillas cuyos candidatos garantizan que una de ellas contiene un número concreto, así que toda casilla que las vea a todas pierde ese número."
     },
     "Uniqueness": {
-      "label": "Unicidad",
+      "label": categoryLabels["Uniqueness"],
       "note": "Patrones que darían al sudoku dos soluciones y que, por eso, no pueden aparecer en un sudoku que tiene exactamente una."
     },
     "Chains and Loops": {
-      "label": "Cadenas y bucles",
+      "label": categoryLabels["Chains and Loops"],
       "note": "Inferencias que se transmiten a lo largo de enlaces fuertes y débiles hasta que los dos extremos permiten concluir algo."
     },
     "Coloring": {
-      "label": "Coloreado",
+      "label": categoryLabels["Coloring"],
       "note": "Los candidatos unidos por enlaces fuertes reciben dos colores: un color es verdadero por completo y el otro, falso por completo."
     },
     "Almost Locked Sets": {
-      "label": "Conjuntos casi bloqueados",
+      "label": categoryLabels["Almost Locked Sets"],
       "note": "Grupos de casillas a un solo candidato de quedar bloqueados, que se combinan unos con otros."
     },
     "Miscellaneous": {
-      "label": "Varios",
+      "label": categoryLabels["Miscellaneous"],
       "note": "Patrones poco frecuentes que no encajan en ninguna otra familia."
     },
     "Last Resort": {
-      "label": "Último recurso",
+      "label": categoryLabels["Last Resort"],
       "note": "Métodos basados en probar, para posiciones en las que ya no queda ningún patrón que encontrar."
     }
   },
-  "levels": {
-    "Beginner": "Principiante",
-    "Easy": "Fácil",
-    "Medium": "Medio",
-    "Tricky": "Engañoso",
-    "Hard": "Difícil",
-    "Unfair": "Injusto",
-    "Extreme": "Extremo",
-    "Nightmare": "Pesadilla"
-  },
+  "levels": levels,
   "bandLeads": {
     "Beginner": "Un comienzo suave",
     "Easy": "Tranquilo",

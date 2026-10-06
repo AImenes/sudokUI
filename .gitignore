@@ -13,3 +13,7 @@ dist-ssr/
 promo/
 test-results/
 playwright-report/
+
+# translation work in progress (scripts/i18n.ts) and the corpus tool's shards
+.i18n-work/
+.corpus-shards/

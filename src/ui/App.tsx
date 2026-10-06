@@ -167,11 +167,7 @@ export default function App() {
     s.custom ? s.cells.filter((c) => c.value > 0).length : 0
   );
   const { theme, font, toggleTheme, showTimer, hideRating, showPoodle } = useSettings();
-  const lang = useSettings((s) => s.lang);
   const t = useT();
-  useEffect(() => {
-    document.documentElement.lang = lang;
-  }, [lang]);
   const { start, genState, cancel } = useNewGame();
   // the hardest bands start from seeds: stock their pools while idle, so
   // even the first Nightmare on this device starts at once

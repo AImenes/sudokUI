@@ -12,6 +12,13 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 import './ui/styles.css';
 import { useGame } from './state/gameStore';
 import { useAppStatus } from './state/appStatus';
+import { useSettings } from './state/settings';
+import { startLocales, langOfPath } from './content/i18n';
+
+// /nb/ and /es/ are the app in Norwegian and Spanish, the addresses search
+// engines show for those languages: arriving there chooses the language
+const arrived = langOfPath(window.location.pathname);
+if (arrived && useSettings.getState().lang !== arrived) useSettings.getState().set({ lang: arrived });
 
 if (import.meta.env.DEV) {
   (window as any).__game = useGame;
@@ -52,10 +59,14 @@ window.addEventListener('vite:preloadError', (event) => {
   useAppStatus.getState().setUpdateReady('chunk');
 });
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>
-);
+// the first render waits for the chosen language's tables (precached, so a
+// moment even offline); if they cannot be fetched the app starts in English
+startLocales().finally(() => {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </React.StrictMode>
+  );
+});
