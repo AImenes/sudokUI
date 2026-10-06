@@ -1,7 +1,7 @@
 // The control panel: mode switcher (digit/corner/centre/colour), number pad
 // (doubles as the colour palette in colour mode), undo/redo/erase and the
 // candidate tools (hint, check, auto candidates, fill, convert).
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useT } from '../content/i18n';
 import { useGame, EntryMode } from '../state/gameStore';
 import { useSettings, MarkLayer } from '../state/settings';
@@ -56,6 +56,35 @@ export function Controls({
   const mode = useGame((s) => s.mode);
   const tempMode = useGame((s) => s.tempMode);
   const effectiveMode = tempMode ?? mode;
+
+  // A number key tapped enters the digit in the current mode; held for a
+  // moment it enters a corner mark whatever the mode, so a phone needs no
+  // trip to the mode buttons for a pencil mark. The key shows the digit in
+  // its corner while the hold lasts.
+  const keyHold = useRef<{ digit: number; timer: number; fired: boolean } | null>(null);
+  const lastKeyPointer = useRef(0);
+  const [heldKey, setHeldKey] = useState<number | null>(null);
+  const pressKey = (d: number) => {
+    lastKeyPointer.current = Date.now();
+    if (keyHold.current) window.clearTimeout(keyHold.current.timer);
+    const hold = { digit: d, timer: 0, fired: false };
+    hold.timer = window.setTimeout(() => {
+      hold.fired = true;
+      setHeldKey(d);
+      navigator.vibrate?.(12);
+      input(d, 'corner');
+    }, 350);
+    keyHold.current = hold;
+  };
+  const releaseKey = (d: number | null) => {
+    const hold = keyHold.current;
+    if (!hold) return;
+    keyHold.current = null;
+    window.clearTimeout(hold.timer);
+    setHeldKey(null);
+    // lifted in time, on the key it landed on: a tap
+    if (!hold.fired && d === hold.digit) input(d);
+  };
   const setMode = useGame((s) => s.setMode);
   const input = useGame((s) => s.input);
   const erase = useGame((s) => s.erase);
@@ -141,15 +170,28 @@ export function Controls({
         {Array.from({ length: 9 }, (_, k) => k + 1).map((d) => (
           <button
             key={d}
-            className={`num-btn ${effectiveMode === 'color' ? 'color-btn' : ''}${armedDigit === d ? ' armed' : ''}`}
+            className={`num-btn ${effectiveMode === 'color' ? 'color-btn' : ''}${armedDigit === d ? ' armed' : ''}${heldKey === d ? ' held-corner' : ''}`}
             aria-pressed={armedDigit === d}
-            title={armedDigit === d ? `${d} is armed: tap a cell to enter it, tap ${d} again to put it down` : `${d}. With nothing selected, arms ${d}: every ${d} lights up and a tap on a cell enters it`}
+            title={armedDigit === d ? `${d} is armed: tap a cell to enter it, tap ${d} again to put it down` : `${d}. Hold it to enter a corner mark. With nothing selected, arms ${d}: every ${d} lights up and a tap on a cell enters it`}
             style={
               effectiveMode === 'color'
                 ? { background: PALETTE[d - 1], color: '#10131c' }
                 : undefined
             }
-            onClick={() => input(d)}
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              pressKey(d);
+            }}
+            onPointerUp={() => releaseKey(d)}
+            onPointerLeave={() => releaseKey(null)}
+            onPointerCancel={() => releaseKey(null)}
+            onContextMenu={(e) => e.preventDefault()}
+            onClick={() => {
+              // a pointer was handled above; this is the keyboard, or
+              // assistive technology, pressing the button
+              if (Date.now() - lastKeyPointer.current < 1000) return;
+              input(d);
+            }}
           >
             {effectiveMode === 'color' ? '' : d}
           </button>

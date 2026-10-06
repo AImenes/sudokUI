@@ -329,7 +329,8 @@ interface GameStore {
   setMode: (mode: EntryMode) => void;
   setTempMode: (mode: EntryMode | null) => void;
   setActiveColor: (c: number) => void;
-  input: (digit: number) => void;
+  /** enter a digit in the current mode, or in the mode given (a held number key enters a corner mark) */
+  input: (digit: number, as?: EntryMode) => void;
   erase: () => void;
   wipe: () => void;
   clearNotice: () => void;
@@ -633,10 +634,10 @@ export const useGame = create<GameStore>()(
         set((s) => (s.tempMode === tempMode ? {} : { tempMode })),
       setActiveColor: (activeColor) => set({ activeColor, mode: 'color' }),
 
-      input: (digit) => {
+      input: (digit, as) => {
         const s = get();
         if (s.won || s.paused) return;
-        const mode = s.tempMode ?? s.mode;
+        const mode = as ?? s.tempMode ?? s.mode;
         // nothing selected: the digit is armed (number-first), or put down
         // again if it was the armed one
         if (s.selection.length === 0) {

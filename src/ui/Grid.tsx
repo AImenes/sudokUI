@@ -597,13 +597,15 @@ export function Grid() {
   const before = useRef<number[]>([]);
 
   // A touch is settled when the finger lifts, not when it lands: the board
-  // lets a vertical swipe scroll the page (touch-action: pan-y), and the
-  // browser reports that swipe as a pointercancel, which must leave the
-  // selection alone. A horizontal drag still selects, from its first move.
-  // And a finger that holds still for a moment first may then drag any
-  // way it likes: the hold turns the touch into a drag-select, and from
-  // then on the page stays put under it.
-  const touch = useRef<{ cell: number; additive: boolean; x: number; y: number; chain: { cell: number; digit: number } | null } | null>(null);
+  // lets a quick vertical swipe scroll the page (touch-action: pan-y), and
+  // the browser reports that swipe as a pointercancel, which must leave
+  // the selection alone. A finger that is still on the board after a
+  // moment (a rest, or a slow move the browser has not taken for a
+  // scroll) is marking: the touch becomes a drag-select from the press
+  // cell, in any direction, and from then on the page stays put under it.
+  // A quick flick that never became a scroll selects nothing.
+  const touch = useRef<{ cell: number; additive: boolean; x: number; y: number; moved: boolean; chain: { cell: number; digit: number } | null } | null>(null);
+  const HOLD_MS = 200;
   const hold = useRef<number | null>(null);
   const holdDrag = useRef(false);
   const cancelHold = () => {
@@ -662,7 +664,7 @@ export function Grid() {
       const hit = candidateFromEvent(e);
       if (!hit) return;
       if (e.pointerType === 'touch') {
-        touch.current = { cell: hit.cell, additive: add, x: e.clientX, y: e.clientY, chain: hit };
+        touch.current = { cell: hit.cell, additive: add, x: e.clientX, y: e.clientY, moved: false, chain: hit };
         (e.target as Element).setPointerCapture?.(e.pointerId);
       } else {
         chainTap(hit.cell, hit.digit);
@@ -672,7 +674,7 @@ export function Grid() {
     const cell = cellFromEvent(e);
     if (cell === null) return;
     if (e.pointerType === 'touch') {
-      touch.current = { cell, additive: add, x: e.clientX, y: e.clientY, chain: null };
+      touch.current = { cell, additive: add, x: e.clientX, y: e.clientY, moved: false, chain: null };
       dragging.current = false;
       anchor.current = cell;
       additive.current = add;
@@ -684,13 +686,13 @@ export function Grid() {
         hold.current = null;
         const t = touch.current;
         if (!t || t.chain) return;
-        // held still: the press cell is selected now, and the drag that
-        // may follow extends from it in any direction
+        // still on the board: the press cell is selected now, and the
+        // drag that follows extends from it in any direction
         touch.current = null;
         holdDrag.current = true;
         dragging.current = true;
         select([t.cell], t.additive);
-      }, 300);
+      }, HOLD_MS);
       return;
     }
     // number-first: with a digit armed, a plain tap enters it here
@@ -713,18 +715,10 @@ export function Grid() {
   const onPointerMove = (e: React.PointerEvent) => {
     const t = touch.current;
     if (t) {
-      if (t.chain) return;
-      const dx = e.clientX - t.x;
-      const dy = e.clientY - t.y;
-      // a sideways move past the press cell turns the touch into a
-      // drag-select from that cell; a vertical one is the page scrolling
-      // (the browser cancels the pointer once it decides so)
-      if (Math.abs(dx) <= Math.abs(dy) || cellFromEvent(e) === t.cell) return;
-      touch.current = null;
-      cancelLongPress();
-      cancelHold();
-      dragging.current = true;
-      select([t.cell], t.additive);
+      // before the hold is up: a move past a few pixels means the lift
+      // will not be a tap; whether it is a scroll is the browser's call
+      if (Math.abs(e.clientX - t.x) + Math.abs(e.clientY - t.y) > 8) t.moved = true;
+      return;
     }
     if (!dragging.current) return;
     const cell = cellFromEvent(e);
@@ -754,7 +748,7 @@ export function Grid() {
   const onPointerUp = (e: React.PointerEvent) => {
     const t = touch.current;
     endPointer();
-    if (!t) return;
+    if (!t || t.moved) return;
     // the touch lifted where it landed: now it is a tap
     if (t.chain) {
       chainTap(t.chain.cell, t.chain.digit);
