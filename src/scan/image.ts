@@ -81,7 +81,7 @@ export interface Quad {
 export function gridCandidates(ink: Uint8Array, width: number, height: number, keep = 6): Quad[] {
   const labels = new Int32Array(width * height);
   const stack = new Int32Array(width * height);
-  const found: { quad: Quad; score: number }[] = [];
+  const found: { quad: Quad; score: number; label: number; box: { minX: number; maxX: number; minY: number; maxY: number } }[] = [];
   let label = 0;
   const minSide = Math.min(width, height);
   for (let start = 0; start < ink.length; start++) {
@@ -124,12 +124,76 @@ export function gridCandidates(ink: Uint8Array, width: number, height: number, k
     if (fill > 0.5) continue; // a dark block, not a grid of lines
     const score = bw * bh * squareness;
     const pt = (i: number): Point => ({ x: i % width, y: Math.floor(i / width) });
-    found.push({ quad: { corners: [pt(tl), pt(tr), pt(br), pt(bl)], size }, score });
+    found.push({ quad: { corners: [pt(tl), pt(tr), pt(br), pt(bl)], size }, score, label, box: { minX, maxX, minY, maxY } });
   }
-  return found
-    .sort((a, b) => b.score - a.score)
-    .slice(0, keep)
-    .map((f) => f.quad);
+  const best = found.sort((a, b) => b.score - a.score).slice(0, keep);
+  // a second corner estimate per component: its outline as a convex hull,
+  // cut down to four corners. The diagonal extremes above drift on a
+  // curved or shadowed edge; the hull drifts when something touches the
+  // grid (a caption, a bleed). Both go in, and the gridness score decides.
+  const out: Quad[] = [];
+  for (const f of best) {
+    const pts: Point[] = [];
+    for (let y = f.box.minY; y <= f.box.maxY; y++) {
+      for (let x = f.box.minX; x <= f.box.maxX; x++) {
+        const i = y * width + x;
+        if (labels[i] !== f.label) continue;
+        if (x === 0 || y === 0 || x === width - 1 || y === height - 1 || !ink[i - 1] || !ink[i + 1] || !ink[i - width] || !ink[i + width]) {
+          pts.push({ x, y });
+        }
+      }
+    }
+    out.push(f.quad);
+    const quad = hullCorners(pts);
+    if (quad && quad.some((c, k) => Math.abs(c.x - f.quad.corners[k].x) + Math.abs(c.y - f.quad.corners[k].y) > 3)) {
+      out.push({ corners: quad, size: f.quad.size });
+    }
+  }
+  return out;
+}
+
+/** the convex hull (monotone chain), then the four corners that keep most of its area */
+export function hullCorners(pts: Point[]): Quad['corners'] | null {
+  if (pts.length < 4) return null;
+  const sorted = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (o: Point, a: Point, b: Point) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lower: Point[] = [];
+  for (const p of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  const upper: Point[] = [];
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const p = sorted[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  let hull = [...lower.slice(0, -1), ...upper.slice(0, -1)];
+  if (hull.length < 4) return null;
+  // drop, one at a time, the vertex whose removal loses the least area
+  while (hull.length > 4) {
+    let worst = 0;
+    let least = Infinity;
+    for (let i = 0; i < hull.length; i++) {
+      const a = hull[(i + hull.length - 1) % hull.length];
+      const b = hull[i];
+      const c = hull[(i + 1) % hull.length];
+      const lost = Math.abs(cross(a, b, c)) / 2;
+      if (lost < least) {
+        least = lost;
+        worst = i;
+      }
+    }
+    hull.splice(worst, 1);
+  }
+  // in order round the centre, starting top-left
+  const cx = hull.reduce((a, p) => a + p.x, 0) / 4;
+  const cy = hull.reduce((a, p) => a + p.y, 0) / 4;
+  hull = hull.sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx));
+  let start = 0;
+  for (let i = 1; i < 4; i++) if (hull[i].x + hull[i].y < hull[start].x + hull[start].y) start = i;
+  const out = [0, 1, 2, 3].map((k) => hull[(start + k) % 4]);
+  return [out[0], out[1], out[2], out[3]];
 }
 
 /**
@@ -162,19 +226,25 @@ export function gridness(warped: Gray): number {
 
 /** The grid: the candidate that, warped, shows the most grid lines. */
 export function findGrid(ink: Uint8Array, width: number, height: number, g?: Gray): Quad | null {
+  return findGrids(ink, width, height, g)[0] ?? null;
+}
+
+/**
+ * The plausible grids, best first: every candidate quad that looks like a
+ * grid once warped (gridness above 0.035), ranked by gridness, at most
+ * `keep` of them. Without the grey image the candidates come back as found.
+ */
+export function findGrids(ink: Uint8Array, width: number, height: number, g?: Gray, keep = 3): Quad[] {
   const candidates = gridCandidates(ink, width, height);
-  if (!candidates.length) return null;
-  if (!g) return candidates[0];
-  let best: Quad | null = null;
-  let bestScore = 0.035; // less than this is no grid
+  if (!g) return candidates.slice(0, keep);
+  const scored: { quad: Quad; score: number }[] = [];
   for (const quad of candidates) {
     const score = gridness(warp(g, homography(quad.corners, 270), 270));
-    if (score > bestScore) {
-      bestScore = score;
-      best = quad;
-    }
+    if (score > 0.035) scored.push({ quad, score }); // less than this is no grid
   }
-  return best;
+  scored.sort((a, b) => b.score - a.score);
+  // only quads nearly as grid-like as the best are worth a full reading
+  return scored.filter((s) => s.score >= scored[0].score * 0.5).slice(0, keep).map((s) => s.quad);
 }
 
 /**
@@ -714,16 +784,23 @@ export function readBest(warped: Gray, templates: Template[]): Reading {
 /** The whole numeric pipeline, from grey pixels to a reading. */
 export function scanGray(g: Gray, templates: Template[]): { reading: Reading; warped: Gray; quad: Quad | null } {
   const ink = adaptiveInk(g);
-  const quad = findGrid(ink, g.width, g.height, g);
-  const corners: Quad['corners'] = quad
-    ? quad.corners
-    : [
-        { x: 0, y: 0 },
-        { x: g.width - 1, y: 0 },
-        { x: g.width - 1, y: g.height - 1 },
-        { x: 0, y: g.height - 1 }
-      ];
-  const warped = warp(g, homography(corners));
-  const reading = readBest(warped, templates);
+  const quads = findGrids(ink, g.width, g.height, g);
+  const whole: Quad['corners'] = [
+    { x: 0, y: 0 },
+    { x: g.width - 1, y: 0 },
+    { x: g.width - 1, y: g.height - 1 },
+    { x: 0, y: g.height - 1 }
+  ];
+  // each plausible quad gets a full reading; the reading that matches
+  // best, conflicts counted against it, decides between them, the same
+  // measure that picks the orientation
+  let best: { reading: Reading; warped: Gray; quad: Quad | null } | null = null;
+  for (const quad of quads.length ? quads : [null]) {
+    const warped = warp(g, homography(quad ? quad.corners : whole));
+    const reading = readBest(warped, templates);
+    const value = reading.quality - 0.7 * reading.conflicts;
+    if (!best || value > best.reading.quality - 0.7 * best.reading.conflicts) best = { reading, warped, quad };
+  }
+  const { reading, warped, quad } = best!;
   return { reading, warped: reading.symmetry ? dihedral(warped, reading.symmetry) : warped, quad };
 }

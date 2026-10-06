@@ -11,13 +11,19 @@ no model download, no service, about 20 KB of code.
 
 1. Grey, then ink by adaptive threshold (darker than the local mean).
 2. The grid: the ink component whose bounding box is large, roughly
-   square and mostly empty inside (lines, not a photo), with its corners
-   at the component's extreme pixels along the two diagonals. No grid
-   found means the whole photo is taken as the grid (a tight crop).
-3. Among the candidates, the one that shows grid lines after warping
-   wins (`gridness`): a table edge or a loudspeaker's rim is large,
-   square-ish and mostly empty too. A homography from the four corners,
-   and a perspective warp to a 450 × 450 square.
+   square and mostly empty inside (lines, not a photo). Its corners are
+   estimated twice: the component's extreme pixels along the two
+   diagonals, and its convex hull cut down to four corners
+   (`hullCorners`). The extremes drift on a curved or shadowed edge, the
+   hull drifts when a caption touches the grid, so both quads go on. No
+   grid found means the whole photo is taken as the grid (a tight crop).
+3. Among the candidates, those that show grid lines after warping
+   survive (`gridness`): a table edge or a loudspeaker's rim is large,
+   square-ish and mostly empty too. Up to three of them get a full
+   reading each (a homography from the four corners, a perspective warp
+   to a 450 × 450 square, then the steps below), and the reading that
+   matches best with the fewest conflicts wins, the same measure that
+   picks the orientation.
 4. The lines where they really are: the four thick box lines are
    unmistakable peaks of the ink profile; the thin lines sit a third of
    the way between them, give or take a few pixels. Each line is then
@@ -63,9 +69,14 @@ was found among a loudspeaker and a table edge, straightened, and 24 of
 its 25 digits detected; 21 read right, and all but one of the rest were
 flagged as doubts for the eye to settle on the review board. The
 remaining misreads are a bold Helvetica 1 and 9 against templates drawn
-in the test machine's fonts. The tuning loop for the next photo is
-`scanDebug` on `window.__sudokuiScan`, which returns the candidates,
-the lines and any cell's blob as text.
+in the test machine's fonts. Two more paperback photos, one tilted and
+one sideways with digits showing through from the back of the page,
+read 23 and 21 digits with every error flagged. A fourth, upside down,
+turned some 35° and showing two grids, is what brought the hull
+corners in: the diagonal extremes landed on the page's curved edge and
+read 13 digits, the hull's corners 19 without a conflict. The tuning
+loop for the next photo is `scanDebug` on `window.__sudokuiScan`, which
+returns the candidates, the lines and any cell's blob as text.
 
 ## Limits
 
