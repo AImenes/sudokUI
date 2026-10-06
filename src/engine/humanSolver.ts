@@ -139,9 +139,13 @@ export function findNextStep(g: Grid, order: Tech[] = SOLVE_ORDER): Step | null 
   return null;
 }
 
-/** The first instance of one technique in this position, or null. */
+/**
+ * The step the solver's finder for one technique returns in this position
+ * (its first instance), or null. AIC_ALS steps come from the grouped AIC
+ * engine, which names its steps by what they contain.
+ */
 export function findStep(tech: Tech, g: Grid): Step | null {
-  const finder = FINDERS[tech];
+  const finder = FINDERS[tech] ?? (tech === 'AIC_ALS' ? FINDERS.AIC_GROUPED : undefined);
   return finder ? finder(g) : null;
 }
 
