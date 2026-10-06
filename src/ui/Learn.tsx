@@ -21,6 +21,7 @@ import { SOLVE_TIME_TABLES } from '../content/solveTimes';
 import { LearnText, langPrefix } from '../content/learnLocale';
 import type { LearnString } from '../content/learnStrings';
 import { useT } from '../content/i18n';
+import { HubTabs } from './HubTabs';
 import { useLearnText } from './useLearnText';
 
 type Examples = Partial<Record<Tech, Example>>;
@@ -652,12 +653,15 @@ export function LearnDialog({
   target,
   onClose,
   onPractice,
+  hub,
   onExample,
   onScan
 }: {
   target: LearnTarget;
   onClose: () => void;
   onPractice: (tech: Tech) => void;
+  /** the other parts of Learn, the practice list and your path */
+  hub?: { onPractice: () => void; onPath: () => void };
   /** put a technique's worked example on the board */
   onExample: (tech: Tech) => void;
   /** scan the running game for a technique; absent when no game is on */
@@ -717,6 +721,7 @@ export function LearnDialog({
   return (
     <Modal title={t('Learn')} onClose={onClose} wide>
       <div ref={body} lang={lt.lang}>
+        {hub && <HubTabs active="theory" onPractice={hub.onPractice} onPath={hub.onPath} />}
         <div className="segmented learn-tabs" role="tablist">
           {tabs.map((value) => (
             <button

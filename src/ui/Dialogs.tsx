@@ -22,6 +22,7 @@ import { seedPuzzles, SEEDED_LEVELS } from '../content/seeds';
 import { cruxIndex } from '../engine/generator';
 import { timeVerdict, percentileText, MODE_LABEL } from '../content/solveTimes';
 import { useT } from '../content/i18n';
+import { HubTabs } from './HubTabs';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { BAND_LEADS, BAND_NOTES } from '../content/rating';
 import { categoryLabel, techniquesByFamily } from '../content/categories';
@@ -164,18 +165,23 @@ export function NewGameDialog({
 export function PracticeDialog({
   onClose,
   onStart,
-  onLearn
+  onLearn,
+  onPath
 }: {
   onClose: () => void;
   onStart: (tech: Tech) => void;
   /** open the technique guide (every technique explained) */
   onLearn: () => void;
+  /** open your path, the third part of Learn */
+  onPath: () => void;
 }) {
+  const t = useT();
   const byCategory = techniquesByFamily();
   const shown = byCategory.flatMap(([, techs]) => techs);
-  const playable = shown.filter((t) => PRACTICE_TECHS.includes(t));
+  const playable = shown.filter((x) => PRACTICE_TECHS.includes(x));
   return (
-    <Modal title="Practice a technique" onClose={onClose}>
+    <Modal title={t('Learn')} onClose={onClose} wide>
+      <HubTabs active="practice" onTheory={onLearn} onPath={onPath} />
       <p className="dialog-note">
         Pick a technique. sudokUI builds a puzzle that needs it, with nothing
         harder before it, and takes you to the move where it applies.
@@ -187,10 +193,6 @@ export function PracticeDialog({
       </p>
       <p className="tech-count">
         <strong>{playable.length}</strong> of {shown.length} techniques playable
-        {' · '}
-        <button className="learn-link" onClick={onLearn}>
-          What do these techniques do?
-        </button>
       </p>
       <ul className="tech-legend">
         <li>

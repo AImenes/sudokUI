@@ -59,6 +59,8 @@ const nb: Dictionary = {
   'Show timer': 'Vis klokke',
   // learn
   Learn: 'Lær',
+  Theory: 'Teori',
+  'Your path': 'Din vei',
   Techniques: 'Teknikker',
   Intuition: 'Intuisjon',
   'How to solve': 'Slik løser du',
@@ -102,6 +104,8 @@ const es: Dictionary = {
   Language: 'Idioma',
   'Show timer': 'Mostrar el cronómetro',
   Learn: 'Aprender',
+  Theory: 'Teoría',
+  'Your path': 'Tu camino',
   Techniques: 'Técnicas',
   Intuition: 'Intuición',
   'How to solve': 'Cómo resolver',
