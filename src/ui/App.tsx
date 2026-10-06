@@ -616,7 +616,7 @@ export default function App() {
                     <img src={scanPreview} alt="The scanned grid, as the scanner saw it" />
                     <p>
                       The photo, straightened. Compare it with the board
-                      {scanDoubts.length > 0 && <>; the shaded cells are the scanner's doubts</>}.
+                      {scanDoubts.length > 0 && <>; the red cells are the scanner's doubts: a digit it was unsure of, or ink it could not read</>}.
                     </p>
                   </div>
                 )}

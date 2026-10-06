@@ -59,7 +59,7 @@ function template(g: Uint8Array, digit: number): Template {
     if (y < y0) y0 = y;
     if (y > y1) y1 = y;
   }
-  return { digit, vec: normalise(g, 12, x0, y0, x1 - x0 + 1, y1 - y0 + 1) };
+  return { digit, vec: normalise(g, 12, x0, y0, x1 - x0 + 1, y1 - y0 + 1), aspect: (x1 - x0 + 1) / (y1 - y0 + 1) };
 }
 const templates: Template[] = GLYPHS.map((g, i) => template(g, i + 1));
 
