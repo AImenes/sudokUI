@@ -21,11 +21,14 @@ import { practiceSeeds } from '../content/practicePuzzles';
 import { seedPuzzles, SEEDED_LEVELS } from '../content/seeds';
 import { cruxIndex } from '../engine/generator';
 import { timeVerdict, percentileText, MODE_LABEL, SolveMode } from '../content/solveTimes';
-import { useT, translator, msg, rich, Translator } from '../content/i18n';
+import { useT, translator, msg, rich, langRoot, Translator } from '../content/i18n';
 import { HubTabs } from './HubTabs';
 import { techniquesByFamily } from '../content/categories';
-import { useLearnText } from './useLearnText';
-import type { LearnText } from '../content/learnLocale';
+import { useLearnLocale } from './useLearnLocale';
+import type { LearnLocale } from '../content/learnLocale';
+import { BAND_LEADS, BAND_NOTES } from '../content/rating';
+import { TECH_DOCS } from '../content/techniqueDocs';
+import { KIN } from '../content/kin';
 import type { Lang } from '../state/settings';
 
 /** what is being generated: a band's puzzle or a technique's practice puzzle */
@@ -113,8 +116,17 @@ export function useNewGame() {
   return { start, genState, cancel };
 }
 
-/** what a level asks of you, in plain words, then the techniques behind it (the Learn section's words) */
-const levelDescription = (lt: LearnText, level: Level) => `${lt.loc.bandLeads[level]}: ${lt.loc.bandNotes[level]}`;
+// The Learn section's words for a band, a technique and its kin, in the
+// chosen language (useLearnLocale.ts) or, until that arrives, in English
+// from the content modules: the guide itself stays in its own chunk.
+
+/** what a level asks of you, in plain words, then the techniques behind it */
+const levelDescription = (loc: LearnLocale | undefined, level: Level) =>
+  `${(loc?.bandLeads ?? BAND_LEADS)[level]}: ${(loc?.bandNotes ?? BAND_NOTES)[level]}`;
+/** what a technique is, in one line */
+const techWhat = (loc: LearnLocale | undefined, tech: Tech) => loc?.techDocs[tech]?.what ?? TECH_DOCS[tech].what;
+/** another name for it, or the same logic in another family */
+const kinLine = (loc: LearnLocale | undefined, tech: Tech) => (loc?.kin[tech] ?? KIN[tech] ?? []).join(' · ');
 
 // engine/ratings.ts imports no translation, so the reasons of its
 // NOT_PRACTISABLE are marked here, word for word; a reason changed there
@@ -143,7 +155,7 @@ export function NewGameDialog({
   onDaily: () => void;
 }) {
   const t = useT();
-  const lt = useLearnText();
+  const loc = useLearnLocale();
   return (
     <Modal title={t('New game')} onClose={onClose}>
       <div className="level-list">
@@ -172,7 +184,7 @@ export function NewGameDialog({
             onClick={() => onStart(level)}
           >
             <strong>{t.level(level)}</strong>
-            <span>{levelDescription(lt, level)}</span>
+            <span>{levelDescription(loc, level)}</span>
           </button>
         ))}
         <button className="level-btn" onClick={onCustom}>
@@ -202,7 +214,7 @@ export function PracticeDialog({
   onPath: () => void;
 }) {
   const t = useT();
-  const lt = useLearnText();
+  const loc = useLearnLocale();
   const byCategory = techniquesByFamily();
   const shown = byCategory.flatMap(([, techs]) => techs);
   const playable = shown.filter((x) => PRACTICE_TECHS.includes(x));
@@ -261,7 +273,7 @@ export function PracticeDialog({
                     title={
                       ok
                         ? t('{what} ({level}, score {score})', {
-                            what: lt.techDoc(tech).what,
+                            what: techWhat(loc, tech),
                             level: t.level(info.level),
                             score: info.score
                           })
@@ -300,7 +312,7 @@ export function PracticeDialog({
                     {ok && poolSize(techKey(tech)) > 0 && (
                       <span className="pool-dot" title={t('cached puzzle ready')} />
                     )}
-                    {lt.kinLine(tech) && <span className="tech-kin">{lt.kinLine(tech)}</span>}
+                    {kinLine(loc, tech) && <span className="tech-kin">{kinLine(loc, tech)}</span>}
                   </button>
                 );
               })}
@@ -932,7 +944,7 @@ export function VictoryDialog({
       score: info.score,
       time: `${mm}:${ss}`,
       standing: verdict ? percentileText(verdict.percentile) : '',
-      link: `https://sudokui.app/#p=${info.puzzle}`
+      link: `https://sudokui.app${langRoot(t.lang)}#p=${info.puzzle}`
     };
     const text = verdict
       ? assisted

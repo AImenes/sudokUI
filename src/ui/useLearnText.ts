@@ -1,34 +1,17 @@
 // The Learn section's text in the chosen language. English is part of the
-// app; a translation is fetched the first time its language is used and
-// kept for the rest of the visit, so English players never download it.
-import { useEffect, useMemo, useState } from 'react';
-import { useSettings, Lang } from '../state/settings';
-import { learnText, LearnLocale, LearnText } from '../content/learnLocale';
-
-const loaded: Partial<Record<Lang, LearnLocale>> = {};
-const loaders: Record<'nb' | 'es', () => Promise<{ default: LearnLocale }>> = {
-  nb: () => import('../content/locales/nb'),
-  es: () => import('../content/locales/es')
-};
+// guide's chunk; a translation is fetched the first time its language is
+// used and kept for the rest of the visit (useLearnLocale.ts), so English
+// players never download it. Only the guide itself may use this: anything
+// always loaded takes useLearnLocale() instead, so the English guide stays
+// out of the main chunk.
+import { useMemo } from 'react';
+import { useSettings } from '../state/settings';
+import { learnText, LearnText } from '../content/learnLocale';
+import { useLearnLocale } from './useLearnLocale';
 
 export function useLearnText(): LearnText {
   const lang = useSettings((s) => s.lang);
-  const [, setLoads] = useState(0);
-  useEffect(() => {
-    if (lang === 'en' || loaded[lang]) return;
-    let live = true;
-    loaders[lang]()
-      .then((m) => {
-        loaded[lang] = m.default;
-        if (live) setLoads((n) => n + 1);
-      })
-      // a translation that cannot be fetched leaves the page in English
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [lang]);
-  const loc = lang === 'en' ? undefined : loaded[lang];
+  const loc = useLearnLocale();
   // until a translation arrives, the page reads in English
   return useMemo(() => (lang !== 'en' && loc ? learnText(lang, loc) : learnText('en')), [lang, loc]);
 }

@@ -4,12 +4,11 @@
 // so the guide can load on demand: nothing here imports the guide's locale
 // machinery (src/content/learnLocale.ts), which would pull all of the
 // guide's English into the main chunk.
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { LEVELS, LEVEL_MAX_SCORE, Level } from '../engine/ratings';
 import { BAND_LEADS, BAND_NOTES } from '../content/rating';
 import { useT } from '../content/i18n';
-import { useSettings, Lang } from '../state/settings';
-import type { LearnLocale } from '../content/learnLocale';
+import { useLearnLocale } from './useLearnLocale';
 
 /** what each band is called for, in one language: the lead and the techniques it leans on */
 export interface BandWords {
@@ -18,35 +17,15 @@ export interface BandWords {
 }
 
 const ENGLISH: BandWords = { leads: BAND_LEADS, notes: BAND_NOTES };
-const fetched: Partial<Record<Lang, BandWords>> = {};
-// the translation itself, the same file the guide fetches (useLearnText.ts)
-const loaders: Record<Exclude<Lang, 'en'>, () => Promise<{ default: LearnLocale }>> = {
-  nb: () => import('../content/locales/nb'),
-  es: () => import('../content/locales/es')
-};
-
 /**
  * The bands' leads and notes in the chosen language. English is at hand;
- * a translation is fetched the first time it is needed, and until it
- * arrives (or if it cannot be fetched) the words stay English.
+ * the translation is the guide's own file (useLearnLocale.ts), fetched the
+ * first time it is needed, and until it arrives (or if it cannot be
+ * fetched) the words stay English.
  */
 export function useBandWords(): BandWords {
-  const lang = useSettings((s) => s.lang);
-  const [, setLoads] = useState(0);
-  useEffect(() => {
-    if (lang === 'en' || fetched[lang]) return;
-    let live = true;
-    loaders[lang]()
-      .then((m) => {
-        fetched[lang] = { leads: m.default.bandLeads, notes: m.default.bandNotes };
-        if (live) setLoads((n) => n + 1);
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [lang]);
-  return (lang !== 'en' && fetched[lang]) || ENGLISH;
+  const loc = useLearnLocale();
+  return loc ? { leads: loc.bandLeads, notes: loc.bandNotes } : ENGLISH;
 }
 
 export function BandTable({

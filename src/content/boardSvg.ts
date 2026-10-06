@@ -6,6 +6,7 @@
 // The board is always drawn light: a diagram has to read the same on a dark
 // page, a light page and in an image search result.
 import { CellDigit, ChainLink, Step } from '../engine/steps';
+import { tr } from '../engine/text';
 
 export interface Example {
   puzzle: string;
@@ -246,12 +247,12 @@ ${parts.join('\n')}
 export function legendOf(step: Step): { colour: string; label: string }[] {
   const colouring = step.tech === 'SIMPLE_COLORS' || step.tech === 'MULTI_COLORS' || step.tech === 'MEDUSA_3D';
   const out: { colour: string; label: string }[] = [];
-  if (step.placements.length) out.push({ colour: COLOURS.place, label: 'place' });
-  if (step.eliminations.length) out.push({ colour: COLOURS.elim, label: 'remove' });
+  if (step.placements.length) out.push({ colour: COLOURS.place, label: tr`place` });
+  if (step.eliminations.length) out.push({ colour: COLOURS.elim, label: tr`remove` });
   if (colouring) return out;
   const banded = (role: 'primary' | 'secondary') => !!step.units?.some((u) => u.role === role);
-  if (step.primary?.length || step.links?.length || banded('primary')) out.push({ colour: COLOURS.primary, label: step.labels?.primary ?? 'the pattern' });
-  if (step.secondary?.length || banded('secondary')) out.push({ colour: COLOURS.secondary, label: step.labels?.secondary ?? 'supporting cells' });
-  if (step.fins?.length) out.push({ colour: COLOURS.fin, label: step.labels?.fins ?? 'fin' });
+  if (step.primary?.length || step.links?.length || banded('primary')) out.push({ colour: COLOURS.primary, label: step.labels?.primary ?? tr`the pattern` });
+  if (step.secondary?.length || banded('secondary')) out.push({ colour: COLOURS.secondary, label: step.labels?.secondary ?? tr`supporting cells` });
+  if (step.fins?.length) out.push({ colour: COLOURS.fin, label: step.labels?.fins ?? tr`fin` });
   return out;
 }

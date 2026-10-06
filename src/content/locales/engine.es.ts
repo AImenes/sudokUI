@@ -291,7 +291,12 @@ const engine: EngineTable = {
   "Extended Rectangle Type 1: {0} would form a deadly {1} loop; {2} must take one of its extra candidates.": "Rectángulo extendido tipo 1: {0} formarían un bucle mortal con {1}; {2} debe tomar uno de sus candidatos extra.",
   "{0}, the extra candidate: one of these cells must be it": "{0}, el candidato extra: una de estas casillas debe serlo",
   "Extended Rectangle Type 2: to avoid a deadly {0} loop in {1}, one of {2} must be {3}, so {4} is removed from cells seeing all of them.": "Rectángulo extendido tipo 2: para evitar un bucle mortal con {0} en {1}, una de {2} debe ser {3}, así que el {4} se elimina de las casillas que las ven a todas.",
-  "Tridagon: the cells {0} cannot all take digits from {1} (proven by complete case analysis), so the guardian {2} must take one of its other candidates, so {3} fall from it.": "Tridagon: las casillas {0} no pueden rellenarse todas con números de {1} (demostrado con un análisis completo de casos), así que la guardiana {2} debe tomar uno de sus otros candidatos, por lo que {3} se eliminan de ella."
+  "Tridagon: the cells {0} cannot all take digits from {1} (proven by complete case analysis), so the guardian {2} must take one of its other candidates, so {3} fall from it.": "Tridagon: las casillas {0} no pueden rellenarse todas con números de {1} (demostrado con un análisis completo de casos), así que la guardiana {2} debe tomar uno de sus otros candidatos, por lo que {3} se eliminan de ella.",
+  "place": "colocar",
+  "remove": "eliminar",
+  "the pattern": "el patrón",
+  "supporting cells": "casillas de apoyo",
+  "fin": "aleta"
 };
 
 export default engine;

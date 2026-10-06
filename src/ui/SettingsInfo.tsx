@@ -1,42 +1,21 @@
 // Settings dialog (gear) and help dialog (ⓘ): user preferences and a
 // reference for modes, shortcuts and the candidate model.
-import React, { useEffect, useState } from 'react';
-import { useSettings, MarkLayer, Font, Lang } from '../state/settings';
+import React from 'react';
+import { useSettings, MarkLayer, Font } from '../state/settings';
 import { LANGS, useT, msg, rich } from '../content/i18n';
 import { Modal } from './Dialogs';
 import type { LearnTarget } from './Learn';
 import { BandTable } from './BandTable';
 import { RATING_SUMMARY } from '../content/rating';
-import type { LearnLocale } from '../content/learnLocale';
+import { useLearnLocale } from './useLearnLocale';
 
 // The rating summary in the chosen language. English is at hand; a
-// translation comes from the guide's own locale file, fetched the first
-// time it is needed, as BandTable does, so the guide's machinery
-// (src/content/learnLocale.ts) stays out of the main chunk. Until it
-// arrives, or if it cannot be fetched, the summary reads in English.
-const summaries: Partial<Record<Lang, string>> = {};
-const summaryLoaders: Record<Exclude<Lang, 'en'>, () => Promise<{ default: LearnLocale }>> = {
-  nb: () => import('../content/locales/nb'),
-  es: () => import('../content/locales/es')
-};
-
+// translation comes from the guide's own locale file (useLearnLocale.ts),
+// so the guide's machinery (src/content/learnLocale.ts) stays out of the
+// main chunk. Until it arrives, or if it cannot be fetched, the summary
+// reads in English.
 function useRatingSummary(): string {
-  const lang = useSettings((s) => s.lang);
-  const [, setLoads] = useState(0);
-  useEffect(() => {
-    if (lang === 'en' || summaries[lang]) return;
-    let live = true;
-    summaryLoaders[lang]()
-      .then((m) => {
-        summaries[lang] = m.default.rating.summary;
-        if (live) setLoads((n) => n + 1);
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [lang]);
-  return (lang !== 'en' && summaries[lang]) || RATING_SUMMARY;
+  return useLearnLocale()?.rating.summary ?? RATING_SUMMARY;
 }
 
 function Toggle({

@@ -5,49 +5,24 @@
 // primary/secondary/fin/elimination data.
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '../state/gameStore';
-import { useSettings, Lang } from '../state/settings';
 import { TECHS, Tech } from '../engine/ratings';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 import { useT, rich, Translator } from '../content/i18n';
-import type { LearnLocale } from '../content/learnLocale';
+import { useLearnLocale } from './useLearnLocale';
 
 const KEY_SEEN = 'sudokui-cellkey-seen';
 
-// What a technique is in general comes from the Learn section's
-// translation, the same modules useLearnText fetches. Only the modules are
-// fetched here, not useLearnText, which would bring the whole English Learn
-// section (glossary, Intuition guide, landing pages) into the main bundle.
-const learnLoaders: Record<Exclude<Lang, 'en'>, () => Promise<{ default: LearnLocale }>> = {
-  nb: () => import('../content/locales/nb'),
-  es: () => import('../content/locales/es')
-};
-const techDocsLoaded: Partial<Record<Lang, LearnLocale['techDocs']>> = {};
-
 /**
- * What a technique is, in the player's language: English until the
- * translation has arrived, and if it cannot be fetched. The fetch starts
- * when the panel mounts, so it has arrived by the time a hint is asked for.
+ * What a technique is, in the player's language: from the Learn section's
+ * translation (useLearnLocale.ts), English until it has arrived and if it
+ * cannot be fetched. The fetch starts when the panel mounts, so it has
+ * arrived by the time a hint is asked for.
  */
 function useTechWhat(): (tech: Tech) => string {
-  const lang = useSettings((s) => s.lang);
-  const [, setLoads] = useState(0);
-  useEffect(() => {
-    if (lang === 'en' || techDocsLoaded[lang]) return;
-    let live = true;
-    learnLoaders[lang]()
-      .then((m) => {
-        techDocsLoaded[lang] = m.default.techDocs;
-        if (live) setLoads((n) => n + 1);
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [lang]);
-  const docs = lang === 'en' ? undefined : techDocsLoaded[lang];
-  return (tech) => docs?.[tech]?.what ?? TECH_DOCS[tech].what;
+  const loc = useLearnLocale();
+  return (tech) => loc?.techDocs[tech]?.what ?? TECH_DOCS[tech].what;
 }
 
 /**

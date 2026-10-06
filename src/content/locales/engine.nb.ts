@@ -291,7 +291,12 @@ const engine: EngineTable = {
   "Extended Rectangle Type 1: {0} would form a deadly {1} loop; {2} must take one of its extra candidates.": "Utvidet rektangel type 1: {0} ville danne en dødelig sløyfe med {1}; {2} må få en av ekstrakandidatene sine.",
   "{0}, the extra candidate: one of these cells must be it": "{0}, ekstrakandidaten: en av disse rutene må være det",
   "Extended Rectangle Type 2: to avoid a deadly {0} loop in {1}, one of {2} must be {3}, so {4} is removed from cells seeing all of them.": "Utvidet rektangel type 2: for å unngå en dødelig sløyfe med {0} i {1}, må en av {2} være {3}, så {4} fjernes fra ruter som ser dem alle.",
-  "Tridagon: the cells {0} cannot all take digits from {1} (proven by complete case analysis), so the guardian {2} must take one of its other candidates, so {3} fall from it.": "Tridagon: rutene {0} kan ikke alle fylles med tall fra {1} (bevist ved å gå gjennom alle tilfeller), så vokteren {2} må få en av de andre kandidatene sine, så {3} fjernes fra den."
+  "Tridagon: the cells {0} cannot all take digits from {1} (proven by complete case analysis), so the guardian {2} must take one of its other candidates, so {3} fall from it.": "Tridagon: rutene {0} kan ikke alle fylles med tall fra {1} (bevist ved å gå gjennom alle tilfeller), så vokteren {2} må få en av de andre kandidatene sine, så {3} fjernes fra den.",
+  "place": "plasser",
+  "remove": "fjern",
+  "the pattern": "mønsteret",
+  "supporting cells": "støtteruter",
+  "fin": "finne"
 };
 
 export default engine;

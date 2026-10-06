@@ -14,9 +14,6 @@ import { Step, CellDigit } from '../steps';
 import { Tech } from '../ratings';
 import { tr, joinAnd, unitName } from '../text';
 
-// other techniques import a house's name from here
-export { unitName };
-
 export function combinations<T>(items: T[], k: number): T[][] {
   const out: T[][] = [];
   const rec = (start: number, acc: T[]) => {
