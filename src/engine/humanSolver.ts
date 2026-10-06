@@ -139,6 +139,12 @@ export function findNextStep(g: Grid, order: Tech[] = SOLVE_ORDER): Step | null 
   return null;
 }
 
+/** The first instance of one technique in this position, or null. */
+export function findStep(tech: Tech, g: Grid): Step | null {
+  const finder = FINDERS[tech];
+  return finder ? finder(g) : null;
+}
+
 /**
  * Every technique that fires in this exact position, cheapest first — one
  * step per technique. The solve path always takes the cheapest, but a human
