@@ -11,6 +11,60 @@ import { frequencyLabel } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 
 const KEY_SEEN = 'sudokui-cellkey-seen';
+
+/** the chain trainer's panel: what each tap did, what the chain proves */
+export function ChainPanel() {
+  const chain = useGame((s) => s.chain);
+  const note = useGame((s) => s.chainNote);
+  const hint = useGame((s) => s.hint);
+  const endChain = useGame((s) => s.endChain);
+  const chainUndo = useGame((s) => s.chainUndo);
+  const chainClear = useGame((s) => s.chainClear);
+  const chainApply = useGame((s) => s.chainApply);
+  if (!chain) return null;
+  const elims = hint?.eliminations ?? [];
+  const n = chain.nodes.length;
+  return (
+    <div className="hint-panel" role="region" aria-label="Build a chain" aria-live="polite">
+      <div className="hint-head">
+        <strong>Build a chain</strong>
+        <span className="hint-level">{n ? `${n} candidate${n > 1 ? 's' : ''}` : 'your move'}</span>
+      </div>
+      <div className="hint-body">
+        <p className="chain-note">{note}</p>
+        {hint && <p>{hint.description}</p>}
+        {n > 1 && (
+          <ul className="hint-legend">
+            <li>
+              <i style={{ background: 'var(--hint-primary)' }} />
+              your chain: solid for a strong link, dashed for a weak one
+            </li>
+            {elims.length > 0 && (
+              <li>
+                <i style={{ background: 'var(--hint-elim)' }} />
+                removed by it
+              </li>
+            )}
+          </ul>
+        )}
+        <div className="hint-actions">
+          {elims.length > 0 && (
+            <button onClick={chainApply}>Apply: remove {elims.length}</button>
+          )}
+          <button className="ghost" onClick={chainUndo} disabled={!n} title="Take the last candidate off (Backspace)">
+            Undo last
+          </button>
+          <button className="ghost" onClick={chainClear} disabled={!n}>
+            Clear
+          </button>
+          <button className="ghost" onClick={endChain} title="Leave the trainer (Escape)">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 const KEY_VIEWS = 8;
 
 export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {

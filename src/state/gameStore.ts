@@ -23,6 +23,7 @@ import { Step } from '../engine/steps';
 import { walkFrames } from '../engine/hintFrames';
 import { justify, Move } from '../engine/justify';
 import { contradictionStep } from '../engine/techniques/forcing';
+import { Chain, EMPTY_CHAIN, extend, chainStep, conclusions } from '../engine/chainTrainer';
 import { Level, Tech, TECHS } from '../engine/ratings';
 import { useSettings } from './settings';
 import { useStats } from './stats';
@@ -174,6 +175,9 @@ export interface Proof {
   trail: boolean;
 }
 
+const CHAIN_INTRO =
+  'Tap a candidate to start. Then tap the next: a strong link first (the other candidate of a bivalue cell, or the digit\'s only other place in a house), then a weak one (two candidates that cannot both be true), and so on.';
+
 /** the solver's budget per wrong digit, so Check never stalls */
 const PROOF_BUDGET = { steps: 40, ms: 120 };
 const PROOFS_MAX = 3;
@@ -297,6 +301,10 @@ interface GameStore {
    *  player's own move did what it does */
   practiceTarget: Step | null;
   practiceFound: boolean;
+  /** the chain trainer: the chain being built, or null when not building
+   *  (src/engine/chainTrainer.ts); the board draws it through `hint` */
+  chain: Chain | null;
+  chainNote: string;
 
   startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null, dailyKey?: string) => void;
   /** blank board the user types givens onto; the running game is backed up */
@@ -352,6 +360,14 @@ interface GameStore {
    *  come off the board, the easier steps on the way are played, and the
    *  proving step is shown as a hint */
   showProof: (k: number) => void;
+  startChain: () => void;
+  endChain: () => void;
+  /** add the tapped candidate to the chain, if it links */
+  chainTap: (cell: number, digit: number) => void;
+  chainUndo: () => void;
+  chainClear: () => void;
+  /** remove what the chain proves false */
+  chainApply: () => void;
   togglePause: () => void;
   elapsedMs: () => number;
 }
@@ -402,6 +418,8 @@ export const useGame = create<GameStore>()(
       revertIndex: null as number | null,
       practiceTarget: null,
       practiceFound: false,
+      chain: null,
+      chainNote: '',
 
       startGame: (puzzle, score, level, practiceTech = null, dailyKey) => {
         const g = parseGrid(puzzle);
@@ -1150,6 +1168,88 @@ export const useGame = create<GameStore>()(
       },
 
       dismissRevert: () => set({ revertIndex: null, proofs: [] }),
+
+      startChain: () => {
+        const s = get();
+        if (!s.info || s.won) return;
+        set({
+          chain: EMPTY_CHAIN,
+          chainNote: CHAIN_INTRO,
+          hint: null,
+          hintStage: 'hidden',
+          selection: [],
+          armedDigit: null,
+          // the engine checks every link, and the trainer taps candidates,
+          // so they must be on the board
+          assisted: true,
+          autoCandidates: true
+        });
+      },
+
+      endChain: () => set({ chain: null, chainNote: '', hint: null, hintStage: 'hidden' }),
+
+      chainTap: (cell, digit) => {
+        const s = get();
+        if (!s.chain) return;
+        const g = engineGrid(s.cells);
+        const r = extend(g, s.chain, { cell, digit });
+        const drawn = r.chain.links.length > 0;
+        set({
+          chain: r.chain,
+          chainNote: r.message,
+          hint: drawn ? chainStep(g, r.chain) : null,
+          hintStage: drawn ? 'full' : 'hidden'
+        });
+      },
+
+      chainUndo: () => {
+        const s = get();
+        if (!s.chain?.nodes.length) return;
+        const chain: Chain = { nodes: s.chain.nodes.slice(0, -1), links: s.chain.links.slice(0, -1) };
+        const g = engineGrid(s.cells);
+        const drawn = chain.links.length > 0;
+        set({
+          chain,
+          chainNote: chain.nodes.length ? 'Last candidate taken off the chain.' : CHAIN_INTRO,
+          hint: drawn ? chainStep(g, chain) : null,
+          hintStage: drawn ? 'full' : 'hidden'
+        });
+      },
+
+      chainClear: () => set({ chain: EMPTY_CHAIN, chainNote: CHAIN_INTRO, hint: null, hintStage: 'hidden' }),
+
+      chainApply: () => {
+        const s = get();
+        if (!s.chain || !s.info) return;
+        const g = engineGrid(s.cells);
+        const elims = conclusions(g, s.chain);
+        if (!elims.length) return;
+        // sound by construction, from the candidates on the board; a true
+        // candidate struck out earlier could still mislead it, so never let
+        // a chain damage the board
+        if (elims.some((e) => Number(s.info!.solution[e.cell]) === e.digit)) {
+          set({ chainNote: 'This chain would remove a true digit, so a candidate on the board is wrong. Run Check to find it.' });
+          return;
+        }
+        const cells = cloneCells(s.cells);
+        for (const { cell, digit } of elims) {
+          cells[cell].excluded |= bit(digit);
+          cells[cell].corner &= ~bit(digit);
+          cells[cell].center &= ~bit(digit);
+        }
+        set({
+          cells,
+          history: [...s.history, cloneCells(s.cells)],
+          future: [],
+          errors: [],
+          chain: EMPTY_CHAIN,
+          chainNote: `Applied: your chain removed ${elims.length} candidate${elims.length > 1 ? 's' : ''}. Build another, or Done.`,
+          hint: null,
+          hintStage: 'hidden'
+        });
+        // the player's own logic, checked: credited like any unaided move
+        credit(g, elims.map((e) => ({ cell: e.cell, digit: e.digit, placed: false })));
+      },
 
       showProof: (k) => {
         const s = get();

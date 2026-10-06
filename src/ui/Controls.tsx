@@ -32,6 +32,7 @@ const BUTTONS: { name: string; icon: string; text: string; assist?: true }[] = [
   { name: 'Check', icon: '✓', text: 'Marks wrong digits, and pencil marks that have lost the true digit.', assist: true },
   { name: 'Steps', icon: '≡', text: 'Lists every step of one complete solution. You can jump to any of them.', assist: true },
   { name: 'Scan', icon: '🔎', text: 'Lists every technique that works in this exact position, not only the easiest.', assist: true },
+  { name: 'Chain', icon: '⛓', text: 'You build a chain on the board, candidate by candidate; the engine checks each link and says what the chain proves.', assist: true },
   { name: 'Auto candidates', icon: '⌗', text: 'Works out the candidates of every cell and keeps them up to date as you play.', assist: true },
   { name: 'Fill candidates', icon: '✎', text: 'Writes every candidate into the empty cells as pencil marks, once.', assist: true }
 ];
@@ -97,6 +98,7 @@ export function Controls({
     toggleAutoCandidates();
   };
 
+  const startChain = useGame((s) => s.startChain);
   const guarded = (name: string, run: () => void) => () => {
     if (assisted || !useSettings.getState().confirmAssist) return run();
     askAssist(name);
@@ -108,6 +110,7 @@ export function Controls({
     Check: check,
     Steps: onShowSteps,
     Scan: onScan,
+    Chain: startChain,
     'Auto candidates': onAutoToggle,
     'Fill candidates': fillCandidates
   };
@@ -202,6 +205,12 @@ export function Controls({
               🔎 {t('Scan')}
             </button>
           )}
+          <button
+            onClick={guarded('Chain', startChain)}
+            title="Build a chain yourself, candidate by candidate; the engine checks each link and says what it proves. Counts as assistance"
+          >
+            ⛓ {t('Chain')}
+          </button>
         </div>
 
         <span className="row-sub">{t('Writes marks for you')}</span>

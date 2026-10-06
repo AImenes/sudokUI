@@ -11,7 +11,7 @@ import { useT } from '../content/i18n';
 import { Grid } from './Grid';
 import { Poodle } from './Poodle';
 import { Controls } from './Controls';
-import { HintPanel } from './HintPanel';
+import { HintPanel, ChainPanel } from './HintPanel';
 import {
   useNewGame,
   warmSeededPools,
@@ -147,6 +147,7 @@ export default function App() {
   const proofs = useGame((s) => s.proofs);
   const showProof = useGame((s) => s.showProof);
   const practiceFound = useGame((s) => s.practiceFound);
+  const chain = useGame((s) => s.chain);
   const requestHint = useGame((s) => s.requestHint);
   const selection = useGame((s) => s.selection);
   const select = useGame((s) => s.select);
@@ -351,6 +352,11 @@ export default function App() {
       switch (e.code) {
         case 'Backspace':
         case 'Delete':
+          if (useGame.getState().chain) {
+            e.preventDefault();
+            useGame.getState().chainUndo();
+            break;
+          }
           e.preventDefault();
           // held modifiers route through the temporary mode, so
           // Shift+Backspace erases corner marks, Ctrl+Backspace centre
@@ -408,7 +414,8 @@ export default function App() {
           openLearn();
           break;
         case 'Escape':
-          select([], false);
+          if (useGame.getState().chain) useGame.getState().endChain();
+          else select([], false);
           break;
         case 'ArrowUp':
         case 'ArrowDown':
@@ -581,7 +588,7 @@ export default function App() {
               </button>
             </div>
           )}
-          <HintPanel onLearn={(tech) => openLearn({ tab: 'techniques', tech })} />
+          {chain ? <ChainPanel /> : <HintPanel onLearn={(tech) => openLearn({ tab: 'techniques', tech })} />}
           {custom && (
             <div className="hint-panel">
               <div className="hint-head">

@@ -141,6 +141,36 @@ test.describe('the guide', () => {
   });
 });
 
+test.describe('the chain trainer', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test('a tapped bivalue pair is a strong link, Backspace takes it off, Escape leaves', async ({ page }) => {
+    await open(page);
+    await page.getByRole('button', { name: /Chain/ }).first().click();
+    await page.getByRole('button', { name: 'Use Chain' }).click();
+    const panel = page.getByRole('region', { name: 'Build a chain' });
+    await expect(panel).toBeVisible();
+    // r1c1 holds only 4 and 5; candidate glyphs sit at fixed spots in the cell
+    const box = (await page.locator('svg.board').boundingBox())!;
+    const k = box.width / (9 * 100 + 8);
+    const tap = async (cell: number, d: number) => {
+      const x = box.x + (4 + (cell % 9) * 100 + 22 + ((d - 1) % 3) * 28) * k;
+      const y = box.y + (4 + Math.floor(cell / 9) * 100 + 23 + Math.floor((d - 1) / 3) * 28) * k;
+      await page.mouse.click(x, y);
+    };
+    await tap(0, 4);
+    await expect(panel).toContainText('starts the chain');
+    await tap(0, 5);
+    await expect(panel).toContainText('Strong link');
+    await expect(panel).toContainText('holds only 4 and 5');
+    expect(await page.locator('svg.board .chain-arrows g path').count()).toBe(2);
+    await page.keyboard.press('Backspace');
+    await expect(panel).toContainText('1 candidate');
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+  });
+});
+
 test.describe('your path', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 

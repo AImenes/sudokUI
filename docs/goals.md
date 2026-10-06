@@ -57,7 +57,8 @@ uniqueness family and Exocets. That is the ground the app must own.
    uses, the next one a click from its practice (`src/content/path.ts`).
 2. **Chain trainer.** The player builds a chain on the board link by link;
    the engine checks each link and says what the chain proves so far. The
-   reverse of the hint renderer that draws chains today.
+   reverse of the hint renderer that draws chains today. Built:
+   [chain-trainer.md](chain-trainer.md).
 3. **"Why not?" on every mistake.** When Check flags a placement, show the
    technique that proves the digit wrong. Mistakes are where learning
    happens. Built: Check names the peer that already holds the digit or
