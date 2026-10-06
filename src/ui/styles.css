@@ -719,6 +719,23 @@ button {
   border-color: var(--accent);
 }
 
+/* a key is held: no text selection or callout, and the digit moves into
+   the corner, the mark it is being entered as */
+.num-btn {
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.num-btn.held-corner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 4px 0 0 8px;
+  font-size: 15px;
+  border-color: var(--accent);
+  background: var(--accent-fill);
+}
+
 /* number-first: the armed digit reads like an active mode button */
 .num-btn.armed {
   background: var(--accent-fill);
@@ -2722,17 +2739,31 @@ html:not([lang='en']) .zone-note {
   color: var(--muted);
 }
 
+/* on a phone the status goes under the name, in a second row of its own:
+   every item placed by hand, so no browser has to guess */
 @media (max-width: 480px) {
-  .path-row {
+  .path-section .path-row {
     grid-template-columns: 20px 1fr auto;
+    grid-template-rows: auto auto;
   }
 
-  .path-play {
+  .path-section .path-mark {
+    grid-row: 1 / span 2;
+    grid-column: 1;
+  }
+
+  .path-section .path-name {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .path-section .path-play {
+    grid-row: 2;
     grid-column: 2;
     white-space: normal;
   }
 
-  .path-practice {
+  .path-section .path-practice {
     grid-row: 1 / span 2;
     grid-column: 3;
   }

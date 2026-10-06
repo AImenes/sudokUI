@@ -338,6 +338,35 @@ test.describe('phone, 390 x 844', () => {
     await expect(dialog.getByRole('tab', { name: 'Glossary' })).toBeVisible();
     await dialog.getByRole('tab', { name: /Your path/ }).click();
     await selected(/Your path/);
+    // the ladder's rows on a phone: the status sits inside its row, and
+    // the rows do not overlap
+    const rows = dialog.locator('.path-section .path-row');
+    for (let i = 0; i < 4; i++) {
+      const row = (await rows.nth(i).boundingBox())!;
+      const play = (await rows.nth(i).locator('.path-play').boundingBox())!;
+      expect(play.y + play.height).toBeLessThanOrEqual(row.y + row.height + 1);
+      if (i) {
+        const prev = (await rows.nth(i - 1).boundingBox())!;
+        expect(row.y).toBeGreaterThanOrEqual(prev.y + prev.height - 1);
+      }
+    }
+  });
+
+  test('a held number key enters a corner mark, a tapped one the digit', async ({ page }) => {
+    await open(page);
+    const c = await cellBox(page, 40);
+    await page.touchscreen.tap(c.x, c.y);
+    await expect(page.locator('#board-status')).toContainText('Row 5, column 5: empty');
+    const key = (await page.locator('.num-btn', { hasText: '4' }).boundingBox())!;
+    const at = { x: key.x + key.width / 2, y: key.y + key.height / 2 };
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
+    await expect(page.locator('.num-btn.held-corner')).toHaveText('4');
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.locator('#board-status')).toContainText('corner marks 4');
+    await expect(page.locator('.num-btn.held-corner')).toHaveCount(0);
+    await page.touchscreen.tap(at.x, at.y);
+    await expect(page.locator('#board-status')).toContainText('Row 5, column 5: 4');
   });
 
   test('a swipe over the board scrolls the page, a tap still selects', async ({ page }) => {
@@ -359,17 +388,26 @@ test.describe('phone, 390 x 844', () => {
     const tap = await cellBox(page, 40);
     await page.touchscreen.tap(tap.x, tap.y);
     await expect(page.locator('#board-status')).toContainText('Row 5, column 5');
-    // and a sideways drag still selects a run of cells
+    // a quick sideways flick is neither a tap nor a selection
     const from = await cellBox(page, 54);
     const to = await cellBox(page, 58);
+    // (each dispatched move is a round trip, so a flick is two of them)
+    const sideways = async (steps: number) => {
+      for (let i = 1; i <= steps; i++) {
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: from.x + ((to.x - from.x) * i) / steps, y: from.y }] });
+      }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y }] });
-    for (let i = 1; i <= 8; i++) {
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: from.x + ((to.x - from.x) * i) / 8, y: from.y }] });
-    }
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await sideways(2);
+    await expect(page.locator('#board-status')).toContainText('Row 5, column 5');
+    // a finger that rests first, then drags sideways: a run of cells
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y }] });
+    await page.waitForTimeout(300);
+    await sideways(8);
     await expect(page.locator('#board-status')).toHaveText('5 cells selected.');
-    // and a finger that holds still first may then drag downwards: a
-    // column of cells, and the page stays put
+    // and one that rests, then drags downwards: a column of cells, and
+    // the page stays put
     const before = await scrolled();
     const top = await cellBox(page, 4);
     const bottom = await cellBox(page, 40);
