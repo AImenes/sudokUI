@@ -25,10 +25,11 @@ import { justify, Move } from '../engine/justify';
 import { contradictionStep } from '../engine/techniques/forcing';
 import { Chain, EMPTY_CHAIN, extend, chainStep, conclusions } from '../engine/chainTrainer';
 import type { CellDigit } from '../engine/steps';
-import { Level, Tech, TECHS } from '../engine/ratings';
+import { Level, Tech } from '../engine/ratings';
 import { useSettings } from './settings';
 import { useStats } from './stats';
 import { justifyMove } from './pools';
+import { translator, msg } from '../content/i18n';
 
 export type EntryMode = 'digit' | 'corner' | 'center' | 'color';
 
@@ -176,8 +177,10 @@ export interface Proof {
   trail: boolean;
 }
 
-const CHAIN_INTRO =
-  'Tap a candidate to start. Then tap the next: a strong link first (the other candidate of a bivalue cell, or the digit\'s only other place in a house), then a weak one (two candidates that cannot both be true), and so on.';
+/** the chain trainer's opening note; translated where it is shown: t(CHAIN_INTRO) */
+const CHAIN_INTRO = msg(
+  'Tap a candidate to start. Then tap the next: a strong link first (the other candidate of a bivalue cell, or the digit\'s only other place in a house), then a weak one (two candidates that cannot both be true), and so on.'
+);
 
 /** the solver's budget per wrong digit, so Check never stalls */
 const PROOF_BUDGET = { steps: 40, ms: 120 };
@@ -390,6 +393,12 @@ function checkWin(cells: CellState[], solution: string): boolean {
   return true;
 }
 
+/** practice: the player's own move did what the target technique does */
+function foundNotice(tech: Tech): string {
+  const t = translator();
+  return t('You found the {name} 🎯', { name: t.tech(tech) });
+}
+
 /** a finished game goes into the band record; practice starts part-way
  *  through and compares with nothing */
 function recordWin(s: GameStore) {
@@ -523,7 +532,8 @@ export const useGame = create<GameStore>()(
         const s = get();
         if (!s.info) return;
         get().startGame(s.info.puzzle, s.info.score, s.info.level, s.info.practiceTech, s.info.dailyKey);
-        set({ notice: 'Puzzle restarted' });
+        const t = translator();
+        set({ notice: t('Puzzle restarted') });
       },
 
       startCustomEntry: () => {
@@ -564,11 +574,26 @@ export const useGame = create<GameStore>()(
           return cell;
         });
         const found = digits.filter(Boolean).length;
+        const t = translator();
+        // the button the custom-entry board shows, by its own label
+        const vars = { n: found, doubts: doubts.length, button: t('Check & play') };
         set({
           cells,
           scanPreview: preview,
           scanDoubts: doubts,
-          notice: `Read ${found} digit${found === 1 ? '' : 's'} from the photo${doubts.length ? `, unsure about ${doubts.length}` : ''}. Compare with the preview, fix anything wrong, then press Check & play`
+          notice: doubts.length
+            ? t(
+                found === 1
+                  ? 'Read {n} digit from the photo, unsure about {doubts}. Compare with the preview, fix anything wrong, then press {button}'
+                  : 'Read {n} digits from the photo, unsure about {doubts}. Compare with the preview, fix anything wrong, then press {button}',
+                vars
+              )
+            : t(
+                found === 1
+                  ? 'Read {n} digit from the photo. Compare with the preview, fix anything wrong, then press {button}'
+                  : 'Read {n} digits from the photo. Compare with the preview, fix anything wrong, then press {button}',
+                vars
+              )
         });
       },
 
@@ -602,7 +627,8 @@ export const useGame = create<GameStore>()(
         if (!v.ok) return v.reason;
         set({ custom: false, customBackup: null, scanPreview: null, scanDoubts: [] });
         get().startGame(puzzle, v.score, v.level);
-        set({ notice: `Puzzle checked: unique solution, rated ${v.score} (${v.level})` });
+        const t = translator();
+        set({ notice: t('Puzzle checked: unique solution, rated {score} ({level})', { score: v.score, level: t.level(v.level) }) });
         return null;
       },
 
@@ -745,7 +771,7 @@ export const useGame = create<GameStore>()(
           hint: null,
           hintStage: 'hidden',
           errors: [],
-          ...(found ? { practiceFound: true, notice: `You found the ${TECHS[s.info!.practiceTech!].name} 🎯` } : {}),
+          ...(found ? { practiceFound: true, notice: foundNotice(s.info!.practiceTech!) } : {}),
           ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {})
         });
         if (before) credit(before, moves);
@@ -898,6 +924,7 @@ export const useGame = create<GameStore>()(
         const s = get();
         const cells = cloneCells(s.cells);
         let notice: string | null = null;
+        const t = translator();
 
         if (!s.autoCandidates) {
           const eg = engineGrid(cells);
@@ -913,10 +940,33 @@ export const useGame = create<GameStore>()(
             }
             if (c.center & ~eg.cands[i]) dropped++;
           }
-          const parts: string[] = [];
-          if (adopted) parts.push(`kept your eliminations in ${adopted} cell${adopted > 1 ? 's' : ''}`);
-          if (dropped) parts.push(`dropped impossible marks in ${dropped} cell${dropped > 1 ? 's' : ''}`);
-          if (parts.length) notice = `Auto candidates on: ${parts.join(', ')}`;
+          const vars = { n: adopted, m: dropped };
+          if (adopted && dropped) {
+            notice =
+              adopted > 1
+                ? t(
+                    dropped > 1
+                      ? 'Auto candidates on: kept your eliminations in {n} cells, dropped impossible marks in {m} cells'
+                      : 'Auto candidates on: kept your eliminations in {n} cells, dropped impossible marks in {m} cell',
+                    vars
+                  )
+                : t(
+                    dropped > 1
+                      ? 'Auto candidates on: kept your eliminations in {n} cell, dropped impossible marks in {m} cells'
+                      : 'Auto candidates on: kept your eliminations in {n} cell, dropped impossible marks in {m} cell',
+                    vars
+                  );
+          } else if (adopted) {
+            notice = t(
+              adopted > 1 ? 'Auto candidates on: kept your eliminations in {n} cells' : 'Auto candidates on: kept your eliminations in {n} cell',
+              vars
+            );
+          } else if (dropped) {
+            notice = t(
+              dropped > 1 ? 'Auto candidates on: dropped impossible marks in {m} cells' : 'Auto candidates on: dropped impossible marks in {m} cell',
+              vars
+            );
+          }
         } else {
           const { autoOffMaterialize, materializeLayer } = useSettings.getState();
           if (autoOffMaterialize) {
@@ -924,11 +974,13 @@ export const useGame = create<GameStore>()(
             for (let i = 0; i < 81; i++) {
               if (!cells[i].given && !cells[i].value) cells[i][materializeLayer] = eg.cands[i];
             }
-            notice = `Auto candidates off. Current state written to ${
-              materializeLayer === 'corner' ? 'corner' : 'centre'
-            } marks (Ctrl+Z reverts)`;
+            notice = t(
+              materializeLayer === 'corner'
+                ? 'Auto candidates off. Current state written to corner marks (Ctrl+Z reverts)'
+                : 'Auto candidates off. Current state written to centre marks (Ctrl+Z reverts)'
+            );
           } else {
-            notice = 'Auto candidates off';
+            notice = t('Auto candidates off');
           }
         }
         const materialized = s.autoCandidates && useSettings.getState().autoOffMaterialize;
@@ -970,7 +1022,21 @@ export const useGame = create<GameStore>()(
           if (cells[i][layer] && cells[i][layer] !== g.cands[i]) corrected++;
           cells[i][layer] = g.cands[i];
         }
-        const layerName = layer === 'corner' ? 'corner' : 'centre';
+        const t = translator();
+        const corner = layer === 'corner';
+        const vars = { n: corrected };
+        // the layer, the selection and the corrections, each sentence whole
+        const notice = !corrected
+          ? partial
+            ? t(corner ? 'Filled corner marks in selection' : 'Filled centre marks in selection')
+            : t(corner ? 'Filled corner marks' : 'Filled centre marks')
+          : corrected === 1
+            ? partial
+              ? t(corner ? 'Filled corner marks in selection; corrected {n} cell' : 'Filled centre marks in selection; corrected {n} cell', vars)
+              : t(corner ? 'Filled corner marks; corrected {n} cell' : 'Filled centre marks; corrected {n} cell', vars)
+            : partial
+              ? t(corner ? 'Filled corner marks in selection; corrected {n} cells' : 'Filled centre marks in selection; corrected {n} cells', vars)
+              : t(corner ? 'Filled corner marks; corrected {n} cells' : 'Filled centre marks; corrected {n} cells', vars);
         set({
           cells,
           history: [...s.history, cloneCells(s.cells)],
@@ -979,9 +1045,7 @@ export const useGame = create<GameStore>()(
           // a full-board fill makes every mark machine-complete; a partial
           // fill says nothing about the player's other marks
           ...(partial ? {} : { markContract: 'exhaustive' as MarkContract }),
-          notice: `Filled ${layerName} marks${partial ? ' in selection' : ''}${
-            corrected ? `; corrected ${corrected} cell${corrected > 1 ? 's' : ''}` : ''
-          }`
+          notice
         });
       },
 
@@ -1010,11 +1074,16 @@ export const useGame = create<GameStore>()(
           changed++;
         }
         if (!changed) return;
+        const t = translator();
+        const vars = { n: changed };
         set({
           cells,
           history: [...s.history, cloneCells(s.cells)],
           future: [],
-          notice: `Swapped corner and centre marks in ${changed} cell${changed > 1 ? 's' : ''}${partial ? ' (selection)' : ''}`
+          notice:
+            changed > 1
+              ? t(partial ? 'Swapped corner and centre marks in {n} cells (selection)' : 'Swapped corner and centre marks in {n} cells', vars)
+              : t(partial ? 'Swapped corner and centre marks in {n} cell (selection)' : 'Swapped corner and centre marks in {n} cell', vars)
         });
       },
 
@@ -1028,6 +1097,7 @@ export const useGame = create<GameStore>()(
           return;
         }
         const sol = s.info.solution;
+        const t = translator();
         // a wrong digit on the board: no technique can reason from it, and
         // the player should hear that it is a digit, not their marks
         if (s.cells.some((c, i) => c.value && !c.given && c.value !== Number(sol[i]))) {
@@ -1035,7 +1105,7 @@ export const useGame = create<GameStore>()(
             hint: null,
             hintStage: 'hidden',
             assisted: true,
-            notice: 'A placed digit is wrong, so no hint can be trusted. Run Check to find it'
+            notice: t('A placed digit is wrong, so no hint can be trusted. Run Check to find it')
           });
           return;
         }
@@ -1049,8 +1119,7 @@ export const useGame = create<GameStore>()(
               hint: null,
               hintStage: 'hidden',
               assisted: true,
-              notice:
-                'A pencil mark somewhere dropped a digit that belongs. Run Check to find it'
+              notice: t('A pencil mark somewhere dropped a digit that belongs. Run Check to find it')
             });
             return;
           }
@@ -1067,7 +1136,7 @@ export const useGame = create<GameStore>()(
             hint: null,
             hintStage: 'hidden',
             assisted: true,
-            notice: 'Your pencil marks lead to an impossible deduction. Run Check'
+            notice: t('Your pencil marks lead to an impossible deduction. Run Check')
           });
         } else {
           set({ hint: null, hintStage: 'hidden' });
@@ -1175,20 +1244,27 @@ export const useGame = create<GameStore>()(
         // why each wrong digit is wrong: the learning is in the mistake
         const wrongCells = errors.filter((i) => s.cells[i].value);
         const proofs = wrongCells.length ? proveWrong(s.cells, s.info.solution, wrongCells) : [];
+        const t = translator();
         set({
           errors,
           revertIndex,
           proofs,
           notice:
             errors.length === 0
-              ? 'Everything checks out so far'
-              : `${errors.length} problem${errors.length > 1 ? 's' : ''} found: values or candidate lists missing the true digit`
+              ? t('Everything checks out so far')
+              : t(
+                  errors.length > 1
+                    ? '{n} problems found: values or candidate lists missing the true digit'
+                    : '{n} problem found: values or candidate lists missing the true digit',
+                  { n: errors.length }
+                )
         });
       },
 
       revertToValid: () => {
         const s = get();
         if (s.revertIndex === null || !s.history[s.revertIndex]) return;
+        const t = translator();
         set({
           cells: cloneCells(s.history[s.revertIndex]),
           history: [...s.history, cloneCells(s.cells)],
@@ -1198,7 +1274,7 @@ export const useGame = create<GameStore>()(
           proofs: [],
           hint: null,
           hintStage: 'hidden',
-          notice: 'Back to the last correct position (Ctrl+Z restores your entries)'
+          notice: t('Back to the last correct position (Ctrl+Z restores your entries)')
         });
       },
 
@@ -1207,12 +1283,15 @@ export const useGame = create<GameStore>()(
       startChain: (goal) => {
         const s = get();
         if (!s.info || s.won) return;
+        const t = translator();
+        // the goal and the instructions are separate sentences
+        const list = goal?.map((c) => t('{digit} from {cell}', { digit: c.digit, cell: cellName(c.cell) })).join(', ');
         set({
           chain: EMPTY_CHAIN,
           chainGoal: goal?.length ? goal : null,
           chainNote: goal?.length
-            ? `Goal: remove ${goal.map((c) => `${c.digit} from ${cellName(c.cell)}`).join(', ')} (circled purple). ${CHAIN_INTRO}`
-            : CHAIN_INTRO,
+            ? `${t('Goal: remove {list} (circled purple).', { list: list! })} ${t(CHAIN_INTRO)}`
+            : t(CHAIN_INTRO),
           hint: null,
           hintStage: 'hidden',
           selection: [],
@@ -1248,12 +1327,16 @@ export const useGame = create<GameStore>()(
         // practice: the goal is met once the chain removes one of its candidates
         const removed = r.ok ? conclusions(g, r.chain) : [];
         const met = !!s.chainGoal && !s.practiceFound && s.chainGoal.some((c) => removed.some((e) => e.cell === c.cell && e.digit === c.digit));
+        const t = translator();
         set({
           chain: r.chain,
-          chainNote: met ? `${r.message} That reaches the goal: you built it yourself.` : r.message,
+          // r.message is the engine's sentence, already in the player's language
+          chainNote: met ? t('{message} That reaches the goal: you built it yourself.', { message: r.message }) : r.message,
           hint: drawn ? chainStep(g, r.chain, { suggest: s.chainSuggest, goal: s.chainGoal ?? undefined }) : null,
           hintStage: drawn ? 'full' : 'hidden',
-          ...(met && s.info?.practiceTech ? { practiceFound: true, notice: `You built the ${TECHS[s.info.practiceTech].name} yourself 🎯` } : {})
+          ...(met && s.info?.practiceTech
+            ? { practiceFound: true, notice: t('You built the {name} yourself 🎯', { name: t.tech(s.info.practiceTech) }) }
+            : {})
         });
       },
 
@@ -1263,15 +1346,16 @@ export const useGame = create<GameStore>()(
         const chain: Chain = { nodes: s.chain.nodes.slice(0, -1), links: s.chain.links.slice(0, -1) };
         const g = engineGrid(s.cells);
         const drawn = chain.links.length > 0 || (s.chainSuggest && chain.nodes.length > 0);
+        const t = translator();
         set({
           chain,
-          chainNote: chain.nodes.length ? 'Last candidate taken off the chain.' : CHAIN_INTRO,
+          chainNote: chain.nodes.length ? t('Last candidate taken off the chain.') : t(CHAIN_INTRO),
           hint: drawn ? chainStep(g, chain, { suggest: s.chainSuggest, goal: s.chainGoal ?? undefined }) : null,
           hintStage: drawn ? 'full' : 'hidden'
         });
       },
 
-      chainClear: () => set({ chain: EMPTY_CHAIN, chainNote: CHAIN_INTRO, hint: null, hintStage: 'hidden' }),
+      chainClear: () => set({ chain: EMPTY_CHAIN, chainNote: translator()(CHAIN_INTRO), hint: null, hintStage: 'hidden' }),
 
       chainApply: () => {
         const s = get();
@@ -1279,11 +1363,12 @@ export const useGame = create<GameStore>()(
         const g = engineGrid(s.cells);
         const elims = conclusions(g, s.chain);
         if (!elims.length) return;
+        const t = translator();
         // sound by construction, from the candidates on the board; a true
         // candidate struck out earlier could still mislead it, so never let
         // a chain damage the board
         if (elims.some((e) => Number(s.info!.solution[e.cell]) === e.digit)) {
-          set({ chainNote: 'This chain would remove a true digit, so a candidate on the board is wrong. Run Check to find it.' });
+          set({ chainNote: t('This chain would remove a true digit, so a candidate on the board is wrong. Run Check to find it.') });
           return;
         }
         const cells = cloneCells(s.cells);
@@ -1298,7 +1383,13 @@ export const useGame = create<GameStore>()(
           future: [],
           errors: [],
           chain: EMPTY_CHAIN,
-          chainNote: `Applied: your chain removed ${elims.length} candidate${elims.length > 1 ? 's' : ''}. Build another, or Done.`,
+          // {button}: the trainer's Done button, by its own label
+          chainNote: t(
+            elims.length > 1
+              ? 'Applied: your chain removed {n} candidates. Build another, or {button}.'
+              : 'Applied: your chain removed {n} candidate. Build another, or {button}.',
+            { n: elims.length, button: t('Done') }
+          ),
           hint: null,
           hintStage: 'hidden'
         });
@@ -1310,10 +1401,15 @@ export const useGame = create<GameStore>()(
         const s = get();
         const proof = s.proofs[k];
         if (!proof || !s.info) return;
+        const t = translator();
         if (proof.conflict !== null) {
           set({
             selection: [proof.cell, proof.conflict],
-            notice: `${cellName(proof.cell)} cannot be ${proof.wrong}: ${cellName(proof.conflict)} already holds it`
+            notice: t('{cell} cannot be {digit}: {other} already holds it', {
+              cell: cellName(proof.cell),
+              digit: proof.wrong,
+              other: cellName(proof.conflict)
+            })
           });
           return;
         }
@@ -1337,7 +1433,9 @@ export const useGame = create<GameStore>()(
         // the easier steps, and a trail's forced singles, are visible only
         // with their candidates on the board
         const autoCandidates = s.autoCandidates || path.length > 0 || proof.trail;
-        const candidatesOn = autoCandidates && !s.autoCandidates ? '; auto candidates on' : '';
+        // auto candidates switched on here: the notice says so
+        const candidatesOn = autoCandidates && !s.autoCandidates;
+        const vars = { n: path.length, name: t.tech(last.tech) };
         set({
           cells,
           selection: [],
@@ -1352,10 +1450,31 @@ export const useGame = create<GameStore>()(
           assisted: true,
           autoCandidates,
           notice: path.length
-            ? `${path.length} easier step${path.length > 1 ? 's' : ''} played first, then the ${TECHS[last.tech].name}${candidatesOn} (Ctrl+Z goes back)`
+            ? path.length > 1
+              ? t(
+                  candidatesOn
+                    ? '{n} easier steps played first, then the {name}; auto candidates on (Ctrl+Z goes back)'
+                    : '{n} easier steps played first, then the {name} (Ctrl+Z goes back)',
+                  vars
+                )
+              : t(
+                  candidatesOn
+                    ? '{n} easier step played first, then the {name}; auto candidates on (Ctrl+Z goes back)'
+                    : '{n} easier step played first, then the {name} (Ctrl+Z goes back)',
+                  vars
+                )
             : proof.trail
-              ? `The wrong digit is off the board. Walk through it to see what placing it would force${candidatesOn}`
-              : `The wrong digit is off the board; the ${TECHS[last.tech].name} shows why${candidatesOn}`
+              ? t(
+                  candidatesOn
+                    ? 'The wrong digit is off the board. Walk through it to see what placing it would force; auto candidates on'
+                    : 'The wrong digit is off the board. Walk through it to see what placing it would force'
+                )
+              : t(
+                  candidatesOn
+                    ? 'The wrong digit is off the board; the {name} shows why; auto candidates on'
+                    : 'The wrong digit is off the board; the {name} shows why',
+                  vars
+                )
         });
       },
 
@@ -1370,10 +1489,11 @@ export const useGame = create<GameStore>()(
         // start the underlying game (computes the solution), then overlay
         // the shared progress: entries, marks, exclusions and colours
         get().startGame(givens, v.score, v.level);
+        const t = translator();
         set({
           cells: decoded.cells,
           autoCandidates: decoded.autoCandidates,
-          notice: 'Shared position loaded, with entries, marks and colours'
+          notice: t('Shared position loaded, with entries, marks and colours')
         });
         return true;
       },
@@ -1409,6 +1529,7 @@ export const useGame = create<GameStore>()(
             cells[cell].value = digit;
           }
         }
+        const t = translator();
         set({
           cells,
           selection: [],
@@ -1421,7 +1542,7 @@ export const useGame = create<GameStore>()(
           hintStage: 'hidden',
           errors: [],
           revertIndex: null,
-          notice: `Jumped to step ${Math.min(k, steps.length - 1) + 1} of ${steps.length} (Ctrl+Z goes back)`
+          notice: t('Jumped to step {k} of {n} (Ctrl+Z goes back)', { k: Math.min(k, steps.length - 1) + 1, n: steps.length })
         });
       },
 
@@ -1583,11 +1704,18 @@ export type PuzzleValidation =
  * hard puzzle can take a few hundred milliseconds.
  */
 export function validatePuzzle(puzzle: string): PuzzleValidation {
+  // the reason is shown to the player, in their language
+  const t = translator();
   const clues = [...puzzle].filter((ch) => ch >= '1' && ch <= '9').length;
   if (clues < 17) {
     return {
       ok: false,
-      reason: `Only ${clues} given${clues === 1 ? '' : 's'}. A puzzle needs at least 17 to have a unique solution.`
+      reason: t(
+        clues === 1
+          ? 'Only {n} given. A puzzle needs at least 17 to have a unique solution.'
+          : 'Only {n} givens. A puzzle needs at least 17 to have a unique solution.',
+        { n: clues }
+      )
     };
   }
   for (const unit of UNITS) {
@@ -1595,17 +1723,17 @@ export function validatePuzzle(puzzle: string): PuzzleValidation {
     for (const c of unit) {
       const ch = puzzle[c];
       if (ch < '1' || ch > '9') continue;
-      if (seen.has(ch)) return { ok: false, reason: `Conflicting givens: two ${ch}s share a row, column or box.` };
+      if (seen.has(ch)) return { ok: false, reason: t('Conflicting givens: two {digit}s share a row, column or box.', { digit: ch }) };
       seen.add(ch);
     }
   }
   const g = parseGrid(puzzle);
-  if (!g) return { ok: false, reason: 'That is not a valid puzzle.' };
+  if (!g) return { ok: false, reason: t('That is not a valid puzzle.') };
   const solutions = countSolutions(g, 2);
-  if (solutions === 0) return { ok: false, reason: 'The puzzle has no solution.' };
-  if (solutions > 1) return { ok: false, reason: 'The puzzle has more than one solution.' };
+  if (solutions === 0) return { ok: false, reason: t('The puzzle has no solution.') };
+  if (solutions > 1) return { ok: false, reason: t('The puzzle has more than one solution.') };
   const rating = ratePuzzle(parseGrid(puzzle)!);
-  if (!rating) return { ok: false, reason: 'The puzzle could not be rated.' };
+  if (!rating) return { ok: false, reason: t('The puzzle could not be rated.') };
   return { ok: true, score: rating.score, level: rating.level };
 }
 

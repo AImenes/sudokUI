@@ -22,6 +22,12 @@ import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { readSource, placeholders, holes, Finding } from './i18n-source';
 import { english } from '../src/content/i18n';
+import uiNb from '../src/content/locales/ui.nb';
+import uiEs from '../src/content/locales/ui.es';
+import engineNb from '../src/content/locales/engine.nb';
+import engineEs from '../src/content/locales/engine.es';
+
+const TABLES = { ui: { nb: uiNb, es: uiEs }, engine: { nb: engineNb, es: engineEs } };
 
 interface Entry {
   nb: string;
@@ -87,10 +93,12 @@ function rewrite(file: string, name: string, entries: Record<string, string>) {
   const src = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
   const open = src.indexOf(`const ${name}: `);
   const start = src.indexOf('{', open);
-  const end = src.indexOf('\n};', start);
+  // the object closes on a line of its own, or at once when written {}
+  const after = src.startsWith('{}', start) ? start + 2 : src.indexOf('\n};', start) + 2;
+  if (after < start) throw new Error(`${file}: cannot find the end of ${name}`);
   const sorted = Object.entries(entries);
   const body = sorted.length ? `{\n${table(sorted)}\n}` : '{}';
-  writeFileSync(file, src.slice(0, start) + body + src.slice(end + 2));
+  writeFileSync(file, src.slice(0, start) + body + src.slice(after));
 }
 
 async function merge(folder: string) {
@@ -98,7 +106,7 @@ async function merge(folder: string) {
   for (const kind of ['ui', 'engine'] as const) {
     for (const lang of LANGS) {
       const file = `src/content/locales/${kind}.${lang}.ts`;
-      const current: Record<string, string> = { ...(await import(`../${file}`)).default };
+      const current: Record<string, string> = { ...TABLES[kind][lang] };
       const origin: Record<string, string> = Object.fromEntries(Object.keys(current).map((k) => [k, 'existing']));
       for (const name of readdirSync(folder).filter((n) => n.endsWith('.json')).sort()) {
         const frag: Fragment = JSON.parse(readFileSync(join(folder, name), 'utf8'));

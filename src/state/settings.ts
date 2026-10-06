@@ -10,7 +10,8 @@ export type Theme = 'dark' | 'light' | 'rose' | 'forest';
 /** typefaces already on the device: nothing to download, works offline */
 export type Font = 'classic' | 'rounded' | 'serif' | 'mono' | 'hand';
 
-/** interface language; the solving content stays English for now */
+/** the app's language: the interface, the hints and every other sentence the
+ *  engine writes, and the Learn section (docs/translations.md) */
 export type Lang = 'en' | 'nb' | 'es';
 
 /** the device's language, when it is one we have */
@@ -22,7 +23,7 @@ export function deviceLang(): Lang {
 }
 
 interface Settings {
-  /** interface language */
+  /** the app's language */
   lang: Lang;
   /** board theme: dark, daylight or rosé */
   theme: Theme;

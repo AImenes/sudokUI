@@ -1,6 +1,7 @@
 import { Grid, PEERS, bit, digitsOf, popcount, sees, cellName } from '../board';
 import { Step, CellDigit, alternatingLinks } from '../steps';
 import { strongLinks } from './singleDigit';
+import { tr } from '../text';
 
 /**
  * Wings — small pivot-and-pincer patterns built on bivalue cells.
@@ -53,8 +54,8 @@ export function findXYWing(g: Grid): Step | null {
           eliminations: elims,
           primary: [{ cell: pivot, digit: x }, { cell: pivot, digit: y }],
           secondary: [{ cell: w1, digit: z }, { cell: w2, digit: z }],
-          labels: { primary: 'pivot', secondary: 'pincers' },
-          description: `XY-Wing: pivot ${cellName(pivot)} (${x}${y}) with pincers ${cellName(w1)} (${x}${z}) and ${cellName(w2)} (${y}${z}); one pincer must be ${z}, so ${z} is removed from cells seeing both.`
+          labels: { primary: tr`pivot`, secondary: tr`pincers` },
+          description: tr`XY-Wing: pivot ${cellName(pivot)} (${x}${y}) with pincers ${cellName(w1)} (${x}${z}) and ${cellName(w2)} (${y}${z}); one pincer must be ${z}, so ${z} is removed from cells seeing both.`
         };
       }
     }
@@ -89,8 +90,8 @@ export function findXYZWing(g: Grid): Step | null {
             { cell: wings[i], digit: z },
             { cell: wings[j], digit: z }
           ],
-          labels: { primary: 'pivot', secondary: 'pincers' },
-          description: `XYZ-Wing: pivot ${cellName(pivot)} (${digitsOf(pivotMask).join('')}) with pincers ${cellName(wings[i])} (${digitsOf(g.cands[wings[i]]).join('')}) and ${cellName(wings[j])} (${digitsOf(g.cands[wings[j]]).join('')}). Whichever digit the pivot takes, one of the three cells is ${z}, so ${z} is removed from every cell that sees all three.`
+          labels: { primary: tr`pivot`, secondary: tr`pincers` },
+          description: tr`XYZ-Wing: pivot ${cellName(pivot)} (${digitsOf(pivotMask).join('')}) with pincers ${cellName(wings[i])} (${digitsOf(g.cands[wings[i]]).join('')}) and ${cellName(wings[j])} (${digitsOf(g.cands[wings[j]]).join('')}). Whichever digit the pivot takes, one of the three cells is ${z}, so ${z} is removed from every cell that sees all three.`
         };
       }
     }
@@ -134,7 +135,7 @@ export function findWWing(g: Grid): Step | null {
               { cell: e1, digit: linkDigit },
               { cell: e2, digit: linkDigit }
             ],
-            labels: { primary: `cells holding ${x} and ${y}`, secondary: `strong link on ${linkDigit}` },
+            labels: { primary: tr`cells holding ${x} and ${y}`, secondary: tr`strong link on ${linkDigit}` },
             // full AIC: z@A =s= w@A -w- w@e1 =s= w@e2 -w- w@B =s= z@B
             links: alternatingLinks(
               (sees(e1, A)
@@ -156,7 +157,7 @@ export function findWWing(g: Grid): Step | null {
                   ]
               ).map((cd) => [cd])
             ),
-            description: `W-Wing: ${cellName(A)} and ${cellName(B)} both hold ${x}${y}; the strong link on ${linkDigit} (${cellName(e1)}–${cellName(e2)}) forces one of them to be ${elimDigit}, removing ${elimDigit} from cells seeing both.`
+            description: tr`W-Wing: ${cellName(A)} and ${cellName(B)} both hold ${x}${y}; the strong link on ${linkDigit} (${cellName(e1)}–${cellName(e2)}) forces one of them to be ${elimDigit}, removing ${elimDigit} from cells seeing both.`
           };
         }
       }

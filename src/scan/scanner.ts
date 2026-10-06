@@ -6,6 +6,7 @@
  * feed scanImage any Blob a camera plugin gives it.
  */
 import { Gray, Template, NORM, toGray, normalise, scanGray, adaptiveInk, gridCandidates, gridness, warp, homography, gridLines, eraseLines, cellBlob, matchDigit, findGrid, trackLines, cellBox } from './image';
+import { translator } from '../content/i18n';
 
 export interface ScanResult {
   /** 81 characters, dots for empty cells */
@@ -85,7 +86,9 @@ async function decode(blob: Blob): Promise<HTMLImageElement | ImageBitmap> {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error('That file is not an image the browser can read.'));
+      // shown to the player as it is: in their language
+      const t = translator();
+      reject(new Error(t('That file is not an image the browser can read.')));
     };
     img.src = url;
   });
@@ -147,8 +150,9 @@ export function captureFrame(video: HTMLVideoElement): Promise<Blob> {
   canvas.width = video.videoWidth || 1280;
   canvas.height = video.videoHeight || 720;
   canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const t = translator();
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('The camera gave no picture.'))), 'image/jpeg', 0.92)
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error(t('The camera gave no picture.')))), 'image/jpeg', 0.92)
   );
 }
 

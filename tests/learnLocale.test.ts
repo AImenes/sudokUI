@@ -12,6 +12,7 @@ import { LEARN_STRINGS } from '../src/content/learnStrings';
 import { GLOSSARY, GLOSSARY_GROUPS } from '../src/content/glossary';
 import { INTUITION_SECTIONS, INTUITION } from '../src/content/intuition';
 import { KIN } from '../src/content/kin';
+import { LANDING_PAGES } from '../src/content/landing';
 import { linkGlossary } from '../src/content/glossaryLinks';
 import nb from '../src/content/locales/nb';
 import es from '../src/content/locales/es';
@@ -164,6 +165,47 @@ for (const [lang, loc] of LOCALES) {
         expect(m.sections[i].paragraphs.length).toBe(s.paragraphs.length);
         s.paragraphs.forEach((p, j) => faithful(p, m.sections[i].paragraphs[j], `method.sections[${i}].paragraphs[${j}]`));
       });
+    });
+
+    it('translates every landing page, sentence for sentence, written for search', () => {
+      // every landing page but How the best solve (the method, above) has its copy here
+      expect(Object.keys(EN.landings).sort()).toEqual(LANDING_PAGES.map((p) => p.url).filter((u) => u !== '/how-the-best-solve/').sort());
+      expect(Object.keys(loc.landings).sort()).toEqual(Object.keys(EN.landings).sort());
+      for (const [url, en] of Object.entries(EN.landings)) {
+        const t = loc.landings[url];
+        const page = LANDING_PAGES.find((p) => p.url === url)!;
+        for (const k of ['name', 'h1', 'lead', 'cta'] as const) faithful(en[k], t[k], `${url} ${k}`);
+        // what a search result shows: a title that fits, with the brand, and a description of about 155
+        houseStyle(t.title, `${url} title`);
+        expect(t.title.length, `${url} title: ${t.title}`).toBeLessThanOrEqual(60);
+        expect(t.title.endsWith(' | sudokUI'), `${url} title`).toBe(true);
+        houseStyle(t.description, `${url} description`);
+        expect(t.description.length, `${url} description`).toBeGreaterThanOrEqual(50);
+        expect(t.description.length, `${url} description: ${t.description}`).toBeLessThanOrEqual(175);
+        expect(numbers(t.description, false), `${url} description: numbers`).toBe(numbers(en.description, true));
+        expect(t.sections.length, `${url} sections`).toBe(en.sections.length);
+        en.sections.forEach((s, i) => {
+          faithful(s.heading, t.sections[i].heading, `${url} sections[${i}].heading`);
+          expect(t.sections[i].paragraphs.length, `${url} sections[${i}]`).toBe(s.paragraphs.length);
+          s.paragraphs.forEach((p, j) => faithful(p, t.sections[i].paragraphs[j], `${url} sections[${i}].paragraphs[${j}]`));
+        });
+        // the paste-a-puzzle box where the English has one, and a label for every further link
+        expect(t.puzzleBox === undefined, `${url} puzzleBox`).toBe(en.puzzleBox === undefined);
+        if (en.puzzleBox) faithful(en.puzzleBox, t.puzzleBox!, `${url} puzzleBox`);
+        expect(en.related.length).toBe(page.related.length);
+        expect(t.related.length, `${url} related`).toBe(en.related.length);
+        en.related.forEach((r, i) => faithful(r, t.related[i], `${url} related[${i}]`));
+        // the band names the copy quotes are the agreed ones
+        for (const level of LEVELS) {
+          const quoted = (s: string) => new RegExp(`\\b${level}\\b`).test(s);
+          const enText = [en.lead, ...en.sections.flatMap((s) => s.paragraphs)].join(' ');
+          const text = [t.lead, ...t.sections.flatMap((s) => s.paragraphs)].join(' ');
+          if (quoted(enText)) expect(text, `${url}: the band ${level}`).toContain(loc.levels[level]);
+        }
+      }
+      // the landing copy reads in the language
+      const same = Object.entries(EN.landings).filter(([url, en]) => loc.landings[url].lead === en.lead);
+      expect(same.map(([url]) => url), 'landing copy translated').toEqual([]);
     });
 
     it('translates every interface string, keeping its placeholders', () => {

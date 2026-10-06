@@ -1,9 +1,10 @@
 // Spanish text of the Learn section: the glossary, the technique
-// guide, the Intuition guide, How to solve, the rating and the interface
-// strings. Keyed exactly like EN in ../learnLocale.ts; the terminology
+// guide, the Intuition guide, How to solve, the rating, the landing pages
+// and the interface strings. Keyed exactly like EN in ../learnLocale.ts; the terminology
 // follows docs/glossary_input.md. tests/learnLocale.test.ts checks that
 // every piece is here, in house style, with its placeholders and numbers.
 import type { LearnLocale } from '../learnLocale';
+import { COUNTS } from '../landing';
 import { techNames, levels, categoryLabels } from './names.es';
 
 const es: LearnLocale = {
@@ -832,6 +833,128 @@ const es: LearnLocale = {
         ]
       }
     ]
+  },
+  "landings": {
+    "/daily-sudoku/": {
+      "name": "Sudoku diario",
+      "title": "Sudoku diario gratis: el mismo para todo el mundo | sudokUI",
+      "description": "Un sudoku nuevo cada día, igual para todos los jugadores del mundo. Gratis, sin cuenta ni anuncios. Resuelve el sudoku del día y compara tiempos con amigos.",
+      "h1": "Sudoku diario",
+      "lead": "Un sudoku nuevo cada día, idéntico para todos los jugadores del mundo. Resuélvelo y compara tiempos con amigos que han jugado exactamente el mismo tablero.",
+      "sections": [
+        {
+          "heading": "Cómo funciona",
+          "paragraphs": [
+            "El sudoku del día se genera en tu propio dispositivo a partir de la fecha, así que todos reciben el mismo tablero sin ningún servidor ni cuenta. A medianoche UTC llega uno nuevo."
+          ]
+        },
+        {
+          "heading": "¿Qué dificultad tiene?",
+          "paragraphs": [
+            "El sudoku del día suele ser Medio, Engañoso o Difícil. Su nivel de dificultad y su puntuación se muestran en la barra superior, como en cualquier otro sudoku."
+          ]
+        },
+        {
+          "heading": "Una carrera justa",
+          "paragraphs": [
+            "Todas las partidas empiezan con los candidatos automáticos desactivados. Si terminas sin pistas, sin revisiones y sin candidatos automáticos, la partida cuenta como resuelta sin ayuda.",
+            "Al terminar, el botón «Reta a un amigo» copia un mensaje con tu tiempo y un enlace que contiene el propio sudoku."
+          ]
+        }
+      ],
+      "cta": "Juega al sudoku del día",
+      "related": [
+        "Cómo funciona la puntuación de dificultad",
+        "Todas las técnicas explicadas"
+      ]
+    },
+    "/sudoku-solver/": {
+      "name": "Resolvedor de sudokus",
+      "title": "Resolver sudoku paso a paso, con explicaciones | sudokUI",
+      "description": "Introduce cualquier sudoku y míralo resuelto paso a paso: cada técnica con su nombre, dibujada en el tablero y explicada. Gratis, privado y funciona sin conexión.",
+      "h1": "Un resolvedor de sudokus que explica cada paso",
+      "lead": "Introduce cualquier sudoku y sudokUI lo resuelve como lo haría una persona: una técnica cada vez, con su nombre, dibujada en el tablero y explicada con palabras.",
+      "sections": [
+        {
+          "heading": "Introduce tu sudoku",
+          "paragraphs": [
+            "Elige Importar y pega el sudoku como 81 caracteres (números, con puntos o ceros para las casillas vacías), o elige Nuevo y luego Personalizado, y escribe los números dados en el tablero. sudokUI comprueba que el sudoku tiene exactamente una solución antes de empezar."
+          ]
+        },
+        {
+          "heading": "Mira la ruta de resolución completa",
+          "paragraphs": [
+            "Pasos muestra todos los pasos de una solución completa, con la técnica más fácil primero, y marca el paso más costoso como paso clave. Haz clic en cualquier paso para llevar el tablero a la posición justo anterior."
+          ]
+        },
+        {
+          "heading": "O avanza paso a paso",
+          "paragraphs": [
+            "Pista nombra primero la siguiente técnica, después la muestra en el tablero con una explicación y, por último, la aplica si quieres. Explorar muestra todas las técnicas que funcionan en la posición actual, no solo la más fácil, y Revisar marca los números incorrectos."
+          ]
+        },
+        {
+          "heading": `${COUNTS.implemented} técnicas, verificadas automáticamente`,
+          "paragraphs": [
+            `El resolvedor conoce ${COUNTS.implemented} técnicas, desde el Único desnudo hasta el Exocet y las Forcing Nets. Cada pista se comprueba con la solución real del sudoku antes de mostrarse.`
+          ]
+        },
+        {
+          "heading": "Privado y sin conexión",
+          "paragraphs": [
+            "Todo funciona en tu dispositivo. No hay cuenta ni publicidad, no se sube nada, y la app sigue funcionando sin conexión una vez cargada."
+          ]
+        }
+      ],
+      "cta": "Abre el resolvedor",
+      "puzzleBox": "Resolver este sudoku",
+      "related": [
+        "Todas las técnicas explicadas",
+        "Cómo funciona la puntuación de dificultad"
+      ]
+    },
+    "/hodoku/": {
+      "name": "HoDoKu",
+      "title": "Sudoku puntuado como en HoDoKu, en tu navegador | sudokUI",
+      "description": "sudokUI puntúa y explica sudokus con los puntos y el orden de búsqueda de HoDoKu, en cualquier navegador: móvil, tableta, Mac o PC. Sin instalar nada y funciona sin conexión.",
+      "h1": "Puntuaciones compatibles con HoDoKu, en tu navegador",
+      "lead": "sudokUI puntúa y explica los sudokus como lo hace HoDoKu, sin instalar nada. Funciona en cualquier navegador, en el móvil, la tableta o el ordenador, y sigue funcionando sin conexión.",
+      "sections": [
+        {
+          "heading": "Qué es HoDoKu",
+          "paragraphs": [
+            "HoDoKu es un programa gratuito de Bernhard Hobiger para generar, resolver, practicar y analizar sudokus, escrito en Java y publicado bajo la GPLv3. Su catálogo de técnicas y sus puntuaciones se convirtieron en una referencia habitual para puntuar la dificultad de un sudoku. La última versión, la 2.2, es de 2012."
+          ]
+        },
+        {
+          "heading": "Qué comparte sudokUI con HoDoKu",
+          "paragraphs": [
+            "sudokUI usa la puntuación predeterminada de HoDoKu para cada técnica y su orden de búsqueda predeterminado, y puntúa un sudoku de la misma manera: lo resuelve con la primera técnica que funciona en cada paso y suma las puntuaciones.",
+            "Los umbrales de puntuación de Fácil (800), Medio (1000), Difícil (1600) e Injusto (1800) también son los de HoDoKu."
+          ]
+        },
+        {
+          "heading": "En qué se diferencian",
+          "paragraphs": [
+            "sudokUI es un proyecto independiente y no tiene relación con HoDoKu.",
+            "Añade técnicas que HoDoKu no tiene, como 3D Medusa, Chute Remote Pair, Fireworks, Tridagon y Exocet, con puntuaciones cercanas a las de sus parientes más próximos, y deja fuera algunas de las más raras de HoDoKu, como los peces mutantes y los peces Kraken. En un sudoku que necesite una de ellas, la ruta de resolución y la puntuación pueden ser distintas.",
+            "sudokUI distingue ocho niveles de dificultad donde HoDoKu tiene cinco: Principiante, Engañoso y Pesadilla son nuevos."
+          ]
+        },
+        {
+          "heading": "El mismo sudoku en los dos",
+          "paragraphs": [
+            "Un sudoku escrito como 81 caracteres funciona en los dos programas. Pégalo en la ventana Importar de sudokUI para ver su puntuación, su ruta de resolución completa y todas las técnicas disponibles en cualquier posición."
+          ]
+        }
+      ],
+      "cta": "Abre sudokUI",
+      "related": [
+        "Cómo funciona la puntuación de dificultad",
+        "Puntuación de cada técnica",
+        "La web de HoDoKu"
+      ]
+    }
   },
   "glossaryGroups": {
     "The board": "El tablero",

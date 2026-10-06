@@ -7,7 +7,8 @@ import { cellName, PEERS } from '../engine/board';
 import { dailyPuzzle } from '../engine/daily';
 import { useSettings } from '../state/settings';
 import { useAppStatus } from '../state/appStatus';
-import { useT } from '../content/i18n';
+import { useT, translator, rich, langRoot } from '../content/i18n';
+import type { Translator } from '../content/i18n';
 import { Grid } from './Grid';
 import { Poodle } from './Poodle';
 import { Controls } from './Controls';
@@ -33,9 +34,14 @@ import type { LearnTarget } from './Learn';
 // the guide is a third of the app's code and prose: fetched the first time
 // it opens (and precached for offline), never as part of loading the game
 const LearnDialog = React.lazy(() => import('./Learn').then((m) => ({ default: m.LearnDialog })));
-import { TECHS, PRACTICE_TECHS, Tech } from '../engine/ratings';
+import { PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { RATING_URL } from '../content/staticRoutes';
+
+/** the name, the same in every language: "sudok" and a coloured "UI" */
+const BRAND = ['sudok', 'UI'] as const;
+/** a no-break space: the &nbsp; after the rating's word in the top bar */
+const NBSP = String.fromCharCode(160);
 
 /** #learn=<technique key or slug> | intuition | glossary | rating | term:<glossary term> */
 function parseLearnParam(param: string): LearnTarget {
@@ -47,22 +53,54 @@ function parseLearnParam(param: string): LearnTarget {
 }
 
 /** why a wrong digit is wrong, in a line (docs/technique-stats.md) */
-function proofText(p: Proof): string {
-  const at = cellName(p.cell);
-  if (p.conflict !== null) return `${at} cannot be ${p.wrong}: ${cellName(p.conflict)} already holds it.`;
-  if (!p.tech) return `${at} should be ${p.right}, not ${p.wrong}. The proof is beyond a quick search.`;
-  const after = p.steps.length > 1 ? ` after ${p.steps.length - 1} easier step${p.steps.length > 2 ? 's' : ''}` : '';
+function proofText(p: Proof, t: Translator): string {
+  const cell = cellName(p.cell);
+  const { wrong, right } = p;
+  if (p.conflict !== null) return t('{cell} cannot be {wrong}: {other} already holds it.', { cell, wrong, other: cellName(p.conflict) });
+  if (!p.tech) return t('{cell} should be {right}, not {wrong}. The proof is beyond a quick search.', { cell, right, wrong });
+  // the easier steps played before the proof itself
+  const n = p.steps.length - 1;
   const last = p.steps[p.steps.length - 1];
   if (p.trail) {
     const forced = Math.max(0, (last.links?.length ?? 1) - 1);
-    return `${at} cannot be ${p.wrong}: place it and the singles it forces break the board${forced ? ` within ${forced} move${forced > 1 ? 's' : ''}` : ''}.`;
+    return t(
+      !forced
+        ? '{cell} cannot be {wrong}: place it and the singles it forces break the board.'
+        : forced === 1
+          ? '{cell} cannot be {wrong}: place it and the singles it forces break the board within {n} move.'
+          : '{cell} cannot be {wrong}: place it and the singles it forces break the board within {n} moves.',
+      { cell, wrong, n: forced }
+    );
   }
-  if (p.places) return `${at} is ${p.right}, not ${p.wrong}: a ${TECHS[p.tech].name} places it${after}.`;
+  const vars = { cell, right, wrong, tech: t.tech(p.tech), n };
+  if (p.places)
+    return t(
+      n < 1
+        ? '{cell} is {right}, not {wrong}: a {tech} places it.'
+        : n === 1
+          ? '{cell} is {right}, not {wrong}: a {tech} places it after {n} easier step.'
+          : '{cell} is {right}, not {wrong}: a {tech} places it after {n} easier steps.',
+      vars
+    );
   // the digit may go by a placement in a peer rather than by a removal
   const peer = last.placements.find((q) => q.digit === p.wrong && PEERS[p.cell].includes(q.cell));
   return peer
-    ? `${at} cannot be ${p.wrong}: a ${TECHS[p.tech].name} puts the ${p.wrong} in ${cellName(peer.cell)}${after}.`
-    : `${at} cannot be ${p.wrong}: a ${TECHS[p.tech].name} removes it${after}.`;
+    ? t(
+        n < 1
+          ? '{cell} cannot be {wrong}: a {tech} puts the {wrong} in {peer}.'
+          : n === 1
+            ? '{cell} cannot be {wrong}: a {tech} puts the {wrong} in {peer} after {n} easier step.'
+            : '{cell} cannot be {wrong}: a {tech} puts the {wrong} in {peer} after {n} easier steps.',
+        { ...vars, peer: cellName(peer.cell) }
+      )
+    : t(
+        n < 1
+          ? '{cell} cannot be {wrong}: a {tech} removes it.'
+          : n === 1
+            ? '{cell} cannot be {wrong}: a {tech} removes it after {n} easier step.'
+            : '{cell} cannot be {wrong}: a {tech} removes it after {n} easier steps.',
+        vars
+      );
 }
 
 /** a new version waiting, or a file this version can no longer load: the
@@ -73,6 +111,7 @@ function UpdateBar() {
   const offlineReady = useAppStatus((s) => s.offlineReady);
   const reload = useAppStatus((s) => s.reload);
   const dismiss = useAppStatus((s) => s.dismiss);
+  const t = useT();
   // the offline note is good news, not a decision: it goes by itself
   useEffect(() => {
     if (!offlineReady || updateReady) return;
@@ -83,13 +122,15 @@ function UpdateBar() {
     return (
       <div className="update-bar" role="status">
         <span>
-          {reason === 'chunk'
-            ? 'sudokUI was updated while this tab was open, and a part of it could not load. Reload to continue; your game is saved.'
-            : 'A new version of sudokUI is ready. Reload when it suits you; your game is saved.'}
+          {t(
+            reason === 'chunk'
+              ? 'sudokUI was updated while this tab was open, and a part of it could not load. Reload to continue; your game is saved.'
+              : 'A new version of sudokUI is ready. Reload when it suits you; your game is saved.'
+          )}
         </span>
-        <button onClick={reload}>Reload</button>
+        <button onClick={reload}>{t('Reload')}</button>
         <button className="ghost" onClick={dismiss}>
-          Later
+          {t('Later')}
         </button>
       </div>
     );
@@ -97,7 +138,7 @@ function UpdateBar() {
   if (offlineReady) {
     return (
       <div className="update-bar" role="status">
-        <span>sudokUI is ready to play offline.</span>
+        <span>{t('sudokUI is ready to play offline.')}</span>
         <button className="ghost" onClick={dismiss}>
           OK
         </button>
@@ -210,7 +251,10 @@ export default function App() {
   const startDaily = () => {
     const d = dailyPuzzle();
     useGame.getState().startGame(d.puzzle, d.score, d.level, null, d.dateKey);
-    useGame.setState({ notice: `Daily puzzle for ${d.dateKey}. Everyone gets this same board today` });
+    // translator(), not the render's t: the boot effect calls this from its
+    // first render's closure
+    const t = translator();
+    useGame.setState({ notice: t('Daily puzzle for {date}. Everyone gets this same board today', { date: d.dateKey }) });
   };
 
   useEffect(() => {
@@ -266,7 +310,8 @@ export default function App() {
       const g = useGame.getState();
       if (shared.length !== 81 || shared === g.info?.puzzle) return;
       if (g.history.length > 0 && !g.won) {
-        useGame.setState({ notice: 'A puzzle link was opened. Finish or restart this game first, or open the link in a new tab' });
+        const t = translator();
+        useGame.setState({ notice: t('A puzzle link was opened. Finish or restart this game first, or open the link in a new tab') });
         return;
       }
       const rating = rateImport(shared);
@@ -442,9 +487,9 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">UI</span>
+          <span className="brand-mark">{BRAND[1]}</span>
           <h1>
-            sudok<span className="brand-ui">UI</span>
+            {BRAND[0]}<span className="brand-ui">{BRAND[1]}</span>
           </h1>
         </div>
         {info && (
@@ -453,25 +498,25 @@ export default function App() {
               <button
                 className="score-btn hidden-rating"
                 onClick={() => setDialog('settings')}
-                title="Difficulty is hidden until you solve the puzzle. Change this in Settings"
+                title={t('Difficulty is hidden until you solve the puzzle. Change this in Settings')}
               >
-                <span className="level-badge level-hidden">🎲 hidden</span>
+                <span className="level-badge level-hidden">🎲 {t('hidden||the difficulty, until the puzzle is solved')}</span>
               </button>
             ) : (
               <>
-                <span className={`level-badge level-${info.level.toLowerCase()}`}>{info.level}</span>
+                <span className={`level-badge level-${info.level.toLowerCase()}`}>{t.level(info.level)}</span>
                 <button
                   className="score-btn"
                   onClick={() => openLearn({ tab: 'rating' })}
-                  title="How this rating is calculated"
-                  aria-label={`Rating ${info.score}. How the rating is calculated`}
+                  title={t('How this rating is calculated')}
+                  aria-label={t('Rating {score}. How the rating is calculated', { score: info.score })}
                 >
-                  <span className="rating-word">Rating&nbsp;</span><strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
+                  <span className="rating-word">{t("Rating||the puzzle's score, before the number")}{NBSP}</span><strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
                 </button>
               </>
             )}
             {info.practiceTech && (
-              <span className="practice-badge">Practice: {TECHS[info.practiceTech].name}</span>
+              <span className="practice-badge">{t('Practice: {tech}', { tech: t.tech(info.practiceTech) })}</span>
             )}
           </div>
         )}
@@ -480,16 +525,16 @@ export default function App() {
           <button
             className="icon-btn"
             onClick={togglePause}
-            title="Pause (P)"
-            aria-label={paused ? 'Resume game' : 'Pause game'}
+            title={t('Pause (P)')}
+            aria-label={t(paused ? 'Resume game' : 'Pause game')}
           >
             {paused ? '⏵' : '⏸'}
           </button>
           <button
             className="icon-btn theme-btn"
             onClick={toggleTheme}
-            title="Cycle theme: dark → daylight → rosé → forest"
-            aria-label={
+            title={t('Cycle theme: dark → daylight → rosé → forest')}
+            aria-label={t(
               theme === 'dark'
                 ? 'Switch to daylight theme'
                 : theme === 'light'
@@ -497,23 +542,23 @@ export default function App() {
                   : theme === 'rose'
                     ? 'Switch to forest theme'
                     : 'Switch to dark theme'
-            }
+            )}
           >
             {theme === 'dark' ? '☀️' : theme === 'light' ? '🌸' : theme === 'rose' ? '🌲' : '🌙'}
           </button>
           <button
             className="icon-btn"
             onClick={() => setDialog('info')}
-            title="How to play, modes & shortcuts"
-            aria-label="How to play, modes and shortcuts"
+            title={t('How to play, modes & shortcuts')}
+            aria-label={t('How to play, modes and shortcuts')}
           >
             ⓘ
           </button>
           <button
             className="icon-btn gear"
             onClick={() => setDialog('settings')}
-            title="Settings"
-            aria-label="Settings"
+            title={t('Settings')}
+            aria-label={t('Settings')}
           >
             ⚙
           </button>
@@ -544,7 +589,7 @@ export default function App() {
             <button
               className={info?.practiceTech ? 'active' : ''}
               onClick={() => setDialog('progress')}
-              title="Your path, practice and the theory of every technique"
+              title={t('Your path, practice and the theory of every technique')}
             >
               <span className="menu-icon">🎓</span>{t('Learn')}
             </button>
@@ -554,7 +599,7 @@ export default function App() {
             <button onClick={() => setDialog('share')}>
               <span className="menu-icon">🔗</span>{t('Share')}
             </button>
-            <button onClick={() => setDialog('restart')} title="Reset this puzzle and the timer">
+            <button onClick={() => setDialog('restart')} title={t('Reset this puzzle and the timer')}>
               <span className="menu-icon">↺</span>{t('Restart')}
             </button>
           </div>
@@ -565,8 +610,8 @@ export default function App() {
           {info?.practiceTech && !custom && (
             <div className="practice-bar">
               <span>
-                Practicing <strong>{TECHS[info.practiceTech].name}</strong>
-                {practiceFound && <span className="practice-found"> · found 🎯</span>}
+                {rich(t('Practicing {tech}'), { tech: <strong>{t.tech(info.practiceTech)}</strong> })}
+                {practiceFound && <span className="practice-found"> · {t('found||the technique being practised')} 🎯</span>}
               </span>
               {!practiceFound &&
                 !chain &&
@@ -575,13 +620,13 @@ export default function App() {
                   <button
                     className="ghost"
                     onClick={() => startChain(practiceTarget.eliminations)}
-                    title="Open the chain trainer with this technique's removal as the goal"
+                    title={t("Open the chain trainer with this technique's removal as the goal")}
                   >
-                    Build it yourself
+                    {t('Build it yourself')}
                   </button>
                 )}
               <button onClick={() => start({ kind: 'tech', tech: info.practiceTech! })}>
-                Next puzzle (N)
+                {t('Next puzzle (N)')}
               </button>
             </div>
           )}
@@ -589,29 +634,33 @@ export default function App() {
           {custom && (
             <div className="hint-panel">
               <div className="hint-head">
-                <strong>Custom puzzle</strong>
+                <strong>{t('Custom puzzle')}</strong>
               </div>
               <div className="hint-body">
                 {scanPreview && (
                   <div className="scan-check">
-                    <img src={scanPreview} alt="The scanned grid, as the scanner saw it" />
+                    <img src={scanPreview} alt={t('The scanned grid, as the scanner saw it')} />
                     <p>
-                      The photo, straightened. Compare it with the board
-                      {scanDoubts.length > 0 && <>; the red cells are the scanner's doubts: a digit it was unsure of, or ink it could not read</>}.
+                      {t(
+                        scanDoubts.length > 0
+                          ? "The photo, straightened. Compare it with the board; the red cells are the scanner's doubts: a digit it was unsure of, or ink it could not read."
+                          : 'The photo, straightened. Compare it with the board.'
+                      )}
                     </p>
                   </div>
                 )}
                 <p>
-                  Type the givens onto the board ({givenCount} so far). When
-                  you are done, sudokUI verifies the puzzle has exactly one
-                  solution and rates it before play begins.
+                  {t(
+                    'Type the givens onto the board ({n} so far). When you are done, sudokUI verifies the puzzle has exactly one solution and rates it before play begins.',
+                    { n: givenCount }
+                  )}
                 </p>
                 {customError && <p className="dialog-error">{customError}</p>}
                 <div className="hint-actions">
                   <button
                     onClick={() => setCustomError(finishCustomEntry())}
                   >
-                    ✓ Check &amp; play
+                    ✓ {t('Check & play')}
                   </button>
                   <button
                     className="ghost"
@@ -620,26 +669,26 @@ export default function App() {
                       cancelCustomEntry();
                     }}
                   >
-                    Cancel
+                    {t('Cancel')}
                   </button>
                 </div>
               </div>
             </div>
           )}
           {errors.length > 0 && (revertIndex !== null || proofs.length > 0) && (
-            <div className="hint-panel" role="region" aria-label="Mistakes found">
+            <div className="hint-panel" role="region" aria-label={t('Mistakes found')}>
               <div className="hint-head">
-                <strong>Mistakes found</strong>
+                <strong>{t('Mistakes found')}</strong>
               </div>
               <div className="hint-body">
                 {proofs.length > 0 && (
                   <ul className="proof-list">
                     {proofs.map((p, k) => (
                       <li key={p.cell}>
-                        <span>{proofText(p)}</span>
+                        <span>{proofText(p, t)}</span>
                         {(p.conflict !== null || p.steps.length > 0) && (
                           <button className="ghost" onClick={() => showProof(k)}>
-                            Show me
+                            {t('Show me')}
                           </button>
                         )}
                       </li>
@@ -648,43 +697,45 @@ export default function App() {
                 )}
                 {revertIndex !== null && (
                   <p>
-                    Jump back to the last position where everything was correct?
-                    Your later entries are removed. Ctrl+Z brings them back.
+                    {t(
+                      'Jump back to the last position where everything was correct? Your later entries are removed. Ctrl+Z brings them back.'
+                    )}
                   </p>
                 )}
                 <div className="hint-actions">
-                  {revertIndex !== null && <button onClick={revertToValid}>↩ Back to correct</button>}
+                  {revertIndex !== null && <button onClick={revertToValid}>↩ {t('Back to correct')}</button>}
                   <button className="ghost" onClick={dismissRevert}>
-                    Keep looking
+                    {t('Keep looking')}
                   </button>
                 </div>
               </div>
             </div>
           )}
           <footer className="app-footer">
-            <nav className="footer-learn" aria-label="Learn sudoku">
-              <span>Learn: </span>
-              <a href="/learn/" onClick={learnLink({ tab: 'techniques' })}>
-                Techniques
+            {/* the static pages exist in every language: /learn/, /nb/learn/, /es/learn/ */}
+            <nav className="footer-learn" aria-label={t('Learn sudoku')}>
+              <span>{t('Learn:')} </span>
+              <a href={`${langRoot(t.lang)}learn/`} onClick={learnLink({ tab: 'techniques' })}>
+                {t('Techniques')}
               </a>
               <span aria-hidden="true"> · </span>
-              <a href="/learn/intuition/" onClick={learnLink({ tab: 'intuition' })}>
-                Intuition
+              <a href={`${langRoot(t.lang)}learn/intuition/`} onClick={learnLink({ tab: 'intuition' })}>
+                {t('Intuition')}
               </a>
               <span aria-hidden="true"> · </span>
-              <a href="/learn/glossary/" onClick={learnLink({ tab: 'glossary' })}>
-                Glossary
+              <a href={`${langRoot(t.lang)}learn/glossary/`} onClick={learnLink({ tab: 'glossary' })}>
+                {t('Glossary')}
               </a>
               <span aria-hidden="true"> · </span>
-              <a href={RATING_URL} onClick={learnLink({ tab: 'rating' })}>
-                Rating
+              <a href={`${langRoot(t.lang)}${RATING_URL.slice(1)}`} onClick={learnLink({ tab: 'rating' })}>
+                {t('Rating')}
               </a>
             </nav>
             <a href="https://github.com/AImenes/sudokUI" target="_blank" rel="noreferrer">
-              Open source on GitHub
+              {t('Open source on GitHub')}
             </a>
-            <span> · feedback welcome</span>
-            <span className="dedication">for thth ♥</span>
+            <span> · {t('feedback welcome')}</span>
+            <span className="dedication">{t('for thth ♥')}</span>
           </footer>
         </aside>
       </main>
@@ -765,30 +816,28 @@ export default function App() {
         <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} />
       )}
       {welcome && (
-        <Modal title="Welcome to sudokUI" onClose={dismissWelcome}>
+        <Modal title={t('Welcome to sudokUI')} onClose={dismissWelcome}>
           <p className="dialog-note">
-            A free, open-source sudoku studio. No ads, no account, and it
-            works offline once loaded.
+            {t('A free, open-source sudoku studio. No ads, no account, and it works offline once loaded.')}
           </p>
           <ul className="welcome-list">
             <li>
-              <strong>Hints that teach.</strong> 77 solving techniques, each
-              one explained and drawn on the board when you ask.
+              <strong>{t('Hints that teach.')}</strong>{' '}
+              {t('77 solving techniques, each one explained and drawn on the board when you ask.')}
             </li>
             <li>
-              <strong>Practice what you struggle with.</strong> Pick any of {PRACTICE_TECHS.length}
-              techniques and get a puzzle that truly needs it.
+              <strong>{t('Practice what you struggle with.')}</strong>{' '}
+              {t('Pick any of {n} techniques and get a puzzle that truly needs it.', { n: PRACTICE_TECHS.length })}
             </li>
             <li>
-              <strong>One daily puzzle for the whole world.</strong> Same
-              board for everyone, every day. Race your friends.
+              <strong>{t('One daily puzzle for the whole world.')}</strong>{' '}
+              {t('Same board for everyone, every day. Race your friends.')}
             </li>
           </ul>
           <p className="dialog-note">
-            Learn, under the board, is where you follow your path, practise a
-            technique and read the theory of every technique and the words
-            solvers use; ⓘ in the top bar covers modes, shortcuts and the
-            candidate system.
+            {t(
+              'Learn, under the board, is where you follow your path, practise a technique and read the theory of every technique and the words solvers use; ⓘ in the top bar covers modes, shortcuts and the candidate system.'
+            )}
           </p>
           <div className="hint-actions">
             <button
@@ -797,10 +846,10 @@ export default function App() {
                 startDaily();
               }}
             >
-              Play today's daily
+              {t("Play today's daily")}
             </button>
             <button className="ghost" onClick={dismissWelcome}>
-              Just play
+              {t('Just play')}
             </button>
           </div>
         </Modal>
@@ -819,11 +868,13 @@ export default function App() {
         />
       )}
       {dialog === 'restart' && (
-        <Modal title="Restart puzzle?" onClose={() => setDialog('none')}>
+        <Modal title={t('Restart puzzle?')} onClose={() => setDialog('none')}>
           <p className="dialog-note">
-            The board and timer reset to the beginning
-            {info?.practiceTech ? ' of the practice position' : ''}. Your
-            progress on this puzzle is lost.
+            {t(
+              info?.practiceTech
+                ? 'The board and timer reset to the beginning of the practice position. Your progress on this puzzle is lost.'
+                : 'The board and timer reset to the beginning. Your progress on this puzzle is lost.'
+            )}
           </p>
           <div className="hint-actions">
             <button
@@ -832,10 +883,10 @@ export default function App() {
                 restart();
               }}
             >
-              Restart
+              {t('Restart')}
             </button>
             <button className="ghost" onClick={() => setDialog('none')}>
-              Keep playing
+              {t('Keep playing')}
             </button>
           </div>
         </Modal>

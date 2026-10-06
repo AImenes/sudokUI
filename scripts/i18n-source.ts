@@ -12,8 +12,6 @@
 // tests/i18n.test.ts holds the translations to this; scripts/i18n.ts
 // prints it as a report, which is also the to-do list while translating.
 import ts from 'typescript';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
 import { templateKey } from '../src/engine/text';
 
 export interface Place {
@@ -37,22 +35,17 @@ export interface SourceReport {
   untranslated: Finding[];
 }
 
-const ROOT = join(__dirname, '..');
-
-function walk(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) walk(path, out);
-    else if (/\.tsx?$/.test(name) && !name.endsWith('.d.ts')) out.push(path);
-  }
-  return out;
-}
+// the source as text, through Vite (vitest and vite-node both have it), so
+// this module needs no Node types; keys are '/src/ui/App.tsx' and the like
+const SOURCES = import.meta.glob(['/src/**/*.ts', '/src/**/*.tsx', '!/src/content/locales/**', '!/src/**/*.d.ts'], {
+  query: '?raw',
+  import: 'default',
+  eager: true
+}) as Record<string, string>;
 
 /** source files to scan, relative to the repository, with forward slashes */
 function sourceFiles(): string[] {
-  return walk(join(ROOT, 'src'))
-    .map((f) => relative(ROOT, f).split(sep).join('/'))
-    .filter((f) => !f.startsWith('src/content/locales/'));
+  return Object.keys(SOURCES).map((k) => k.slice(1)).sort();
 }
 
 /** interface files: where English that people read must be wrapped */
@@ -125,7 +118,7 @@ export function readSource(): SourceReport {
     map.set(key, list);
   };
   for (const file of sourceFiles()) {
-    const text = readFileSync(join(ROOT, file), 'utf8');
+    const text = SOURCES['/' + file];
     const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     const place = (node: ts.Node): Place => ({ file, line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1 });
     const flag = (node: ts.Node, kind: string, text: string) => report.untranslated.push({ ...place(node), kind, text });
@@ -207,7 +200,8 @@ export function readSource(): SourceReport {
         const parent = node.parent;
         const tagged = ts.isTaggedTemplateExpression(parent) && ts.isIdentifier(parent.tag) && parent.tag.text === 'tr';
         const lit = literalText(node)!;
-        if (!tagged && PROSE.test(lit) && !wrapped(node)) flag(node, 'engine prose', lit);
+        // a technique id (NICE_LOOP) is a key, not prose
+        if (!tagged && PROSE.test(lit) && !/^[A-Z][A-Z0-9_]*$/.test(lit) && !wrapped(node)) flag(node, 'engine prose', lit);
       }
 
       ts.forEachChild(node, visit);

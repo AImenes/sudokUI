@@ -1,5 +1,6 @@
 import { Grid, bit, boxOf, cellName, digitsOf } from '../board';
 import { Step, CellDigit } from '../steps';
+import { tr } from '../text';
 
 /**
  * Pattern Overlay (sudokuwiki.org/Pattern_Overlay), single-digit form.
@@ -137,14 +138,16 @@ export function findPatternOverlay(g: Grid, maxTemplates = 20000): Step | null {
       primary: places.length ? places : elims,
       labels: {
         primary: places.length
-          ? `cells every complete placement of ${d} uses`
-          : `cells no complete placement of ${d} uses`
+          ? tr`cells every complete placement of ${d} uses`
+          : tr`cells no complete placement of ${d} uses`
       },
-      description: `Pattern Overlay: of the ${count} complete placements possible for digit ${d}, ${
-        places.length
-          ? `every one uses ${places.map((p) => cellName(p.cell)).join(', ')}`
-          : `none uses ${elims.map((e) => cellName(e.cell)).join(', ')}`
-      }.`
+      // a single complete placement (which always places) is a sentence of
+      // its own in other languages; the English reads the same either way
+      description: places.length
+        ? count === 1
+          ? tr`Pattern Overlay: of the 1 complete placements possible for digit ${d}, every one uses ${places.map((p) => cellName(p.cell)).join(', ')}.`
+          : tr`Pattern Overlay: of the ${count} complete placements possible for digit ${d}, every one uses ${places.map((p) => cellName(p.cell)).join(', ')}.`
+        : tr`Pattern Overlay: of the ${count} complete placements possible for digit ${d}, none uses ${elims.map((e) => cellName(e.cell)).join(', ')}.`
     };
   }
   return null;

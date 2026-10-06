@@ -20,16 +20,19 @@ import { useStats, gameSummary, dailyStreak } from '../state/stats';
 import { practiceSeeds } from '../content/practicePuzzles';
 import { seedPuzzles, SEEDED_LEVELS } from '../content/seeds';
 import { cruxIndex } from '../engine/generator';
-import { timeVerdict, percentileText, MODE_LABEL } from '../content/solveTimes';
-import { useT } from '../content/i18n';
+import { timeVerdict, percentileText, MODE_LABEL, SolveMode } from '../content/solveTimes';
+import { useT, translator, msg, rich, Translator } from '../content/i18n';
 import { HubTabs } from './HubTabs';
-import { TECH_DOCS } from '../content/techniqueDocs';
-import { BAND_LEADS, BAND_NOTES } from '../content/rating';
-import { categoryLabel, techniquesByFamily } from '../content/categories';
-import { kinLine } from '../content/kin';
+import { techniquesByFamily } from '../content/categories';
+import { useLearnText } from './useLearnText';
+import type { LearnText } from '../content/learnLocale';
+import type { Lang } from '../state/settings';
+
+/** what is being generated: a band's puzzle or a technique's practice puzzle */
+type GenRequest = { kind: 'level'; level: Level } | { kind: 'tech'; tech: Tech };
 
 interface GenState {
-  label: string;
+  label: GenRequest;
   attempts: number;
   handle: GenerationHandle;
 }
@@ -60,8 +63,8 @@ export function useNewGame() {
 
   const start = async (req: { kind: 'level'; level: Level } | { kind: 'tech'; tech: Tech }) => {
     const key = req.kind === 'level' ? levelKey(req.level) : techKey(req.tech);
-    const label =
-      req.kind === 'level' ? `${req.level} puzzle` : TECHS[req.tech].name + ' practice';
+    // named in the player's language where it is shown (GeneratingDialog)
+    const label: GenRequest = req;
     // a pooled puzzle filed before the practice ceiling existed may be above it
     const pooled = takePoolEntry(key, (e) => req.kind !== 'tech' || practisable(e, req.tech));
     if (pooled) {
@@ -91,7 +94,13 @@ export function useNewGame() {
     // nothing found (the attempts ran out, or the worker died): say so,
     // unless the player cancelled
     if (!cancelled.current) {
-      useGame.setState({ notice: `No ${label} could be found this time. Please try again` });
+      const t = translator();
+      useGame.setState({
+        notice:
+          req.kind === 'level'
+            ? t('No {level} puzzle could be found this time. Please try again', { level: t.level(req.level) })
+            : t('No {name} practice could be found this time. Please try again', { name: t.tech(req.tech) })
+      });
     }
     cancelled.current = false;
     return false;
@@ -104,8 +113,23 @@ export function useNewGame() {
   return { start, genState, cancel };
 }
 
-/** what a level asks of you, in plain words, then the techniques behind it */
-const levelDescription = (level: Level) => `${BAND_LEADS[level]}: ${BAND_NOTES[level]}`;
+/** what a level asks of you, in plain words, then the techniques behind it (the Learn section's words) */
+const levelDescription = (lt: LearnText, level: Level) => `${lt.loc.bandLeads[level]}: ${lt.loc.bandNotes[level]}`;
+
+// engine/ratings.ts imports no translation, so the reasons of its
+// NOT_PRACTISABLE are marked here, word for word; a reason changed there
+// shows in English until it is marked again
+const NOT_PRACTISABLE_REASONS = new Set([
+  msg('never needed in practice: X-Chains, which run first, find the same loops'),
+  msg('never needed in practice: basic and finned fish, which run first, find what it finds'),
+  msg('only ever needed in specially constructed puzzles; none can be generated')
+]);
+const notPractisableReason = (t: Translator, reason: string) => (NOT_PRACTISABLE_REASONS.has(reason) ? t(reason) : reason);
+
+// and the ways of solving of solveTimes.ts's MODE_LABEL, in the Learn
+// section's words, so the verdict after a solve is one language at once
+const MODE_LABELS = new Set([msg('with automatic candidates'), msg('with your own marks'), msg('on paper')]);
+const modeLabel = (t: Translator, mode: SolveMode) => (MODE_LABELS.has(MODE_LABEL[mode]) ? t(MODE_LABEL[mode]) : MODE_LABEL[mode]);
 
 export function NewGameDialog({
   onClose,
@@ -118,24 +142,27 @@ export function NewGameDialog({
   onCustom: () => void;
   onDaily: () => void;
 }) {
+  const t = useT();
+  const lt = useLearnText();
   return (
-    <Modal title="New game" onClose={onClose}>
+    <Modal title={t('New game')} onClose={onClose}>
       <div className="level-list">
         <button className="level-btn daily" onClick={onDaily}>
-          <strong>Daily puzzle</strong>
+          <strong>{t('Daily puzzle')}</strong>
           <span>
-            One shared puzzle per day. Everyone in the world gets this exact
-            board today, so compare times with your friends
+            {t('One shared puzzle per day. Everyone in the world gets this exact board today, so compare times with your friends')}
           </span>
         </button>
         <button
           className="level-btn surprise"
           onClick={() => onStart(LEVELS[Math.floor(Math.random() * LEVELS.length)])}
         >
-          <strong>Surprise me</strong>
+          <strong>{t('Surprise me')}</strong>
           <span>
-            Any difficulty. Enable "Hide difficulty while playing" in Settings
-            for the full mystery
+            {t('Any difficulty. Enable "{setting}" in {settings} for the full mystery', {
+              setting: t('Hide difficulty while playing'),
+              settings: t('Settings')
+            })}
           </span>
         </button>
         {LEVELS.map((level) => (
@@ -144,19 +171,18 @@ export function NewGameDialog({
             className={`level-btn level-${level.toLowerCase()}`}
             onClick={() => onStart(level)}
           >
-            <strong>{level}</strong>
-            <span>{levelDescription(level)}</span>
+            <strong>{t.level(level)}</strong>
+            <span>{levelDescription(lt, level)}</span>
           </button>
         ))}
         <button className="level-btn" onClick={onCustom}>
-          <strong>Custom</strong>
+          <strong>{t('Custom')}</strong>
           <span>
-            Type in a puzzle from a newspaper or book. sudokUI checks it has
-            exactly one solution and rates it before you play
+            {t('Type in a puzzle from a newspaper or book. sudokUI checks it has exactly one solution and rates it before you play')}
           </span>
         </button>
       </div>
-      <h4 className="setting-group">Or scan a photo of one</h4>
+      <h4 className="setting-group">{t('Or scan a photo of one')}</h4>
       <ScanControls onDone={onClose} />
     </Modal>
   );
@@ -176,6 +202,7 @@ export function PracticeDialog({
   onPath: () => void;
 }) {
   const t = useT();
+  const lt = useLearnText();
   const byCategory = techniquesByFamily();
   const shown = byCategory.flatMap(([, techs]) => techs);
   const playable = shown.filter((x) => PRACTICE_TECHS.includes(x));
@@ -183,41 +210,36 @@ export function PracticeDialog({
     <Modal title={t('Learn')} onClose={onClose} wide>
       <HubTabs active="practice" onTheory={onLearn} onPath={onPath} />
       <p className="dialog-note">
-        Pick a technique. sudokUI builds a puzzle that needs it, with nothing
-        harder before it, and takes you to the move where it applies.
+        {t('Pick a technique. sudokUI builds a puzzle that needs it, with nothing harder before it, and takes you to the move where it applies.')}
       </p>
       <p className="dialog-note">
-        The number on each button is the technique's cost. A puzzle's
-        difficulty rating is the sum of the costs of every step needed to
-        solve it.
+        {t("The number on each button is the technique's cost. A puzzle's difficulty rating is the sum of the costs of every step needed to solve it.")}
       </p>
       <p className="tech-count">
-        <strong>{playable.length}</strong> of {shown.length} techniques playable
+        {rich(t('{n} of {total} techniques playable', { total: shown.length }), { n: <strong>{playable.length}</strong> })}
       </p>
       <ul className="tech-legend">
         <li>
-          <span className="pool-dot" /> a puzzle is ready and starts instantly
+          <span className="pool-dot" /> {t('a puzzle is ready and starts instantly')}
         </li>
         <li>
-          <span className="tech-gear">⚙</span> solver only: there is no pattern to spot, so
-          nothing to practise
+          <span className="tech-gear">⚙</span> {t('solver only: there is no pattern to spot, so nothing to practise')}
         </li>
         <li>
-          <span className="tech-tilde">≈</span> never needed: an easier technique always gets
-          there first
+          <span className="tech-tilde">≈</span> {t('never needed: an easier technique always gets there first')}
         </li>
         <li>
-          <span className="tech-x">✗</span> not implemented: the chain techniques already
-          cover it
+          <span className="tech-x">✗</span> {t('not implemented: the chain techniques already cover it')}
         </li>
       </ul>
       <div className="practice-list">
         {byCategory.map(([cat, techs]) => (
           <div key={cat} className="practice-group">
-            <h4>{categoryLabel(cat)}</h4>
+            <h4>{t.family(cat)}</h4>
             <div className="practice-btns">
               {techs.map((tech) => {
                 const info = TECHS[tech];
+                const name = t.tech(tech);
                 const ok = PRACTICE_TECHS.includes(tech);
                 // three honest reasons a technique can't be practised:
                 // ⚙ last resorts — the solver uses them, but there is no
@@ -238,14 +260,30 @@ export function PracticeDialog({
                     onClick={() => ok && onStart(tech)}
                     title={
                       ok
-                        ? `${TECH_DOCS[tech].what} (${info.level}, score ${info.score})`
+                        ? t('{what} ({level}, score {score})', {
+                            what: lt.techDoc(tech).what,
+                            level: t.level(info.level),
+                            score: info.score
+                          })
                         : lastResort
-                          ? `${info.name} is implemented and the solver uses it on the hardest puzzles. But there is nothing to spot: it assumes candidates and propagates, so practising it would just be trial and error`
+                          ? t(
+                              '{name} is implemented and the solver uses it on the hardest puzzles. But there is nothing to spot: it assumes candidates and propagates, so practising it would just be trial and error',
+                              { name }
+                            )
                           : redundant
                             ? NOT_PRACTISABLE[tech]
-                              ? `${info.name} is implemented and the solver uses it, but it cannot be practised: ${NOT_PRACTISABLE[tech]}`
-                              : `${info.name} is implemented, but provably redundant: its conclusions are always found by earlier techniques, so it never appears in a solve path`
-                            : `${info.name} is deliberately not implemented. Everything it can find, the AIC/ALS chain engines already find. It stays in the catalogue (score ${info.score}, ${info.level}) so the map of sudoku techniques is complete.`
+                              ? t('{name} is implemented and the solver uses it, but it cannot be practised: {reason}', {
+                                  name,
+                                  reason: notPractisableReason(t, NOT_PRACTISABLE[tech]!)
+                                })
+                              : t(
+                                  '{name} is implemented, but provably redundant: its conclusions are always found by earlier techniques, so it never appears in a solve path',
+                                  { name }
+                                )
+                            : t(
+                                '{name} is deliberately not implemented. Everything it can find, the AIC/ALS chain engines already find. It stays in the catalogue (score {score}, {level}) so the map of sudoku techniques is complete.',
+                                { name, score: info.score, level: t.level(info.level) }
+                              )
                     }
                   >
                     {ok ? (
@@ -257,12 +295,12 @@ export function PracticeDialog({
                     ) : (
                       <span className="tech-x">✗ </span>
                     )}
-                    {info.name}
+                    {name}
                     <span className="tech-score">{info.score}</span>
                     {ok && poolSize(techKey(tech)) > 0 && (
-                      <span className="pool-dot" title="cached puzzle ready" />
+                      <span className="pool-dot" title={t('cached puzzle ready')} />
                     )}
-                    {kinLine(tech) && <span className="tech-kin">{kinLine(tech)}</span>}
+                    {lt.kinLine(tech) && <span className="tech-kin">{lt.kinLine(tech)}</span>}
                   </button>
                 );
               })}
@@ -298,13 +336,14 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
   const markAssisted = useGame((s) => s.markAssisted);
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const t = useT();
 
   useEffect(() => {
     if (!info) return;
     markAssisted(); // seeing the path (even its shape) is assistance
     // defer the (possibly slow) rating so the dialog paints first
-    const t = setTimeout(() => setSteps(solvePath(info.puzzle)), 30);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setSteps(solvePath(info.puzzle)), 30);
+    return () => clearTimeout(timer);
   }, [info?.puzzle]);
 
   if (!info) return null;
@@ -338,12 +377,9 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title="Solution path" onClose={onClose}>
+    <Modal title={t('Solution path')} onClose={onClose}>
       <p className="dialog-note">
-        Every step of one complete solution, easiest technique first. Click a
-        step to set the board to the position just before it. The crux, the
-        single most expensive step, is highlighted. Viewing this counts as
-        assistance.
+        {t('Every step of one complete solution, easiest technique first. Click a step to set the board to the position just before it. The crux, the single most expensive step, is highlighted. Viewing this counts as assistance.')}
       </p>
       {!steps ? (
         <div className="spinner" />
@@ -357,7 +393,7 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
                 className="path-row path-group"
                 role="button"
                 tabIndex={0}
-                title="Expand these steps"
+                title={t('Expand these steps')}
                 onClick={() => setExpanded(new Set([...expanded, row.index]))}
                 onKeyDown={onActivate(() => setExpanded(new Set([...expanded, row.index])))}
               >
@@ -370,7 +406,7 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
                 >
                   {row.index + 1}–{row.index + row.steps.length}
                 </button>
-                <span className="path-label">{row.steps.length} singles ▸</span>
+                <span className="path-label">{t('{n} singles ▸', { n: row.steps.length })}</span>
                 <span className="path-score">
                   +{row.steps.reduce((a, s) => a + TECHS[s.tech].score, 0)}
                 </span>
@@ -388,8 +424,8 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
               >
                 <span className="path-jump">{row.index + 1}</span>
                 <span className="path-label">
-                  {TECHS[row.step.tech].name}
-                  {row.index === crux && <span className="crux-badge">crux</span>}
+                  {t.tech(row.step.tech)}
+                  {row.index === crux && <span className="crux-badge">{t('crux')}</span>}
                 </span>
                 <span className="path-score">+{TECHS[row.step.tech].score}</span>
               </div>
@@ -413,21 +449,19 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
  * Scan (inline); the answer holds for the rest of the game.
  */
 export function ContractChoices({ onAnswer }: { onAnswer: (c: 'exhaustive' | 'open') => void }) {
+  const t = useT();
   return (
     <div className="level-list">
       <button className="level-btn" onClick={() => onAnswer('exhaustive')}>
-        <strong>They are my remaining candidates</strong>
+        <strong>{t('They are my remaining candidates')}</strong>
         <span>
-          You filled candidates and have been eliminating: a missing digit in
-          a marked cell means you ruled it out. Hints continue from exactly
-          where you are. (Corner or centre makes no difference.)
+          {t('You filled candidates and have been eliminating: a missing digit in a marked cell means you ruled it out. Hints continue from exactly where you are. (Corner or centre makes no difference.)')}
         </span>
       </button>
       <button className="level-btn" onClick={() => onAnswer('open')}>
-        <strong>They are partial notes</strong>
+        <strong>{t('They are partial notes')}</strong>
         <span>
-          Snyder-style or still filling: a missing digit means nothing yet.
-          Hints reason from every remaining possibility instead.
+          {t('Snyder-style or still filling: a missing digit means nothing yet. Hints reason from every remaining possibility instead.')}
         </span>
       </button>
     </div>
@@ -442,13 +476,11 @@ export function ContractDialog({
   onAnswer: (c: 'exhaustive' | 'open') => void;
   onClose: () => void;
 }) {
+  const t = useT();
   return (
-    <Modal title="How should hints read your pencil marks?" onClose={onClose}>
+    <Modal title={t('How should hints read your pencil marks?')} onClose={onClose}>
       <p className="dialog-note">
-        A missing pencil mark can mean "eliminated" or just "not written yet",
-        and
-        only you know which. Your answer is remembered for the rest of this
-        puzzle (Auto and Fill answer it automatically).
+        {t('A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which. Your answer is remembered for the rest of this puzzle (Auto and Fill answer it automatically).')}
       </p>
       <ContractChoices onAnswer={onAnswer} />
     </Modal>
@@ -465,18 +497,21 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
   const showStep = useGame((s) => s.showStep);
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [slip, setSlip] = useState(false);
+  const t = useT();
   // "is there a Jellyfish here?": one technique by name, with a plain no
-  const [query, setQuery] = useState(lookFor ? TECHS[lookFor].name : '');
+  const [query, setQuery] = useState(lookFor ? t.tech(lookFor) : '');
   const q = query.trim().toLowerCase();
-  const matching = SOLVE_ORDER.filter((t) => TECHS[t].name.toLowerCase().includes(q));
+  // a technique answers to its name in the player's language and in English
+  const names = (tech: Tech) => [TECHS[tech].name.toLowerCase(), t.tech(tech).toLowerCase()];
+  const matching = SOLVE_ORDER.filter((tech) => names(tech).some((n) => n.includes(q)));
   // the technique named exactly, when it does not fire: said in so many
   // words even if its finned and franken cousins do
-  const exact = SOLVE_ORDER.find((t) => TECHS[t].name.toLowerCase() === q);
+  const exact = SOLVE_ORDER.find((tech) => names(tech).includes(q));
   const missing =
     exact && steps && !steps.some((st) => st.tech === exact)
-      ? `No ${TECHS[exact].name} fires in this position with your candidates.`
+      ? t('No {name} fires in this position with your candidates.', { name: t.tech(exact) })
       : null;
-  const shown = steps?.filter((st) => !q || TECHS[st.tech].name.toLowerCase().includes(q)) ?? null;
+  const shown = steps?.filter((st) => !q || names(st.tech).some((n) => n.includes(q))) ?? null;
 
   // manual marks with no declared meaning: ask before scanning
   const needsContract = !auto && contract === 'unknown' && hasManualMarks(cells);
@@ -485,7 +520,7 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
     if (needsContract) return; // the choices below re-trigger this effect
     markAssisted();
     // defer the finder sweep so the dialog paints first
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       // under the exhaustive contract a mark that lost its true digit means
       // the scan would reason from a corrupted position — say so instead
       if (solution && !auto && contract === 'exhaustive' && markSlip(cells, solution) >= 0) {
@@ -500,64 +535,62 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
       );
       setSteps(all);
     }, 30);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsContract, contract]);
 
   return (
-    <Modal title="What's in this position?" onClose={onClose}>
+    <Modal title={t("What's in this position?")} onClose={onClose}>
       {needsContract ? (
         <>
           <p className="dialog-note">
-            A missing pencil mark can mean "eliminated" or just "not written
-            yet", and only you know which. Your answer is remembered for the rest
-            of this puzzle.
+            {t('A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which. Your answer is remembered for the rest of this puzzle.')}
           </p>
           <ContractChoices onAnswer={setMarkContract} />
         </>
       ) : (
         <>
           <p className="dialog-note">
-            Every technique the solver can apply right now, with your exact
-            candidates, easiest first. Click one to see it highlighted on
-            the board. Counts as assistance.
+            {t('Every technique the solver can apply right now, with your exact candidates, easiest first. Click one to see it highlighted on the board. Counts as assistance.')}
           </p>
           <input
             className="learn-search"
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Looking for one technique? Jellyfish, X-Wing…"
-            aria-label="Technique to look for"
+            placeholder={t('Looking for one technique? Jellyfish, X-Wing…')}
+            aria-label={t('Technique to look for')}
           />
           {!steps || !shown ? (
             <div className="spinner" />
           ) : slip ? (
             <p className="dialog-note">
-              A pencil mark somewhere dropped a digit that belongs in the
-              solution. Run Check to find it before scanning.
+              {t('A pencil mark somewhere dropped a digit that belongs in the solution. Run Check to find it before scanning.')}
             </p>
           ) : steps.length === 0 ? (
             <p className="dialog-note">
-              Nothing fires here. You may need a technique beyond the
-              catalogue's reach from this position, or a candidate is off
-              (run Check).
+              {t("Nothing fires here. You may need a technique beyond the catalogue's reach from this position, or a candidate is off (run Check).")}
             </p>
           ) : (
             <>
               {missing && (
                 <p className="dialog-note">
-                  {missing}
+                  {missing}{' '}
                   {shown.length > 0
-                    ? ' Related techniques that do:'
-                    : ' The pattern may still be there without removing anything, which is why the solver passes it by.'}
+                    ? t('Related techniques that do:')
+                    : t('The pattern may still be there without removing anything, which is why the solver passes it by.')}
                 </p>
               )}
               {shown.length === 0 && !missing && (
                 <p className="dialog-note">
                   {matching.length === 0
-                    ? `No technique called “${query.trim()}” is in the catalogue.`
-                    : `None of the ${matching.length} techniques matching “${query.trim()}” fires here.`}
+                    ? t('No technique called “{q}” is in the catalogue.', { q: query.trim() })
+                    : t(
+                        matching.length === 1
+                          ? 'None of the {n} techniques matching “{q}” fires here.||one technique matches'
+                          : 'None of the {n} techniques matching “{q}” fires here.',
+                        { n: matching.length, q: query.trim() }
+                      )}
                 </p>
               )}
               {shown.length > 0 && (
@@ -579,11 +612,15 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
                   })}
                 >
                   <span className="path-jump">+{TECHS[step.tech].score}</span>
-                  <span className="path-label">{TECHS[step.tech].name}</span>
+                  <span className="path-label">{t.tech(step.tech)}</span>
                   <span className="path-score">
-                    {step.placements.length > 0 && `${step.placements.length} placed`}
+                    {step.placements.length > 0 &&
+                      t(step.placements.length === 1 ? '{n} placed||one digit' : '{n} placed', { n: step.placements.length })}
                     {step.placements.length > 0 && step.eliminations.length > 0 && ' · '}
-                    {step.eliminations.length > 0 && `${step.eliminations.length} removed`}
+                    {step.eliminations.length > 0 &&
+                      t(step.eliminations.length === 1 ? '{n} removed||one candidate' : '{n} removed', {
+                        n: step.eliminations.length
+                      })}
                   </span>
                 </div>
               ))}
@@ -608,12 +645,13 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
   const [scanError, setScanError] = useState('');
   const [camera, setCamera] = useState<MediaStream | null>(null);
   const video = useRef<HTMLVideoElement>(null);
+  const t = useT();
   const canCamera = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
   const closeCamera = () => {
-    camera?.getTracks().forEach((t) => t.stop());
+    camera?.getTracks().forEach((track) => track.stop());
     setCamera(null);
   };
-  useEffect(() => () => camera?.getTracks().forEach((t) => t.stop()), [camera]);
+  useEffect(() => () => camera?.getTracks().forEach((track) => track.stop()), [camera]);
   useEffect(() => {
     if (camera && video.current) video.current.srcObject = camera;
   }, [camera]);
@@ -625,16 +663,22 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
       const r = await scanImage(blob);
       const found = r.digits.filter(Boolean).length;
       if (found < 17) {
-        setScanError(
-          `Only ${found} digit${found === 1 ? '' : 's'} could be read${r.foundGrid ? '' : ', and no grid was found'}. Printed puzzles only; fill the frame with the grid, in good light, and try again.`
-        );
+        const read = r.foundGrid
+          ? t(found === 1 ? 'Only {n} digit could be read.' : 'Only {n} digits could be read.', { n: found })
+          : t(
+              found === 1
+                ? 'Only {n} digit could be read, and no grid was found.'
+                : 'Only {n} digits could be read, and no grid was found.',
+              { n: found }
+            );
+        setScanError(`${read} ${t('Printed puzzles only; fill the frame with the grid, in good light, and try again.')}`);
         return;
       }
       closeCamera();
       loadScan(r.digits, r.doubts, r.preview);
       onDone();
     } catch (e) {
-      setScanError(e instanceof Error ? e.message : 'The photo could not be read.');
+      setScanError(e instanceof Error ? e.message : t('The photo could not be read.'));
     } finally {
       setBusy(false);
     }
@@ -647,7 +691,7 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
       });
       setCamera(stream);
     } catch {
-      setScanError('The camera could not be opened. Take a photo with the camera app and choose the file instead.');
+      setScanError(t('The camera could not be opened. Take a photo with the camera app and choose the file instead.'));
     }
   };
   const snap = async () => {
@@ -658,18 +702,17 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
   return (
     <>
       <p className="dialog-note">
-        Printed puzzles: a newspaper, a book, a screen. Fill the frame with the grid; a tilt, a turn or a mirror image
-        is read anyway. The digits land on the board with the scanner's doubts in red, for you to check before playing.
+        {t("Printed puzzles: a newspaper, a book, a screen. Fill the frame with the grid; a tilt, a turn or a mirror image is read anyway. The digits land on the board with the scanner's doubts in red, for you to check before playing.")}
       </p>
       {camera ? (
         <div className="scan-camera">
           <video ref={video} autoPlay playsInline muted />
           <div className="hint-actions">
             <button onClick={snap} disabled={busy}>
-              {busy ? 'Reading…' : 'Snap'}
+              {busy ? t('Reading…') : t('Snap')}
             </button>
             <button className="ghost" onClick={closeCamera}>
-              Cancel
+              {t('Cancel')}
             </button>
           </div>
         </div>
@@ -686,11 +729,11 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
                 if (f) scan(f);
               }}
             />
-            📷 {busy ? 'Reading…' : 'Photo or file'}
+            📷 {busy ? t('Reading…') : t('Photo or file')}
           </label>
           {canCamera && (
             <button className="ghost" onClick={openCamera} disabled={busy}>
-              🎥 Use the camera
+              🎥 {t('Use the camera')}
             </button>
           )}
         </div>
@@ -704,11 +747,12 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const startGame = useGame((s) => s.startGame);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
+  const t = useT();
 
   const doImport = () => {
     const cleaned = text.replace(/[^0-9.]/g, '');
     if (cleaned.length !== 81) {
-      setError('A puzzle needs exactly 81 characters (digits and dots).');
+      setError(t('A puzzle needs exactly 81 characters (digits and dots).'));
       return;
     }
     const v = validatePuzzle(cleaned);
@@ -721,8 +765,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title="Import a puzzle" onClose={onClose}>
-      <p className="dialog-note">Paste an 81-character puzzle string (dots or zeros for empty cells).</p>
+    <Modal title={t('Import a puzzle')} onClose={onClose}>
+      <p className="dialog-note">{t('Paste an 81-character puzzle string (dots or zeros for empty cells).')}</p>
       <textarea
         rows={3}
         value={text}
@@ -734,9 +778,9 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       />
       {error && <p className="dialog-error">{error}</p>}
       <div className="hint-actions">
-        <button onClick={doImport}>Load puzzle</button>
+        <button onClick={doImport}>{t('Load puzzle')}</button>
       </div>
-      <h4 className="setting-group">Scan a photo</h4>
+      <h4 className="setting-group">{t('Scan a photo')}</h4>
       <ScanControls onDone={onClose} />
     </Modal>
   );
@@ -746,6 +790,7 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   const cells = useGame((s) => s.cells);
   const autoCandidates = useGame((s) => s.autoCandidates);
   const [copied, setCopied] = useState('');
+  const t = useT();
 
   const currentAsString = () =>
     cells.map((c) => (c.given ? String(c.value) : '.')).join('');
@@ -767,46 +812,65 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title="Share this puzzle" onClose={onClose}>
+    <Modal title={t('Share this puzzle')} onClose={onClose}>
       <p className="dialog-note">
-        <strong>Puzzle</strong> shares a fresh copy from the start.{' '}
-        <strong>Position</strong> shares it exactly as it stands, with
-        your entries, pencil marks and colours, for a second opinion or a
-        race from the same spot.
+        {rich(
+          t(
+            '{puzzle} shares a fresh copy from the start. {position} shares it exactly as it stands, with your entries, pencil marks and colours, for a second opinion or a race from the same spot.'
+          ),
+          {
+            puzzle: <strong>{t('Puzzle||the Puzzle link button')}</strong>,
+            position: <strong>{t('Position||the Position link button')}</strong>
+          }
+        )}
       </p>
       <div className="hint-actions">
         <button onClick={() => copy('link')}>
-          {copied === 'link' ? '✓ Copied' : '🔗 Puzzle link'}
+          {copied === 'link' ? `✓ ${t('Copied')}` : `🔗 ${t('Puzzle link')}`}
         </button>
         <button onClick={() => copy('position')}>
-          {copied === 'position' ? '✓ Copied' : '📍 Position link'}
+          {copied === 'position' ? `✓ ${t('Copied')}` : `📍 ${t('Position link')}`}
         </button>
         <button className="ghost" onClick={() => copy('string')}>
-          {copied === 'string' ? '✓ Copied' : 'Puzzle string'}
+          {copied === 'string' ? `✓ ${t('Copied')}` : t('Puzzle string')}
         </button>
       </div>
     </Modal>
   );
 }
 
-export function GeneratingDialog({ label, attempts, onCancel }: { label: string; attempts: number; onCancel: () => void }) {
+export function GeneratingDialog({ label, attempts, onCancel }: { label: GenRequest; attempts: number; onCancel: () => void }) {
+  const t = useT();
+  const heading =
+    label.kind === 'level'
+      ? t('Generating {level} puzzle', { level: t.level(label.level) })
+      : t('Generating {name} practice', { name: t.tech(label.tech) });
   return (
     <div className="modal-backdrop">
-      <div className="modal" role="dialog" aria-modal="true" aria-label={`Generating ${label}`}>
-        <h3>Generating {label}…</h3>
+      <div className="modal" role="dialog" aria-modal="true" aria-label={heading}>
+        <h3>{heading}…</h3>
         <div className="spinner" />
         <p className="dialog-note">
-          {attempts > 0 ? `${attempts} puzzles examined` : 'Searching for a matching puzzle'}
+          {attempts > 0
+            ? t(attempts === 1 ? '{n} puzzles examined||one puzzle' : '{n} puzzles examined', { n: t.num(attempts) })
+            : t('Searching for a matching puzzle')}
         </p>
         <div className="hint-actions">
-          <button className="ghost" onClick={onCancel}>Cancel</button>
+          <button className="ghost" onClick={onCancel}>{t('Cancel')}</button>
         </div>
       </div>
     </div>
   );
 }
 
-const ordinal = (n: number) => {
+/**
+ * The ordinal of a count of solves in a language: 3rd; Norwegian 3.;
+ * Spanish 3.ª, the sentence counting partidas (feminine, so one form for
+ * every number)
+ */
+const ordinal = (n: number, lang: Lang) => {
+  if (lang === 'nb') return `${n}.`;
+  if (lang === 'es') return `${n}.ª`;
   const s = ['th', 'st', 'nd', 'rd'];
   const v = n % 100;
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
@@ -851,20 +915,35 @@ export function VictoryDialog({
   const band = info.practiceTech ? null : bands[info.level];
   const newBest = !!band && band.solves > 1 && band.bestMs === elapsedMs();
   const streak = info.dailyKey ? dailyStreak(dailyDays) : 0;
+  const practiceName = info.practiceTech ? t.tech(info.practiceTech) : '';
   const practiceLine = info.practiceTech
     ? practiceFound
-      ? `🎯 ${t('You found the')} ${TECHS[info.practiceTech].name} ${t('yourself')}`
+      ? `🎯 ${t('You found the {name} yourself', { name: practiceName })}`
       : game.hinted[info.practiceTech]
-        ? `${t('The')} ${TECHS[info.practiceTech].name} ${t('came from a hint. Next time, look for it first')}`
-        : `${t('You solved it without playing the')} ${TECHS[info.practiceTech].name}. ${t('Next time, look for it first')}`
+        ? t('The {name} came from a hint. Next time, look for it first', { name: practiceName })
+        : t('You solved it without playing the {name}. Next time, look for it first', { name: practiceName })
     : null;
 
   // same-puzzle challenge: the share text carries the seed link, so the
   // recipient plays exactly this grid
   const shareResult = () => {
-    const clean = assisted ? '' : ', no assists, every mark my own';
-    const standing = verdict ? `, ${percentileText(verdict.percentile)}` : '';
-    const text = `I solved a ${info.level} sudoku (rating ${info.score}) in ${mm}:${ss}${standing}${clean} on sudokUI. Can you beat that? https://sudokui.app/#p=${info.puzzle}`;
+    const vars = {
+      level: t.level(info.level),
+      score: info.score,
+      time: `${mm}:${ss}`,
+      standing: verdict ? percentileText(verdict.percentile) : '',
+      link: `https://sudokui.app/#p=${info.puzzle}`
+    };
+    const text = verdict
+      ? assisted
+        ? t('I solved a {level} sudoku (rating {score}) in {time}, {standing} on sudokUI. Can you beat that? {link}', vars)
+        : t(
+            'I solved a {level} sudoku (rating {score}) in {time}, {standing}, no assists, every mark my own on sudokUI. Can you beat that? {link}',
+            vars
+          )
+      : assisted
+        ? t('I solved a {level} sudoku (rating {score}) in {time} on sudokUI. Can you beat that? {link}', vars)
+        : t('I solved a {level} sudoku (rating {score}) in {time}, no assists, every mark my own on sudokUI. Can you beat that? {link}', vars);
     navigator.clipboard?.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -877,14 +956,25 @@ export function VictoryDialog({
           <i key={i} style={{ '--n': i } as React.CSSProperties} />
         ))}
       </div>
-      <div className="modal victory" role="dialog" aria-modal="true" aria-label="Puzzle solved">
+      <div className="modal victory" role="dialog" aria-modal="true" aria-label={t('Puzzle solved')}>
         <h3>{t('Solved!')} 🎉</h3>
-        <p>
-          {info.level} · score {info.score} · {mm}:{ss}
-        </p>
+        <p>{t('{level} · score {score} · {time}', { level: t.level(info.level), score: info.score, time: `${mm}:${ss}` })}</p>
         {verdict && (
-          <p className="solve-verdict" title="Against typical times of online solvers of this band. See Learn, Rating">
-            <strong>{verdict.label}</strong>: {percentileText(verdict.percentile)} of {info.level} puzzles {MODE_LABEL[mode]}
+          <p
+            className="solve-verdict"
+            title={t('Against typical times of online solvers of this band. See {learn}, {rating}', {
+              learn: t('Learn'),
+              rating: t('Rating')
+            })}
+          >
+            {rich(
+              t('{verdict}: {standing} of {level} puzzles {mode}', {
+                standing: percentileText(verdict.percentile),
+                level: t.level(info.level),
+                mode: modeLabel(t, mode)
+              }),
+              { verdict: <strong>{verdict.label}</strong> }
+            )}
           </p>
         )}
         <p className={assisted ? 'solve-assisted' : 'solve-clean'}>
@@ -900,14 +990,19 @@ export function VictoryDialog({
         )}
         {band && band.solves > 1 && (
           <p className="solve-record">
-            {t('Your')} {ordinal(band.solves)} {info.level} {t('solve')}
-            {newBest ? `, ${t('a new best')}` : `; ${t('best')} ${clock(band.bestMs)}`}
+            {newBest
+              ? t('Your {nth} {level} solve, a new best', { nth: ordinal(band.solves, t.lang), level: t.level(info.level) })
+              : t('Your {nth} {level} solve; best {time}', {
+                  nth: ordinal(band.solves, t.lang),
+                  level: t.level(info.level),
+                  time: clock(band.bestMs)
+                })}
           </p>
         )}
-        {streak > 1 && <p className="solve-record">🔥 {t('Daily streak')}: {streak} {t('days')}</p>}
+        {streak > 1 && <p className="solve-record">🔥 {t('Daily streak: {n} days', { n: streak })}</p>}
         <div className="hint-actions">
           {info.practiceTech && onAnother && (
-            <button onClick={onAnother}>Another {TECHS[info.practiceTech].name}</button>
+            <button onClick={onAnother}>{t('Another {name}', { name: practiceName })}</button>
           )}
           <button onClick={onNewGame}>{t('New game')}</button>
           <button onClick={shareResult}>{copied ? `✓ ${t('Copied')}` : `🔗 ${t('Challenge a friend')}`}</button>
@@ -938,6 +1033,7 @@ export function Modal({
   /** reading-width dialog for long-form content (the Learn dialog) */
   wide?: boolean;
 }) {
+  const t = useT();
   // Escape closes the dialog (capture phase so the app's own Escape
   // handling — clearing the selection — doesn't also fire)
   React.useEffect(() => {
@@ -991,7 +1087,7 @@ export function Modal({
       >
         <div className="modal-head">
           <h3>{title}</h3>
-          <button className="close-btn" onClick={onClose} aria-label="Close dialog">✕</button>
+          <button className="close-btn" onClick={onClose} aria-label={t('Close dialog')}>✕</button>
         </div>
         {children}
       </div>

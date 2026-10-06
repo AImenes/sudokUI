@@ -19,10 +19,16 @@ into `dist/`:
 | `/learn/img/intuition-<diagram>.svg` | the Intuition guide's schematic diagrams |
 | `/learn/glossary/` | the glossary |
 | `/sudoku-difficulty-rating/` | how the rating works, the bands, every score, and a paste-a-puzzle box |
-| `/sudoku-solver/`, `/daily-sudoku/`, `/hodoku/` | landing pages |
-| `/nb/…`, `/es/…` | the Learn pages above (techniques, Intuition, glossary, rating, How the best solve) in Norwegian and Spanish, linked to each other with `hreflang` (see `docs/translations.md`) |
+| `/sudoku-solver/`, `/daily-sudoku/`, `/hodoku/`, `/how-the-best-solve/` | landing pages |
+| `/nb/…`, `/es/…` | every page above (techniques, Intuition, glossary, rating, landing pages) in Norwegian and Spanish, at the English address under the language's prefix (`/nb/daily-sudoku/`, `/es/learn/x-wing/`) |
 | `/learn/img/intuition-<diagram>.<lang>.svg` | the Intuition diagrams with Norwegian and Spanish labels |
-| `/sitemap.xml` | the home page plus all of the above, with each Learn page's language versions |
+| `/sitemap.xml` | the home pages `/`, `/nb/` and `/es/` plus all of the above, each with its language versions |
+
+Every page names its three language versions with `hreflang` links
+(English is `x-default`) and has a language line in its footer; see
+`docs/translations.md`. The home pages `/`, `/nb/` and `/es/` are the app
+itself in each language (`index.html`, filled in by `src/content/home.ts`),
+and alternates of each other in the same way.
 
 The pages are self-contained HTML with one inline stylesheet: no React, no
 service worker, and script only on the paste-a-puzzle box.
@@ -39,8 +45,12 @@ All of it is in `src/content/`, and the app reads the same modules:
   logic in another family (a Hidden Single is a 1-fish), only where it holds
   every time
 - `rating.ts`, `categories.ts`, `landing.ts`: supporting copy; `categories.ts`
-  also fixes the order families are listed in
+  also fixes the order families are listed in, `landing.ts` the landing
+  pages' addresses and links
 - `examples.json`: one real position per technique (see below)
+- `learnLocale.ts` gathers all of it in one language; `locales/nb.ts` and
+  `locales/es.ts` are the Norwegian and Spanish versions, landing pages
+  included (`docs/translations.md`)
 - `learnPages.ts`: turns the above into pages; `boardSvg.ts` draws the boards
 
 `tests/content.test.ts` holds the content to its rules: a documented entry
@@ -97,14 +107,23 @@ fails when a finder, or the wording of its description, has changed since
 the examples were stored. Run `refresh` to bring them back in line: it keeps
 the puzzles and re-computes the steps.
 
+The stored step is English. The Norwegian and Spanish pages, and the in-app
+guide in those languages, explain an example in their own language: the
+engine, writing in that language, finds the step again at the stored
+position (`exampleStep` in `src/content/learnLocale.ts`). The same test
+holds that this gives the stored step in English, and in every language the
+same step, only in other words.
+
 ## Addresses are permanent
 
 A technique's address is derived from its name (`src/content/slugs.ts`).
 Renaming a technique would silently move its page and break every link and
 search result pointing at it, so the full map of addresses is frozen by a
-snapshot in `tests/content.test.ts`.
+snapshot in `tests/content.test.ts`, and so are the addresses of the other
+pages, in every language.
 
-- Adding a technique: run the tests, add the new line the snapshot asks for.
+- Adding a technique or a page: run the tests, add the new line the snapshot
+  asks for.
 - Renaming a technique: keep the old address with an entry in
   `SLUG_OVERRIDES`, or add a redirect line to `public/_redirects`
   (`/learn/old/ /learn/new/ 301`).
@@ -124,14 +143,20 @@ must accept them too):
 | `/#daily` | starts today's daily puzzle |
 
 `<TECHNIQUE>` is a catalogue key (`X_WING`) or a page address (`x-wing`).
+Each also works on `/nb/` and `/es/` (`/nb/#practice=X_WING`), opening the
+app in that language; the Norwegian and Spanish pages link that way, so a
+reader stays in their language.
 
 ## The service worker and unknown addresses
 
 Two settings keep the pages reachable:
 
-- `vite.config.ts` tells the service worker to answer only `/` with the app
-  shell. Without that, a visitor who already has the app installed would get
-  the game instead of the article.
+- `vite.config.ts` tells the service worker to answer only the home pages
+  (`/`, `/nb/`, `/es/`, `APP_NAVIGATION` in `src/content/home.ts`) with the
+  app, and never the static pages (`STATIC_ROUTES` in
+  `src/content/staticRoutes.ts`, in every language). Without that, a visitor
+  who already has the app installed would get the game instead of the
+  article.
 - `wrangler.jsonc` answers unknown addresses with a real 404
   (`public/404.html`) instead of the app.
 
@@ -158,6 +183,7 @@ None of these can be done from the repository:
 - The Smart App Banner, App Store markup and store badge all need the App
   Store ID and must wait for it.
 - `/.well-known/apple-app-site-association` needs the Team ID and bundle ID.
-  Exclude `/learn/*` there so articles keep opening in the browser.
+  Exclude the static pages there (`/learn/*`, the landing pages, and their
+  `/nb/` and `/es/` versions) so articles keep opening in the browser.
 - Inside a Capacitor build, links to `/learn/` must become absolute
   `https://sudokui.app/learn/...` links opened in the system browser.

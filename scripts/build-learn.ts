@@ -1,5 +1,7 @@
-// Post-build step: writes the static /learn/ pages and the sitemap into
-// dist/. Runs after `vite build` (see the "build" script in package.json):
+// Post-build step: writes the static pages (/learn/, the landing pages,
+// each in English, Norwegian and Spanish) and the sitemap into dist/; the
+// home pages /, /nb/ and /es/ are Vite's (src/content/home.ts). Runs after
+// `vite build` (see the "build" script in package.json):
 //
 //   npx vite-node scripts/build-learn.ts [folder]
 //

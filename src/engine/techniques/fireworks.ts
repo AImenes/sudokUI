@@ -1,5 +1,6 @@
 import { Grid, UNITS, bit, digitsOf, popcount, boxOf, rowOf, colOf, cellName } from '../board';
 import { Step, CellDigit } from '../steps';
+import { tr } from '../text';
 
 /**
  * Fireworks (sudokuwiki.org/Fireworks), the triple form.
@@ -62,8 +63,8 @@ export function findFireworks(g: Grid): Step | null {
             primary: cells.flatMap((cell) =>
               digitsOf(g.cands[cell] & dMask).map((digit) => ({ cell, digit }))
             ),
-            labels: { primary: `the cross and its two wings: the only cells ${digitsOf(dMask).join('/')} can land on` },
-            description: `Fireworks: digits ${digitsOf(dMask).join('/')} each must land on one of ${cellName(A)} (cross), ${cellName(B)} (row wing) or ${cellName(C)} (column wing), locking those three cells, so all other candidates there are removed.`
+            labels: { primary: tr`the cross and its two wings: the only cells ${digitsOf(dMask).join('/')} can land on` },
+            description: tr`Fireworks: digits ${digitsOf(dMask).join('/')} each must land on one of ${cellName(A)} (cross), ${cellName(B)} (row wing) or ${cellName(C)} (column wing), locking those three cells, so all other candidates there are removed.`
           };
         }
       }

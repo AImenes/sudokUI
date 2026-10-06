@@ -8,6 +8,7 @@
 import { Grid, cloneGrid, setValue, bit, isSolved, isBroken, cellName, parseGrid } from './board';
 import { solve } from './bruteForce';
 import { Step } from './steps';
+import { tr } from './text';
 import { Tech, TECHS, Level, LEVELS, LEVEL_MAX_SCORE, SOLVE_ORDER, maxLevel, bandFloor } from './ratings';
 import { findFullHouse, findNakedSingle, findHiddenSingle } from './techniques/singles';
 import { findLockedCandidates1, findLockedCandidates2 } from './techniques/intersections';
@@ -254,7 +255,7 @@ export function ratePuzzle(
         tech: 'BRUTE_FORCE',
         placements: [{ cell, digit: solution.values[cell] }],
         eliminations: [],
-        description: `Brute force: set ${cellName(cell)} to ${solution.values[cell]}.`
+        description: tr`Brute force: set ${cellName(cell)} to ${solution.values[cell]}.`
       };
     }
     applyStep(g, step);

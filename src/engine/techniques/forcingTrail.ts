@@ -14,6 +14,7 @@
  */
 import { Grid, UNITS, PEERS, bit, digitsOf, popcount, cloneGrid, cellName } from '../board';
 import { CellDigit, ChainLink } from '../steps';
+import { tr, unitName } from '../text';
 
 export interface TrailStep {
   cell: number;
@@ -40,8 +41,6 @@ export interface Trail {
   /** trail index that placed a cell, -1 if it was placed before the trail */
   placedBy: Int16Array;
 }
-
-const UNIT_NAME = (u: number) => (u < 9 ? `row ${u + 1}` : u < 18 ? `column ${u - 8}` : `box ${u - 17}`);
 
 /** Assume a candidate on (placed) or off (removed) and propagate singles, recording causes. */
 export function propagateWithTrail(start: Grid, cell: number, digit: number, on: boolean): Trail {
@@ -142,11 +141,23 @@ export function spine(trail: Trail, last: number): number[] {
 /** the most recent of some causes, or the assumption */
 export const latest = (because: number[]) => (because.length ? Math.max(...because) : 0);
 
-/** what a placement on the trail says, for the walk */
-function why(step: TrailStep): string {
-  return step.how === 'hidden'
-    ? `the only place left for ${step.digit} in ${UNIT_NAME(step.unit!)}`
-    : `the only candidate left in ${cellName(step.cell)}`;
+/**
+ * What one link of the trail says, for the walk: the premise (the step
+ * before, or the assumed removal when `off`), the single it forces, and why
+ * that single is forced.
+ */
+function linkText(from: TrailStep, to: TrailStep, off: boolean): string {
+  const a = cellName(from.cell);
+  const b = cellName(to.cell);
+  if (to.how === 'hidden') {
+    const u = unitName(to.unit!);
+    return off
+      ? tr`If ${a} is not ${from.digit}, then ${b} must be ${to.digit}: the only place left for ${to.digit} in ${u}.`
+      : tr`${a} = ${from.digit}, then ${b} must be ${to.digit}: the only place left for ${to.digit} in ${u}.`;
+  }
+  return off
+    ? tr`If ${a} is not ${from.digit}, then ${b} must be ${to.digit}: the only candidate left in ${b}.`
+    : tr`${a} = ${from.digit}, then ${b} must be ${to.digit}: the only candidate left in ${b}.`;
 }
 
 const node = (s: TrailStep): CellDigit => ({ cell: s.cell, digit: s.digit });
@@ -160,15 +171,11 @@ export function spineLinks(trail: Trail, path: number[], on: boolean): ChainLink
   for (let k = 1; k < path.length; k++) {
     const from = trail.steps[path[k - 1]];
     const to = trail.steps[path[k]];
-    const premise =
-      k === 1 && !on
-        ? `If ${cellName(from.cell)} is not ${from.digit}`
-        : `${cellName(from.cell)} = ${from.digit}`;
     links.push({
       from: [node(from)],
       to: [node(to)],
       strong: true,
-      text: `${premise}, then ${cellName(to.cell)} must be ${to.digit}: ${why(to)}.`
+      text: linkText(from, to, k === 1 && !on)
     });
   }
   return links;
@@ -182,10 +189,23 @@ export function brokenCells(g: Grid, broken: Broken): CellDigit[] {
     .map((cell) => ({ cell, digit: broken.digit }));
 }
 
-export function brokenText(broken: Broken): string {
-  return broken.kind === 'cell'
-    ? `${cellName(broken.cell)} would have no candidate left`
-    : `${UNIT_NAME(broken.unit)} would have no place left for ${broken.digit}`;
+/**
+ * The link into a contradiction: the premise (the last step, or the assumed
+ * removal when `off`), then the cell with no candidate or the house with no
+ * place for a digit.
+ */
+export function brokenText(broken: Broken, from: CellDigit, off: boolean): string {
+  const a = cellName(from.cell);
+  if (broken.kind === 'cell') {
+    const c = cellName(broken.cell);
+    return off
+      ? tr`If ${a} is not ${from.digit}, then ${c} would have no candidate left: a contradiction.`
+      : tr`${a} = ${from.digit}, then ${c} would have no candidate left: a contradiction.`;
+  }
+  const u = unitName(broken.unit);
+  return off
+    ? tr`If ${a} is not ${from.digit}, then ${u} would have no place left for ${broken.digit}: a contradiction.`
+    : tr`${a} = ${from.digit}, then ${u} would have no place left for ${broken.digit}: a contradiction.`;
 }
 
 // ---- what the finders draw ----
@@ -209,14 +229,13 @@ export function contradictionDrawing(g: Grid, cell: number, digit: number, on: b
   const links = spineLinks(trail, path, on);
   const last = trail.steps[path[path.length - 1]];
   const fins = brokenCells(g, trail.broken);
-  const premise =
-    path.length === 1 && !on ? `If ${cellName(cell)} is not ${digit}` : `${cellName(last.cell)} = ${last.digit}`;
+  const off = path.length === 1 && !on;
   if (fins.length) {
     links.push({
       from: [node(last)],
       to: fins,
       strong: false,
-      text: `${premise}, then ${brokenText(trail.broken)}: a contradiction.`
+      text: brokenText(trail.broken, off ? { cell, digit } : node(last), off)
     });
   }
   return { links, fins, unit: trail.broken.kind === 'unit' ? trail.broken.unit : undefined };
@@ -245,12 +264,14 @@ export function conclusionDrawing(
   const path = spine(trail, k);
   const links = spineLinks(trail, path, on);
   const last = trail.steps[k];
-  const premise = k === 0 && !on ? `If ${cellName(cell)} is not ${digit}` : `${cellName(last.cell)} = ${last.digit}`;
   links.push({
     from: [node(last)],
     to: [{ cell: c, digit: e }],
     strong: false,
-    text: `${premise}, so ${e} is removed from ${cellName(c)}.`
+    text:
+      k === 0 && !on
+        ? tr`If ${cellName(cell)} is not ${digit}, so ${e} is removed from ${cellName(c)}.`
+        : tr`${cellName(last.cell)} = ${last.digit}, so ${e} is removed from ${cellName(c)}.`
   });
   return links;
 }

@@ -13,6 +13,7 @@ import {
 } from '../board';
 import { Step, CellDigit } from '../steps';
 import { combinations } from './subsets';
+import { tr } from '../text';
 
 interface Rect {
   cells: [number, number, number, number]; // r1c1, r1c2, r2c1, r2c2
@@ -87,8 +88,8 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
             { cell, digit: x },
             { cell, digit: y }
           ]),
-          labels: { primary: `the three corners holding only ${x}/${y}: the fourth must not join them` },
-          description: `Unique Rectangle Type 1: ${cellNames(cells)} would form a deadly pattern on ${x}/${y}; ${cellName(target)} cannot be ${x} or ${y}.`
+          labels: { primary: tr`the three corners holding only ${x}/${y}: the fourth must not join them` },
+          description: tr`Unique Rectangle Type 1: ${cellNames(cells)} would form a deadly pattern on ${x}/${y}; ${cellName(target)} cannot be ${x} or ${y}.`
         };
       }
     }
@@ -119,10 +120,10 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
             { cell: e2, digit: z }
           ],
           labels: {
-            primary: `the rectangle: ${x}/${y} in all four corners`,
-            secondary: `${z}, the roof's extra candidate: one of the two roof cells must be it`
+            primary: tr`the rectangle: ${x}/${y} in all four corners`,
+            secondary: tr`${z}, the roof's extra candidate: one of the two roof cells must be it`
           },
-          description: `Unique Rectangle Type 2: to avoid the deadly pattern on ${x}/${y}, one of ${cellName(e1)}/${cellName(e2)} must be ${z}, so ${z} is removed from cells seeing both.`
+          description: tr`Unique Rectangle Type 2: to avoid the deadly pattern on ${x}/${y}, one of ${cellName(e1)}/${cellName(e2)} must be ${z}, so ${z} is removed from cells seeing both.`
         };
       }
     }
@@ -158,8 +159,8 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
               { cell, digit: x },
               { cell, digit: y }
             ]),
-            labels: { primary: `the rectangle: ${x}/${y} in all four corners, with ${keep} locked into the roof` },
-            description: `Unique Rectangle Type 4: ${keep} is locked into ${cellName(e1)}/${cellName(e2)}; keeping ${kill} there would force the deadly pattern, so ${kill} is removed from both.`
+            labels: { primary: tr`the rectangle: ${x}/${y} in all four corners, with ${keep} locked into the roof` },
+            description: tr`Unique Rectangle Type 4: ${keep} is locked into ${cellName(e1)}/${cellName(e2)}; keeping ${kill} there would force the deadly pattern, so ${kill} is removed from both.`
           };
         }
       }
@@ -206,10 +207,10 @@ function uniqueness3(g: Grid, rect: Rect, pairMask: number, extra: number[]): St
             digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
           ),
           labels: {
-            primary: `the rectangle: ${rect.x}/${rect.y} in all four corners`,
-            secondary: 'the cells that form a locked set with the roof extras'
+            primary: tr`the rectangle: ${rect.x}/${rect.y} in all four corners`,
+            secondary: tr`the cells that form a locked set with the roof extras`
           },
-          description: `Unique Rectangle Type 3: the roof extras of ${cellNames(rect.cells)} act as one pseudo-cell and form a locked set with ${cellNames(S)}, clearing those digits from the rest of the unit.`
+          description: tr`Unique Rectangle Type 3: the roof extras of ${cellNames(rect.cells)} act as one pseudo-cell and form a locked set with ${cellNames(S)}, clearing those digits from the rest of the unit.`
         };
       }
     }
@@ -248,10 +249,10 @@ function uniqueness5(
     ]),
     secondary: extra.map((cell) => ({ cell, digit: z })),
     labels: {
-      primary: `the rectangle: ${rect.x}/${rect.y} in all four corners`,
-      secondary: `${z} in the roof cells: one of them must be it`
+      primary: tr`the rectangle: ${rect.x}/${rect.y} in all four corners`,
+      secondary: tr`${z} in the roof cells: one of them must be it`
     },
-    description: `Unique Rectangle Type 5: one of ${cellNames(extra)} must be ${z} to avoid the deadly pattern, so ${z} is removed from cells seeing all of them.`
+    description: tr`Unique Rectangle Type 5: one of ${cellNames(extra)} must be ${z} to avoid the deadly pattern, so ${z} is removed from cells seeing all of them.`
   };
 }
 
@@ -295,9 +296,13 @@ function uniqueness6(
         { cell, digit: rect.y }
       ]),
       labels: {
-        primary: `the rectangle: ${rect.x}/${rect.y} in all four corners, with ${d} confined to it in both ${rowsStrong ? 'rows' : 'columns'}`
+        primary: rowsStrong
+          ? tr`the rectangle: ${rect.x}/${rect.y} in all four corners, with ${d} confined to it in both rows`
+          : tr`the rectangle: ${rect.x}/${rect.y} in all four corners, with ${d} confined to it in both columns`
       },
-      description: `Unique Rectangle Type 6: ${d} is confined to the rectangle in both ${rowsStrong ? 'rows' : 'columns'}; placing it in a roof corner would force the deadly pattern, so ${d} is removed from ${cellNames(extra)}.`
+      description: rowsStrong
+        ? tr`Unique Rectangle Type 6: ${d} is confined to the rectangle in both rows; placing it in a roof corner would force the deadly pattern, so ${d} is removed from ${cellNames(extra)}.`
+        : tr`Unique Rectangle Type 6: ${d} is confined to the rectangle in both columns; placing it in a roof corner would force the deadly pattern, so ${d} is removed from ${cellNames(extra)}.`
     };
   }
   return null;
@@ -346,10 +351,10 @@ export function findHiddenRectangle(g: Grid): Step | null {
           ]),
           secondary: [{ cell: A, digit: strong }],
           labels: {
-            primary: `the rectangle: ${x}/${y} in all four corners`,
-            secondary: `${strong} in the bivalue corner: confined to the rectangle in ${cellName(B)}'s row and column`
+            primary: tr`the rectangle: ${x}/${y} in all four corners`,
+            secondary: tr`${strong} in the bivalue corner: confined to the rectangle in ${cellName(B)}'s row and column`
           },
-          description: `Hidden Rectangle: ${cellName(A)} holds only ${x}${y}, and ${strong} is confined to the rectangle in ${cellName(B)}'s row and column; ${cellName(B)} cannot be ${weak} or the deadly pattern appears.`
+          description: tr`Hidden Rectangle: ${cellName(A)} holds only ${x}${y}, and ${strong} is confined to the rectangle in ${cellName(B)}'s row and column; ${cellName(B)} cannot be ${weak} or the deadly pattern appears.`
         };
       }
     }
@@ -391,10 +396,10 @@ export function findAvoidableRectangle(g: Grid, type: 1 | 2): Step | null {
               primary: solved.map((cell) => ({ cell, digit: g.values[cell] })),
               secondary: [{ cell: U, digit: a }],
               labels: {
-                primary: 'the three solved corners, none of them a given',
-                secondary: `the cell that would complete the rectangle with ${a}`
+                primary: tr`the three solved corners, none of them a given`,
+                secondary: tr`the cell that would complete the rectangle with ${a}`
               },
-              description: `Avoidable Rectangle Type 1: setting ${cellName(U)} to ${a} would complete an interchangeable rectangle of solved (non-given) cells, contradicting the puzzle's unique solution.`
+              description: tr`Avoidable Rectangle Type 1: setting ${cellName(U)} to ${a} would complete an interchangeable rectangle of solved (non-given) cells, contradicting the puzzle's unique solution.`
             };
           }
 
@@ -429,10 +434,10 @@ export function findAvoidableRectangle(g: Grid, type: 1 | 2): Step | null {
               // the two solved corners, shown by their digits
               secondary: solved.map((cell) => ({ cell, digit: g.values[cell] })),
               labels: {
-                primary: `${cDigit} in the two unsolved corners: one of them must be it`,
-                secondary: 'the two solved corners, neither of them a given'
+                primary: tr`${cDigit} in the two unsolved corners: one of them must be it`,
+                secondary: tr`the two solved corners, neither of them a given`
               },
-              description: `Avoidable Rectangle Type 2: to avoid an interchangeable rectangle with the solved cells ${cellNames(solved)}, one of ${cellName(u1)}/${cellName(u2)} must be ${cDigit}, so ${cDigit} is removed from cells seeing both.`
+              description: tr`Avoidable Rectangle Type 2: to avoid an interchangeable rectangle with the solved cells ${cellNames(solved)}, one of ${cellName(u1)}/${cellName(u2)} must be ${cDigit}, so ${cDigit} is removed from cells seeing both.`
             };
           }
         }
@@ -467,10 +472,10 @@ export function findBugPlus1(g: Grid): Step | null {
         primary: [{ cell: triCell, digit: d }],
         units: CELL_UNITS[triCell].map((unit) => ({ unit, role: 'secondary' as const })),
         labels: {
-          primary: `the one cell with three candidates; ${d} is the extra`,
-          secondary: `its row, column and box, each holding ${d} three times`
+          primary: tr`the one cell with three candidates; ${d} is the extra`,
+          secondary: tr`its row, column and box, each holding ${d} three times`
         },
-        description: `BUG+1: removing ${d} from ${cellName(triCell)} would leave a bivalue grid with two solutions, so ${cellName(triCell)} must be ${d}.`
+        description: tr`BUG+1: removing ${d} from ${cellName(triCell)} would leave a bivalue grid with two solutions, so ${cellName(triCell)} must be ${d}.`
       };
     }
   }

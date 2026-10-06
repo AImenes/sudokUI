@@ -6,12 +6,26 @@ import React from 'react';
 import { Modal } from './Dialogs';
 import { useStats, dailyStreak } from '../state/stats';
 import { PATH, pathStatus, LEARNED_AT, PathRow } from '../content/path';
-import { TECHS, LEVELS, Tech, Level } from '../engine/ratings';
-import { frequencyLabel } from '../content/frequency';
-import { BAND_LEADS } from '../content/rating';
-import { useT } from '../content/i18n';
+import { LEVELS, Tech, Level } from '../engine/ratings';
+import { frequencyParts } from '../content/frequency';
+import { useT, rich, Translator } from '../content/i18n';
 import { HubTabs } from './HubTabs';
+import { useBandWords } from './BandTable';
 import type { LearnTarget } from './Learn';
+
+/**
+ * "34% of puzzles", "1 in 120 puzzles", or '' for a technique the solver
+ * never uses: frequencyLabel's English, one whole phrase per kind. Not
+ * through useLearnText, which would pull the guide into the main chunk.
+ */
+function frequencyText(t: Translator, tech: Tech): string {
+  const p = frequencyParts(tech);
+  if (!p) return '';
+  if (p.kind === 'fewer') return t('fewer than 1 in {n} puzzles', { n: t.num(p.n) });
+  if (p.kind === 'every') return t('every puzzle');
+  if (p.kind === 'share') return t('{p}% of puzzles', { p: p.percent });
+  return t('1 in {n} puzzles', { n: t.num(p.n) });
+}
 
 const clock = (ms: number) => {
   const secs = Math.floor(ms / 1000);
@@ -36,6 +50,8 @@ export function ProgressDialog({
   const bands = useStats((s) => s.bands);
   const dailyDays = useStats((s) => s.dailyDays);
   const t = useT();
+  // each band's lead, in the words the guide uses
+  const bandWords = useBandWords();
   const status = pathStatus(techs);
   const streak = dailyStreak(dailyDays);
   const played = LEVELS.filter((l) => bands[l]);
@@ -48,17 +64,17 @@ export function ProgressDialog({
     <Modal title={t('Learn')} onClose={onClose} wide>
       <HubTabs active="path" onPractice={onPracticeList} onTheory={() => onLearn({ tab: 'techniques' })} />
       <p className="dialog-note">
-        {t('The techniques worth learning, in the order puzzles need them. A technique counts as learned once you have played it unaided')}{' '}
-        {LEARNED_AT} {t('times; every move of your own is credited with the easiest technique that justifies it. Nothing leaves this device.')}
+        {t(
+          'The techniques worth learning, in the order puzzles need them. A technique counts as learned once you have played it unaided {n} times; every move of your own is credited with the easiest technique that justifies it. Nothing leaves this device.',
+          { n: LEARNED_AT }
+        )}
       </p>
       <p className="path-summary">
-        <strong>
-          {status.learned} {t('of')} {PATH.length} {t('learned')}
-        </strong>
+        <strong>{t('{n} of {total} learned', { n: status.learned, total: PATH.length })}</strong>
         {status.next && (
           <>
             {' · '}
-            {t('next')}: <strong>{TECHS[status.next].name}</strong>{' '}
+            {rich(t('next: {tech}'), { tech: <strong>{t.tech(status.next)}</strong> })}{' '}
             <button className="path-go" onClick={() => onPractice(status.next!)}>
               {t('Practice')}
             </button>
@@ -68,7 +84,7 @@ export function ProgressDialog({
       {sections.map(({ level, rows }) => (
         <section key={level} className="path-section">
           <h4 className="setting-group">
-            <span className={`level-badge level-${level.toLowerCase()}`}>{level}</span> {BAND_LEADS[level as Level]}
+            <span className={`level-badge level-${level.toLowerCase()}`}>{t.level(level)}</span> {bandWords.leads[level as Level]}
           </h4>
           <ul className="path-list">
             {rows.map((r) => (
@@ -78,12 +94,12 @@ export function ProgressDialog({
                 </span>
                 <span className="path-name">
                   <button className="learn-link" onClick={() => onLearn({ tab: 'techniques', tech: r.tech })}>
-                    {TECHS[r.tech].name}
+                    {t.tech(r.tech)}
                   </button>
-                  <span className="path-freq">{frequencyLabel(r.tech) ?? ''}</span>
+                  <span className="path-freq">{frequencyText(t, r.tech)}</span>
                 </span>
                 <span className="path-play">
-                  {r.unaided || r.hinted ? `${r.unaided} ${t('unaided')} · ${r.hinted} ${t('hinted')}` : t('not yet')}
+                  {r.unaided || r.hinted ? t('{n} unaided · {h} hinted', { n: r.unaided, h: r.hinted }) : t('not yet')}
                 </span>
                 <button className="ghost path-practice" onClick={() => onPractice(r.tech)}>
                   {t('Practice')}
@@ -114,7 +130,7 @@ export function ProgressDialog({
                 return (
                   <tr key={l}>
                     <td>
-                      <span className={`level-badge level-${l.toLowerCase()}`}>{l}</span>
+                      <span className={`level-badge level-${l.toLowerCase()}`}>{t.level(l)}</span>
                     </td>
                     <td>{b.solves}</td>
                     <td>{b.unassisted}</td>
@@ -126,7 +142,13 @@ export function ProgressDialog({
             </tbody>
           </table>
           <p className="dialog-note">
-            🔥 {t('Daily streak')}: {streak} {streak === 1 ? t('day') : t('days')} · {dailyDays.length} {t('daily puzzles solved')}
+            🔥{' '}
+            {t(
+              streak === 1
+                ? 'Daily streak: {n} day · {solved} daily puzzles solved'
+                : 'Daily streak: {n} days · {solved} daily puzzles solved',
+              { n: streak, solved: dailyDays.length }
+            )}
           </p>
         </>
       )}

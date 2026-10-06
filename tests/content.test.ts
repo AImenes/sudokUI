@@ -6,6 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import indexHtml from '../index.html?raw';
+import { renderHome } from '../src/content/home';
 import { TECHS, ALL_TECHS, PRACTICE_TECHS, Tech } from '../src/engine/ratings';
 import { TECH_DOCS } from '../src/content/techniqueDocs';
 import { GLOSSARY, GLOSSARY_GROUPS } from '../src/content/glossary';
@@ -15,7 +16,7 @@ import { LANDING_PAGES, COUNTS } from '../src/content/landing';
 import { STATIC_ROUTES } from '../src/content/staticRoutes';
 import { techSlug, techFromParam, slugify } from '../src/content/slugs';
 import { linkGlossary } from '../src/content/glossaryLinks';
-import { buildLearnPages, buildSitemap, SITE } from '../src/content/learnPages';
+import { buildLearnPages, buildSitemap, SITE, LEARN_LANGS, HOME_URLS } from '../src/content/learnPages';
 
 const words = (s: string) => s.trim().split(/\s+/).length;
 const sentences = (s: string) => (s.match(/[.!?](\s|$)/g) ?? []).length;
@@ -139,10 +140,12 @@ describe('supporting copy', () => {
   it('counts techniques the way the catalogue does', () => {
     expect(COUNTS.catalogued).toBe(ALL_TECHS.length);
     expect(COUNTS.practice).toBe(PRACTICE_TECHS.length);
-    // the home page quotes both numbers, and keeps its bare tab title
-    expect(indexHtml).toContain(`${COUNTS.implemented} `);
-    expect(indexHtml).toContain(`${COUNTS.practice} `);
-    expect(indexHtml).toContain('<title>sudokUI</title>');
+    // the English home page (index.html, filled in by src/content/home.ts)
+    // quotes both numbers, and keeps its bare tab title
+    const home = renderHome(indexHtml, 'en');
+    expect(home).toContain(`${COUNTS.implemented} `);
+    expect(home).toContain(`${COUNTS.practice} `);
+    expect(home).toContain('<title>sudokUI</title>');
   });
 });
 
@@ -255,23 +258,102 @@ describe('slugs', () => {
 describe('static pages', () => {
   const pages = buildLearnPages();
   const urls = new Set(pages.map((p) => p.url));
+  const byUrl = new Map(pages.map((p) => [p.url, p]));
+  /** the app itself in a language: /, /nb/, /es/ */
+  const home = (lang: string) => (lang === 'en' ? '/' : `/${lang}/`);
 
-  it('builds one page per technique plus the hubs and landing pages', () => {
-    // hubs: the technique index, the Intuition guide, the glossary and the rating page
-    // in English, Norwegian and Spanish: every technique, the four hubs and How the best solve;
-    // the other landing pages are English only
-    expect(pages).toHaveLength(3 * (ALL_TECHS.length + 4) + LANDING_PAGES.length + 2);
+  it('builds one page per technique plus the hubs and landing pages, in every language', () => {
+    // hubs: the technique index, the Intuition guide, the glossary and the rating page;
+    // in English, Norwegian and Spanish: every technique, the four hubs and every landing page
+    expect(pages).toHaveLength(3 * (ALL_TECHS.length + 4 + LANDING_PAGES.length));
     for (const lang of ['nb', 'es']) {
       for (const tech of ALL_TECHS) expect(urls.has(`/${lang}/learn/${techSlug(tech)}/`), `${lang} ${tech}`).toBe(true);
+      for (const p of LANDING_PAGES) expect(urls.has(`/${lang}${p.url}`), `${lang} ${p.url}`).toBe(true);
     }
     for (const tech of ALL_TECHS) expect(urls.has(`/learn/${techSlug(tech)}/`), tech).toBe(true);
     expect(urls.size).toBe(pages.length);
+    expect(HOME_URLS).toEqual(['/', '/nb/', '/es/']);
   });
 
-  it('keeps every page out of the service worker’s reach', () => {
+  // Addresses are public: if this fails, a page moved or a new one was
+  // added. For a new page, add its line; never move a published one
+  // without a redirect in public/_redirects. (Technique pages are frozen
+  // by the slug snapshot above.)
+  it('never moves a published page', () => {
+    const technique = new Set(ALL_TECHS.map((t) => `/learn/${techSlug(t)}/`));
+    expect(pages.map((p) => p.url).filter((u) => !technique.has(u.replace(/^\/(nb|es)\//, '/')))).toMatchInlineSnapshot(`
+      [
+        "/daily-sudoku/",
+        "/sudoku-solver/",
+        "/hodoku/",
+        "/how-the-best-solve/",
+        "/sudoku-difficulty-rating/",
+        "/learn/",
+        "/learn/intuition/",
+        "/learn/glossary/",
+        "/nb/daily-sudoku/",
+        "/nb/sudoku-solver/",
+        "/nb/hodoku/",
+        "/nb/how-the-best-solve/",
+        "/nb/sudoku-difficulty-rating/",
+        "/nb/learn/",
+        "/nb/learn/intuition/",
+        "/nb/learn/glossary/",
+        "/es/daily-sudoku/",
+        "/es/sudoku-solver/",
+        "/es/hodoku/",
+        "/es/how-the-best-solve/",
+        "/es/sudoku-difficulty-rating/",
+        "/es/learn/",
+        "/es/learn/intuition/",
+        "/es/learn/glossary/",
+      ]
+    `);
+  });
+
+  it('keeps every page out of the service worker’s reach, and the app in its reach', () => {
     for (const p of pages) expect(STATIC_ROUTES.test(p.url), p.url).toBe(true);
-    expect(STATIC_ROUTES.test('/')).toBe(false);
+    // the home pages are the app itself, in each language
+    for (const url of HOME_URLS) expect(STATIC_ROUTES.test(url), url).toBe(false);
+    expect(STATIC_ROUTES.test('/nb')).toBe(false);
     expect(STATIC_ROUTES.test('/learning')).toBe(false);
+  });
+
+  it('names every language version of a page, and each names the others back', () => {
+    for (const page of pages) {
+      const english = page.alternateOf!;
+      expect(english, `${page.url}: has language versions`).toBeDefined();
+      const hreflang = [...page.html.matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)" \/>/g)].map((m) => [m[1], m[2]]);
+      const versions = LEARN_LANGS.map((l) => [l, `${SITE}${l === 'en' ? '' : `/${l}`}${english}`]);
+      expect(hreflang, page.url).toEqual([...versions, ['x-default', `${SITE}${english}`]]);
+      // this page is the version in its own language, and every version exists and agrees
+      expect(versions.find(([l]) => l === page.lang)![1]).toBe(`${SITE}${page.url}`);
+      for (const [l, href] of versions) {
+        const other = byUrl.get(href.slice(SITE.length));
+        expect(other, `${page.url} -> ${href}`).toBeDefined();
+        expect(other!.lang).toBe(l);
+        expect(other!.alternateOf).toBe(english);
+      }
+      // the language line in the footer links to the same versions
+      const line = page.html.match(/<p class="langs"[^>]*>(.*)<\/p>/)![1];
+      for (const [l, href] of versions) {
+        if (l === page.lang) expect(line).toContain('<span aria-current="true">');
+        else expect(line, `${page.url}: language line`).toContain(`<a href="${href.slice(SITE.length)}" hreflang="${l}" lang="${l}">`);
+      }
+    }
+  });
+
+  it('sends readers into the app in the page’s language', () => {
+    for (const page of pages) {
+      const root = home(page.lang);
+      // every link to the app itself, with or without a deep link
+      const appLinks = [...page.html.matchAll(/href="(\/(?:nb\/|es\/)?)(#[^"]*)?"/g)].map((m) => m[1]);
+      expect(appLinks.length, `${page.url}: links to the app`).toBeGreaterThan(0);
+      for (const link of appLinks) expect(link, page.url).toBe(root);
+      // and the paste-a-puzzle box
+      for (const m of page.html.matchAll(/location\.href = '([^']*)' \+ s/g)) expect(m[1], page.url).toBe(`${root}#p=`);
+      expect(page.html, `${page.url}: breadcrumb home`).toContain(`<p class="crumbs"><a href="${root}">sudokUI</a>`);
+    }
   });
 
   for (const page of pages) {
@@ -297,11 +379,11 @@ describe('static pages', () => {
       // every internal link lands on a page that exists (or on the app)
       for (const m of html.matchAll(/href="(\/[^"#]*)(#[^"]*)?"/g)) {
         const target = m[1];
-        if (target === '/' || /\.(svg|png|xml)$/.test(target)) continue;
+        if (HOME_URLS.includes(target) || /\.(svg|png|xml)$/.test(target)) continue;
         expect(urls.has(target), `${url} links to missing ${target}`).toBe(true);
       }
       // deep links into the app name real techniques
-      for (const m of html.matchAll(/href="\/#(practice|learn)=([A-Z0-9_]+)"/g)) {
+      for (const m of html.matchAll(/href="(?:\/nb|\/es)?\/#(practice|learn)=([A-Z0-9_]+)"/g)) {
         expect(m[2] in TECHS, m[2]).toBe(true);
         if (m[1] === 'practice') expect(PRACTICE_TECHS).toContain(m[2] as Tech);
       }
@@ -320,12 +402,17 @@ describe('static pages', () => {
     }
   });
 
-  it('lists the app and every page in the sitemap', () => {
+  it('lists the app in every language and every page in the sitemap, each with its language versions', () => {
     const xml = buildSitemap(pages);
     expect(xml).not.toMatch(/<priority>|<changefreq>|<lastmod>/);
-    expect(xml).toContain(`<loc>${SITE}/</loc>`);
-    for (const p of pages) expect(xml).toContain(`<loc>${SITE}${p.url}</loc>`);
-    expect(xml.match(/<url>/g)).toHaveLength(pages.length + 1);
+    expect(xml.match(/<url>/g)).toHaveLength(pages.length + HOME_URLS.length);
+    const versions = (english: string) =>
+      [...LEARN_LANGS.map((l) => [l, `${SITE}${l === 'en' ? '' : `/${l}`}${english}`]), ['x-default', `${SITE}${english}`]]
+        .map(([l, href]) => `<xhtml:link rel="alternate" hreflang="${l}" href="${href}"/>`)
+        .join('');
+    // the home pages are the app itself in English, Norwegian and Spanish
+    for (const url of HOME_URLS) expect(xml).toContain(`<url><loc>${SITE}${url}</loc>${versions('/')}</url>`);
+    for (const p of pages) expect(xml).toContain(`<url><loc>${SITE}${p.url}</loc>${versions(p.alternateOf!)}</url>`);
   });
 });
 

@@ -9,6 +9,8 @@ import { useSettings } from '../state/settings';
 import { bit, digitsOf, PEERS, UNITS } from '../engine/board';
 import { ChainLink, CellDigit } from '../engine/steps';
 import { walkFrames, Part } from '../engine/hintFrames';
+import { useT, msg, translator } from '../content/i18n';
+import type { Translator } from '../content/i18n';
 
 const SIZE = 100;
 const M = 4; // outer margin
@@ -208,18 +210,19 @@ function unitRect(unit: number): { x: number; y: number; w: number; h: number } 
   return { x: M + (b % 3) * 3 * SIZE, y: M + Math.floor(b / 3) * 3 * SIZE, w: 3 * SIZE, h: 3 * SIZE };
 }
 
-/** One shows on each pause — the only place a tip never interrupts play. */
+/** One shows on each pause — the only place a tip never interrupts play.
+ *  Translated where it is shown. */
 const TIPS = [
-  'Hold Shift to type corner marks from digit mode',
-  'Hold Ctrl or Alt to type centre marks anywhere',
-  'Space cycles input modes · S swaps corner ↔ centre',
-  'Double-click a digit to select all of its cells',
-  'The address bar link always carries this exact puzzle',
-  'Practice can start from the very beginning (see Settings)',
-  'Finish without anything from the Assist box for an unassisted solve',
-  'Hold a placed digit and its pencil marks light up too',
-  'Ctrl+A selects the board, and Fill rebuilds every mark',
-  'Hint reads your centre marks, so your eliminations carry over'
+  msg('Hold Shift to type corner marks from digit mode'),
+  msg('Hold Ctrl or Alt to type centre marks anywhere'),
+  msg('Space cycles input modes · S swaps corner ↔ centre'),
+  msg('Double-click a digit to select all of its cells'),
+  msg('The address bar link always carries this exact puzzle'),
+  msg('Practice can start from the very beginning (see Settings)'),
+  msg('Finish without anything from the Assist box for an unassisted solve'),
+  msg('Hold a placed digit and its pencil marks light up too'),
+  msg('Ctrl+A selects the board, and Fill rebuilds every mark'),
+  msg('Hint reads your centre marks, so your eliminations carry over')
 ];
 
 /** Text colour for a candidate sitting on a hint circle: dark on the amber
@@ -382,22 +385,30 @@ function renderMarks(
 }
 
 /** the selected cell in words, for the live region beside the board */
-export function describeSelection(cells: CellState[], selection: number[], autoCandidates: boolean): string {
-  if (!selection.length) return 'No cell selected.';
-  if (selection.length > 1) return `${selection.length} cells selected.`;
+export function describeSelection(
+  cells: CellState[],
+  selection: number[],
+  autoCandidates: boolean,
+  t: Translator = translator()
+): string {
+  if (!selection.length) return t('No cell selected.');
+  if (selection.length > 1) return t('{n} cells selected.', { n: selection.length });
   const i = selection[0];
   const c = cells[i];
-  const where = `Row ${Math.floor(i / 9) + 1}, column ${(i % 9) + 1}`;
-  if (c.value) return `${where}: ${c.value}${c.given ? ', given' : ''}.`;
+  const where = { row: Math.floor(i / 9) + 1, col: (i % 9) + 1 };
+  if (c.value) return t(c.given ? 'Row {row}, column {col}: {digit}, given.' : 'Row {row}, column {col}: {digit}.', { ...where, digit: c.value });
   const digits = (mask: number) => [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => mask & (1 << (d - 1))).join(' ');
   if (autoCandidates) {
-    const cands = engineGrid(cells).cands[i];
-    return `${where}: empty, candidates ${digits(cands) || 'none'}.`;
+    const cands = digits(engineGrid(cells).cands[i]);
+    return cands
+      ? t('Row {row}, column {col}: empty, candidates {digits}.', { ...where, digits: cands })
+      : t('Row {row}, column {col}: empty, candidates none.', where);
   }
-  const parts: string[] = [];
-  if (c.corner) parts.push(`corner marks ${digits(c.corner)}`);
-  if (c.center) parts.push(`centre marks ${digits(c.center)}`);
-  return `${where}: empty${parts.length ? ', ' + parts.join(', ') : ''}.`;
+  const marks = { ...where, corner: digits(c.corner), centre: digits(c.center) };
+  if (c.corner && c.center) return t('Row {row}, column {col}: empty, corner marks {corner}, centre marks {centre}.', marks);
+  if (c.corner) return t('Row {row}, column {col}: empty, corner marks {corner}.', marks);
+  if (c.center) return t('Row {row}, column {col}: empty, centre marks {centre}.', marks);
+  return t('Row {row}, column {col}: empty.', where);
 }
 
 export function Grid() {
@@ -425,6 +436,7 @@ export function Grid() {
     digitTints,
     tintStrength
   } = useSettings();
+  const t = useT();
 
   // entered digits that repeat within a row, column or box: a rule check
   // against the board alone, nothing to do with the solution
@@ -777,7 +789,7 @@ export function Grid() {
 
   // what a screen reader hears: the selected cell and what is in it, read
   // out as the selection moves (the arrow keys move it; digits enter)
-  const announced = describeSelection(cells, selection, autoCandidates);
+  const announced = describeSelection(cells, selection, autoCandidates, t);
 
   return (
     <div className="grid-wrap">
@@ -792,7 +804,7 @@ export function Grid() {
         onDoubleClick={onDoubleClick}
         tabIndex={0}
         role="application"
-        aria-label="Sudoku board. Arrow keys move between cells, digits enter, Backspace erases."
+        aria-label={t('Sudoku board. Arrow keys move between cells, digits enter, Backspace erases.')}
         aria-describedby="board-status"
       >
         {/* cell layers */}
@@ -1037,10 +1049,10 @@ export function Grid() {
       </div>
       {paused && !won && (
         <div className="pause-card">
-          <h3>Paused</h3>
-          <p className="pause-tip">Did you know? {pauseTip}</p>
+          <h3>{t('Paused')}</h3>
+          <p className="pause-tip">{t('Did you know? {tip}', { tip: t(pauseTip) })}</p>
           <button className="resume-btn" onClick={togglePause}>
-            ⏵ Resume (P)
+            ⏵ {t('Resume (P)')}
           </button>
           {showPoodle && (
             <img className="pause-poodle" src="/poodle.png" width="76" alt="" aria-hidden="true" />

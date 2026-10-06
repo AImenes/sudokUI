@@ -10,6 +10,7 @@ import {
   cellNames
 } from '../board';
 import { Step, CellDigit, alternatingLinks } from '../steps';
+import { tr, unitName } from '../text';
 
 type LinkType = 'row' | 'col' | 'box';
 interface StrongLink {
@@ -85,19 +86,20 @@ export function findTurbotFamily(
               if (sees(c, a) && sees(c, b)) elims.push({ cell: c, digit: d });
             }
             if (!elims.length) continue;
+            // the names stay English in every language (docs/translations.md)
             const names: Record<typeof variant, string> = {
-              SKYSCRAPER: 'Skyscraper',
-              TWO_STRING_KITE: '2-String Kite',
-              TURBOT_FISH: 'Turbot Fish'
+              SKYSCRAPER: tr`Skyscraper`,
+              TWO_STRING_KITE: tr`2-String Kite`,
+              TURBOT_FISH: tr`Turbot Fish`
             };
             return {
               tech: variant,
               placements: [],
               eliminations: elims,
               primary: pattern.map((cell) => ({ cell, digit: d })),
-              labels: { primary: `the two strong links on ${d}` },
+              labels: { primary: tr`the two strong links on ${d}` },
               links: alternatingLinks([a, p, q, b].map((cell) => [{ cell, digit: d }])),
-              description: `${names[variant]} on ${d}: ${cellName(l1.a)} and ${cellName(l1.b)} are the only places for ${d} in their line, as are ${cellName(l2.a)} and ${cellName(l2.b)}, and ${cellName(p)} sees ${cellName(q)}. If ${cellName(a)} is not ${d}, ${cellName(p)} is, so ${cellName(q)} is not, so ${cellName(b)} is: one of ${cellName(a)} and ${cellName(b)} is ${d}, and ${d} is removed from every cell that sees both.`
+              description: tr`${names[variant]} on ${d}: ${cellName(l1.a)} and ${cellName(l1.b)} are the only places for ${d} in their line, as are ${cellName(l2.a)} and ${cellName(l2.b)}, and ${cellName(p)} sees ${cellName(q)}. If ${cellName(a)} is not ${d}, ${cellName(p)} is, so ${cellName(q)} is not, so ${cellName(b)} is: one of ${cellName(a)} and ${cellName(b)} is ${d}, and ${d} is removed from every cell that sees both.`
             };
           }
         }
@@ -181,9 +183,9 @@ function erStep(
     secondary: pair.map((cell) => ({ cell, digit: d })),
     units: [{ unit: 18 + box, role: 'primary' }],
     labels: {
-      primary: `box ${box + 1}: every ${d} in it lies on one row and one column`,
-      secondary: `the conjugate pair on ${d}`
+      primary: tr`${unitName(18 + box)}: every ${d} in it lies on one row and one column`,
+      secondary: tr`the conjugate pair on ${d}`
     },
-    description: `Empty Rectangle on ${d}: in box ${box + 1} every ${d} lies on one row and one column, and ${cellNames(pair)} are the only two places for ${d} in their line. If ${cellName(pair[1])} is ${d}, ${cellName(target)} in its column is not. If not, ${cellName(pair[0])} is ${d}, so the box's ${d} cannot share its column and must lie on the row through ${cellName(target)}, which again is not ${d}. So ${d} is removed from ${cellName(target)}.`
+    description: tr`Empty Rectangle on ${d}: in ${unitName(18 + box)} every ${d} lies on one row and one column, and ${cellNames(pair)} are the only two places for ${d} in their line. If ${cellName(pair[1])} is ${d}, ${cellName(target)} in its column is not. If not, ${cellName(pair[0])} is ${d}, so the box's ${d} cannot share its column and must lie on the row through ${cellName(target)}, which again is not ${d}. So ${d} is removed from ${cellName(target)}.`
   };
 }

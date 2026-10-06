@@ -10,6 +10,7 @@ import {
   cellNames
 } from '../board';
 import { Step, CellDigit, ChainLink, alternatingLinks } from '../steps';
+import { tr, joinAnd } from '../text';
 
 /**
  * Candidate-level links for a chain of bivalue cells where each cell is
@@ -82,14 +83,14 @@ export function findRemotePair(g: Grid): Step | null {
       const path = orderAsPath(component, sees);
       return {
         tech: 'REMOTE_PAIR',
-        labels: { primary: `the chain of ${digits.join('')} pairs` },
+        labels: { primary: tr`the chain of ${digits.join('')} pairs` },
         placements: [],
         eliminations: elims,
         primary: component.flatMap((cell) =>
           digits.map((digit) => ({ cell, digit }))
         ),
         links: path ? bivalueCellLinks(g, path, digits[0]) : undefined,
-        description: `Remote Pair: the cells ${cellNames(component)} form a chain of ${digits.join('')} pairs; cells seeing both "colors" of the chain lose ${digits.join(' and ')}.`
+        description: tr`Remote Pair: the cells ${cellNames(component)} form a chain of ${digits.join('')} pairs; cells seeing both "colors" of the chain lose ${joinAnd(digits)}.`
       };
     }
   }
@@ -162,12 +163,12 @@ export function findXChain(g: Grid, maxLen = 9): Step | null {
             if (elims.length) {
               return {
                 tech: 'X_CHAIN',
-                labels: { primary: `the chain on ${d}` },
+                labels: { primary: tr`the chain on ${d}` },
                 placements: [],
                 eliminations: elims,
                 primary: newPath.map((cell) => ({ cell, digit: d })),
                 links: alternatingLinks(newPath.map((cell) => [{ cell, digit: d }])),
-                description: `X-Chain on ${d}: ${newPath.map(cellName).join(' → ')}; one end must be ${d}, so ${d} is removed from cells seeing both ends.`
+                description: tr`X-Chain on ${d}: ${newPath.map(cellName).join(' → ')}; one end must be ${d}, so ${d} is removed from cells seeing both ends.`
               };
             }
           }
@@ -210,7 +211,7 @@ export function findXYChain(g: Grid, maxLen = 10): Step | null {
             if (elims.length) {
               return {
                 tech: 'XY_CHAIN',
-                labels: { primary: 'the chain of bivalue cells' },
+                labels: { primary: tr`the chain of bivalue cells` },
                 placements: [],
                 eliminations: elims,
                 primary: newPath.map((cell) => ({
@@ -218,7 +219,7 @@ export function findXYChain(g: Grid, maxLen = 10): Step | null {
                   digit: cell === start || cell === next ? z : 0
                 })).filter((cd) => cd.digit !== 0),
                 links: bivalueCellLinks(g, newPath, z),
-                description: `XY-Chain: ${newPath.map(cellName).join(' → ')}; whichever way the chain resolves, one end is ${z}, so ${z} is removed from cells seeing both ends.`
+                description: tr`XY-Chain: ${newPath.map(cellName).join(' → ')}; whichever way the chain resolves, one end is ${z}, so ${z} is removed from cells seeing both ends.`
               };
             }
           }

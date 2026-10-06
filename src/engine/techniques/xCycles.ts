@@ -1,5 +1,6 @@
 import { Grid, UNITS, bit, sees, cellName, cellNames } from '../board';
 import { Step, CellDigit, alternatingLinks } from '../steps';
+import { tr } from '../text';
 
 /**
  * X-Cycles (sudokuwiki.org/X_Cycles): closed alternating strong/weak loops on
@@ -90,12 +91,12 @@ function rule2(g: Grid, d: number, path: number[]): Step | null {
   const start = path[0];
   return {
     tech: 'X_CYCLES',
-    labels: { primary: `the loop on ${d}` },
+    labels: { primary: tr`the loop on ${d}` },
     placements: [{ cell: start, digit: d }],
     eliminations: [],
     primary: path.map((cell) => ({ cell, digit: d })),
     links: alternatingLinks(path.map((cell) => [{ cell, digit: d }]), 'strong'),
-    description: `X-Cycle on ${d}: the loop ${path.map(cellName).join(' → ')} closes with two strong links at ${cellName(start)}: if it were not ${d}, the loop would force it to be ${d}. So ${cellName(start)} is ${d}.`
+    description: tr`X-Cycle on ${d}: the loop ${path.map(cellName).join(' → ')} closes with two strong links at ${cellName(start)}: if it were not ${d}, the loop would force it to be ${d}. So ${cellName(start)} is ${d}.`
   };
 }
 
@@ -122,11 +123,11 @@ function rule1(g: Grid, d: number, path: number[]): Step | null {
   if (!elims.length) return null;
   return {
     tech: 'X_CYCLES',
-    labels: { primary: `the loop on ${d}` },
+    labels: { primary: tr`the loop on ${d}` },
     placements: [],
     eliminations: elims,
     primary: path.map((cell) => ({ cell, digit: d })),
     links: alternatingLinks(path.map((cell) => [{ cell, digit: d }]), 'weak'),
-    description: `X-Cycle on ${d}: the continuous loop ${cellNames(path)} alternates perfectly: along each weak link one end is ${d}, so ${d} falls from every outside cell seeing both ends of a weak link.`
+    description: tr`X-Cycle on ${d}: the continuous loop ${cellNames(path)} alternates perfectly: along each weak link one end is ${d}, so ${d} falls from every outside cell seeing both ends of a weak link.`
   };
 }

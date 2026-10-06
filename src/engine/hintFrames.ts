@@ -8,6 +8,7 @@
  */
 import { cellName, cellNames } from './board';
 import { CellDigit, ChainLink, Step } from './steps';
+import { tr } from './text';
 
 export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'conclusion';
 
@@ -44,31 +45,35 @@ export function linkText(link: ChainLink): string {
   if (sameCell) {
     const cell = cellName(fromCells[0]);
     return link.strong
-      ? `In ${cell}: if it is not ${fd}, it must be ${td} (the cell has only these two).`
-      : `In ${cell}: if it is ${fd}, it cannot be ${td}.`;
+      ? tr`In ${cell}: if it is not ${fd}, it must be ${td} (the cell has only these two).`
+      : tr`In ${cell}: if it is ${fd}, it cannot be ${td}.`;
   }
   const from = nodeCells(link.from);
   const to = nodeCells(link.to);
   if (fd === td) {
     return link.strong
-      ? `Strong link on ${fd}: if ${from} is not ${fd}, ${to} must be ${fd} (nowhere else for it).`
-      : `Weak link on ${fd}: if ${from} is ${fd}, ${to} cannot be ${fd} (they see each other).`;
+      ? tr`Strong link on ${fd}: if ${from} is not ${fd}, ${to} must be ${fd} (nowhere else for it).`
+      : tr`Weak link on ${fd}: if ${from} is ${fd}, ${to} cannot be ${fd} (they see each other).`;
   }
   return link.strong
-    ? `Strong link: if ${from} is not ${fd}, ${to} must be ${td}.`
-    : `Weak link: if ${from} is ${fd}, ${to} cannot be ${td}.`;
+    ? tr`Strong link: if ${from} is not ${fd}, ${to} must be ${td}.`
+    : tr`Weak link: if ${from} is ${fd}, ${to} cannot be ${td}.`;
 }
 
 /** What the step concludes, in words: the placements and removals. */
 export function conclusionText(step: Step): string {
+  // "So a; b; c.": the first clause carries the "So", so each language can
+  // open the sentence its own way
   const parts: string[] = [];
-  for (const { cell, digit } of step.placements) parts.push(`${cellName(cell)} must be ${digit}`);
+  for (const { cell, digit } of step.placements) {
+    parts.push(parts.length ? tr`${cellName(cell)} must be ${digit}` : tr`So ${cellName(cell)} must be ${digit}`);
+  }
   const byDigit = new Map<number, number[]>();
   for (const { cell, digit } of step.eliminations) (byDigit.get(digit) ?? byDigit.set(digit, []).get(digit)!).push(cell);
   for (const [digit, cells] of [...byDigit].sort((a, b) => a[0] - b[0])) {
-    parts.push(`${digit} is removed from ${cellNames(cells)}`);
+    parts.push(parts.length ? tr`${digit} is removed from ${cellNames(cells)}` : tr`So ${digit} is removed from ${cellNames(cells)}`);
   }
-  return parts.length ? `So ${parts.join('; ')}.` : '';
+  return parts.length ? `${parts.join('; ')}.` : '';
 }
 
 /**
@@ -97,8 +102,8 @@ export function walkFrames(step: Step): Frame[] {
         while (j < step.links.length && step.links[j].undirected) j++;
         const text =
           j - i === 1
-            ? `${nodeCells(link.from)} and ${nodeCells(link.to)}: exactly one of them is true, so they take opposite colours.`
-            : 'The cluster: each line joins two candidates of which exactly one is true (a conjugate pair, or the two candidates of a bivalue cell), so the two ends take opposite colours, and the colours spread along the lines.';
+            ? tr`${nodeCells(link.from)} and ${nodeCells(link.to)}: exactly one of them is true, so they take opposite colours.`
+            : tr`The cluster: each line joins two candidates of which exactly one is true (a conjugate pair, or the two candidates of a bivalue cell), so the two ends take opposite colours, and the colours spread along the lines.`;
         frames.push({ text, links: j, show: new Set(base) });
         i = j;
       } else {

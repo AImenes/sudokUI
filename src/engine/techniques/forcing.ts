@@ -1,13 +1,14 @@
 import { Grid, UNITS, bit, digitsOf, popcount, cloneGrid, setValue, cellName } from '../board';
 import { Step, CellDigit, ChainLink } from '../steps';
+import { tr, unitName } from '../text';
 import { contradictionDrawing, conclusionDrawing } from './forcingTrail';
 
 /** the colour grammar of a forcing step: the line of forced singles, and where it breaks */
-const FORCING_LABELS = {
-  primary: 'the assumption and the singles it forces: one line of the reasoning, read along the arrows',
-  secondary: 'the house that would be left with no place for a digit',
-  fins: 'where the board would break'
-};
+const forcingLabels = () => ({
+  primary: tr`the assumption and the singles it forces: one line of the reasoning, read along the arrows`,
+  secondary: tr`the house that would be left with no place for a digit`,
+  fins: tr`where the board would break`
+});
 
 /**
  * Forcing techniques (net-style): assume a candidate, propagate naked and
@@ -131,8 +132,8 @@ export function findForcingNet(g: Grid): Step | null {
           placements: [],
           eliminations: [{ cell, digit: d }],
           primary: [{ cell, digit: d }],
-          labels: { primary: 'the assumption; the net it sets off is search, not a pattern, and is not drawn' },
-          description: `Forcing net: assuming ${cellName(cell)} = ${d} and following singles plus box/line intersections leads to a contradiction, so ${d} is impossible there.`
+          labels: { primary: tr`the assumption; the net it sets off is search, not a pattern, and is not drawn` },
+          description: tr`Forcing net: assuming ${cellName(cell)} = ${d} and following singles plus box/line intersections leads to a contradiction, so ${d} is impossible there.`
         };
       }
     }
@@ -165,8 +166,8 @@ export function contradictionStep(g: Grid, cell: number, d: number): Step | null
     fins: drawn.fins,
     links: drawn.links,
     units: drawn.unit !== undefined ? [{ unit: drawn.unit, role: 'secondary' }] : undefined,
-    labels: FORCING_LABELS,
-    description: `Nishio: assuming ${cellName(cell)} = ${d} and following the forced singles leads to a contradiction, so ${d} is impossible there.`
+    labels: forcingLabels(),
+    description: tr`Nishio: assuming ${cellName(cell)} = ${d} and following the forced singles leads to a contradiction, so ${d} is impossible there.`
   };
 }
 
@@ -206,28 +207,49 @@ function intersectBranches(g: Grid, branches: Grid[]): { places: CellDigit[]; el
   return { places, elims };
 }
 
-function verityStep(
-  g: Grid,
-  tech: 'CELL_FORCING_CHAIN' | 'UNIT_FORCING_CHAIN',
-  origin: CellDigit[],
-  branches: Grid[],
-  what: string
-): Step | null {
+/**
+ * What a cell or unit forcing step tried: every candidate of one cell
+ * (cell forcing), or every place for one digit in one unit (unit forcing).
+ */
+type Over = { cell: number } | { digit: number; unit: number };
+
+/** the label and the description of a cell or unit forcing step, as whole sentences */
+function verityText(over: Over, many: boolean): { primary: string; description: string } {
+  if ('cell' in over) {
+    const c = cellName(over.cell);
+    return {
+      primary: tr`every possibility for ${c}, each followed along its own line to the same conclusion`,
+      description: many
+        ? tr`Cell forcing: every possibility for ${c} leads, via forced singles, to the same conclusions.`
+        : tr`Cell forcing: every possibility for ${c} leads, via forced singles, to the same conclusion.`
+    };
+  }
+  const d = over.digit;
+  const u = unitName(over.unit);
+  return {
+    primary: tr`every possibility for digit ${d} in ${u}, each followed along its own line to the same conclusion`,
+    description: many
+      ? tr`Unit forcing: every possibility for digit ${d} in ${u} leads, via forced singles, to the same conclusions.`
+      : tr`Unit forcing: every possibility for digit ${d} in ${u} leads, via forced singles, to the same conclusion.`
+  };
+}
+
+function verityStep(g: Grid, origin: CellDigit[], branches: Grid[], over: Over): Step | null {
+  const tech = 'cell' in over ? 'CELL_FORCING_CHAIN' : 'UNIT_FORCING_CHAIN';
   const { places, elims } = intersectBranches(g, branches);
   if (!places.length && !elims.length) return null;
   // every branch drawn to the first conclusion, one line each
   const conclusion = places.length ? { place: places[0] } : { elim: elims[0] };
   const links: ChainLink[] = origin.flatMap((o) => conclusionDrawing(g, o.cell, o.digit, true, conclusion));
+  const { primary, description } = verityText(over, places.length + elims.length > 1);
   return {
     tech,
     placements: places,
     eliminations: elims,
     primary: origin,
     links: links.length ? links : undefined,
-    labels: {
-      primary: `every possibility for ${what}, each followed along its own line to the same conclusion`
-    },
-    description: `${tech === 'CELL_FORCING_CHAIN' ? 'Cell' : 'Unit'} forcing: every possibility for ${what} leads, via forced singles, to the same conclusion${places.length + elims.length > 1 ? 's' : ''}.`
+    labels: { primary },
+    description
   };
 }
 
@@ -255,8 +277,8 @@ export function findDigitForcing(g: Grid): Step | null {
           fins: drawn?.fins,
           links: drawn?.links,
           units: drawn?.unit !== undefined ? [{ unit: drawn.unit, role: 'secondary' }] : undefined,
-          labels: FORCING_LABELS,
-          description: `Digit forcing: removing ${d} from ${cellName(cell)} collapses the puzzle via forced singles, so ${cellName(cell)} must be ${d}.`
+          labels: forcingLabels(),
+          description: tr`Digit forcing: removing ${d} from ${cellName(cell)} collapses the puzzle via forced singles, so ${cellName(cell)} must be ${d}.`
         };
       }
       if (!on || !offOk) continue;
@@ -275,9 +297,12 @@ export function findDigitForcing(g: Grid): Step | null {
         primary: [{ cell, digit: d }],
         links: links.length ? links : undefined,
         labels: {
-          primary: `${cellName(cell)} = ${d} and its opposite, each followed along its own line to the same conclusion`
+          primary: tr`${cellName(cell)} = ${d} and its opposite, each followed along its own line to the same conclusion`
         },
-        description: `Digit forcing: whether ${cellName(cell)} is ${d} or not, the forced singles agree on the same conclusion${places.length + elims.length > 1 ? 's' : ''}.`
+        description:
+          places.length + elims.length > 1
+            ? tr`Digit forcing: whether ${cellName(cell)} is ${d} or not, the forced singles agree on the same conclusions.`
+            : tr`Digit forcing: whether ${cellName(cell)} is ${d} or not, the forced singles agree on the same conclusion.`
       };
     }
   }
@@ -303,10 +328,9 @@ export function findCellForcing(g: Grid): Step | null {
     if (contradiction) continue;
     const step = verityStep(
       g,
-      'CELL_FORCING_CHAIN',
       ds.map((digit) => ({ cell, digit })),
       branches,
-      cellName(cell)
+      { cell }
     );
     if (step) return step;
   }
@@ -333,10 +357,9 @@ export function findUnitForcing(g: Grid): Step | null {
       if (contradiction) continue;
       const step = verityStep(
         g,
-        'UNIT_FORCING_CHAIN',
         spots.map((cell) => ({ cell, digit: d })),
         branches,
-        `digit ${d} in ${ui < 9 ? `row ${ui + 1}` : ui < 18 ? `column ${ui - 8}` : `box ${ui - 17}`}`
+        { digit: d, unit: ui }
       );
       if (step) return step;
     }

@@ -1,6 +1,6 @@
 import { Grid, UNITS, bit, digitsOf, popcount, sees, cellName } from '../board';
 import { Step, CellDigit, ChainLink } from '../steps';
-import { unitName } from './subsets';
+import { tr, unitName } from '../text';
 
 /** node id for (cell, digit) */
 const nid = (cell: number, digit: number) => cell * 9 + digit - 1;
@@ -8,9 +8,9 @@ const nCell = (id: number) => Math.floor(id / 9);
 const nDigit = (id: number) => (id % 9) + 1;
 const cd = (id: number): CellDigit => ({ cell: nCell(id), digit: nDigit(id) });
 
-/** on-screen hue of each parity: colour 0 renders blue, colour 1 gold */
-const HUE = ['blue', 'gold'] as const;
-const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+// The on-screen hue of each parity: colour 0 renders blue, colour 1 gold.
+// A sentence that names a colour is written once per colour, so every
+// language can agree its words with it.
 
 interface Cluster {
   nodes: number[];
@@ -80,7 +80,6 @@ export function findMedusa3d(g: Grid): Step | null {
     // Rules 1 & 2: a colour contradicts itself -> remove that whole colour
     for (const col of [0, 1]) {
       const nodes = colored(col);
-      const tail = `so ${HUE[col]} is false: all its candidates are removed (circled red) and every ${HUE[1 - col]} candidate is true`;
       // rule 1: same colour twice in one cell
       const byCell = new Map<number, number[]>();
       for (const n of nodes) {
@@ -90,15 +89,20 @@ export function findMedusa3d(g: Grid): Step | null {
       }
       for (const [cell, ds] of byCell) {
         if (ds.length >= 2) {
+          const name = cellName(cell);
           return medusaStep(
             cl,
             nodes.map(cd),
-            `${cap(HUE[col])} colours both ${ds[0]} and ${ds[1]} in ${cellName(cell)}, ${tail}`,
+            col === 0
+              ? tr`Blue colours both ${ds[0]} and ${ds[1]} in ${name}, so blue is false: all its candidates are removed (circled red) and every gold candidate is true`
+              : tr`Gold colours both ${ds[0]} and ${ds[1]} in ${name}, so gold is false: all its candidates are removed (circled red) and every blue candidate is true`,
             [
               witness(
                 { cell, digit: ds[0] },
                 { cell, digit: ds[1] },
-                `${cap(HUE[col])} colours both the ${ds[0]} and the ${ds[1]} in ${cellName(cell)}. A cell holds one digit, so ${HUE[col]} cannot be true.`
+                col === 0
+                  ? tr`Blue colours both the ${ds[0]} and the ${ds[1]} in ${name}. A cell holds one digit, so blue cannot be true.`
+                  : tr`Gold colours both the ${ds[0]} and the ${ds[1]} in ${name}. A cell holds one digit, so gold cannot be true.`
               )
             ]
           );
@@ -109,15 +113,22 @@ export function findMedusa3d(g: Grid): Step | null {
         for (let d = 1; d <= 9; d++) {
           const twice = UNITS[u].filter((c) => cl.color.get(nid(c, d)) === col);
           if (twice.length >= 2) {
+            const unit = unitName(u);
+            const a = cellName(twice[0]);
+            const b = cellName(twice[1]);
             return medusaStep(
               cl,
               nodes.map(cd),
-              `${cap(HUE[col])} puts ${d} twice in ${unitName(u)} (${cellName(twice[0])} and ${cellName(twice[1])}), ${tail}`,
+              col === 0
+                ? tr`Blue puts ${d} twice in ${unit} (${a} and ${b}), so blue is false: all its candidates are removed (circled red) and every gold candidate is true`
+                : tr`Gold puts ${d} twice in ${unit} (${a} and ${b}), so gold is false: all its candidates are removed (circled red) and every blue candidate is true`,
               [
                 witness(
                   { cell: twice[0], digit: d },
                   { cell: twice[1], digit: d },
-                  `${cap(HUE[col])} puts ${d} in both ${cellName(twice[0])} and ${cellName(twice[1])} of ${unitName(u)}. A digit appears once per house, so ${HUE[col]} cannot be true.`
+                  col === 0
+                    ? tr`Blue puts ${d} in both ${a} and ${b} of ${unit}. A digit appears once per house, so blue cannot be true.`
+                    : tr`Gold puts ${d} in both ${a} and ${b} of ${unit}. A digit appears once per house, so gold cannot be true.`
                 )
               ]
             );
@@ -143,18 +154,18 @@ export function findMedusa3d(g: Grid): Step | null {
         if (!cl.color.has(nid(c, d))) elims3.push({ cell: c, digit: d });
       }
       if (elims3.length > before && !why3) {
-        why3 = `${cellName(c)} holds both a blue ${colorDigit[0]} and a gold ${colorDigit[1]}; one of those two is true, so the cell's other candidates are removed`;
+        why3 = tr`${cellName(c)} holds both a blue ${colorDigit[0]} and a gold ${colorDigit[1]}; one of those two is true, so the cell's other candidates are removed`;
         const first = elims3[before];
         witnesses3.push(
           witness(
             { cell: c, digit: colorDigit[0] },
             first,
-            `If blue is true, ${cellName(c)} is ${colorDigit[0]}, and its ${first.digit} goes.`
+            tr`If blue is true, ${cellName(c)} is ${colorDigit[0]}, and its ${first.digit} goes.`
           ),
           witness(
             { cell: c, digit: colorDigit[1] },
             first,
-            `If gold is true, ${cellName(c)} is ${colorDigit[1]}, and its ${first.digit} goes. Either way the ${first.digit} is false.`
+            tr`If gold is true, ${cellName(c)} is ${colorDigit[1]}, and its ${first.digit} goes. Either way the ${first.digit} is false.`
           )
         );
       }
@@ -164,7 +175,7 @@ export function findMedusa3d(g: Grid): Step | null {
       return medusaStep(
         cl,
         elims3,
-        why3 + (cellsHit > 1 ? ` (${cellsHit} cells are decided this way)` : ''),
+        why3 + (cellsHit > 1 ? tr` (${cellsHit} cells are decided this way)` : ''),
         witnesses3
       );
     }
@@ -191,17 +202,17 @@ export function findMedusa3d(g: Grid): Step | null {
         if (seen[0] !== undefined && seen[1] !== undefined) {
           elims45.push({ cell: c, digit: d });
           if (!why45) {
-            why45 = `The ${d} in ${cellName(c)} sees a blue ${d} in ${cellName(seen[0])} and a gold ${d} in ${cellName(seen[1])}, so it is false either way`;
+            why45 = tr`The ${d} in ${cellName(c)} sees a blue ${d} in ${cellName(seen[0])} and a gold ${d} in ${cellName(seen[1])}, so it is false either way`;
             witnesses45.push(
               witness(
                 { cell: seen[0], digit: d },
                 { cell: c, digit: d },
-                `If blue is true, the ${d} in ${cellName(seen[0])} is placed, and the ${d} in ${cellName(c)} goes.`
+                tr`If blue is true, the ${d} in ${cellName(seen[0])} is placed, and the ${d} in ${cellName(c)} goes.`
               ),
               witness(
                 { cell: seen[1], digit: d },
                 { cell: c, digit: d },
-                `If gold is true, the ${d} in ${cellName(seen[1])} is placed, and the ${d} in ${cellName(c)} goes. Either way it is false.`
+                tr`If gold is true, the ${d} in ${cellName(seen[1])} is placed, and the ${d} in ${cellName(c)} goes. Either way it is false.`
               )
             );
           }
@@ -212,17 +223,27 @@ export function findMedusa3d(g: Grid): Step | null {
           if (seen[A] !== undefined && colorDigit[1 - A] !== undefined) {
             elims45.push({ cell: c, digit: d });
             if (!why45) {
-              why45 = `The ${d} in ${cellName(c)} sees a ${HUE[A]} ${d} in ${cellName(seen[A]!)} while its own cell holds a ${HUE[1 - A]} ${colorDigit[1 - A]}, so whichever colour is true removes it`;
+              const here = cellName(c);
+              const there = cellName(seen[A]!);
+              const own = colorDigit[1 - A];
+              why45 =
+                A === 0
+                  ? tr`The ${d} in ${here} sees a blue ${d} in ${there} while its own cell holds a gold ${own}, so whichever colour is true removes it`
+                  : tr`The ${d} in ${here} sees a gold ${d} in ${there} while its own cell holds a blue ${own}, so whichever colour is true removes it`;
               witnesses45.push(
                 witness(
                   { cell: seen[A]!, digit: d },
                   { cell: c, digit: d },
-                  `If ${HUE[A]} is true, the ${d} in ${cellName(seen[A]!)} is placed, and the ${d} in ${cellName(c)} goes.`
+                  A === 0
+                    ? tr`If blue is true, the ${d} in ${there} is placed, and the ${d} in ${here} goes.`
+                    : tr`If gold is true, the ${d} in ${there} is placed, and the ${d} in ${here} goes.`
                 ),
                 witness(
                   { cell: c, digit: colorDigit[1 - A]! },
                   { cell: c, digit: d },
-                  `If ${HUE[1 - A]} is true, ${cellName(c)} is ${colorDigit[1 - A]}, and its ${d} goes. Either way the ${d} is false.`
+                  A === 0
+                    ? tr`If gold is true, ${here} is ${own}, and its ${d} goes. Either way the ${d} is false.`
+                    : tr`If blue is true, ${here} is ${own}, and its ${d} goes. Either way the ${d} is false.`
                 )
               );
             }
@@ -235,7 +256,7 @@ export function findMedusa3d(g: Grid): Step | null {
       return medusaStep(
         cl,
         elims45,
-        why45 + (elims45.length > 1 ? `; ${elims45.length} candidates fall this way` : ''),
+        why45 + (elims45.length > 1 ? tr`; ${elims45.length} candidates fall this way` : ''),
         witnesses45
       );
     }
@@ -253,21 +274,29 @@ export function findMedusa3d(g: Grid): Step | null {
         );
         if (emptied) {
           // one colour-A candidate per digit, the one that would remove it
+          const target = cellName(c);
           const witnesses6 = ds.map((d, k) => {
             const n = cl.nodes.find((x) => nDigit(x) === d && cl.color.get(x) === A && sees(c, nCell(x)))!;
             const last = k === ds.length - 1;
-            return witness(
-              cd(n),
-              { cell: c, digit: d },
-              `If ${HUE[A]} is true, the ${d} in ${cellName(nCell(n))} is placed, and ${cellName(c)} loses its ${d}.${
-                last ? ` ${cellName(c)} would then be empty, so ${HUE[A]} is false.` : ''
-              }`
-            );
+            const from = cellName(nCell(n));
+            let text: string;
+            if (A === 0) {
+              text = last
+                ? tr`If blue is true, the ${d} in ${from} is placed, and ${target} loses its ${d}. ${target} would then be empty, so blue is false.`
+                : tr`If blue is true, the ${d} in ${from} is placed, and ${target} loses its ${d}.`;
+            } else {
+              text = last
+                ? tr`If gold is true, the ${d} in ${from} is placed, and ${target} loses its ${d}. ${target} would then be empty, so gold is false.`
+                : tr`If gold is true, the ${d} in ${from} is placed, and ${target} loses its ${d}.`;
+            }
+            return witness(cd(n), { cell: c, digit: d }, text);
           });
           return medusaStep(
             cl,
             colored(A).map(cd),
-            `If ${HUE[A]} were true, ${cellName(c)} would lose every one of its candidates (${ds.join(', ')}), so ${HUE[A]} is false: all its candidates are removed (circled red) and every ${HUE[1 - A]} candidate is true`,
+            A === 0
+              ? tr`If blue were true, ${target} would lose every one of its candidates (${ds.join(', ')}), so blue is false: all its candidates are removed (circled red) and every gold candidate is true`
+              : tr`If gold were true, ${target} would lose every one of its candidates (${ds.join(', ')}), so gold is false: all its candidates are removed (circled red) and every blue candidate is true`,
             witnesses6
           );
         }
@@ -301,10 +330,10 @@ function medusaStep(cl: Cluster, eliminations: CellDigit[], reason: string, witn
     primary: cl.nodes.filter((n) => cl.color.get(n) === 0).map(cd),
     secondary: cl.nodes.filter((n) => cl.color.get(n) === 1).map(cd),
     labels: {
-      primary: 'blue: one colour, all its candidates true or all false together',
-      secondary: 'gold: the other colour, true exactly when blue is false'
+      primary: tr`blue: one colour, all its candidates true or all false together`,
+      secondary: tr`gold: the other colour, true exactly when blue is false`
     },
     links,
-    description: `3D Medusa: candidates joined by conjugate pairs and bivalue cells (the solid links) are coloured blue and gold, and either every blue candidate is true or every gold one is. ${reason}.`
+    description: tr`3D Medusa: candidates joined by conjugate pairs and bivalue cells (the solid links) are coloured blue and gold, and either every blue candidate is true or every gold one is. ${reason}.`
   };
 }

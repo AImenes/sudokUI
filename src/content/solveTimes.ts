@@ -13,6 +13,7 @@
 // championship times. Solving with your own pencil marks, and on paper,
 // take longer: each is a multiple of the screen-with-candidates time.
 import { Level, LEVELS } from '../engine/ratings';
+import { translator, msg } from './i18n';
 
 /** median solve time of a typical online solver, in seconds, per band */
 export const MEDIAN_SECONDS: Record<Level, number> = {
@@ -89,28 +90,44 @@ export interface TimeVerdict {
   percentile: number;
 }
 
-/** the words, from the top down, with the share of solvers each one beats */
-export const VERDICTS: { label: string; atLeast: number }[] = [
-  { label: 'World class', atLeast: 0.999 },
-  { label: 'Expert', atLeast: 0.99 },
-  { label: 'Excellent', atLeast: 0.95 },
-  { label: 'Fast', atLeast: 0.8 },
-  { label: 'Good', atLeast: 0.5 },
-  { label: 'Steady', atLeast: 0.2 },
-  { label: 'Slow', atLeast: 0 }
+/** the words, from the top down, with the share of solvers each one beats
+ *  (English; timeVerdict gives them in the player's language) */
+export const VERDICTS: { label: string; key: string; atLeast: number }[] = [
+  { label: 'World class', key: msg('World class||a solve time'), atLeast: 0.999 },
+  { label: 'Expert', key: msg('Expert||a solve time'), atLeast: 0.99 },
+  { label: 'Excellent', key: msg('Excellent||a solve time'), atLeast: 0.95 },
+  { label: 'Fast', key: msg('Fast||a solve time'), atLeast: 0.8 },
+  { label: 'Good', key: msg('Good||a solve time'), atLeast: 0.5 },
+  { label: 'Steady', key: msg('Steady||a solve time'), atLeast: 0.2 },
+  { label: 'Slow', key: msg('Slow||a solve time'), atLeast: 0 }
 ];
 
+/** the verdict on a time, its word in the player's language */
 export function timeVerdict(level: Level, seconds: number, mode: SolveMode = 'auto'): TimeVerdict {
   const percentile = timePercentile(level, seconds, mode);
-  const { label } = VERDICTS.find((v) => percentile >= v.atLeast)!;
-  return { label, percentile };
+  const { key } = VERDICTS.find((v) => percentile >= v.atLeast)!;
+  const t = translator();
+  return { label: t(key), percentile };
+}
+
+/**
+ * The share of slower solvers as a percentage, written the language's way
+ * (99.5 in English, 99,5 in Norwegian and Spanish): one decimal near the
+ * top, where whole percents would all read 99, and 99.9 at most, since
+ * almost nobody is left beyond it.
+ */
+export function percentileShare(percentile: number): string {
+  const t = translator();
+  const oneDecimal = (s: string) => Number(s).toLocaleString(t.locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  if (percentile >= 0.999) return oneDecimal('99.9');
+  if (percentile >= 0.99) return oneDecimal((percentile * 100).toFixed(1));
+  return String(Math.round(percentile * 100));
 }
 
 /** "faster than 65% of solvers", or the top-end phrasing when there is almost nobody left */
 export function percentileText(percentile: number): string {
-  if (percentile >= 0.999) return 'faster than 99.9% of solvers';
-  if (percentile >= 0.99) return `faster than ${(percentile * 100).toFixed(1)}% of solvers`;
-  return `faster than ${Math.round(percentile * 100)}% of solvers`;
+  const t = translator();
+  return t('faster than {pct}% of solvers', { pct: percentileShare(percentile) });
 }
 
 /** 4:30 for 270 seconds; 1h 12m past the hour */

@@ -1,5 +1,6 @@
 import { Grid, UNITS, PEERS, bit, digitsOf, cellName, popcount, rowOf, colOf, boxOf } from '../board';
 import { Step, CellDigit, UnitBand } from '../steps';
+import { tr, unitName } from '../text';
 
 /**
  * Singles — the placement techniques every solve is built on.
@@ -9,12 +10,6 @@ import { Step, CellDigit, UnitBand } from '../steps';
  * - Hidden Single: a digit with exactly one possible cell in some unit.
  */
 
-const UNIT_NAMES = [
-  ...Array.from({ length: 9 }, (_, i) => `row ${i + 1}`),
-  ...Array.from({ length: 9 }, (_, i) => `column ${i + 1}`),
-  ...Array.from({ length: 9 }, (_, i) => `box ${i + 1}`)
-];
-
 /** the Full House step for the last empty cell of a house */
 export function fullHouseStep(u: number, empty: number, digit: number): Step {
   return {
@@ -22,8 +17,8 @@ export function fullHouseStep(u: number, empty: number, digit: number): Step {
     placements: [{ cell: empty, digit }],
     eliminations: [],
     units: [{ unit: u, role: 'primary' }],
-    labels: { primary: `${UNIT_NAMES[u]}, with one cell left` },
-    description: `Full House: ${cellName(empty)} is the last empty cell in ${UNIT_NAMES[u]}, so it must be ${digit}.`
+    labels: { primary: tr`${unitName(u)}, with one cell left` },
+    description: tr`Full House: ${cellName(empty)} is the last empty cell in ${unitName(u)}, so it must be ${digit}.`
   };
 }
 
@@ -65,10 +60,10 @@ export function nakedSingleStep(g: Grid, cell: number): Step {
     primary: [{ cell, digit }],
     secondary: others,
     labels: {
-      primary: 'the cell with one candidate left',
-      secondary: 'the other eight digits, each already in its row, column or box'
+      primary: tr`the cell with one candidate left`,
+      secondary: tr`the other eight digits, each already in its row, column or box`
     },
-    description: `Naked Single: ${cellName(cell)} has only one candidate left, ${digit}.`
+    description: tr`Naked Single: ${cellName(cell)} has only one candidate left, ${digit}.`
   };
 }
 
@@ -132,10 +127,10 @@ export function hiddenSingleStep(g: Grid, u: number, d: number, pos: number): St
           secondary: [...blockers.values()],
           units: bands,
           labels: {
-            primary: `${UNIT_NAMES[u]}: ${d} has one place left in it`,
-            secondary: `the ${d}s that rule out its other cells, shaded along their lines`
+            primary: tr`${unitName(u)}: ${d} has one place left in it`,
+            secondary: tr`the ${d}s that rule out its other cells, shaded along their lines`
           },
-          description: `Hidden Single: ${d} fits only in ${cellName(pos)} within ${UNIT_NAMES[u]}.`
+          description: tr`Hidden Single: ${d} fits only in ${cellName(pos)} within ${unitName(u)}.`
         };
       }
     }

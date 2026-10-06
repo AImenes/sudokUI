@@ -1,6 +1,7 @@
 import { Grid, UNITS, bit, digitsOf, sees, rowOf, colOf, cellName, cellNames } from '../board';
 import { Step, CellDigit, alternatingLinks } from '../steps';
 import { collectAls } from './als';
+import { tr } from '../text';
 
 /**
  * AIC with Groups (sudokuwiki.org/AIC_with_Groups) and Grouped Nice Loops.
@@ -210,6 +211,7 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
           elims.push({ cell, digit });
         }
         if (elims.length) {
+          const chain = path.map(label).join(' → ');
           return {
             tech: alsInPath ? 'AIC_ALS' : 'AIC_GROUPED',
             placements: [],
@@ -218,7 +220,9 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
               nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))
             ),
             links: alternatingLinks(nodeCds(nodes, path)),
-            description: `${alsInPath ? 'AIC with ALS' : 'Grouped AIC'}: ${path.map(label).join(' → ')}; at least one end is true, so candidates conflicting with both ends are removed.`
+            description: alsInPath
+              ? tr`AIC with ALS: ${chain}; at least one end is true, so candidates conflicting with both ends are removed.`
+              : tr`Grouped AIC: ${chain}; at least one end is true, so candidates conflicting with both ends are removed.`
           };
         }
       }
@@ -267,12 +271,12 @@ function loopRule2(
   if (start.cells.length === 1) {
     return {
       tech: 'GROUPED_NICE_LOOP',
-      labels: { primary: 'the loop, with grouped nodes' },
+      labels: { primary: tr`the loop, with grouped nodes` },
       placements: [{ cell: start.cells[0], digit: start.digit }],
       eliminations: [],
       primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
       links: alternatingLinks(nodeCds(nodes, path), 'strong'),
-      description: `Grouped Nice Loop: ${chain} closes with two strong links at the start: denying it forces it, so it is placed.`
+      description: tr`Grouped Nice Loop: ${chain} closes with two strong links at the start: denying it forces it, so it is placed.`
     };
   }
   const inPath = new Set(path.flatMap((n) => nodes[n].cells.map((c) => c * 9 + nodes[n].digit - 1)));
@@ -285,12 +289,12 @@ function loopRule2(
   if (!elims.length) return null;
   return {
     tech: 'GROUPED_NICE_LOOP',
-    labels: { primary: 'the loop, with grouped nodes' },
+    labels: { primary: tr`the loop, with grouped nodes` },
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
     links: alternatingLinks(nodeCds(nodes, path), 'strong'),
-    description: `Grouped Nice Loop: ${chain} closes with two strong links at the start group, so the digit lives there and falls from every cell seeing the whole group.`
+    description: tr`Grouped Nice Loop: ${chain} closes with two strong links at the start group, so the digit lives there and falls from every cell seeing the whole group.`
   };
 }
 
@@ -332,11 +336,11 @@ function loopRule1(
   if (!elims.length) return null;
   return {
     tech: 'GROUPED_NICE_LOOP',
-    labels: { primary: 'the loop, with grouped nodes' },
+    labels: { primary: tr`the loop, with grouped nodes` },
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
     links: alternatingLinks(nodeCds(nodes, path), 'weak'),
-    description: `Grouped Nice Loop: the continuous loop ${path.map(label).join(' → ')} alternates perfectly; every weak link has exactly one true side, clearing candidates along it.`
+    description: tr`Grouped Nice Loop: the continuous loop ${path.map(label).join(' → ')} alternates perfectly; every weak link has exactly one true side, clearing candidates along it.`
   };
 }
