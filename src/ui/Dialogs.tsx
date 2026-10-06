@@ -155,6 +155,8 @@ export function NewGameDialog({
           </span>
         </button>
       </div>
+      <h4 className="setting-group">Or scan a photo of one</h4>
+      <ScanControls onDone={onClose} />
     </Modal>
   );
 }
@@ -593,12 +595,13 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
   );
 }
 
-export function ImportDialog({ onClose }: { onClose: () => void }) {
-  const startGame = useGame((s) => s.startGame);
+/**
+ * Scan a photo of a printed puzzle (src/scan): a file (the phone offers
+ * the camera or the library) or a live camera frame. The digits land on
+ * the custom-entry board for checking; `onDone` closes the dialog.
+ */
+export function ScanControls({ onDone }: { onDone: () => void }) {
   const loadScan = useGame((s) => s.loadScan);
-  const [text, setText] = useState('');
-  const [error, setError] = useState('');
-  // scanning a photo (src/scan): a file or a live camera frame
   const [busy, setBusy] = useState(false);
   const [scanError, setScanError] = useState('');
   const [camera, setCamera] = useState<MediaStream | null>(null);
@@ -627,7 +630,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       }
       closeCamera();
       loadScan(r.digits, r.doubts, r.preview);
-      onClose();
+      onDone();
     } catch (e) {
       setScanError(e instanceof Error ? e.message : 'The photo could not be read.');
     } finally {
@@ -650,42 +653,11 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     const { captureFrame } = await import('../scan/scanner');
     await scan(await captureFrame(video.current));
   };
-
-  const doImport = () => {
-    const cleaned = text.replace(/[^0-9.]/g, '');
-    if (cleaned.length !== 81) {
-      setError('A puzzle needs exactly 81 characters (digits and dots).');
-      return;
-    }
-    const v = validatePuzzle(cleaned);
-    if (!v.ok) {
-      setError(v.reason);
-      return;
-    }
-    startGame(cleaned, v.score, v.level);
-    onClose();
-  };
-
   return (
-    <Modal title="Import a puzzle" onClose={onClose}>
-      <p className="dialog-note">Paste an 81-character puzzle string (dots or zeros for empty cells).</p>
-      <textarea
-        rows={3}
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value);
-          setError('');
-        }}
-        placeholder="..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3.."
-      />
-      {error && <p className="dialog-error">{error}</p>}
-      <div className="hint-actions">
-        <button onClick={doImport}>Load puzzle</button>
-      </div>
-      <h4 className="setting-group">Scan a photo</h4>
+    <>
       <p className="dialog-note">
         Printed puzzles: a newspaper, a book, a screen. Fill the frame with the grid; a tilt, a turn or a mirror image
-        is read anyway. You check the result on the board before playing.
+        is read anyway. The digits land on the board with the scanner's doubts in red, for you to check before playing.
       </p>
       {camera ? (
         <div className="scan-camera">
@@ -722,6 +694,48 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
         </div>
       )}
       {scanError && <p className="dialog-error">{scanError}</p>}
+    </>
+  );
+}
+
+export function ImportDialog({ onClose }: { onClose: () => void }) {
+  const startGame = useGame((s) => s.startGame);
+  const [text, setText] = useState('');
+  const [error, setError] = useState('');
+
+  const doImport = () => {
+    const cleaned = text.replace(/[^0-9.]/g, '');
+    if (cleaned.length !== 81) {
+      setError('A puzzle needs exactly 81 characters (digits and dots).');
+      return;
+    }
+    const v = validatePuzzle(cleaned);
+    if (!v.ok) {
+      setError(v.reason);
+      return;
+    }
+    startGame(cleaned, v.score, v.level);
+    onClose();
+  };
+
+  return (
+    <Modal title="Import a puzzle" onClose={onClose}>
+      <p className="dialog-note">Paste an 81-character puzzle string (dots or zeros for empty cells).</p>
+      <textarea
+        rows={3}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setError('');
+        }}
+        placeholder="..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3.."
+      />
+      {error && <p className="dialog-error">{error}</p>}
+      <div className="hint-actions">
+        <button onClick={doImport}>Load puzzle</button>
+      </div>
+      <h4 className="setting-group">Scan a photo</h4>
+      <ScanControls onDone={onClose} />
     </Modal>
   );
 }

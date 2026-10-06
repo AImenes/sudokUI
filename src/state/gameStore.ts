@@ -559,7 +559,7 @@ export const useGame = create<GameStore>()(
           const cell = emptyCell();
           cell.value = digits[i] ?? 0;
           // the scanner's doubts are shaded, for the eye to settle
-          if (doubts.includes(i)) cell.colors = [1];
+          if (doubts.includes(i)) cell.colors = [0];
           return cell;
         });
         const found = digits.filter(Boolean).length;

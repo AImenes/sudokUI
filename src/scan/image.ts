@@ -78,11 +78,10 @@ export interface Quad {
  * and mostly empty inside (lines, not a photo). Its corners are the
  * component's extreme pixels along the two diagonals.
  */
-export function findGrid(ink: Uint8Array, width: number, height: number): Quad | null {
+export function gridCandidates(ink: Uint8Array, width: number, height: number, keep = 6): Quad[] {
   const labels = new Int32Array(width * height);
   const stack = new Int32Array(width * height);
-  let best: Quad | null = null;
-  let bestScore = 0;
+  const found: { quad: Quad; score: number }[] = [];
   let label = 0;
   const minSide = Math.min(width, height);
   for (let start = 0; start < ink.length; start++) {
@@ -124,13 +123,112 @@ export function findGrid(ink: Uint8Array, width: number, height: number): Quad |
     const fill = size / (bw * bh);
     if (fill > 0.5) continue; // a dark block, not a grid of lines
     const score = bw * bh * squareness;
+    const pt = (i: number): Point => ({ x: i % width, y: Math.floor(i / width) });
+    found.push({ quad: { corners: [pt(tl), pt(tr), pt(br), pt(bl)], size }, score });
+  }
+  return found
+    .sort((a, b) => b.score - a.score)
+    .slice(0, keep)
+    .map((f) => f.quad);
+}
+
+/**
+ * How much a warped square looks like a sudoku grid: ink along the ten
+ * line positions in each direction, against ink elsewhere. A table edge
+ * or a loudspeaker's rim is large, square-ish and mostly empty too; this
+ * tells them apart.
+ */
+export function gridness(warped: Gray): number {
+  const S = warped.width;
+  const ink = adaptiveInk(warped, 10, 15);
+  // along the lines where they really are, so a curved page still counts
+  const { xs, ys } = gridLines(warped, ink);
+  let onLines = 0;
+  let onCount = 0;
+  let all = 0;
+  for (let i = 0; i < ink.length; i++) all += ink[i];
+  for (let k = 0; k <= 9; k++) {
+    for (let t = 0; t < S; t++) {
+      for (let d = -1; d <= 1; d++) {
+        const x = Math.min(S - 1, Math.max(0, xs[k] + d));
+        const y = Math.min(S - 1, Math.max(0, ys[k] + d));
+        onLines += ink[t * S + x] + ink[y * S + t];
+        onCount += 2;
+      }
+    }
+  }
+  return onLines / onCount - all / ink.length;
+}
+
+/** The grid: the candidate that, warped, shows the most grid lines. */
+export function findGrid(ink: Uint8Array, width: number, height: number, g?: Gray): Quad | null {
+  const candidates = gridCandidates(ink, width, height);
+  if (!candidates.length) return null;
+  if (!g) return candidates[0];
+  let best: Quad | null = null;
+  let bestScore = 0.035; // less than this is no grid
+  for (const quad of candidates) {
+    const score = gridness(warp(g, homography(quad.corners, 270), 270));
     if (score > bestScore) {
       bestScore = score;
-      const pt = (i: number): Point => ({ x: i % width, y: Math.floor(i / width) });
-      best = { corners: [pt(tl), pt(tr), pt(br), pt(bl)], size };
+      best = quad;
     }
   }
   return best;
+}
+
+/**
+ * Where the lines really are inside the warped grid: the ten peaks of the
+ * ink profile in each direction, each sought near its expected place, so
+ * a page that curves or a corner found a little off still reads cell by
+ * cell. Returns the ten x positions and the ten y positions.
+ */
+export function gridLines(warped: Gray, inkGiven?: Uint8Array): { xs: number[]; ys: number[] } {
+  const S = warped.width;
+  const ink = inkGiven ?? adaptiveInk(warped, 10, 15);
+  const cols = new Float32Array(S);
+  const rows = new Float32Array(S);
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const v = ink[y * S + x];
+      cols[x] += v;
+      rows[y] += v;
+    }
+  }
+  const peaks = (profile: Float32Array): number[] => {
+    const step = S / 9;
+    const smooth = (x: number) => (profile[x] ?? 0) + (profile[x - 1] ?? 0) + (profile[x + 1] ?? 0);
+    const seek = (expect: number, reach: number): number => {
+      let best = expect;
+      let bestV = -1;
+      for (let d = -reach; d <= reach; d++) {
+        const x = expect + d;
+        if (x < 0 || x >= S) continue;
+        // nearer the expected place preferred when equal
+        const v = smooth(x) * (1 - Math.abs(d) / (reach * 6 + 1));
+        if (v > bestV) {
+          bestV = v;
+          best = x;
+        }
+      }
+      return best;
+    };
+    // the four box lines are thick and unmistakable: find them first
+    const box = [0, 3, 6, 9].map((k) => seek(Math.round(k * step), Math.round(step * (k === 0 || k === 9 ? 0.12 : 0.3))));
+    for (let i = 1; i < 4; i++) if (box[i] < box[i - 1] + step * 2) box[i] = Math.round(box[i - 1] + step * 3);
+    // the thin lines sit a third of the way between them, give or take a few pixels
+    const out: number[] = [];
+    for (let b = 0; b < 3; b++) {
+      const from = box[b];
+      const to = box[b + 1];
+      out.push(from);
+      for (let j = 1; j <= 2; j++) out.push(seek(Math.round(from + ((to - from) * j) / 3), Math.round(step * 0.1)));
+    }
+    out.push(box[3]);
+    for (let k = 1; k <= 9; k++) if (out[k] < out[k - 1] + step * 0.6) out[k] = Math.round(out[k - 1] + step * 0.8);
+    return out;
+  };
+  return { xs: peaks(cols), ys: peaks(rows) };
 }
 
 /** Solve A x = b for an n×n system by Gaussian elimination with pivoting. */
@@ -226,65 +324,189 @@ export function dihedral(g: Gray, k: number): Gray {
   return { width: S, height: S, data: out };
 }
 
+export interface Tracked {
+  /** vx[k][strip]: the x of vertical line k in row strip `strip` */
+  vx: number[][];
+  /** hy[k][strip]: the y of horizontal line k in column strip `strip` */
+  hy: number[][];
+}
+
+/**
+ * Each line followed strip by strip (one strip per cell), so a page that
+ * curves is still cut along its lines. A line moves only where a column
+ * (or row) of ink runs almost the whole strip; a digit's stroke does not.
+ */
+export function trackLines(g: Gray, lines: { xs: number[]; ys: number[] }): Tracked {
+  const S = g.width;
+  const ink = adaptiveInk(g, 10, 15);
+  const reach = 8;
+  const follow = (base: number, strips: number[], vertical: boolean): number[] => {
+    const out: number[] = [];
+    let at = base;
+    for (let strip = 0; strip < 9; strip++) {
+      const a = strips[strip];
+      const b = strips[strip + 1];
+      let best = at;
+      let bestV = -1;
+      for (let d = -reach; d <= reach; d++) {
+        const p = base + d;
+        if (p < 0 || p >= S) continue;
+        let v = 0;
+        for (let t = a; t < b; t++) v += vertical ? ink[t * S + p] : ink[p * S + t];
+        v *= 1 - Math.abs(p - at) / (reach * 8);
+        if (v > bestV) {
+          bestV = v;
+          best = p;
+        }
+      }
+      if (bestV >= (b - a) * 0.8) at = best;
+      out.push(at);
+    }
+    return out;
+  };
+  return {
+    vx: lines.xs.map((x) => follow(x, lines.ys, true)),
+    hy: lines.ys.map((y) => follow(y, lines.xs, false))
+  };
+}
+
+export interface Box {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** the cell's box, between the lines as tracked for its row and column */
+export function cellBox(tracked: Tracked, row: number, col: number): Box {
+  return { x0: tracked.vx[col][row], x1: tracked.vx[col + 1][row], y0: tracked.hy[row][col], y1: tracked.hy[row + 1][col] };
+}
+
+/** The grid lines painted over with page colour along their tracked positions. */
+export function eraseLines(g: Gray, tracked: Tracked, lines: { xs: number[]; ys: number[] }, half = 4): Gray {
+  const S = g.width;
+  const data = new Float32Array(g.data);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) sum += data[i];
+  const page = Math.min(255, sum / data.length + 20);
+  tracked.vx.forEach((positions, k) => {
+    const h = k % 3 === 0 ? half : half - 1;
+    positions.forEach((x0, strip) => {
+      for (let d = -h; d <= h; d++) {
+        const x = x0 + d;
+        if (x < 0 || x >= S) continue;
+        for (let y = lines.ys[strip]; y < lines.ys[strip + 1]; y++) data[y * S + x] = page;
+      }
+    });
+  });
+  tracked.hy.forEach((positions, k) => {
+    const h = k % 3 === 0 ? half : half - 1;
+    positions.forEach((y0, strip) => {
+      for (let d = -h; d <= h; d++) {
+        const y = y0 + d;
+        if (y < 0 || y >= S) continue;
+        for (let x = lines.xs[strip]; x < lines.xs[strip + 1]; x++) data[y * S + x] = page;
+      }
+    });
+  });
+  return { width: S, height: S, data };
+}
+
 /**
  * The digit's ink inside one cell, as a NORM×NORM image: a margin keeps
  * the grid lines out, ink touching the border is dropped (a line that
  * leaked in), the blob is cropped to its box, scaled to fit and centred.
  * Null for an empty cell.
  */
-export function cellBlob(g: Gray, row: number, col: number): Float32Array | null {
-  const m = 8; // margin inside the cell
-  const n = CELL - 2 * m;
+export interface Blob {
+  vec: Float32Array;
+  /** width over height of the ink box: a 1 is narrow, a 4 is not */
+  aspect: number;
+}
+
+export function cellBlob(g: Gray, box: Box): Blob | null {
   const S = g.width;
-  const vals = new Float32Array(n * n);
+  const { x0, x1, y0, y1 } = box;
+  // a margin inside the cell keeps its lines out
+  const mx = Math.round((x1 - x0) * 0.12);
+  const my = Math.round((y1 - y0) * 0.12);
+  const nw = x1 - x0 - 2 * mx;
+  const nh = y1 - y0 - 2 * my;
+  if (nw < 8 || nh < 8) return null;
+  const n = nw; // row stride
+  const vals = new Float32Array(nw * nh);
   let min = 255, max = 0, sum = 0;
-  for (let y = 0; y < n; y++) {
-    for (let x = 0; x < n; x++) {
-      const v = g.data[(row * CELL + m + y) * S + col * CELL + m + x];
+  for (let y = 0; y < nh; y++) {
+    for (let x = 0; x < nw; x++) {
+      const v = g.data[(y0 + my + y) * S + x0 + mx + x];
       vals[y * n + x] = v;
       if (v < min) min = v;
       if (v > max) max = v;
       sum += v;
     }
   }
-  const mean = sum / (n * n);
+  const mean = sum / (nw * nh);
   if (mean - min < 45) return null; // no real contrast: empty
   const t = mean - 0.4 * (mean - min);
-  const ink = new Uint8Array(n * n);
+  const ink = new Uint8Array(nw * nh);
   for (let i = 0; i < ink.length; i++) if (vals[i] < t) ink[i] = 1;
-  // drop ink connected to the border
+  // drop the line-shaped ink that touches the border (a grid line that
+  // leaked in); a digit that touches the border is kept
+  const seen = new Uint8Array(nw * nh);
   const stack: number[] = [];
-  for (let i = 0; i < n * n; i++) {
-    const x = i % n;
-    const y = (i - x) / n;
-    if (ink[i] && (x === 0 || y === 0 || x === n - 1 || y === n - 1)) stack.push(i);
-  }
-  while (stack.length) {
-    const i = stack.pop()!;
-    if (!ink[i]) continue;
-    ink[i] = 0;
-    const x = i % n;
-    if (x > 0) stack.push(i - 1);
-    if (x < n - 1) stack.push(i + 1);
-    if (i >= n) stack.push(i - n);
-    if (i < n * (n - 1)) stack.push(i + n);
+  for (let start = 0; start < nw * nh; start++) {
+    if (!ink[start] || seen[start]) continue;
+    const members: number[] = [];
+    let touches = false;
+    let cx0 = nw, cx1 = -1, cy0 = nh, cy1 = -1;
+    seen[start] = 1;
+    stack.push(start);
+    while (stack.length) {
+      const i = stack.pop()!;
+      members.push(i);
+      const x = i % n;
+      const y = (i - x) / n;
+      if (x === 0 || y === 0 || x === nw - 1 || y === nh - 1) touches = true;
+      if (x < cx0) cx0 = x;
+      if (x > cx1) cx1 = x;
+      if (y < cy0) cy0 = y;
+      if (y > cy1) cy1 = y;
+      const next = [x > 0 ? i - 1 : -1, x < nw - 1 ? i + 1 : -1, y > 0 ? i - n : -1, y < nh - 1 ? i + n : -1];
+      for (const j of next) {
+        if (j >= 0 && ink[j] && !seen[j]) {
+          seen[j] = 1;
+          stack.push(j);
+        }
+      }
+    }
+    if (!touches) continue;
+    const cw = cx1 - cx0 + 1;
+    const ch = cy1 - cy0 + 1;
+    const thin = cw < nw * 0.22 || ch < nh * 0.22;
+    const small = members.length < 10;
+    // a corner of two lines spans a box it barely fills; a digit fills its box
+    const hollow = members.length / (cw * ch) < 0.13;
+    if (thin || small || hollow) for (const i of members) ink[i] = 0;
   }
   let count = 0;
-  let x0 = n, x1 = -1, y0 = n, y1 = -1;
-  for (let i = 0; i < n * n; i++) {
+  let bx0 = nw, bx1 = -1, by0 = nh, by1 = -1;
+  for (let i = 0; i < nw * nh; i++) {
     if (!ink[i]) continue;
     count++;
     const x = i % n;
     const y = (i - x) / n;
-    if (x < x0) x0 = x;
-    if (x > x1) x1 = x;
-    if (y < y0) y0 = y;
-    if (y > y1) y1 = y;
+    if (x < bx0) bx0 = x;
+    if (x > bx1) bx1 = x;
+    if (y < by0) by0 = y;
+    if (y > by1) by1 = y;
   }
-  const bw = x1 - x0 + 1;
-  const bh = y1 - y0 + 1;
-  if (count < 14 || bh < n * 0.3 || bw < 3) return null; // a speck, or nothing
-  return normalise(ink, n, x0, y0, bw, bh);
+  const bw = bx1 - bx0 + 1;
+  const bh = by1 - by0 + 1;
+  if (count < 10 || bh < nh * 0.3 || bw < 3) return null; // a speck, or nothing
+  // a digit fills a fair share of its box and of the cell, and is never a
+  // sliver; a stray mark or a line fragment is
+  if (count / (bw * bh) < 0.2 || bw * bh < nw * nh * 0.06 || bw / bh < 0.25) return null;
+  return { vec: normalise(ink, n, bx0, by0, bw, bh), aspect: bw / bh };
 }
 
 /** crop a box of a binary image, fit it into NORM-4, centre it in NORM×NORM, and blur a little */
@@ -336,6 +558,7 @@ function blur(img: Float32Array, S: number): Float32Array {
 export interface Template {
   digit: number;
   vec: Float32Array;
+  aspect: number;
 }
 
 /** zero-mean normalised correlation */
@@ -355,6 +578,28 @@ export function correlation(a: Float32Array, b: Float32Array): number {
   return na && nb ? dot / Math.sqrt(na * nb) : 0;
 }
 
+/**
+ * Templates no font is needed for: the digit 1 as a bar, with and without
+ * its flag, since 1 is the digit fonts draw most differently.
+ */
+export function barTemplates(): Template[] {
+  const out: Template[] = [];
+  const W = 12;
+  const H = 40;
+  for (const flag of [0, 4, 7]) {
+    const ink = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = W - 6; x < W; x++) ink[y * W + x] = 1;
+    for (let k = 0; k < flag; k++) {
+      // a flag going down-left from the top
+      const y = k + 1;
+      for (let x = Math.max(0, W - 7 - k); x < W - 6; x++) ink[y * W + x] = 1;
+    }
+    const bw = flag ? W - Math.max(0, W - 7 - (flag - 1)) : 6;
+    out.push({ digit: 1, vec: normalise(ink, W, W - bw, 0, bw, H), aspect: bw / H });
+  }
+  return out;
+}
+
 export interface Match {
   digit: number;
   /** the best correlation, and the gap to the best other digit */
@@ -362,11 +607,12 @@ export interface Match {
   margin: number;
 }
 
-export function matchDigit(blob: Float32Array, templates: Template[]): Match {
+export function matchDigit(blob: Blob, templates: Template[]): Match {
   const best = new Map<number, number>();
   for (const t of templates) {
-    const s = correlation(blob, t.vec);
-    if (s > (best.get(t.digit) ?? -1)) best.set(t.digit, s);
+    // the shape, and a penalty for a different width: a narrow 1 is not a 4
+    const s = correlation(blob.vec, t.vec) - 1.2 * Math.abs(blob.aspect - t.aspect);
+    if (s > (best.get(t.digit) ?? -Infinity)) best.set(t.digit, s);
   }
   const ranked = [...best.entries()].sort((a, b) => b[1] - a[1]);
   const [digit, score] = ranked[0];
@@ -412,18 +658,36 @@ export function countConflicts(digits: number[]): number {
 
 /** Read every cell of a warped grid under one symmetry. */
 export function readGrid(warped: Gray, templates: Template[], symmetry: number): Reading {
-  const g = symmetry ? dihedral(warped, symmetry) : warped;
+  const turned = symmetry ? dihedral(warped, symmetry) : warped;
+  const lines = gridLines(turned);
+  const tracked = trackLines(turned, lines);
+  const g = eraseLines(turned, tracked, lines);
   const digits: number[] = [];
   const doubts: number[] = [];
   let quality = 0;
   for (let cell = 0; cell < 81; cell++) {
-    const blob = cellBlob(g, Math.floor(cell / 9), cell % 9);
-    if (!blob) {
+    // the box as tracked, and shifted a little either way: where the warp
+    // is a few pixels off, one of them holds the whole digit
+    const box = cellBox(tracked, Math.floor(cell / 9), cell % 9);
+    const w = box.x1 - box.x0;
+    let blob: Blob | null = null;
+    let m: Match | null = null;
+    for (const shift of [0, -0.18, 0.18]) {
+      const dx = Math.round(w * shift);
+      const b = cellBlob(g, { x0: box.x0 + dx, x1: box.x1 + dx, y0: box.y0, y1: box.y1 });
+      if (!b) continue;
+      const mm = matchDigit(b, templates);
+      // a shifted box must read clearly better to win over the tracked one
+      if (!m || mm.score > m.score + (shift ? 0.08 : 0)) {
+        blob = b;
+        m = mm;
+      }
+    }
+    if (!blob || !m) {
       digits.push(0);
       continue;
     }
-    const m = matchDigit(blob, templates);
-    if (m.score < 0.35) {
+    if (m.score < 0.42) {
       // ink that is no digit we know: left empty, but flagged
       digits.push(0);
       doubts.push(cell);
@@ -431,7 +695,7 @@ export function readGrid(warped: Gray, templates: Template[], symmetry: number):
     }
     digits.push(m.digit);
     quality += m.score;
-    if (m.score < 0.6 || m.margin < 0.06) doubts.push(cell);
+    if (m.score < 0.66 || m.margin < 0.1) doubts.push(cell);
   }
   return { digits, doubts, quality, conflicts: countConflicts(digits), symmetry };
 }
@@ -450,7 +714,7 @@ export function readBest(warped: Gray, templates: Template[]): Reading {
 /** The whole numeric pipeline, from grey pixels to a reading. */
 export function scanGray(g: Gray, templates: Template[]): { reading: Reading; warped: Gray; quad: Quad | null } {
   const ink = adaptiveInk(g);
-  const quad = findGrid(ink, g.width, g.height);
+  const quad = findGrid(ink, g.width, g.height, g);
   const corners: Quad['corners'] = quad
     ? quad.corners
     : [

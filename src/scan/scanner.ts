@@ -5,7 +5,7 @@
  * hands the pixels to the numeric pipeline in image.ts. A native app can
  * feed scanImage any Blob a camera plugin gives it.
  */
-import { Gray, Template, NORM, toGray, normalise, scanGray } from './image';
+import { Gray, Template, NORM, toGray, normalise, scanGray, adaptiveInk, gridCandidates, gridness, warp, homography, gridLines, eraseLines, cellBlob, matchDigit, findGrid, trackLines, cellBox } from './image';
 
 export interface ScanResult {
   /** 81 characters, dots for empty cells */
@@ -60,7 +60,7 @@ export function digitTemplates(): Template[] {
           }
         }
         if (x1 < 0) continue;
-        out.push({ digit, vec: normalise(ink, S, x0, y0, x1 - x0 + 1, y1 - y0 + 1) });
+        out.push({ digit, vec: normalise(ink, S, x0, y0, x1 - x0 + 1, y1 - y0 + 1), aspect: (x1 - x0 + 1) / (y1 - y0 + 1) });
       }
     }
   }
@@ -151,5 +151,56 @@ export function captureFrame(video: HTMLVideoElement): Promise<Blob> {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('The camera gave no picture.'))), 'image/jpeg', 0.92)
   );
 }
+
+/** everything the pipeline saw, for tuning against a real photo */
+export async function scanDebug(blob: Blob, cells: number[] = []) {
+  const g = await grayFromBlob(blob);
+  const ink = adaptiveInk(g);
+  const candidates = gridCandidates(ink, g.width, g.height).map((c) => ({
+    corners: c.corners,
+    size: c.size,
+    gridness: gridness(warp(g, homography(c.corners, 270), 270))
+  }));
+  const quad = findGrid(ink, g.width, g.height, g);
+  const corners = quad
+    ? quad.corners
+    : ([{ x: 0, y: 0 }, { x: g.width - 1, y: 0 }, { x: g.width - 1, y: g.height - 1 }, { x: 0, y: g.height - 1 }] as const);
+  const warped = warp(g, homography(corners as never));
+  const lines = gridLines(warped);
+  const tracked = trackLines(warped, lines);
+  const clean = eraseLines(warped, tracked, lines);
+  const dumps: Record<number, string> = {};
+  for (const cell of cells) {
+    const b = cellBlob(clean, cellBox(tracked, Math.floor(cell / 9), cell % 9));
+    if (!b) {
+      dumps[cell] = 'null';
+      continue;
+    }
+    let nan = 0;
+    for (const v of b.vec) if (!Number.isFinite(v)) nan++;
+    let head = `aspect ${b.aspect} nan ${nan}`;
+    try {
+      head += ' ' + JSON.stringify(matchDigit(b, digitTemplates()));
+    } catch (e) {
+      head += ' match failed: ' + String(e);
+    }
+    let t = `${head}\n`;
+    for (let y = 0; y < NORM; y++) {
+      for (let x = 0; x < NORM; x++) t += b.vec[y * NORM + x] > 0.5 ? '#' : b.vec[y * NORM + x] > 0.15 ? '+' : '.';
+      t += '\n';
+    }
+    dumps[cell] = t;
+  }
+  let reading: unknown = null;
+  let error = '';
+  try {
+    reading = scanGray(g, digitTemplates()).reading;
+  } catch (e) {
+    error = String(e);
+  }
+  return { width: g.width, height: g.height, quad, candidates, reading, lines, dumps, error, preview: previewOf(warped) };
+}
+
+if (typeof window !== 'undefined') (window as unknown as { __sudokuiScan?: unknown }).__sudokuiScan = { scanImage, scanDebug, digitTemplates, grayFromBlob };
 
 export { NORM };

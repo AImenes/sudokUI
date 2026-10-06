@@ -218,6 +218,19 @@ test.describe('scanning a photo', () => {
   }
 });
 
+test.describe('scanning from New game', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test('the New game dialog offers the scan too', async ({ page }) => {
+    await open(page);
+    await page.getByRole('button', { name: /New/ }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'New game' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Or scan a photo of one')).toBeVisible();
+    await expect(dialog.locator('input[type=file]')).toHaveCount(1);
+  });
+});
+
 test.describe('your path', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
