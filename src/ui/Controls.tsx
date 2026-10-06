@@ -287,8 +287,8 @@ export function Controls({
             onClick={guarded('Fill candidates', fillCandidates)}
             title={t(
               effectiveMode === 'corner'
-                ? 'Fill corner marks with all candidates. With several cells selected, only those are filled'
-                : 'Fill centre marks with all candidates. With several cells selected, only those are filled'
+                ? 'Fill corner marks with all candidates. With empty cells selected, only those are filled'
+                : 'Fill centre marks with all candidates. With empty cells selected, only those are filled'
             )}
           >
             <span className="btn-icon" aria-hidden="true">✎</span><span>{t('Fill candidates')}</span>

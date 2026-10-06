@@ -352,7 +352,7 @@ export function InfoDialog({
       <p className="dialog-note">
         {rich(
           t(
-            "{fill} fills the current mode's layer; with cells selected, only those. {auto} computes and maintains candidates for you; your centre-mark eliminations are adopted when you turn it on, and pencil input strikes candidates through while it's active. Turning it off can hand the state back as marks (see Settings). Every new game starts with Auto off, so switching it on is a per-game choice and the daily is a fair race. {swap} exchanges corner and centre layers. {check} flags wrong digits and candidate lists that lost the true digit."
+            "{fill} fills the corner marks in Corner mode and the centre marks in any other mode; with empty cells selected, only those. {auto} computes and maintains candidates for you; your centre-mark eliminations are adopted when you turn it on, and pencil input strikes candidates through while it's active. Turning it off can hand the state back as marks (see Settings). New games start with Auto off, so switching it on is a per-game choice and the daily is a fair race. A practice puzzle that jumps straight to its technique is the exception: it starts with Auto on. {swap} exchanges corner and centre layers. {check} flags wrong digits and candidate lists that lost the true digit."
           ),
           {
             fill: <em>{t('Fill||the Fill candidates button, in the help')}</em>,
@@ -395,7 +395,7 @@ export function InfoDialog({
       <p className="dialog-note">
         {rich(
           t(
-            'Say your marks are your {remaining} and hints continue from exactly where you are. Corner or centre makes no difference, since those are positions, not meanings (Snyder notation is a {method}: partial corner marks, which is the other answer). Auto and Fill answer the question automatically.'
+            'Say your marks are your {remaining} and hints continue from exactly where you are. Corner or centre makes no difference, since those are positions, not meanings (Snyder notation is a {method}: partial corner marks, which is the other answer). Auto and a whole-board Fill answer the question automatically.'
           ),
           {
             remaining: <em>{t('remaining candidates||the answer, in the help')}</em>,
@@ -411,7 +411,7 @@ export function InfoDialog({
       <p className="dialog-note">
         {rich(
           t(
-            'An {unassisted} means finishing without anything from the Assist box: no hint, check, steps, scan, auto candidates or fill.'
+            'An {unassisted} means finishing without anything from the Assist box: no hint, check, steps, scan, chain, auto candidates or fill.'
           ),
           { unassisted: <strong>{t('unassisted solve||in the help')}</strong> }
         )}

@@ -2,8 +2,8 @@
 
 What a player has actually done, technique by technique, so the guide can
 say "learn this next" from their own play rather than from averages, a
-finished game can be summed up ("45 moves of your own: 31 Naked Singles,
-12 Hidden Singles, 1 X-Wing. From hints: 1 XY-Wing. 2 wrong digits."), a
+finished game can be summed up ("45 moves of your own: 31 × Naked Single,
+12 × Hidden Single, 1 × X-Wing. From hints: 1 × XY-Wing. 2 wrong digits."), a
 practice puzzle can say "you found it", and a wrong digit can be proved
 wrong. Road items 1 and 3 of [goals.md](goals.md), built.
 

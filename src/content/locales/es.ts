@@ -829,7 +829,7 @@ const es: LearnLocale = {
       {
         "heading": "Cómo entrenarlo aquí",
         "paragraphs": [
-          "Todas las partidas empiezan con los candidatos automáticos desactivados, como empezaría un campeón. Usa las notas de esquina para los pares Snyder y deja el resto en blanco. Cuando te atasques, Explorar muestra todas las técnicas que funcionan en esa posición exacta con tus propias anotaciones, así que aprendes lo que se te pasó y no lo que habría mostrado una cuadrícula de candidatos. Si terminas sin usar Pista, Revisar ni Autocandidatos, la partida cuenta como resuelta sin ayuda."
+          "Las partidas nuevas empiezan con los candidatos automáticos desactivados, como empezaría un campeón; la excepción es un sudoku de práctica que salta directamente a su técnica. Usa las notas de esquina para los pares Snyder y deja el resto en blanco. Cuando te atasques, Explorar muestra todas las técnicas que funcionan en esa posición exacta con tus propias anotaciones, así que aprendes lo que se te pasó y no lo que habría mostrado una cuadrícula de candidatos. Explorar cuenta como ayuda, igual que todo lo demás del cuadro Ayuda: si terminas sin usar nada de ello, la partida cuenta como resuelta sin ayuda."
         ]
       }
     ]
@@ -857,7 +857,7 @@ const es: LearnLocale = {
         {
           "heading": "Una carrera justa",
           "paragraphs": [
-            "Todas las partidas empiezan con los candidatos automáticos desactivados. Si terminas sin pistas, sin revisiones y sin candidatos automáticos, la partida cuenta como resuelta sin ayuda.",
+            "El sudoku del día empieza con los candidatos automáticos desactivados para todos. Si terminas sin usar nada del cuadro Ayuda, como las pistas, las revisiones o los candidatos automáticos, la partida cuenta como resuelta sin ayuda.",
             "Al terminar, el botón «Reta a un amigo» copia un mensaje con tu tiempo y un enlace que contiene el propio sudoku."
           ]
         }

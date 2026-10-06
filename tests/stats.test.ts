@@ -66,7 +66,14 @@ describe('stats', () => {
     expect(
       gameSummary({ unaided: { HIDDEN_SINGLE: 12, NAKED_SINGLE: 31, X_WING: 1 }, hinted: { XY_WING: 1 }, errors: 2, beyond: 1 })
     ).toBe(
-      '45 moves of your own: 31 Naked Singles, 12 Hidden Singles, 1 X-Wing, and 1 move beyond the catalogue. From hints: 1 XY-Wing. 2 wrong digits.'
+      '45 moves of your own: 31 × Naked Single, 12 × Hidden Single, 1 × X-Wing, and 1 move beyond the catalogue. From hints: 1 × XY-Wing. 2 wrong digits.'
     );
+    // a technique name has no reliable plural: one form for every count
+    expect(gameSummary({ unaided: { LOCKED_CANDIDATES_1: 3, SWORDFISH: 2, SIMPLE_COLORS: 2 }, hinted: {}, errors: 0, beyond: 0 })).toBe(
+      '7 moves of your own: 3 × Locked Candidates (Pointing), 2 × Swordfish, 2 × Simple Colors.'
+    );
+    // every move beyond the catalogue: one count, never read as two
+    expect(gameSummary({ unaided: {}, hinted: {}, errors: 0, beyond: 3 })).toBe('3 moves of your own, all beyond the catalogue.');
+    expect(gameSummary({ unaided: {}, hinted: {}, errors: 0, beyond: 1 })).toBe('1 move of your own, beyond the catalogue.');
   });
 });

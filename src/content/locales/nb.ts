@@ -777,7 +777,7 @@ const nb: LearnLocale = {
       {
         "heading": "Slik trener du på det her",
         "paragraphs": [
-          "Hvert spill starter med autokandidater slått av, slik en mester ville begynt. Bruk hjørnenotater til Snyder-par og la resten stå tomt. Når du står fast, viser Skann alle teknikker som virker i akkurat denne stillingen med dine egne notater, så du lærer hva du gikk glipp av, ikke hva et kandidatrutenett ville ha vist. Fullfør uten hint, sjekk eller autokandidater, så teller resultatet som løst uten hjelp."
+          "Nye spill starter med autokandidater slått av, slik en mester ville begynt; unntaket er en øvingsoppgave som hopper rett til teknikken sin. Bruk hjørnenotater til Snyder-par og la resten stå tomt. Når du står fast, viser Skann alle teknikker som virker i akkurat denne stillingen med dine egne notater, så du lærer hva du gikk glipp av, ikke hva et kandidatrutenett ville ha vist. Skann teller som hjelp, slik alt annet i Hjelp-boksen gjør: fullfør uten noe av det, så teller resultatet som løst uten hjelp."
         ]
       }
     ]
@@ -805,7 +805,7 @@ const nb: LearnLocale = {
         {
           "heading": "Et rettferdig kappløp",
           "paragraphs": [
-            "Hvert spill starter med autokandidater slått av. Fullfør uten hint, sjekk eller autokandidater, så teller resultatet som løst uten hjelp.",
+            "Dagens oppgave starter med autokandidater slått av for alle. Fullfør uten noe fra Hjelp-boksen, som hint, sjekk eller autokandidater, så teller resultatet som løst uten hjelp.",
             "Når du er ferdig, kopierer knappen «Utfordre en venn» en melding med tiden din og en lenke som inneholder selve oppgaven."
           ]
         }

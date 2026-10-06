@@ -128,9 +128,10 @@ export function learnNextScore(tech: Tech, techs: Partial<Record<Tech, TechStat>
 export function gameSummary(game: GameTally): string {
   const t = translator();
   const byIndex = (a: Tech, b: Tech) => TECHS[a].index - TECHS[b].index;
-  // one technique and how often: "31 Naked Singles" in English
-  const uses = (tech: Tech, n: number) =>
-    t(n === 1 ? '{n} {name}||how often a technique was used, once' : '{n} {name}s||how often a technique was used', { n, name: t.tech(tech) });
+  // one technique and how often: "31 × Naked Single", one form for every
+  // count, since a technique name has no reliable plural ("Locked
+  // Candidates (Pointing)", "Simple Colors", "Sue de Coq")
+  const uses = (tech: Tech, n: number) => t('{n} × {name}||how often a technique was used', { n, name: t.tech(tech) });
   const own = (Object.keys(game.unaided) as Tech[]).sort(byIndex).map((tech) => uses(tech, game.unaided[tech]!));
   const hinted = (Object.keys(game.hinted) as Tech[]).sort(byIndex).map((tech) => uses(tech, game.hinted[tech]!));
   // each a whole sentence
@@ -151,12 +152,11 @@ export function gameSummary(game: GameTally): string {
     } else if (own.length) {
       sentences.push(t(ownMoves === 1 ? '{n} move of your own: {list}.' : '{n} moves of your own: {list}.', vars));
     } else {
-      // every move beyond the catalogue: the two counts are the same
+      // every move beyond the catalogue: one count, said once, so it never
+      // reads as two sets of moves
       sentences.push(
         t(
-          game.beyond === 1
-            ? '{n} move of your own, and {m} move beyond the catalogue.'
-            : '{n} moves of your own, and {m} moves beyond the catalogue.',
+          ownMoves === 1 ? '{n} move of your own, beyond the catalogue.' : '{n} moves of your own, all beyond the catalogue.',
           vars
         )
       );

@@ -2811,7 +2811,7 @@
      "strong": true
     }
    ],
-   "description": "Skyscraper on 1: r2c3 and r2c7 are the only places for 1 in their line, as are r9c3 and r9c9, and r2c3 sees r9c3. If r2c7 is not 1, r2c3 is, so r9c3 is not, so r9c9 is: one of r2c7 and r9c9 is 1, and 1 is removed from every cell that sees both."
+   "description": "Skyscraper on 1: r2c3 and r2c7 are the only places for 1 in row 2, as are r9c3 and r9c9 in row 9, and r2c3 sees r9c3. If r2c7 is not 1, r2c3 is, so r9c3 is not, so r9c9 is: one of r2c7 and r9c9 is 1, and 1 is removed from every cell that sees both."
   }
  },
  "TWO_STRING_KITE": {
@@ -2978,7 +2978,7 @@
      "strong": true
     }
    ],
-   "description": "2-String Kite on 8: r1c6 and r1c8 are the only places for 8 in their line, as are r3c4 and r7c4, and r1c6 sees r3c4. If r1c8 is not 8, r1c6 is, so r3c4 is not, so r7c4 is: one of r1c8 and r7c4 is 8, and 8 is removed from every cell that sees both."
+   "description": "2-String Kite on 8: r1c6 and r1c8 are the only places for 8 in row 1, as are r3c4 and r7c4 in column 4, and r1c6 sees r3c4. If r1c8 is not 8, r1c6 is, so r3c4 is not, so r7c4 is: one of r1c8 and r7c4 is 8, and 8 is removed from every cell that sees both."
   }
  },
  "TURBOT_FISH": {
@@ -3145,7 +3145,7 @@
      "strong": true
     }
    ],
-   "description": "Turbot Fish on 2: r5c7 and r9c7 are the only places for 2 in their line, as are r7c6 and r9c5, and r9c7 sees r9c5. If r5c7 is not 2, r9c7 is, so r9c5 is not, so r7c6 is: one of r5c7 and r7c6 is 2, and 2 is removed from every cell that sees both."
+   "description": "Turbot Fish on 2: r5c7 and r9c7 are the only places for 2 in column 7, as are r7c6 and r9c5 in box 8, and r9c7 sees r9c5. If r5c7 is not 2, r9c7 is, so r9c5 is not, so r7c6 is: one of r5c7 and r7c6 is 2, and 2 is removed from every cell that sees both."
   }
  },
  "EMPTY_RECTANGLE": {
@@ -3278,7 +3278,7 @@
     "primary": "box 1: every 5 in it lies on one row and one column",
     "secondary": "the conjugate pair on 5"
    },
-   "description": "Empty Rectangle on 5: in box 1 every 5 lies on one row and one column, and r1c5, r6c5 are the only two places for 5 in their line. If r6c5 is 5, r6c2 in its column is not. If not, r1c5 is 5, so the box's 5 cannot share its column and must lie on the row through r6c2, which again is not 5. So 5 is removed from r6c2."
+   "description": "Empty Rectangle on 5: in box 1 every 5 lies on one row and one column, and r1c5, r6c5 are the only two places for 5 in their line. If r6c5 is 5, r6c2 in its row is not. If not, r1c5 is 5, so the box's 5 cannot share its row and must lie on the column through r6c2, which again is not 5. So 5 is removed from r6c2."
   }
  },
  "W_WING": {
@@ -10429,34 +10429,18 @@
      ],
      "to": [
       {
-       "cell": 71,
-       "digit": 4
+       "cell": 57,
+       "digit": 6
       }
      ],
      "strong": true,
-     "text": "r9c4 = 4, then r8c9 must be 4: the only place left for 4 in column 9."
+     "text": "r9c4 = 4, then r7c4 must be 6: the only place left for 6 in box 8."
     },
     {
      "from": [
       {
-       "cell": 71,
-       "digit": 4
-      }
-     ],
-     "to": [
-      {
-       "cell": 69,
-       "digit": 1
-      }
-     ],
-     "strong": true,
-     "text": "r8c9 = 4, then r8c7 must be 1: the only place left for 1 in box 9."
-    },
-    {
-     "from": [
-      {
-       "cell": 69,
-       "digit": 1
+       "cell": 57,
+       "digit": 6
       }
      ],
      "to": [
@@ -10466,29 +10450,13 @@
       }
      ],
      "strong": true,
-     "text": "r8c7 = 1, then r9c9 must be 6: the only place left for 6 in box 9."
+     "text": "r7c4 = 6, then r9c9 must be 6: the only place left for 6 in box 9."
     },
     {
      "from": [
       {
        "cell": 80,
        "digit": 6
-      }
-     ],
-     "to": [
-      {
-       "cell": 17,
-       "digit": 9
-      }
-     ],
-     "strong": true,
-     "text": "r9c9 = 6, then r2c9 must be 9: the only candidate left in r2c9."
-    },
-    {
-     "from": [
-      {
-       "cell": 17,
-       "digit": 9
       }
      ],
      "to": [
@@ -10498,7 +10466,7 @@
       }
      ],
      "strong": true,
-     "text": "r2c9 = 9, then r2c6 must be 6: the only place left for 6 in row 2."
+     "text": "r9c9 = 6, then r2c6 must be 6: the only place left for 6 in row 2."
     },
     {
      "from": [

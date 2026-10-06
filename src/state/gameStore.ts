@@ -1001,8 +1001,8 @@ export const useGame = create<GameStore>()(
 
       /**
        * Fill candidates into the marks of the current mode (corner mode fills
-       * corners, everything else fills centre). With 2+ cells selected only
-       * those cells are filled — handy when your own logic is already
+       * corners, everything else fills centre). With any empty cell selected,
+       * only the selected empty cells are filled — handy when your own logic is already
        * underway elsewhere. Wrong marks are corrected and reported.
        */
       fillCandidates: () => {
@@ -1493,6 +1493,8 @@ export const useGame = create<GameStore>()(
         set({
           cells: decoded.cells,
           autoCandidates: decoded.autoCandidates,
+          // auto candidates count as help, whoever switched them on
+          ...(decoded.autoCandidates ? { assisted: true } : {}),
           notice: t('Shared position loaded, with entries, marks and colours')
         });
         return true;

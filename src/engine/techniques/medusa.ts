@@ -172,10 +172,12 @@ export function findMedusa3d(g: Grid): Step | null {
     }
     if (elims3.length) {
       const cellsHit = new Set(elims3.map((e) => e.cell)).size;
+      // rule 1 found no cell with two candidates of one colour, so each cell
+      // hit keeps exactly one blue and one gold candidate: narrowed, not solved
       return medusaStep(
         cl,
         elims3,
-        why3 + (cellsHit > 1 ? tr` (${cellsHit} cells are decided this way)` : ''),
+        why3 + (cellsHit > 1 ? tr` (${cellsHit} cells are narrowed to their blue and gold candidates this way)` : ''),
         witnesses3
       );
     }

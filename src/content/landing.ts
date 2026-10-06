@@ -55,7 +55,7 @@ export const LANDING_PAGES: LandingPage[] = [
       {
         heading: 'A fair race',
         paragraphs: [
-          'Every game starts with automatic candidates off. Finish without hints, checks or automatic candidates and the result counts as an unassisted solve.',
+          'The daily starts with automatic candidates off for everyone. Finish without anything from the Assist box, such as hints, checks or automatic candidates, and the result counts as an unassisted solve.',
           'When you finish, Challenge a friend copies a message with your time and a link that carries the puzzle itself.'
         ]
       }
@@ -206,7 +206,7 @@ export const LANDING_PAGES: LandingPage[] = [
       {
         heading: 'How to train it here',
         paragraphs: [
-          'Every game starts with automatic candidates off, as a champion would start. Use corner marks for Snyder pairs and leave the rest blank. When you are stuck, Scan shows every technique that works in the exact position with your own marks, so you learn what you missed rather than what a candidate grid would have shown. Finish without hints, checks or automatic candidates and the result counts as an unassisted solve.'
+          'New games start with automatic candidates off, as a champion would start; a practice puzzle that jumps straight to its technique is the exception. Use corner marks for Snyder pairs and leave the rest blank. When you are stuck, Scan shows every technique that works in the exact position with your own marks, so you learn what you missed rather than what a candidate grid would have shown. Scan counts as help, like everything else in the Assist box: finish without any of it and the result counts as an unassisted solve.'
         ]
       }
     ],

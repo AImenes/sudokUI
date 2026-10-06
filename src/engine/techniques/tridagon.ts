@@ -70,6 +70,9 @@ export function findTridagon(g: Grid): Step | null {
                       digit
                     }));
                     if (!elims.length) continue;
+                    // the sentence names the digits that actually fall: a
+                    // guardian may hold only two of the trio (never fewer)
+                    const fallen = elims.map((e) => e.digit).join('/');
                     return {
                       tech: 'TRIDAGON',
                       placements: [],
@@ -83,7 +86,7 @@ export function findTridagon(g: Grid): Step | null {
                         cell: guardian,
                         digit
                       })),
-                      description: tr`Tridagon: the cells ${cellNames(cells)} cannot all take digits from ${digitsOf(T).join('')} (proven by complete case analysis), so the guardian ${cellName(guardian)} must take one of its other candidates, so ${digitsOf(T).join('/')} fall from it.`
+                      description: tr`Tridagon: the cells ${cellNames(cells)} cannot all take digits from ${digitsOf(T).join('')} (proven by complete case analysis), so the guardian ${cellName(guardian)} must take one of its other candidates, so ${fallen} fall from it.`
                     };
                   }
                 }

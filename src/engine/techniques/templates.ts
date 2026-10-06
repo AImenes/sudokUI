@@ -142,10 +142,10 @@ export function findPatternOverlay(g: Grid, maxTemplates = 20000): Step | null {
           : tr`cells no complete placement of ${d} uses`
       },
       // a single complete placement (which always places) is a sentence of
-      // its own in other languages; the English reads the same either way
+      // its own; with none placed there are always at least two
       description: places.length
         ? count === 1
-          ? tr`Pattern Overlay: of the 1 complete placements possible for digit ${d}, every one uses ${places.map((p) => cellName(p.cell)).join(', ')}.`
+          ? tr`Pattern Overlay: the only complete placement possible for digit ${d} uses ${places.map((p) => cellName(p.cell)).join(', ')}.`
           : tr`Pattern Overlay: of the ${count} complete placements possible for digit ${d}, every one uses ${places.map((p) => cellName(p.cell)).join(', ')}.`
         : tr`Pattern Overlay: of the ${count} complete placements possible for digit ${d}, none uses ${elims.map((e) => cellName(e.cell)).join(', ')}.`
     };

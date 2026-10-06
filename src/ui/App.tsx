@@ -61,17 +61,9 @@ function proofText(p: Proof, t: Translator): string {
   // the easier steps played before the proof itself
   const n = p.steps.length - 1;
   const last = p.steps[p.steps.length - 1];
-  if (p.trail) {
-    const forced = Math.max(0, (last.links?.length ?? 1) - 1);
-    return t(
-      !forced
-        ? '{cell} cannot be {wrong}: place it and the singles it forces break the board.'
-        : forced === 1
-          ? '{cell} cannot be {wrong}: place it and the singles it forces break the board within {n} move.'
-          : '{cell} cannot be {wrong}: place it and the singles it forces break the board within {n} moves.',
-      { cell, wrong, n: forced }
-    );
-  }
+  // the drawn line shows the way to the contradiction, but the board may
+  // need singles off it as well, so no count of moves is claimed
+  if (p.trail) return t('{cell} cannot be {wrong}: place it and the singles it forces break the board.', { cell, wrong });
   const vars = { cell, right, wrong, tech: t.tech(p.tech), n };
   if (p.places)
     return t(

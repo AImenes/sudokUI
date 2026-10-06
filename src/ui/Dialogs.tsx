@@ -29,6 +29,7 @@ import type { LearnLocale } from '../content/learnLocale';
 import { BAND_LEADS, BAND_NOTES } from '../content/rating';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { KIN } from '../content/kin';
+import { useSettings } from '../state/settings';
 import type { Lang } from '../state/settings';
 
 /** what is being generated: a band's puzzle or a technique's practice puzzle */
@@ -492,7 +493,7 @@ export function ContractDialog({
   return (
     <Modal title={t('How should hints read your pencil marks?')} onClose={onClose}>
       <p className="dialog-note">
-        {t('A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which. Your answer is remembered for the rest of this puzzle (Auto and Fill answer it automatically).')}
+        {t('A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which. Your answer is remembered for the rest of this puzzle (Auto, or Fill on the whole board, answers it automatically).')}
       </p>
       <ContractChoices onAnswer={onAnswer} />
     </Modal>
@@ -991,7 +992,11 @@ export function VictoryDialog({
         )}
         <p className={assisted ? 'solve-assisted' : 'solve-clean'}>
           {assisted
-            ? t('Solved with assistance. Restart the puzzle for an unassisted run')
+            ? info.practiceTech && useSettings.getState().practiceFastForward
+              ? t("Solved with assistance: a practice puzzle that jumps to its technique counts as help. For an unassisted run, switch off '{setting}' in Settings", {
+                  setting: t('Jump to the technique')
+                })
+              : t('Solved with assistance. Restart the puzzle for an unassisted run')
             : `✨ ${t('Unassisted solve: no help, every mark your own')}`}
         </p>
         {practiceLine && <p className={practiceFound ? 'solve-clean' : 'solve-assisted'}>{practiceLine}</p>}

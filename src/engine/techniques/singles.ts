@@ -45,8 +45,9 @@ export function findFullHouse(g: Grid): Step | null {
 /** the Naked Single step for a cell with one candidate left */
 export function nakedSingleStep(g: Grid, cell: number): Step {
   const digit = digitsOf(g.cands[cell])[0];
-  // the why: every other digit already sits in the cell's row, column
-  // or box; one such peer per digit is shown
+  // the why: the other digits already in the cell's row, column or box,
+  // one such peer per digit; all eight of them, or fewer when earlier
+  // removals ruled out the rest
   const others: CellDigit[] = [];
   for (let e = 1; e <= 9; e++) {
     if (e === digit) continue;
@@ -61,7 +62,10 @@ export function nakedSingleStep(g: Grid, cell: number): Step {
     secondary: others,
     labels: {
       primary: tr`the cell with one candidate left`,
-      secondary: tr`the other eight digits, each already in its row, column or box`
+      secondary:
+        others.length === 8
+          ? tr`the other eight digits, each already in its row, column or box`
+          : tr`the digits already in its row, column or box; its other candidates were ruled out earlier`
     },
     description: tr`Naked Single: ${cellName(cell)} has only one candidate left, ${digit}.`
   };

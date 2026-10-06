@@ -143,10 +143,15 @@ export function ProgressDialog({
           </table>
           <p className="dialog-note">
             🔥{' '}
+            {/* each count agrees its own word, so four whole sentences */}
             {t(
               streak === 1
-                ? 'Daily streak: {n} day · {solved} daily puzzles solved'
-                : 'Daily streak: {n} days · {solved} daily puzzles solved',
+                ? dailyDays.length === 1
+                  ? 'Daily streak: {n} day · {solved} daily puzzle solved'
+                  : 'Daily streak: {n} day · {solved} daily puzzles solved'
+                : dailyDays.length === 1
+                  ? 'Daily streak: {n} days · {solved} daily puzzle solved'
+                  : 'Daily streak: {n} days · {solved} daily puzzles solved',
               { n: streak, solved: dailyDays.length }
             )}
           </p>
