@@ -91,7 +91,11 @@ needs:
   their reasoning: the assumption, each forced single pointing at the next
   with a sentence saying why it was forced, and at the end either the
   cells where the board would break (purple) or the conclusion the
-  branches agree on. A net can have several such lines; one sound one is
+  branches agree on. In a position that still has singles of its own (in
+  Scan, or Check's "why not"), a line may start at such a single: its
+  first sentence then states the assumption, and the single as a fact
+  the position already has ("Assume r1c1 = 7. In row 2, 7 already fits
+  only in r2c7, so ..."). A net can have several such lines; one sound one is
   shown. The Forcing Net itself is not drawn: it reasons with
   intersections as well as singles and is search, not a pattern.
 - **Everything else** (Sue de Coq, Exocet, Fireworks, APE, Pattern

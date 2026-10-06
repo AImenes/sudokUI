@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="<!--home:lang-->">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
@@ -9,12 +9,14 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
     <meta name="theme-color" content="#1a1d29" />
-    <title>sudokUI</title>
+    <!-- the parts of this page that change with the language (/, /nb/,
+         /es/) come from src/content/home.ts -->
+    <title><!--home:title--></title>
     <meta
       name="description"
-      content="Play free sudoku, rate the difficulty of any puzzle (HoDoKu-compatible scores) and practise 61 solving techniques with hints that explain every step."
+      content="<!--home:description-->"
     />
-    <link rel="canonical" href="https://sudokui.app/" />
+    <!--home:links-->
     <style>
       /* the pre-hydration view: on a slow connection this is on screen for a
          moment before the app mounts, so it wears the app's colours */
@@ -30,59 +32,25 @@
       .boot li { margin: 4px 0; }
     </style>
     <meta property="og:site_name" content="sudokUI" />
-    <meta property="og:title" content="sudokUI: free sudoku, technique trainer and difficulty rating" />
+    <meta property="og:title" content="<!--home:og-title-->" />
     <meta
       property="og:description"
-      content="Play sudoku, rate the difficulty of any puzzle with HoDoKu-compatible scores, and practise 61 solving techniques with hints that explain every step. Free, works offline, no ads."
+      content="<!--home:og-description-->"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://sudokui.app/" />
-    <meta property="og:image" content="https://sudokui.app/og-card.png" />
+    <meta property="og:url" content="<!--home:url-->" />
+    <!--home:og-locale-->
+    <meta property="og:image" content="<!--home:og-image-->" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta
       property="og:image:alt"
-      content="sudokUI: play, practise and rate sudoku. A board with an X-Wing pattern highlighted."
+      content="<!--home:og-image-alt-->"
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://sudokui.app/og-card.png" />
+    <meta name="twitter:image" content="<!--home:og-image-->" />
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@graph": [
-          {
-            "@type": "WebSite",
-            "@id": "https://sudokui.app/#website",
-            "name": "sudokUI",
-            "alternateName": ["sudokui"],
-            "url": "https://sudokui.app/",
-            "inLanguage": "en"
-          },
-          {
-            "@type": "WebApplication",
-            "name": "sudokUI",
-            "url": "https://sudokui.app/",
-            "applicationCategory": "GameApplication",
-            "operatingSystem": "Any",
-            "browserRequirements": "Requires JavaScript",
-            "isAccessibleForFree": true,
-            "inLanguage": "en",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-            "sameAs": ["https://github.com/AImenes/sudokUI"],
-            "isPartOf": { "@id": "https://sudokui.app/#website" },
-            "featureList": [
-              "Difficulty rating for any sudoku, with HoDoKu-compatible scores and eight bands",
-              "77 machine-verified solving techniques with step-by-step hints",
-              "Practice mode for 61 named techniques, X-Wing to Exocet",
-              "A step-by-step solver that names and explains every step",
-              "A shared daily puzzle, identical worldwide",
-              "Shareable puzzle and position links",
-              "Offline play, no ads, no account"
-            ],
-            "description": "Free open-source sudoku app that rates the difficulty of any puzzle with HoDoKu-compatible scores and teaches 61 named solving techniques with hints that explain every step."
-          }
-        ]
-      }
+      <!--home:json-ld-->
     </script>
   </head>
   <body>
@@ -90,30 +58,7 @@
       <!-- pre-hydration content: what crawlers and slow connections see;
            React replaces this the moment the app mounts -->
       <div class="boot">
-        <h1>sudokUI</h1>
-        <p>
-          A free, open-source sudoku app for playing, practising and rating
-          puzzles. It rates the difficulty of any sudoku with
-          HoDoKu-compatible scores, knows 77 solving techniques with hints
-          that explain every step, and has a practice mode for 61 of them,
-          from X-Wings to Exocets. One shared daily puzzle, no ads, no
-          account, works offline.
-        </p>
-        <ul>
-          <li><a href="/learn/">Sudoku solving techniques explained</a></li>
-          <li><a href="/sudoku-difficulty-rating/">How the sudoku difficulty rating works</a></li>
-          <li><a href="/sudoku-solver/">A sudoku solver that explains every step</a></li>
-          <li><a href="/daily-sudoku/">Daily sudoku</a></li>
-          <li><a href="/hodoku/">HoDoKu-compatible ratings in your browser</a></li>
-          <li><a href="/learn/glossary/">Sudoku glossary</a></li>
-        </ul>
-        <p>Loading the board&hellip;</p>
-        <noscript>
-          <p>
-            sudokUI needs JavaScript to run. The app is free and open source:
-            <a href="https://github.com/AImenes/sudokUI">github.com/AImenes/sudokUI</a>
-          </p>
-        </noscript>
+        <!--home:boot-->
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

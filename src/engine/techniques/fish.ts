@@ -2,6 +2,7 @@ import { Grid, bit, boxOf, cellNames } from '../board';
 import { Step, CellDigit } from '../steps';
 import { Tech } from '../ratings';
 import { combinations } from './subsets';
+import { tr } from '../text';
 
 const FISH_NAMES = ['', '', 'X-Wing', 'Swordfish', 'Jellyfish', 'Squirmbag', 'Whale', 'Leviathan'];
 
@@ -57,8 +58,10 @@ export function findBasicFish(g: Grid, size: number): Step | null {
         const baseCells = baseLines.flatMap((l) =>
           bitsOf(positions[l]).map((p) => cellAt(rows, l, p))
         );
-        const baseWord = rows ? 'rows' : 'columns';
-        const coverWord = rows ? 'columns' : 'rows';
+        // the fish's name stays English in every language (docs/translations.md)
+        const name = FISH_NAMES[size];
+        const bases = baseLines.map((l) => l + 1).join(', ');
+        const covers = bitsOf(cover).map((p) => p + 1).join(', ');
         return {
           tech: FISH_NAMES[size].toUpperCase().replace('-', '_') as Tech,
           placements: [],
@@ -68,11 +71,18 @@ export function findBasicFish(g: Grid, size: number): Step | null {
             ...baseLines.map((l) => ({ unit: rows ? l : 9 + l, role: 'primary' as const })),
             ...bitsOf(cover).map((p) => ({ unit: rows ? 9 + p : p, role: 'secondary' as const }))
           ],
-          labels: {
-            primary: `base ${baseWord}: the ${d}s of the fish, ${size} ${baseWord} with ${d} only in the cover ${coverWord}`,
-            secondary: `cover ${coverWord}: ${size} of them take the base's ${d}s, so ${d} goes nowhere else in them`
-          },
-          description: `${FISH_NAMES[size]} on ${d}: in ${baseWord} ${baseLines.map((l) => l + 1).join(', ')}, ${d} can only go in ${coverWord} ${bitsOf(cover).map((p) => p + 1).join(', ')} (${cellNames(baseCells)}). Those ${size} ${baseWord} will use up ${d} in those ${size} ${coverWord}, so ${d} can go nowhere else in them.`
+          labels: rows
+            ? {
+                primary: tr`base rows: the ${d}s of the fish, ${size} rows with ${d} only in the cover columns`,
+                secondary: tr`cover columns: ${size} of them take the base's ${d}s, so ${d} goes nowhere else in them`
+              }
+            : {
+                primary: tr`base columns: the ${d}s of the fish, ${size} columns with ${d} only in the cover rows`,
+                secondary: tr`cover rows: ${size} of them take the base's ${d}s, so ${d} goes nowhere else in them`
+              },
+          description: rows
+            ? tr`${name} on ${d}: in rows ${bases}, ${d} can only go in columns ${covers} (${cellNames(baseCells)}). Those ${size} rows will use up ${d} in those ${size} columns, so ${d} can go nowhere else in them.`
+            : tr`${name} on ${d}: in columns ${bases}, ${d} can only go in rows ${covers} (${cellNames(baseCells)}). Those ${size} columns will use up ${d} in those ${size} rows, so ${d} can go nowhere else in them.`
         };
       }
     }
@@ -133,8 +143,13 @@ export function findFinnedFish(g: Grid, size: number, sashimi: boolean): Step | 
             bitsOf(positions[l] & cover).map((p) => cellAt(rows, l, p))
           );
           const prefix = sashimi ? 'Sashimi' : 'Finned';
-          const baseWord = rows ? 'rows' : 'columns';
-          const coverWord = rows ? 'columns' : 'rows';
+          // the fish's name stays English in every language (docs/translations.md)
+          const name = `${prefix} ${FISH_NAMES[size]}`;
+          const bases = baseLines.map((l) => l + 1).join(', ');
+          const covers = coverPositions.map((p) => p + 1).join(', ');
+          const base = cellNames(baseCells);
+          const fins = cellNames(finCells);
+          const many = finCells.length > 1;
           return {
             tech: `${prefix.toUpperCase()}_${FISH_NAMES[size].toUpperCase().replace('-', '_')}` as Tech,
             placements: [],
@@ -146,11 +161,17 @@ export function findFinnedFish(g: Grid, size: number, sashimi: boolean): Step | 
               ...coverPositions.map((p) => ({ unit: rows ? 9 + p : p, role: 'secondary' as const }))
             ],
             labels: {
-              primary: `base ${baseWord}: the ${d}s of the fish`,
-              secondary: `cover ${coverWord}: where the base's ${d}s must land`,
-              fins: `fin: ${d}s outside the fish, in one box; a removal must see every fin`
+              primary: rows ? tr`base rows: the ${d}s of the fish` : tr`base columns: the ${d}s of the fish`,
+              secondary: rows ? tr`cover columns: where the base's ${d}s must land` : tr`cover rows: where the base's ${d}s must land`,
+              fins: tr`fin: ${d}s outside the fish, in one box; a removal must see every fin`
             },
-            description: `${prefix} ${FISH_NAMES[size]} on ${d}: in ${baseWord} ${baseLines.map((l) => l + 1).join(', ')}, ${d} sits in ${coverWord} ${coverPositions.map((p) => p + 1).join(', ')} (${cellNames(baseCells)}) except for the fin${finCells.length > 1 ? 's' : ''} ${cellNames(finCells)}. Either the fin${finCells.length > 1 ? 's are' : ' is'} false and the fish holds, or ${finCells.length > 1 ? 'a fin' : 'the fin'} is true; a ${d} that sees every fin and lies in the cover ${coverWord} outside the base is false both ways.`
+            description: rows
+              ? many
+                ? tr`${name} on ${d}: in rows ${bases}, ${d} sits in columns ${covers} (${base}) except for the fins ${fins}. Either the fins are false and the fish holds, or a fin is true; a ${d} that sees every fin and lies in the cover columns outside the base is false both ways.`
+                : tr`${name} on ${d}: in rows ${bases}, ${d} sits in columns ${covers} (${base}) except for the fin ${fins}. Either the fin is false and the fish holds, or the fin is true; a ${d} that sees every fin and lies in the cover columns outside the base is false both ways.`
+              : many
+                ? tr`${name} on ${d}: in columns ${bases}, ${d} sits in rows ${covers} (${base}) except for the fins ${fins}. Either the fins are false and the fish holds, or a fin is true; a ${d} that sees every fin and lies in the cover rows outside the base is false both ways.`
+                : tr`${name} on ${d}: in columns ${bases}, ${d} sits in rows ${covers} (${base}) except for the fin ${fins}. Either the fin is false and the fish holds, or the fin is true; a ${d} that sees every fin and lies in the cover rows outside the base is false both ways.`
           };
         }
       }

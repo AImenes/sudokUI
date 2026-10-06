@@ -1,6 +1,7 @@
 import { Grid, PEERS, bit, digitsOf, sees, cellName } from '../board';
 import { Step, CellDigit } from '../steps';
 import { collectAls, Als } from './als';
+import { tr } from '../text';
 
 /**
  * Aligned Pair Exclusion (sudokuwiki.org/Aligned_Pair_Exclusion).
@@ -67,10 +68,13 @@ export function findAlignedPairExclusion(g: Grid): Step | null {
           S.cells.flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit })))
         ),
         labels: {
-          primary: 'the aligned pair',
-          secondary: 'the almost locked sets both cells see, which rule out pairings'
+          primary: tr`the aligned pair`,
+          secondary: tr`the almost locked sets both cells see, which rule out pairings`
         },
-        description: `Aligned Pair Exclusion: every candidate pairing of ${cellName(a)} and ${cellName(b)} that survives the sets they both see leaves no place for the removed candidate${elims.length > 1 ? 's' : ''}.`
+        description:
+          elims.length > 1
+            ? tr`Aligned Pair Exclusion: every candidate pairing of ${cellName(a)} and ${cellName(b)} that survives the sets they both see leaves no place for the removed candidates.`
+            : tr`Aligned Pair Exclusion: every candidate pairing of ${cellName(a)} and ${cellName(b)} that survives the sets they both see leaves no place for the removed candidate.`
       };
     }
   }

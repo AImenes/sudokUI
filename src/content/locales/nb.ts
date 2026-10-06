@@ -1,36 +1,14 @@
 // Norwegian (bokmål) text of the Learn section: the glossary, the technique
-// guide, the Intuition guide, How to solve, the rating and the interface
-// strings. Keyed exactly like EN in ../learnLocale.ts; the terminology
+// guide, the Intuition guide, How to solve, the rating, the landing pages
+// and the interface strings. Keyed exactly like EN in ../learnLocale.ts; the terminology
 // follows docs/glossary_input.md. tests/learnLocale.test.ts checks that
 // every piece is here, in house style, with its placeholders and numbers.
 import type { LearnLocale } from '../learnLocale';
+import { COUNTS } from '../landing';
+import { techNames, levels, categoryLabels } from './names.nb';
 
 const nb: LearnLocale = {
-  "techNames": {
-    "NAKED_SINGLE": "Naken singel",
-    "HIDDEN_SINGLE": "Skjult singel",
-    "LOCKED_PAIR": "Låst par",
-    "LOCKED_TRIPLE": "Låst trippel",
-    "LOCKED_CANDIDATES_1": "Låste kandidater (pekende)",
-    "LOCKED_CANDIDATES_2": "Låste kandidater (hevdende)",
-    "NAKED_PAIR": "Naket par",
-    "NAKED_TRIPLE": "Naken trippel",
-    "HIDDEN_PAIR": "Skjult par",
-    "HIDDEN_TRIPLE": "Skjult trippel",
-    "NAKED_QUADRUPLE": "Naken kvartett",
-    "HIDDEN_QUADRUPLE": "Skjult kvartett",
-    "UNIQUENESS_1": "Unikt rektangel type 1",
-    "UNIQUENESS_2": "Unikt rektangel type 2",
-    "UNIQUENESS_3": "Unikt rektangel type 3",
-    "UNIQUENESS_4": "Unikt rektangel type 4",
-    "UNIQUENESS_5": "Unikt rektangel type 5",
-    "UNIQUENESS_6": "Unikt rektangel type 6",
-    "HIDDEN_RECTANGLE": "Skjult rektangel",
-    "AVOIDABLE_RECTANGLE_1": "Unngåelig rektangel type 1",
-    "AVOIDABLE_RECTANGLE_2": "Unngåelig rektangel type 2",
-    "EXTENDED_RECTANGLE": "Utvidet rektangel",
-    "BRUTE_FORCE": "Prøving og feiling"
-  },
+  "techNames": techNames,
   "techDocs": {
     "FULL_HOUSE": {
       "what": "En rad, kolonne eller boks har åtte av sine ni ruter fylt ut, så nøyaktig én rute står tom.",
@@ -648,72 +626,63 @@ const nb: LearnLocale = {
   },
   "categories": {
     "Singles": {
-      "label": "Singler",
+      "label": categoryLabels["Singles"],
       "note": "Grunnlaget i hver løsning: en rute med bare ett mulig tall, eller et tall med bare én mulig rute."
     },
     "Intersections": {
-      "label": "Skjæringer",
+      "label": categoryLabels["Intersections"],
       "note": "Der en boks krysser en rad eller kolonne: når alle kandidatene for et tall i den ene enheten ligger i skjæringen, fjernes tallet fra resten av den andre enheten."
     },
     "Subsets": {
-      "label": "Delmengder",
+      "label": categoryLabels["Subsets"],
       "note": "N ruter som til sammen bare har N tall, låser disse tallene til seg, enten mønsteret ligger i dagen eller er skjult."
     },
     "Basic Fish": {
-      "label": "Grunnleggende fisk",
+      "label": categoryLabels["Basic Fish"],
       "note": "Når et tall i N rader bare har plass i de samme N kolonnene (eller omvendt), fjernes tallet fra resten av de N kryssende linjene."
     },
     "Finned Fish": {
-      "label": "Fisk med finner",
+      "label": categoryLabels["Finned Fish"],
       "note": "En fisk med ekstra kandidater, finnen. Den virker fortsatt, men bare på ruter som også ser finnen."
     },
     "Complex Fish": {
-      "label": "Kompleks fisk",
+      "label": categoryLabels["Complex Fish"],
       "note": "Fisk som bruker bokser i tillegg til rader og kolonner."
     },
     "Single Digit Patterns": {
-      "label": "Mønstre på ett tall",
+      "label": categoryLabels["Single Digit Patterns"],
       "note": "Korte kjeder på ett enkelt tall, bygd av to sterke lenker forbundet med en svak."
     },
     "Wings": {
-      "label": "Wings",
+      "label": categoryLabels["Wings"],
       "note": "Noen få ruter der kandidatene garanterer at én av rutene har et bestemt tall. Derfor mister hver rute som ser alle sammen, det tallet."
     },
     "Uniqueness": {
-      "label": "Entydighet",
+      "label": categoryLabels["Uniqueness"],
       "note": "Mønstre som ville gi oppgaven to løsninger, og som derfor ikke kan forekomme i en oppgave som har nøyaktig én."
     },
     "Chains and Loops": {
-      "label": "Kjeder og sløyfer",
+      "label": categoryLabels["Chains and Loops"],
       "note": "Slutninger som føres videre langs sterke og svake lenker til de to endene avgjør noe."
     },
     "Coloring": {
-      "label": "Fargelegging",
+      "label": categoryLabels["Coloring"],
       "note": "Kandidater forbundet med sterke lenker får to farger: den ene fargen er sann overalt, den andre usann overalt."
     },
     "Almost Locked Sets": {
-      "label": "Nesten låste mengder",
+      "label": categoryLabels["Almost Locked Sets"],
       "note": "Grupper av ruter som har én kandidat for mye til å være låst, satt opp mot hverandre."
     },
     "Miscellaneous": {
-      "label": "Diverse",
+      "label": categoryLabels["Miscellaneous"],
       "note": "Sjeldne mønstre som ikke passer inn i noen annen familie."
     },
     "Last Resort": {
-      "label": "Siste utvei",
+      "label": categoryLabels["Last Resort"],
       "note": "Metoder som bygger på prøving, for stillinger der det ikke er noe mønster igjen å finne."
     }
   },
-  "levels": {
-    "Beginner": "Nybegynner",
-    "Easy": "Lett",
-    "Medium": "Middels",
-    "Tricky": "Lur",
-    "Hard": "Vanskelig",
-    "Unfair": "Urettferdig",
-    "Extreme": "Ekstrem",
-    "Nightmare": "Mareritt"
-  },
+  "levels": levels,
   "bandLeads": {
     "Beginner": "En rolig start",
     "Easy": "Avslappet",
@@ -808,10 +777,132 @@ const nb: LearnLocale = {
       {
         "heading": "Slik trener du på det her",
         "paragraphs": [
-          "Hvert spill starter med autokandidater slått av, slik en mester ville begynt. Bruk hjørnenotater til Snyder-par og la resten stå tomt. Når du står fast, viser Skann alle teknikker som virker i akkurat denne stillingen med dine egne notater, så du lærer hva du gikk glipp av, ikke hva et kandidatrutenett ville ha vist. Fullfør uten hint, sjekk eller autokandidater, så teller resultatet som løst uten hjelp."
+          "Nye spill starter med autokandidater slått av, slik en mester ville begynt; unntaket er en øvingsoppgave som hopper rett til teknikken sin. Bruk hjørnenotater til Snyder-par og la resten stå tomt. Når du står fast, viser Skann alle teknikker som virker i akkurat denne stillingen med dine egne notater, så du lærer hva du gikk glipp av, ikke hva et kandidatrutenett ville ha vist. Skann teller som hjelp, slik alt annet i Hjelp-boksen gjør: fullfør uten noe av det, så teller resultatet som løst uten hjelp."
         ]
       }
     ]
+  },
+  "landings": {
+    "/daily-sudoku/": {
+      "name": "Dagens sudoku",
+      "title": "Dagens sudoku: samme gratis oppgave for alle | sudokUI",
+      "description": "Én ny sudoku hver dag, den samme for alle spillere i hele verden. Gratis, uten konto og uten reklame. Løs dagens oppgave og sammenlign tider med venner.",
+      "h1": "Dagens sudoku",
+      "lead": "Én ny sudoku hver dag, den samme for alle spillere i hele verden. Løs den, og sammenlign tider med venner som har spilt nøyaktig det samme brettet.",
+      "sections": [
+        {
+          "heading": "Slik virker det",
+          "paragraphs": [
+            "Dagens oppgave lages på din egen enhet ut fra datoen, så alle får det samme brettet uten noen server eller konto. En ny oppgave kommer ved midnatt UTC."
+          ]
+        },
+        {
+          "heading": "Hvor vanskelig er den?",
+          "paragraphs": [
+            "Dagens oppgave er vanligvis Middels, Lur eller Vanskelig. Vanskelighetsgraden og poengsummen vises i topplinjen, som for alle andre oppgaver."
+          ]
+        },
+        {
+          "heading": "Et rettferdig kappløp",
+          "paragraphs": [
+            "Dagens oppgave starter med autokandidater slått av for alle. Fullfør uten noe fra Hjelp-boksen, som hint, sjekk eller autokandidater, så teller resultatet som løst uten hjelp.",
+            "Når du er ferdig, kopierer knappen «Utfordre en venn» en melding med tiden din og en lenke som inneholder selve oppgaven."
+          ]
+        }
+      ],
+      "cta": "Spill dagens sudoku",
+      "related": [
+        "Slik vurderes vanskelighetsgraden",
+        "Alle teknikkene forklart"
+      ]
+    },
+    "/sudoku-solver/": {
+      "name": "Sudokuløser",
+      "title": "Gratis sudokuløser som forklarer hvert steg | sudokUI",
+      "description": "Skriv inn en sudoku og se den løst steg for steg: hver teknikk navngitt, tegnet på brettet og forklart. Gratis og privat, og virker uten nett.",
+      "h1": "En sudokuløser som forklarer hvert steg",
+      "lead": "Skriv inn en hvilken som helst sudoku, så løser sudokUI den slik et menneske ville gjort: én navngitt teknikk om gangen, tegnet på brettet og forklart med ord.",
+      "sections": [
+        {
+          "heading": "Legg inn oppgaven",
+          "paragraphs": [
+            "Velg Importer og lim inn oppgaven som 81 tegn (tall, med punktum eller nuller for tomme ruter), eller velg Ny og så Egendefinert, og skriv de gitte tallene inn på brettet. sudokUI sjekker at oppgaven har nøyaktig én løsning før den begynner."
+          ]
+        },
+        {
+          "heading": "Se hele løsningsstien",
+          "paragraphs": [
+            "Steg viser alle stegene i én fullstendig løsning, letteste teknikk først, med det dyreste steget markert som nøkkeltrinnet. Klikk på et steg for å sette brettet til stillingen rett før det."
+          ]
+        },
+        {
+          "heading": "Eller ta ett steg om gangen",
+          "paragraphs": [
+            "Hint nevner først neste teknikk, viser den så på brettet med en forklaring, og bruker den til slutt hvis du vil. Skann viser alle teknikker som virker i stillingen akkurat nå, ikke bare den letteste, og Sjekk markerer feil tall."
+          ]
+        },
+        {
+          "heading": `${COUNTS.implemented} teknikker, maskinkontrollert`,
+          "paragraphs": [
+            `Løseren kjenner ${COUNTS.implemented} teknikker, fra Naken singel til Exocet og Forcing Net. Hvert hint kontrolleres mot oppgavens riktige løsning før det vises.`
+          ]
+        },
+        {
+          "heading": "Privat og uten nett",
+          "paragraphs": [
+            "Alt kjører på enheten din. Det er ingen konto, ingen reklame og ingen opplasting, og appen virker videre uten nettforbindelse når den først er lastet inn."
+          ]
+        }
+      ],
+      "cta": "Åpne løseren",
+      "puzzleBox": "Løs denne oppgaven",
+      "related": [
+        "Alle teknikkene forklart",
+        "Slik vurderes vanskelighetsgraden"
+      ]
+    },
+    "/hodoku/": {
+      "name": "HoDoKu",
+      "title": "Sudoku vurdert som i HoDoKu, rett i nettleseren | sudokUI",
+      "description": "sudokUI vurderer og forklarer sudoku med HoDoKus poeng og søkerekkefølge, i alle nettlesere: mobil, nettbrett, Mac eller PC. Ingen installasjon, virker uten nett.",
+      "h1": "HoDoKu-kompatibel poengsum, i nettleseren",
+      "lead": "sudokUI vurderer og forklarer sudoku slik HoDoKu gjør, uten at du må installere noe. Den kjører i alle nettlesere, på mobil, nettbrett eller datamaskin, og virker videre uten nett.",
+      "sections": [
+        {
+          "heading": "Hva HoDoKu er",
+          "paragraphs": [
+            "HoDoKu er et gratis program av Bernhard Hobiger for å lage, løse, øve på og analysere sudoku, skrevet i Java og utgitt under GPLv3. Katalogen over teknikker og poengene i HoDoKu ble en vanlig referanse for å vurdere hvor vanskelig en sudoku er. Den siste utgaven, versjon 2.2, er fra 2012."
+          ]
+        },
+        {
+          "heading": "Hva sudokUI har felles med HoDoKu",
+          "paragraphs": [
+            "sudokUI bruker HoDoKus standardpoeng for hver teknikk og standard søkerekkefølge, og vurderer en oppgave på samme måte: løs den med den første teknikken som virker i hvert steg, og legg sammen poengene.",
+            "Poenggrensene for Lett (800), Middels (1000), Vanskelig (1600) og Urettferdig (1800) er også HoDoKus."
+          ]
+        },
+        {
+          "heading": "Hvor de skiller seg",
+          "paragraphs": [
+            "sudokUI er et uavhengig prosjekt og har ingen tilknytning til HoDoKu.",
+            "Det legger til teknikker som HoDoKu ikke har, som 3D Medusa, Chute Remote Pair, Fireworks, Tridagon og Exocet, plassert på poengskalaen like ved sine nærmeste slektninger, og det utelater noen av HoDoKus sjeldneste, som mutantfisk og Kraken-fisk. I en oppgave som trenger en av disse, kan løsningsstien og poengsummen bli forskjellige.",
+            "sudokUI har åtte vanskelighetsgrader der HoDoKu har fem: Nybegynner, Lur og Mareritt er lagt til."
+          ]
+        },
+        {
+          "heading": "Samme oppgave i begge",
+          "paragraphs": [
+            "En oppgave skrevet som 81 tegn virker i begge programmene. Lim den inn i Importer-dialogen i sudokUI for å se poengsummen, hele løsningsstien og alle teknikker som kan brukes i en hvilken som helst stilling."
+          ]
+        }
+      ],
+      "cta": "Åpne sudokUI",
+      "related": [
+        "Slik vurderes vanskelighetsgraden",
+        "Poeng for hver teknikk",
+        "HoDoKus egen nettside"
+      ]
+    }
   },
   "glossaryGroups": {
     "The board": "Brettet",

@@ -2,6 +2,7 @@ import { Grid, UNITS, bit, cellNames } from '../board';
 import { Step, CellDigit } from '../steps';
 import { Tech } from '../ratings';
 import { combinations } from './subsets';
+import { tr, unitName } from '../text';
 
 /**
  * Franken fish (finless), via the general set-cover fish theorem:
@@ -20,7 +21,6 @@ import { combinations } from './subsets';
  */
 export function findFrankenFish(g: Grid, size: 2 | 3): Step | null {
   const tech: Tech = size === 2 ? 'FRANKEN_X_WING' : 'FRANKEN_SWORDFISH';
-  const name = size === 2 ? 'Franken X-Wing' : 'Franken Swordfish';
 
   for (let d = 1; d <= 9; d++) {
     const mask = bit(d);
@@ -85,6 +85,8 @@ export function findFrankenFish(g: Grid, size: 2 | 3): Step | null {
             if (!baseCells.has(c)) elims.push({ cell: c, digit: d });
           }
           if (!elims.length) continue;
+          // the name stays English in every language (docs/translations.md)
+          const name = size === 2 ? tr`Franken X-Wing` : tr`Franken Swordfish`;
           return {
             tech,
             placements: [],
@@ -95,20 +97,14 @@ export function findFrankenFish(g: Grid, size: 2 | 3): Step | null {
               ...cover.map((unit) => ({ unit, role: 'secondary' as const }))
             ],
             labels: {
-              primary: `base sets (${base.map(unitLabel).join(', ')}): the ${d}s of the fish`,
-              secondary: `cover sets (${cover.map(unitLabel).join(', ')}): where the base's ${d}s must land`
+              primary: tr`base sets (${base.map(unitName).join(', ')}): the ${d}s of the fish`,
+              secondary: tr`cover sets (${cover.map(unitName).join(', ')}): where the base's ${d}s must land`
             },
-            description: `${name}: digit ${d}'s candidates in ${base.map(unitLabel).join(' + ')} are confined to ${cover.map(unitLabel).join(' + ')}; the ${size} true cells use up the covers, so ${d} falls from ${cellNames(elims.map((e) => e.cell))}.`
+            description: tr`${name}: digit ${d}'s candidates in ${base.map(unitName).join(' + ')} are confined to ${cover.map(unitName).join(' + ')}; the ${size} true cells use up the covers, so ${d} falls from ${cellNames(elims.map((e) => e.cell))}.`
           };
         }
       }
     }
   }
   return null;
-}
-
-function unitLabel(u: number): string {
-  if (u < 9) return `row ${u + 1}`;
-  if (u < 18) return `column ${u - 8}`;
-  return `box ${u - 17}`;
 }

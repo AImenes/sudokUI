@@ -1,5 +1,6 @@
 import { Grid, UNITS, bit, sees, rowOf, colOf, cellNames } from '../board';
 import { Step, CellDigit, alternatingLinks } from '../steps';
+import { tr } from '../text';
 
 /** node path -> candidate sets for arrow drawing */
 const nodeCds = (nodes: GNode[], path: number[], d: number): CellDigit[][] =>
@@ -117,7 +118,7 @@ export function findGroupedXCycles(g: Grid, maxLen = 10): Step | null {
           if (startCells.length >= 2) {
             return {
               tech: 'GROUPED_X_CYCLES',
-              labels: { primary: `the loop on ${d}, with grouped nodes` },
+              labels: { primary: tr`the loop on ${d}, with grouped nodes` },
               placements: [],
               eliminations: startCells.map((cell) => ({ cell, digit: d })),
               primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
@@ -134,7 +135,7 @@ export function findGroupedXCycles(g: Grid, maxLen = 10): Step | null {
                   strong: false
                 }
               ],
-              description: `Grouped X-Cycle on ${d}: the loop closes with two weak links at the group ${cellNames(startCells)}, so none of those cells can be ${d}.`
+              description: tr`Grouped X-Cycle on ${d}: the loop closes with two weak links at the group ${cellNames(startCells)}, so none of those cells can be ${d}.`
             };
           }
         }
@@ -177,12 +178,12 @@ function rule2(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
   if (start.cells.length === 1) {
     return {
       tech: 'GROUPED_X_CYCLES',
-      labels: { primary: `the loop on ${d}, with grouped nodes` },
+      labels: { primary: tr`the loop on ${d}, with grouped nodes` },
       placements: [{ cell: start.cells[0], digit: d }],
       eliminations: [],
       primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
       links: alternatingLinks(nodeCds(nodes, path, d), 'strong'),
-      description: `Grouped X-Cycle on ${d}: the loop closes with two strong links at ${cellNames(start.cells)}, forcing it to be ${d}.`
+      description: tr`Grouped X-Cycle on ${d}: the loop closes with two strong links at ${cellNames(start.cells)}, forcing it to be ${d}.`
     };
   }
   // group is true: the digit falls from cells seeing all group cells
@@ -195,12 +196,12 @@ function rule2(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
   if (!elims.length) return null;
   return {
     tech: 'GROUPED_X_CYCLES',
-    labels: { primary: `the loop on ${d}, with grouped nodes` },
+    labels: { primary: tr`the loop on ${d}, with grouped nodes` },
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
     links: alternatingLinks(nodeCds(nodes, path, d), 'strong'),
-    description: `Grouped X-Cycle on ${d}: two strong links meet at the group ${cellNames(start.cells)}, so ${d} lives there and falls from every cell seeing the whole group.`
+    description: tr`Grouped X-Cycle on ${d}: two strong links meet at the group ${cellNames(start.cells)}, so ${d} lives there and falls from every cell seeing the whole group.`
   };
 }
 
@@ -224,11 +225,11 @@ function rule1(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
   if (!elims.length) return null;
   return {
     tech: 'GROUPED_X_CYCLES',
-    labels: { primary: `the loop on ${d}, with grouped nodes` },
+    labels: { primary: tr`the loop on ${d}, with grouped nodes` },
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
     links: alternatingLinks(nodeCds(nodes, path, d), 'weak'),
-    description: `Grouped X-Cycle on ${d}: a continuous loop through ${path.length} nodes (groups included); along each weak link one side is ${d}, so ${d} falls from outside cells seeing both sides.`
+    description: tr`Grouped X-Cycle on ${d}: a continuous loop through ${path.length} nodes (groups included); along each weak link one side is ${d}, so ${d} falls from outside cells seeing both sides.`
   };
 }

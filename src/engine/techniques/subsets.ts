@@ -12,6 +12,7 @@ import {
 } from '../board';
 import { Step, CellDigit } from '../steps';
 import { Tech } from '../ratings';
+import { tr, joinAnd, unitName } from '../text';
 
 export function combinations<T>(items: T[], k: number): T[][] {
   const out: T[][] = [];
@@ -30,7 +31,29 @@ export function combinations<T>(items: T[], k: number): T[][] {
   return out;
 }
 
-const SUBSET_NAMES = ['', '', 'Pair', 'Triple', 'Quadruple'];
+/** a subset technique's name, as the guide gives it in the current language */
+function subsetName(tech: Tech): string {
+  switch (tech) {
+    case 'NAKED_PAIR':
+      return tr`Naked Pair`;
+    case 'NAKED_TRIPLE':
+      return tr`Naked Triple`;
+    case 'NAKED_QUADRUPLE':
+      return tr`Naked Quadruple`;
+    case 'LOCKED_PAIR':
+      return tr`Locked Pair`;
+    case 'LOCKED_TRIPLE':
+      return tr`Locked Triple`;
+    case 'HIDDEN_PAIR':
+      return tr`Hidden Pair`;
+    case 'HIDDEN_TRIPLE':
+      return tr`Hidden Triple`;
+    case 'HIDDEN_QUADRUPLE':
+      return tr`Hidden Quadruple`;
+    default:
+      return tech;
+  }
+}
 
 /** All units (unit indices) containing every cell of `cells`. */
 function sharedUnits(cells: number[]): number[] {
@@ -82,6 +105,7 @@ export function findNakedSubset(g: Grid, size: number, locked: boolean): Step | 
           : 'LOCKED_TRIPLE'
         : (`NAKED_${['', '', 'PAIR', 'TRIPLE', 'QUADRUPLE'][size]}` as Tech);
       const digits = digitsOf(mask);
+      const houses = [...unitsWithElims].map(unitName);
       return {
         tech,
         placements: [],
@@ -92,9 +116,12 @@ export function findNakedSubset(g: Grid, size: number, locked: boolean): Step | 
         // the houses the set clears: both, for a locked set in an intersection
         units: [...unitsWithElims].map((unit) => ({ unit, role: 'primary' as const })),
         labels: {
-          primary: `${size} cells that hold only ${digits.join('/')} between them, in ${[...unitsWithElims].map(unitName).join(' and ')}`
+          primary:
+            houses.length === 2
+              ? tr`${size} cells that hold only ${digits.join('/')} between them, in ${houses[0]} and ${houses[1]}`
+              : tr`${size} cells that hold only ${digits.join('/')} between them, in ${joinAnd(houses)}`
         },
-        description: `${locked ? 'Locked' : 'Naked'} ${SUBSET_NAMES[size]}: cells ${cellNames(combo)} contain only ${digits.join('/')}, removing those digits from the cells they all see.`
+        description: tr`${subsetName(tech)}: cells ${cellNames(combo)} contain only ${digits.join('/')}, removing those digits from the cells they all see.`
       };
     }
   }
@@ -131,17 +158,11 @@ export function findHiddenSubset(g: Grid, size: number): Step | null {
         ),
         units: [{ unit: u, role: 'primary' }],
         labels: {
-          primary: `the only ${size} cells of ${unitName(u)} that can take ${digitCombo.join('/')}`
+          primary: tr`the only ${size} cells of ${unitName(u)} that can take ${digitCombo.join('/')}`
         },
-        description: `Hidden ${SUBSET_NAMES[size]}: in ${unitName(u)}, digits ${digitCombo.join('/')} fit only in ${cellNames(cells)}, so all other candidates there can be removed.`
+        description: tr`${subsetName(tech)}: in ${unitName(u)}, digits ${digitCombo.join('/')} fit only in ${cellNames(cells)}, so all other candidates there can be removed.`
       };
     }
   }
   return null;
-}
-
-export function unitName(u: number): string {
-  if (u < 9) return `row ${u + 1}`;
-  if (u < 18) return `column ${u - 8}`;
-  return `box ${u - 17}`;
 }

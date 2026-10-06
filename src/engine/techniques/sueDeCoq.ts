@@ -1,6 +1,7 @@
 import { Grid, UNITS, bit, digitsOf, popcount, cellName, cellNames, boxOf } from '../board';
 import { Step, CellDigit } from '../steps';
 import { combinations } from './subsets';
+import { tr } from '../text';
 
 /**
  * Sue de Coq (basic form, per sudokuwiki.org/Sue_De_Coq):
@@ -73,10 +74,10 @@ export function findSueDeCoq(g: Grid): Step | null {
                   ...digitsOf(eMask).map((digit) => ({ cell: E, digit }))
                 ],
                 labels: {
-                  primary: `the intersection cells, holding ${digitsOf(V).join('')}`,
-                  secondary: 'the line cell and the box cell that complete the locked set'
+                  primary: tr`the intersection cells, holding ${digitsOf(V).join('')}`,
+                  secondary: tr`the line cell and the box cell that complete the locked set`
                 },
-                description: `Sue de Coq: ${cellNames(C)} (${digitsOf(V).join('')}) with ${cellName(D)} in the line and ${cellName(E)} in the box form a locked set; line digits are cleared from the rest of the line, box digits from the rest of the box.`
+                description: tr`Sue de Coq: ${cellNames(C)} (${digitsOf(V).join('')}) with ${cellName(D)} in the line and ${cellName(E)} in the box form a locked set; line digits are cleared from the rest of the line, box digits from the rest of the box.`
               };
             }
           }

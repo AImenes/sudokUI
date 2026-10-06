@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Tech, Level, TECHS } from '../engine/ratings';
 import { worth } from '../content/frequency';
+import { translator } from '../content/i18n';
 
 export interface TechStat {
   unaided: number;
@@ -125,22 +126,43 @@ export function learnNextScore(tech: Tech, techs: Partial<Record<Tech, TechStat>
 
 /** The game in a sentence: what the player did, and what the hints did. */
 export function gameSummary(game: GameTally): string {
+  const t = translator();
   const byIndex = (a: Tech, b: Tech) => TECHS[a].index - TECHS[b].index;
-  const plural = (n: number, name: string) => `${n} ${name}${n === 1 ? '' : 's'}`;
-  const own = (Object.keys(game.unaided) as Tech[]).sort(byIndex).map((t) => plural(game.unaided[t]!, TECHS[t].name));
-  const hinted = (Object.keys(game.hinted) as Tech[]).sort(byIndex).map((t) => plural(game.hinted[t]!, TECHS[t].name));
-  const parts: string[] = [];
+  // one technique and how often: "31 × Naked Single", one form for every
+  // count, since a technique name has no reliable plural ("Locked
+  // Candidates (Pointing)", "Simple Colors", "Sue de Coq")
+  const uses = (tech: Tech, n: number) => t('{n} × {name}||how often a technique was used', { n, name: t.tech(tech) });
+  const own = (Object.keys(game.unaided) as Tech[]).sort(byIndex).map((tech) => uses(tech, game.unaided[tech]!));
+  const hinted = (Object.keys(game.hinted) as Tech[]).sort(byIndex).map((tech) => uses(tech, game.hinted[tech]!));
+  // each a whole sentence
+  const sentences: string[] = [];
   const ownMoves = Object.values(game.unaided).reduce((a, b) => a + (b ?? 0), 0) + game.beyond;
   if (ownMoves) {
-    const list = own.length ? own.join(', ') : '';
-    parts.push(
-      `${plural(ownMoves, 'move')} of your own${list ? `: ${list}` : ''}${
-        game.beyond ? `, and ${plural(game.beyond, 'move')} beyond the catalogue` : ''
-      }`
-    );
+    const vars = { n: ownMoves, m: game.beyond, list: own.join(', ') };
+    if (own.length && game.beyond) {
+      // the list and the moves beyond it: two moves at least
+      sentences.push(
+        t(
+          game.beyond === 1
+            ? '{n} moves of your own: {list}, and {m} move beyond the catalogue.'
+            : '{n} moves of your own: {list}, and {m} moves beyond the catalogue.',
+          vars
+        )
+      );
+    } else if (own.length) {
+      sentences.push(t(ownMoves === 1 ? '{n} move of your own: {list}.' : '{n} moves of your own: {list}.', vars));
+    } else {
+      // every move beyond the catalogue: one count, said once, so it never
+      // reads as two sets of moves
+      sentences.push(
+        t(
+          ownMoves === 1 ? '{n} move of your own, beyond the catalogue.' : '{n} moves of your own, all beyond the catalogue.',
+          vars
+        )
+      );
+    }
   }
-  if (hinted.length) parts.push(`from hints: ${hinted.join(', ')}`);
-  if (game.errors) parts.push(plural(game.errors, 'wrong digit'));
-  const sentence = (t: string) => t[0].toUpperCase() + t.slice(1);
-  return parts.map(sentence).join('. ') + (parts.length ? '.' : '');
+  if (hinted.length) sentences.push(t('From hints: {list}.', { list: hinted.join(', ') }));
+  if (game.errors) sentences.push(t(game.errors === 1 ? '{n} wrong digit.' : '{n} wrong digits.', { n: game.errors }));
+  return sentences.join(' ');
 }

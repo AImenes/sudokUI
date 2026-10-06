@@ -1,36 +1,14 @@
 // Spanish text of the Learn section: the glossary, the technique
-// guide, the Intuition guide, How to solve, the rating and the interface
-// strings. Keyed exactly like EN in ../learnLocale.ts; the terminology
+// guide, the Intuition guide, How to solve, the rating, the landing pages
+// and the interface strings. Keyed exactly like EN in ../learnLocale.ts; the terminology
 // follows docs/glossary_input.md. tests/learnLocale.test.ts checks that
 // every piece is here, in house style, with its placeholders and numbers.
 import type { LearnLocale } from '../learnLocale';
+import { COUNTS } from '../landing';
+import { techNames, levels, categoryLabels } from './names.es';
 
 const es: LearnLocale = {
-  "techNames": {
-    "NAKED_SINGLE": "Único desnudo",
-    "HIDDEN_SINGLE": "Único oculto",
-    "LOCKED_PAIR": "Par bloqueado",
-    "LOCKED_TRIPLE": "Trío bloqueado",
-    "LOCKED_CANDIDATES_1": "Candidatos bloqueados (puntero)",
-    "LOCKED_CANDIDATES_2": "Candidatos bloqueados (reclamante)",
-    "NAKED_PAIR": "Par desnudo",
-    "NAKED_TRIPLE": "Trío desnudo",
-    "HIDDEN_PAIR": "Par oculto",
-    "HIDDEN_TRIPLE": "Trío oculto",
-    "NAKED_QUADRUPLE": "Cuarteto desnudo",
-    "HIDDEN_QUADRUPLE": "Cuarteto oculto",
-    "UNIQUENESS_1": "Rectángulo único tipo 1",
-    "UNIQUENESS_2": "Rectángulo único tipo 2",
-    "UNIQUENESS_3": "Rectángulo único tipo 3",
-    "UNIQUENESS_4": "Rectángulo único tipo 4",
-    "UNIQUENESS_5": "Rectángulo único tipo 5",
-    "UNIQUENESS_6": "Rectángulo único tipo 6",
-    "HIDDEN_RECTANGLE": "Rectángulo oculto",
-    "AVOIDABLE_RECTANGLE_1": "Rectángulo evitable tipo 1",
-    "AVOIDABLE_RECTANGLE_2": "Rectángulo evitable tipo 2",
-    "EXTENDED_RECTANGLE": "Rectángulo extendido",
-    "BRUTE_FORCE": "Fuerza bruta"
-  },
+  "techNames": techNames,
   "techDocs": {
     "FULL_HOUSE": {
       "what": "Una fila, columna o caja tiene ocho de sus nueve casillas llenas, así que queda exactamente una casilla vacía.",
@@ -700,72 +678,63 @@ const es: LearnLocale = {
   },
   "categories": {
     "Singles": {
-      "label": "Únicos",
+      "label": categoryLabels["Singles"],
       "note": "La base de toda resolución: una casilla con un solo número posible, o un número con una sola casilla posible."
     },
     "Intersections": {
-      "label": "Intersecciones",
+      "label": categoryLabels["Intersections"],
       "note": "Donde una caja cruza una fila o una columna: si los candidatos de un número quedan confinados a la intersección, ese número se elimina del resto de la otra unidad."
     },
     "Subsets": {
-      "label": "Subconjuntos",
+      "label": categoryLabels["Subsets"],
       "note": "N casillas que entre todas solo admiten N números dejan esos números bloqueados en ellas, tanto si el patrón está a la vista como si está oculto."
     },
     "Basic Fish": {
-      "label": "Peces básicos",
+      "label": categoryLabels["Basic Fish"],
       "note": "Un número cuyas posiciones en N filas caen en las mismas N columnas (o al revés), lo que lo elimina del resto de esas líneas."
     },
     "Finned Fish": {
-      "label": "Peces con aletas",
+      "label": categoryLabels["Finned Fish"],
       "note": "Un pez con candidatos de más: la aleta. Sigue funcionando, pero solo en las casillas que también ven la aleta."
     },
     "Complex Fish": {
-      "label": "Peces complejos",
+      "label": categoryLabels["Complex Fish"],
       "note": "Peces que usan cajas además de filas y columnas."
     },
     "Single Digit Patterns": {
-      "label": "Patrones de un solo número",
+      "label": categoryLabels["Single Digit Patterns"],
       "note": "Cadenas cortas sobre un solo número, formadas por dos enlaces fuertes unidos por uno débil."
     },
     "Wings": {
-      "label": "Wings",
+      "label": categoryLabels["Wings"],
       "note": "Unas pocas casillas cuyos candidatos garantizan que una de ellas contiene un número concreto, así que toda casilla que las vea a todas pierde ese número."
     },
     "Uniqueness": {
-      "label": "Unicidad",
+      "label": categoryLabels["Uniqueness"],
       "note": "Patrones que darían al sudoku dos soluciones y que, por eso, no pueden aparecer en un sudoku que tiene exactamente una."
     },
     "Chains and Loops": {
-      "label": "Cadenas y bucles",
+      "label": categoryLabels["Chains and Loops"],
       "note": "Inferencias que se transmiten a lo largo de enlaces fuertes y débiles hasta que los dos extremos permiten concluir algo."
     },
     "Coloring": {
-      "label": "Coloreado",
+      "label": categoryLabels["Coloring"],
       "note": "Los candidatos unidos por enlaces fuertes reciben dos colores: un color es verdadero por completo y el otro, falso por completo."
     },
     "Almost Locked Sets": {
-      "label": "Conjuntos casi bloqueados",
+      "label": categoryLabels["Almost Locked Sets"],
       "note": "Grupos de casillas a un solo candidato de quedar bloqueados, que se combinan unos con otros."
     },
     "Miscellaneous": {
-      "label": "Varios",
+      "label": categoryLabels["Miscellaneous"],
       "note": "Patrones poco frecuentes que no encajan en ninguna otra familia."
     },
     "Last Resort": {
-      "label": "Último recurso",
+      "label": categoryLabels["Last Resort"],
       "note": "Métodos basados en probar, para posiciones en las que ya no queda ningún patrón que encontrar."
     }
   },
-  "levels": {
-    "Beginner": "Principiante",
-    "Easy": "Fácil",
-    "Medium": "Medio",
-    "Tricky": "Engañoso",
-    "Hard": "Difícil",
-    "Unfair": "Injusto",
-    "Extreme": "Extremo",
-    "Nightmare": "Pesadilla"
-  },
+  "levels": levels,
   "bandLeads": {
     "Beginner": "Un comienzo suave",
     "Easy": "Tranquilo",
@@ -860,10 +829,132 @@ const es: LearnLocale = {
       {
         "heading": "Cómo entrenarlo aquí",
         "paragraphs": [
-          "Todas las partidas empiezan con los candidatos automáticos desactivados, como empezaría un campeón. Usa las notas de esquina para los pares Snyder y deja el resto en blanco. Cuando te atasques, Explorar muestra todas las técnicas que funcionan en esa posición exacta con tus propias anotaciones, así que aprendes lo que se te pasó y no lo que habría mostrado una cuadrícula de candidatos. Si terminas sin usar Pista, Revisar ni Autocandidatos, la partida cuenta como resuelta sin ayuda."
+          "Las partidas nuevas empiezan con los candidatos automáticos desactivados, como empezaría un campeón; la excepción es un sudoku de práctica que salta directamente a su técnica. Usa las notas de esquina para los pares Snyder y deja el resto en blanco. Cuando te atasques, Explorar muestra todas las técnicas que funcionan en esa posición exacta con tus propias anotaciones, así que aprendes lo que se te pasó y no lo que habría mostrado una cuadrícula de candidatos. Explorar cuenta como ayuda, igual que todo lo demás del cuadro Ayuda: si terminas sin usar nada de ello, la partida cuenta como resuelta sin ayuda."
         ]
       }
     ]
+  },
+  "landings": {
+    "/daily-sudoku/": {
+      "name": "Sudoku diario",
+      "title": "Sudoku diario gratis: el mismo para todo el mundo | sudokUI",
+      "description": "Un sudoku nuevo cada día, igual para todos los jugadores del mundo. Gratis, sin cuenta ni anuncios. Resuelve el sudoku del día y compara tiempos con amigos.",
+      "h1": "Sudoku diario",
+      "lead": "Un sudoku nuevo cada día, idéntico para todos los jugadores del mundo. Resuélvelo y compara tiempos con amigos que han jugado exactamente el mismo tablero.",
+      "sections": [
+        {
+          "heading": "Cómo funciona",
+          "paragraphs": [
+            "El sudoku del día se genera en tu propio dispositivo a partir de la fecha, así que todos reciben el mismo tablero sin ningún servidor ni cuenta. A medianoche UTC llega uno nuevo."
+          ]
+        },
+        {
+          "heading": "¿Qué dificultad tiene?",
+          "paragraphs": [
+            "El sudoku del día suele ser Medio, Engañoso o Difícil. Su nivel de dificultad y su puntuación se muestran en la barra superior, como en cualquier otro sudoku."
+          ]
+        },
+        {
+          "heading": "Una carrera justa",
+          "paragraphs": [
+            "El sudoku del día empieza con los candidatos automáticos desactivados para todos. Si terminas sin usar nada del cuadro Ayuda, como las pistas, las revisiones o los candidatos automáticos, la partida cuenta como resuelta sin ayuda.",
+            "Al terminar, el botón «Reta a un amigo» copia un mensaje con tu tiempo y un enlace que contiene el propio sudoku."
+          ]
+        }
+      ],
+      "cta": "Juega al sudoku del día",
+      "related": [
+        "Cómo funciona la puntuación de dificultad",
+        "Todas las técnicas explicadas"
+      ]
+    },
+    "/sudoku-solver/": {
+      "name": "Resolvedor de sudokus",
+      "title": "Resolver sudoku paso a paso, con explicaciones | sudokUI",
+      "description": "Introduce cualquier sudoku y míralo resuelto paso a paso: cada técnica con su nombre, dibujada en el tablero y explicada. Gratis, privado y funciona sin conexión.",
+      "h1": "Un resolvedor de sudokus que explica cada paso",
+      "lead": "Introduce cualquier sudoku y sudokUI lo resuelve como lo haría una persona: una técnica cada vez, con su nombre, dibujada en el tablero y explicada con palabras.",
+      "sections": [
+        {
+          "heading": "Introduce tu sudoku",
+          "paragraphs": [
+            "Elige Importar y pega el sudoku como 81 caracteres (números, con puntos o ceros para las casillas vacías), o elige Nuevo y luego Personalizado, y escribe los números dados en el tablero. sudokUI comprueba que el sudoku tiene exactamente una solución antes de empezar."
+          ]
+        },
+        {
+          "heading": "Mira la ruta de resolución completa",
+          "paragraphs": [
+            "Pasos muestra todos los pasos de una solución completa, con la técnica más fácil primero, y marca el paso más costoso como paso clave. Haz clic en cualquier paso para llevar el tablero a la posición justo anterior."
+          ]
+        },
+        {
+          "heading": "O avanza paso a paso",
+          "paragraphs": [
+            "Pista nombra primero la siguiente técnica, después la muestra en el tablero con una explicación y, por último, la aplica si quieres. Explorar muestra todas las técnicas que funcionan en la posición actual, no solo la más fácil, y Revisar marca los números incorrectos."
+          ]
+        },
+        {
+          "heading": `${COUNTS.implemented} técnicas, verificadas automáticamente`,
+          "paragraphs": [
+            `El resolvedor conoce ${COUNTS.implemented} técnicas, desde el Único desnudo hasta el Exocet y las Forcing Nets. Cada pista se comprueba con la solución real del sudoku antes de mostrarse.`
+          ]
+        },
+        {
+          "heading": "Privado y sin conexión",
+          "paragraphs": [
+            "Todo funciona en tu dispositivo. No hay cuenta ni publicidad, no se sube nada, y la app sigue funcionando sin conexión una vez cargada."
+          ]
+        }
+      ],
+      "cta": "Abre el resolvedor",
+      "puzzleBox": "Resolver este sudoku",
+      "related": [
+        "Todas las técnicas explicadas",
+        "Cómo funciona la puntuación de dificultad"
+      ]
+    },
+    "/hodoku/": {
+      "name": "HoDoKu",
+      "title": "Sudoku puntuado como en HoDoKu, en tu navegador | sudokUI",
+      "description": "sudokUI puntúa y explica sudokus con los puntos y el orden de búsqueda de HoDoKu, en cualquier navegador: móvil, tableta, Mac o PC. Sin instalar nada y funciona sin conexión.",
+      "h1": "Puntuaciones compatibles con HoDoKu, en tu navegador",
+      "lead": "sudokUI puntúa y explica los sudokus como lo hace HoDoKu, sin instalar nada. Funciona en cualquier navegador, en el móvil, la tableta o el ordenador, y sigue funcionando sin conexión.",
+      "sections": [
+        {
+          "heading": "Qué es HoDoKu",
+          "paragraphs": [
+            "HoDoKu es un programa gratuito de Bernhard Hobiger para generar, resolver, practicar y analizar sudokus, escrito en Java y publicado bajo la GPLv3. Su catálogo de técnicas y sus puntuaciones se convirtieron en una referencia habitual para puntuar la dificultad de un sudoku. La última versión, la 2.2, es de 2012."
+          ]
+        },
+        {
+          "heading": "Qué comparte sudokUI con HoDoKu",
+          "paragraphs": [
+            "sudokUI usa la puntuación predeterminada de HoDoKu para cada técnica y su orden de búsqueda predeterminado, y puntúa un sudoku de la misma manera: lo resuelve con la primera técnica que funciona en cada paso y suma las puntuaciones.",
+            "Los umbrales de puntuación de Fácil (800), Medio (1000), Difícil (1600) e Injusto (1800) también son los de HoDoKu."
+          ]
+        },
+        {
+          "heading": "En qué se diferencian",
+          "paragraphs": [
+            "sudokUI es un proyecto independiente y no tiene relación con HoDoKu.",
+            "Añade técnicas que HoDoKu no tiene, como 3D Medusa, Chute Remote Pair, Fireworks, Tridagon y Exocet, con puntuaciones cercanas a las de sus parientes más próximos, y deja fuera algunas de las más raras de HoDoKu, como los peces mutantes y los peces Kraken. En un sudoku que necesite una de ellas, la ruta de resolución y la puntuación pueden ser distintas.",
+            "sudokUI distingue ocho niveles de dificultad donde HoDoKu tiene cinco: Principiante, Engañoso y Pesadilla son nuevos."
+          ]
+        },
+        {
+          "heading": "El mismo sudoku en los dos",
+          "paragraphs": [
+            "Un sudoku escrito como 81 caracteres funciona en los dos programas. Pégalo en la ventana Importar de sudokUI para ver su puntuación, su ruta de resolución completa y todas las técnicas disponibles en cualquier posición."
+          ]
+        }
+      ],
+      "cta": "Abre sudokUI",
+      "related": [
+        "Cómo funciona la puntuación de dificultad",
+        "Puntuación de cada técnica",
+        "La web de HoDoKu"
+      ]
+    }
   },
   "glossaryGroups": {
     "The board": "El tablero",

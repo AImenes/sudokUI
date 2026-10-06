@@ -57,8 +57,8 @@ natively for iOS and Android via Capacitor.
   [docs/chain-trainer.md](docs/chain-trainer.md))
 - **Your record, on your device**: every move you make is credited with the
   easiest technique that justifies it, a finished game is summed up
-  ("45 moves of your own: 31 Naked Singles, 12 Hidden Singles, 1 X-Wing.
-  From hints: 1 XY-Wing."), the guide shows what you have used unaided and
+  ("45 moves of your own: 31 × Naked Single, 12 × Hidden Single,
+  1 × X-Wing. From hints: 1 × XY-Wing."), the guide shows what you have used unaided and
   sorts by **learn next**, the path (Learn → Your path) shows the techniques worth
   learning in the order puzzles need them with the next one a click from
   its practice, and the win dialog keeps your band records and the daily

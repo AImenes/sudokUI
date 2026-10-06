@@ -1,5 +1,6 @@
 import { Grid, UNITS, bit, rowOf, colOf, boxOf, cellNames } from '../board';
 import { Step, CellDigit } from '../steps';
+import { tr, unitName } from '../text';
 
 /**
  * Locked Candidates Type 1 (Pointing): all candidates of a digit in a box
@@ -20,7 +21,8 @@ export function findLockedCandidates1(g: Grid): Step | null {
           .filter((c) => boxOf(c) !== b && g.values[c] === 0 && g.cands[c] & mask)
           .map((cell) => ({ cell, digit: d }));
         if (elims.length) {
-          const lineWord = lineOf === rowOf ? 'row' : 'column';
+          const onRow = lineOf === rowOf;
+          const box = unitName(18 + b);
           return {
             tech: 'LOCKED_CANDIDATES_1',
             placements: [],
@@ -30,11 +32,18 @@ export function findLockedCandidates1(g: Grid): Step | null {
               { unit: 18 + b, role: 'primary' },
               { unit: lineOf === rowOf ? line : 9 + line, role: 'secondary' }
             ],
-            labels: {
-              primary: `box ${b + 1}: every ${d} in it sits on one ${lineWord}`,
-              secondary: `the ${lineWord}, which loses ${d} outside the box`
-            },
-            description: `Locked Candidates (Pointing): in box ${b + 1}, digit ${d} is confined to ${cellNames(cells)}, so it can be removed from the rest of the ${lineOf === rowOf ? 'row' : 'column'}.`
+            labels: onRow
+              ? {
+                  primary: tr`${box}: every ${d} in it sits on one row`,
+                  secondary: tr`the row, which loses ${d} outside the box`
+                }
+              : {
+                  primary: tr`${box}: every ${d} in it sits on one column`,
+                  secondary: tr`the column, which loses ${d} outside the box`
+                },
+            description: onRow
+              ? tr`Locked Candidates (Pointing): in ${box}, digit ${d} is confined to ${cellNames(cells)}, so it can be removed from the rest of the row.`
+              : tr`Locked Candidates (Pointing): in ${box}, digit ${d} is confined to ${cellNames(cells)}, so it can be removed from the rest of the column.`
           };
         }
       }
@@ -60,7 +69,8 @@ export function findLockedCandidates2(g: Grid): Step | null {
         .filter((c) => !lineCells.includes(c) && g.values[c] === 0 && g.cands[c] & mask)
         .map((cell) => ({ cell, digit: d }));
       if (elims.length) {
-        const lineName = u < 9 ? `row ${u + 1}` : `column ${u - 8}`;
+        const lineName = unitName(u);
+        const box = unitName(18 + b);
         return {
           tech: 'LOCKED_CANDIDATES_2',
           placements: [],
@@ -71,10 +81,10 @@ export function findLockedCandidates2(g: Grid): Step | null {
             { unit: 18 + b, role: 'secondary' }
           ],
           labels: {
-            primary: `${lineName}: every ${d} in it sits in one box`,
-            secondary: `box ${b + 1}, which loses ${d} outside the ${u < 9 ? 'row' : 'column'}`
+            primary: tr`${lineName}: every ${d} in it sits in one box`,
+            secondary: u < 9 ? tr`${box}, which loses ${d} outside the row` : tr`${box}, which loses ${d} outside the column`
           },
-          description: `Locked Candidates (Claiming): in ${u < 9 ? `row ${u + 1}` : `column ${u - 8}`}, digit ${d} is confined to box ${b + 1}, so it can be removed from the rest of the box.`
+          description: tr`Locked Candidates (Claiming): in ${lineName}, digit ${d} is confined to ${box}, so it can be removed from the rest of the box.`
         };
       }
     }

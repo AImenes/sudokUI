@@ -10,6 +10,7 @@ import {
   cellNames
 } from '../board';
 import { Step, CellDigit, alternatingLinks } from '../steps';
+import { tr, unitName } from '../text';
 
 type LinkType = 'row' | 'col' | 'box';
 interface StrongLink {
@@ -34,6 +35,10 @@ export function strongLinks(g: Grid, d: number): StrongLink[] {
   }
   return links;
 }
+
+/** the house in which a strong link's two cells are the only places for its digit */
+const linkUnit = (l: StrongLink) =>
+  l.type === 'row' ? rowOf(l.a) : l.type === 'col' ? 9 + colOf(l.a) : 18 + boxOf(l.a);
 
 /**
  * Turbot-fish family: two strong links joined by a weak link; cells seeing
@@ -85,19 +90,22 @@ export function findTurbotFamily(
               if (sees(c, a) && sees(c, b)) elims.push({ cell: c, digit: d });
             }
             if (!elims.length) continue;
+            // the names stay English in every language (docs/translations.md)
             const names: Record<typeof variant, string> = {
-              SKYSCRAPER: 'Skyscraper',
-              TWO_STRING_KITE: '2-String Kite',
-              TURBOT_FISH: 'Turbot Fish'
+              SKYSCRAPER: tr`Skyscraper`,
+              TWO_STRING_KITE: tr`2-String Kite`,
+              TURBOT_FISH: tr`Turbot Fish`
             };
             return {
               tech: variant,
               placements: [],
               eliminations: elims,
               primary: pattern.map((cell) => ({ cell, digit: d })),
-              labels: { primary: `the two strong links on ${d}` },
+              labels: { primary: tr`the two strong links on ${d}` },
               links: alternatingLinks([a, p, q, b].map((cell) => [{ cell, digit: d }])),
-              description: `${names[variant]} on ${d}: ${cellName(l1.a)} and ${cellName(l1.b)} are the only places for ${d} in their line, as are ${cellName(l2.a)} and ${cellName(l2.b)}, and ${cellName(p)} sees ${cellName(q)}. If ${cellName(a)} is not ${d}, ${cellName(p)} is, so ${cellName(q)} is not, so ${cellName(b)} is: one of ${cellName(a)} and ${cellName(b)} is ${d}, and ${d} is removed from every cell that sees both.`
+              // each link named by the house it is a conjugate pair in: a
+              // box link's two cells may share a line that holds more
+              description: tr`${names[variant]} on ${d}: ${cellName(l1.a)} and ${cellName(l1.b)} are the only places for ${d} in ${unitName(linkUnit(l1))}, as are ${cellName(l2.a)} and ${cellName(l2.b)} in ${unitName(linkUnit(l2))}, and ${cellName(p)} sees ${cellName(q)}. If ${cellName(a)} is not ${d}, ${cellName(p)} is, so ${cellName(q)} is not, so ${cellName(b)} is: one of ${cellName(a)} and ${cellName(b)} is ${d}, and ${d} is removed from every cell that sees both.`
             };
           }
         }
@@ -141,7 +149,7 @@ export function findEmptyRectangle(g: Grid): Step | null {
             if (Math.floor(rowOf(other) / 3) === Math.floor(b / 3)) continue;
             const target = rowOf(other) * 9 + erCol;
             if (g.values[target] === 0 && g.cands[target] & mask) {
-              return erStep(g, d, b, boxCells, [inErRow, other], target);
+              return erStep(g, d, b, boxCells, [inErRow, other], target, 'col');
             }
           }
           // conjugate pair in a row crossing the ER column
@@ -155,7 +163,7 @@ export function findEmptyRectangle(g: Grid): Step | null {
             if (Math.floor(colOf(other) / 3) === b % 3) continue;
             const target = erRow * 9 + colOf(other);
             if (g.values[target] === 0 && g.cands[target] & mask) {
-              return erStep(g, d, b, boxCells, [inErCol, other], target);
+              return erStep(g, d, b, boxCells, [inErCol, other], target, 'row');
             }
           }
         }
@@ -165,13 +173,20 @@ export function findEmptyRectangle(g: Grid): Step | null {
   return null;
 }
 
+/**
+ * `pairLine` is the kind of line the conjugate pair lies in. With the pair
+ * in a column, pair[0] lies on the box's row and pair[1] shares a row with
+ * the target, which lies on the box's column; with the pair in a row, the
+ * same with rows and columns swapped. The two descriptions say exactly that.
+ */
 function erStep(
   g: Grid,
   d: number,
   box: number,
   boxCells: number[],
   pair: number[],
-  target: number
+  target: number,
+  pairLine: 'row' | 'col'
 ): Step {
   return {
     tech: 'EMPTY_RECTANGLE',
@@ -181,9 +196,12 @@ function erStep(
     secondary: pair.map((cell) => ({ cell, digit: d })),
     units: [{ unit: 18 + box, role: 'primary' }],
     labels: {
-      primary: `box ${box + 1}: every ${d} in it lies on one row and one column`,
-      secondary: `the conjugate pair on ${d}`
+      primary: tr`${unitName(18 + box)}: every ${d} in it lies on one row and one column`,
+      secondary: tr`the conjugate pair on ${d}`
     },
-    description: `Empty Rectangle on ${d}: in box ${box + 1} every ${d} lies on one row and one column, and ${cellNames(pair)} are the only two places for ${d} in their line. If ${cellName(pair[1])} is ${d}, ${cellName(target)} in its column is not. If not, ${cellName(pair[0])} is ${d}, so the box's ${d} cannot share its column and must lie on the row through ${cellName(target)}, which again is not ${d}. So ${d} is removed from ${cellName(target)}.`
+    description:
+      pairLine === 'col'
+        ? tr`Empty Rectangle on ${d}: in ${unitName(18 + box)} every ${d} lies on one row and one column, and ${cellNames(pair)} are the only two places for ${d} in their line. If ${cellName(pair[1])} is ${d}, ${cellName(target)} in its row is not. If not, ${cellName(pair[0])} is ${d}, so the box's ${d} cannot share its row and must lie on the column through ${cellName(target)}, which again is not ${d}. So ${d} is removed from ${cellName(target)}.`
+        : tr`Empty Rectangle on ${d}: in ${unitName(18 + box)} every ${d} lies on one row and one column, and ${cellNames(pair)} are the only two places for ${d} in their line. If ${cellName(pair[1])} is ${d}, ${cellName(target)} in its column is not. If not, ${cellName(pair[0])} is ${d}, so the box's ${d} cannot share its column and must lie on the row through ${cellName(target)}, which again is not ${d}. So ${d} is removed from ${cellName(target)}.`
   };
 }

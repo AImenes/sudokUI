@@ -2,9 +2,9 @@
 // modules themselves, which stay the source of truth; a locale
 // (locales/nb.ts, locales/es.ts) translates every piece of it, keyed the
 // same way: techniques by key, glossary entries and Intuition sections by
-// id, strings by their English text. The in-app Learn dialog loads a
-// locale only when that language is chosen; the static pages build all
-// three.
+// id, landing pages by their English address, strings by their English
+// text. The in-app Learn dialog loads a locale only when that language is
+// chosen; the static pages build all three.
 //
 // Technique names stay English except where a language has its own,
 // established name (docs/glossary_input.md, section 4): Naken singel,
@@ -12,6 +12,11 @@
 // reader can find it in English sources.
 import { TECHS, LEVELS, Tech, Category, Level } from '../engine/ratings';
 import type { Lang } from '../state/settings';
+import type { Step } from '../engine/steps';
+import { Grid, parseGrid } from '../engine/board';
+import { findStep } from '../engine/humanSolver';
+import { engineLang } from '../engine/text';
+import type { Example } from './boardSvg';
 import { TECH_DOCS } from './techniqueDocs';
 import { KIN } from './kin';
 import { CATEGORY_NOTES, categoryLabel } from './categories';
@@ -47,6 +52,18 @@ export interface MethodText {
   sections: { heading: string; paragraphs: string[] }[];
 }
 
+/**
+ * A landing page's copy (src/content/landing.ts, which keeps the
+ * addresses and the links): the page itself, the label of its call to
+ * action, of its paste-a-puzzle box where it has one, and of its further
+ * reading, in the order landing.ts lists them.
+ */
+export interface LandingText extends MethodText {
+  cta: string;
+  puzzleBox?: string;
+  related: string[];
+}
+
 export interface LearnLocale {
   /** names the language has its own word for; the rest stay English */
   techNames: Partial<Record<Tech, string>>;
@@ -65,6 +82,8 @@ export interface LearnLocale {
     modes: Record<SolveMode, string>;
   };
   method: MethodText;
+  /** the other landing pages, by their English address: /daily-sudoku/, /sudoku-solver/, /hodoku/ */
+  landings: Record<string, LandingText>;
   glossaryGroups: Record<GlossaryGroup, string>;
   glossary: Record<string, GlossaryText>;
   intuition: {
@@ -75,7 +94,8 @@ export interface LearnLocale {
   strings: Record<LearnString, string>;
 }
 
-const METHOD = LANDING_PAGES.find((p) => p.url === '/how-the-best-solve/')!;
+export const METHOD_URL = '/how-the-best-solve/';
+const METHOD = LANDING_PAGES.find((p) => p.url === METHOD_URL)!;
 
 /** English, gathered from the content modules */
 export const EN: LearnLocale = {
@@ -100,6 +120,22 @@ export const EN: LearnLocale = {
     lead: METHOD.lead,
     sections: METHOD.sections
   },
+  landings: Object.fromEntries(
+    LANDING_PAGES.filter((p) => p.url !== METHOD_URL).map((p) => [
+      p.url,
+      {
+        name: p.name,
+        title: p.title,
+        description: p.description,
+        h1: p.h1,
+        lead: p.lead,
+        sections: p.sections,
+        cta: p.cta.label,
+        ...(p.puzzleBox ? { puzzleBox: p.puzzleBox } : {}),
+        related: p.related.map((r) => r.label)
+      }
+    ])
+  ),
   glossaryGroups: Object.fromEntries(GLOSSARY_GROUPS.map((g) => [g, g])) as Record<GlossaryGroup, string>,
   glossary: Object.fromEntries(GLOSSARY.map((e) => [e.id, { term: e.term, aka: e.aka, definition: e.definition }])),
   intuition: {
@@ -139,6 +175,8 @@ export interface LearnText {
   categoryNote(c: Category): string;
   level(l: Level): string;
   glossary(id: string): GlossaryText;
+  /** a landing page's copy, by its English address */
+  landing(url: string): LandingText;
   /** "34% of puzzles" and the like, or null when the solver never needs it */
   frequency(t: Tech): string | null;
 }
@@ -168,6 +206,7 @@ export function learnText(lang: Lang, loc: LearnLocale = EN): LearnText {
     categoryNote: (c) => L.categories[c]?.note ?? CATEGORY_NOTES[c],
     level: (l) => L.levels[l] ?? l,
     glossary: (id) => L.glossary[id] ?? EN.glossary[id],
+    landing: (url) => L.landings[url] ?? EN.landings[url],
     frequency: (t) => {
       const p = frequencyParts(t);
       if (!p) return null;
@@ -182,3 +221,25 @@ export function learnText(lang: Lang, loc: LearnLocale = EN): LearnText {
 
 /** URL prefix of a language's static pages: '' for English, '/nb' and '/es' */
 export const langPrefix = (lang: Lang) => (lang === 'en' ? '' : `/${lang}`);
+
+/** a worked example's position, exactly as the solver had it just before the step */
+export function exampleGrid(example: Example): Grid {
+  const g = parseGrid(example.puzzle)!;
+  for (let i = 0; i < 81; i++) {
+    g.values[i] = Number(example.values[i]);
+    g.cands[i] = example.cands[i];
+  }
+  return g;
+}
+
+/**
+ * A worked example's step in the language the engine is writing in
+ * (src/engine/text.ts). The stored step is English; in another language
+ * the technique's finder takes the same step again at the stored position,
+ * which tests/examples.test.ts holds to be the very same step, only in
+ * other words.
+ */
+export function exampleStep(tech: Tech, example: Example): Step {
+  if (engineLang() === 'en') return example.step;
+  return findStep(tech, exampleGrid(example)) ?? example.step;
+}

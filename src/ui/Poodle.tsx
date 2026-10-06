@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useSettings } from '../state/settings';
+import { useT } from '../content/i18n';
 
 // The tip shows once per ACTIVATION of the setting, not per mount: the
 // component also remounts on pause/resume, which should stay silent. The
@@ -22,6 +23,7 @@ export function Poodle() {
   const [tip, setTip] = useState(false);
   const wrap = useRef<HTMLSpanElement>(null);
   const drag = useRef<{ pointerX: number; baseX: number } | null>(null);
+  const t = useT();
 
   useEffect(() => {
     if (!tipArmed) return;
@@ -44,7 +46,7 @@ export function Poodle() {
       style={{ transform: `translateX(${x}px)` }}
       aria-hidden="true"
     >
-      {tip && <span className="poodle-tip">drag me 🐾</span>}
+      {tip && <span className="poodle-tip">{t('drag me')} 🐾</span>}
       <img
         className="poodle"
         src="/poodle.png"

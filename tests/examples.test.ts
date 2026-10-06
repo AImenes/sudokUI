@@ -5,18 +5,34 @@
  * its descriptions changes, this fails until the examples are re-derived:
  *
  *   npx vite-node scripts/hunt-examples.ts refresh
+ *
+ * The guide and the static pages explain an example in the reader's
+ * language by having the engine find the step again at the stored
+ * position, so that must give the stored step, in every language the same
+ * step, only in other words.
  */
 import { describe, it, expect } from 'vitest';
 import { Grid, parseGrid, bit } from '../src/engine/board';
 import { solve } from '../src/engine/bruteForce';
-import { ratePuzzle, applyStep } from '../src/engine/humanSolver';
+import { ratePuzzle, applyStep, findStep } from '../src/engine/humanSolver';
 import { TECHS, Tech } from '../src/engine/ratings';
+import type { Step } from '../src/engine/steps';
+import { setEngineText, engineLang } from '../src/engine/text';
 import { cleanTechniques } from '../src/engine/generator';
 import { EXAMPLES } from '../src/content/examples';
 import { boardSvg } from '../src/content/boardSvg';
 import { buildLearnAssets } from '../src/content/learnPages';
+import { exampleGrid, exampleStep } from '../src/content/learnLocale';
+import engineNb from '../src/content/locales/engine.nb';
+import engineEs from '../src/content/locales/engine.es';
 
 const techs = Object.keys(EXAMPLES) as Tech[];
+
+/** a step as stored: plain data */
+const plain = (step: Step | null) => JSON.parse(JSON.stringify(step));
+/** what a step does and draws, without its words (description, legend labels, the walk's sentences) */
+const deeds = (step: Step | null) =>
+  JSON.parse(JSON.stringify(step, (key, value) => (['description', 'labels', 'text'].includes(key) ? undefined : value)));
 
 describe('worked examples', () => {
   it('cover most of the catalogue', () => {
@@ -82,6 +98,30 @@ describe('worked examples', () => {
       for (const band of ex.step.units ?? []) {
         expect(band.unit).toBeGreaterThanOrEqual(0);
         expect(band.unit).toBeLessThan(27);
+      }
+    });
+
+    it(`${tech}: is found again at its stored position, the same step in every language`, () => {
+      const ex = EXAMPLES[tech]!;
+      // English: at the stored position (the test above holds it to the
+      // solver's), the technique's finder takes exactly the stored step
+      expect(engineLang()).toBe('en');
+      expect(plain(findStep(tech, exampleGrid(ex)))).toEqual(ex.step);
+      expect(exampleStep(tech, ex)).toBe(ex.step);
+      // another language: the finder takes the same step, only its words differ
+      for (const [lang, table] of [
+        ['nb', engineNb],
+        ['es', engineEs]
+      ] as const) {
+        setEngineText(lang, table);
+        try {
+          const step = findStep(tech, exampleGrid(ex));
+          expect(step, `${lang}: found`).not.toBeNull();
+          expect(deeds(step), lang).toEqual(deeds(ex.step));
+          expect(deeds(exampleStep(tech, ex)), lang).toEqual(deeds(ex.step));
+        } finally {
+          setEngineText('en', null);
+        }
       }
     });
   }

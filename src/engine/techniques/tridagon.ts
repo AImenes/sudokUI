@@ -1,6 +1,7 @@
 import { Grid, bit, digitsOf, popcount, boxOf, sees, cellName, cellNames } from '../board';
 import { Step } from '../steps';
 import { combinations } from './subsets';
+import { tr } from '../text';
 
 /**
  * Tridagon / trivalue oddagon: twelve cells, three per box of a 2×2 box
@@ -69,6 +70,9 @@ export function findTridagon(g: Grid): Step | null {
                       digit
                     }));
                     if (!elims.length) continue;
+                    // the sentence names the digits that actually fall: a
+                    // guardian may hold only two of the trio (never fewer)
+                    const fallen = elims.map((e) => e.digit).join('/');
                     return {
                       tech: 'TRIDAGON',
                       placements: [],
@@ -82,7 +86,7 @@ export function findTridagon(g: Grid): Step | null {
                         cell: guardian,
                         digit
                       })),
-                      description: `Tridagon: the cells ${cellNames(cells)} cannot all take digits from ${digitsOf(T).join('')} (proven by complete case analysis), so the guardian ${cellName(guardian)} must take one of its other candidates, so ${digitsOf(T).join('/')} fall from it.`
+                      description: tr`Tridagon: the cells ${cellNames(cells)} cannot all take digits from ${digitsOf(T).join('')} (proven by complete case analysis), so the guardian ${cellName(guardian)} must take one of its other candidates, so ${fallen} fall from it.`
                     };
                   }
                 }

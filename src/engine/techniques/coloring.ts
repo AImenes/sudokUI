@@ -1,10 +1,10 @@
 import { Grid, UNITS, bit, sees, cellName } from '../board';
 import { Step, CellDigit, ChainLink } from '../steps';
-import { unitName } from './subsets';
+import { tr, unitName } from '../text';
 
-/** on-screen hue of each parity: colour 0 renders blue, colour 1 gold */
-const HUE = ['blue', 'gold'] as const;
-const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+// The on-screen hue of each parity: colour 0 renders blue, colour 1 gold.
+// A sentence that names a colour is written once per colour, so every
+// language can agree its words with it.
 
 interface Cluster {
   cells: number[];
@@ -84,11 +84,11 @@ function simpleColorsStep(
     primary: cl.cells.filter((c) => cl.color.get(c) === 0).map((cell) => ({ cell, digit: d })),
     secondary: cl.cells.filter((c) => cl.color.get(c) === 1).map((cell) => ({ cell, digit: d })),
     labels: {
-      primary: `blue: one colour of the conjugate pairs on ${d}, all true or all false together`,
-      secondary: 'gold: the other colour, true exactly when blue is false'
+      primary: tr`blue: one colour of the conjugate pairs on ${d}, all true or all false together`,
+      secondary: tr`gold: the other colour, true exactly when blue is false`
     },
     links: [...treeLinks(cl, d), ...witnesses],
-    description: `Simple Colors on ${d}: its conjugate pairs (the solid links) are coloured blue and gold, and either every blue ${d} is true or every gold one is. ${reason}.`
+    description: tr`Simple Colors on ${d}: its conjugate pairs (the solid links) are coloured blue and gold, and either every blue ${d} is true or every gold one is. ${reason}.`
   };
 }
 
@@ -107,17 +107,24 @@ export function findSimpleColors(g: Grid): Step | null {
             const elims: CellDigit[] = cl.cells
               .filter((c) => cl.color.get(c) === col)
               .map((cell) => ({ cell, digit: d }));
+            const unit = unitName(u);
+            const a = cellName(same[0]);
+            const b = cellName(same[1]);
             return simpleColorsStep(
               cl,
               d,
               elims,
-              `${cap(HUE[col])} puts ${d} twice in ${unitName(u)} (${cellName(same[0])} and ${cellName(same[1])}), so ${HUE[col]} is false: all its ${d}s are removed (circled red) and every ${HUE[1 - col]} ${d} is true`,
+              col === 0
+                ? tr`Blue puts ${d} twice in ${unit} (${a} and ${b}), so blue is false: all its ${d}s are removed (circled red) and every gold ${d} is true`
+                : tr`Gold puts ${d} twice in ${unit} (${a} and ${b}), so gold is false: all its ${d}s are removed (circled red) and every blue ${d} is true`,
               [
                 witness(
                   same[0],
                   same[1],
                   d,
-                  `${cap(HUE[col])} puts ${d} in both ${cellName(same[0])} and ${cellName(same[1])} of ${unitName(u)}. A digit appears once per house, so ${HUE[col]} cannot be true.`
+                  col === 0
+                    ? tr`Blue puts ${d} in both ${a} and ${b} of ${unit}. A digit appears once per house, so blue cannot be true.`
+                    : tr`Gold puts ${d} in both ${a} and ${b} of ${unit}. A digit appears once per house, so gold cannot be true.`
                 )
               ]
             );
@@ -135,14 +142,14 @@ export function findSimpleColors(g: Grid): Step | null {
         if (seen[0] !== undefined && seen[1] !== undefined) {
           elims.push({ cell: c, digit: d });
           if (!why) {
-            why = `The ${d} in ${cellName(c)} sees a blue ${d} in ${cellName(seen[0])} and a gold ${d} in ${cellName(seen[1])}, so it is false either way`;
+            why = tr`The ${d} in ${cellName(c)} sees a blue ${d} in ${cellName(seen[0])} and a gold ${d} in ${cellName(seen[1])}, so it is false either way`;
             witnesses.push(
-              witness(seen[0], c, d, `If blue is true, the ${d} in ${cellName(seen[0])} is placed, and the ${d} in ${cellName(c)} goes.`),
+              witness(seen[0], c, d, tr`If blue is true, the ${d} in ${cellName(seen[0])} is placed, and the ${d} in ${cellName(c)} goes.`),
               witness(
                 seen[1],
                 c,
                 d,
-                `If gold is true, the ${d} in ${cellName(seen[1])} is placed, and the ${d} in ${cellName(c)} goes. Either way it is false.`
+                tr`If gold is true, the ${d} in ${cellName(seen[1])} is placed, and the ${d} in ${cellName(c)} goes. Either way it is false.`
               )
             );
           }
@@ -153,7 +160,7 @@ export function findSimpleColors(g: Grid): Step | null {
           cl,
           d,
           elims,
-          why + (elims.length > 1 ? `; ${elims.length} ${d}s fall this way` : ''),
+          why + (elims.length > 1 ? tr`; ${elims.length} ${d}s fall this way` : ''),
           witnesses
         );
       }
@@ -221,9 +228,9 @@ export function findMultiColors(g: Grid): Step | null {
                 secondary: bOther.map((cell) => ({ cell, digit: d })),
                 fins: aOther.map((cell) => ({ cell, digit: d })),
                 labels: {
-                  primary: 'blue: one colour of the second cluster',
-                  secondary: 'gold: its partner colour',
-                  fins: 'purple: the partner colour of the red one, in the first cluster'
+                  primary: tr`blue: one colour of the second cluster`,
+                  secondary: tr`gold: its partner colour`,
+                  fins: tr`purple: the partner colour of the red one, in the first cluster`
                 },
                 links: [
                   ...treeLinks(c1, d),
@@ -235,7 +242,7 @@ export function findMultiColors(g: Grid): Step | null {
                     strong: false
                   }
                 ],
-                description: `Multi Colors on ${d}: two conjugate-pair clusters of ${d}, one coloured blue and gold. If the red ${d}s were all true, ${cellName(bridgeA)} would kill the blue ${d} in ${cellName(bridgeB)}, making gold entirely true; but ${cellName(bridgeA2)} also sees the gold ${d} in ${cellName(bridgeB2)}. So the red colour is false and every purple ${d} (its partner colour) is true.`
+                description: tr`Multi Colors on ${d}: two conjugate-pair clusters of ${d}, one coloured blue and gold. If the red ${d}s were all true, ${cellName(bridgeA)} would kill the blue ${d} in ${cellName(bridgeB)}, making gold entirely true; but ${cellName(bridgeA2)} also sees the gold ${d} in ${cellName(bridgeB2)}. So the red colour is false and every purple ${d} (its partner colour) is true.`
               };
             }
             // rule 2: colA and colB cannot both be true (the bridge cells see
@@ -252,15 +259,16 @@ export function findMultiColors(g: Grid): Step | null {
               if (x !== undefined && y !== undefined) {
                 elims.push({ cell: c, digit: d });
                 if (!why) {
-                  why = `The ${d} in ${cellName(c)} sees the blue ${d} in ${cellName(x)} and the gold ${d} in ${cellName(y)}, so it is false either way`;
+                  why = tr`The ${d} in ${cellName(c)} sees the blue ${d} in ${cellName(x)} and the gold ${d} in ${cellName(y)}, so it is false either way`;
                   witnesses.push(
-                    witness(x, c, d, `If blue is true, the ${d} in ${cellName(x)} is placed, and the ${d} in ${cellName(c)} goes.`),
-                    witness(y, c, d, `If gold is true, the ${d} in ${cellName(y)} is placed, and the ${d} in ${cellName(c)} goes. Either way it is false.`)
+                    witness(x, c, d, tr`If blue is true, the ${d} in ${cellName(x)} is placed, and the ${d} in ${cellName(c)} goes.`),
+                    witness(y, c, d, tr`If gold is true, the ${d} in ${cellName(y)} is placed, and the ${d} in ${cellName(c)} goes. Either way it is false.`)
                   );
                 }
               }
             }
             if (elims.length) {
+              const reason = why + (elims.length > 1 ? tr`; ${elims.length} ${d}s fall this way` : '');
               return {
                 tech: 'MULTI_COLORS',
                 placements: [],
@@ -269,12 +277,12 @@ export function findMultiColors(g: Grid): Step | null {
                 secondary: bOther.map((cell) => ({ cell, digit: d })),
                 fins: aCells.concat(bCells).map((cell) => ({ cell, digit: d })),
                 labels: {
-                  primary: 'blue: a colour of the first cluster',
-                  secondary: 'gold: a colour of the second cluster',
-                  fins: 'purple: the two colours that see each other across the bridge; at most one is true'
+                  primary: tr`blue: a colour of the first cluster`,
+                  secondary: tr`gold: a colour of the second cluster`,
+                  fins: tr`purple: the two colours that see each other across the bridge; at most one is true`
                 },
                 links: [...treeLinks(c1, d), ...treeLinks(c2, d), bridge, ...witnesses],
-                description: `Multi Colors on ${d}: two conjugate-pair clusters of ${d}. The purple ${d}s in ${cellName(bridgeA)} and ${cellName(bridgeB)} see each other (the dashed link), so they cannot both be true, and at least one of blue and gold is entirely true. ${why}${elims.length > 1 ? `; ${elims.length} ${d}s fall this way` : ''}.`
+                description: tr`Multi Colors on ${d}: two conjugate-pair clusters of ${d}. The purple ${d}s in ${cellName(bridgeA)} and ${cellName(bridgeB)} see each other (the dashed link), so they cannot both be true, and at least one of blue and gold is entirely true. ${reason}.`
               };
             }
           }

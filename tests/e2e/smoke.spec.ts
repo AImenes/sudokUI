@@ -433,3 +433,23 @@ test.describe('phone on its side, 844 x 390', () => {
     await expect(page.locator('.num-btn').first()).toBeInViewport();
   });
 });
+
+test.describe('the app in Norwegian and Spanish', () => {
+  // /nb/ and /es/ are pages of their own (built from src/content/home.ts)
+  // and the app starts in their language, whatever the browser's
+  const LANGS = [
+    { path: '/nb/', lang: 'nb', title: /på nett/, caption: 'alt i denne boksen teller som hjelp' },
+    { path: '/es/', lang: 'es', title: /online/, caption: 'todo lo de este cuadro cuenta como ayuda' }
+  ];
+  for (const l of LANGS) {
+    test(`${l.path} serves its own page and starts the app in ${l.lang}`, async ({ page }) => {
+      await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+      const response = await page.goto(`${l.path}#p=${EASY}`);
+      expect(await response!.text()).toContain(`<html lang="${l.lang}"`);
+      await expect(page).toHaveTitle(l.title);
+      await expect(page.locator('svg.board')).toBeVisible();
+      await expect(page.locator('html')).toHaveAttribute('lang', l.lang);
+      await expect(page.getByText(l.caption)).toBeVisible();
+    });
+  }
+});

@@ -8,6 +8,7 @@
 import { Grid, cloneGrid, setValue, bit, isSolved, isBroken, cellName, parseGrid } from './board';
 import { solve } from './bruteForce';
 import { Step } from './steps';
+import { tr } from './text';
 import { Tech, TECHS, Level, LEVELS, LEVEL_MAX_SCORE, SOLVE_ORDER, maxLevel, bandFloor } from './ratings';
 import { findFullHouse, findNakedSingle, findHiddenSingle } from './techniques/singles';
 import { findLockedCandidates1, findLockedCandidates2 } from './techniques/intersections';
@@ -140,6 +141,16 @@ export function findNextStep(g: Grid, order: Tech[] = SOLVE_ORDER): Step | null 
 }
 
 /**
+ * The step the solver's finder for one technique returns in this position
+ * (its first instance), or null. AIC_ALS steps come from the grouped AIC
+ * engine, which names its steps by what they contain.
+ */
+export function findStep(tech: Tech, g: Grid): Step | null {
+  const finder = FINDERS[tech] ?? (tech === 'AIC_ALS' ? FINDERS.AIC_GROUPED : undefined);
+  return finder ? finder(g) : null;
+}
+
+/**
  * Every technique that fires in this exact position, cheapest first — one
  * step per technique. The solve path always takes the cheapest, but a human
  * may prefer the pattern they are better at spotting; this shows the whole
@@ -244,7 +255,7 @@ export function ratePuzzle(
         tech: 'BRUTE_FORCE',
         placements: [{ cell, digit: solution.values[cell] }],
         eliminations: [],
-        description: `Brute force: set ${cellName(cell)} to ${solution.values[cell]}.`
+        description: tr`Brute force: set ${cellName(cell)} to ${solution.values[cell]}.`
       };
     }
     applyStep(g, step);

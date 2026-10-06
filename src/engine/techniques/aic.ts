@@ -1,5 +1,6 @@
 import { Grid, UNITS, bit, digitsOf, popcount, sees, cellName } from '../board';
 import { Step, CellDigit, alternatingLinks } from '../steps';
+import { tr } from '../text';
 
 /**
  * Alternating Inference Chains (sudokuwiki.org/Alternating_Inference_Chains).
@@ -132,12 +133,12 @@ function searchAic(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | nu
           const b = cur;
           return {
             tech: 'AIC',
-            labels: { primary: 'the chain' },
+            labels: { primary: tr`the chain` },
             placements: [],
             eliminations: elims,
             primary: path.map((id) => ({ cell: nCell(id), digit: nDigit(id) })),
             links: alternatingLinks(path.map((id) => [{ cell: nCell(id), digit: nDigit(id) }])),
-            description: `AIC: ${path
+            description: tr`AIC: ${path
               .map((id) => `${nDigit(id)}@${cellName(nCell(id))}`)
               .join(' → ')}; at least one of ${nDigit(a)}@${cellName(nCell(a))} and ${nDigit(b)}@${cellName(nCell(b))} is true, so candidates conflicting with both are removed.`
           };
@@ -150,7 +151,7 @@ function searchAic(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | nu
           // weak entry + strong closure: single flaw at start -> start is TRUE
           return {
             tech: 'NICE_LOOP',
-            labels: { primary: 'the loop' },
+            labels: { primary: tr`the loop` },
             placements: [{ cell: nCell(start), digit: nDigit(start) }],
             eliminations: [],
             primary: path.map((id) => ({ cell: nCell(id), digit: nDigit(id) })),
@@ -158,7 +159,7 @@ function searchAic(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | nu
               path.map((id) => [{ cell: nCell(id), digit: nDigit(id) }]),
               'strong'
             ),
-            description: `Nice Loop: the loop ${path
+            description: tr`Nice Loop: the loop ${path
               .map((id) => `${nDigit(id)}@${cellName(nCell(id))}`)
               .join(' → ')} closes with two strong links at ${nDigit(start)}@${cellName(nCell(start))}; denying it forces it, so it is placed.`
           };
@@ -221,7 +222,7 @@ function continuousLoop(g: Grid, path: number[]): Step | null {
   if (!elims.length) return null;
   return {
     tech: 'NICE_LOOP',
-    labels: { primary: 'the loop' },
+    labels: { primary: tr`the loop` },
     placements: [],
     eliminations: elims,
     primary: path.map((id) => ({ cell: nCell(id), digit: nDigit(id) })),
@@ -229,7 +230,7 @@ function continuousLoop(g: Grid, path: number[]): Step | null {
       path.map((id) => [{ cell: nCell(id), digit: nDigit(id) }]),
       'weak'
     ),
-    description: `Nice Loop: the continuous loop ${path
+    description: tr`Nice Loop: the continuous loop ${path
       .map((id) => `${nDigit(id)}@${cellName(nCell(id))}`)
       .join(' → ')} alternates perfectly; every weak link has exactly one true side, clearing other candidates along it.`
   };

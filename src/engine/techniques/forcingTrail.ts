@@ -6,14 +6,21 @@
  * (forcing.ts), but records, for every placement, which earlier placements
  * made it forced: for a naked single, the placements that removed the
  * cell's other candidates; for a hidden single, the placements that took
- * the digit's other cells in the house. A contradiction records its causes
- * the same way. `spine` then follows the most recent cause back from the
- * conclusion to the assumption: one line of the reasoning, read in order,
+ * the digit from the house's other cells (each by the placement that took
+ * it, not a later one that filled the cell, so every link names the
+ * placement that really made its single forced). A contradiction records
+ * its causes the same way. `spine` then follows the most recent cause back
+ * from the conclusion to the assumption: one line of the reasoning, read in order,
  * which is what the board draws and the walk reads. A net can have several
- * such lines; one is shown, and it is a sound one.
+ * such lines; one is shown, and it is a sound one. In a position that still
+ * has singles (Scan, Check's "why not"), a single that was there before
+ * anything was assumed has no causes either, and a line can start at it;
+ * its first sentence then names the assumption and calls the single what it
+ * is, one the position already had (`opening`).
  */
 import { Grid, UNITS, PEERS, bit, digitsOf, popcount, cloneGrid, cellName } from '../board';
 import { CellDigit, ChainLink } from '../steps';
+import { tr, unitName } from '../text';
 
 export interface TrailStep {
   cell: number;
@@ -40,8 +47,6 @@ export interface Trail {
   /** trail index that placed a cell, -1 if it was placed before the trail */
   placedBy: Int16Array;
 }
-
-const UNIT_NAME = (u: number) => (u < 9 ? `row ${u + 1}` : u < 18 ? `column ${u - 8}` : `box ${u - 17}`);
 
 /** Assume a candidate on (placed) or off (removed) and propagate singles, recording causes. */
 export function propagateWithTrail(start: Grid, cell: number, digit: number, on: boolean): Trail {
@@ -104,12 +109,15 @@ export function propagateWithTrail(start: Grid, cell: number, digit: number, on:
           }
         }
         if (solved) continue;
-        // the cells of the house that could have held d at the start and no longer can
+        // the cells of the house that could have held d at the start and no
+        // longer can, each by the step that took d from it: a cell placed
+        // with another digit may have lost d long before it was placed, and
+        // its placement is then not why d has no place there
         const lost = () =>
           uniq(
             unit
               .filter((c) => c !== pos && start.values[c] === 0 && start.cands[c] & b)
-              .map((c) => (g.values[c] !== 0 ? placedBy[c] : removedBy[c * 9 + d - 1]))
+              .map((c) => removedBy[c * 9 + d - 1])
           );
         if (count === 0) return done({ kind: 'unit', unit: u, digit: d, because: lost() });
         if (count === 1) {
@@ -142,33 +150,84 @@ export function spine(trail: Trail, last: number): number[] {
 /** the most recent of some causes, or the assumption */
 export const latest = (because: number[]) => (because.length ? Math.max(...because) : 0);
 
-/** what a placement on the trail says, for the walk */
-function why(step: TrailStep): string {
-  return step.how === 'hidden'
-    ? `the only place left for ${step.digit} in ${UNIT_NAME(step.unit!)}`
-    : `the only candidate left in ${cellName(step.cell)}`;
+/**
+ * What one link of the trail says, for the walk: the premise (the step
+ * before, or the assumed removal when `off`), the single it forces, and why
+ * that single is forced.
+ */
+function linkText(from: TrailStep, to: TrailStep, off: boolean): string {
+  const a = cellName(from.cell);
+  const b = cellName(to.cell);
+  if (to.how === 'hidden') {
+    const u = unitName(to.unit!);
+    return off
+      ? tr`If ${a} is not ${from.digit}, then ${b} must be ${to.digit}: the only place left for ${to.digit} in ${u}.`
+      : tr`${a} = ${from.digit}, then ${b} must be ${to.digit}: the only place left for ${to.digit} in ${u}.`;
+  }
+  return off
+    ? tr`If ${a} is not ${from.digit}, then ${b} must be ${to.digit}: the only candidate left in ${b}.`
+    : tr`${a} = ${from.digit}, then ${b} must be ${to.digit}: the only candidate left in ${b}.`;
 }
 
 const node = (s: TrailStep): CellDigit => ({ cell: s.cell, digit: s.digit });
 
 /**
+ * The first link of a line that starts at a single the position already
+ * has, not at the assumption: the single is said to be there already, never
+ * as if the assumption had forced it, and why it is a single.
+ */
+function alreadyLinkText(s: TrailStep, to: TrailStep): string {
+  const a = cellName(s.cell);
+  const b = cellName(to.cell);
+  if (s.how === 'hidden') {
+    const su = unitName(s.unit!);
+    if (to.how === 'hidden') {
+      const u = unitName(to.unit!);
+      return tr`In ${su}, ${s.digit} already fits only in ${a}, so ${b} must be ${to.digit}: the only place left for ${to.digit} in ${u}.`;
+    }
+    return tr`In ${su}, ${s.digit} already fits only in ${a}, so ${b} must be ${to.digit}: the only candidate left in ${b}.`;
+  }
+  if (to.how === 'hidden') {
+    const u = unitName(to.unit!);
+    return tr`${a} already has only one candidate, ${s.digit}, so ${b} must be ${to.digit}: the only place left for ${to.digit} in ${u}.`;
+  }
+  return tr`${a} already has only one candidate, ${s.digit}, so ${b} must be ${to.digit}: the only candidate left in ${b}.`;
+}
+
+/**
+ * The first sentence of a line. `spine` stops at a step with no causes:
+ * the assumption, whose placement or removal is then the premise; or, in a
+ * position that still has singles (Scan, Check's "why not"), a single that
+ * was there before anything was assumed. Such a line never passes through
+ * the assumption, yet what it goes on to force may depend on it, so the
+ * assumption is stated first, as a sentence of its own, and the single
+ * after it as a fact of the position.
+ */
+function opening(trail: Trail, start: number, on: boolean, fromAssumption: () => string, fromSingle: (s: TrailStep) => string): string {
+  if (start === 0) return fromAssumption();
+  const a = trail.steps[0];
+  const x = cellName(a.cell);
+  const assume = on ? tr`Assume ${x} = ${a.digit}.` : tr`Assume ${x} is not ${a.digit}.`;
+  return `${assume} ${fromSingle(trail.steps[start])}`;
+}
+
+/**
  * The links that draw a spine: each forced placement points at the next,
- * and the assumption's own link says whether it was placed or removed.
+ * and the first link opens the line (see `opening`).
  */
 export function spineLinks(trail: Trail, path: number[], on: boolean): ChainLink[] {
   const links: ChainLink[] = [];
   for (let k = 1; k < path.length; k++) {
     const from = trail.steps[path[k - 1]];
     const to = trail.steps[path[k]];
-    const premise =
-      k === 1 && !on
-        ? `If ${cellName(from.cell)} is not ${from.digit}`
-        : `${cellName(from.cell)} = ${from.digit}`;
     links.push({
       from: [node(from)],
       to: [node(to)],
       strong: true,
-      text: `${premise}, then ${cellName(to.cell)} must be ${to.digit}: ${why(to)}.`
+      text:
+        k === 1
+          ? opening(trail, path[0], on, () => linkText(from, to, !on), (s) => alreadyLinkText(s, to))
+          : linkText(from, to, false)
     });
   }
   return links;
@@ -182,10 +241,37 @@ export function brokenCells(g: Grid, broken: Broken): CellDigit[] {
     .map((cell) => ({ cell, digit: broken.digit }));
 }
 
-export function brokenText(broken: Broken): string {
+/**
+ * The link into a contradiction: the premise (the last step, or the assumed
+ * removal when `off`), then the cell with no candidate or the house with no
+ * place for a digit.
+ */
+export function brokenText(broken: Broken, from: CellDigit, off: boolean): string {
+  const a = cellName(from.cell);
+  if (broken.kind === 'cell') {
+    const c = cellName(broken.cell);
+    return off
+      ? tr`If ${a} is not ${from.digit}, then ${c} would have no candidate left: a contradiction.`
+      : tr`${a} = ${from.digit}, then ${c} would have no candidate left: a contradiction.`;
+  }
+  const u = unitName(broken.unit);
+  return off
+    ? tr`If ${a} is not ${from.digit}, then ${u} would have no place left for ${broken.digit}: a contradiction.`
+    : tr`${a} = ${from.digit}, then ${u} would have no place left for ${broken.digit}: a contradiction.`;
+}
+
+/** the link into a contradiction from a single the position already has (see `opening`) */
+function alreadyBrokenText(broken: Broken, s: TrailStep): string {
+  const a = cellName(s.cell);
+  if (s.how === 'hidden') {
+    const su = unitName(s.unit!);
+    return broken.kind === 'cell'
+      ? tr`In ${su}, ${s.digit} already fits only in ${a}, so ${cellName(broken.cell)} would have no candidate left: a contradiction.`
+      : tr`In ${su}, ${s.digit} already fits only in ${a}, so ${unitName(broken.unit)} would have no place left for ${broken.digit}: a contradiction.`;
+  }
   return broken.kind === 'cell'
-    ? `${cellName(broken.cell)} would have no candidate left`
-    : `${UNIT_NAME(broken.unit)} would have no place left for ${broken.digit}`;
+    ? tr`${a} already has only one candidate, ${s.digit}, so ${cellName(broken.cell)} would have no candidate left: a contradiction.`
+    : tr`${a} already has only one candidate, ${s.digit}, so ${unitName(broken.unit)} would have no place left for ${broken.digit}: a contradiction.`;
 }
 
 // ---- what the finders draw ----
@@ -208,15 +294,18 @@ export function contradictionDrawing(g: Grid, cell: number, digit: number, on: b
   const path = spine(trail, latest(trail.broken.because));
   const links = spineLinks(trail, path, on);
   const last = trail.steps[path[path.length - 1]];
-  const fins = brokenCells(g, trail.broken);
-  const premise =
-    path.length === 1 && !on ? `If ${cellName(cell)} is not ${digit}` : `${cellName(last.cell)} = ${last.digit}`;
+  const broken = trail.broken;
+  const fins = brokenCells(g, broken);
   if (fins.length) {
     links.push({
       from: [node(last)],
       to: fins,
       strong: false,
-      text: `${premise}, then ${brokenText(trail.broken)}: a contradiction.`
+      // with no forced single before it, this link opens the line
+      text:
+        path.length === 1
+          ? opening(trail, path[0], on, () => brokenText(broken, node(last), !on), (s) => alreadyBrokenText(broken, s))
+          : brokenText(broken, node(last), false)
     });
   }
   return { links, fins, unit: trail.broken.kind === 'unit' ? trail.broken.unit : undefined };
@@ -245,12 +334,30 @@ export function conclusionDrawing(
   const path = spine(trail, k);
   const links = spineLinks(trail, path, on);
   const last = trail.steps[k];
-  const premise = k === 0 && !on ? `If ${cellName(cell)} is not ${digit}` : `${cellName(last.cell)} = ${last.digit}`;
+  const placed = () => tr`${cellName(last.cell)} = ${last.digit}, so ${e} is removed from ${cellName(c)}.`;
   links.push({
     from: [node(last)],
     to: [{ cell: c, digit: e }],
     strong: false,
-    text: `${premise}, so ${e} is removed from ${cellName(c)}.`
+    // with no forced single before it, this link opens the line
+    text:
+      path.length === 1
+        ? opening(
+            trail,
+            k,
+            on,
+            () => (on ? placed() : tr`If ${cellName(cell)} is not ${digit}, so ${e} is removed from ${cellName(c)}.`),
+            (s) => alreadyElimText(s, e, c)
+          )
+        : placed()
   });
   return links;
+}
+
+/** a removal made by a single the position already has (see `opening`) */
+function alreadyElimText(s: TrailStep, e: number, c: number): string {
+  const a = cellName(s.cell);
+  return s.how === 'hidden'
+    ? tr`In ${unitName(s.unit!)}, ${s.digit} already fits only in ${a}, so ${e} is removed from ${cellName(c)}.`
+    : tr`${a} already has only one candidate, ${s.digit}, so ${e} is removed from ${cellName(c)}.`;
 }

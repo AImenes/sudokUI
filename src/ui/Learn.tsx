@@ -4,6 +4,8 @@
 // feeds the static /learn/ pages.
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { describe } from '../engine/hintFrames';
+import { engineLang } from '../engine/text';
+import type { Step } from '../engine/steps';
 import { Modal } from './Dialogs';
 import { BandTable } from './BandTable';
 import { TECHS, ALL_TECHS, SOLVE_ORDER, LEVELS, LEVEL_MAX_SCORE, Tech } from '../engine/ratings';
@@ -17,10 +19,10 @@ import { linkGlossary } from '../content/glossaryLinks';
 import { boardSvg, legendOf, Example } from '../content/boardSvg';
 import { share, worth } from '../content/frequency';
 import { useStats, learnNextScore } from '../state/stats';
-import { SOLVE_TIME_TABLES } from '../content/solveTimes';
-import { LearnText, langPrefix } from '../content/learnLocale';
+import { solveTimeTables } from '../content/solveTimes';
+import { LearnText, langPrefix, exampleStep } from '../content/learnLocale';
 import type { LearnString } from '../content/learnStrings';
-import { useT } from '../content/i18n';
+import { useT, msg } from '../content/i18n';
 import { HubTabs } from './HubTabs';
 import { useLearnText } from './useLearnText';
 
@@ -30,11 +32,30 @@ type Examples = Partial<Record<Tech, Example>>;
 // never as part of loading the game, and kept for the next opening
 let loadedExamples: Examples | undefined;
 
+// each example's step in each language the engine has explained it in
+const exampleSteps = new Map<string, Step>();
+
+/**
+ * A worked example's step in the language the engine writes in now (it
+ * follows the setting, src/content/i18n.ts): the stored step is English,
+ * and the engine takes the same step again in another language, once per
+ * technique and language.
+ */
+function localStep(tech: Tech, example: Example): Step {
+  const key = `${engineLang()}:${tech}`;
+  let step = exampleSteps.get(key);
+  if (!step) {
+    step = exampleStep(tech, example);
+    exampleSteps.set(key, step);
+  }
+  return step;
+}
+
 /**
  * A real position where the technique applies, drawn by the same renderer
  * as the static pages. The drawing goes through an image so that its
  * styles cannot leak into the live board, which is SVG too. The step's own
- * wording comes from the solver and is English for now.
+ * wording comes from the solver, in the player's language.
  */
 function WorkedExample({
   tech,
@@ -52,20 +73,22 @@ function WorkedExample({
     () => `data:image/svg+xml;utf8,${encodeURIComponent(boardSvg(example, title))}`,
     [example, title]
   );
+  const step = localStep(tech, example);
+  const text = describe(step);
   return (
     <figure className="learn-example">
       <span className="learn-label">{lt.s('Worked example')}</span>
-      <img src={src} alt={`${title}. ${describe(example.step)}`} />
+      <img src={src} alt={`${title}. ${text}`} />
       <figcaption>
         <span className="learn-legend">
-          {legendOf(example.step).map((l) => (
+          {legendOf(step).map((l) => (
             <span key={l.label}>
               <i style={{ background: l.colour }} />
               {l.label}
             </span>
           ))}
         </span>
-        <span lang="en">{describe(example.step)}</span>
+        <span>{text}</span>
         {example.credit && <span className="learn-see"> {lt.s('Puzzle: {credit}.', { credit: example.credit })}</span>}
         {example.afterHarder && (
           <span className="learn-see"> {lt.s('In this puzzle the position comes after harder steps.')}</span>
@@ -167,7 +190,7 @@ export function RatingExplainer() {
               <th>{lt.s('World class')}</th>
             </tr>
           </thead>
-          {SOLVE_TIME_TABLES.map((t) => {
+          {solveTimeTables(lt.lang).map((t) => {
             const label = rating.modes[t.mode];
             return (
               <tbody key={t.mode}>
@@ -204,31 +227,35 @@ export function RatingExplainer() {
 export type LearnSort = 'family' | 'easiest' | 'common' | 'worth' | 'next';
 
 /** label: the heading of the sorted list; menu: how the option reads in the closed select */
-const SORTS: { value: LearnSort; label: LearnString; menu: LearnString; note?: LearnString }[] = [
-  { value: 'family', label: 'By family', menu: 'By family' },
+const sortOptions = (lt: LearnText): { value: LearnSort; label: string; menu: string; note?: string }[] => [
+  { value: 'family', label: lt.s('By family'), menu: lt.s('By family') },
   {
     value: 'easiest',
-    label: 'Easiest first',
-    menu: 'Easiest first',
-    note: 'In the order the solver tries them: a technique is only needed once everything above it has run dry.'
+    label: lt.s('Easiest first'),
+    menu: lt.s('Easiest first'),
+    note: lt.s('In the order the solver tries them: a technique is only needed once everything above it has run dry.')
   },
   {
     value: 'common',
-    label: 'Most often needed',
-    menu: 'Most often needed first',
-    note: 'The techniques that turn up in the most puzzles sudokUI generates, whatever their difficulty.'
+    label: lt.s('Most often needed'),
+    menu: lt.s('Most often needed first'),
+    note: lt.s('The techniques that turn up in the most puzzles sudokUI generates, whatever their difficulty.')
   },
   {
     value: 'worth',
-    label: 'Most worth learning',
-    menu: 'Most worth learning first',
-    note: 'How often a technique is needed, weighted by its rating cost. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it, and those come first.'
+    label: lt.s('Most worth learning'),
+    menu: lt.s('Most worth learning first'),
+    note: lt.s(
+      'How often a technique is needed, weighted by its rating cost. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it, and those come first.'
+    )
   },
   {
     value: 'next',
-    label: 'Learn next',
-    menu: 'Learn next first',
-    note: 'The techniques most worth learning that you have used least on your own. Every move you make is credited with the easiest technique that justifies it, and a technique you have played unaided moves down the list. Your play stays on this device.'
+    label: lt.s('Learn next'),
+    menu: lt.s('Learn next first'),
+    note: lt.s(
+      'The techniques most worth learning that you have used least on your own. Every move you make is credited with the easiest technique that justifies it, and a technique you have played unaided moves down the list. Your play stays on this device.'
+    )
   }
 ];
 
@@ -289,6 +316,7 @@ function TechniqueList({
   // what the player has done with each technique, for the mastery line
   // and the "learn next" order (src/state/stats.ts)
   const techs = useStats((s) => s.techs);
+  const sorts = useMemo(() => sortOptions(lt), [lt]);
 
   const groups = useMemo((): Group[] => {
     const q = query.trim().toLowerCase();
@@ -325,9 +353,9 @@ function TechniqueList({
           : sort === 'next'
             ? (a: Tech, b: Tech) => learnNextScore(b, techs) - learnNextScore(a, techs) || byIndex(a, b)
             : byIndex;
-    const { label, note } = SORTS.find((s) => s.value === sort)!;
-    return [{ key: sort, title: lt.s(label), note: note ? lt.s(note) : '', techs: [...visible].sort(order) }];
-  }, [query, sort, lt, techs]);
+    const { label, note } = sorts.find((s) => s.value === sort)!;
+    return [{ key: sort, title: label, note: note ?? '', techs: [...visible].sort(order) }];
+  }, [query, sort, lt, sorts, techs]);
   const matches = groups.reduce((n, g) => n + g.techs.length, 0);
 
   useEffect(() => {
@@ -361,9 +389,9 @@ function TechniqueList({
           aria-label={lt.s('Order of the list')}
           title={lt.s('Order of the list')}
         >
-          {SORTS.map((s) => (
+          {sorts.map((s) => (
             <option key={s.value} value={s.value}>
-              {lt.s(s.menu)}
+              {s.menu}
             </option>
           ))}
         </select>
@@ -642,11 +670,11 @@ function IntuitionGuide({ onTerm, onTech, lt }: { onTerm: (id: string) => void; 
 }
 
 const TAB_LABELS: Record<LearnTab, string> = {
-  techniques: 'Techniques',
-  intuition: 'Intuition',
-  method: 'How to solve',
-  glossary: 'Glossary',
-  rating: 'Rating'
+  techniques: msg('Techniques'),
+  intuition: msg('Intuition'),
+  method: msg('How to solve'),
+  glossary: msg('Glossary'),
+  rating: msg('Rating')
 };
 
 export function LearnDialog({

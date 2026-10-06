@@ -1,6 +1,7 @@
 import { Grid, UNITS, bit, digitsOf, popcount, sees, cellName, cellNames } from '../board';
 import { Step, CellDigit } from '../steps';
-import { combinations, unitName } from './subsets';
+import { combinations } from './subsets';
+import { tr, listAnd, unitName } from '../text';
 
 export interface Als {
   cells: number[];
@@ -65,8 +66,8 @@ function alsXzStep(
     primary: allCands(g, A.cells),
     secondary: allCands(g, B.cells),
     labels: {
-      primary: `set A: one digit short of locked; ${x} is its restricted common with set B`,
-      secondary: `set B: whichever set loses ${x} locks and places ${z}`
+      primary: tr`set A: one digit short of locked; ${x} is its restricted common with set B`,
+      secondary: tr`set B: whichever set loses ${x} locks and places ${z}`
     },
     // the restricted common: every x of one set sees every x of the other
     links: [
@@ -76,16 +77,12 @@ function alsXzStep(
         strong: false
       }
     ],
-    description: `ALS-XZ: sets ${cellNames(A.cells)} and ${cellNames(B.cells)} share restricted common ${x}; digit ${z} can be removed from cells seeing every ${z} of both sets.`
+    description: tr`ALS-XZ: sets ${cellNames(A.cells)} and ${cellNames(B.cells)} share restricted common ${x}; digit ${z} can be removed from cells seeing every ${z} of both sets.`
   };
 }
 
 const allCands = (g: Grid, cells: number[]): CellDigit[] =>
   cells.flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit })));
-
-/** "a", "a and b", "a, b and c" */
-const and = (items: string[]) =>
-  items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 
 /**
  * A WXYZ-Wing drawn by role, in the terms of docs/glossary_input.md: the
@@ -113,11 +110,11 @@ function wxyzStep(g: Grid, A: Als, B: Als, x: number, z: number, elims: CellDigi
     secondary: allCands(g, rest),
     fins: allCands(g, [linked]),
     labels: {
-      primary: `${seen.length === 1 ? 'cell' : 'cells'} whose ${x} the bivalue cell sees`,
-      ...(rest.length > 0 && { secondary: rest.length === 1 ? 'other cell of the three' : 'other cells of the three' }),
-      fins: 'bivalue cell'
+      primary: seen.length === 1 ? tr`cell whose ${x} the bivalue cell sees` : tr`cells whose ${x} the bivalue cell sees`,
+      ...(rest.length > 0 && { secondary: rest.length === 1 ? tr`other cell of the three` : tr`other cells of the three` }),
+      fins: tr`bivalue cell`
     },
-    description: `WXYZ-Wing: bivalue cell ${name} (${digitsOf(g.cands[linked]).join('')}) and the three cells ${and(three)} in ${unit}, which hold ${digitsOf(set.mask).join('')} between them. The ${x} in ${name} sees every ${x} in the three cells. Either ${name} is ${z}, or it is ${x} and the three cells in ${unit} must be ${and(others)}. At least one of the four cells is therefore ${z}, so ${z} is removed from every other cell that sees all the ${z}s among them.`
+    description: tr`WXYZ-Wing: bivalue cell ${name} (${digitsOf(g.cands[linked]).join('')}) and the three cells ${listAnd(three)} in ${unit}, which hold ${digitsOf(set.mask).join('')} between them. The ${x} in ${name} sees every ${x} in the three cells. Either ${name} is ${z}, or it is ${x} and the three cells in ${unit} must be ${listAnd(others)}. At least one of the four cells is therefore ${z}, so ${z} is removed from every other cell that sees all the ${z}s among them.`
   };
 }
 
@@ -245,7 +242,7 @@ export function findAlsXyWing(g: Grid): Step | null {
             fins: C.cells.flatMap((cell) =>
               digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
             ),
-            labels: { primary: `set linked via ${l1.x}`, secondary: `set linked via ${l2.x}`, fins: 'hinge' },
+            labels: { primary: tr`set linked via ${l1.x}`, secondary: tr`set linked via ${l2.x}`, fins: tr`hinge` },
             links: [
               {
                 from: A.cells.filter((c) => g.cands[c] & bit(l1.x)).map((cell) => ({ cell, digit: l1.x })),
@@ -258,7 +255,7 @@ export function findAlsXyWing(g: Grid): Step | null {
                 strong: false
               }
             ],
-            description: `ALS-XY-Wing: hinge ${cellNames(C.cells)} links ${cellNames(A.cells)} (via ${l1.x}) and ${cellNames(B.cells)} (via ${l2.x}); digit ${z} can be removed from cells seeing every ${z} of both outer sets.`
+            description: tr`ALS-XY-Wing: hinge ${cellNames(C.cells)} links ${cellNames(A.cells)} (via ${l1.x}) and ${cellNames(B.cells)} (via ${l2.x}); digit ${z} can be removed from cells seeing every ${z} of both outer sets.`
           };
         }
       }
@@ -326,8 +323,8 @@ export function findAlsXyChain(g: Grid): Step | null {
                 digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
               ),
               labels: {
-                primary: `the end sets, which both hold ${z}`,
-                secondary: 'the middle sets, each linked to its neighbours by a restricted common digit'
+                primary: tr`the end sets, which both hold ${z}`,
+                secondary: tr`the middle sets, each linked to its neighbours by a restricted common digit`
               },
               links: [
                 [A, B, l1.x],
@@ -338,7 +335,7 @@ export function findAlsXyChain(g: Grid): Step | null {
                 to: (Q as Als).cells.filter((c) => g.cands[c] & bit(x as number)).map((cell) => ({ cell, digit: x as number })),
                 strong: false
               })),
-              description: `ALS-XY-Chain: ${cellNames(A.cells)} –${l1.x}– ${cellNames(B.cells)} –${l2.x}– ${cellNames(C.cells)} –${l3.x}– ${cellNames(D.cells)}; digit ${z} falls from cells seeing every ${z} of both end sets.`
+              description: tr`ALS-XY-Chain: ${cellNames(A.cells)} –${l1.x}– ${cellNames(B.cells)} –${l2.x}– ${cellNames(C.cells)} –${l3.x}– ${cellNames(D.cells)}; digit ${z} falls from cells seeing every ${z} of both end sets.`
             };
           }
         }
@@ -404,8 +401,8 @@ export function findDeathBlossom(g: Grid): Step | null {
                 )
               ),
               labels: {
-                primary: 'the stem: each of its candidates leads to a petal',
-                secondary: `the petals: one set per stem digit, all holding ${z}`
+                primary: tr`the stem: each of its candidates leads to a petal`,
+                secondary: tr`the petals: one set per stem digit, all holding ${z}`
               },
               // each stem digit reaches the petal that holds it
               links: stemDigits.map((p, i) => ({
@@ -413,7 +410,7 @@ export function findDeathBlossom(g: Grid): Step | null {
                 to: chosen[i].cells.filter((c) => g.cands[c] & bit(p)).map((cell) => ({ cell, digit: p })),
                 strong: false
               })),
-              description: `Death Blossom: stem ${cellName(stem)} links each of its candidates to a petal set; whichever digit the stem takes, some petal locks and places ${z}, so ${z} is removed from cells seeing every ${z} of all petals.`
+              description: tr`Death Blossom: stem ${cellName(stem)} links each of its candidates to a petal set; whichever digit the stem takes, some petal locks and places ${z}, so ${z} is removed from cells seeing every ${z} of all petals.`
             };
           }
         }
