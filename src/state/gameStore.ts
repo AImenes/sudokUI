@@ -306,6 +306,9 @@ interface GameStore {
    *  (src/engine/chainTrainer.ts); the board draws it through `hint` */
   chain: Chain | null;
   chainNote: string;
+  /** a scanned photo being checked on the custom-entry board: the warped grid, and the cells the scanner doubted */
+  scanPreview: string | null;
+  scanDoubts: number[];
   /** candidates the chain should remove (practice), and whether the board marks where to go next */
   chainGoal: CellDigit[] | null;
   chainSuggest: boolean;
@@ -365,6 +368,8 @@ interface GameStore {
    *  proving step is shown as a hint */
   showProof: (k: number) => void;
   startChain: (goal?: CellDigit[]) => void;
+  /** put a scanned puzzle on the custom-entry board for checking */
+  loadScan: (digits: number[], doubts: number[], preview: string) => void;
   chainToggleSuggest: () => void;
   endChain: () => void;
   /** add the tapped candidate to the chain, if it links */
@@ -425,6 +430,8 @@ export const useGame = create<GameStore>()(
       practiceFound: false,
       chain: null,
       chainNote: '',
+      scanPreview: null,
+      scanDoubts: [],
       chainGoal: null,
       chainSuggest: false,
 
@@ -546,11 +553,31 @@ export const useGame = create<GameStore>()(
         });
       },
 
+      loadScan: (digits, doubts, preview) => {
+        get().startCustomEntry();
+        const cells = Array.from({ length: 81 }, (_, i) => {
+          const cell = emptyCell();
+          cell.value = digits[i] ?? 0;
+          // the scanner's doubts are shaded, for the eye to settle
+          if (doubts.includes(i)) cell.colors = [1];
+          return cell;
+        });
+        const found = digits.filter(Boolean).length;
+        set({
+          cells,
+          scanPreview: preview,
+          scanDoubts: doubts,
+          notice: `Read ${found} digit${found === 1 ? '' : 's'} from the photo${doubts.length ? `, unsure about ${doubts.length}` : ''}. Compare with the preview, fix anything wrong, then press Check & play`
+        });
+      },
+
       cancelCustomEntry: () => {
         const b = get().customBackup;
         set({
           custom: false,
           customBackup: null,
+          scanPreview: null,
+          scanDoubts: [],
           info: b?.info ?? null,
           cells: b?.cells ?? Array.from({ length: 81 }, emptyCell),
           autoCandidates: b?.autoCandidates ?? false,
@@ -572,7 +599,7 @@ export const useGame = create<GameStore>()(
         const puzzle = s.cells.map((c) => (c.value ? String(c.value) : '.')).join('');
         const v = validatePuzzle(puzzle);
         if (!v.ok) return v.reason;
-        set({ custom: false, customBackup: null });
+        set({ custom: false, customBackup: null, scanPreview: null, scanDoubts: [] });
         get().startGame(puzzle, v.score, v.level);
         set({ notice: `Puzzle checked: unique solution, rated ${v.score} (${v.level})` });
         return null;

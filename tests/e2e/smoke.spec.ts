@@ -171,6 +171,53 @@ test.describe('the chain trainer', () => {
   });
 });
 
+test.describe('scanning a photo', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  /** a printed-looking puzzle, screenshotted as the "photo" */
+  async function photo(page: Page, transform: string, font = 'Georgia, "Times New Roman", serif', light = '#f4f1ea') {
+    const rows = Array.from({ length: 9 }, (_, r) =>
+      `<tr>${Array.from({ length: 9 }, (_, c) => `<td>${EASY[r * 9 + c] === '.' ? '' : EASY[r * 9 + c]}</td>`).join('')}</tr>`
+    ).join('');
+    await page.setContent(`<html><body style="margin:0;background:#f4f1ea">
+      <div id="shot" style="width:720px;height:720px;display:flex;align-items:center;justify-content:center;background:${light}">
+        <table style="border-collapse:collapse;transform:${transform};background:#fbfaf6">${rows}</table>
+      </div>
+      <style>
+        td { width:52px; height:52px; text-align:center; vertical-align:middle; font: 36px ${font}; color:#111; border:1px solid #333; }
+        td:nth-child(3n) { border-right: 3px solid #111; } td:first-child { border-left: 3px solid #111; }
+        tr:nth-child(3n) td { border-bottom: 3px solid #111; } tr:first-child td { border-top: 3px solid #111; }
+      </style></body></html>`);
+    return page.locator('#shot').screenshot({ type: 'png' });
+  }
+
+  for (const [name, transform, font, light] of [
+    ['upright', 'none', undefined, undefined],
+    ['turned a quarter', 'rotate(90deg)', undefined, undefined],
+    ['mirrored', 'scaleX(-1)', undefined, undefined],
+    ['from an angle', 'perspective(900px) rotateY(22deg) rotateX(12deg) rotate(4deg)', undefined, undefined],
+    ['in a sans-serif face under uneven light', 'rotate(-6deg)', 'Arial, Helvetica, sans-serif', 'linear-gradient(135deg, #ffffff, #b9b4a8)']
+  ] as const) {
+    test(`reads a printed puzzle ${name}`, async ({ page }) => {
+      const shot = await photo(page, transform, font, light);
+      await open(page);
+      await page.getByRole('button', { name: /Import/ }).first().click();
+      await expect(page.getByRole('dialog', { name: 'Import a puzzle' })).toBeVisible();
+      await page.locator('input[type=file]').setInputFiles({ name: 'puzzle.png', mimeType: 'image/png', buffer: shot });
+      const panel = page.getByRole('region').filter({ hasText: 'Custom puzzle' });
+      await expect(page.locator('.scan-check')).toBeVisible({ timeout: 20_000 });
+      const givens = EASY.replace(/\./g, '').length;
+      await expect(page.locator('.hint-panel').filter({ hasText: 'Custom puzzle' })).toContainText(`(${givens} so far)`);
+      // every digit must be right, or the validator (unique solution) refuses the puzzle
+      await page.getByRole('button', { name: /Check & play/ }).click();
+      await expect(page.locator('.dialog-error')).toHaveCount(0);
+      await expect(page.locator('.scan-check')).toHaveCount(0);
+      await expect(page.locator('.level-badge').first()).toBeVisible();
+      void panel;
+    });
+  }
+});
+
 test.describe('your path', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
