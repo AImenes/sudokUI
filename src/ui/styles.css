@@ -409,7 +409,9 @@ button {
   width: 100%;
   height: auto;
   display: block;
-  touch-action: none;
+  /* a vertical swipe over the board scrolls the page; a tap selects and a
+     sideways drag selects a run (Grid.tsx settles touches on the lift) */
+  touch-action: pan-y pinch-zoom;
   border-radius: 6px;
 }
 
@@ -2259,10 +2261,21 @@ kbd {
 }
 
 .assist-zone .action-row button {
-  padding: 8px 6px;
+  padding: 7px 4px;
   background: none;
   font-size: 12.5px;
   font-weight: 500;
+  /* the icon above the word on every button, not only where a long word
+     happens to wrap */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.assist-zone .btn-icon {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .assist-zone .action-row button.toggled {
@@ -2614,13 +2627,15 @@ html:not([lang='en']) .zone-note {
   gap: 8px;
 }
 
-.path-list {
+/* the ladder's rows, scoped: the technique lists in the dialogs share the
+   class names and lay their rows out as a flex row */
+.path-section .path-list {
   list-style: none;
   margin: 0 0 6px;
   padding: 0;
 }
 
-.path-row {
+.path-section .path-row {
   display: grid;
   grid-template-columns: 20px 1fr auto auto;
   align-items: center;

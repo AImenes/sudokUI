@@ -187,14 +187,20 @@ export function Controls({
         </div>
         <span className="row-sub">{t('Reveals logic')}</span>
         <div className="action-row">
-          <button onClick={guarded('Hint', requestHint)} title="Hint (H): names the technique first, reveals it only if you ask">💡 {t('Hint')}</button>
-          <button onClick={guarded('Check', check)} title="Check values and candidate lists against the solution">✓ {t('Check')}</button>
+          <button onClick={guarded('Hint', requestHint)} title="Hint (H): names the technique first, reveals it only if you ask">
+            <span className="btn-icon" aria-hidden="true">💡</span>
+            <span>{t('Hint')}</span>
+          </button>
+          <button onClick={guarded('Check', check)} title="Check values and candidate lists against the solution">
+            <span className="btn-icon" aria-hidden="true">✓</span>
+            <span>{t('Check')}</span>
+          </button>
           {onShowSteps && (
             <button
               onClick={guarded('Steps', onShowSteps)}
               title="Show every step of one complete solution and jump to any point. Counts as assistance"
             >
-              ≡ {t('Steps')}
+              <span className="btn-icon" aria-hidden="true">≡</span><span>{t('Steps')}</span>
             </button>
           )}
           {onScan && (
@@ -202,14 +208,14 @@ export function Controls({
               onClick={guarded('Scan', onScan)}
               title="List every technique available in this exact position, not just the easiest. Counts as assistance"
             >
-              🔎 {t('Scan')}
+              <span className="btn-icon" aria-hidden="true">🔎</span><span>{t('Scan')}</span>
             </button>
           )}
           <button
             onClick={guarded('Chain', startChain)}
             title="Build a chain yourself, candidate by candidate; the engine checks each link and says what it proves. Counts as assistance"
           >
-            ⛓ {t('Chain')}
+            <span className="btn-icon" aria-hidden="true">⛓</span><span>{t('Chain')}</span>
           </button>
         </div>
 
@@ -224,13 +230,13 @@ export function Controls({
                 : 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
             }
           >
-            ⌗ {t('Auto candidates')}
+            <span className="btn-icon" aria-hidden="true">⌗</span><span>{t('Auto candidates')}</span>
           </button>
           <button
             onClick={guarded('Fill candidates', fillCandidates)}
             title={`Fill ${effectiveMode === 'corner' ? 'corner' : 'centre'} marks with all candidates. With several cells selected, only those are filled`}
           >
-            ✎ {t('Fill candidates')}
+            <span className="btn-icon" aria-hidden="true">✎</span><span>{t('Fill candidates')}</span>
           </button>
         </div>
       </div>

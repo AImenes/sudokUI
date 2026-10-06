@@ -231,6 +231,29 @@ test.describe('scanning from New game', () => {
   });
 });
 
+test.describe('the position scan', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test('lists techniques with the score beside the name, not over it', async ({ page }) => {
+    await open(page);
+    await page.getByRole('button', { name: /Scan/ }).first().click();
+    await page.getByRole('button', { name: 'Use Scan' }).click();
+    const dialog = page.getByRole('dialog', { name: "What's in this position?" });
+    const row = dialog.locator('.path-row').first();
+    await expect(row).toBeVisible({ timeout: 20000 });
+    const jump = (await row.locator('.path-jump').boundingBox())!;
+    const label = (await row.locator('.path-label').boundingBox())!;
+    expect(jump.x + jump.width).toBeLessThanOrEqual(label.x + 1);
+  });
+
+  test('the assist buttons stack their icon above the word', async ({ page }) => {
+    await open(page);
+    const icon = (await page.locator('.assist-zone .btn-icon').first().boundingBox())!;
+    const word = (await page.locator('.assist-zone .btn-icon + span').first().boundingBox())!;
+    expect(icon.y + icon.height).toBeLessThanOrEqual(word.y + 1);
+  });
+});
+
 test.describe('your path', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
@@ -290,6 +313,36 @@ test.describe('phone, 390 x 844', () => {
     expect(key.height).toBeGreaterThanOrEqual(44);
     const mode = (await page.locator('.mode-btn').first().boundingBox())!;
     expect(mode.height).toBeGreaterThanOrEqual(40);
+  });
+
+  test('a swipe over the board scrolls the page, a tap still selects', async ({ page }) => {
+    await open(page);
+    const scrolled = () =>
+      page.evaluate(() => Math.max(window.scrollY, ...[...document.querySelectorAll('*')].map((el) => el.scrollTop)));
+    expect(await scrolled()).toBe(0);
+    const { x, y } = await cellBox(page, 40);
+    // a finger swiping up over the middle of the board
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 8; i++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - i * 20 }] });
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect.poll(scrolled).toBeGreaterThan(20);
+    await expect(page.locator('#board-status')).toHaveText('No cell selected.');
+    // a tap is still a tap
+    const tap = await cellBox(page, 40);
+    await page.touchscreen.tap(tap.x, tap.y);
+    await expect(page.locator('#board-status')).toContainText('Row 5, column 5');
+    // and a sideways drag still selects a run of cells
+    const from = await cellBox(page, 54);
+    const to = await cellBox(page, 58);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y }] });
+    for (let i = 1; i <= 8; i++) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: from.x + ((to.x - from.x) * i) / 8, y: from.y }] });
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.locator('#board-status')).toHaveText('5 cells selected.');
   });
 });
 
