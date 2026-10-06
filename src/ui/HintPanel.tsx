@@ -21,9 +21,18 @@ export function ChainPanel() {
   const chainUndo = useGame((s) => s.chainUndo);
   const chainClear = useGame((s) => s.chainClear);
   const chainApply = useGame((s) => s.chainApply);
+  const chainSuggest = useGame((s) => s.chainSuggest);
+  const chainToggleSuggest = useGame((s) => s.chainToggleSuggest);
+  const stage = useGame((s) => s.hintStage);
+  const walkIndex = useGame((s) => s.walkIndex);
+  const walkHint = useGame((s) => s.walkHint);
+  const revealHint = useGame((s) => s.revealHint);
   if (!chain) return null;
   const elims = hint?.eliminations ?? [];
   const n = chain.nodes.length;
+  const frames = hint ? walkFrames(hint) : [];
+  const walking = stage === 'walk' && frames.length > 0;
+  const frame = walking ? frames[Math.min(walkIndex, frames.length - 1)] : null;
   return (
     <div className="hint-panel" role="region" aria-label="Build a chain" aria-live="polite">
       <div className="hint-head">
@@ -32,7 +41,24 @@ export function ChainPanel() {
       </div>
       <div className="hint-body">
         <p className="chain-note">{note}</p>
-        {hint && <p>{hint.description}</p>}
+        {frame ? (
+          <div className="hint-walk" aria-live="polite">
+            <p className="hint-walk-text">{frame.text}</p>
+            <div className="hint-walk-nav">
+              <button className="ghost" onClick={() => walkHint(-1)} disabled={walkIndex === 0} aria-label="Previous">
+                ◀
+              </button>
+              <span className="hint-walk-count">
+                {Math.min(walkIndex, frames.length - 1) + 1} of {frames.length}
+              </span>
+              <button className="ghost" onClick={() => walkHint(1)} disabled={walkIndex >= frames.length - 1} aria-label="Next">
+                ▶
+              </button>
+            </div>
+          </div>
+        ) : (
+          hint && <p>{hint.description}</p>
+        )}
         {n > 1 && (
           <ul className="hint-legend">
             <li>
@@ -50,6 +76,21 @@ export function ChainPanel() {
         <div className="hint-actions">
           {elims.length > 0 && (
             <button onClick={chainApply}>Apply: remove {elims.length}</button>
+          )}
+          {n > 0 && !chain.closed && (
+            <button className="ghost" onClick={chainToggleSuggest} title="Mark every candidate linked to the last one">
+              {chainSuggest ? 'Hide links' : 'Show links'}
+            </button>
+          )}
+          {chain.links.length > 0 && frames.length > 1 && !walking && (
+            <button className="ghost" onClick={() => walkHint()} title="Read your chain one link at a time (← and →)">
+              Walk through it
+            </button>
+          )}
+          {walking && (
+            <button className="ghost" onClick={revealHint}>
+              Show all
+            </button>
           )}
           <button className="ghost" onClick={chainUndo} disabled={!n} title="Take the last candidate off (Backspace)">
             Undo last

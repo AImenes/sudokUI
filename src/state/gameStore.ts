@@ -24,6 +24,7 @@ import { walkFrames } from '../engine/hintFrames';
 import { justify, Move } from '../engine/justify';
 import { contradictionStep } from '../engine/techniques/forcing';
 import { Chain, EMPTY_CHAIN, extend, chainStep, conclusions } from '../engine/chainTrainer';
+import type { CellDigit } from '../engine/steps';
 import { Level, Tech, TECHS } from '../engine/ratings';
 import { useSettings } from './settings';
 import { useStats } from './stats';
@@ -305,6 +306,9 @@ interface GameStore {
    *  (src/engine/chainTrainer.ts); the board draws it through `hint` */
   chain: Chain | null;
   chainNote: string;
+  /** candidates the chain should remove (practice), and whether the board marks where to go next */
+  chainGoal: CellDigit[] | null;
+  chainSuggest: boolean;
 
   startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null, dailyKey?: string) => void;
   /** blank board the user types givens onto; the running game is backed up */
@@ -360,7 +364,8 @@ interface GameStore {
    *  come off the board, the easier steps on the way are played, and the
    *  proving step is shown as a hint */
   showProof: (k: number) => void;
-  startChain: () => void;
+  startChain: (goal?: CellDigit[]) => void;
+  chainToggleSuggest: () => void;
   endChain: () => void;
   /** add the tapped candidate to the chain, if it links */
   chainTap: (cell: number, digit: number) => void;
@@ -420,6 +425,8 @@ export const useGame = create<GameStore>()(
       practiceFound: false,
       chain: null,
       chainNote: '',
+      chainGoal: null,
+      chainSuggest: false,
 
       startGame: (puzzle, score, level, practiceTech = null, dailyKey) => {
         const g = parseGrid(puzzle);
@@ -1169,12 +1176,15 @@ export const useGame = create<GameStore>()(
 
       dismissRevert: () => set({ revertIndex: null, proofs: [] }),
 
-      startChain: () => {
+      startChain: (goal) => {
         const s = get();
         if (!s.info || s.won) return;
         set({
           chain: EMPTY_CHAIN,
-          chainNote: CHAIN_INTRO,
+          chainGoal: goal?.length ? goal : null,
+          chainNote: goal?.length
+            ? `Goal: remove ${goal.map((c) => `${c.digit} from ${cellName(c.cell)}`).join(', ')} (circled purple). ${CHAIN_INTRO}`
+            : CHAIN_INTRO,
           hint: null,
           hintStage: 'hidden',
           selection: [],
@@ -1186,19 +1196,36 @@ export const useGame = create<GameStore>()(
         });
       },
 
-      endChain: () => set({ chain: null, chainNote: '', hint: null, hintStage: 'hidden' }),
+      endChain: () => set({ chain: null, chainNote: '', chainGoal: null, hint: null, hintStage: 'hidden' }),
+
+      chainToggleSuggest: () => {
+        const s = get();
+        if (!s.chain) return;
+        const chainSuggest = !s.chainSuggest;
+        const g = engineGrid(s.cells);
+        const drawn = s.chain.links.length > 0 || (chainSuggest && s.chain.nodes.length > 0);
+        set({
+          chainSuggest,
+          hint: drawn ? chainStep(g, s.chain, { suggest: chainSuggest, goal: s.chainGoal ?? undefined }) : null,
+          hintStage: drawn ? 'full' : 'hidden'
+        });
+      },
 
       chainTap: (cell, digit) => {
         const s = get();
         if (!s.chain) return;
         const g = engineGrid(s.cells);
         const r = extend(g, s.chain, { cell, digit });
-        const drawn = r.chain.links.length > 0;
+        const drawn = r.chain.links.length > 0 || (s.chainSuggest && r.chain.nodes.length > 0);
+        // practice: the goal is met once the chain removes one of its candidates
+        const removed = r.ok ? conclusions(g, r.chain) : [];
+        const met = !!s.chainGoal && !s.practiceFound && s.chainGoal.some((c) => removed.some((e) => e.cell === c.cell && e.digit === c.digit));
         set({
           chain: r.chain,
-          chainNote: r.message,
-          hint: drawn ? chainStep(g, r.chain) : null,
-          hintStage: drawn ? 'full' : 'hidden'
+          chainNote: met ? `${r.message} That reaches the goal: you built it yourself.` : r.message,
+          hint: drawn ? chainStep(g, r.chain, { suggest: s.chainSuggest, goal: s.chainGoal ?? undefined }) : null,
+          hintStage: drawn ? 'full' : 'hidden',
+          ...(met && s.info?.practiceTech ? { practiceFound: true, notice: `You built the ${TECHS[s.info.practiceTech].name} yourself 🎯` } : {})
         });
       },
 
@@ -1207,11 +1234,11 @@ export const useGame = create<GameStore>()(
         if (!s.chain?.nodes.length) return;
         const chain: Chain = { nodes: s.chain.nodes.slice(0, -1), links: s.chain.links.slice(0, -1) };
         const g = engineGrid(s.cells);
-        const drawn = chain.links.length > 0;
+        const drawn = chain.links.length > 0 || (s.chainSuggest && chain.nodes.length > 0);
         set({
           chain,
           chainNote: chain.nodes.length ? 'Last candidate taken off the chain.' : CHAIN_INTRO,
-          hint: drawn ? chainStep(g, chain) : null,
+          hint: drawn ? chainStep(g, chain, { suggest: s.chainSuggest, goal: s.chainGoal ?? undefined }) : null,
           hintStage: drawn ? 'full' : 'hidden'
         });
       },

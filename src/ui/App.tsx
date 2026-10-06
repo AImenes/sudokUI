@@ -148,6 +148,8 @@ export default function App() {
   const showProof = useGame((s) => s.showProof);
   const practiceFound = useGame((s) => s.practiceFound);
   const chain = useGame((s) => s.chain);
+  const practiceTarget = useGame((s) => s.practiceTarget);
+  const startChain = useGame((s) => s.startChain);
   const requestHint = useGame((s) => s.requestHint);
   const selection = useGame((s) => s.selection);
   const select = useGame((s) => s.select);
@@ -583,6 +585,18 @@ export default function App() {
                 Practicing <strong>{TECHS[info.practiceTech].name}</strong>
                 {practiceFound && <span className="practice-found"> · found 🎯</span>}
               </span>
+              {!practiceFound &&
+                !chain &&
+                practiceTarget?.links?.length &&
+                practiceTarget.links.every((l) => l.from.length === 1 && l.to.length === 1) && (
+                  <button
+                    className="ghost"
+                    onClick={() => startChain(practiceTarget.eliminations)}
+                    title="Open the chain trainer with this technique's removal as the goal"
+                  >
+                    Build it yourself
+                  </button>
+                )}
               <button onClick={() => start({ kind: 'tech', tech: info.practiceTech! })}>
                 Next puzzle (N)
               </button>
