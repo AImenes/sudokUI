@@ -13,8 +13,9 @@ the English, never a blank.
   written in its own language.
 - `/nb/` and `/es/` are the app itself in Norwegian and Spanish: arriving
   there chooses the language (`src/main.tsx`), and while the player is on
-  one of them the address follows a change of language. `/` keeps whatever
-  was chosen. Share links carry the address they were made on.
+  one of them the address and the tab's title follow a change of language.
+  `/` keeps whatever was chosen. Share and challenge links open in the
+  sender's language (`langRoot(t.lang)`: `/`, `/nb/` or `/es/`).
 - `src/content/i18n.ts` is the translator. Keys are the English text:
 
   ```ts

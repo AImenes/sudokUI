@@ -161,6 +161,8 @@ export function startLocales(): Promise<void> {
     if (typeof window !== 'undefined' && langOfPath(window.location.pathname)) {
       const { search, hash } = window.location;
       window.history.replaceState(window.history.state, '', langRoot(s.lang) + search + hash);
+      // and the tab's title is that address's own (src/content/home.ts, fetched only here)
+      import('./home').then((m) => (document.title = m.HOME[s.lang].title)).catch(() => {});
     }
     sync();
     loadLocale(s.lang).then(sync);

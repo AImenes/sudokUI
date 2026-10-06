@@ -157,8 +157,13 @@ Two settings keep the pages reachable:
   `src/content/staticRoutes.ts`, in every language). Without that, a visitor
   who already has the app installed would get the game instead of the
   article.
-- `wrangler.jsonc` answers unknown addresses with a real 404
-  (`public/404.html`) instead of the app.
+- The build emits `nb/index.html` and `es/index.html` beside `index.html`
+  (a plugin in `vite.config.ts`), so the service worker precaches all three
+  home pages and `/nb/` and `/es/` open offline too.
+- `wrangler.jsonc` answers unknown addresses with a real 404 instead of the
+  app. Cloudflare serves the nearest `404.html` up the path, so
+  `public/nb/404.html` and `public/es/404.html` answer under `/nb/` and
+  `/es/` in their language; none of the three is precached.
 
 ## Things only the site owner can do
 

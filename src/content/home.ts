@@ -30,6 +30,9 @@ const OG_LOCALE: Record<Lang, string> = { en: 'en_GB', nb: 'nb_NO', es: 'es_ES' 
 /** the home page's path in a language: /, /nb/, /es/ (langRoot in i18n.ts) */
 export const homePath = (lang: Lang) => (lang === 'en' ? '/' : `/${lang}/`);
 
+/** the social preview card in a language (public/og-card*.png, made by scripts/og-card.ts) */
+export const ogCard = (lang: Lang) => `${SITE}/og-card${lang === 'en' ? '' : `.${lang}`}.png`;
+
 /** the language a home address stands for, /nb/ or /es/; null for / (langOfPath in i18n.ts) */
 export function homeLangOfPath(path: string): Lang | null {
   const m = /^\/(nb|es)\/?$/.exec(path);
@@ -281,6 +284,7 @@ function parts(lang: Lang): Record<string, string> {
       `<meta property="og:locale" content="${OG_LOCALE[lang]}" />`,
       ...HOME_LANGS.filter((l) => l !== lang).map((l) => `<meta property="og:locale:alternate" content="${OG_LOCALE[l]}" />`)
     ].join('\n'),
+    'og-image': ogCard(lang),
     'og-image-alt': esc(c.ogImageAlt),
     'json-ld': layoutJson(structuredData(lang)),
     boot: [

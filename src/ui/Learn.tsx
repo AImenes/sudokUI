@@ -19,7 +19,7 @@ import { linkGlossary } from '../content/glossaryLinks';
 import { boardSvg, legendOf, Example } from '../content/boardSvg';
 import { share, worth } from '../content/frequency';
 import { useStats, learnNextScore } from '../state/stats';
-import { SOLVE_TIME_TABLES } from '../content/solveTimes';
+import { solveTimeTables } from '../content/solveTimes';
 import { LearnText, langPrefix, exampleStep } from '../content/learnLocale';
 import type { LearnString } from '../content/learnStrings';
 import { useT, msg } from '../content/i18n';
@@ -190,7 +190,7 @@ export function RatingExplainer() {
               <th>{lt.s('World class')}</th>
             </tr>
           </thead>
-          {SOLVE_TIME_TABLES.map((t) => {
+          {solveTimeTables(lt.lang).map((t) => {
             const label = rating.modes[t.mode];
             return (
               <tbody key={t.mode}>

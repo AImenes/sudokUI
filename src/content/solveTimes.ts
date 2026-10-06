@@ -14,6 +14,7 @@
 // take longer: each is a multiple of the screen-with-candidates time.
 import { Level, LEVELS } from '../engine/ratings';
 import { translator, msg } from './i18n';
+import type { Lang } from '../state/settings';
 
 /** median solve time of a typical online solver, in seconds, per band */
 export const MEDIAN_SECONDS: Record<Level, number> = {
@@ -130,14 +131,17 @@ export function percentileText(percentile: number): string {
   return t('faster than {pct}% of solvers', { pct: percentileShare(percentile) });
 }
 
-/** 4:30 for 270 seconds; 1h 12m past the hour */
-export function formatSeconds(seconds: number): string {
+/** the hour and minute abbreviations past the hour: 1h 12m, 1 t 12 min, 1 h 12 min */
+const HOURS: Record<Lang, (h: number, m: number) => string> = {
+  en: (h, m) => (m ? `${h}h ${m}m` : `${h}h`),
+  nb: (h, m) => (m ? `${h} t ${m} min` : `${h} t`),
+  es: (h, m) => (m ? `${h} h ${m} min` : `${h} h`)
+};
+
+/** 4:30 for 270 seconds; past the hour, hours and minutes the language's way */
+export function formatSeconds(seconds: number, lang: Lang = 'en'): string {
   const s = Math.round(seconds);
-  if (s >= 3600) {
-    const h = Math.floor(s / 3600);
-    const m = Math.round((s % 3600) / 60);
-    return m ? `${h}h ${m}m` : `${h}h`;
-  }
+  if (s >= 3600) return HOURS[lang](Math.floor(s / 3600), Math.round((s % 3600) / 60));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
@@ -156,23 +160,26 @@ export interface SolveTimeRow {
 }
 
 /** the benchmark table for one way of solving, one row per band */
-export function solveTimeRows(mode: SolveMode): SolveTimeRow[] {
+export function solveTimeRows(mode: SolveMode, lang: Lang = 'en'): SolveTimeRow[] {
   return LEVELS.map((level) => ({
     level,
-    slow: formatSeconds(timeAtPercentile(level, 0.2, mode)),
-    typical: formatSeconds(MEDIAN_SECONDS[level] * MODE_FACTOR[mode]),
-    fast: formatSeconds(timeAtPercentile(level, 0.8, mode)),
-    expert: formatSeconds(timeAtPercentile(level, 0.99, mode)),
-    worldClass: formatSeconds(timeAtPercentile(level, 0.999, mode))
+    slow: formatSeconds(timeAtPercentile(level, 0.2, mode), lang),
+    typical: formatSeconds(MEDIAN_SECONDS[level] * MODE_FACTOR[mode], lang),
+    fast: formatSeconds(timeAtPercentile(level, 0.8, mode), lang),
+    expert: formatSeconds(timeAtPercentile(level, 0.99, mode), lang),
+    worldClass: formatSeconds(timeAtPercentile(level, 0.999, mode), lang)
   }));
 }
 
-/** the three tables: automatic candidates, your own marks, paper */
-export const SOLVE_TIME_TABLES = SOLVE_MODES.map((mode) => ({
-  mode,
-  label: MODE_LABEL[mode],
-  rows: solveTimeRows(mode)
-}));
+/** the three tables: automatic candidates, your own marks, paper; times written the language's way */
+export const solveTimeTables = (lang: Lang = 'en') =>
+  SOLVE_MODES.map((mode) => ({
+    mode,
+    label: MODE_LABEL[mode],
+    rows: solveTimeRows(mode, lang)
+  }));
+
+export const SOLVE_TIME_TABLES = solveTimeTables('en');
 
 /** kept for the first table */
 export const SOLVE_TIME_ROWS: SolveTimeRow[] = solveTimeRows('auto');

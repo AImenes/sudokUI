@@ -26,7 +26,8 @@ import { LANDING_PAGES, LandingPage, RATING_URL } from './landing';
 import { EXAMPLES } from './examples';
 import { boardSvg, legendOf, BOARD_SIZE } from './boardSvg';
 import { FREQUENCY, byWorth } from './frequency';
-import { SOLVE_TIME_TABLES } from './solveTimes';
+import { solveTimeTables } from './solveTimes';
+import { ogCard } from './home';
 import { INTUITION, INTUITION_URL } from './intuition';
 import { intuitionDiagram, intuitionDiagramUrl, DIAGRAM_IDS } from './intuitionDiagrams';
 import { learnText, LearnText, LandingText, langPrefix, exampleStep, METHOD_URL } from './learnLocale';
@@ -291,7 +292,7 @@ function layout(opts: {
     <meta property="og:title" content="${esc(opts.title)}" />
     <meta property="og:description" content="${esc(opts.description)}" />
     <meta property="og:url" content="${canonical}" />
-    <meta property="og:image" content="${SITE}/og-card.png" />
+    <meta property="og:image" content="${ogCard(opts.lang)}" />
     <meta name="twitter:card" content="summary_large_image" />
     ${ld}
     <style>${STYLE}</style>
@@ -343,7 +344,7 @@ function article(lang: Lang, url: string, headline: string, description: string)
     inLanguage: lang,
     url: SITE + url,
     mainEntityOfPage: SITE + url,
-    image: SITE + '/og-card.png',
+    image: ogCard(lang),
     isPartOf: website,
     author: { '@type': 'Organization', name: 'sudokUI', url: SITE + '/' },
     publisher: {
@@ -461,7 +462,7 @@ ${
       jsonLd: [
         {
           ...article(lang, url, lt.s('{name}: sudoku technique explained', { name }), doc.what),
-          ...(EXAMPLES[tech] ? { image: [SITE + diagramUrl(tech), SITE + '/og-card.png'] } : {}),
+          ...(EXAMPLES[tech] ? { image: [SITE + diagramUrl(tech), ogCard(lang)] } : {}),
           about: {
             '@type': 'DefinedTerm',
             name,
@@ -683,7 +684,7 @@ ${bands}
       <p>${esc(rating.solveTimeNote)}</p>
       <table>
         <tr><th>${esc(lt.s('Band'))}</th><th class="n">${esc(lt.s('Slow'))}</th><th class="n">${esc(lt.s('Typical'))}</th><th class="n">${esc(lt.s('Fast'))}</th><th class="n">${esc(lt.s('Expert'))}</th><th class="n">${esc(lt.s('World class'))}</th></tr>
-${SOLVE_TIME_TABLES.map((t) => {
+${solveTimeTables(lang).map((t) => {
   const label = rating.modes[t.mode];
   return `        <tr><th colspan="6">${esc(label[0].toUpperCase() + label.slice(1))}</th></tr>
 ${t.rows
