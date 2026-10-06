@@ -36,6 +36,7 @@ import type { LearnTarget } from './Learn';
 const LearnDialog = React.lazy(() => import('./Learn').then((m) => ({ default: m.LearnDialog })));
 import { PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
+import { parseShareUrl, sharePath, clockOf } from '../content/share';
 import { RATING_URL } from '../content/staticRoutes';
 
 /** the name, the same in every language: "sudok" and a coloured "UI" */
@@ -199,7 +200,7 @@ export default function App() {
   const givenCount = useGame((s) =>
     s.custom ? s.cells.filter((c) => c.value > 0).length : 0
   );
-  const { theme, font, toggleTheme, showTimer, hideRating, showPoodle } = useSettings();
+  const { theme, font, toggleTheme, showTimer, hideRating, showPoodle, lang } = useSettings();
   const t = useT();
   const { start, genState, cancel } = useNewGame();
   // the hardest bands start from seeds: stock their pools while idle, so
@@ -234,7 +235,8 @@ export default function App() {
   const [welcome, setWelcome] = useState(
     () =>
       !localStorage.getItem('sudokui-welcomed') &&
-      !window.location.hash.match(/(^#|&)(p=|s=|learn=|practice=|daily)/)
+      !window.location.hash.match(/(^#|&)(p=|s=|learn=|practice=|daily)/) &&
+      !parseShareUrl(window.location)
   );
   const dismissWelcome = () => {
     localStorage.setItem('sudokui-welcomed', '1');
@@ -258,10 +260,11 @@ export default function App() {
   }, [font]);
 
   // boot: a shared link wins over everything — #s= carries a full position
-  // (entries, marks, colours), #p= just the puzzle; otherwise a saved game
-  // resumes, otherwise start an easy one. The /learn/ pages deep-link in
-  // with #practice=<technique> (start practising it) and #learn=<topic>
-  // (open the guide there). StrictMode-guarded.
+  // (entries, marks, colours), /p/<puzzle> and #p= just the puzzle, and a
+  // share path may carry a challenger's time (src/content/share.ts);
+  // otherwise a saved game resumes, otherwise start an easy one. The
+  // /learn/ pages deep-link in with #practice=<technique> (start practising
+  // it) and #learn=<topic> (open the guide there). StrictMode-guarded.
   useEffect(() => {
     if ((window as any).__sudokuiBooted) return;
     (window as any).__sudokuiBooted = true;
@@ -279,12 +282,21 @@ export default function App() {
     }
     const sharedPosition = params.get('s');
     if (sharedPosition && useGame.getState().loadPosition(sharedPosition)) return;
-    const shared = params.get('p');
+    const share = parseShareUrl(window.location);
+    const shared = share?.puzzle ?? params.get('p');
     if (shared && shared !== useGame.getState().info?.puzzle) {
       const cleaned = shared.replace(/[^0-9.]/g, '');
       const rating = cleaned.length === 81 ? rateImport(cleaned) : null;
       if (rating) {
         useGame.getState().startGame(cleaned, rating.score, rating.level);
+        if (share?.vs) {
+          const vs = share.vs;
+          const t = translator();
+          useGame.setState((s) => ({
+            info: s.info && { ...s.info, challenge: vs },
+            notice: t('A challenge: solve it faster than {time}', { time: clockOf(vs) })
+          }));
+        }
         return;
       }
     }
@@ -313,12 +325,16 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  // keep the address bar shareable: it always points at the current puzzle
+  // keep the address bar shareable: it always points at the current
+  // puzzle, at the address that previews when pasted into a chat, in the
+  // app's language (the Worker and the service worker both answer it with
+  // the app, src/content/home.ts). A challenger's time stays out of it:
+  // the player's own copy of the link should not carry it
   useEffect(() => {
     if (info?.puzzle) {
-      window.history.replaceState(null, '', `#p=${info.puzzle}`);
+      window.history.replaceState(null, '', sharePath({ lang, puzzle: info.puzzle, level: info.level, score: info.score }));
     }
-  }, [info?.puzzle]);
+  }, [info?.puzzle, lang]);
 
   // toasts fade after a few seconds
   useEffect(() => {

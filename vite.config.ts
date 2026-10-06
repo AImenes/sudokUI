@@ -5,6 +5,7 @@ import { version } from './package.json';
 import type { Plugin } from 'vite';
 import { STATIC_ROUTES } from './src/content/staticRoutes';
 import { renderHome, homeLangOfPath, HOME_LANGS, APP_NAVIGATION } from './src/content/home';
+import { parseShareUrl, renderSharePage } from './src/content/share';
 
 /**
  * Serves the static pages (/learn/, the landing pages) on the dev server
@@ -46,32 +47,44 @@ function staticPagesDev(): Plugin {
 
 /**
  * The home page in every language: / in English, /nb/ and /es/ in
- * Norwegian and Spanish (src/content/home.ts). index.html is their
- * template.
+ * Norwegian and Spanish (src/content/home.ts), and the share pages,
+ * /p/<puzzle> under each of them (src/content/share.ts). index.html is
+ * their template.
  *
- * - The dev server answers /nb/ and /es/ with index.html too, and fills it
- *   in the language of the address it was asked for.
+ * - The dev server answers /nb/, /es/ and the share addresses with
+ *   index.html too, and fills it for the address it was asked for.
  * - The build fills dist/index.html in English once Vite and the other
  *   plugins are done with it, and writes nb/index.html and es/index.html
  *   from the same page, with the same scripts and styles, so the service
- *   worker precaches all three and /nb/ and /es/ work offline.
+ *   worker precaches all three and /nb/ and /es/ work offline. It also
+ *   keeps that built page with its placeholders intact as share.tpl, which
+ *   the Worker (worker/index.ts) fills for each share address on request.
  */
 function homePages(): Plugin[] {
   const pathOf = (url: string) => url.split(/[?#]/)[0];
+  const shareOf = (url: string) => {
+    const [pathname, search = ''] = url.split('#')[0].split(/\?(.*)/s);
+    return parseShareUrl({ pathname, search: search ? `?${search}` : '' });
+  };
   return [
     {
       name: 'sudokui-home-dev',
       apply: 'serve',
       configureServer(server) {
         server.middlewares.use((req, _res, next) => {
-          if (homeLangOfPath(pathOf(req.url ?? ''))) req.url = '/index.html';
+          const url = req.url ?? '';
+          if (homeLangOfPath(pathOf(url)) || shareOf(url)) req.url = '/index.html';
           next();
         });
       },
       transformIndexHtml: {
         order: 'pre',
-        handler: (html, ctx) =>
-          html.includes('<!--home:') ? renderHome(html, homeLangOfPath(pathOf(ctx.originalUrl ?? ctx.path)) ?? 'en') : html
+        handler: (html, ctx) => {
+          if (!html.includes('<!--home:')) return html;
+          const url = ctx.originalUrl ?? ctx.path;
+          const share = shareOf(url);
+          return share ? renderSharePage(html, share) : renderHome(html, homeLangOfPath(pathOf(url)) ?? 'en');
+        }
       }
     },
     {
@@ -89,6 +102,7 @@ function homePages(): Plugin[] {
         const page = bundle['index.html'];
         if (page?.type !== 'asset') return this.error('index.html is not in the bundle');
         const built = typeof page.source === 'string' ? page.source : new TextDecoder().decode(page.source);
+        this.emitFile({ type: 'asset', fileName: 'share.tpl', source: built });
         page.source = renderHome(built, 'en');
         for (const lang of HOME_LANGS) {
           if (lang !== 'en') this.emitFile({ type: 'asset', fileName: `${lang}/index.html`, source: renderHome(built, lang) });

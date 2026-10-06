@@ -30,6 +30,7 @@ const ui: Dictionary = {
   "What the buttons do": "Hva knappene gjør",
   "Solved!": "Løst!",
   "New game": "Nytt spill",
+  "A challenge: solve it faster than {time}": "En utfordring: løs den raskere enn {time}",
   "Challenge a friend": "Utfordre en venn",
   "Copied": "Kopiert",
   "Admire the grid": "Beundre brettet",

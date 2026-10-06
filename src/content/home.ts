@@ -41,12 +41,17 @@ export function homeLangOfPath(path: string): Lang | null {
 
 /**
  * The navigations the service worker may answer with the app shell: the
- * home page in every language, with or without a query string. /nb/ and
- * /es/ themselves are answered from the precache with their own page; the
- * shell is the offline fallback when a query string keeps them from
- * matching it. Everything else is a real document or a real 404.
+ * home page in every language, with or without a query string, and the
+ * share addresses, /p/<puzzle> under every language root (share.ts). /nb/
+ * and /es/ themselves are answered from the precache with their own page;
+ * the shell is the offline fallback when a query string keeps them from
+ * matching it. A share address is the app too: the Worker renders it with
+ * a preview for crawlers and chat apps, but a player with the app
+ * installed gets the shell at once, offline as well, and the app reads
+ * the puzzle from the path. Everything else is a real document or a real
+ * 404.
  */
-export const APP_NAVIGATION = /^\/(?:(?:nb|es)\/)?(?:\?.*)?$/;
+export const APP_NAVIGATION = /^\/(?:(?:nb|es)\/)?(?:p\/[0-9.]{81}\/?)?(?:\?.*)?$/;
 
 /** a page under a language's prefix: /learn/ in English, /nb/learn/ in Norwegian */
 const inLang = (lang: Lang, path: string) => (lang === 'en' ? path : `/${lang}${path}`);
@@ -307,13 +312,14 @@ function parts(lang: Lang): Record<string, string> {
 }
 
 /**
- * index.html in a language: every <!--home:name--> placeholder filled. A
- * part that spans lines takes the indentation of the line it starts on, and
- * the template's line endings. Throws on a placeholder it does not know and
- * on one the template lacks, so the template and this file cannot drift.
+ * A template with every <!--home:name--> placeholder filled. A part that
+ * spans lines takes the indentation of the line it starts on, and the
+ * template's line endings. Throws on a placeholder it does not know and
+ * on one the template lacks, so the template and the fill cannot drift.
+ * The home pages fill index.html this way, and so does the share page
+ * (share.ts), from the built copy of it the build keeps as share.tpl.
  */
-export function renderHome(template: string, lang: Lang): string {
-  const fill = parts(lang);
+export function fillTemplate(template: string, fill: Record<string, string>): string {
   const newline = template.includes('\r\n') ? '\r\n' : '\n';
   const used = new Set<string>();
   const html = template.replace(/<!--home:([\w-]+)-->/g, (_, name: string, offset: number) => {
@@ -326,3 +332,6 @@ export function renderHome(template: string, lang: Lang): string {
   if (missing.length) throw new Error(`index.html lacks ${missing.map((m) => `<!--home:${m}-->`).join(', ')}`);
   return html;
 }
+
+/** index.html in a language */
+export const renderHome = (template: string, lang: Lang): string => fillTemplate(template, parts(lang));

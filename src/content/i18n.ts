@@ -114,9 +114,13 @@ export function rich(text: string, nodes: Record<string, React.ReactNode>): Reac
 /** where the app lives in a language: / for English, /nb/ and /es/ */
 export const langRoot = (lang: Lang) => (lang === 'en' ? '/' : `/${lang}/`);
 
-/** the language an address of the app itself stands for: /nb/ and /es/ (null for / and anything else) */
+/**
+ * The language an address of the app itself stands for: /nb/ and /es/, and
+ * a share address under them, /nb/p/<puzzle> (src/content/share.ts); null
+ * for / and anything else
+ */
 export function langOfPath(path: string): Lang | null {
-  const m = /^\/(nb|es)\/?$/.exec(path);
+  const m = /^\/(nb|es)(?:\/(?:p\/[0-9.]{81}\/?)?)?$/.exec(path);
   return m ? (m[1] as Lang) : null;
 }
 

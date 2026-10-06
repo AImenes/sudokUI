@@ -152,6 +152,8 @@ export interface GameInfo {
   practiceTech: Tech | null;
   /** the date of the daily puzzle this game is, for the streak */
   dailyKey?: string;
+  /** a challenger's time in seconds, from the share link this game was opened from (src/content/share.ts) */
+  challenge?: number;
 }
 
 /**

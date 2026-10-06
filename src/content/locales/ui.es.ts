@@ -30,6 +30,7 @@ const ui: Dictionary = {
   "What the buttons do": "Qué hace cada botón",
   "Solved!": "¡Resuelto!",
   "New game": "Nueva partida",
+  "A challenge: solve it faster than {time}": "Un reto: resuélvelo en menos de {time}",
   "Challenge a friend": "Reta a un amigo",
   "Copied": "Copiado",
   "Admire the grid": "Admirar la cuadrícula",
