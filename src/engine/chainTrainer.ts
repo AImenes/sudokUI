@@ -28,6 +28,8 @@ export interface Chain {
   nodes: CellDigit[];
   /** links[i] joins nodes[i] and nodes[i + 1] */
   links: LinkKind[];
+  /** the last node is the first again: a continuous loop */
+  closed?: boolean;
 }
 
 export const EMPTY_CHAIN: Chain = { nodes: [], links: [] };
@@ -80,7 +82,11 @@ export function extend(g: Grid, chain: Chain, node: CellDigit): Extension {
       message: `${node.digit} in ${cellName(node.cell)} starts the chain. Now tap a candidate strongly linked to it: the other candidate of a bivalue cell, or the digit's only other place in a row, column or box.`
     };
   }
-  if (chain.nodes.some((n) => same(n, node))) return { ok: false, chain, message: `${node.digit} in ${cellName(node.cell)} is already in the chain.` };
+  if (chain.closed) return { ok: false, chain, message: 'The loop is closed. Apply what it proves, or clear it and start another.' };
+  const closing = chain.nodes.length >= 3 && same(node, chain.nodes[0]);
+  if (!closing && chain.nodes.some((n) => same(n, node))) {
+    return { ok: false, chain, message: `${node.digit} in ${cellName(node.cell)} is already in the chain.` };
+  }
   const last = chain.nodes[chain.nodes.length - 1];
   const v = classifyLink(g, last, node);
   if (!v.kind) return { ok: false, chain, message: `Not a link: ${v.why}.` };
@@ -92,9 +98,40 @@ export function extend(g: Grid, chain: Chain, node: CellDigit): Extension {
       message: `Only a weak link: ${v.why}. The chain needs a strong link here (one of the two true): a bivalue cell or a conjugate pair.`
     };
   }
-  const next: Chain = { nodes: [...chain.nodes, node], links: [...chain.links, v.kind] };
+  if (closing && (chain.links.length + 1) % 2 === 1) {
+    return {
+      ok: false,
+      chain,
+      message: `${v.why}, but a loop must alternate all the way round, so it closes on an even number of links; this would be link ${chain.links.length + 1}.`
+    };
+  }
+  const next: Chain = { nodes: [...chain.nodes, node], links: [...chain.links, v.kind], closed: closing || undefined };
   const used = need === 'weak' && v.kind === 'strong' ? 'Strong link, used as weak' : v.kind === 'strong' ? 'Strong link' : 'Weak link';
-  return { ok: true, chain: next, message: `${used}: ${v.why}.` };
+  const loop = closing ? ' The loop is closed: every weak link in it now works as a strong link too.' : '';
+  return { ok: true, chain: next, message: `${used}: ${v.why}.${loop}` };
+}
+
+/** the candidates that could be tapped next, by the link they would make */
+export function nextLinks(g: Grid, chain: Chain): { strong: CellDigit[]; weak: CellDigit[] } {
+  const out = { strong: [] as CellDigit[], weak: [] as CellDigit[] };
+  if (!chain.nodes.length || chain.closed) return out;
+  const last = chain.nodes[chain.nodes.length - 1];
+  const need = needs(chain);
+  for (let cell = 0; cell < 81; cell++) {
+    if (g.values[cell]) continue;
+    for (let digit = 1; digit <= 9; digit++) {
+      const c = { cell, digit };
+      if (!(g.cands[cell] & bit(digit))) continue;
+      const closing = chain.nodes.length >= 3 && same(c, chain.nodes[0]);
+      if (!closing && chain.nodes.some((n) => same(n, c))) continue;
+      const v = classifyLink(g, last, c);
+      if (!v.kind) continue;
+      if (closing && (chain.links.length + 1) % 2 === 1) continue;
+      if (v.kind === 'strong') out.strong.push(c);
+      else if (need === 'weak') out.weak.push(c);
+    }
+  }
+  return out;
 }
 
 /** The chain read from its first candidate: what being false there forces. */
@@ -105,9 +142,10 @@ export function statement(chain: Chain): string {
   const parts: string[] = [`If the ${name(nodes[0])} is false`];
   for (let i = 0; i < links.length; i++) {
     // at even links the previous node is false, so this one is true; at odd links the reverse
-    parts.push(`${i === 0 ? 'then' : 'so'} the ${name(nodes[i + 1])} is ${i % 2 === 0 ? 'true' : 'false'}`);
+    const back = chain.closed && i === links.length - 1;
+    parts.push(`${i === 0 ? 'then' : 'so'} the ${name(nodes[i + 1])} is ${i % 2 === 0 ? 'true' : 'false'}${back ? ' again, as assumed' : ''}`);
   }
-  return parts.join(', ') + '.';
+  return parts.join(', ') + (chain.closed ? ': the loop holds whichever way round it is read.' : '.');
 }
 
 /** weakly linked: cannot both be true */
@@ -117,6 +155,7 @@ const weakTo = (c: CellDigit, n: CellDigit) =>
 /** What a chain that ends on a strong link removes: every candidate that sees both ends. */
 export function conclusions(g: Grid, chain: Chain): CellDigit[] {
   const { nodes, links } = chain;
+  if (chain.closed) return loopConclusions(g, chain);
   if (links.length < 1 || links.length % 2 === 0) return [];
   const a = nodes[0];
   const z = nodes[nodes.length - 1];
@@ -133,10 +172,45 @@ export function conclusions(g: Grid, chain: Chain): CellDigit[] {
   return out;
 }
 
+/**
+ * A continuous loop: every weak link is a strong link too, so whatever
+ * else could take a weak link's place is false: the other candidates of a
+ * cell the link runs inside, or the digit in every cell that sees both
+ * ends of a link between cells.
+ */
+function loopConclusions(g: Grid, chain: Chain): CellDigit[] {
+  const { nodes, links } = chain;
+  const out: CellDigit[] = [];
+  const add = (c: CellDigit) => {
+    if (!(g.cands[c.cell] & bit(c.digit)) || g.values[c.cell]) return;
+    if (nodes.some((n) => same(n, c)) || out.some((o) => same(o, c))) return;
+    out.push(c);
+  };
+  for (let i = 1; i < links.length; i += 2) {
+    const a = nodes[i];
+    const b = nodes[i + 1];
+    if (a.cell === b.cell) {
+      for (let d = 1; d <= 9; d++) if (d !== a.digit && d !== b.digit) add({ cell: a.cell, digit: d });
+    } else {
+      for (let cell = 0; cell < 81; cell++) if (cell !== a.cell && cell !== b.cell && sees(cell, a.cell) && sees(cell, b.cell)) add({ cell, digit: a.digit });
+    }
+  }
+  return out;
+}
+
+export interface Drawing {
+  /** mark the candidates that could be tapped next */
+  suggest?: boolean;
+  /** the practice goal: candidates to remove */
+  goal?: CellDigit[];
+}
+
 /** The chain as a step, so the board draws it like a hint. */
-export function chainStep(g: Grid, chain: Chain): Step {
+export function chainStep(g: Grid, chain: Chain, opts: Drawing = {}): Step {
   const { nodes, links } = chain;
   const eliminations = conclusions(g, chain);
+  const next = opts.suggest ? nextLinks(g, chain) : { strong: [], weak: [] };
+  const suggested = [...next.strong, ...next.weak];
   const name = (n: CellDigit) => `${n.digit} in ${cellName(n.cell)}`;
   const drawn: ChainLink[] = links.map((kind, i) => ({
     from: [nodes[i]],
@@ -151,17 +225,28 @@ export function chainStep(g: Grid, chain: Chain): Step {
   const ends = links.length && links.length % 2 === 1;
   const verdict = !links.length
     ? ''
-    : !ends
+    : chain.closed
+      ? eliminations.length
+        ? ` Every weak link in the loop is a strong link too, so what else could sit in its place is false: ${eliminations.map((e) => `${e.digit} in ${cellName(e.cell)}`).join(', ')}.`
+        : ' The loop holds, but nothing else sits on its weak links: it removes nothing.'
+      : !ends
       ? ' The chain ends on a weak link: add a strong link to finish it.'
       : eliminations.length
         ? ` One of the two ends is true, so every candidate that sees both is false: ${eliminations.map((e) => `${e.digit} in ${cellName(e.cell)}`).join(', ')}.`
         : ' One of the two ends is true, but no candidate sees both yet: keep going, or start elsewhere.';
+  const goal = (opts.goal ?? []).filter((c) => !eliminations.some((e) => same(e, c)));
   return {
-    tech: allSameDigit ? 'X_CHAIN' : 'AIC',
+    tech: chain.closed ? (allSameDigit ? 'X_CYCLES' : 'NICE_LOOP') : allSameDigit ? 'X_CHAIN' : 'AIC',
     placements: [],
     eliminations,
     primary: nodes,
-    labels: { primary: 'your chain, read along the arrows' },
+    secondary: suggested.length ? suggested : undefined,
+    fins: goal.length ? goal : undefined,
+    labels: {
+      primary: 'your chain, read along the arrows',
+      secondary: 'where you could go next: a candidate linked to the last one',
+      fins: 'the goal: a candidate your chain should remove'
+    },
     links: drawn,
     description: `${statement(chain)}${verdict}`.trim()
   };

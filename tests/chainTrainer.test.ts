@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { parseGrid, gridFromValues, bit } from '../src/engine/board';
-import { classifyLink, extend, conclusions, chainStep, statement, EMPTY_CHAIN, Chain } from '../src/engine/chainTrainer';
+import { classifyLink, extend, conclusions, chainStep, statement, nextLinks, EMPTY_CHAIN, Chain } from '../src/engine/chainTrainer';
 import { EXAMPLES } from '../src/content/examples';
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
@@ -72,5 +72,37 @@ describe('links', () => {
     expect(chainStep(g, chain).description).toContain('One of the two ends is true');
     chain = { nodes: chain.nodes, links: chain.links.concat('weak') };
     expect(conclusions(g, { nodes: [...chain.nodes, first], links: chain.links })).toEqual([]);
+  });
+
+  it('closes a loop on the engine’s own Nice Loop, and every weak link then removes', () => {
+    const { g, step } = exampleGrid('NICE_LOOP');
+    let chain: Chain = EMPTY_CHAIN;
+    const nodes = [step.links![0].from[0], ...step.links!.map((l) => l.to[0])];
+    for (const node of nodes) {
+      const r = extend(g, chain, node);
+      expect(r.ok, r.message).toBe(true);
+      chain = r.chain;
+    }
+    expect(chain.closed).toBe(true);
+    expect(extend(g, chain, nodes[1]).ok).toBe(false);
+    const found = conclusions(g, chain);
+    for (const e of step.eliminations) expect(found).toContainEqual(e);
+    expect(chainStep(g, chain).tech).toMatch(/NICE_LOOP|X_CYCLES/);
+    expect(statement(chain)).toContain('again, as assumed');
+  });
+
+  it('suggests the candidates that link to the last one, and draws the goal', () => {
+    const { g, step } = exampleGrid('AIC');
+    const nodes = [step.links![0].from[0], ...step.links!.map((l) => l.to[0])];
+    let chain = extend(g, EMPTY_CHAIN, nodes[0]).chain;
+    expect(nextLinks(g, chain).strong).toContainEqual(nodes[1]);
+    expect(nextLinks(g, chain).weak).toEqual([]); // a strong link is needed first
+    chain = extend(g, chain, nodes[1]).chain;
+    const next = nextLinks(g, chain);
+    expect([...next.strong, ...next.weak]).toContainEqual(nodes[2]);
+    const drawn = chainStep(g, chain, { suggest: true, goal: step.eliminations });
+    expect(drawn.secondary).toContainEqual(nodes[2]);
+    expect(drawn.fins).toEqual(step.eliminations);
+    expect(drawn.labels?.fins).toMatch(/goal/);
   });
 });

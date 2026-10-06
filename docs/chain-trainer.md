@@ -31,6 +31,17 @@ candidates, not cells.
   unaided move (docs/technique-stats.md). The board draws the chain
   exactly as a hint would: solid arrows for strong links, dashed for
   weak, red for what goes.
+- **Show links** marks every candidate that links to the last one (amber),
+  for a learner who does not yet see the conjugate pairs; **Walk through
+  it** reads the chain back one link at a time.
+- Tapping the first candidate again closes a **loop** (an even number of
+  links, alternating all the way round): every weak link is then a strong
+  link too, so the other candidates of a cell the link runs inside, or the
+  digit in every cell that sees both ends of a link between cells, are
+  false. That is the X-Cycle and the Nice Loop.
+- In practice of a chain technique, **Build it yourself** in the practice
+  bar opens the trainer with the technique's removal as the goal (purple);
+  a chain that removes it counts as found, like the move itself would.
 - Backspace takes the last candidate off, Clear starts over, Escape or
   Done leaves.
 
