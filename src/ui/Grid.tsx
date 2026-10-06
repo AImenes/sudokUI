@@ -596,56 +596,102 @@ export function Grid() {
   const anchor = useRef<number | null>(null);
   const before = useRef<number[]>([]);
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    // building a chain: a tap picks a candidate, not a cell
-    if (useGame.getState().chain) {
-      const hit = candidateFromEvent(e);
-      if (hit) chainTap(hit.cell, hit.digit);
-      return;
-    }
-    const cell = cellFromEvent(e);
-    if (cell === null) return;
-    // number-first: with a digit armed, a plain tap enters it here
-    const armed = useGame.getState().armedDigit;
-    if (armed && !(e.ctrlKey || e.metaKey || e.shiftKey)) {
-      select([cell], false);
-      input(armed);
-      return;
-    }
-    dragging.current = true;
-    additive.current = e.ctrlKey || e.metaKey || e.shiftKey;
-    anchor.current = cell;
-    // with Ctrl/Cmd or Shift held as well, the rectangle adds to what was
-    // selected already
-    before.current = additive.current ? useGame.getState().selection : [];
-    (e.target as Element).setPointerCapture?.(e.pointerId);
-    if (cells[cell].value) {
-      longPress.current = {
-        cell,
-        timer: window.setTimeout(() => {
-          longPress.current = null;
-          selectAllOf(cells[cell].value);
-        }, 500)
-      };
-    }
+  // A touch is settled when the finger lifts, not when it lands: the board
+  // lets a vertical swipe scroll the page (touch-action: pan-y), and the
+  // browser reports that swipe as a pointercancel, which must leave the
+  // selection alone. A horizontal drag still selects, from its first move.
+  const touch = useRef<{ cell: number; additive: boolean; x: number; y: number; chain: { cell: number; digit: number } | null } | null>(null);
+
+  const startLongPress = (cell: number) => {
+    if (!cells[cell].value) return;
+    longPress.current = {
+      cell,
+      timer: window.setTimeout(() => {
+        longPress.current = null;
+        touch.current = null; // the press is spent, the lift does nothing
+        selectAllOf(cells[cell].value);
+      }, 500)
+    };
+  };
+
+  // a tap on a cell: select it, deselect it, or add it to the selection
+  const tapCell = (cell: number, add: boolean) => {
     // read the live selection (not this render's snapshot) so back-to-back
     // interactions resolve against the current state
     const sel = useGame.getState().selection;
     // tapping the lone selected cell deselects it — on touch there is no
     // Escape key, so this is the way out of a highlight
-    if (!additive.current && sel.length === 1 && sel[0] === cell) {
+    if (!add && sel.length === 1 && sel[0] === cell) {
       select([], false);
       return;
     }
     // modifier-clicking an already-selected cell removes it from the
     // selection instead of re-adding it
-    if (additive.current && sel.includes(cell)) {
+    if (add && sel.includes(cell)) {
       select(sel.filter((i) => i !== cell), false);
       return;
     }
-    select([cell], additive.current);
+    select([cell], add);
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    const add = e.ctrlKey || e.metaKey || e.shiftKey;
+    // building a chain: a tap picks a candidate, not a cell
+    if (useGame.getState().chain) {
+      const hit = candidateFromEvent(e);
+      if (!hit) return;
+      if (e.pointerType === 'touch') {
+        touch.current = { cell: hit.cell, additive: add, x: e.clientX, y: e.clientY, chain: hit };
+        (e.target as Element).setPointerCapture?.(e.pointerId);
+      } else {
+        chainTap(hit.cell, hit.digit);
+      }
+      return;
+    }
+    const cell = cellFromEvent(e);
+    if (cell === null) return;
+    if (e.pointerType === 'touch') {
+      touch.current = { cell, additive: add, x: e.clientX, y: e.clientY, chain: null };
+      dragging.current = false;
+      anchor.current = cell;
+      additive.current = add;
+      before.current = add ? useGame.getState().selection : [];
+      (e.target as Element).setPointerCapture?.(e.pointerId);
+      startLongPress(cell);
+      return;
+    }
+    // number-first: with a digit armed, a plain tap enters it here
+    const armed = useGame.getState().armedDigit;
+    if (armed && !add) {
+      select([cell], false);
+      input(armed);
+      return;
+    }
+    dragging.current = true;
+    additive.current = add;
+    anchor.current = cell;
+    // with Ctrl/Cmd or Shift held as well, the rectangle adds to what was
+    // selected already
+    before.current = add ? useGame.getState().selection : [];
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    startLongPress(cell);
+    tapCell(cell, add);
   };
   const onPointerMove = (e: React.PointerEvent) => {
+    const t = touch.current;
+    if (t) {
+      if (t.chain) return;
+      const dx = e.clientX - t.x;
+      const dy = e.clientY - t.y;
+      // a sideways move past the press cell turns the touch into a
+      // drag-select from that cell; a vertical one is the page scrolling
+      // (the browser cancels the pointer once it decides so)
+      if (Math.abs(dx) <= Math.abs(dy) || cellFromEvent(e) === t.cell) return;
+      touch.current = null;
+      cancelLongPress();
+      dragging.current = true;
+      select([t.cell], t.additive);
+    }
     if (!dragging.current) return;
     const cell = cellFromEvent(e);
     if (cell !== null) {
@@ -664,10 +710,28 @@ export function Grid() {
       select([cell], true);
     }
   };
-  const onPointerUp = () => {
+  const endPointer = () => {
     dragging.current = false;
     anchor.current = null;
+    touch.current = null;
     cancelLongPress();
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    const t = touch.current;
+    endPointer();
+    if (!t) return;
+    // the touch lifted where it landed: now it is a tap
+    if (t.chain) {
+      chainTap(t.chain.cell, t.chain.digit);
+      return;
+    }
+    const armed = useGame.getState().armedDigit;
+    if (armed && !t.additive) {
+      select([t.cell], false);
+      input(armed);
+      return;
+    }
+    tapCell(t.cell, t.additive && !!e);
   };
   const onDoubleClick = (e: React.MouseEvent) => {
     const cell = cellFromEvent(e as unknown as React.PointerEvent);
@@ -695,7 +759,7 @@ export function Grid() {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={endPointer}
         onDoubleClick={onDoubleClick}
         tabIndex={0}
         role="application"
