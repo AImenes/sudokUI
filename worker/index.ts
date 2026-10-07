@@ -24,8 +24,12 @@ export interface Env {
 /** the built app shell with its placeholders intact (vite.config.ts, homePages) */
 export const SHARE_TEMPLATE = '/share.tpl';
 
-/** how long a chat app or a browser may keep a share page */
-const CACHE_CONTROL = 'public, max-age=3600';
+/**
+ * A share page names the current build's hashed scripts, which a deploy
+ * replaces, so a browser must ask again each time, as it does for the
+ * app's own index.html; chat apps keep their previews on their own terms
+ */
+const CACHE_CONTROL = 'public, max-age=0, must-revalidate';
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);

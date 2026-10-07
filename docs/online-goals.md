@@ -2,13 +2,15 @@
 
 Companion to [goals.md](goals.md). That document is the mission; this one
 is what sudokUI may do once it has a server-side store (Cloudflare D1 next
-to the assets-only Worker), in what order, and the lines it will not cross.
+to the Worker that renders the share pages), in what order, and the lines
+it will not cross.
 It is written to be pasted into a prompt as context, so it states the
 current code, the decisions, the budgets and the open questions in one
 place. It is not translated.
 
-Status: decided, nothing built yet. Dates and limits were checked in
-October 2026 and must be re-checked before each phase ships.
+Status: phase 1 (share links that preview) is built, October 2026; phases 2
+to 4 are decided and not built. Dates and limits were checked in October
+2026 and must be re-checked before each phase ships.
 
 ## The one-paragraph version
 
@@ -55,10 +57,13 @@ gets sharper here:
 
 Facts a prompt can rely on, with the files that hold them:
 
-- **Hosting is an assets-only Worker.** `wrangler.jsonc` has no `main`;
-  `npx wrangler deploy` uploads `dist/`. Unknown paths are real 404s
-  (`not_found_handling: "404-page"`). Adding API routes means adding a
-  `main` entry and a Worker script; the static hosting does not move
+- **Hosting is a Worker with code in front of static assets.**
+  `wrangler.jsonc` names the script (`main: worker/index.ts`) and binds
+  `dist/` as `ASSETS`; `npx wrangler deploy` ships both. A request that
+  matches a file never runs code and is not counted. The Worker runs only
+  for the paths that are no file: it renders the share addresses and hands
+  everything else back to the assets, so unknown paths are still real 404s
+  (`not_found_handling: "404-page"`). API routes go in the same script
   ([deployment.md](deployment.md)).
 - **The daily is derived at runtime from the date.** `src/engine/daily.ts`
   seeds a PRNG from the UTC date string, swaps it in for `Math.random`, and
@@ -70,31 +75,42 @@ Facts a prompt can rely on, with the files that hold them:
 - **The streak is local.** `src/state/stats.ts` keeps `dailyDays`, a list of
   date keys, persisted with zustand `persist` in localStorage. The win
   dialog in `src/ui/Dialogs.tsx` computes the streak from it.
-- **Share links are hash URLs.** The win dialog builds
-  `https://sudokui.app/<lang>/#p=<81 chars>` and the app reads `#p=` on
-  boot (`src/ui/App.tsx`). Fragments are never sent to the server, so every
-  shared puzzle unfurls as the homepage. The learn pages also link to
-  `#p=` for "play this puzzle from the start" (`src/content/learnPages.ts`).
+- **Share links are path URLs.** `/p/<81 chars>` under each language root
+  (`/nb/p/`, `/es/p/`), with query hints the client adds when it builds the
+  link: `b` the band, `s` the score, `t` up to three technique slugs, `vs`
+  a challenger's time in whole seconds (`src/content/share.ts`). The share
+  dialog and the win dialog build them with `shareUrl`, the app boots from
+  them and keeps the address bar on one (`src/ui/App.tsx`), and the Worker
+  renders a preview for them. `#p=` and `#s=` keep working, and a position
+  link is a share address with `#s=` on the end, so it previews too. The
+  learn pages still link to `#p=` for "play this puzzle from the start"
+  (`src/content/learnPages.ts`), on purpose: fragments are never fetched,
+  so a crawler following eighty pages of puzzle links costs no Worker
+  invocations.
 - **"Faster than N%" is modelled, not measured.** `src/content/solveTimes.ts`
   holds a hand-set median per band and one log-normal spread, calibrated
   to published online-solver figures and championship times. The share
   text already carries this percentile. Crowd data can replace the model
   band by band once there is enough of it.
-- **The service worker answers only the app roots with the shell.**
-  `vite.config.ts` allows navigation fallback for `/`, `/nb/`, `/es/` and
+- **The service worker answers only the app's own addresses with the
+  shell.** `vite.config.ts` allows navigation fallback for `APP_NAVIGATION`
+  (`src/content/home.ts`: `/`, `/nb/`, `/es/` and the share addresses) and
   denies `STATIC_ROUTES` (`src/content/staticRoutes.ts`), so the learn
   pages, `/daily-sudoku/`, `/sudoku-solver/` and the rest are real
-  documents. New Worker-rendered routes such as `/p/` and `/daily/` must be
-  added to that deny list or an installed app will answer them with the
-  game.
+  documents. A player with the app installed gets the shell for a share
+  address at once, offline too, and the app reads the puzzle from the path;
+  crawlers and chat apps have no service worker and get the Worker's page.
+  A new Worker-rendered route that is a document (`/daily/<date>`) must be
+  added to the deny list, or an installed app will answer it with the game.
 - **Static pages are built post-build.** `scripts/build-learn.ts` writes the
-  learn pages and `sitemap.xml` into `dist/`. The social card is one static
-  `og-card.png` made by `scripts/og-card.ts`.
-- **Languages.** The site is being translated to Norwegian (`/nb/`) and
-  Spanish (`/es/`) on the same branch as this document. Any new route or
-  share text must go through the same `t()` templates and language roots as
-  the rest of the app, and share pages must carry the language of the
-  sender.
+  learn pages and `sitemap.xml` into `dist/`. The home page's social card
+  is `og-card.png` (and `.nb`, `.es`) made by `scripts/og-card.ts`; the
+  share pages' cards are twenty-four static PNGs in `public/og/`, one per
+  band and language, made by `scripts/og-share-cards.ts`.
+- **Languages.** The site is published in Norwegian (`/nb/`) and Spanish
+  (`/es/`) as well as English. Any new route or share text must go through
+  the same `t()` templates and language roots as the rest of the app, and
+  share pages carry the language of the sender.
 
 ## The road, in order
 
@@ -104,23 +120,31 @@ The smallest change with the largest reach effect. A Worker route
 `/p/<81 chars>` returns HTML with a puzzle-specific `<title>`, description,
 Open Graph and Twitter tags, `noindex`, and a static OG image chosen by
 band, then boots the same app bundle. Optional query hints such as
-`?b=tricky&t=xw,sky` come from the client and are spoofable, which is
-harmless because the page is not indexed. `#p=` keeps working.
+`?b=tricky&s=1100&t=x-wing,skyscraper` come from the client and are
+spoofable, which is harmless because the page is not indexed. `#p=` keeps
+working.
 
 - Do not rate the puzzle server-side on the free plan. The hardest puzzles
   take most of a second to rate, against a 10 ms CPU limit per invocation.
   The client already knows band, score and techniques when it builds the
   link, so it puts them in the query.
-- Eight static OG images, one per band, not a rendered board per puzzle.
-- "Challenge a friend" costs nothing extra: `/p/…?vs=9:12` puts the
-  challenger's time in the URL and the win screen compares against it.
+- Eight static OG images per language, one per band (twenty-four in all),
+  not a rendered board per puzzle.
+- "Challenge a friend" costs nothing extra: `/p/…?vs=552` puts the
+  challenger's time in the URL, in whole seconds, and the win screen
+  compares against it to the second.
 - `/daily/<date>` gets the same treatment in phase 2.
 - Schema.org markup only on indexable pages (daily archive, learn pages),
   never on `/p/`.
 
-Needs: a `main` Worker script, the route, the OG images, the service
-worker deny list, and tests that the route returns the right tags for a
-sample puzzle in each language.
+Built, October 2026: `worker/index.ts` (the script), `src/content/share.ts`
+(the address, its hints and the page, in three languages), the share
+addresses in `APP_NAVIGATION`, the twenty-four band cards in `public/og/`,
+the share and win dialogs building the links, `tests/sharePage.test.ts`
+(the address, the copy, the page and the Worker) and a browser smoke test
+that lands on a share address. The cards show the band's name in the
+language and a real board of that band, never the shared puzzle: the
+image is fetched once per link and rendered once per band.
 
 ### Phase 2: the shared daily with global stats and a share line
 
@@ -352,7 +376,6 @@ questions and can be asked directly.
   and matches Wordle; the current code uses UTC. Decision pending phase 2.
 - Seven days or sixty days of dailies in the static file? Sixty keeps a
   long flight covered; seven keeps spoilers short.
-- Which eight OG images, and whether the band name on them is localised.
 - Whether the share line carries the technique emoji row by default or
   behind a setting.
 - What the privacy page says, in all three languages.

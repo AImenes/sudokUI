@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -77,6 +79,23 @@ function homePages(): Plugin[] {
           next();
         });
       },
+      // `vite preview` serves dist/ as files only, so it answers the share
+      // addresses here, from share.tpl, as the Worker does in production:
+      // the browser smoke test (tests/e2e) lands on one
+      configurePreviewServer(server) {
+        server.middlewares.use((req, res, next) => {
+          const share = shareOf(req.url ?? '');
+          if (!share) return next();
+          let tpl: string;
+          try {
+            tpl = readFileSync(resolve(server.config.root, server.config.build.outDir, 'share.tpl'), 'utf8');
+          } catch {
+            return next();
+          }
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.end(renderSharePage(tpl, share));
+        });
+      },
       transformIndexHtml: {
         order: 'pre',
         handler: (html, ctx) => {
@@ -128,11 +147,12 @@ export default defineConfig({
       injectRegister: null,
       includeAssets: ['icon.svg'],
       workbox: {
-        // The app lives at "/", "/nb/" and "/es/" only (hash routing), so
-        // only those may fall back to the app shell (src/content/home.ts).
-        // The static pages are real documents: left to the default, an
-        // installed app would answer their URLs with the game instead of
-        // the article.
+        // The app lives at "/", "/nb/" and "/es/" and at the share
+        // addresses, /p/<puzzle>, under them (src/content/home.ts,
+        // APP_NAVIGATION; src/content/share.ts), so only those may fall
+        // back to the app shell. The static pages are real documents: left
+        // to the default, an installed app would answer their URLs with the
+        // game instead of the article.
         navigateFallbackAllowlist: [APP_NAVIGATION],
         navigateFallbackDenylist: [STATIC_ROUTES],
         // and they stay out of the precache: they are generated after this

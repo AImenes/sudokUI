@@ -27,6 +27,6 @@ const BY_SLUG = new Map<string, Tech>(
 
 export const techFromSlug = (slug: string): Tech | undefined => BY_SLUG.get(slug);
 
-/** accepts a catalogue key (X_WING) or a slug (x-wing) */
+/** accepts a catalogue key (X_WING) or a slug (x-wing); an own key only, never "constructor" and its kin */
 export const techFromParam = (param: string): Tech | undefined =>
-  param in TECHS ? (param as Tech) : techFromSlug(param.toLowerCase());
+  Object.prototype.hasOwnProperty.call(TECHS, param) ? (param as Tech) : techFromSlug(param.toLowerCase());

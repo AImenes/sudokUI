@@ -2,7 +2,7 @@
 // board + side panel layout, global keyboard handling, dialog routing,
 // toast display and the first-visit bootstrap game.
 import React, { Suspense, useEffect, useState } from 'react';
-import { useGame, rateImport, Proof } from '../state/gameStore';
+import { useGame, rateImport, validatePuzzle, Proof } from '../state/gameStore';
 import { cellName, PEERS } from '../engine/board';
 import { dailyPuzzle } from '../engine/daily';
 import { useSettings } from '../state/settings';
@@ -283,21 +283,41 @@ export default function App() {
     const sharedPosition = params.get('s');
     if (sharedPosition && useGame.getState().loadPosition(sharedPosition)) return;
     const share = parseShareUrl(window.location);
-    const shared = share?.puzzle ?? params.get('p');
-    if (shared && shared !== useGame.getState().info?.puzzle) {
-      const cleaned = shared.replace(/[^0-9.]/g, '');
-      const rating = cleaned.length === 81 ? rateImport(cleaned) : null;
-      if (rating) {
-        useGame.getState().startGame(cleaned, rating.score, rating.level);
-        if (share?.vs) {
-          const vs = share.vs;
-          const t = translator();
-          useGame.setState((s) => ({
-            info: s.info && { ...s.info, challenge: vs },
-            notice: t('A challenge: solve it faster than {time}', { time: clockOf(vs) })
-          }));
-        }
+    // a puzzle string may write its empty cells as zeros; the app writes dots
+    const shared = (share?.puzzle ?? params.get('p') ?? '').replace(/[^0-9.]/g, '').replace(/0/g, '.');
+    const game = useGame.getState();
+    /** the challenger's time becomes the one to beat, and the player is told */
+    const challenge = (vs: number) => {
+      const t = translator();
+      useGame.setState((s) => ({
+        info: s.info && { ...s.info, challenge: vs },
+        notice: t('A challenge: solve it faster than {time}', { time: clockOf(vs) })
+      }));
+    };
+    if (shared && shared === game.info?.puzzle) {
+      // the puzzle already on the board (a reload lands here), perhaps with
+      // a challenger's time for it: a finished game, or one not yet begun
+      // (its clock may have run), starts over against that time; one under
+      // way keeps its moves and takes the time on
+      if (share?.vs) {
+        const untouched = game.cells.every((c) => c.given || (!c.value && !c.corner && !c.center && !c.colors.length));
+        if (game.won || untouched) game.restart();
+        challenge(share.vs);
+      }
+      return;
+    }
+    if (shared) {
+      const v = shared.length === 81 ? validatePuzzle(shared) : null;
+      if (v && v.ok) {
+        game.startGame(shared, v.score, v.level);
+        if (share?.vs) challenge(share.vs);
         return;
+      }
+      // a share page promised a puzzle the app cannot play (no solution,
+      // several, too few clues): say so, then go on as with no link
+      if (share) {
+        const t = translator();
+        useGame.setState({ notice: t('The shared puzzle could not be opened. {reason}', { reason: v ? v.reason : '' }).trim() });
       }
     }
     if (!useGame.getState().info) start({ kind: 'level', level: 'Easy' });
@@ -310,7 +330,7 @@ export default function App() {
   useEffect(() => {
     const onHash = () => {
       const params = new URLSearchParams(window.location.hash.slice(1));
-      const shared = (params.get('p') ?? '').replace(/[^0-9.]/g, '');
+      const shared = (params.get('p') ?? '').replace(/[^0-9.]/g, '').replace(/0/g, '.');
       const g = useGame.getState();
       if (shared.length !== 81 || shared === g.info?.puzzle) return;
       if (g.history.length > 0 && !g.won) {
@@ -328,13 +348,32 @@ export default function App() {
   // keep the address bar shareable: it always points at the current
   // puzzle, at the address that previews when pasted into a chat, in the
   // app's language (the Worker and the service worker both answer it with
-  // the app, src/content/home.ts). A challenger's time stays out of it:
-  // the player's own copy of the link should not carry it
+  // the app, src/content/home.ts). The band and the score stay out of it
+  // while the rating is hidden and the game is on (the share dialog still
+  // puts them in a link made for someone else), and so does a challenger's
+  // time: the player's own copy of the link should not carry it. The
+  // tab's title, which a share page sets to its puzzle, goes back to the
+  // app's own, so it never names a puzzle that has left the board.
   useEffect(() => {
-    if (info?.puzzle) {
-      window.history.replaceState(null, '', sharePath({ lang, puzzle: info.puzzle, level: info.level, score: info.score }));
+    if (!info?.puzzle) return;
+    const rated = !(hideRating && !won);
+    try {
+      window.history.replaceState(
+        null,
+        '',
+        sharePath({ lang, puzzle: info.puzzle, level: rated ? info.level : undefined, score: rated ? info.score : undefined })
+      );
+    } catch {
+      // an origin that allows no path of its own (a file:// build): the
+      // hash link still names the puzzle, and the app still reads it
+      window.history.replaceState(null, '', `#p=${info.puzzle}`);
     }
-  }, [info?.puzzle, lang]);
+    import('../content/home')
+      .then((m) => {
+        document.title = m.HOME[lang].title;
+      })
+      .catch(() => {});
+  }, [info?.puzzle, info?.level, info?.score, lang, hideRating, won]);
 
   // toasts fade after a few seconds
   useEffect(() => {

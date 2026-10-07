@@ -161,7 +161,9 @@ export function startLocales(): Promise<void> {
   useSettings.subscribe((s, prev) => {
     if (s.lang === prev.lang) return;
     // on /nb/ or /es/ the address follows the language, so a reload or a
-    // copied link keeps it; on / it stays /
+    // copied link keeps it; on / it stays / until a game is on the board,
+    // from when on the app keeps the address at the puzzle's share path in
+    // the chosen language (src/ui/App.tsx)
     if (typeof window !== 'undefined' && langOfPath(window.location.pathname)) {
       const { search, hash } = window.location;
       window.history.replaceState(window.history.state, '', langRoot(s.lang) + search + hash);

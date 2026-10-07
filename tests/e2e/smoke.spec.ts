@@ -4,8 +4,12 @@
  * `npm run test:e2e` after `npm run build`.
  */
 import { test, expect, Page } from '@playwright/test';
+import { parseGrid, gridToString } from '../../src/engine/board';
+import { solve } from '../../src/engine/bruteForce';
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
+/** a Hard puzzle (rated 1348 when written), for the links that name techniques */
+const HARD = '...6..9.1..95....4....4985..241....5....3....9....546..7549....3....12..1.2..3...';
 
 async function open(page: Page, hash = `#p=${EASY}`) {
   await page.addInitScript(() => {
@@ -452,4 +456,86 @@ test.describe('the app in Norwegian and Spanish', () => {
       await expect(page.getByText(l.caption)).toBeVisible();
     });
   }
+});
+
+test.describe('a share link', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test('is a page about the puzzle, which opens it with the time to beat', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    // the production build answers the share addresses the way the Worker does (vite.config.ts)
+    const response = await page.goto(`/p/${EASY}?b=easy&s=600&vs=552`);
+    const html = await response!.text();
+    expect(html).toContain('<html lang="en">');
+    expect(html).toContain('<meta name="robots" content="noindex" />');
+    expect(html).toContain('<title>Easy sudoku, rated 600 | sudokUI</title>');
+    expect(html).toContain('<meta property="og:title" content="Solved in 9:12. Can you beat it?" />');
+    expect(html).toContain('<meta property="og:image" content="https://sudokui.app/og/easy.png" />');
+    expect(html).not.toContain('rel="canonical"');
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect(page.locator('.toast, [role=status]').filter({ hasText: 'solve it faster than 9:12' })).toBeVisible();
+    // the address bar then names the puzzle as the app rates it, without the time to beat
+    await expect.poll(() => page.evaluate(() => location.pathname + location.search)).toMatch(/^\/p\/[0-9.]{81}\?b=[a-z]+&s=\d+$/);
+  });
+
+  /** the clipboard, kept where the test can read it */
+  const keepClipboard = () => {
+    localStorage.setItem('sudokui-welcomed', '1');
+    (window as any).__copied = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: (s: string) => (((window as any).__copied = s), Promise.resolve()) }
+    });
+  };
+  const copied = (page: Page) => page.evaluate(() => (window as any).__copied as string);
+
+  test('the Share dialog copies the share address of the puzzle on this origin, techniques named', async ({ page }) => {
+    await page.addInitScript(keepClipboard);
+    // a Hard puzzle, whose path plays techniques worth naming
+    await page.goto(`/#p=${HARD}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
+    await dialog.getByRole('button', { name: 'Puzzle link' }).click();
+    const link = await copied(page);
+    expect(link).toMatch(new RegExp(`^http://localhost:4173/p/${HARD.replace(/\./g, '\\.')}\\?b=[a-z]+&s=\\d+&t=[a-z0-9-]+(,[a-z0-9-]+){0,2}$`));
+    await dialog.getByRole('button', { name: 'Position link' }).click();
+    const position = await copied(page);
+    expect(position.startsWith(link + '#s=')).toBe(true);
+  });
+
+  test('a win against a challenge compares the times, and shares this time as the one to beat', async ({ page }) => {
+    await page.addInitScript(keepClipboard);
+    await page.goto(`/p/${EASY}?vs=552`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    // solve it: every empty cell gets its digit
+    const solution = gridToString(solve(parseGrid(EASY)!)!);
+    const empties = [...EASY].map((ch, i) => (ch === '.' ? i : -1)).filter((i) => i >= 0);
+    for (const cell of empties) {
+      // the clock counts whole seconds, and a solve of 0:00 is no time to
+      // beat: let the clock tick once before the last digit
+      if (cell === empties[empties.length - 1]) await page.waitForTimeout(1100);
+      const c = await cellBox(page, cell);
+      await page.mouse.click(c.x, c.y);
+      await page.keyboard.press(`Digit${solution[cell]}`);
+    }
+    const dialog = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(/Challenge beaten: 9:12 to beat, you took \d+:\d\d/);
+    await dialog.getByRole('button', { name: /Challenge a friend/ }).click();
+    const text = await copied(page);
+    expect(text).toMatch(/^I solved an? [A-Za-z]+ sudoku \(rating \d+\) in \d+:\d\d/);
+    expect(text).toMatch(new RegExp(`https://sudokui\\.app/p/${EASY.replace(/\./g, '\\.')}\\?b=[a-z]+&s=\\d+(&t=[a-z0-9,-]+)?&vs=\\d+$`));
+  });
+
+  test('/nb/p/ is the share page in Norwegian, and starts the app in Norwegian', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    const response = await page.goto(`/nb/p/${EASY}?b=easy`);
+    const html = await response!.text();
+    expect(html).toContain('<html lang="nb">');
+    expect(html).toContain('<meta property="og:title" content="Klarer du denne sudokuen på nivået Lett?" />');
+    expect(html).toContain('<meta property="og:image" content="https://sudokui.app/og/easy.nb.png" />');
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'nb');
+    await expect.poll(() => page.evaluate(() => location.pathname)).toBe(`/nb/p/${EASY}`);
+  });
 });

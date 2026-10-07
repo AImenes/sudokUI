@@ -80,7 +80,8 @@ export function sharePath(p: ShareParams): string {
   if (p.score) q.set('s', String(p.score));
   if (p.techs?.length) q.set('t', p.techs.slice(0, SHARE_TECHS).map(techSlug).join(','));
   if (p.vs) q.set('vs', String(p.vs));
-  const query = q.toString();
+  // the commas between techniques stay readable: a link is read in a chat
+  const query = q.toString().replace(/%2C/g, ',');
   return `${homePath(p.lang)}p/${p.puzzle}${query ? `?${query}` : ''}`;
 }
 
@@ -88,12 +89,15 @@ export function sharePath(p: ShareParams): string {
 export const shareUrl = (p: ShareParams, origin = SITE) => origin + sharePath(p);
 
 /**
- * The techniques a link names: the hardest of those played, singles and
- * the rest of the Beginner band left out (every puzzle needs them)
+ * The techniques a link names, given those the puzzle's solve path plays
+ * (solvePath in gameStore.ts): the hardest three, singles and the rest of
+ * the Beginner band left out (every puzzle needs them), and brute force
+ * left out too: a puzzle the catalogue cannot finish needs no technique
+ * by that name
  */
 export function techsWorthNaming(techs: Iterable<Tech>): Tech[] {
   return [...new Set(techs)]
-    .filter((t) => TECHS[t] && TECHS[t].level !== 'Beginner')
+    .filter((t) => TECHS[t] && TECHS[t].level !== 'Beginner' && t !== 'BRUTE_FORCE')
     .sort((a, b) => TECHS[b].index - TECHS[a].index)
     .slice(0, SHARE_TECHS);
 }
@@ -140,13 +144,13 @@ export const SHARE: Record<Lang, ShareCopy> = {
     ogTitle: 'Can you solve this {level} sudoku?',
     ogTitleUnknown: 'Can you solve this sudoku?',
     ogTitleVs: 'Solved in {time}. Can you beat it?',
-    description: 'A {level} sudoku rated {score}{techs}. Play it free on sudokUI, with hints that explain every step.',
-    descriptionNoScore: 'A {level} sudoku{techs}. Play it free on sudokUI, with hints that explain every step.',
+    description: '{a} {level} sudoku rated {score}{techs}. Play it free on sudokUI, with hints that explain every step.',
+    descriptionNoScore: '{a} {level} sudoku{techs}. Play it free on sudokUI, with hints that explain every step.',
     descriptionUnknown: 'A sudoku shared from sudokUI. Play it free, with hints that explain every step.',
     needing: ', needing {list}',
     vs: 'Solved in {time} on sudokUI: can you beat it?',
     and: 'and',
-    ogImageAlt: 'A {level} sudoku on sudokUI',
+    ogImageAlt: '{a} {level} sudoku on sudokUI',
     ogImageAltUnknown: 'A sudoku on sudokUI',
     loading: 'Loading the puzzle…',
     noscript: 'sudokUI needs JavaScript to run. The app is free and open source:'
@@ -158,13 +162,13 @@ export const SHARE: Record<Lang, ShareCopy> = {
     ogTitle: 'Klarer du denne sudokuen på nivået {level}?',
     ogTitleUnknown: 'Klarer du denne sudokuen?',
     ogTitleVs: 'Løst på {time}. Klarer du å slå det?',
-    description: 'En sudoku på nivået {level} med poengsum {score}{techs}. Spill den gratis i sudokUI, med hint som forklarer hvert steg.',
-    descriptionNoScore: 'En sudoku på nivået {level}{techs}. Spill den gratis i sudokUI, med hint som forklarer hvert steg.',
+    description: '{a} sudoku på nivået {level} med poengsum {score}{techs}. Spill den gratis i sudokUI, med hint som forklarer hvert steg.',
+    descriptionNoScore: '{a} sudoku på nivået {level}{techs}. Spill den gratis i sudokUI, med hint som forklarer hvert steg.',
     descriptionUnknown: 'En sudoku delt fra sudokUI. Spill den gratis, med hint som forklarer hvert steg.',
     needing: ' som krever {list}',
     vs: 'Løst på {time} i sudokUI: klarer du å slå det?',
     and: 'og',
-    ogImageAlt: 'En sudoku på nivået {level} i sudokUI',
+    ogImageAlt: '{a} sudoku på nivået {level} i sudokUI',
     ogImageAltUnknown: 'En sudoku i sudokUI',
     loading: 'Laster inn oppgaven…',
     noscript: 'sudokUI trenger JavaScript for å kjøre. Appen er gratis og har åpen kildekode:'
@@ -176,13 +180,13 @@ export const SHARE: Record<Lang, ShareCopy> = {
     ogTitle: '¿Puedes resolver este sudoku de nivel {level}?',
     ogTitleUnknown: '¿Puedes resolver este sudoku?',
     ogTitleVs: 'Resuelto en {time}. ¿Puedes superarlo?',
-    description: 'Un sudoku de nivel {level} con puntuación {score}{techs}. Juégalo gratis en sudokUI, con pistas que explican cada paso.',
-    descriptionNoScore: 'Un sudoku de nivel {level}{techs}. Juégalo gratis en sudokUI, con pistas que explican cada paso.',
+    description: '{a} sudoku de nivel {level} con puntuación {score}{techs}. Juégalo gratis en sudokUI, con pistas que explican cada paso.',
+    descriptionNoScore: '{a} sudoku de nivel {level}{techs}. Juégalo gratis en sudokUI, con pistas que explican cada paso.',
     descriptionUnknown: 'Un sudoku compartido desde sudokUI. Juégalo gratis, con pistas que explican cada paso.',
     needing: ' que requiere {list}',
     vs: 'Resuelto en {time} en sudokUI: ¿puedes superarlo?',
     and: 'y',
-    ogImageAlt: 'Un sudoku de nivel {level} en sudokUI',
+    ogImageAlt: '{a} sudoku de nivel {level} en sudokUI',
     ogImageAltUnknown: 'Un sudoku en sudokUI',
     loading: 'Cargando el sudoku…',
     noscript: 'sudokUI necesita JavaScript para funcionar. La app es gratuita y de código abierto:'
@@ -191,6 +195,13 @@ export const SHARE: Record<Lang, ShareCopy> = {
 
 const SOURCE = 'https://github.com/AImenes/sudokUI';
 const OG_LOCALE: Record<Lang, string> = { en: 'en_GB', nb: 'nb_NO', es: 'es_ES' };
+
+/** the article that opens "{a} {level} sudoku": English needs "An" before Easy, Unfair and Extreme */
+const ARTICLE: Record<Lang, (levelName: string) => string> = {
+  en: (name) => (/^[aeiou]/i.test(name) ? 'An' : 'A'),
+  nb: () => 'En',
+  es: () => 'Un'
+};
 
 /** a band's name in a language (names.nb.ts, names.es.ts; English is the key) */
 export function levelName(level: Level, lang: Lang): string {
@@ -220,7 +231,7 @@ export function shareCopy(p: ShareParams) {
   const c = SHARE[p.lang];
   const level = p.level ? levelName(p.level, p.lang) : '';
   const techs = p.techs?.length ? fill(c.needing, { list: joinNames(p.techs.map((t) => techName(t, p.lang)), c.and) }) : '';
-  const vars = { level, score: p.score ?? '', techs };
+  const vars = { a: ARTICLE[p.lang](level), level, score: p.score ?? '', techs };
   const title = p.level ? fill(p.score ? c.title : c.titleNoScore, vars) : c.titleUnknown;
   const description = p.level ? fill(p.score ? c.description : c.descriptionNoScore, vars) : c.descriptionUnknown;
   const time = p.vs ? clockOf(p.vs) : '';
@@ -242,10 +253,11 @@ export function shareCopy(p: ShareParams) {
  * server) with every <!--home:…--> placeholder filled for this puzzle.
  * Kept out of search, with no canonical, no language alternates and no
  * structured data: a share page is a door into the app, not a document.
+ * og:url is the address itself, challenge and all: a scraper that follows
+ * og:url (Facebook's does) must land on the same page.
  */
 export function renderSharePage(template: string, p: ShareParams): string {
   const c = shareCopy(p);
-  const url = SITE + sharePath({ ...p, vs: undefined });
   return fillTemplate(template, {
     lang: p.lang,
     title: esc(c.title),
@@ -253,7 +265,7 @@ export function renderSharePage(template: string, p: ShareParams): string {
     links: '<meta name="robots" content="noindex" />',
     'og-title': esc(c.ogTitle),
     'og-description': esc(c.description),
-    url,
+    url: esc(SITE + sharePath(p)),
     'og-locale': `<meta property="og:locale" content="${OG_LOCALE[p.lang]}" />`,
     'og-image': c.ogImage,
     'og-image-alt': esc(c.ogImageAlt),

@@ -21,7 +21,8 @@ import { practiceSeeds } from '../content/practicePuzzles';
 import { seedPuzzles, SEEDED_LEVELS } from '../content/seeds';
 import { cruxIndex } from '../engine/generator';
 import { timeVerdict, percentileText, MODE_LABEL, SolveMode } from '../content/solveTimes';
-import { useT, translator, msg, rich, langRoot, Translator } from '../content/i18n';
+import { useT, translator, msg, rich, Translator } from '../content/i18n';
+import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
 import { HubTabs } from './HubTabs';
 import { techniquesByFamily } from '../content/categories';
 import { useLearnLocale } from './useLearnLocale';
@@ -799,22 +800,59 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
+/**
+ * The techniques a share link names (src/content/share.ts), from the
+ * puzzle's solve path. The rater takes up to a second over the hardest
+ * bands, so they are worked out once the dialog has settled rather than
+ * on the click, and on the click only when they have not arrived yet.
+ */
+function useShareTechs(puzzle: string | undefined): () => Tech[] {
+  const [ready, setReady] = useState<{ puzzle: string; techs: Tech[] } | null>(null);
+  const compute = (p: string) => techsWorthNaming(solvePath(p).map((s) => s.tech));
+  useEffect(() => {
+    if (!puzzle) return;
+    const id = setTimeout(() => setReady({ puzzle, techs: compute(puzzle) }), 1200);
+    return () => clearTimeout(id);
+  }, [puzzle]);
+  return () => (!puzzle ? [] : ready?.puzzle === puzzle ? ready.techs : compute(puzzle));
+}
+
 export function ShareDialog({ onClose }: { onClose: () => void }) {
   const cells = useGame((s) => s.cells);
   const autoCandidates = useGame((s) => s.autoCandidates);
+  const info = useGame((s) => s.info);
   const [copied, setCopied] = useState('');
   const t = useT();
+  const shareTechs = useShareTechs(info?.puzzle);
 
   const currentAsString = () =>
     cells.map((c) => (c.given ? String(c.value) : '.')).join('');
 
-  const base = () => `${window.location.origin}${window.location.pathname}`;
-  // the puzzle string doubles as the seed: anyone opening this link plays
-  // the exact same game
-  const shareLink = () => `${base()}#p=${currentAsString()}`;
+  // the share address of this puzzle (src/content/share.ts): the path
+  // carries the puzzle, so the link previews when pasted into a chat, and
+  // the query what the preview says about it (the band, the score and the
+  // techniques its path needs). On this origin, so a link copied from the
+  // dev server opens there. The puzzle string doubles as the seed: anyone
+  // opening this link plays the exact same game
+  const shareLink = () => {
+    const puzzle = currentAsString();
+    // (a puzzle pasted with zeros for its empty cells is the same puzzle)
+    const known = info?.puzzle.replace(/0/g, '.') === puzzle ? info : null;
+    return shareUrl(
+      {
+        lang: t.lang,
+        puzzle,
+        level: known?.level,
+        score: known?.score,
+        techs: known ? shareTechs() : undefined
+      },
+      window.location.origin
+    );
+  };
   // the position link additionally carries every entry, pencil mark,
-  // exclusion and colour — the recipient continues exactly where you are
-  const positionLink = () => `${base()}#s=${encodePosition(cells, autoCandidates)}`;
+  // exclusion and colour in its fragment — the recipient continues exactly
+  // where you are, and the preview still describes the puzzle
+  const positionLink = () => `${shareLink()}#s=${encodePosition(cells, autoCandidates)}`;
 
   const copy = (what: 'link' | 'position' | 'string') => {
     navigator.clipboard?.writeText(
@@ -916,13 +954,16 @@ export function VictoryDialog({
   const dailyDays = useStats((s) => s.dailyDays);
   const [copied, setCopied] = useState(false);
   const t = useT();
+  const shareTechs = useShareTechs(info?.puzzle);
   if (!info) return null;
   const secs = Math.floor(elapsedMs() / 1000);
   const mm = Math.floor(secs / 60);
   const ss = String(secs % 60).padStart(2, '0');
-  // a practice game starts part-way through, so its time compares with nothing
+  // a practice game, or one opened from a position link, starts part-way
+  // through, so its time compares with nothing
+  const partWay = !!info.practiceTech || !!info.fromPosition;
   const mode = autoCandidates ? 'auto' : 'marks';
-  const verdict = info.practiceTech ? null : timeVerdict(info.level, secs, mode);
+  const verdict = partWay ? null : timeVerdict(info.level, secs, mode);
   // what the player did, technique by technique (docs/technique-stats.md)
   const summary = gameSummary(game);
   const band = info.practiceTech ? null : bands[info.level];
@@ -937,15 +978,37 @@ export function VictoryDialog({
         : t('You solved it without playing the {name}. Next time, look for it first', { name: practiceName })
     : null;
 
-  // same-puzzle challenge: the share text carries the seed link, so the
-  // recipient plays exactly this grid
+  // a game opened from a challenge link (?vs=, src/content/share.ts): how
+  // this time stands against the challenger's, to the second
+  const challengeVars = info.challenge ? { theirs: clockOf(info.challenge), time: `${mm}:${ss}` } : null;
+  const challengeBeaten = !!info.challenge && secs < info.challenge;
+  const challengeLine = !challengeVars
+    ? null
+    : challengeBeaten
+      ? `🏆 ${t('Challenge beaten: {theirs} to beat, you took {time}', challengeVars)}`
+      : secs === info.challenge
+        ? t('Challenge tied: {theirs} to beat, you took {time}', challengeVars)
+        : t('Challenge missed: {theirs} to beat, you took {time}', challengeVars);
+
+  // same-puzzle challenge: the share text carries the share address of
+  // this grid, which previews in a chat and names the band, the score and
+  // the techniques, with this time as the one to beat
   const shareResult = () => {
     const vars = {
       level: t.level(info.level),
       score: info.score,
       time: `${mm}:${ss}`,
       standing: verdict ? percentileText(verdict.percentile) : '',
-      link: `https://sudokui.app${langRoot(t.lang)}#p=${info.puzzle}`
+      link: shareUrl({
+        lang: t.lang,
+        puzzle: info.puzzle,
+        level: info.level,
+        score: info.score,
+        techs: shareTechs(),
+        // a game that started part-way through sets no time to beat for
+        // anyone solving from the start
+        vs: partWay ? undefined : secs
+      })
     };
     const text = verdict
       ? assisted
@@ -1000,6 +1063,7 @@ export function VictoryDialog({
             : `✨ ${t('Unassisted solve: no help, every mark your own')}`}
         </p>
         {practiceLine && <p className={practiceFound ? 'solve-clean' : 'solve-assisted'}>{practiceLine}</p>}
+        {challengeLine && <p className={challengeBeaten ? 'solve-clean' : 'solve-assisted'}>{challengeLine}</p>}
         {summary && (
           <p className="solve-summary" title={t('Every move of your own is credited with the easiest technique that justifies it')}>
             {summary}

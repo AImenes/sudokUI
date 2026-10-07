@@ -15,8 +15,9 @@
     "directory": "./dist",
     // what the Worker reaches the files through (env.ASSETS)
     "binding": "ASSETS",
-    // the app uses hash routing only, so an unknown path is a real 404
-    // (answering it with the app shell would be a "soft 404" to crawlers)
+    // a path that is neither a file nor a share address is a real 404: the
+    // Worker hands it back here (answering it with the app shell would be
+    // a "soft 404" to crawlers)
     "not_found_handling": "404-page",
     "html_handling": "auto-trailing-slash"
   }
