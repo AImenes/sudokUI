@@ -392,7 +392,7 @@ test.describe('phone, 390 x 844', () => {
     const tap = await cellBox(page, 40);
     await page.touchscreen.tap(tap.x, tap.y);
     await expect(page.locator('#board-status')).toContainText('Row 5, column 5');
-    // a quick sideways flick is neither a tap nor a selection
+    // a quick sideways flick is a drag-select: the cells it crossed
     const from = await cellBox(page, 54);
     const to = await cellBox(page, 58);
     // (each dispatched move is a round trip, so a flick is two of them)
@@ -404,6 +404,15 @@ test.describe('phone, 390 x 844', () => {
     };
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y }] });
     await sideways(2);
+    await expect(page.locator('#board-status')).toHaveText('3 cells selected.');
+    // a steep flick is a scroll in the making, not a selection: the cell
+    // lit by the landing goes back to what was selected before it
+    await page.touchscreen.tap(tap.x, tap.y);
+    await expect(page.locator('#board-status')).toContainText('Row 5, column 5');
+    const steep = await cellBox(page, 22);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: steep.x, y: steep.y }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: steep.x + 12, y: steep.y + 30 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.locator('#board-status')).toContainText('Row 5, column 5');
     // a finger that rests first, then drags sideways: a run of cells
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y }] });
@@ -423,6 +432,26 @@ test.describe('phone, 390 x 844', () => {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.locator('#board-status')).toHaveText('5 cells selected.');
     expect(await scrolled()).toBe(before);
+    // two fingers are a pinch: the browser's zoom, and the selection is
+    // exactly what it was, the first finger's landing put back
+    const p1 = await cellBox(page, 31);
+    const p2 = await cellBox(page, 49);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [
+        { x: p1.x, y: p1.y, id: 1 },
+        { x: p2.x, y: p2.y, id: 2 }
+      ]
+    });
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [
+        { x: p1.x, y: p1.y - 40, id: 1 },
+        { x: p2.x, y: p2.y + 40, id: 2 }
+      ]
+    });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.locator('#board-status')).toHaveText('5 cells selected.');
   });
 });
 
