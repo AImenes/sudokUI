@@ -409,9 +409,16 @@ button {
   width: 100%;
   height: auto;
   display: block;
-  /* a vertical swipe over the board scrolls the page; a tap selects and a
-     sideways drag selects a run (Grid.tsx settles touches on the lift) */
+  /* a vertical swipe over the board scrolls the page; a tap selects at once
+     and a sideways drag selects a run (Grid.tsx settles a touch by its
+     movement, src/ui/touchIntent.ts) */
   touch-action: pan-y pinch-zoom;
+  /* no text selection, callout or grey flash on a held or tapped cell:
+     the board draws its own highlight */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   border-radius: 6px;
 }
 

@@ -30,7 +30,9 @@ natively for iOS and Android via Capacitor.
   printed puzzle (camera or file; turned, tilted or mirrored is fine) and
   check the result on the board before playing (see
   [docs/scan.md](docs/scan.md)) — every import is rated
-- **Shareable links**: `sudokui.app/#p=<81 chars>` opens the exact puzzle
+- **Shareable links**: `sudokui.app/p/<81 chars>` opens the exact puzzle, and
+  pasted into a chat it previews with the band, the score and the techniques
+  it needs; a win can be shared as a challenge with the time to beat
 
 **Learn**
 - Progressive hints: first the technique name, then the full explanation with
@@ -189,13 +191,17 @@ src/
     techniques/      one module per technique family, documented finders
   content/           the written content: technique explanations, glossary,
                      rating explainer, worked examples, and the builder
-                     that turns them into static pages
+                     that turns them into static pages; home.ts and share.ts
+                     render the home pages and the share pages
   state/             zustand stores: game, settings, puzzle pools
   ui/                React components: SVG board, controls, dialogs
+worker/              the Cloudflare Worker: renders /p/<puzzle> share pages,
+                     hands everything else to the static files
 scripts/             build-learn (static pages), hunt-examples (worked
                      examples), measure-frequency (how often each
                      technique is needed), build-seeds (the seed library),
-                     bench-generator, og-card, promo screenshots
+                     bench-generator, og-card and og-share-cards (social
+                     cards), promo screenshots
 tests/               vitest suites incl. the soundness harness & hunts
 ```
 
@@ -250,7 +256,8 @@ Toward the best open-source sudoku tool anywhere:
 - **Teacher / annotation mode** — arrows, shapes and freehand drawing over
   the board for streams and classroom use
 - **Statistics & streaks** — local solve history, per-technique mastery
-  tracking; optional accounts (Cloudflare D1) for sync across devices
+  tracking; a shared daily with anonymous global stats, never accounts (see
+  [docs/online-goals.md](docs/online-goals.md))
 - **Curated library** — classic named puzzles (Escargot, Golden Nugget…) and
   a daily puzzle per difficulty band, next to today's shared daily
 - **Custom solve-order editor** — reorder/disable techniques and see how

@@ -152,6 +152,10 @@ export interface GameInfo {
   practiceTech: Tech | null;
   /** the date of the daily puzzle this game is, for the streak */
   dailyKey?: string;
+  /** a challenger's time in seconds, from the share link this game was opened from (src/content/share.ts) */
+  challenge?: number;
+  /** opened from a position link (#s=), part-way through: its time compares with nothing */
+  fromPosition?: boolean;
 }
 
 /**
@@ -446,6 +450,9 @@ export const useGame = create<GameStore>()(
       chainSuggest: false,
 
       startGame: (puzzle, score, level, practiceTech = null, dailyKey) => {
+        // a puzzle string may write its empty cells as zeros; the app
+        // writes dots, everywhere, so the same puzzle always compares equal
+        puzzle = puzzle.replace(/0/g, '.');
         const g = parseGrid(puzzle);
         if (!g) return;
         const solved = solve(g);
@@ -531,9 +538,11 @@ export const useGame = create<GameStore>()(
       restart: () => {
         const s = get();
         if (!s.info) return;
+        const { challenge } = s.info;
         get().startGame(s.info.puzzle, s.info.score, s.info.level, s.info.practiceTech, s.info.dailyKey);
         const t = translator();
-        set({ notice: t('Puzzle restarted') });
+        // a challenger's time (a share link's ?vs=) is still the one to beat
+        set((g) => ({ info: g.info && challenge ? { ...g.info, challenge } : g.info, notice: t('Puzzle restarted') }));
       },
 
       startCustomEntry: () => {
@@ -1490,13 +1499,14 @@ export const useGame = create<GameStore>()(
         // the shared progress: entries, marks, exclusions and colours
         get().startGame(givens, v.score, v.level);
         const t = translator();
-        set({
+        set((s) => ({
+          info: s.info && { ...s.info, fromPosition: true },
           cells: decoded.cells,
           autoCandidates: decoded.autoCandidates,
           // auto candidates count as help, whoever switched them on
           ...(decoded.autoCandidates ? { assisted: true } : {}),
           notice: t('Shared position loaded, with entries, marks and colours')
-        });
+        }));
         return true;
       },
 

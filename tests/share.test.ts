@@ -4,7 +4,7 @@
  * reject corrupt payloads instead of producing garbage boards.
  */
 import { describe, it, expect } from 'vitest';
-import { encodePosition, decodePosition, CellState } from '../src/state/gameStore';
+import { encodePosition, decodePosition, CellState, useGame } from '../src/state/gameStore';
 
 const EASY =
   '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
@@ -59,5 +59,32 @@ describe('position links', () => {
     const good = encodePosition(fuzzedCells(7), true);
     // flipping the version nibble must invalidate it
     expect(decodePosition('z' + good.slice(1))).toBeNull();
+  });
+});
+
+describe('what a game remembers for its share link', () => {
+  it('writes a puzzle with dots whatever the string said, so it always equals its own address', () => {
+    const zeros = EASY.replace(/\./g, '0');
+    useGame.getState().startGame(zeros, 196, 'Beginner');
+    expect(useGame.getState().info?.puzzle).toBe(EASY);
+    expect(useGame.getState().cells.filter((c) => c.given)).toHaveLength(EASY.replace(/\./g, '').length);
+  });
+
+  it('keeps a challenger’s time through a restart, and drops it with a new puzzle', () => {
+    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.setState((s) => ({ info: s.info && { ...s.info, challenge: 552 } }));
+    useGame.getState().restart();
+    expect(useGame.getState().info?.challenge).toBe(552);
+    useGame.getState().startGame(EASY.replace('..3', '4.3'), 196, 'Beginner');
+    expect(useGame.getState().info?.challenge).toBeUndefined();
+  });
+
+  it('marks a game opened from a position link as begun part-way, until it restarts', () => {
+    useGame.getState().startGame(EASY, 196, 'Beginner');
+    const encoded = encodePosition(fuzzedCells(3), true);
+    expect(useGame.getState().loadPosition(encoded)).toBe(true);
+    expect(useGame.getState().info?.fromPosition).toBe(true);
+    useGame.getState().restart();
+    expect(useGame.getState().info?.fromPosition).toBeUndefined();
   });
 });

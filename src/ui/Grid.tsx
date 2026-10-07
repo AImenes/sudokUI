@@ -11,6 +11,8 @@ import { ChainLink, CellDigit } from '../engine/steps';
 import { walkFrames, Part } from '../engine/hintFrames';
 import { useT, msg, translator } from '../content/i18n';
 import type { Translator } from '../content/i18n';
+import { touchIntent, INTENT_MS } from './touchIntent';
+import type { TouchIntent } from './touchIntent';
 
 const SIZE = 100;
 const M = 4; // outer margin
@@ -608,28 +610,47 @@ export function Grid() {
   const anchor = useRef<number | null>(null);
   const before = useRef<number[]>([]);
 
-  // A touch is settled when the finger lifts, not when it lands: the board
-  // lets a quick vertical swipe scroll the page (touch-action: pan-y), and
-  // the browser reports that swipe as a pointercancel, which must leave
-  // the selection alone. A finger that is still on the board after a
-  // moment (a rest, or a slow move the browser has not taken for a
-  // scroll) is marking: the touch becomes a drag-select from the press
-  // cell, in any direction, and from then on the page stays put under it.
-  // A quick flick that never became a scroll selects nothing.
-  const touch = useRef<{ cell: number; additive: boolean; x: number; y: number; moved: boolean; chain: { cell: number; digit: number } | null } | null>(null);
-  const HOLD_MS = 200;
-  const hold = useRef<number | null>(null);
+  // A touch is highlighted at once and settled by its movement, not by the
+  // clock (touchIntent.ts). The press cell is selected the moment the
+  // finger lands, as a tentative choice. A finger that then moves mostly
+  // up or down past the slop is scrolling: the selection goes back to
+  // what it was, and the browser has the gesture (touch-action: pan-y; it
+  // reports a pointercancel when it takes it, which puts the selection
+  // back too). A finger that moves sideways past the slop, or that rests
+  // for INTENT_MS, is marking: the press cell stays selected, the drag
+  // extends from it in any direction, and the page is held still under
+  // it. A lift within the slop is a tap, which the landing has already
+  // performed; an armed digit is entered on the lift, never on the
+  // landing, so a scroll can never enter a digit.
+  interface Touch {
+    cell: number;
+    additive: boolean;
+    x: number;
+    y: number;
+    /** the selection before the landing, put back if the touch scrolls */
+    before: number[];
+    intent: TouchIntent;
+    /** the drag has left the press cell, so the lift is no tap */
+    left: boolean;
+    /** the finger this is about; a second finger is a pinch, not a touch of its own */
+    pointerId: number;
+    /** the chain trainer's candidate under the finger, picked on the lift */
+    chain: { cell: number; digit: number } | null;
+  }
+  const touch = useRef<Touch | null>(null);
+  const intentTimer = useRef<number | null>(null);
+  /** a committed drag holds the page still (the touchmove listener below) */
   const holdDrag = useRef(false);
-  const cancelHold = () => {
-    if (hold.current !== null) window.clearTimeout(hold.current);
-    hold.current = null;
-    holdDrag.current = false;
+  const clearIntentTimer = () => {
+    if (intentTimer.current !== null) window.clearTimeout(intentTimer.current);
+    intentTimer.current = null;
   };
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
-    // only a non-passive listener can still keep the page from scrolling
-    // once the held touch moves
+    // only a non-passive listener can keep the page from scrolling under a
+    // drag that has been committed; until then it never prevents anything,
+    // and the browser scrolls as it likes
     const keep = (e: TouchEvent) => {
       if (holdDrag.current && e.cancelable) e.preventDefault();
     };
@@ -637,13 +658,51 @@ export function Grid() {
     return () => svg.removeEventListener('touchmove', keep);
   }, []);
 
+  /** the touch is marking: the drag begins from the press cell */
+  const commitTouch = (t: Touch) => {
+    t.intent = 'drag';
+    clearIntentTimer();
+    if (t.chain) return;
+    holdDrag.current = true;
+    dragging.current = true;
+    // only now, with the intent settled, is the pointer captured, so the
+    // drag keeps reporting if the finger leaves the board; before this a
+    // capture could stand between the browser and its scroll
+    capturePointer(t.pointerId);
+  };
+  /** the touch is a scroll: the tentative highlight goes back */
+  const scrollTouch = (t: Touch) => {
+    t.intent = 'scroll';
+    clearIntentTimer();
+    cancelLongPress();
+    // the snapshot, not select(): an armed digit stays armed
+    if (!t.chain) useGame.setState({ selection: t.before });
+  };
+  /**
+   * The board itself holds the capture, never the rect under the pointer:
+   * the landing's own highlight re-renders the cell, and a rect that is
+   * gone takes its capture with it (and would throw if asked for one)
+   */
+  const capturePointer = (pointerId: number) => {
+    try {
+      svgRef.current?.setPointerCapture(pointerId);
+    } catch {
+      // the pointer is already up: nothing to hold
+    }
+  };
+
   const startLongPress = (cell: number) => {
     if (!cells[cell].value) return;
     longPress.current = {
       cell,
       timer: window.setTimeout(() => {
         longPress.current = null;
-        touch.current = null; // the press is spent, the lift does nothing
+        // the press is spent: the lift does nothing, and a finger that
+        // drifts on adds nothing to the digit's cells (the page stays
+        // held until the lift)
+        touch.current = null;
+        dragging.current = false;
+        anchor.current = null;
         selectAllOf(cells[cell].value);
       }, 500)
     };
@@ -671,13 +730,37 @@ export function Grid() {
 
   const onPointerDown = (e: React.PointerEvent) => {
     const add = e.ctrlKey || e.metaKey || e.shiftKey;
+    // a second finger is a pinch (touch-action allows the zoom): the
+    // browser's gesture from here on. A highlight the first finger lit
+    // goes back; a drag it had committed keeps its cells and lets go of
+    // the page
+    if (e.pointerType === 'touch' && !e.isPrimary) {
+      const t = touch.current;
+      if (t && t.intent === 'undecided') scrollTouch(t);
+      else if (t) {
+        t.intent = 'scroll';
+        cancelLongPress();
+        holdDrag.current = false;
+        dragging.current = false;
+      }
+      return;
+    }
     // building a chain: a tap picks a candidate, not a cell
     if (useGame.getState().chain) {
       const hit = candidateFromEvent(e);
       if (!hit) return;
       if (e.pointerType === 'touch') {
-        touch.current = { cell: hit.cell, additive: add, x: e.clientX, y: e.clientY, moved: false, chain: hit };
-        (e.target as Element).setPointerCapture?.(e.pointerId);
+        touch.current = {
+          cell: hit.cell,
+          additive: add,
+          x: e.clientX,
+          y: e.clientY,
+          before: [],
+          intent: 'undecided',
+          left: false,
+          pointerId: e.pointerId,
+          chain: hit
+        };
       } else {
         chainTap(hit.cell, hit.digit);
       }
@@ -686,25 +769,34 @@ export function Grid() {
     const cell = cellFromEvent(e);
     if (cell === null) return;
     if (e.pointerType === 'touch') {
-      touch.current = { cell, additive: add, x: e.clientX, y: e.clientY, moved: false, chain: null };
+      const was = useGame.getState().selection;
+      touch.current = {
+        cell,
+        additive: add,
+        x: e.clientX,
+        y: e.clientY,
+        before: was,
+        intent: 'undecided',
+        left: false,
+        pointerId: e.pointerId,
+        chain: null
+      };
       dragging.current = false;
       anchor.current = cell;
       additive.current = add;
-      before.current = add ? useGame.getState().selection : [];
-      (e.target as Element).setPointerCapture?.(e.pointerId);
+      before.current = add ? was : [];
+      // the tentative highlight, in the frame of the landing; with a digit
+      // armed the cell lights up now and takes the digit on the lift
+      if (useGame.getState().armedDigit && !add) select([cell], false);
+      else tapCell(cell, add);
       startLongPress(cell);
-      cancelHold();
-      hold.current = window.setTimeout(() => {
-        hold.current = null;
+      clearIntentTimer();
+      intentTimer.current = window.setTimeout(() => {
+        intentTimer.current = null;
         const t = touch.current;
-        if (!t || t.chain) return;
-        // still on the board: the press cell is selected now, and the
-        // drag that follows extends from it in any direction
-        touch.current = null;
-        holdDrag.current = true;
-        dragging.current = true;
-        select([t.cell], t.additive);
-      }, HOLD_MS);
+        // still within the slop: a rest, so marking from here on
+        if (t && t.intent === 'undecided') commitTouch(t);
+      }, INTENT_MS);
       return;
     }
     // number-first: with a digit armed, a plain tap enters it here
@@ -720,17 +812,28 @@ export function Grid() {
     // with Ctrl/Cmd or Shift held as well, the rectangle adds to what was
     // selected already
     before.current = add ? useGame.getState().selection : [];
-    (e.target as Element).setPointerCapture?.(e.pointerId);
+    capturePointer(e.pointerId);
     startLongPress(cell);
     tapCell(cell, add);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     const t = touch.current;
     if (t) {
-      // before the hold is up: a move past a few pixels means the lift
-      // will not be a tap; whether it is a scroll is the browser's call
-      if (Math.abs(e.clientX - t.x) + Math.abs(e.clientY - t.y) > 8) t.moved = true;
-      return;
+      // another finger's moves are the pinch's, not this touch's
+      if (e.pointerId !== t.pointerId) return;
+      if (t.intent === 'scroll') return;
+      if (t.intent === 'undecided') {
+        const intent = touchIntent(e.clientX - t.x, e.clientY - t.y);
+        if (intent === 'undecided') return;
+        if (intent === 'scroll') {
+          scrollTouch(t);
+          return;
+        }
+        commitTouch(t);
+      }
+      if (t.chain) return;
+      const under = cellFromEvent(e);
+      if (under !== null && under !== t.cell) t.left = true;
     }
     if (!dragging.current) return;
     const cell = cellFromEvent(e);
@@ -755,24 +858,37 @@ export function Grid() {
     anchor.current = null;
     touch.current = null;
     cancelLongPress();
-    cancelHold();
+    clearIntentTimer();
+    holdDrag.current = false;
   };
   const onPointerUp = (e: React.PointerEvent) => {
     const t = touch.current;
+    if (t && e.pointerId !== t.pointerId) return;
     endPointer();
-    if (!t || t.moved) return;
-    // the touch lifted where it landed: now it is a tap
+    if (!t || t.intent === 'scroll') return;
     if (t.chain) {
-      chainTap(t.chain.cell, t.chain.digit);
+      // the finger lifted where it landed: now it picks the candidate
+      if (t.intent === 'undecided') chainTap(t.chain.cell, t.chain.digit);
       return;
     }
+    // the landing selected the cell; a lift that never left it is the
+    // tap that enters an armed digit
     const armed = useGame.getState().armedDigit;
-    if (armed && !t.additive) {
-      select([t.cell], false);
-      input(armed);
-      return;
-    }
-    tapCell(t.cell, t.additive && !!e);
+    if (armed && !t.additive && !t.left) input(armed);
+  };
+  // the browser took the touch for a scroll or a pinch: a tentative
+  // highlight goes back; a committed drag keeps what it has selected
+  const onPointerCancel = (e: React.PointerEvent) => {
+    const t = touch.current;
+    if (t && e.pointerId !== t.pointerId) return;
+    if (t && t.intent === 'undecided' && !t.chain) useGame.setState({ selection: t.before });
+    endPointer();
+  };
+  // the board loses its capture after a lift or a cancel, which the
+  // handlers above have settled already; a rect losing the implicit touch
+  // capture when the board takes it over (capturePointer) ends nothing
+  const onLostPointerCapture = (e: React.PointerEvent) => {
+    if (e.target === e.currentTarget) endPointer();
   };
   const onDoubleClick = (e: React.MouseEvent) => {
     const cell = cellFromEvent(e as unknown as React.PointerEvent);
@@ -800,7 +916,8 @@ export function Grid() {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={endPointer}
+        onPointerCancel={onPointerCancel}
+        onLostPointerCapture={onLostPointerCapture}
         onDoubleClick={onDoubleClick}
         tabIndex={0}
         role="application"

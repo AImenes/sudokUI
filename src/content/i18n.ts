@@ -114,9 +114,13 @@ export function rich(text: string, nodes: Record<string, React.ReactNode>): Reac
 /** where the app lives in a language: / for English, /nb/ and /es/ */
 export const langRoot = (lang: Lang) => (lang === 'en' ? '/' : `/${lang}/`);
 
-/** the language an address of the app itself stands for: /nb/ and /es/ (null for / and anything else) */
+/**
+ * The language an address of the app itself stands for: /nb/ and /es/, and
+ * a share address under them, /nb/p/<puzzle> (src/content/share.ts); null
+ * for / and anything else
+ */
 export function langOfPath(path: string): Lang | null {
-  const m = /^\/(nb|es)\/?$/.exec(path);
+  const m = /^\/(nb|es)(?:\/(?:p\/[0-9.]{81}\/?)?)?$/.exec(path);
   return m ? (m[1] as Lang) : null;
 }
 
@@ -157,7 +161,9 @@ export function startLocales(): Promise<void> {
   useSettings.subscribe((s, prev) => {
     if (s.lang === prev.lang) return;
     // on /nb/ or /es/ the address follows the language, so a reload or a
-    // copied link keeps it; on / it stays /
+    // copied link keeps it; on / it stays / until a game is on the board,
+    // from when on the app keeps the address at the puzzle's share path in
+    // the chosen language (src/ui/App.tsx)
     if (typeof window !== 'undefined' && langOfPath(window.location.pathname)) {
       const { search, hash } = window.location;
       window.history.replaceState(window.history.state, '', langRoot(s.lang) + search + hash);
