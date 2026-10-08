@@ -20,6 +20,8 @@ import { TECHS, LEVELS, Tech, Level } from '../engine/ratings';
 import type { Lang } from '../state/settings';
 import { techSlug, techFromParam } from './slugs';
 import { SITE, homePath, ogCard, fillTemplate } from './home';
+import { parseDailyUrl, dailyPath, findDaily, dailyNumber } from './dailies';
+import type { Daily } from './dailies';
 import * as namesNb from './locales/names.nb';
 import * as namesEs from './locales/names.es';
 
@@ -34,6 +36,8 @@ export interface ShareParams {
   techs?: Tech[];
   /** a challenger's time, in whole seconds */
   vs?: number;
+  /** the daily this puzzle is (dailies.ts): the address is then /daily/<date>, and the page says so */
+  daily?: { no: number; date: string };
 }
 
 /** how many techniques a link names */
@@ -73,8 +77,27 @@ export function parseShareUrl(url: { pathname: string; search: string }): ShareP
   return params;
 }
 
+/**
+ * The share address of whatever an address points at, or null: a puzzle
+ * (/p/<puzzle> with its hints) or a published daily (/daily/<date>, whose
+ * band, score and techniques come from the published list, not the
+ * address). What the Worker and the dev and preview servers render from.
+ */
+export function shareParamsOf(url: { pathname: string; search: string }, dailies: Daily[]): ShareParams | null {
+  const share = parseShareUrl(url);
+  if (share) return share;
+  const d = parseDailyUrl(url);
+  if (!d) return null;
+  const daily = findDaily(dailies, d.date);
+  const no = dailyNumber(d.date);
+  if (!daily || !no) return null;
+  return { lang: d.lang, puzzle: daily.puzzle, level: daily.level, score: daily.score, techs: daily.techs, vs: d.vs, daily: { no, date: d.date } };
+}
+
 /** the path and query of a share address, relative to the site */
 export function sharePath(p: ShareParams): string {
+  // a daily's address is its day; the puzzle and its hints are published
+  if (p.daily) return dailyPath(p.lang, p.daily.date, p.vs);
   const q = new URLSearchParams();
   if (p.level) q.set('b', p.level.toLowerCase());
   if (p.score) q.set('s', String(p.score));
@@ -124,6 +147,10 @@ export interface ShareCopy {
   description: string;
   descriptionNoScore: string;
   descriptionUnknown: string;
+  /** a daily's tab, headline and description: {no} and {date} as well */
+  titleDaily: string;
+  ogTitleDaily: string;
+  descriptionDaily: string;
   /** "needing X-Wing and Skyscraper", glued to the sentence before the full stop */
   needing: string;
   /** a sentence put before the description when a challenger's {time} is set */
@@ -147,6 +174,10 @@ export const SHARE: Record<Lang, ShareCopy> = {
     description: '{a} {level} sudoku rated {score}{techs}. Play it free on sudokUI, with hints that explain every step.',
     descriptionNoScore: '{a} {level} sudoku{techs}. Play it free on sudokUI, with hints that explain every step.',
     descriptionUnknown: 'A sudoku shared from sudokUI. Play it free, with hints that explain every step.',
+    titleDaily: 'Daily #{no}: {level} sudoku, rated {score} | sudokUI',
+    ogTitleDaily: 'sudokUI Daily #{no}, {date}: can you solve it?',
+    descriptionDaily:
+      'The daily for {date}: {a} {level} sudoku rated {score}{techs}. One board for the whole world, with everyone’s times to compare against. Play it free on sudokUI.',
     needing: ', needing {list}',
     vs: 'Solved in {time} on sudokUI: can you beat it?',
     and: 'and',
@@ -165,6 +196,10 @@ export const SHARE: Record<Lang, ShareCopy> = {
     description: '{a} sudoku på nivået {level} med poengsum {score}{techs}. Spill den gratis i sudokUI, med hint som forklarer hvert steg.',
     descriptionNoScore: '{a} sudoku på nivået {level}{techs}. Spill den gratis i sudokUI, med hint som forklarer hvert steg.',
     descriptionUnknown: 'En sudoku delt fra sudokUI. Spill den gratis, med hint som forklarer hvert steg.',
+    titleDaily: 'Dagens sudoku #{no}: nivået {level}, poengsum {score} | sudokUI',
+    ogTitleDaily: 'Dagens sudoku #{no}, {date}: klarer du den?',
+    descriptionDaily:
+      'Dagens sudoku for {date}: {a} sudoku på nivået {level} med poengsum {score}{techs}. Ett brett for hele verden, med alles tider å måle seg mot. Spill den gratis i sudokUI.',
     needing: ' som krever {list}',
     vs: 'Løst på {time} i sudokUI: klarer du å slå det?',
     and: 'og',
@@ -183,6 +218,10 @@ export const SHARE: Record<Lang, ShareCopy> = {
     description: '{a} sudoku de nivel {level} con puntuación {score}{techs}. Juégalo gratis en sudokUI, con pistas que explican cada paso.',
     descriptionNoScore: '{a} sudoku de nivel {level}{techs}. Juégalo gratis en sudokUI, con pistas que explican cada paso.',
     descriptionUnknown: 'Un sudoku compartido desde sudokUI. Juégalo gratis, con pistas que explican cada paso.',
+    titleDaily: 'Sudoku del día n.º {no}: nivel {level}, puntuación {score} | sudokUI',
+    ogTitleDaily: 'Sudoku del día n.º {no}, {date}: ¿puedes resolverlo?',
+    descriptionDaily:
+      'El sudoku del día {date}: {a} sudoku de nivel {level} con puntuación {score}{techs}. Un solo tablero para todo el mundo, con los tiempos de todos para compararte. Juégalo gratis en sudokUI.',
     needing: ' que requiere {list}',
     vs: 'Resuelto en {time} en sudokUI: ¿puedes superarlo?',
     and: 'y',
@@ -231,18 +270,24 @@ export function shareCopy(p: ShareParams) {
   const c = SHARE[p.lang];
   const level = p.level ? levelName(p.level, p.lang) : '';
   const techs = p.techs?.length ? fill(c.needing, { list: joinNames(p.techs.map((t) => techName(t, p.lang)), c.and) }) : '';
-  const vars = { a: ARTICLE[p.lang](level), level, score: p.score ?? '', techs };
-  const title = p.level ? fill(p.score ? c.title : c.titleNoScore, vars) : c.titleUnknown;
-  const description = p.level ? fill(p.score ? c.description : c.descriptionNoScore, vars) : c.descriptionUnknown;
+  const vars = { a: ARTICLE[p.lang](level), level, score: p.score ?? '', techs, no: p.daily?.no ?? '', date: p.daily?.date ?? '' };
+  const daily = !!p.daily && !!p.level;
+  const title = daily ? fill(c.titleDaily, vars) : p.level ? fill(p.score ? c.title : c.titleNoScore, vars) : c.titleUnknown;
+  const description = daily
+    ? fill(c.descriptionDaily, vars)
+    : p.level
+      ? fill(p.score ? c.description : c.descriptionNoScore, vars)
+      : c.descriptionUnknown;
+  const headline = daily ? fill(c.ogTitleDaily, vars) : p.level ? fill(c.ogTitle, vars) : c.ogTitleUnknown;
   const time = p.vs ? clockOf(p.vs) : '';
   return {
     title,
     description: p.vs ? `${fill(c.vs, { time })} ${description}` : description,
-    ogTitle: p.vs ? fill(c.ogTitleVs, { time }) : p.level ? fill(c.ogTitle, vars) : c.ogTitleUnknown,
+    ogTitle: p.vs ? fill(c.ogTitleVs, { time }) : headline,
     ogImage: p.level ? ogShareCard(p.level, p.lang) : ogCard(p.lang),
     ogImageAlt: p.level ? fill(c.ogImageAlt, vars) : c.ogImageAltUnknown,
     // the preview's headline doubles as the page's, before the app mounts
-    h1: p.level ? fill(c.ogTitle, vars) : c.ogTitleUnknown,
+    h1: headline,
     loading: c.loading,
     noscript: c.noscript
   };

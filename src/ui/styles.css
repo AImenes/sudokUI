@@ -1106,6 +1106,18 @@ textarea {
   font-size: 13px;
 }
 
+/* the daily's global times on the win screen: the day's numbers, then the
+   player's own standing or the button that sends the time in */
+.daily-stats {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  margin: 10px 0 4px;
+}
+.daily-stats p {
+  margin: 0;
+}
+
 /* board column: grid + optional mascot underneath; carries the sizing the
    grid-wrap used to have as a direct flex child of the layout */
 .board-col {

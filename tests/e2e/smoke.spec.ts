@@ -6,6 +6,12 @@
 import { test, expect, Page } from '@playwright/test';
 import { parseGrid, gridToString } from '../../src/engine/board';
 import { solve } from '../../src/engine/bruteForce';
+import { readFileSync } from 'node:fs';
+import { localDateKey } from '../../src/content/dailies';
+import type { Daily } from '../../src/content/dailies';
+
+/** the published dailies, read as a file: Playwright's loader takes no JSON import without an attribute */
+const dailies: Daily[] = JSON.parse(new TextDecoder().decode(readFileSync('src/content/dailies.json')));
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
 /** a Hard puzzle (rated 1348 when written), for the links that name techniques */
@@ -566,5 +572,77 @@ test.describe('a share link', () => {
     await expect(page.locator('svg.board')).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', 'nb');
     await expect.poll(() => page.evaluate(() => location.pathname)).toBe(`/nb/p/${EASY}`);
+  });
+});
+
+test.describe('the daily', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+  const keepClipboard = () => {
+    localStorage.setItem('sudokui-welcomed', '1');
+    (window as any).__copied = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: (s: string) => (((window as any).__copied = s), Promise.resolve()) }
+    });
+  };
+  const copied = (page: Page) => page.evaluate(() => (window as any).__copied as string);
+
+  test('/daily/<date> previews that day’s puzzle, opens it, and is its address', async ({ page }) => {
+    await page.addInitScript(keepClipboard);
+    const third = dailies[2];
+    const response = await page.goto(`/daily/${third.date}`);
+    const html = await response!.text();
+    expect(html).toContain(`<meta property="og:title" content="sudokUI Daily #3, ${third.date}: can you solve it?" />`);
+    expect(html).toContain(`<meta property="og:image" content="https://sudokui.app/og/${third.level.toLowerCase()}.png" />`);
+    expect(html).toContain('<meta name="robots" content="noindex" />');
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect(page.locator('.toast, [role=status]').filter({ hasText: `The daily for ${third.date}` })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => location.pathname)).toBe(`/daily/${third.date}`);
+    // the share dialog hands out the day's address, not the puzzle's
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
+    await dialog.getByRole('button', { name: 'Puzzle link' }).click();
+    expect(await copied(page)).toBe(`http://localhost:4173/daily/${third.date}`);
+  });
+
+  test('a finished daily sends its time when asked, hears how it compares, and shares the day', async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.addInitScript(keepClipboard);
+    // the API takes results for recent days only, so today's daily it is;
+    // and a solve must take at least a floor of real seconds, which the
+    // app's clock is pushed past instead of waited for
+    const today = localDateKey();
+    const daily = dailies.find((d) => d.date === today)!;
+    expect(daily, `a published daily for ${today}`).toBeTruthy();
+    await page.clock.install();
+    await page.goto(`/daily/${today}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect(page.locator('.toast, [role=status]').filter({ hasText: `Daily puzzle for ${today}` })).toBeVisible();
+    const solution = gridToString(solve(parseGrid(daily.puzzle)!)!);
+    const empties = [...daily.puzzle].map((ch, i) => (ch === '.' ? i : -1)).filter((i) => i >= 0);
+    for (const cell of empties) {
+      if (cell === empties[empties.length - 1]) await page.clock.fastForward(45_000);
+      const c = await cellBox(page, cell);
+      await page.mouse.click(c.x, c.y);
+      await page.keyboard.press(`Digit${solution[cell]}`);
+    }
+    const dialog = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(/Solved by \d+ so far, median \d+:\d\d|Nobody has sent in a time for this daily yet/);
+    await dialog.getByRole('button', { name: /Send my time and compare/ }).click();
+    await expect(dialog).toContainText(/Your time is the first one in|You were faster than \d+% of them/);
+    await dialog.getByRole('button', { name: /Challenge a friend/ }).click();
+    const text = await copied(page);
+    const no = dailies.indexOf(daily) + 1;
+    expect(text.startsWith(`sudokUI Daily #${no} · ${daily.level} (${daily.score}) · `)).toBe(true);
+    expect(text).toContain(' · unassisted · ');
+    const [, time, link] = /· (\d+:\d\d) · unassisted · (?:faster than \d+% today · )?(https:\S+)$/.exec(text) ?? [];
+    expect(time).toMatch(/^\d+:\d\d$/);
+    expect(link).toMatch(/^https:\/\/sudokui\.app\/daily\/\d{4}-\d{2}-\d{2}\?vs=\d+$/);
+    expect(link).toContain(`/daily/${today}?vs=`);
+    // the day's statistics now count this result (asked afresh: the win
+    // screen's own read a moment ago is still in the browser's cache)
+    const stats = await page.evaluate(async (n) => (await fetch(`/api/daily/${n}/stats`, { cache: 'no-store' })).json(), no);
+    expect(stats.count).toBeGreaterThanOrEqual(1);
+    expect(stats.unassisted).toBeGreaterThanOrEqual(1);
   });
 });

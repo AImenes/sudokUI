@@ -7,7 +7,11 @@ import { version } from './package.json';
 import type { Plugin } from 'vite';
 import { STATIC_ROUTES } from './src/content/staticRoutes';
 import { renderHome, homeLangOfPath, HOME_LANGS, APP_NAVIGATION } from './src/content/home';
-import { parseShareUrl, renderSharePage } from './src/content/share';
+import { shareParamsOf, renderSharePage } from './src/content/share';
+import { handleDailyApi, memoryStore } from './worker/daily';
+import dailies from './src/content/dailies.json';
+import type { Daily } from './src/content/dailies';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 /**
  * Serves the static pages (/learn/, the landing pages) on the dev server
@@ -62,17 +66,46 @@ function staticPagesDev(): Plugin {
  *   keeps that built page with its placeholders intact as share.tpl, which
  *   the Worker (worker/index.ts) fills for each share address on request.
  */
+/**
+ * The daily's API (worker/daily.ts) on the dev and preview servers, over a
+ * store in memory: the win screen's statistics work locally and in the
+ * browser smoke test without a database, and forget everything when the
+ * server stops.
+ */
+function dailyApi(): (req: IncomingMessage, res: ServerResponse, next: () => void) => void {
+  const store = memoryStore();
+  return (req, res, next) => {
+    const url = req.url ?? '';
+    if (!url.startsWith('/api/daily/')) return next();
+    const chunks: Buffer[] = [];
+    req.on('data', (c: Buffer) => chunks.push(c));
+    req.on('end', async () => {
+      const body = chunks.length ? Buffer.concat(chunks) : null;
+      const request = new Request(`http://localhost${url}`, {
+        method: req.method,
+        headers: Object.entries(req.headers).flatMap(([k, v]) => (typeof v === 'string' ? [[k, v] as [string, string]] : [])),
+        body: body && req.method !== 'GET' && req.method !== 'HEAD' ? body : undefined
+      });
+      const response = (await handleDailyApi(request, store)) ?? new Response('not found', { status: 404 });
+      res.statusCode = response.status;
+      response.headers.forEach((value, key) => res.setHeader(key, value));
+      res.end(Buffer.from(await response.arrayBuffer()));
+    });
+  };
+}
+
 function homePages(): Plugin[] {
   const pathOf = (url: string) => url.split(/[?#]/)[0];
   const shareOf = (url: string) => {
     const [pathname, search = ''] = url.split('#')[0].split(/\?(.*)/s);
-    return parseShareUrl({ pathname, search: search ? `?${search}` : '' });
+    return shareParamsOf({ pathname, search: search ? `?${search}` : '' }, dailies as Daily[]);
   };
   return [
     {
       name: 'sudokui-home-dev',
       apply: 'serve',
       configureServer(server) {
+        server.middlewares.use(dailyApi());
         server.middlewares.use((req, _res, next) => {
           const url = req.url ?? '';
           if (homeLangOfPath(pathOf(url)) || shareOf(url)) req.url = '/index.html';
@@ -80,9 +113,11 @@ function homePages(): Plugin[] {
         });
       },
       // `vite preview` serves dist/ as files only, so it answers the share
-      // addresses here, from share.tpl, as the Worker does in production:
-      // the browser smoke test (tests/e2e) lands on one
+      // addresses here, from share.tpl, as the Worker does in production,
+      // and the daily's API over a store in memory: the browser smoke test
+      // (tests/e2e) lands on a share address and submits a daily
       configurePreviewServer(server) {
+        server.middlewares.use(dailyApi());
         server.middlewares.use((req, res, next) => {
           const share = shareOf(req.url ?? '');
           if (!share) return next();

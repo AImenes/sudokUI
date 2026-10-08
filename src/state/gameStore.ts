@@ -152,6 +152,8 @@ export interface GameInfo {
   practiceTech: Tech | null;
   /** the date of the daily puzzle this game is, for the streak */
   dailyKey?: string;
+  /** the daily's number when it is a published one (src/content/dailies.ts): global statistics exist for it */
+  dailyNo?: number;
   /** a challenger's time in seconds, from the share link this game was opened from (src/content/share.ts) */
   challenge?: number;
   /** opened from a position link (#s=), part-way through: its time compares with nothing */
@@ -538,11 +540,15 @@ export const useGame = create<GameStore>()(
       restart: () => {
         const s = get();
         if (!s.info) return;
-        const { challenge } = s.info;
+        const { challenge, dailyNo } = s.info;
         get().startGame(s.info.puzzle, s.info.score, s.info.level, s.info.practiceTech, s.info.dailyKey);
         const t = translator();
-        // a challenger's time (a share link's ?vs=) is still the one to beat
-        set((g) => ({ info: g.info && challenge ? { ...g.info, challenge } : g.info, notice: t('Puzzle restarted') }));
+        // a challenger's time (a share link's ?vs=) is still the one to
+        // beat, and a published daily is still that daily
+        set((g) => ({
+          info: g.info ? { ...g.info, ...(challenge ? { challenge } : {}), ...(dailyNo ? { dailyNo } : {}) } : g.info,
+          notice: t('Puzzle restarted')
+        }));
       },
 
       startCustomEntry: () => {

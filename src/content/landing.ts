@@ -43,7 +43,7 @@ export const LANDING_PAGES: LandingPage[] = [
       {
         heading: 'How it works',
         paragraphs: [
-          'The daily puzzle is generated on your own device from the date, so everyone gets the same board without any server or account. A new puzzle arrives at midnight UTC.'
+          'One puzzle is published for every day, the same board for everyone, without any account. A new one opens at midnight, your local time. When you finish, you can submit your time and see how you compare with everyone else who played it: how many solved it, the median, and the share you were faster than.'
         ]
       },
       {

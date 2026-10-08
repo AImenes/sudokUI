@@ -2,8 +2,9 @@
 // deploy` uploads dist/ to Cloudflare's edge, and a request that matches a
 // file there is served without running any code. The Worker script
 // (worker/index.ts) runs only for the paths that are not files: the share
-// addresses, /p/<puzzle>, which it renders with a preview for chat apps
-// and crawlers (docs/online-goals.md, phase 1). With this file present,
+// addresses, /p/<puzzle> and /daily/<date>, which it renders with a
+// preview for chat apps and crawlers, and the daily's API under /api/daily/
+// over D1 (docs/online-goals.md, phases 1 and 2). With this file present,
 // wrangler skips its framework auto-detection (which would demand
 // Vite >= 6) and just ships.
 {
@@ -20,9 +21,12 @@
     // a "soft 404" to crawlers)
     "not_found_handling": "404-page",
     "html_handling": "auto-trailing-slash"
-  }
-  // Phase 2 (the shared daily with global stats) adds the database:
-  // "d1_databases": [
-  //   { "binding": "DB", "database_name": "sudokui-db", "database_id": "1957ccc7-7b13-45e3-92d4-f193a51d5e9a" }
-  // ]
+  },
+  // The shared daily's results (docs/online-goals.md, phase 2): two small
+  // tables, created by `npx wrangler d1 migrations apply sudokui-db
+  // --remote` from migrations/. Until they exist the daily's API answers
+  // 503 and the app says the global times are unavailable; play goes on.
+  "d1_databases": [
+    { "binding": "DB", "database_name": "sudokui-db", "database_id": "1957ccc7-7b13-45e3-92d4-f193a51d5e9a", "migrations_dir": "migrations" }
+  ]
 }

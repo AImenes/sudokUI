@@ -845,7 +845,7 @@ const es: LearnLocale = {
         {
           "heading": "Cómo funciona",
           "paragraphs": [
-            "El sudoku del día se genera en tu propio dispositivo a partir de la fecha, así que todos reciben el mismo tablero sin ningún servidor ni cuenta. A medianoche UTC llega uno nuevo."
+            "Se publica un sudoku para cada día, el mismo tablero para todos, sin ninguna cuenta. A medianoche, hora local, se abre uno nuevo. Al terminar, puedes enviar tu tiempo y ver cómo quedas frente a todos los demás que lo han jugado: cuántos lo resolvieron, la mediana y la proporción a la que has superado."
           ]
         },
         {

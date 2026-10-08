@@ -140,8 +140,9 @@ must accept them too):
 | `/#practice=<TECHNIQUE>` | starts a practice puzzle for the technique |
 | `/#learn=<TECHNIQUE>` | opens the guide at the technique |
 | `/#learn=glossary`, `/#learn=rating` | opens the guide at that tab |
-| `/#daily` | starts today's daily puzzle |
+| `/#daily` | starts today's daily puzzle (the published one for the local date) |
 | `/p/<81 characters>` | the share address: opens and rates that puzzle, and previews it when pasted into a chat; `?b=`, `?s=`, `?t=` and `?vs=` carry the band, the score, up to three techniques and a challenger's time in seconds (`src/content/share.ts`) |
+| `/daily/<YYYY-MM-DD>` | opens that day's published daily (src/content/dailies.ts) and previews it when pasted into a chat; `?vs=` carries a challenger's time; a win there can be sent in for the day's global times |
 
 `<TECHNIQUE>` is a catalogue key (`X_WING`) or a page address (`x-wing`).
 Each also works on `/nb/` and `/es/` (`/nb/#practice=X_WING`, `/nb/p/<81 characters>`), opening the

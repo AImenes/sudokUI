@@ -37,6 +37,8 @@ const LearnDialog = React.lazy(() => import('./Learn').then((m) => ({ default: m
 import { PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { parseShareUrl, sharePath, clockOf } from '../content/share';
+import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, parseDailyUrl, dailyPath } from '../content/dailies';
+import { useDailyStats } from '../state/dailyStats';
 import { RATING_URL } from '../content/staticRoutes';
 
 /** the name, the same in every language: "sudok" and a coloured "UI" */
@@ -236,19 +238,36 @@ export default function App() {
     () =>
       !localStorage.getItem('sudokui-welcomed') &&
       !window.location.hash.match(/(^#|&)(p=|s=|learn=|practice=|daily)/) &&
-      !parseShareUrl(window.location)
+      !parseShareUrl(window.location) &&
+      !parseDailyUrl(window.location)
   );
   const dismissWelcome = () => {
     localStorage.setItem('sudokui-welcomed', '1');
     setWelcome(false);
   };
-  const startDaily = () => {
-    const d = dailyPuzzle();
-    useGame.getState().startGame(d.puzzle, d.score, d.level, null, d.dateKey);
+  // the daily for a day, today's unless a date is given: the published
+  // puzzle (src/content/dailies.ts), which has global statistics; or, for
+  // a day the published list does not cover, the one derived from the date
+  // as before (src/engine/daily.ts), which has none
+  const startDaily = async (date = localDateKey()) => {
+    const published = findDaily(await loadDailies(), date);
+    const no = dailyNumber(date);
+    if (published && no) {
+      useGame.getState().startGame(published.puzzle, published.score, published.level, null, date);
+      useGame.setState((s) => ({ info: s.info && { ...s.info, dailyNo: no } }));
+    } else {
+      const d = dailyPuzzle(dateOfKey(date) ?? new Date());
+      useGame.getState().startGame(d.puzzle, d.score, d.level, null, date);
+    }
     // translator(), not the render's t: the boot effect calls this from its
     // first render's closure
     const t = translator();
-    useGame.setState({ notice: t('Daily puzzle for {date}. Everyone gets this same board today', { date: d.dateKey }) });
+    useGame.setState({
+      notice:
+        date === localDateKey()
+          ? t('Daily puzzle for {date}. Everyone gets this same board today', { date })
+          : t('The daily for {date}', { date })
+    });
   };
 
   useEffect(() => {
@@ -276,10 +295,6 @@ export default function App() {
       start({ kind: 'tech', tech: practice });
       return;
     }
-    if (params.has('daily')) {
-      startDaily();
-      return;
-    }
     const sharedPosition = params.get('s');
     if (sharedPosition && useGame.getState().loadPosition(sharedPosition)) return;
     const share = parseShareUrl(window.location);
@@ -294,16 +309,33 @@ export default function App() {
         notice: t('A challenge: solve it faster than {time}', { time: clockOf(vs) })
       }));
     };
+    /** a game nobody has touched: its clock may have run, nothing else has happened */
+    const untouched = () => game.cells.every((c) => c.given || (!c.value && !c.corner && !c.center && !c.colors.length));
+    /** the challenger's time over the game already on the board */
+    const challengeCurrent = (vs: number) => {
+      // a finished game, or one not yet begun, starts over against that
+      // time; one under way keeps its moves and takes the time on
+      if (game.won || untouched()) game.restart();
+      challenge(vs);
+    };
+    // a daily's address, or #daily for today's: that day's board, unless it
+    // is the one already on the board (a reload lands here), and a
+    // challenger's time once the board is there
+    const daily = parseDailyUrl(window.location) ?? (params.has('daily') ? { lang: 'en' as const, date: localDateKey() } : null);
+    if (daily) {
+      if (game.info?.dailyKey === daily.date) {
+        if (daily.vs) challengeCurrent(daily.vs);
+        return;
+      }
+      void startDaily(daily.date).then(() => {
+        if (daily.vs) challenge(daily.vs);
+      });
+      return;
+    }
     if (shared && shared === game.info?.puzzle) {
       // the puzzle already on the board (a reload lands here), perhaps with
-      // a challenger's time for it: a finished game, or one not yet begun
-      // (its clock may have run), starts over against that time; one under
-      // way keeps its moves and takes the time on
-      if (share?.vs) {
-        const untouched = game.cells.every((c) => c.given || (!c.value && !c.corner && !c.center && !c.colors.length));
-        if (game.won || untouched) game.restart();
-        challenge(share.vs);
-      }
+      // a challenger's time for it
+      if (share?.vs) challengeCurrent(share.vs);
       return;
     }
     if (shared) {
@@ -358,11 +390,12 @@ export default function App() {
     if (!info?.puzzle) return;
     const rated = !(hideRating && !won);
     try {
-      window.history.replaceState(
-        null,
-        '',
-        sharePath({ lang, puzzle: info.puzzle, level: rated ? info.level : undefined, score: rated ? info.score : undefined })
-      );
+      // a published daily's address is its day (src/content/dailies.ts)
+      const path =
+        info.dailyNo && info.dailyKey
+          ? dailyPath(lang, info.dailyKey)
+          : sharePath({ lang, puzzle: info.puzzle, level: rated ? info.level : undefined, score: rated ? info.score : undefined });
+      window.history.replaceState(null, '', path);
     } catch {
       // an origin that allows no path of its own (a file:// build): the
       // hash link still names the puzzle, and the app still reads it
@@ -373,7 +406,16 @@ export default function App() {
         document.title = m.HOME[lang].title;
       })
       .catch(() => {});
-  }, [info?.puzzle, info?.level, info?.score, lang, hideRating, won]);
+  }, [info?.puzzle, info?.level, info?.score, info?.dailyNo, info?.dailyKey, lang, hideRating, won]);
+
+  // a daily result that could not be sent goes on the next open, and when
+  // the connection comes back (src/state/dailyStats.ts)
+  useEffect(() => {
+    const flush = () => void useDailyStats.getState().flushPending();
+    flush();
+    window.addEventListener('online', flush);
+    return () => window.removeEventListener('online', flush);
+  }, []);
 
   // toasts fade after a few seconds
   useEffect(() => {

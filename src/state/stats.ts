@@ -8,6 +8,7 @@ import { persist } from 'zustand/middleware';
 import { Tech, Level, TECHS } from '../engine/ratings';
 import { worth } from '../content/frequency';
 import { translator } from '../content/i18n';
+import { localDateKey } from '../content/dailies';
 
 export interface TechStat {
   unaided: number;
@@ -100,16 +101,22 @@ export const useStats = create<Stats>()(
   )
 );
 
-/** days in a row ending today or yesterday on which the daily was solved */
+/**
+ * Days in a row ending today or yesterday on which the daily was solved.
+ * A day is the player's local date (src/content/dailies.ts, localDateKey),
+ * as the daily itself is since the published dailies; the keys recorded
+ * before that were UTC dates, which differ from local ones only around
+ * midnight, so a streak carries over with at most one day's seam.
+ */
 export function dailyStreak(days: string[], now = new Date()): number {
   const set = new Set(days);
   let streak = 0;
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   // today may still be unsolved; a streak then counts from yesterday
-  if (!set.has(d.toISOString().slice(0, 10))) d.setUTCDate(d.getUTCDate() - 1);
-  while (set.has(d.toISOString().slice(0, 10))) {
+  if (!set.has(localDateKey(d))) d.setDate(d.getDate() - 1);
+  while (set.has(localDateKey(d))) {
     streak++;
-    d.setUTCDate(d.getUTCDate() - 1);
+    d.setDate(d.getDate() - 1);
   }
   return streak;
 }

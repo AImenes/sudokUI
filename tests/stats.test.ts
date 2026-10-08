@@ -77,3 +77,19 @@ describe('stats', () => {
     expect(gameSummary({ unaided: {}, hinted: {}, errors: 0, beyond: 1 })).toBe('1 move of your own, beyond the catalogue.');
   });
 });
+
+describe('the streak on local dates', () => {
+  it('counts the local day, even when UTC has moved on or not yet arrived', async () => {
+    const { dailyStreak } = await import('../src/state/stats');
+    const { localDateKey } = await import('../src/content/dailies');
+    // half past midnight, local time: the day is today's local date whatever UTC says
+    const lateNight = new Date(2026, 9, 2, 0, 30);
+    const key = localDateKey(lateNight);
+    expect(key).toBe('2026-10-02');
+    expect(dailyStreak([key], lateNight)).toBe(1);
+    expect(dailyStreak(['2026-09-30', '2026-10-01'], lateNight)).toBe(2);
+    // a quarter to midnight is still the same local day
+    const nearMidnight = new Date(2026, 9, 2, 23, 45);
+    expect(dailyStreak(['2026-10-01', '2026-10-02'], nearMidnight)).toBe(2);
+  });
+});
