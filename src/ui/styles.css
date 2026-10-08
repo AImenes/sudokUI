@@ -2096,6 +2096,14 @@ kbd {
     padding-bottom: calc(10px + env(safe-area-inset-bottom));
   }
 
+  /* in one column the rare actions (New, Learn, Import, Share, Restart)
+     go last: the digits then sit within the thumb's reach, and the Assist
+     box, pressed many times a game, starts above the fold of a phone
+     instead of 67 px below it (docs/review.md) */
+  .side > .menu-row {
+    order: 1;
+  }
+
   .board-col {
     flex: none;
     width: 100%;
