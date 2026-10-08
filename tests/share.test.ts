@@ -88,3 +88,13 @@ describe('what a game remembers for its share link', () => {
     expect(useGame.getState().info?.fromPosition).toBeUndefined();
   });
 });
+
+describe('a published daily on the board', () => {
+  it('stays that daily through a restart', () => {
+    useGame.getState().startGame(EASY, 196, 'Beginner', null, '2026-10-07');
+    useGame.setState((s) => ({ info: s.info && { ...s.info, dailyNo: 1 } }));
+    useGame.getState().restart();
+    expect(useGame.getState().info?.dailyNo).toBe(1);
+    expect(useGame.getState().info?.dailyKey).toBe('2026-10-07');
+  });
+});

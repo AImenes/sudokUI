@@ -9,8 +9,11 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import template from '../index.html?raw';
+import dailies from '../src/content/dailies.json';
+import { Daily, dailyNumber } from '../src/content/dailies';
 import {
   parseShareUrl,
+  shareParamsOf,
   sharePath,
   shareUrl,
   techsWorthNaming,
@@ -364,6 +367,48 @@ describe('the share page', () => {
     expect(html).toContain('¿Puedes superarlo?');
     expect(html).toContain('Cargando el sudoku&hellip;');
     expect(html).not.toMatch(/content="[^"]*[<>]/);
+  });
+});
+
+describe('a daily’s share page', () => {
+  const list = dailies as Daily[];
+  const d = list[3];
+  const no = dailyNumber(d.date)!;
+  const url = (path: string) => new URL(path, SITE);
+
+  it('comes from the published list, not from the address', () => {
+    const p = shareParamsOf(url(`/nb/daily/${d.date}?vs=552&b=nightmare&s=9999`), list)!;
+    expect(p).toEqual({ lang: 'nb', puzzle: d.puzzle, level: d.level, score: d.score, techs: d.techs, vs: 552, daily: { no, date: d.date } });
+    expect(shareParamsOf(url('/daily/2020-01-01'), list)).toBeNull();
+    expect(shareParamsOf(url(`/p/${EASY}?b=hard`), list)).toEqual({ lang: 'en', puzzle: EASY, level: 'Hard' });
+    // the address of a daily is its day, with the challenge if any
+    expect(sharePath(p)).toBe(`/nb/daily/${d.date}?vs=552`);
+    expect(sharePath({ ...p, vs: undefined })).toBe(`/nb/daily/${d.date}`);
+  });
+
+  it('says which daily it is, in every language', () => {
+    const p = shareParamsOf(url(`/daily/${d.date}`), list)!;
+    const en = shareCopy(p);
+    expect(en.title).toBe(`Daily #${no}: ${d.level} sudoku, rated ${d.score} | sudokUI`);
+    expect(en.ogTitle).toBe(`sudokUI Daily #${no}, ${d.date}: can you solve it?`);
+    expect(en.description.startsWith(`The daily for ${d.date}: `)).toBe(true);
+    expect(en.description).toContain(`${d.level} sudoku rated ${d.score}`);
+    expect(en.ogImage).toBe(ogShareCard(d.level, 'en'));
+    const vs = shareCopy({ ...p, vs: 61 });
+    expect(vs.ogTitle).toBe('Solved in 1:01. Can you beat it?');
+    expect(vs.h1).toBe(en.ogTitle);
+    for (const lang of OTHER) {
+      const c = shareCopy({ ...p, lang });
+      expect(c.title).toContain(String(no));
+      expect(c.title.length, c.title).toBeLessThanOrEqual(75);
+      expect(c.ogTitle).toContain(d.date);
+      expect(c.description.length, c.description).toBeLessThanOrEqual(300);
+      expect(c.description).not.toContain('{');
+    }
+    const html = renderSharePage(template, p);
+    expect(meta(html, 'og:url')).toEqual([`${SITE}/daily/${d.date}`]);
+    expect(meta(html, 'robots')).toEqual(['noindex']);
+    expect(structure(html)).toBe(structure(renderSharePage(template, { lang: 'en', puzzle: EASY, level: 'Hard', score: 1420 })));
   });
 });
 

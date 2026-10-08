@@ -116,11 +116,12 @@ export const langRoot = (lang: Lang) => (lang === 'en' ? '/' : `/${lang}/`);
 
 /**
  * The language an address of the app itself stands for: /nb/ and /es/, and
- * a share address under them, /nb/p/<puzzle> (src/content/share.ts); null
- * for / and anything else
+ * a share address under them, /nb/p/<puzzle> or /nb/daily/<date>
+ * (src/content/share.ts, src/content/dailies.ts); null for / and anything
+ * else
  */
 export function langOfPath(path: string): Lang | null {
-  const m = /^\/(nb|es)(?:\/(?:p\/[0-9.]{81}\/?)?)?$/.exec(path);
+  const m = /^\/(nb|es)(?:\/(?:p\/[0-9.]{81}\/?|daily\/\d{4}-\d{2}-\d{2}\/?)?)?$/.exec(path);
   return m ? (m[1] as Lang) : null;
 }
 

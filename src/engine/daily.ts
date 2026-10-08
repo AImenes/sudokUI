@@ -1,10 +1,12 @@
 /**
- * The daily puzzle: everyone who opens sudokUI on the same (UTC) day gets
- * the same board — no server, no download. The date seeds a PRNG that
+ * The daily puzzle derived from the date: the fallback for a day the
+ * published list (src/content/dailies.ts, dailies.json) does not cover,
+ * which has no global statistics. The date key seeds a PRNG that
  * temporarily stands in for Math.random while the ordinary generator runs,
- * so two phones on opposite sides of the planet derive an identical grid.
- * Aimed at the comfortable middle bands (Medium–Hard): approachable for a
- * shared ritual, meaty enough to talk about.
+ * so two devices derive an identical grid from the same key, as long as
+ * the generator and the rater do not change. Aimed at the comfortable
+ * middle bands (Medium–Hard): approachable for a shared ritual, meaty
+ * enough to talk about.
  */
 import { generatePuzzle } from './generator';
 import { ratePuzzle } from './humanSolver';

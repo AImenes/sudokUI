@@ -69,11 +69,38 @@ Note they are independent — a push to `main` deploys even if CI fails. For
 stricter gating, protect `main` with a required CI status check in GitHub
 settings so nothing lands on `main` without green tests (PRs already run CI).
 
-## When the database arrives (phase 2)
+## The database (phase 2: the daily's global times)
 
-The shared daily's global stats live in the same project: the D1 database
-`sudokui-db` (its binding, `DB`, is written out but commented in
-`wrangler.jsonc`) and two JSON routes in the same Worker script, as
-[online-goals.md](online-goals.md) lays out. No migration of the static
-hosting is needed, and there are no accounts, ever: that document's second
-principle withdraws the old roadmap line about them.
+The shared daily's results live in D1, in the same project: the database
+`sudokui-db`, bound as `DB` in [`wrangler.jsonc`](../wrangler.jsonc), and
+two JSON routes in the same Worker script (`worker/daily.ts`), as
+[online-goals.md](online-goals.md) lays out. The static hosting does not
+move, and there are no accounts, ever.
+
+The binding ships with the code; the tables do not. They are created once,
+by hand, from [`migrations/0001_daily.sql`](../migrations/0001_daily.sql):
+
+```bash
+npx wrangler login
+npx wrangler d1 migrations apply sudokui-db --remote
+```
+
+Until that has run, the Worker answers the daily's API with 503, the win
+screen says the global times are unavailable, and play is unaffected; the
+moment the tables exist the next request works. To look at the data:
+
+```bash
+npx wrangler d1 execute sudokui-db --remote --command "SELECT puzzle_no, SUM(n) AS results, SUM(n_unassisted) AS unassisted, COUNT(*) AS buckets FROM daily_hist GROUP BY puzzle_no"
+```
+
+Budget rules the code keeps ([online-goals.md](online-goals.md)): every
+query is on a primary key, a day's histogram is at most 481 rows (15-second
+buckets, two hours and up together), statistics are edge-cached a minute,
+and a result costs two writes in one batch. Watch `rows_written` in the D1
+metrics; past the free cap the routes answer 503 until midnight UTC and
+the app keeps playing.
+
+For local work, `npx wrangler dev` needs the local tables too
+(`--local` on the migration command) and, on Windows, `npm approve-scripts
+workerd` once. The dev and preview servers do not need any of it: they
+answer the API over a store in memory (`vite.config.ts`).

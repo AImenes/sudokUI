@@ -42,16 +42,16 @@ export function homeLangOfPath(path: string): Lang | null {
 /**
  * The navigations the service worker may answer with the app shell: the
  * home page in every language, with or without a query string, and the
- * share addresses, /p/<puzzle> under every language root (share.ts). /nb/
- * and /es/ themselves are answered from the precache with their own page;
- * the shell is the offline fallback when a query string keeps them from
- * matching it. A share address is the app too: the Worker renders it with
- * a preview for crawlers and chat apps, but a player with the app
- * installed gets the shell at once, offline as well, and the app reads
- * the puzzle from the path. Everything else is a real document or a real
- * 404.
+ * share addresses, /p/<puzzle> and /daily/<date>, under every language
+ * root (share.ts, dailies.ts). /nb/ and /es/ themselves are answered from
+ * the precache with their own page; the shell is the offline fallback
+ * when a query string keeps them from matching it. A share address is
+ * the app too: the Worker renders it with a preview for crawlers and chat
+ * apps, but a player with the app installed gets the shell at once,
+ * offline as well, and the app reads the puzzle or the day from the path.
+ * Everything else is a real document or a real 404.
  */
-export const APP_NAVIGATION = /^\/(?:(?:nb|es)\/)?(?:p\/[0-9.]{81}\/?)?(?:\?.*)?$/;
+export const APP_NAVIGATION = /^\/(?:(?:nb|es)\/)?(?:p\/[0-9.]{81}\/?|daily\/\d{4}-\d{2}-\d{2}\/?)?(?:\?.*)?$/;
 
 /** a page under a language's prefix: /learn/ in English, /nb/learn/ in Norwegian */
 const inLang = (lang: Lang, path: string) => (lang === 'en' ? path : `/${lang}${path}`);

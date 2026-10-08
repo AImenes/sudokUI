@@ -23,6 +23,8 @@ import { cruxIndex } from '../engine/generator';
 import { timeVerdict, percentileText, MODE_LABEL, SolveMode } from '../content/solveTimes';
 import { useT, translator, msg, rich, Translator } from '../content/i18n';
 import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
+import { fasterThan, dailyNumber, localDateKey, LATE_DAYS } from '../content/dailies';
+import { useDailyStats, playedFrom, SubmitOutcome } from '../state/dailyStats';
 import { HubTabs } from './HubTabs';
 import { techniquesByFamily } from '../content/categories';
 import { useLearnLocale } from './useLearnLocale';
@@ -844,7 +846,9 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
         puzzle,
         level: known?.level,
         score: known?.score,
-        techs: known ? shareTechs() : undefined
+        techs: known ? shareTechs() : undefined,
+        // a published daily's address is its day (src/content/dailies.ts)
+        daily: known?.dailyNo && known.dailyKey ? { no: known.dailyNo, date: known.dailyKey } : undefined
       },
       window.location.origin
     );
@@ -955,6 +959,24 @@ export function VictoryDialog({
   const [copied, setCopied] = useState(false);
   const t = useT();
   const shareTechs = useShareTechs(info?.puzzle);
+  // a published daily's global statistics (src/state/dailyStats.ts):
+  // fetched when the screen opens; the player's own time goes in only
+  // when the player asks
+  const dailyNo = info?.dailyNo;
+  const stats = useDailyStats((s) => (dailyNo ? s.stats[dailyNo] : undefined));
+  const submittedSecs = useDailyStats((s) => (dailyNo ? s.submitted[dailyNo] : undefined));
+  const [sent, setSent] = useState<SubmitOutcome | 'sending' | null>(null);
+  const [statsFailed, setStatsFailed] = useState(false);
+  useEffect(() => {
+    if (!dailyNo) return;
+    setStatsFailed(false);
+    void useDailyStats
+      .getState()
+      .fetchStats(dailyNo)
+      .then((s) => {
+        if (!s) setStatsFailed(true);
+      });
+  }, [dailyNo]);
   if (!info) return null;
   const secs = Math.floor(elapsedMs() / 1000);
   const mm = Math.floor(secs / 60);
@@ -990,27 +1012,66 @@ export function VictoryDialog({
         ? t('Challenge tied: {theirs} to beat, you took {time}', challengeVars)
         : t('Challenge missed: {theirs} to beat, you took {time}', challengeVars);
 
+  // the share of the day's solvers this time beat, once it is in among them
+  const crowdPct =
+    submittedSecs !== undefined && stats && stats.count > 1 ? Math.round(fasterThan(stats, submittedSecs, true) * 100) : null;
+  // the server takes a time for a day up to a week on; after that the day
+  // is closed and the win screen does not offer what would be refused
+  const dailyClosed = !!info.dailyNo && (dailyNumber(localDateKey()) ?? 0) - info.dailyNo > LATE_DAYS;
+
+  // the player's time for the daily, sent when asked (src/state/dailyStats.ts)
+  const sendDaily = async () => {
+    if (!info.dailyNo) return;
+    setSent('sending');
+    const outcome = await useDailyStats.getState().submit({
+      no: info.dailyNo,
+      grid: useGame
+        .getState()
+        .cells.map((c) => c.value)
+        .join(''),
+      seconds: secs,
+      hints: Object.values(game.hinted).reduce((sum, n) => sum + (n ?? 0), 0),
+      unassisted: !assisted,
+      source: playedFrom()
+    });
+    setSent(outcome);
+  };
+
   // same-puzzle challenge: the share text carries the share address of
   // this grid, which previews in a chat and names the band, the score and
-  // the techniques, with this time as the one to beat
+  // the techniques, with this time as the one to beat; a daily's text is
+  // the spoiler-free line of docs/online-goals.md, with the crowd's
+  // percentile once the time is in
   const shareResult = () => {
+    const link = shareUrl({
+      lang: t.lang,
+      puzzle: info.puzzle,
+      level: info.level,
+      score: info.score,
+      techs: shareTechs(),
+      daily: info.dailyNo && info.dailyKey ? { no: info.dailyNo, date: info.dailyKey } : undefined,
+      // a game that started part-way through sets no time to beat for
+      // anyone solving from the start
+      vs: partWay ? undefined : secs
+    });
     const vars = {
+      no: info.dailyNo ?? '',
       level: t.level(info.level),
       score: info.score,
       time: `${mm}:${ss}`,
+      pct: crowdPct ?? '',
       standing: verdict ? percentileText(verdict.percentile) : '',
-      link: shareUrl({
-        lang: t.lang,
-        puzzle: info.puzzle,
-        level: info.level,
-        score: info.score,
-        techs: shareTechs(),
-        // a game that started part-way through sets no time to beat for
-        // anyone solving from the start
-        vs: partWay ? undefined : secs
-      })
+      link
     };
-    const text = verdict
+    const text = info.dailyNo
+      ? crowdPct !== null
+        ? assisted
+          ? t('sudokUI Daily #{no} · {level} ({score}) · {time} · faster than {pct}% today · {link}', vars)
+          : t('sudokUI Daily #{no} · {level} ({score}) · {time} · unassisted · faster than {pct}% today · {link}', vars)
+        : assisted
+          ? t('sudokUI Daily #{no} · {level} ({score}) · {time} · {link}', vars)
+          : t('sudokUI Daily #{no} · {level} ({score}) · {time} · unassisted · {link}', vars)
+      : verdict
       ? assisted
         ? t('I solved a {level} sudoku (rating {score}) in {time}, {standing} on sudokUI. Can you beat that? {link}', vars)
         : t(
@@ -1081,6 +1142,34 @@ export function VictoryDialog({
           </p>
         )}
         {streak > 1 && <p className="solve-record">🔥 {t('Daily streak: {n} days', { n: streak })}</p>}
+        {info.dailyNo && (
+          <div className="daily-stats">
+            <p className="solve-record">
+              {stats
+                ? stats.count > 0
+                  ? t('Solved by {count} so far, median {median}', { count: t.num(stats.count), median: clockOf(stats.median ?? 0) })
+                  : t('Nobody has sent in a time for this daily yet')
+                : statsFailed
+                  ? t('Global times are unavailable right now')
+                  : t('Fetching everyone’s times…')}
+            </p>
+            {submittedSecs !== undefined && stats ? (
+              <p className="solve-clean">
+                {crowdPct !== null ? `🌍 ${t('You were faster than {pct}% of them', { pct: crowdPct })}` : `🌍 ${t('Your time is the first one in')}`}
+              </p>
+            ) : sent === 'sending' ? (
+              <p className="solve-assisted">{t('Sending your time…')}</p>
+            ) : sent === 'offline' || sent === 'unavailable' ? (
+              <p className="solve-assisted">{t('Your time goes in the next time you open the app online')}</p>
+            ) : sent === 'refused' ? (
+              <p className="solve-assisted">{t('Your time was not accepted')}</p>
+            ) : dailyClosed ? (
+              <p className="solve-assisted">{t('This daily is closed for new times')}</p>
+            ) : (
+              <button onClick={sendDaily}>🌍 {t('Send my time and compare')}</button>
+            )}
+          </div>
+        )}
         <div className="hint-actions">
           {info.practiceTech && onAnother && (
             <button onClick={onAnother}>{t('Another {name}', { name: practiceName })}</button>

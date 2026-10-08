@@ -64,7 +64,10 @@ natively for iOS and Android via Capacitor.
   sorts by **learn next**, the path (Learn → Your path) shows the techniques worth
   learning in the order puzzles need them with the next one a click from
   its practice, and the win dialog keeps your band records and the daily
-  streak. **Why not?**: when Check finds a wrong digit it says
+  streak. **The daily, with everyone's times**: one published puzzle a day,
+  the same for the whole world; finish it and, if you choose, send your time
+  in to see how many solved it, the median, and the share you were faster
+  than (no account, a random token per day). **Why not?**: when Check finds a wrong digit it says
   why, from a peer that already holds it to the forced singles that would
   break the board, and shows it (see
   [docs/technique-stats.md](docs/technique-stats.md))
@@ -192,11 +195,15 @@ src/
   content/           the written content: technique explanations, glossary,
                      rating explainer, worked examples, and the builder
                      that turns them into static pages; home.ts and share.ts
-                     render the home pages and the share pages
-  state/             zustand stores: game, settings, puzzle pools
+                     render the home pages and the share pages; dailies.ts
+                     and dailies.json, the published daily puzzles
+  state/             zustand stores: game, settings, puzzle pools, the
+                     daily's global times
   ui/                React components: SVG board, controls, dialogs
-worker/              the Cloudflare Worker: renders /p/<puzzle> share pages,
-                     hands everything else to the static files
+worker/              the Cloudflare Worker: renders /p/<puzzle> and
+                     /daily/<date> share pages, serves the daily's API over
+                     D1 (daily.ts), hands everything else to the static files
+migrations/          the D1 schema (applied by hand, docs/deployment.md)
 scripts/             build-learn (static pages), hunt-examples (worked
                      examples), measure-frequency (how often each
                      technique is needed), build-seeds (the seed library),
@@ -256,8 +263,9 @@ Toward the best open-source sudoku tool anywhere:
 - **Teacher / annotation mode** — arrows, shapes and freehand drawing over
   the board for streams and classroom use
 - **Statistics & streaks** — local solve history, per-technique mastery
-  tracking; a shared daily with anonymous global stats, never accounts (see
-  [docs/online-goals.md](docs/online-goals.md))
+  tracking; counting plays without identifying anyone, and daily archive
+  pages, next (see [docs/online-goals.md](docs/online-goals.md), phases 3
+  and 4); never accounts
 - **Curated library** — classic named puzzles (Escargot, Golden Nugget…) and
   a daily puzzle per difficulty band, next to today's shared daily
 - **Custom solve-order editor** — reorder/disable techniques and see how

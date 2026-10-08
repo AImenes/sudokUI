@@ -793,7 +793,7 @@ const nb: LearnLocale = {
         {
           "heading": "Slik virker det",
           "paragraphs": [
-            "Dagens oppgave lages på din egen enhet ut fra datoen, så alle får det samme brettet uten noen server eller konto. En ny oppgave kommer ved midnatt UTC."
+            "Det publiseres én oppgave for hver dag, det samme brettet for alle, uten noen konto. En ny åpner ved midnatt, din lokale tid. Når du er ferdig, kan du sende inn tiden din og se hvordan du ligger an mot alle andre som har spilt den: hvor mange som løste den, mediantiden, og hvor stor andel du var raskere enn."
           ]
         },
         {

@@ -8,9 +8,10 @@ It is written to be pasted into a prompt as context, so it states the
 current code, the decisions, the budgets and the open questions in one
 place. It is not translated.
 
-Status: phase 1 (share links that preview) is built, October 2026; phases 2
-to 4 are decided and not built. Dates and limits were checked in October
-2026 and must be re-checked before each phase ships.
+Status: phases 1 and 2 are built, October 2026 (share links that preview;
+the shared daily with global times); phases 3 and 4 are decided and not
+built. Dates and limits were checked in October 2026 and must be
+re-checked before each phase ships.
 
 ## The one-paragraph version
 
@@ -65,13 +66,15 @@ Facts a prompt can rely on, with the files that hold them:
   everything else back to the assets, so unknown paths are still real 404s
   (`not_found_handling: "404-page"`). API routes go in the same script
   ([deployment.md](deployment.md)).
-- **The daily is derived at runtime from the date.** `src/engine/daily.ts`
-  seeds a PRNG from the UTC date string, swaps it in for `Math.random`, and
-  runs the ordinary generator until it finds a Medium, Tricky or Hard
-  puzzle. This is deterministic only while the generator and the rater
-  never change. They change often (every new technique moves ratings), so
-  history re-rolls silently. Global stats need a pinned puzzle per day, so
-  this must change before phase 2.
+- **The daily is a published list.** `src/content/dailies.json` pins one
+  puzzle per local calendar day from 2026-10-07 (#1) to the end of 2027,
+  each with its band, score, the techniques worth naming and the SHA-256
+  of its solution; `scripts/build-dailies.ts` extends the list and never
+  changes a published day; `src/content/dailies.ts` keys the day (the
+  player's local date), the number and the address, `/daily/<date>`. The
+  app loads the list only when a daily starts; the Worker bundles it. For
+  a day the list does not cover, the app falls back to the puzzle derived
+  from the date (`src/engine/daily.ts`), which has no global statistics.
 - **The streak is local.** `src/state/stats.ts` keeps `dailyDays`, a list of
   date keys, persisted with zustand `persist` in localStorage. The win
   dialog in `src/ui/Dialogs.tsx` computes the streak from it.
@@ -185,8 +188,10 @@ CREATE TABLE daily_hist (
 ) WITHOUT ROWID;
 ```
 
-Write path per solve, as one batch: `INSERT OR IGNORE INTO daily_result`,
-then `INSERT INTO daily_hist … ON CONFLICT DO UPDATE SET n = n + 1`. Never
+Write path per solve, as one batch: the histogram bucket, `INSERT INTO
+daily_hist … ON CONFLICT DO UPDATE SET n = n + 1`, guarded by `WHERE NOT
+EXISTS` on the token's result row, then `INSERT OR IGNORE INTO
+daily_result` (built that way round, so a repeat changes nothing). Never
 scan all results per request. A median computed over ten thousand rows on
 every page view would burn the whole daily read budget and, since
 1 September 2026, take the feature offline until midnight UTC.
@@ -224,6 +229,38 @@ lands the newcomer on the puzzle, not the homepage.
 Needs: the static daily file and its build step, the two tables and a
 migration, the two routes, the panel, the share line in every language,
 and a test that `meta.rows_read` of every query stays bounded.
+
+Built, October 2026, with these decisions:
+
+- **Local date.** The day is the player's local calendar date; the number
+  counts days from 2026-10-07 (#1). Players on either side of the date
+  line who both see "2026-10-08" share one puzzle and one set of
+  statistics. The server accepts a result for a day from a week back to a
+  day ahead of the UTC date, so an offline retry and a clock ahead of UTC
+  both get through. The streak counts local days too; the keys recorded
+  before this were UTC dates, so one seam of a day is possible.
+- **A long list, committed.** 451 days are published in
+  `src/content/dailies.json` (125 KB), a lazy chunk in the app that the
+  service worker precaches, and part of the Worker bundle (158 KB in
+  all). Spoilers are accepted, as decided; `tests/dailies.test.ts` fails
+  when fewer than thirty days are left and warns under sixty.
+- **The solution travels as its hash.** The file holds the SHA-256 of each
+  solution, never the solution; the Worker hashes a submitted grid.
+- **Bounded reads by construction.** Buckets are 15 seconds, and two hours
+  and up share the last one (480), so a day's histogram is at most 481
+  rows whatever anyone submits. Every statement is on a primary key
+  (`worker/daily.ts`, `d1Store`); `rows_read` on the real database is not
+  asserted by a test, the shape of the queries is.
+- **The player asks.** The win screen fetches the day's numbers on its own
+  (no player data in that request) and sends the player's time only when
+  the player taps "Send my time and compare". A game that began part-way
+  (a practice puzzle, a position link) sends nothing.
+- **The share line** is the one above, without the emoji row for now.
+- **The migration is a hand step.** The binding ships with the code
+  ([deployment.md](deployment.md)); until the tables exist the routes
+  answer 503 and the win screen says the global times are unavailable.
+- Phase 3 (telemetry) has not shipped with it, against this document's
+  own advice; it is the next piece.
 
 ### Phase 3: counting plays, including offline ones
 
@@ -372,12 +409,10 @@ questions and can be asked directly.
 
 ## Open questions
 
-- Local date or UTC date for the daily number? Local is kinder to streaks
-  and matches Wordle; the current code uses UTC. Decision pending phase 2.
-- Seven days or sixty days of dailies in the static file? Sixty keeps a
-  long flight covered; seven keeps spoilers short.
 - Whether the share line carries the technique emoji row by default or
   behind a setting.
+- How often to extend `dailies.json`, and whether to shorten the published
+  horizon if spoilers turn out to matter.
 - What the privacy page says, in all three languages.
 
 ## Evidence this rests on
