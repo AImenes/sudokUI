@@ -2103,6 +2103,10 @@ kbd {
   .side > .menu-row {
     order: 1;
   }
+  /* and the footer's links stay the last thing on the page */
+  .side > .app-footer {
+    order: 2;
+  }
 
   .board-col {
     flex: none;
