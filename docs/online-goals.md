@@ -115,6 +115,33 @@ Facts a prompt can rely on, with the files that hold them:
   the same `t()` templates and language roots as the rest of the app, and
   share pages carry the language of the sender.
 
+## Status against the research (8 October 2026)
+
+The research note this document distils ranked eight candidates and
+recommended a v1 of three. Where each one stands, in the research's order:
+
+| Rank | Candidate | Status | Where |
+|---|---|---|---|
+| 1 | Daily + global stats + share card | **Built** (phase 2). One published puzzle per local day, D1 histogram, the win screen's panel, the text share line; the tables are a hand step until the migration has been applied | `src/content/dailies.ts`, `worker/daily.ts`, `src/state/dailyStats.ts`, `migrations/` |
+| 2 | Path-based share links with OG previews (`/p/…`, `/daily/…`) | **Built** (phase 1), with the "challenge a friend" time (`?vs=`) from the research's note h | `src/content/share.ts`, `worker/index.ts`, `public/og/` |
+| 3 | ID-less telemetry to WAE, opt-in offline counter, private `/admin` | **Not built.** Phase 3; the research asked for it to ship with rank 1, and it is the next piece. Nothing is measured yet | — |
+| 4 | Daily archive pages | **Not built.** Phase 4, after data. `/daily/<date>` today is the app with a preview, `noindex`, not an indexable page | — |
+| 5 | Crowd-calibrated solve times per band | **Not built.** Phase 4. The daily results that would feed it are being collected from the first accepted result on | `src/content/solveTimes.ts` keeps the model |
+| 6 | Anonymous daily leaderboard | **Not built**, by decision: the percentile on the win screen and in the share line carries the competitive pull | — |
+| 7 | Sync code | **Not built**, not planned | — |
+| 8 | Indexable page per generated puzzle | **Will not be built** (scaled-content risk) | — |
+
+The research's other notes: the roadmap line about accounts is struck;
+the daily is pinned, never derived at run time (the derived puzzle
+remains only as a fallback for a day outside the published list); the
+share card is a text line, no emoji grid, and the optional technique
+emoji row is still open; the RSS feed and the "daily per band" pick are
+not built; no launch moment has been made yet, which the research tied
+to rank 3 being in place. Two things differ from the research's sketch:
+the histogram's last bucket takes two hours and up, so a day is at most
+481 rows, and a result is accepted up to a week late so an offline retry
+on the next open counts. Everything under "Do not build" still holds.
+
 ## The road, in order
 
 ### Phase 1: share links that preview (no database)
