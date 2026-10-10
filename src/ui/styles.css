@@ -422,6 +422,18 @@ button {
   border-radius: 6px;
 }
 
+/* from a tablet's width up the board is not the whole width of the page,
+   which scrolls from anywhere beside it (and on a tablet on its side has
+   nowhere to scroll): the board keeps every one-finger move, and a drag
+   selects in any direction at once, with no rest first. Grid.tsx reads
+   this value to know that a move up or down is no scroll. A phone on its
+   side (the layout further down, to 520 px of height) stays as a phone */
+@media (min-width: 700px) and (min-height: 521px) {
+  .board {
+    touch-action: pinch-zoom;
+  }
+}
+
 .board text {
   pointer-events: none;
   font-family: var(--font);
