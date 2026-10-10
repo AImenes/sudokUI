@@ -11,7 +11,7 @@ import { ChainLink, CellDigit } from '../engine/steps';
 import { walkFrames, Part } from '../engine/hintFrames';
 import { useT, msg, translator } from '../content/i18n';
 import type { Translator } from '../content/i18n';
-import { touchIntent, INTENT_MS } from './touchIntent';
+import { touchIntent, cellsBetween, INTENT_MS, SLOP_PX } from './touchIntent';
 import type { TouchIntent } from './touchIntent';
 
 const SIZE = 100;
@@ -609,6 +609,11 @@ export function Grid() {
   // began to the cell under the pointer, and follows the pointer both ways
   const anchor = useRef<number | null>(null);
   const before = useRef<number[]>([]);
+  // the cell the drag was last seen in (undefined before its first move,
+  // null off the board): a move within it adds nothing, so the store is
+  // not written and the board not redrawn for every pixel the pointer
+  // travels
+  const reached = useRef<number | null | undefined>(undefined);
 
   // A touch is highlighted at once and settled by its movement, not by the
   // clock (touchIntent.ts). The press cell is selected the moment the
@@ -622,6 +627,10 @@ export function Grid() {
   // it. A lift within the slop is a tap, which the landing has already
   // performed; an armed digit is entered on the lift, never on the
   // landing, so a scroll can never enter a digit.
+  //
+  // From a tablet's width up the board does not scroll the page (its
+  // touch-action has no pan-y, styles.css): no move is a scroll there, and
+  // a finger past the slop is marking whichever way it goes.
   interface Touch {
     cell: number;
     additive: boolean;
@@ -630,6 +639,8 @@ export function Grid() {
     /** the selection before the landing, put back if the touch scrolls */
     before: number[];
     intent: TouchIntent;
+    /** a swipe up or down over the board scrolls the page, so such a move is not marking */
+    pans: boolean;
     /** the drag has left the press cell, so the lift is no tap */
     left: boolean;
     /** the finger this is about; a second finger is a pinch, not a touch of its own */
@@ -644,6 +655,17 @@ export function Grid() {
   const clearIntentTimer = () => {
     if (intentTimer.current !== null) window.clearTimeout(intentTimer.current);
     intentTimer.current = null;
+  };
+  /**
+   * Whether the board lets a swipe up or down scroll the page. The
+   * stylesheet decides, by the size of the screen, and is asked at each
+   * landing: a tablet turned on its side, or a window made narrow, changes
+   * the answer. A browser that does not know touch-action pans regardless.
+   */
+  const boardPans = () => {
+    const svg = svgRef.current;
+    const action = svg ? getComputedStyle(svg).touchAction : '';
+    return action !== 'pinch-zoom' && action !== 'none';
   };
   useEffect(() => {
     const svg = svgRef.current;
@@ -703,6 +725,7 @@ export function Grid() {
         touch.current = null;
         dragging.current = false;
         anchor.current = null;
+        reached.current = undefined;
         selectAllOf(cells[cell].value);
       }, 500)
     };
@@ -757,6 +780,7 @@ export function Grid() {
           y: e.clientY,
           before: [],
           intent: 'undecided',
+          pans: boardPans(),
           left: false,
           pointerId: e.pointerId,
           chain: hit
@@ -777,12 +801,14 @@ export function Grid() {
         y: e.clientY,
         before: was,
         intent: 'undecided',
+        pans: boardPans(),
         left: false,
         pointerId: e.pointerId,
         chain: null
       };
       dragging.current = false;
       anchor.current = cell;
+      reached.current = undefined;
       additive.current = add;
       before.current = add ? was : [];
       // the tentative highlight, in the frame of the landing; with a digit
@@ -809,6 +835,7 @@ export function Grid() {
     dragging.current = true;
     additive.current = add;
     anchor.current = cell;
+    reached.current = undefined;
     // with Ctrl/Cmd or Shift held as well, the rectangle adds to what was
     // selected already
     before.current = add ? useGame.getState().selection : [];
@@ -823,7 +850,7 @@ export function Grid() {
       if (e.pointerId !== t.pointerId) return;
       if (t.intent === 'scroll') return;
       if (t.intent === 'undecided') {
-        const intent = touchIntent(e.clientX - t.x, e.clientY - t.y);
+        const intent = touchIntent(e.clientX - t.x, e.clientY - t.y, t.pans);
         if (intent === 'undecided') return;
         if (intent === 'scroll') {
           scrollTouch(t);
@@ -832,30 +859,47 @@ export function Grid() {
         commitTouch(t);
       }
       if (t.chain) return;
+      // a finger that has travelled past the slop is dragging, not
+      // pressing: no long press from here, however slowly it leaves the
+      // press cell (a cell on a tablet is 80 px, and a careful drag out of
+      // a digit took the half second and lit every cell of that digit)
+      if (longPress.current && Math.hypot(e.clientX - t.x, e.clientY - t.y) > SLOP_PX) cancelLongPress();
       const under = cellFromEvent(e);
       if (under !== null && under !== t.cell) t.left = true;
     }
     if (!dragging.current) return;
     const cell = cellFromEvent(e);
-    if (cell !== null) {
-      // leaving the press cell turns the gesture into a drag-select
-      if (longPress.current && cell !== longPress.current.cell) cancelLongPress();
-      if (e.altKey && anchor.current !== null) {
-        const [r0, c0] = [Math.floor(anchor.current / 9), anchor.current % 9];
-        const [r1, c1] = [Math.floor(cell / 9), cell % 9];
-        const rect: number[] = [];
-        for (let r = Math.min(r0, r1); r <= Math.max(r0, r1); r++) {
-          for (let c = Math.min(c0, c1); c <= Math.max(c0, c1); c++) rect.push(r * 9 + c);
-        }
-        select([...new Set([...before.current, ...rect])], false);
-        return;
+    const from = reached.current;
+    // still in the cell it was in: nothing to add
+    if (cell === from) return;
+    reached.current = cell;
+    // off the board: where the drag comes back is a place of its own, not
+    // the end of a line from where it left
+    if (cell === null) return;
+    // leaving the press cell turns the gesture into a drag-select
+    if (longPress.current && cell !== longPress.current.cell) cancelLongPress();
+    if (e.altKey && anchor.current !== null) {
+      const [r0, c0] = [Math.floor(anchor.current / 9), anchor.current % 9];
+      const [r1, c1] = [Math.floor(cell / 9), cell % 9];
+      const rect: number[] = [];
+      for (let r = Math.min(r0, r1); r <= Math.max(r0, r1); r++) {
+        for (let c = Math.min(c0, c1); c <= Math.max(c0, c1); c++) rect.push(r * 9 + c);
       }
-      select([cell], true);
+      select([...new Set([...before.current, ...rect])], false);
+      return;
     }
+    // this cell and every cell on the way to it: from the last one, or,
+    // at the drag's first move, from the press cell, itself included (a
+    // tap on the lone selected cell had deselected it); a drag that comes
+    // back onto the board starts afresh where it does
+    const press = anchor.current;
+    if (from === undefined && press !== null) select([press, ...cellsBetween(press, cell)], true);
+    else select(from == null ? [cell] : cellsBetween(from, cell), true);
   };
   const endPointer = () => {
     dragging.current = false;
     anchor.current = null;
+    reached.current = undefined;
     touch.current = null;
     cancelLongPress();
     clearIntentTimer();

@@ -281,7 +281,7 @@ const SHORTCUTS: [string, string][] = [
   ['Z / X / C / V', msg('Switch mode: Digit / Corner / Centre / Colour')],
   [msg('Arrow keys'), msg('Move the selection (Shift extends it)')],
   [msg('Click + drag'), msg('Select multiple cells')],
-  [msg('Touch: drag'), msg('Select a run of cells (a vertical swipe scrolls the page; rest a moment first to drag in any direction)')],
+  [msg('Touch: drag'), msg('Select a run of cells (on a phone a vertical swipe scrolls the page: rest a moment first to drag in any direction)')],
   [msg('Touch: hold a number'), msg('Enter it as a corner mark, whatever the mode')],
   [msg('Alt + drag'), msg('Select a rectangle, from the first cell to the one under the pointer (Option on a Mac)')],
   [msg('Ctrl/Cmd + click'), msg('Add cells to the selection')],
@@ -423,7 +423,7 @@ export function InfoDialog({
       <h4 className="setting-group">{t('Touch')}</h4>
       <p className="dialog-note">
         {t(
-          'Tap to select, and use the on-screen mode and number buttons. A quick swipe over the board scrolls the page; to select several cells, rest your finger on the first one for a moment, then drag in any direction. Hold a number key for a moment to enter it as a corner mark without changing mode. Tap the selected cell again, or anywhere beside the board, to clear the highlight, and long-press a digit on the board to highlight all of its cells.'
+          'Tap to select, and use the on-screen mode and number buttons. To select several cells, drag across them. On a phone a quick swipe up or down over the board scrolls the page instead: rest your finger on the first cell for a moment, then drag in any direction. Hold a number key for a moment to enter it as a corner mark without changing mode. Tap the selected cell again, or anywhere beside the board, to clear the highlight, and long-press a digit on the board to highlight all of its cells.'
         )}
       </p>
 
