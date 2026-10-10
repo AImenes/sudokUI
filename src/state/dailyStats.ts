@@ -64,6 +64,22 @@ const without = (pending: Record<string, DailyResult>, key: string) => {
   return rest;
 };
 
+/** what the store keeps on the device */
+type Kept = Pick<DailyStatsState, 'tokens' | 'submitted' | 'pending' | 'stats'>;
+
+/**
+ * What the device kept, brought up to version 1, when the statistics came
+ * to count unassisted solves only. A day's statistics kept from before
+ * counted assisted times too, and a fetch never lets a smaller count
+ * replace a kept one, so they would stick: they go, and the next fetch
+ * brings the day back. The tokens, the times sent and what waits to be
+ * sent all stay.
+ */
+export function migrateKept(persisted: unknown, version: number): Kept {
+  const s = persisted as Kept;
+  return version < 1 ? { ...s, stats: {} } : s;
+}
+
 export const useDailyStats = create<DailyStatsState>()(
   persist(
     (set, get) => ({
@@ -139,7 +155,9 @@ export const useDailyStats = create<DailyStatsState>()(
     }),
     {
       name: 'sudokui-daily-v1',
-      partialize: (s) => ({ tokens: s.tokens, submitted: s.submitted, pending: s.pending, stats: s.stats })
+      version: 1,
+      migrate: migrateKept,
+      partialize: (s): Kept => ({ tokens: s.tokens, submitted: s.submitted, pending: s.pending, stats: s.stats })
     }
   )
 );

@@ -595,7 +595,8 @@ test.describe('the daily', () => {
     expect(html).toContain(`<meta property="og:image" content="https://sudokui.app/og/${third.level.toLowerCase()}.png" />`);
     expect(html).toContain('<meta name="robots" content="noindex" />');
     await expect(page.locator('svg.board')).toBeVisible();
-    await expect(page.locator('.toast, [role=status]').filter({ hasText: `The daily for ${third.date}` })).toBeVisible();
+    // the notice names the day: "The daily for <date>", or "Daily puzzle for <date>" on the day itself
+    await expect(page.locator('.toast, [role=status]').filter({ hasText: third.date })).toBeVisible();
     await expect.poll(() => page.evaluate(() => location.pathname)).toBe(`/daily/${third.date}`);
     // the share dialog hands out the day's address, not the puzzle's
     await page.locator('.menu-row button', { hasText: 'Share' }).click();
@@ -627,7 +628,7 @@ test.describe('the daily', () => {
     }
     const dialog = page.getByRole('dialog', { name: 'Puzzle solved' });
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText(/Solved by \d+ so far, median \d+:\d\d|Nobody has sent in a time for this daily yet/);
+    await expect(dialog).toContainText(/Solved unassisted by \d+ so far, median \d+:\d\d|Nobody has sent in a time for this daily yet/);
     await dialog.getByRole('button', { name: /Send my time and compare/ }).click();
     await expect(dialog).toContainText(/Your time is the first one in|You were faster than \d+% of them/);
     await dialog.getByRole('button', { name: /Challenge a friend/ }).click();
@@ -643,6 +644,34 @@ test.describe('the daily', () => {
     // screen's own read a moment ago is still in the browser's cache)
     const stats = await page.evaluate(async (n) => (await fetch(`/api/daily/${n}/stats`, { cache: 'no-store' })).json(), no);
     expect(stats.count).toBeGreaterThanOrEqual(1);
-    expect(stats.unassisted).toBeGreaterThanOrEqual(1);
+  });
+
+  test('an assisted daily shows the day’s times, sends nothing and shares no percentile', async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.addInitScript(keepClipboard);
+    const today = localDateKey();
+    const daily = dailies.find((d) => d.date === today)!;
+    expect(daily, `a published daily for ${today}`).toBeTruthy();
+    await page.goto(`/daily/${today}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    // one Check is help: the solve is no longer unassisted
+    await page.getByRole('button', { name: /Check/ }).first().click();
+    await page.getByRole('button', { name: 'Use Check' }).click();
+    const solution = gridToString(solve(parseGrid(daily.puzzle)!)!);
+    const empties = [...daily.puzzle].map((ch, i) => (ch === '.' ? i : -1)).filter((i) => i >= 0);
+    for (const cell of empties) {
+      const c = await cellBox(page, cell);
+      await page.mouse.click(c.x, c.y);
+      await page.keyboard.press(`Digit${solution[cell]}`);
+    }
+    const dialog = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(/Solved unassisted by \d+ so far, median \d+:\d\d|Nobody has sent in a time for this daily yet/);
+    await expect(dialog).toContainText('Only unassisted solves are counted in everyone’s times');
+    await expect(dialog.getByRole('button', { name: /Send my time and compare/ })).toHaveCount(0);
+    await dialog.getByRole('button', { name: /Challenge a friend/ }).click();
+    const text = await copied(page);
+    expect(text).toMatch(/^sudokUI Daily #\d+ · /);
+    expect(text).not.toMatch(/unassisted|faster than/);
   });
 });

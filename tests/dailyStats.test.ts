@@ -4,11 +4,11 @@
  * fetch, and the result that waits for the next open.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { useDailyStats, DailyResult } from '../src/state/dailyStats';
+import { useDailyStats, DailyResult, migrateKept } from '../src/state/dailyStats';
 import type { DailyStats } from '../src/content/dailies';
 
 const result: DailyResult = { no: 7, grid: '1'.repeat(81), seconds: 552, hints: 0, unassisted: true, source: 'tab' };
-const stats = (count: number): DailyStats => ({ no: 7, count, unassisted: count, median: count ? 552 : null, histogram: count ? [[36, count]] : [] });
+const stats = (count: number): DailyStats => ({ no: 7, count, median: count ? 552 : null, histogram: count ? [[36, count]] : [] });
 
 /** the next answers fetch gives, in order; a function throws as a network error */
 let answers: (Response | (() => never))[] = [];
@@ -94,6 +94,19 @@ describe('the daily statistics store', () => {
     expect(await useDailyStats.getState().submit({ ...result, no: 9 })).toBe('refused');
     expect(useDailyStats.getState().pending[9]).toBeUndefined();
     expect(useDailyStats.getState().submitted[9]).toBeUndefined();
+  });
+
+  it('drops the statistics kept from before only unassisted solves counted, and keeps the rest', () => {
+    const kept = {
+      tokens: { 3: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' },
+      submitted: { 3: 590 },
+      pending: { 4: { ...result, no: 4 } },
+      // the old answer's count included an assisted time
+      stats: { 3: { no: 3, count: 1, unassisted: 0, median: 593, histogram: [[39, 1]] } }
+    };
+    expect(migrateKept(kept, 0)).toEqual({ ...kept, stats: {} });
+    const current = { ...kept, stats: { 3: { ...stats(1), no: 3 } } };
+    expect(migrateKept(current, 1)).toEqual(current);
   });
 
   it('does not send while offline, and waits for the next open instead', async () => {

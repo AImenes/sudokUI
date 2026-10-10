@@ -59,7 +59,7 @@ describe('the daily API', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('application/json; charset=utf-8');
     expect(res.headers.get('cache-control')).toBe('public, max-age=60');
-    expect(await res.json()).toEqual({ no: NO, count: 0, unassisted: 0, median: null, histogram: [] });
+    expect(await res.json()).toEqual({ no: NO, count: 0, median: null, histogram: [] });
     const head = (await handleDailyApi(new Request(get(NO).url, { method: 'HEAD' }), store, { now: NOW }))!;
     expect(head.status).toBe(200);
     expect(await head.text()).toBe('');
@@ -75,18 +75,17 @@ describe('the daily API', () => {
     const body = await first.json();
     expect(body.ok).toBe(true);
     expect(body.accepted).toBe(true);
-    expect(body.stats).toEqual({ no: NO, count: 1, unassisted: 1, median: bucketOf(552) * 15 + 8, histogram: [[bucketOf(552), 1]] });
+    expect(body.stats).toEqual({ no: NO, count: 1, median: bucketOf(552) * 15 + 8, histogram: [[bucketOf(552), 1]] });
 
     const again = (await handleDailyApi(post(NO, good({ seconds: 600 })), store, { now: NOW }))!;
     const repeat = await again.json();
     expect(repeat.accepted).toBe(false);
     expect(repeat.stats.count).toBe(1);
 
-    const other = (await handleDailyApi(post(NO, good({ token: 'another-token-of-sixteen-plus', seconds: 1200, unassisted: false, hints: 2 })), store, { now: NOW }))!;
+    const other = (await handleDailyApi(post(NO, good({ token: 'another-token-of-sixteen-plus', seconds: 1200 })), store, { now: NOW }))!;
     const two = await other.json();
     expect(two.accepted).toBe(true);
     expect(two.stats.count).toBe(2);
-    expect(two.stats.unassisted).toBe(1);
     expect(two.stats.histogram).toEqual([
       [bucketOf(552), 1],
       [bucketOf(1200), 1]
@@ -131,6 +130,9 @@ describe('the daily API', () => {
     await refused(good({ hints: -1 }), /hints/);
     await refused(good({ hints: 2, unassisted: true }), /unassisted/);
     await refused(good({ unassisted: 'yes' }), /unassisted/);
+    // an assisted solve has no time worth comparing, with hints or without
+    await refused(good({ unassisted: false }), /only unassisted/);
+    await refused(good({ unassisted: false, hints: 2 }), /only unassisted/);
     await refused(good({ source: 'bot' }), /source/);
     // the day must be recent: a week back at most, a day ahead at most
     await refused(good(), /too long ago/, NO, () => new Date(`${dailyDate(NO + LATE_DAYS + 1)}T12:00:00Z`));
@@ -144,6 +146,15 @@ describe('the daily API', () => {
     // the slowest honest time is taken
     const floor = (await handleDailyApi(post(NO, good({ token: 'token-at-the-floor-xxxxxx', seconds: minSeconds(DAILY.puzzle) })), store, { now: NOW }))!;
     expect(floor.status).toBe(200);
+  });
+
+  it('leaves an assisted time already kept out of the statistics', async () => {
+    const store = memoryStore();
+    // a run through Steps, sent before the server refused assisted solves
+    store.results.push({ no: NO, token: 'assisted-token-from-before', seconds: 590, unassisted: false, hints: 0, source: 'tab', createdAt: 1 });
+    expect(await (await handleDailyApi(get(NO), store, { now: NOW }))!.json()).toEqual({ no: NO, count: 0, median: null, histogram: [] });
+    const body = await (await handleDailyApi(post(NO, good()), store, { now: NOW }))!.json();
+    expect(body.stats).toEqual({ no: NO, count: 1, median: bucketOf(552) * 15 + 8, histogram: [[bucketOf(552), 1]] });
   });
 
   it('checks the solution by its published hash', async () => {
