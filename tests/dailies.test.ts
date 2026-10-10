@@ -134,16 +134,15 @@ describe('the day’s statistics', () => {
   });
 
   it('take the median from the histogram, and the share of slower solvers', () => {
-    expect(statsFromHistogram(5, [])).toEqual({ no: 5, count: 0, unassisted: 0, median: null, histogram: [] });
+    expect(statsFromHistogram(5, [])).toEqual({ no: 5, count: 0, median: null, histogram: [] });
     const rows = [
-      { bucket: 40, n: 3, n_unassisted: 1 },
-      { bucket: 36, n: 4, n_unassisted: 2 },
-      { bucket: 20, n: 1, n_unassisted: 0 },
+      { bucket: 40, n: 3, n_unassisted: 3 },
+      { bucket: 36, n: 4, n_unassisted: 4 },
+      { bucket: 20, n: 1, n_unassisted: 1 },
       { bucket: 99, n: 0, n_unassisted: 0 }
     ];
     const s = statsFromHistogram(5, rows);
     expect(s.count).toBe(8);
-    expect(s.unassisted).toBe(3);
     // the middle solver (4th or 5th of 8) sits in bucket 36: its midpoint
     expect(s.median).toBe(36 * 15 + 8);
     expect(s.histogram).toEqual([
@@ -162,6 +161,16 @@ describe('the day’s statistics', () => {
     // slower than everyone
     expect(fasterThan(s, 7000)).toBe(0);
     // alone
-    expect(fasterThan(statsFromHistogram(5, [{ bucket: 36, n: 1, n_unassisted: 0 }]), 552, true)).toBe(0);
+    expect(fasterThan(statsFromHistogram(5, [{ bucket: 36, n: 1, n_unassisted: 1 }]), 552, true)).toBe(0);
+  });
+
+  it('count unassisted solves only, leaving out an assisted time sent before the server refused them', () => {
+    // a run through Steps in bucket 39; in bucket 50, two unassisted solves and one more assisted time
+    const rows = [
+      { bucket: 39, n: 1, n_unassisted: 0 },
+      { bucket: 50, n: 3, n_unassisted: 2 }
+    ];
+    expect(statsFromHistogram(3, rows)).toEqual({ no: 3, count: 2, median: 50 * 15 + 8, histogram: [[50, 2]] });
+    expect(statsFromHistogram(3, rows.slice(0, 1))).toEqual({ no: 3, count: 0, median: null, histogram: [] });
   });
 });

@@ -22,6 +22,13 @@
 // - Times go into 15-second buckets, capped at two hours, so a day's
 //   histogram is at most BUCKET_MAX + 1 rows however many people play,
 //   and the median and a percentile come from one bounded read.
+// - Only unassisted solves count. A solve that used anything from the
+//   Assist box (a hint, Check, Steps, Scan, the chain trainer, auto
+//   candidates, Fill) has no time worth comparing: a run through Steps
+//   takes as long as the clicks do. The win screen offers no send for
+//   one and the server refuses it; the statistics read the unassisted
+//   count only, which also leaves out any assisted time sent before the
+//   rule.
 import type { Level, Tech } from '../engine/ratings';
 import type { Lang } from '../state/settings';
 import { homePath } from './home';
@@ -126,17 +133,17 @@ export const minSeconds = (puzzle: string) => Math.ceil(0.4 * (puzzle.match(/[.0
 /** a day's results as the server keeps them: one row per 15-second bucket */
 export interface HistogramRow {
   bucket: number;
+  /** every result in the bucket, any assisted one sent before the server refused them included */
   n: number;
+  /** of them, unassisted: the only ones the statistics count */
   n_unassisted: number;
 }
 
-/** what the API answers for a day */
+/** what the API answers for a day: unassisted solves only */
 export interface DailyStats {
   no: number;
-  /** results submitted */
+  /** unassisted solves sent in */
   count: number;
-  /** of them, unassisted */
-  unassisted: number;
   /** the middle solver's time in seconds, null until someone has played */
   median: number | null;
   /** [bucket, n] pairs, in bucket order, empty buckets left out */
@@ -146,14 +153,13 @@ export interface DailyStats {
 /** the middle of a bucket, as a time */
 const bucketMidpoint = (bucket: number) => bucket * BUCKET_SECONDS + BUCKET_SECONDS / 2;
 
-/** the statistics of a day from its histogram rows (any order) */
+/** the statistics of a day from its histogram rows (any order), over the unassisted solves only */
 export function statsFromHistogram(no: number, rows: HistogramRow[]): DailyStats {
   const sorted = rows
-    .filter((r) => r.n > 0)
-    .map((r) => ({ bucket: r.bucket, n: r.n, n_unassisted: r.n_unassisted }))
+    .filter((r) => r.n_unassisted > 0)
+    .map((r) => ({ bucket: r.bucket, n: r.n_unassisted }))
     .sort((a, b) => a.bucket - b.bucket);
   const count = sorted.reduce((sum, r) => sum + r.n, 0);
-  const unassisted = sorted.reduce((sum, r) => sum + r.n_unassisted, 0);
   let median: number | null = null;
   if (count > 0) {
     // the bucket the middle solver sits in; its midpoint as the time
@@ -167,7 +173,7 @@ export function statsFromHistogram(no: number, rows: HistogramRow[]): DailyStats
       }
     }
   }
-  return { no, count, unassisted, median, histogram: sorted.map((r) => [r.bucket, r.n]) };
+  return { no, count, median, histogram: sorted.map((r) => [r.bucket, r.n]) };
 }
 
 /**

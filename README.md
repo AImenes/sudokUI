@@ -65,9 +65,9 @@ natively for iOS and Android via Capacitor.
   learning in the order puzzles need them with the next one a click from
   its practice, and the win dialog keeps your band records and the daily
   streak. **The daily, with everyone's times**: one published puzzle a day,
-  the same for the whole world; finish it and, if you choose, send your time
-  in to see how many solved it, the median, and the share you were faster
-  than (no account, a random token per day). **Why not?**: when Check finds a wrong digit it says
+  the same for the whole world; finish it without help and, if you choose,
+  send your time in to see how many solved it unassisted, the median, and
+  the share you were faster than (no account, a random token per day). **Why not?**: when Check finds a wrong digit it says
   why, from a peer that already holds it to the forced singles that would
   break the board, and shows it (see
   [docs/technique-stats.md](docs/technique-stats.md))

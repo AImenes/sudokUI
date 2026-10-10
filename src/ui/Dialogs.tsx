@@ -961,7 +961,7 @@ export function VictoryDialog({
   const shareTechs = useShareTechs(info?.puzzle);
   // a published daily's global statistics (src/state/dailyStats.ts):
   // fetched when the screen opens; the player's own time goes in only
-  // when the player asks
+  // when the player asks, and only from an unassisted solve
   const dailyNo = info?.dailyNo;
   const stats = useDailyStats((s) => (dailyNo ? s.stats[dailyNo] : undefined));
   const submittedSecs = useDailyStats((s) => (dailyNo ? s.submitted[dailyNo] : undefined));
@@ -1041,7 +1041,7 @@ export function VictoryDialog({
   // this grid, which previews in a chat and names the band, the score and
   // the techniques, with this time as the one to beat; a daily's text is
   // the spoiler-free line of docs/online-goals.md, with the crowd's
-  // percentile once the time is in
+  // percentile once an unassisted time is in
   const shareResult = () => {
     const link = shareUrl({
       lang: t.lang,
@@ -1063,13 +1063,12 @@ export function VictoryDialog({
       standing: verdict ? percentileText(verdict.percentile) : '',
       link
     };
+    // an assisted time is in nobody's statistics, so it carries no percentile
     const text = info.dailyNo
-      ? crowdPct !== null
-        ? assisted
-          ? t('sudokUI Daily #{no} · {level} ({score}) · {time} · faster than {pct}% today · {link}', vars)
-          : t('sudokUI Daily #{no} · {level} ({score}) · {time} · unassisted · faster than {pct}% today · {link}', vars)
-        : assisted
-          ? t('sudokUI Daily #{no} · {level} ({score}) · {time} · {link}', vars)
+      ? assisted
+        ? t('sudokUI Daily #{no} · {level} ({score}) · {time} · {link}', vars)
+        : crowdPct !== null
+          ? t('sudokUI Daily #{no} · {level} ({score}) · {time} · unassisted · faster than {pct}% today · {link}', vars)
           : t('sudokUI Daily #{no} · {level} ({score}) · {time} · unassisted · {link}', vars)
       : verdict
       ? assisted
@@ -1147,7 +1146,7 @@ export function VictoryDialog({
             <p className="solve-record">
               {stats
                 ? stats.count > 0
-                  ? t('Solved by {count} so far, median {median}', { count: t.num(stats.count), median: clockOf(stats.median ?? 0) })
+                  ? t('Solved unassisted by {count} so far, median {median}', { count: t.num(stats.count), median: clockOf(stats.median ?? 0) })
                   : t('Nobody has sent in a time for this daily yet')
                 : statsFailed
                   ? t('Global times are unavailable right now')
@@ -1165,6 +1164,8 @@ export function VictoryDialog({
               <p className="solve-assisted">{t('Your time was not accepted')}</p>
             ) : dailyClosed ? (
               <p className="solve-assisted">{t('This daily is closed for new times')}</p>
+            ) : assisted ? (
+              <p className="solve-assisted">{t('Only unassisted solves are counted in everyone’s times')}</p>
             ) : (
               <button onClick={sendDaily}>🌍 {t('Send my time and compare')}</button>
             )}

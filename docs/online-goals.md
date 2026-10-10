@@ -122,7 +122,7 @@ recommended a v1 of three. Where each one stands, in the research's order:
 
 | Rank | Candidate | Status | Where |
 |---|---|---|---|
-| 1 | Daily + global stats + share card | **Built** (phase 2). One published puzzle per local day, D1 histogram, the win screen's panel, the text share line; the tables are a hand step until the migration has been applied | `src/content/dailies.ts`, `worker/daily.ts`, `src/state/dailyStats.ts`, `migrations/` |
+| 1 | Daily + global stats + share card | **Built** (phase 2). One published puzzle per local day, D1 histogram of unassisted solves, the win screen's panel, the text share line; the tables were created by hand in October 2026 | `src/content/dailies.ts`, `worker/daily.ts`, `src/state/dailyStats.ts`, `migrations/` |
 | 2 | Path-based share links with OG previews (`/p/…`, `/daily/…`) | **Built** (phase 1), with the "challenge a friend" time (`?vs=`) from the research's note h | `src/content/share.ts`, `worker/index.ts`, `public/og/` |
 | 3 | ID-less telemetry to WAE, opt-in offline counter, private `/admin` | **Not built.** Phase 3; the research asked for it to ship with rank 1, and it is the next piece. Nothing is measured yet | — |
 | 4 | Daily archive pages | **Not built.** Phase 4, after data. `/daily/<date>` today is the app with a preview, `noindex`, not an indexable page | — |
@@ -282,10 +282,22 @@ Built, October 2026, with these decisions:
   (no player data in that request) and sends the player's time only when
   the player taps "Send my time and compare". A game that began part-way
   (a practice puzzle, a position link) sends nothing.
+- **Unassisted solves only.** A time counts only when nothing from the
+  Assist box was used (hint, Check, Steps, Scan, chain trainer, auto
+  candidates, Fill): an assisted time measures the help, not the player,
+  and a run through Steps would sit in the median like an honest solve.
+  After an assisted daily the win screen shows the day's numbers without
+  the send button, the server refuses `unassisted: false`, and the
+  statistics read `n_unassisted` only, so an assisted time sent before
+  the rule counts for nothing. The app drops the statistics it kept from
+  before (the store's version 1), since a kept count is never replaced
+  by a smaller one. The share line of an assisted solve carries no
+  percentile.
 - **The share line** is the one above, without the emoji row for now.
 - **The migration is a hand step.** The binding ships with the code
   ([deployment.md](deployment.md)); until the tables exist the routes
   answer 503 and the win screen says the global times are unavailable.
+  It was applied to the production database in October 2026.
 - Phase 3 (telemetry) has not shipped with it, against this document's
   own advice; it is the next piece.
 

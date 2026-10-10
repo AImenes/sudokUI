@@ -21,10 +21,14 @@ as before.
   migration", and a deploy never does it on its own: you do it once, by
   hand, with the command below.
 - **What players get once the tables exist.** When someone finishes the
-  daily, the win screen shows how many have solved it and the median
-  time, and the button "Send my time and compare" sends their time and
-  tells them the share of solvers they were faster than. No account, no
-  cookie: a random token per day is all the server ever sees.
+  daily, the win screen shows how many have solved it without help and
+  their median time. After an unassisted solve, the button "Send my time
+  and compare" sends the player's time and tells them the share of those
+  solvers they were faster than. A solve that used anything from the
+  Assist box (a hint, Check, Steps, auto candidates...) offers no button:
+  its time says nothing about the player, so only unassisted times count.
+  No account, no cookie: a random token per day is all the server ever
+  sees.
 
 ## Before you start
 
@@ -87,13 +91,16 @@ https://sudokui.app/api/daily/2/stats
 ```
 
 - Before step 2 it shows `{"error":"unavailable"}`.
-- After step 2 it shows `{"no":2,"count":0,"unassisted":0,"median":null,"histogram":[]}`:
+- After step 2 it shows `{"no":2,"count":0,"median":null,"histogram":[]}`:
   the second daily, with no times yet.
 
-Then the real test: open `https://sudokui.app`, choose **New** → **Daily
-puzzle**, finish it, and tap **Send my time and compare**. The win screen
-should say "Your time is the first one in" (or a percentile, if someone
-got there first). Open the same address again and `count` is now 1.
+The number in the address is the daily's: 7 October 2026 is #1, so 9
+October is #3. Then the real test: open `https://sudokui.app`, choose
+**New** → **Daily puzzle**, finish it without anything from the Assist
+box, and tap **Send my time and compare**. The win screen should say
+"Your time is the first one in" (or a percentile, if someone got there
+first). Open the address again with today's number in it, and `count`
+has gone up by one.
 
 ## If something goes wrong
 
@@ -106,6 +113,10 @@ got there first). Open the same address again and `count` is now 1.
   active.
 - **"No migrations to apply"**: the tables already exist (you, or someone,
   applied them before). That is fine; go to step 3.
+- **The win screen has no "Send my time and compare" button**: the solve
+  used something from the Assist box (it says "Solved with assistance").
+  Only unassisted solves are sent. Restart the puzzle and solve it
+  without help.
 - **The stats address still says unavailable after step 2**: wait a
   minute (the answer is cached that long at the edge) and reload. If it
   persists, run `npx wrangler d1 migrations list sudokui-db --remote` to

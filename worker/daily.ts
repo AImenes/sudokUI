@@ -7,10 +7,11 @@
  *                                histogram; cached a minute at the edge
  *   POST /api/daily/<n>/result   one player's time, checked and counted
  *
- * D1 holds results only. A result is accepted when the grid is the day's
- * solution (its SHA-256 is published with the puzzle), the time is at
- * least the floor for the puzzle's empty cells, an unassisted result used
- * no hints, the day is recent, and the token (a random value the client
+ * D1 holds results only. A result is accepted when the solve was
+ * unassisted (an assisted time compares with nothing, so only unassisted
+ * ones count), the grid is the day's solution (its SHA-256 is published
+ * with the puzzle), the time is at least the floor for the puzzle's empty
+ * cells, the day is recent, and the token (a random value the client
  * keeps for the day) has not submitted before. Two writes per accepted
  * result, as one batch: the histogram bucket, then the result row, each
  * on its primary key. Everything read is one bounded histogram. Nothing
@@ -139,6 +140,7 @@ export interface ResultBody {
   grid: string;
   seconds: number;
   hints: number;
+  /** must be true: only an unassisted solve is counted */
   unassisted: boolean;
   source?: 'pwa' | 'tab';
 }
@@ -171,7 +173,10 @@ export async function checkResult(body: unknown, no: number, daily: Daily, now: 
   if (typeof b.hints !== 'number' || !Number.isInteger(b.hints) || b.hints < 0 || b.hints > 1000) return refuse('hints');
   if (typeof b.unassisted !== 'boolean') return refuse('unassisted');
   if (b.source !== undefined && b.source !== 'pwa' && b.source !== 'tab') return refuse('source');
-  if (b.unassisted && b.hints > 0) return refuse('an unassisted solve used no hints');
+  // a hint, Steps or auto candidates did part of the work, so the time
+  // says nothing about the player
+  if (!b.unassisted) return refuse('only unassisted solves are counted');
+  if (b.hints > 0) return refuse('an unassisted solve used no hints');
 
   const todayNo = dailyNumber(now.toISOString().slice(0, 10)) ?? 0;
   if (no > todayNo + EARLY_DAYS) return refuse('that day has not come');
