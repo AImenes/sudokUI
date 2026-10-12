@@ -1,7 +1,8 @@
 // App shell: top bar (brand, difficulty/score, timer, quick toggles), the
 // board + side panel layout, global keyboard handling, dialog routing,
 // toast display and the first-visit bootstrap game.
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState, useRef } from 'react';
+import { SLOP_PX } from './touchIntent';
 import { useGame, rateImport, validatePuzzle, Proof } from '../state/gameStore';
 import { cellName, PEERS } from '../engine/board';
 import { dailyPuzzle } from '../engine/daily';
@@ -445,6 +446,11 @@ export default function App() {
     };
   }, [setTempMode]);
 
+  /** where a pointer landed on the empty space around the board, until it lifts */
+  const layoutTap = useRef<{ x: number; y: number } | null>(null);
+  const emptySpace = (el: EventTarget | null) =>
+    el instanceof HTMLElement && (el.classList.contains('layout') || el.classList.contains('board-col'));
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // a dialog is open: its keys must not act on the board behind it
@@ -547,10 +553,23 @@ export default function App() {
         case 'KeyL':
           openLearn();
           break;
-        case 'Escape':
-          if (useGame.getState().chain) useGame.getState().endChain();
-          else select([], false);
+        case 'KeyM': {
+          // Cmd+M minimises the window, Ctrl+M is the browser's: not ours
+          if (mod || e.altKey) break;
+          const g = useGame.getState();
+          g.setMultiSelect(!g.multiSelect);
           break;
+        }
+        case 'Escape': {
+          const g = useGame.getState();
+          if (g.chain) g.endChain();
+          else {
+            // the way out of multi-select, as of a selection
+            if (g.multiSelect) g.setMultiSelect(false);
+            select([], false);
+          }
+          break;
+        }
         case 'ArrowUp':
         case 'ArrowDown':
         case 'ArrowLeft':
@@ -656,13 +675,18 @@ export default function App() {
 
       <main
         className="layout"
+        // touch has no Escape key: a tap on the empty space around the
+        // board clears the selection. A tap, not any touch: a scroll that
+        // starts beside the board (on a tablet, or in multi-select, where
+        // the board keeps its own touches) ends in a pointercancel, never
+        // here, and leaves the selection as it was
         onPointerDown={(e) => {
-          // touch has no Escape key: tapping the empty space around the
-          // board clears the selection
-          const t = e.target as HTMLElement;
-          if (t.classList.contains('layout') || t.classList.contains('board-col')) {
-            select([], false);
-          }
+          layoutTap.current = emptySpace(e.target) ? { x: e.clientX, y: e.clientY } : null;
+        }}
+        onPointerUp={(e) => {
+          const down = layoutTap.current;
+          layoutTap.current = null;
+          if (down && emptySpace(e.target) && Math.hypot(e.clientX - down.x, e.clientY - down.y) <= SLOP_PX) select([], false);
         }}
       >
         <div className="board-col">

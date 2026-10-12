@@ -23,7 +23,9 @@ natively for iOS and Android via Capacitor.
   positions, Snyder-friendly), centre pencil marks, and multi-colour cell
   colouring
 - Mouse, touch and full keyboard control; drag or modifier-click to
-  multi-select; hold-modifier temporary input modes; undo/redo; timer & pause
+  multi-select, and on touch a Multi mode where taps add cells and a drag
+  paints them in any direction; hold-modifier temporary input modes;
+  undo/redo; timer & pause
 - Auto-candidates with per-cell strike-through exclusions, one-click candidate
   fill, error check with restore-to-last-correct
 - Import/export puzzles as 81-character strings, or **scan a photo** of a

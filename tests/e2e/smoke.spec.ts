@@ -47,6 +47,53 @@ test.describe('desktop, 1280 x 800', () => {
     void value;
   });
 
+  test('the mouse selects as before, and M turns multi-select on without a button', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const board = page.locator('svg.board');
+    const drag = async (from: number, to: number, steps = 1) => {
+      const a = await cellBox(page, from);
+      const b = await cellBox(page, to);
+      await page.mouse.move(a.x, a.y);
+      await page.mouse.down();
+      await page.mouse.move(b.x, b.y, { steps });
+      await page.mouse.up();
+    };
+    // a drag along a row, sampled at its ends only: every cell between
+    await drag(9, 17);
+    await expect(status).toHaveText('9 cells selected.');
+    // Shift-click adds a cell, and takes it out again
+    const far = await cellBox(page, 80);
+    await page.keyboard.down('Shift');
+    await page.mouse.click(far.x, far.y);
+    await expect(status).toHaveText('10 cells selected.');
+    await page.mouse.click(far.x, far.y);
+    await expect(status).toHaveText('9 cells selected.');
+    await page.keyboard.up('Shift');
+    // Alt + drag is a rectangle, r1c1 to r4c2: eight cells, a count the
+    // nine of the row could not leave behind
+    await page.keyboard.down('Alt');
+    await drag(0, 28, 6);
+    await page.keyboard.up('Alt');
+    await expect(status).toHaveText('8 cells selected.');
+    // the Multi button is for fingers; the key works for everyone
+    await expect(page.locator('.mode-btn.multi')).toBeHidden();
+    await expect(board).not.toHaveAttribute('data-multiselect', 'true');
+    await page.keyboard.press('m');
+    await expect(board).toHaveAttribute('data-multiselect', 'true');
+    await expect(page.locator('.toast')).toContainText('Multi-select on');
+    // a plain click now adds to the eight, and a second one takes out
+    const mid = await cellBox(page, 40);
+    await page.mouse.click(mid.x, mid.y);
+    await expect(status).toHaveText('9 cells selected.');
+    await page.mouse.click(mid.x, mid.y);
+    await expect(status).toHaveText('8 cells selected.');
+    // Escape leaves the mode and clears the selection
+    await page.keyboard.press('Escape');
+    await expect(status).toHaveText('No cell selected.');
+    await expect(board).not.toHaveAttribute('data-multiselect', 'true');
+  });
+
   test('a digit pressed with nothing selected is armed, and a tap enters it', async ({ page }) => {
     await open(page);
     await page.keyboard.press('Escape');
@@ -385,8 +432,21 @@ test.describe('phone, 390 x 844', () => {
       page.evaluate(() => Math.max(window.scrollY, ...[...document.querySelectorAll('*')].map((el) => el.scrollTop)));
     expect(await scrolled()).toBe(0);
     const { x, y } = await cellBox(page, 40);
-    // a finger swiping up over the middle of the board
     const cdp = await page.context().newCDPSession(page);
+    // the page is at its top, so a finger pulling straight down from the
+    // top row has nowhere to scroll to: it is selecting a column, at once,
+    // with no rest first, r1c5 to r5c5
+    const top = await cellBox(page, 4);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: top.x, y: top.y }] });
+    for (const part of [0.5, 1]) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: top.x, y: top.y + (y - top.y) * part }] });
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.locator('#board-status')).toHaveText('5 cells selected.');
+    expect(await scrolled()).toBe(0);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#board-status')).toHaveText('No cell selected.');
+    // a finger swiping up over the middle of the board
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
     for (let i = 1; i <= 8; i++) {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y - i * 20 }] });
@@ -417,8 +477,12 @@ test.describe('phone, 390 x 844', () => {
     await page.touchscreen.tap(tap.x, tap.y);
     await expect(page.locator('#board-status')).toContainText('Row 5, column 5');
     const steep = await cellBox(page, 22);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: steep.x, y: steep.y }] });
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: steep.x + 12, y: steep.y + 30 }] });
+    // (landing and move back to back: a round trip between them could
+    // outlast the board's 100 ms rest)
+    await Promise.all([
+      cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: steep.x, y: steep.y }] }),
+      cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: steep.x + 12, y: steep.y + 30 }] })
+    ]);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.locator('#board-status')).toContainText('Row 5, column 5');
     // a finger that rests first, then drags sideways: a run of cells
@@ -427,14 +491,16 @@ test.describe('phone, 390 x 844', () => {
     await sideways(8);
     await expect(page.locator('#board-status')).toHaveText('5 cells selected.');
     // and one that rests, then drags downwards: a column of cells, and
-    // the page stays put
+    // the page stays put (it is scrolled now, so without the rest the
+    // drag would scroll it back up)
     const before = await scrolled();
-    const top = await cellBox(page, 4);
+    expect(before).toBeGreaterThan(0);
+    const top2 = await cellBox(page, 4);
     const bottom = await cellBox(page, 40);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: top.x, y: top.y }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: top2.x, y: top2.y }] });
     await page.waitForTimeout(400);
     for (let i = 1; i <= 8; i++) {
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: top.x, y: top.y + ((bottom.y - top.y) * i) / 8 }] });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: top2.x, y: top2.y + ((bottom.y - top2.y) * i) / 8 }] });
     }
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.locator('#board-status')).toHaveText('5 cells selected.');
@@ -459,6 +525,68 @@ test.describe('phone, 390 x 844', () => {
     });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.locator('#board-status')).toHaveText('5 cells selected.');
+  });
+});
+
+test.describe('phone, 390 x 844, multi-select', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('Multi: a drag selects at once in any direction, a tap adds or removes, the page stays put', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const board = page.locator('svg.board');
+    const multi = page.locator('.mode-btn.multi');
+    const scrolled = () =>
+      page.evaluate(() => Math.max(window.scrollY, ...[...document.querySelectorAll('*')].map((el) => el.scrollTop)));
+    const cdp = await page.context().newCDPSession(page);
+    // a finger that lands and goes straight on, with no rest: two samples.
+    // The landing and the first move go out back to back: a round trip
+    // between them could outlast the board's 100 ms rest and commit a drag
+    const flick = async (fromCell: number, toCell: number) => {
+      const from = await cellBox(page, fromCell);
+      const to = await cellBox(page, toCell);
+      const at = (part: number) => ({ x: from.x + (to.x - from.x) * part, y: from.y + (to.y - from.y) * part });
+      await Promise.all([
+        cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at(0)] }),
+        cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [at(0.5)] })
+      ]);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [at(1)] });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+    // the button is there for a finger, off, and the board scrolls the page
+    await expect(multi).toBeVisible();
+    await expect(multi).toHaveAttribute('aria-pressed', 'false');
+    await expect(board).toHaveCSS('touch-action', 'pan-y pinch-zoom');
+    await multi.tap();
+    await expect(multi).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.toast')).toContainText('Multi-select on');
+    await expect(board).toHaveAttribute('data-multiselect', 'true');
+    // no finger pans from the board, a pinch still zooms: the tablet's rule
+    await expect(board).toHaveCSS('touch-action', 'pinch-zoom');
+    // straight down the third column, r1c3 to r9c3, with no rest: nine
+    // cells, and the page has not moved
+    await flick(2, 74);
+    await expect(status).toHaveText('9 cells selected.');
+    expect(await scrolled()).toBe(0);
+    // a tap adds a cell, a second tap on it takes it out
+    const mid = await cellBox(page, 40);
+    await page.touchscreen.tap(mid.x, mid.y);
+    await expect(status).toHaveText('10 cells selected.');
+    await page.touchscreen.tap(mid.x, mid.y);
+    await expect(status).toHaveText('9 cells selected.');
+    // a drag from a selected cell paints cells out: r1c3 to r4c3 leaves
+    // the five below
+    await flick(2, 29);
+    await expect(status).toHaveText('5 cells selected.');
+    // Escape turns the mode off and clears the selection
+    await page.keyboard.press('Escape');
+    await expect(status).toHaveText('No cell selected.');
+    await expect(multi).toHaveAttribute('aria-pressed', 'false');
+    await expect(board).toHaveCSS('touch-action', 'pan-y pinch-zoom');
+    // and the swipe is the page's again
+    await flick(40, 4);
+    await expect.poll(scrolled).toBeGreaterThan(20);
+    await expect(status).toHaveText('No cell selected.');
   });
 });
 
@@ -539,6 +667,12 @@ test.describe('tablet, 820 x 1180', () => {
     }
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect.poll(scrolled).toBeGreaterThan(20);
+    // the swipe beside the board was a scroll, not a tap: the selection stays
+    await expect(status).toContainText('Row 5, column 5');
+    // a tap there clears it
+    const nowBoard = (await page.locator('svg.board').boundingBox())!;
+    await page.touchscreen.tap(nowBoard.x / 2, nowBoard.y + nowBoard.height / 2);
+    await expect(status).toHaveText('No cell selected.');
   });
 });
 
