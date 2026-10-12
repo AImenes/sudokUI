@@ -107,6 +107,9 @@ body,
   margin: 0;
   height: 100%;
   overflow-x: hidden;
+  /* a pull down from the top of the page reloads it in Chrome on Android
+     (pull to refresh); a finger that lands on the board and pulls must not */
+  overscroll-behavior-y: contain;
 }
 
 /* typefaces for the board: only ones already on the device, so nothing is
@@ -398,11 +401,17 @@ button {
   justify-content: center;
   align-items: flex-start;
   overflow: auto;
+  /* the page's own scroller: its overscroll must not reach the root and
+     become a pull to refresh */
+  overscroll-behavior-y: contain;
 }
 
 .grid-wrap {
   position: relative;
   width: 100%;
+  /* a long press on the board must not start a text selection around it */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .board {
@@ -698,6 +707,28 @@ button {
 .mode-btn.held {
   outline: 2px dashed var(--on-accent);
   outline-offset: -4px;
+}
+
+/* multi-select is for fingers: a mouse has Ctrl-click and a drag that
+   selects at once, and the key M works everywhere. One word on one line:
+   a wrapped label would make the whole row taller on a phone */
+.mode-btn.multi {
+  display: none;
+  white-space: nowrap;
+}
+
+/* "Flervalg" is the longest word in the row: on the narrowest phones it
+   gives up half a point rather than its line */
+@media (max-width: 360px) {
+  .mode-btn.multi {
+    font-size: 11.5px;
+  }
+}
+
+@media (any-pointer: coarse) {
+  .mode-btn.multi {
+    display: flex;
+  }
 }
 
 .key-hint {
@@ -2668,6 +2699,22 @@ html:not([lang='en']) .zone-note {
   outline: 3px solid var(--accent);
   outline-offset: 3px;
   border-radius: 6px;
+}
+
+/* multi-select on (the Multi button, M): no finger pans from the board,
+   as on a tablet, so a drag selects whichever way it goes and the page
+   scrolls from beside the board; a pinch still zooms. The dashed ring
+   says the mode is on, in a pattern and not only a colour */
+.board[data-multiselect] {
+  touch-action: pinch-zoom;
+  outline: 3px dashed var(--accent);
+  outline-offset: 3px;
+}
+
+/* focus while multi-select is on: the dashed mode ring stays, and a solid
+   ring inside it says the board has the keyboard */
+.board[data-multiselect]:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent);
 }
 
 /* your path and your record */

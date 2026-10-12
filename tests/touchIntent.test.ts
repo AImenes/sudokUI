@@ -43,6 +43,27 @@ describe('touch intent', () => {
     expect(touchIntent(30, 20, true, SLOP_PX, 0.5)).toBe('scroll');
   });
 
+  it('reads a steep move the page cannot follow as a drag', () => {
+    // at the top of the page a finger pulling down has nowhere to scroll
+    // to: it is selecting a column from the top rows; a push up still scrolls
+    const atTop = { up: true, down: false };
+    expect(touchIntent(0, 40, atTop)).toBe('drag');
+    expect(touchIntent(5, 40, atTop)).toBe('drag');
+    expect(touchIntent(0, -40, atTop)).toBe('scroll');
+    expect(touchIntent(0, SLOP_PX + 1, atTop)).toBe('drag');
+    // at the bottom, the other way round
+    const atBottom = { up: false, down: true };
+    expect(touchIntent(0, -40, atBottom)).toBe('drag');
+    expect(touchIntent(0, 40, atBottom)).toBe('scroll');
+    // in between, both ways scroll; a page that cannot scroll at all is a tablet's
+    expect(touchIntent(0, 40, { up: true, down: true })).toBe('scroll');
+    expect(touchIntent(0, -40, { up: false, down: false })).toBe('drag');
+    // sideways is a drag whatever the room, and a tap is still a tap
+    expect(touchIntent(40, 5, atTop)).toBe('drag');
+    expect(touchIntent(40, -5, atBottom)).toBe('drag');
+    expect(touchIntent(0, SLOP_PX, atTop)).toBe('undecided');
+  });
+
   it('reads every move as a drag on a board that does not scroll the page', () => {
     // from a tablet's width up (styles.css): straight down, straight up
     // and the steep diagonals select at once, with no rest first

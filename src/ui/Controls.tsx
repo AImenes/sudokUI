@@ -107,6 +107,8 @@ export function Controls({
   const pending = useGame((s) => s.pendingAssist);
   const askAssist = useGame((s) => s.askAssist);
   const armedDigit = useGame((s) => s.armedDigit);
+  const multiSelect = useGame((s) => s.multiSelect);
+  const setMultiSelect = useGame((s) => s.setMultiSelect);
   const [help, setHelp] = useState(false);
 
   // the first assist of a clean game asks first; after that, and for
@@ -168,6 +170,19 @@ export function Controls({
             <span className="key-hint">{m.key}</span>
           </button>
         ))}
+        {/* multi-select, for fingers (styles.css shows it on coarse pointers
+            only): a tap adds a cell or takes it out, a drag paints, and the
+            board keeps every touch so the drag goes any way (Grid.tsx). The
+            label is one short word: five buttons share a phone's width */}
+        <button
+          className={`mode-btn multi${multiSelect ? ' active' : ''}`}
+          aria-pressed={multiSelect}
+          onClick={() => setMultiSelect(!multiSelect)}
+          title={t('Multi-select (M): tap cells to add or remove them, drag to paint them in or out; the page scrolls from beside the board')}
+        >
+          {t('Multi')}
+          <span className="key-hint">M</span>
+        </button>
       </div>
 
       <div className="numpad">

@@ -11,14 +11,26 @@
 //   rest is marking too: the drag that follows may go any way, with the
 //   page held still under it, which is how a column is selected.
 //
-// That is a phone, where the board is the whole width of the page and has
-// to let a swipe through. From a tablet's width up the page scrolls from
-// beside the board, the board's touch-action has no pan-y (styles.css),
-// and there is no scroll to tell from a drag (`pans` is false): a move
-// beyond the slop is a drag-select whichever way it goes, with no rest
-// first. A cell there is nearly twice a phone's, so a finger crossing
-// cells at the same pace leaves the slop in half the time and is seldom
-// found resting; and a tablet on its side has no page to scroll.
+// The player should never have to think about which of the two they are
+// doing: the board reads it from the finger. When it cannot tell, it lets
+// the page scroll, because a drag read as a scroll costs one more try
+// while a scroll read as a drag holds the page under a moving finger.
+//
+// A steep move the page cannot follow is a drag too. At the top of the
+// page a finger pulling down has nowhere to scroll to, so it is selecting
+// a column from the top rows; at the bottom, the same for a finger
+// pushing up. `pans` says which way the page has room to move under the
+// finger (Grid.tsx measures it at each landing), and a steep move the
+// other way is marking at once, with no rest first.
+//
+// From a tablet's width up the page scrolls from beside the board, the
+// board's touch-action has no pan-y (styles.css), and there is no scroll
+// to tell from a drag (`pans` is false): a move beyond the slop is a
+// drag-select whichever way it goes. A cell there is nearly twice a
+// phone's, so a finger crossing cells at the same pace leaves the slop in
+// half the time and is seldom found resting; and a tablet on its side has
+// no page to scroll. Multi-select (the Multi button) does the same at any
+// size, for anyone who would rather say so than be read.
 //
 // Tune by feel on a phone: SLOP_PX (how still a tap must be: smaller feels
 // snappier, larger forgives a wobbly thumb), INTENT_MS (how long a rest
@@ -37,13 +49,28 @@ export const SCROLL_RATIO = 0.8;
 
 export type TouchIntent = 'undecided' | 'scroll' | 'drag';
 
+/** which way a finger over the board scrolls the page: moving up (the content follows it up, so there is page below) or moving down */
+export interface ScrollRoom {
+  up: boolean;
+  down: boolean;
+}
+
 /**
  * what a finger that has moved by (dx, dy) since it landed means, so far;
- * `pans` says whether the board lets a swipe up or down scroll the page
+ * `pans` says which way a swipe over the board scrolls the page (a
+ * boolean says both ways or neither)
  */
-export function touchIntent(dx: number, dy: number, pans = true, slop = SLOP_PX, ratio = SCROLL_RATIO): TouchIntent {
+export function touchIntent(
+  dx: number,
+  dy: number,
+  pans: boolean | ScrollRoom = true,
+  slop = SLOP_PX,
+  ratio = SCROLL_RATIO
+): TouchIntent {
   if (Math.hypot(dx, dy) <= slop) return 'undecided';
-  return pans && Math.abs(dy) > Math.abs(dx) * ratio ? 'scroll' : 'drag';
+  if (!(Math.abs(dy) > Math.abs(dx) * ratio)) return 'drag';
+  const room = pans === true ? { up: true, down: true } : pans === false ? { up: false, down: false } : pans;
+  return (dy < 0 ? room.up : room.down) ? 'scroll' : 'drag';
 }
 
 /**

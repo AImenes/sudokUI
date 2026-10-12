@@ -305,6 +305,14 @@ interface GameStore {
   proofs: Proof[];
   /** transient toast message */
   notice: string | null;
+  /**
+   * Multi-select (the Multi button, M): a tap adds a cell to the selection
+   * or takes it out, a drag paints cells in or out, and the board keeps
+   * every touch that starts on it, so a drag selects whichever way it goes
+   * and the page scrolls from beside the board (Grid.tsx, styles.css).
+   * Sticky until the button or Escape; not kept between sessions.
+   */
+  multiSelect: boolean;
   /** history index of the last error-free position, set by check() */
   revertIndex: number | null;
   /** practice: the step the puzzle was prepared for, and whether the
@@ -332,6 +340,7 @@ interface GameStore {
   /** reset the current puzzle to its starting position, timer included */
   restart: () => void;
   select: (cells: number[], additive: boolean) => void;
+  setMultiSelect: (on: boolean) => void;
   armDigit: (digit: number | null) => void;
   askAssist: (name: string | null) => void;
   selectAllOf: (digit: number) => void;
@@ -441,6 +450,7 @@ export const useGame = create<GameStore>()(
       errors: [],
       proofs: [],
       notice: null,
+      multiSelect: false,
       revertIndex: null as number | null,
       practiceTarget: null,
       practiceFound: false,
@@ -658,6 +668,20 @@ export const useGame = create<GameStore>()(
           hint: s.hint,
           errors: s.errors
         })),
+
+      // the toast says what the mode does, since the button alone cannot;
+      // the selection stays, so a digit can go into it after the mode is off
+      setMultiSelect: (on) =>
+        set((s) => {
+          if (s.multiSelect === on) return {};
+          const t = translator();
+          return {
+            multiSelect: on,
+            notice: on
+              ? t('Multi-select on: tap cells to add or remove them, drag to paint. The same again, or Escape, turns it off')
+              : t('Multi-select off')
+          };
+        }),
 
       armDigit: (digit) => set({ armedDigit: digit }),
 

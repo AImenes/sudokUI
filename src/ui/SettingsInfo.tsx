@@ -285,6 +285,7 @@ const SHORTCUTS: [string, string][] = [
   [msg('Touch: hold a number'), msg('Enter it as a corner mark, whatever the mode')],
   [msg('Alt + drag'), msg('Select a rectangle, from the first cell to the one under the pointer (Option on a Mac)')],
   [msg('Ctrl/Cmd + click'), msg('Add cells to the selection')],
+  ['M', msg('Multi-select on or off: a tap adds or removes a cell, a drag paints')],
   [msg('Double-click / long-press a digit'), msg('Select every cell with that digit')],
   ['Backspace / Delete', msg('Erase the active layer: hold Shift for corner marks, Ctrl for centre, both for colours')],
   ['W', msg('Wipe the selected cells completely')],
@@ -423,7 +424,7 @@ export function InfoDialog({
       <h4 className="setting-group">{t('Touch')}</h4>
       <p className="dialog-note">
         {t(
-          'Tap to select, and use the on-screen mode and number buttons. To select several cells, drag across them. On a phone a quick swipe up or down over the board scrolls the page instead: rest your finger on the first cell for a moment, then drag in any direction. Hold a number key for a moment to enter it as a corner mark without changing mode. Tap the selected cell again, or anywhere beside the board, to clear the highlight, and long-press a digit on the board to highlight all of its cells.'
+          'Tap to select, and use the on-screen mode and number buttons. To select several cells, drag across them. On a phone a quick swipe up or down over the board scrolls the page instead: rest your finger on the first cell for a moment, then drag in any direction. Or turn on Multi: then a tap adds a cell or takes it out, a drag paints cells in or out whichever way it goes, and the page scrolls from beside the board. Hold a number key for a moment to enter it as a corner mark without changing mode. Tap the selected cell again, or anywhere beside the board, to clear the highlight, and long-press a digit on the board to highlight all of its cells.'
         )}
       </p>
 
