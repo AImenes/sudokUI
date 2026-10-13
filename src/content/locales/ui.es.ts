@@ -304,7 +304,7 @@ const ui: Dictionary = {
   "Use the camera": "Usar la cámara",
   "A puzzle needs exactly 81 characters (digits and dots).": "Un sudoku necesita exactamente 81 caracteres (números y puntos).",
   "Import a puzzle": "Importar un sudoku",
-  "Paste an 81-character puzzle string (dots or zeros for empty cells).": "Pega un sudoku como cadena de 81 caracteres (puntos o ceros para las casillas vacías).",
+  "Paste an 81-character puzzle string (dots or zeros for empty cells), or a pencil-mark grid with its candidates.": "Pega un sudoku como cadena de 81 caracteres (puntos o ceros para las casillas vacías), o una cuadrícula con sus candidatos.",
   "Load puzzle": "Cargar sudoku",
   "Scan a photo": "Escanear una foto",
   "Share this puzzle": "Compartir este sudoku",
@@ -594,7 +594,13 @@ const ui: Dictionary = {
   "Fill corner marks with all candidates. With empty cells selected, only those are filled": "Rellenar las notas de esquina con todos los candidatos. Con casillas vacías seleccionadas, solo se rellenan esas",
   "Fill centre marks with all candidates. With empty cells selected, only those are filled": "Rellenar las notas centrales con todos los candidatos. Con casillas vacías seleccionadas, solo se rellenan esas",
   "A missing pencil mark can mean \"eliminated\" or just \"not written yet\", and only you know which. Your answer is remembered for the rest of this puzzle (Auto, or Fill on the whole board, answers it automatically).": "La falta de una anotación puede significar «eliminado» o simplemente «aún no escrito», y solo tú sabes cuál de las dos. Tu respuesta se recuerda durante el resto de este sudoku (con Autocandidatos, o Rellenar candidatos en todo el tablero, la respuesta es automática).",
-  "Solved with assistance: a practice puzzle that jumps to its technique counts as help. For an unassisted run, switch off '{setting}' in Settings": "Resuelto con ayuda: un sudoku de práctica que salta directamente a la técnica cuenta como ayuda. Para resolverlo sin ayuda, desactiva «{setting}» en Ajustes"
+  "Solved with assistance: a practice puzzle that jumps to its technique counts as help. For an unassisted run, switch off '{setting}' in Settings": "Resuelto con ayuda: un sudoku de práctica que salta directamente a la técnica cuenta como ayuda. Para resolverlo sin ayuda, desactiva «{setting}» en Ajustes",
+  "The pencil-mark grid could not be read: it needs 9 rows of 9 cells, each a digit or its candidates.": "No se pudo leer la cuadrícula de candidatos: necesita 9 filas de 9 casillas, cada una con un número o sus candidatos.",
+  "Pencil-mark grid loaded: its candidates are your centre marks, rated {score} ({level})": "Cuadrícula de candidatos cargada: sus candidatos son tus notas centrales, puntuación {score} ({level})",
+  "Copy the board as a pencil-mark grid, the text solvers paste on the forums": "Copia el tablero como cuadrícula de candidatos, el texto que los solucionadores pegan en los foros",
+  "Position as text": "Posición en texto",
+  "Copy this step as one line of notation (Eureka for a chain), the way the forums write it": "Copia este paso como una línea de notación (Eureka para una cadena), tal como la escriben los foros",
+  "Copy step": "Copiar paso"
 };
 
 export default ui;

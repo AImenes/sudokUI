@@ -304,7 +304,7 @@ const ui: Dictionary = {
   "Use the camera": "Bruk kameraet",
   "A puzzle needs exactly 81 characters (digits and dots).": "En oppgave må ha nøyaktig 81 tegn (tall og punktum).",
   "Import a puzzle": "Importer en oppgave",
-  "Paste an 81-character puzzle string (dots or zeros for empty cells).": "Lim inn en oppgave som en tegnstreng på 81 tegn (punktum eller nuller for tomme ruter).",
+  "Paste an 81-character puzzle string (dots or zeros for empty cells), or a pencil-mark grid with its candidates.": "Lim inn en oppgave som en tegnstreng på 81 tegn (punktum eller nuller for tomme ruter), eller et rutenett med kandidatene i.",
   "Load puzzle": "Last inn oppgave",
   "Scan a photo": "Skann et bilde",
   "Share this puzzle": "Del denne oppgaven",
@@ -594,7 +594,13 @@ const ui: Dictionary = {
   "Fill corner marks with all candidates. With empty cells selected, only those are filled": "Fyll hjørnenotatene med alle kandidater. Er tomme ruter valgt, fylles bare de",
   "Fill centre marks with all candidates. With empty cells selected, only those are filled": "Fyll midtnotatene med alle kandidater. Er tomme ruter valgt, fylles bare de",
   "A missing pencil mark can mean \"eliminated\" or just \"not written yet\", and only you know which. Your answer is remembered for the rest of this puzzle (Auto, or Fill on the whole board, answers it automatically).": "Et notat som mangler, kan bety «eliminert» eller bare «ikke skrevet ennå», og bare du vet hvilket. Svaret ditt huskes resten av denne oppgaven (med Autokandidater, eller Fyll kandidater på hele brettet, er svaret gitt automatisk).",
-  "Solved with assistance: a practice puzzle that jumps to its technique counts as help. For an unassisted run, switch off '{setting}' in Settings": "Løst med hjelp: en øvingsoppgave som hopper rett til teknikken, teller som hjelp. Vil du løse uten hjelp, slår du av «{setting}» i Innstillinger"
+  "Solved with assistance: a practice puzzle that jumps to its technique counts as help. For an unassisted run, switch off '{setting}' in Settings": "Løst med hjelp: en øvingsoppgave som hopper rett til teknikken, teller som hjelp. Vil du løse uten hjelp, slår du av «{setting}» i Innstillinger",
+  "The pencil-mark grid could not be read: it needs 9 rows of 9 cells, each a digit or its candidates.": "Rutenettet med kandidater kunne ikke leses: det må ha 9 rader med 9 ruter, hver med et tall eller kandidatene sine.",
+  "Pencil-mark grid loaded: its candidates are your centre marks, rated {score} ({level})": "Rutenett med kandidater lastet inn: kandidatene er midtnotatene dine, poengsum {score} ({level})",
+  "Copy the board as a pencil-mark grid, the text solvers paste on the forums": "Kopier brettet som et rutenett med kandidater, teksten løsere limer inn på forumene",
+  "Position as text": "Stillingen som tekst",
+  "Copy this step as one line of notation (Eureka for a chain), the way the forums write it": "Kopier steget som én linje notasjon (Eureka for en kjede), slik forumene skriver det",
+  "Copy step": "Kopier steget"
 };
 
 export default ui;

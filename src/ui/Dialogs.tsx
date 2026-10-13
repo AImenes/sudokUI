@@ -23,6 +23,7 @@ import { cruxIndex } from '../engine/generator';
 import { timeVerdict, percentileText, MODE_LABEL, SolveMode } from '../content/solveTimes';
 import { useT, translator, msg, rich, Translator } from '../content/i18n';
 import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
+import { parsePencilGrid, puzzleStringOf, looksLikeGrid, formatPencilGrid } from '../content/textGrid';
 import { fasterThan, dailyNumber, localDateKey, LATE_DAYS } from '../content/dailies';
 import { useDailyStats, playedFrom, SubmitOutcome } from '../state/dailyStats';
 import { HubTabs } from './HubTabs';
@@ -768,14 +769,29 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
 
 export function ImportDialog({ onClose }: { onClose: () => void }) {
   const startGame = useGame((s) => s.startGame);
+  const importText = useGame((s) => s.importText);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const t = useT();
 
   const doImport = () => {
-    const cleaned = text.replace(/[^0-9.]/g, '');
-    if (cleaned.length !== 81) {
-      setError(t('A puzzle needs exactly 81 characters (digits and dots).'));
+    // a position drawn as text (src/content/textGrid.ts): a pencil-mark
+    // grid, a HoDoKu library string, or the 81 characters with their
+    // candidates; its candidates come along as centre marks
+    const position = parsePencilGrid(text);
+    if (position) {
+      const reason = importText(position);
+      if (reason) setError(reason);
+      else onClose();
+      return;
+    }
+    const cleaned = puzzleStringOf(text);
+    if (!cleaned) {
+      setError(
+        looksLikeGrid(text)
+          ? t('The pencil-mark grid could not be read: it needs 9 rows of 9 cells, each a digit or its candidates.')
+          : t('A puzzle needs exactly 81 characters (digits and dots).')
+      );
       return;
     }
     const v = validatePuzzle(cleaned);
@@ -789,7 +805,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal title={t('Import a puzzle')} onClose={onClose}>
-      <p className="dialog-note">{t('Paste an 81-character puzzle string (dots or zeros for empty cells).')}</p>
+      <p className="dialog-note">{t('Paste an 81-character puzzle string (dots or zeros for empty cells), or a pencil-mark grid with its candidates.')}</p>
       <textarea
         rows={3}
         value={text}
@@ -829,6 +845,7 @@ function useShareTechs(puzzle: string | undefined): () => Tech[] {
 export function ShareDialog({ onClose }: { onClose: () => void }) {
   const cells = useGame((s) => s.cells);
   const autoCandidates = useGame((s) => s.autoCandidates);
+  const markContract = useGame((s) => s.markContract);
   const info = useGame((s) => s.info);
   const [copied, setCopied] = useState('');
   const t = useT();
@@ -865,9 +882,14 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   // where you are, and the preview still describes the puzzle
   const positionLink = () => `${shareLink()}#s=${encodePosition(cells, autoCandidates)}`;
 
-  const copy = (what: 'link' | 'position' | 'string') => {
+  // the board as a pencil-mark grid (src/content/textGrid.ts), the text a
+  // forum post or a solver on the desk reads: a placed digit or the
+  // candidates in every cell, as the board shows them
+  const positionText = () => formatPencilGrid(cells, autoCandidates, markContract);
+
+  const copy = (what: 'link' | 'position' | 'string' | 'text') => {
     navigator.clipboard?.writeText(
-      what === 'link' ? shareLink() : what === 'position' ? positionLink() : currentAsString()
+      what === 'link' ? shareLink() : what === 'position' ? positionLink() : what === 'text' ? positionText() : currentAsString()
     );
     setCopied(what);
     setTimeout(() => setCopied(''), 2000);
@@ -895,6 +917,13 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
         </button>
         <button className="ghost" onClick={() => copy('string')}>
           {copied === 'string' ? `✓ ${t('Copied')}` : t('Puzzle string')}
+        </button>
+        <button
+          className="ghost"
+          onClick={() => copy('text')}
+          title={t('Copy the board as a pencil-mark grid, the text solvers paste on the forums')}
+        >
+          {copied === 'text' ? `✓ ${t('Copied')}` : t('Position as text')}
         </button>
       </div>
     </Modal>
