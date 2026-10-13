@@ -2,6 +2,7 @@
 // reference for modes, shortcuts and the candidate model.
 import React from 'react';
 import { useSettings, MarkLayer, Font } from '../state/settings';
+import { useGame } from '../state/gameStore';
 import { LANGS, useT, msg, rich } from '../content/i18n';
 import { Modal } from './Dialogs';
 import type { LearnTarget } from './Learn';
@@ -153,6 +154,14 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         onChange={(v) => s.set({ frameHighlights: v })}
       />
       <Toggle
+        label={t('Highlight cells with two candidates')}
+        hint={t(
+          'Draws a dashed ring in every cell whose pencil marks leave exactly two possibilities, where wings, chains and remote pairs begin. Only while your marks are complete: auto candidates, or candidates you have declared complete. A view of your own marks, never a look at the solution, so it does not count as help'
+        )}
+        value={s.highlightBivalue}
+        onChange={(v) => useGame.getState().setBivalueHighlight(v)}
+      />
+      <Toggle
         label={t('Show conflicts')}
         hint={t(
           'Show a digit in red while it repeats within its row, column or box. A rule check on the board alone, never a look at the solution, so it does not count as help'
@@ -286,6 +295,7 @@ const SHORTCUTS: [string, string][] = [
   [msg('Alt + drag'), msg('Select a rectangle, from the first cell to the one under the pointer (Option on a Mac)')],
   [msg('Ctrl/Cmd + click'), msg('Add cells to the selection')],
   ['M', msg('Multi-select on or off: a tap adds or removes a cell, a drag paints')],
+  ['B', msg('Highlight cells with two candidates on or off')],
   [msg('Double-click / long-press a digit'), msg('Select every cell with that digit')],
   ['Backspace / Delete', msg('Erase the active layer: hold Shift for corner marks, Ctrl for centre, both for colours')],
   ['W', msg('Wipe the selected cells completely')],

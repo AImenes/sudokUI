@@ -194,6 +194,7 @@ export default function App() {
   const select = useGame((s) => s.select);
   const custom = useGame((s) => s.custom);
   const contractPrompt = useGame((s) => s.contractPrompt);
+  const contractFor = useGame((s) => s.contractFor);
   const answerContract = useGame((s) => s.answerContract);
   const dismissContractPrompt = useGame((s) => s.dismissContractPrompt);
   const convertMarks = useGame((s) => s.convertMarks);
@@ -553,6 +554,12 @@ export default function App() {
         case 'KeyL':
           openLearn();
           break;
+        case 'KeyB': {
+          // the ring around cells with two candidates, on or off
+          if (mod || e.altKey) break;
+          useGame.getState().setBivalueHighlight(!useSettings.getState().highlightBivalue);
+          break;
+        }
         case 'KeyM': {
           // Cmd+M minimises the window, Ctrl+M is the browser's: not ours
           if (mod || e.altKey) break;
@@ -925,9 +932,6 @@ export default function App() {
           }}
         />
       )}
-      {contractPrompt && (
-        <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} />
-      )}
       {welcome && (
         <Modal title={t('Welcome to sudokUI')} onClose={dismissWelcome}>
           <p className="dialog-note">
@@ -1027,6 +1031,11 @@ export default function App() {
             setDialog('progress');
           }}
         />
+      )}
+      {/* last among the dialogs, so it paints above the one that raised it
+          (the Settings dialog's toggle asks it too) */}
+      {contractPrompt && (
+        <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} forHighlight={contractFor === 'highlight'} />
       )}
       <UpdateBar />
       {notice && (

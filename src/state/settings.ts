@@ -59,6 +59,12 @@ interface Settings {
   /** draw a thin frame around highlighted candidates (the held digit's
    *  pencil occurrences) — bold + colour alone can be hard to spot */
   frameHighlights: boolean;
+  /** ring every unsolved cell whose marks leave exactly two candidates:
+   *  where wings, chains and remote pairs begin, what a stuck player scans
+   *  for. A view of the player's own marks (or of the auto candidates),
+   *  never of the solution, so it never counts as help; drawn only while
+   *  the marks are complete (src/state/bivalue.ts) */
+  highlightBivalue: boolean;
   /** the first assist in a clean game asks first: it says what the button
    *  does (touch screens have no hover) and guards against a stray tap */
   confirmAssist: boolean;
@@ -88,6 +94,7 @@ export const useSettings = create<Settings>()(
       hideRating: false,
       showPoodle: false,
       frameHighlights: true,
+      highlightBivalue: false,
       confirmAssist: true,
       digitTints: false,
       tintStrength: 50,

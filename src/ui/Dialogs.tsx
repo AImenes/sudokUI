@@ -484,17 +484,24 @@ export function ContractChoices({ onAnswer }: { onAnswer: (c: 'exhaustive' | 'op
   );
 }
 
-/** Asked at most once per game, the first time Hint meets manual marks. */
+/** Asked at most once per game, the first time Hint, or the ring around
+ *  cells with two candidates (B), meets manual marks. */
 export function ContractDialog({
   onAnswer,
-  onClose
+  onClose,
+  forHighlight = false
 }: {
   onAnswer: (c: 'exhaustive' | 'open') => void;
   onClose: () => void;
+  /** the ring asked, not a hint */
+  forHighlight?: boolean;
 }) {
   const t = useT();
   return (
-    <Modal title={t('How should hints read your pencil marks?')} onClose={onClose}>
+    <Modal
+      title={forHighlight ? t('How should the board read your pencil marks?') : t('How should hints read your pencil marks?')}
+      onClose={onClose}
+    >
       <p className="dialog-note">
         {t('A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which. Your answer is remembered for the rest of this puzzle (Auto, or Fill on the whole board, answers it automatically).')}
       </p>

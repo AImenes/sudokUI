@@ -6,6 +6,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useGame, engineGrid, CellState } from '../state/gameStore';
 import { useSettings } from '../state/settings';
+import { bivalueCells } from '../state/bivalue';
 import { bit, digitsOf, PEERS, UNITS } from '../engine/board';
 import { ChainLink, CellDigit } from '../engine/steps';
 import { walkFrames, Part } from '../engine/hintFrames';
@@ -268,7 +269,9 @@ function renderMarks(
   y: number,
   marks: Map<number, string> | undefined,
   hlDigit = 0,
-  frame = false
+  frame = false,
+  /** the cell is ringed as a bivalue cell: its two digits a touch heavier */
+  pair = false
 ): React.ReactNode {
   const cornerDs = digitsOf(cell.corner);
   const centerDs = digitsOf(cell.center);
@@ -297,7 +300,7 @@ function renderMarks(
         y={y + candY(d)}
         textAnchor="middle"
         fontSize={23}
-        fontWeight={marks?.has(d) ? 700 : hl(d) ? 700 : bold ? 600 : 400}
+        fontWeight={marks?.has(d) ? 700 : hl(d) ? 700 : bold || pair ? 600 : 400}
         fill={marks?.has(d) ? hintTextFill(marks.get(d)!) : hl(d) ? 'var(--accent)' : 'var(--cand)'}
       >
         {d}
@@ -331,6 +334,7 @@ function renderMarks(
         y={y + SIZE / 2 + 8}
         textAnchor="middle"
         fontSize={26}
+        fontWeight={pair ? 600 : undefined}
         fill="var(--cand)"
       >
         {lineTspans(centerDs)}
@@ -433,12 +437,14 @@ export function Grid() {
   const input = useGame((s) => s.input);
   const chainTap = useGame((s) => s.chainTap);
   const multiSelect = useGame((s) => s.multiSelect);
+  const markContract = useGame((s) => s.markContract);
   const {
     highlightPeers,
     highlightSameDigit,
     showConflicts,
     showPoodle,
     frameHighlights,
+    highlightBivalue,
     digitTints,
     tintStrength
   } = useSettings();
@@ -476,6 +482,13 @@ export function Grid() {
   const canonical = React.useMemo(
     () => (autoCandidates ? engineGrid(cells) : null),
     [cells, autoCandidates]
+  );
+  // the cells left with exactly two candidates, ringed on request
+  // (Settings, or B): a view of the marks as the hints read them, and out
+  // of the way while a hint draws, so the drawing has the board to itself
+  const pairs = React.useMemo(
+    () => new Set(highlightBivalue && !showHint ? bivalueCells(cells, autoCandidates, markContract, canonical ?? undefined) : []),
+    [highlightBivalue, showHint, cells, autoCandidates, markContract, canonical]
   );
 
   const selSet = new Set(selection);
@@ -1124,6 +1137,23 @@ export function Grid() {
                   opacity={0.9}
                 />
               )}
+              {/* a pattern, not a colour: every colour on the board means
+                  something already, and the ring must not be read as one */}
+              {pairs.has(i) && (!paused || won) && (
+                <rect
+                  className="bivalue"
+                  x={x + 7}
+                  y={y + 7}
+                  width={SIZE - 14}
+                  height={SIZE - 14}
+                  rx={9}
+                  fill="none"
+                  stroke="var(--cand)"
+                  strokeWidth={3.5}
+                  strokeDasharray="8 6"
+                  opacity={0.75}
+                />
+              )}
               {isErr && (
                 <rect x={x} y={y} width={SIZE} height={SIZE} fill="var(--error-bg)" opacity={0.5} />
               )}
@@ -1231,7 +1261,7 @@ export function Grid() {
                         y={y + candY(d)}
                         textAnchor="middle"
                         fontSize={23}
-                        fontWeight={marks?.has(d) ? 700 : d === hlDigit ? 700 : 400}
+                        fontWeight={marks?.has(d) ? 700 : d === hlDigit ? 700 : pairs.has(i) ? 600 : 400}
                         fill={
                           marks?.has(d)
                             ? hintTextFill(marks.get(d)!)
@@ -1245,7 +1275,7 @@ export function Grid() {
                     </React.Fragment>
                   ))
                 ) : (
-                  renderMarks(cell, x, y, marks, hlDigit, frameHighlights)
+                  renderMarks(cell, x, y, marks, hlDigit, frameHighlights, pairs.has(i))
                 )}
               </g>
             );

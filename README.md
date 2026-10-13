@@ -28,6 +28,9 @@ natively for iOS and Android via Capacitor.
   undo/redo; timer & pause
 - Auto-candidates with per-cell strike-through exclusions, one-click candidate
   fill, error check with restore-to-last-correct
+- Highlights that are not help: peers, matching digits, conflicts, and, a
+  key press away when stuck, a ring around every cell left with exactly two
+  candidates, where wings and chains begin
 - Import/export puzzles as 81-character strings, or **scan a photo** of a
   printed puzzle (camera or file; turned, tilted or mirrored is fine) and
   check the result on the board before playing (see

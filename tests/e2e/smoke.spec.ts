@@ -4,7 +4,7 @@
  * `npm run test:e2e` after `npm run build`.
  */
 import { test, expect, Page } from '@playwright/test';
-import { parseGrid, gridToString } from '../../src/engine/board';
+import { parseGrid, gridToString, digitsOf } from '../../src/engine/board';
 import { solve } from '../../src/engine/bruteForce';
 import { readFileSync } from 'node:fs';
 import { localDateKey } from '../../src/content/dailies';
@@ -92,6 +92,24 @@ test.describe('desktop, 1280 x 800', () => {
     await page.keyboard.press('Escape');
     await expect(status).toHaveText('No cell selected.');
     await expect(board).not.toHaveAttribute('data-multiselect', 'true');
+  });
+
+  test('B rings the cells with two candidates, once there are candidates to read', async ({ page }) => {
+    await open(page);
+    const rings = page.locator('svg.board rect.bivalue');
+    // no marks and no auto candidates: nothing to ring, though the setting is on
+    await page.keyboard.press('b');
+    await expect(rings).toHaveCount(0);
+    await page.getByRole('button', { name: /Auto candidates/ }).first().click();
+    await page.getByRole('button', { name: 'Use Auto candidates' }).click();
+    // every empty cell the engine leaves with exactly two candidates
+    const g = parseGrid(EASY)!;
+    const expected = Array.from({ length: 81 }, (_, i) => i).filter((i) => digitsOf(g.cands[i]).length === 2).length;
+    expect(expected).toBeGreaterThan(0);
+    await expect(rings).toHaveCount(expected);
+    // off again
+    await page.keyboard.press('b');
+    await expect(rings).toHaveCount(0);
   });
 
   test('a digit pressed with nothing selected is armed, and a tap enters it', async ({ page }) => {
