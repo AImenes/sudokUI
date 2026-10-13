@@ -30,6 +30,7 @@ import { useSettings } from './settings';
 import { useStats } from './stats';
 import { justifyMove } from './pools';
 import { translator, msg } from '../content/i18n';
+import type { TextPosition } from '../content/textGrid';
 
 export type EntryMode = 'digit' | 'corner' | 'center' | 'color';
 
@@ -337,6 +338,14 @@ interface GameStore {
   chainSuggest: boolean;
 
   startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null, dailyKey?: string) => void;
+  /**
+   * A position pasted as text (src/content/textGrid.ts): the puzzle is its
+   * givens, checked and rated as every import is; digits the text marks as
+   * placed become entries, and its candidates the centre marks under the
+   * exhaustive contract, so hints continue from them. Returns why the
+   * puzzle was refused, or null once it is on the board.
+   */
+  importText: (position: TextPosition) => string | null;
   /** blank board the user types givens onto; the running game is backed up */
   startCustomEntry: () => void;
   cancelCustomEntry: () => void;
@@ -1551,6 +1560,39 @@ export const useGame = create<GameStore>()(
                   vars
                 )
         });
+      },
+
+      importText: (position) => {
+        const givens = position.values.map((v, i) => (v && position.given[i] ? String(v) : '.')).join('');
+        const v = validatePuzzle(givens);
+        if (!v.ok) return v.reason;
+        get().startGame(givens, v.score, v.level);
+        const placed = position.values.some((d, i) => d && !position.given[i]);
+        if (!position.cands && !placed) return null;
+        const t = translator();
+        set((s) => {
+          const cells = cloneCells(s.cells);
+          for (let i = 0; i < 81; i++) {
+            if (position.values[i] && !position.given[i]) cells[i].value = position.values[i];
+            else if (!position.values[i] && position.cands) cells[i].center = position.cands[i];
+          }
+          return {
+            cells,
+            // digits already placed mean the game starts part-way through,
+            // so its time compares with nothing (as a position link's does)
+            info: placed && s.info ? { ...s.info, fromPosition: true } : s.info,
+            ...(position.cands
+              ? {
+                  markContract: 'exhaustive' as MarkContract,
+                  notice: t('Pencil-mark grid loaded: its candidates are your centre marks, rated {score} ({level})', {
+                    score: v.score,
+                    level: t.level(v.level)
+                  })
+                }
+              : {})
+          };
+        });
+        return null;
       },
 
       loadPosition: (encoded) => {

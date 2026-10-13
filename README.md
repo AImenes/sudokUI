@@ -32,9 +32,12 @@ natively for iOS and Android via Capacitor.
   key press away when stuck, a ring around every cell left with exactly two
   candidates in the pair's two colours, so the same pair matches from
   across the board, where wings and chains begin
-- Import/export puzzles as 81-character strings, or **scan a photo** of a
-  printed puzzle (camera or file; turned, tilted or mirrored is fine) and
-  check the result on the board before playing (see
+- Import/export puzzles as 81-character strings or as the **pencil-mark
+  grid** the forums paste (its candidates come along as centre marks, and
+  Share copies the board back as one), copy any hint as a **step line** in
+  Eureka or HoDoKu notation (see [Text formats](#text-formats)), or **scan
+  a photo** of a printed puzzle (camera or file; turned, tilted or mirrored
+  is fine) and check the result on the board before playing (see
   [docs/scan.md](docs/scan.md)) — every import is rated
 - **Shareable links**: `sudokui.app/p/<81 chars>` opens the exact puzzle, and
   pasted into a chat it previews with the band, the score and the techniques
@@ -179,6 +182,65 @@ glossary, rating explainer and landing pages) and `sitemap.xml` into `dist/`.
 They are not served by `npm run dev`; to look at them, build and then run
 `npx wrangler dev`. How they are made, and what to do after adding or
 renaming a technique, is in [docs/search.md](docs/search.md).
+
+## Text formats
+
+Positions and steps travel between players as text, so sudokUI reads and
+writes the formats the community, and HoDoKu, use
+(`src/content/textGrid.ts`, `src/content/eureka.ts`).
+
+**Import reads**
+
+- the 81-character puzzle string, dots or zeros for empty cells, with
+  whatever frame is drawn around it;
+- the pencil-mark grid: nine rows of nine cells, a placed digit or the
+  cell's candidates in each, with or without box lines, drawn with
+  `.`, `:`, `'` and `-` (HoDoKu and most forum posts) or `+` and `-`
+  (SudokuWiki); the candidates become centre marks under the exhaustive
+  contract, so hints continue from them. A cell written as one digit is
+  read as placed, as the forums read it;
+- HoDoKu's library string, `:0000:x:<81 cells>:<deleted candidates>:…`,
+  placed digits marked `+` and deleted candidates as `dRC` codes
+  (`418` = the 4 of r1c8);
+- the 81-character line followed by one candidate token per cell, or by
+  the `dRC` codes of the candidates removed.
+
+**Share → Position as text writes** the pencil-mark grid as HoDoKu writes
+it, showing what the board shows (auto candidates, or your marks when they
+are your remaining candidates, else every candidate):
+
+```
+.-------------.-------------.-------------.
+| 2   13  8   | 7   9   5   | 6   13  4   |
+| 6   137 147 | 8   2   34  | 17  9   5   |
+| 9   5   47  | 6   1   34  | 2   37  8   |
+:-------------+-------------+-------------:
+| 7   9   5   | 4   3   2   | 8   6   1   |
+| 1   2   3   | 9   6   8   | 5   4   7   |
+| 4   8   6   | 1   5   7   | 3   2   9   |
+:-------------+-------------+-------------:
+| 8   4   2   | 3   7   1   | 9   5   6   |
+| 3   6   17  | 5   8   9   | 4   17  2   |
+| 5   17  9   | 2   4   6   | 17  8   3   |
+'-------------'-------------'-------------'
+```
+
+**Hint → Copy step writes** the technique's name and one line of notation.
+A chain is Eureka notation: `=` a strong link, `-` a weak one, a group as
+`(2)r3c23`, an ALS as `(8=9){r78c8}`, a continuous loop ending `- loop`:
+
+```
+XY-Chain: (4=3)r1c6 - (3=1)r5c6 - (1=6)r5c7 - (6=4)r2c7 => r1c9<>4
+```
+
+Every other technique is written the way HoDoKu writes it, the pattern
+then `=>` what it does, placements as `r1c1=5` and removals as `r1c1<>5`:
+
+```
+X-Wing: 7 r38 c38 => r2c3<>7
+Naked Pair: 2,5 in r9c27 => r9c6<>5
+ALS-XZ: A=r8c2,r9c1 {159}, B=r7c8,r8c9 {159}, X=1, Z=5 => r7c1<>5
+```
 
 ## Architecture
 

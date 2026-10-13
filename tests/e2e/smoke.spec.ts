@@ -4,8 +4,9 @@
  * `npm run test:e2e` after `npm run build`.
  */
 import { test, expect, Page } from '@playwright/test';
-import { parseGrid, gridToString, digitsOf } from '../../src/engine/board';
+import { parseGrid, gridToString, digitsOf, bit } from '../../src/engine/board';
 import { solve } from '../../src/engine/bruteForce';
+import { formatPencilGrid } from '../../src/content/textGrid';
 import { readFileSync } from 'node:fs';
 import { localDateKey } from '../../src/content/dailies';
 import type { Daily } from '../../src/content/dailies';
@@ -923,5 +924,52 @@ test.describe('the daily', () => {
     const text = await copied(page);
     expect(text).toMatch(/^sudokUI Daily #\d+ · /);
     expect(text).not.toMatch(/unassisted|faster than/);
+  });
+});
+
+test.describe('positions as text', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+  const keepClipboard = () => {
+    localStorage.setItem('sudokui-welcomed', '1');
+    (window as any).__copied = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: (s: string) => (((window as any).__copied = s), Promise.resolve()) }
+    });
+  };
+  const copied = (page: Page) => page.evaluate(() => (window as any).__copied as string);
+
+  test('a pasted pencil-mark grid puts its candidates on the board, and Share copies the board back as the same grid', async ({ page }) => {
+    await page.addInitScript(keepClipboard);
+    await open(page);
+    // the puzzle with its candidates, one false candidate already taken
+    // out, as a forum post carries a position part-way through
+    const g = parseGrid(EASY)!;
+    const solution = gridToString(solve(parseGrid(EASY)!)!);
+    const cell = Array.from({ length: 81 }, (_, i) => i).find((i) => !g.values[i] && digitsOf(g.cands[i]).length >= 3)!;
+    const dropped = digitsOf(g.cands[cell]).find((d) => d !== Number(solution[cell]))!;
+    const cells = Array.from({ length: 81 }, (_, i) => ({
+      value: g.values[i],
+      corner: 0,
+      center: i === cell ? g.cands[i] & ~bit(dropped) : g.cands[i],
+      excluded: 0
+    }));
+    const text = formatPencilGrid(cells, false, 'exhaustive');
+    await page.locator('.menu-row button', { hasText: 'Import' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Import a puzzle' });
+    await dialog.locator('textarea').fill(text);
+    await dialog.getByRole('button', { name: 'Load puzzle' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.locator('.toast, [role=status]').filter({ hasText: 'Pencil-mark grid loaded' })).toBeVisible();
+    // the candidates are the text's, not the engine's: the cell that lost one reads without it
+    const c = await cellBox(page, cell);
+    await page.mouse.click(c.x, c.y);
+    const left = digitsOf(g.cands[cell] & ~bit(dropped)).join(' ');
+    await expect(page.locator('#board-status')).toHaveText(
+      `Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}: empty, centre marks ${left}.`
+    );
+    // and the board copied as text is the grid that was pasted
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    await page.getByRole('dialog', { name: 'Share this puzzle' }).getByRole('button', { name: 'Position as text' }).click();
+    expect(await copied(page)).toBe(text);
   });
 });

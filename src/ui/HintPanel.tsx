@@ -9,6 +9,7 @@ import { TECHS, Tech } from '../engine/ratings';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
+import { stepText } from '../content/eureka';
 import { useT, rich, Translator } from '../content/i18n';
 import { useLearnLocale } from './useLearnLocale';
 
@@ -156,6 +157,16 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
     }
   }, [hint, stage, showKey]);
 
+  // the step as one line of the forums' notation (src/content/eureka.ts),
+  // for a post or a second opinion; the button confirms for a moment
+  const [copied, setCopied] = useState(false);
+  const copyStep = () => {
+    if (!hint) return;
+    navigator.clipboard?.writeText(stepText(hint));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   // stacked layouts (phone, tablet) and short desktop windows: the panel
   // moves to the top of the column (styles.css), so bring the page back to
   // the top where the board and the panel can be seen together
@@ -285,6 +296,13 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
               </button>
             )}
             <button onClick={applyHint}>{t('Apply step')}</button>
+            <button
+              className="ghost"
+              onClick={copyStep}
+              title={t('Copy this step as one line of notation (Eureka for a chain), the way the forums write it')}
+            >
+              {copied ? `✓ ${t('Copied')}` : t('Copy step')}
+            </button>
             <button className="ghost" onClick={dismissHint}>{t('Close')}</button>
           </div>
         </div>
