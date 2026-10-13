@@ -9,6 +9,7 @@ import type { LearnTarget } from './Learn';
 import { BandTable } from './BandTable';
 import { RATING_SUMMARY } from '../content/rating';
 import { useLearnLocale } from './useLearnLocale';
+import { PRIVACY_URL } from '../content/staticRoutes';
 
 // The rating summary in the chosen language. English is at hand; a
 // translation comes from the guide's own locale file (useLearnLocale.ts),
@@ -268,6 +269,23 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </div>
+
+      {/* the plays counted (src/state/telemetry.ts): off, nothing is kept on
+          the device; the privacy page says what is sent either way */}
+      <h4 className="setting-group">{t('Counting plays')}</h4>
+      <Toggle
+        label={t('Help count plays, including offline ones')}
+        hint={t(
+          'Anonymous totals, no ID, never your address. On, the app keeps plays made offline on this device and sends them when it is back online; off, nothing is kept'
+        )}
+        value={s.countPlays}
+        onChange={(v) => s.set({ countPlays: v })}
+      />
+      <p className="dialog-note">
+        <a href={`${t.lang === 'en' ? '' : `/${t.lang}`}${PRIVACY_URL}`} target="_blank" rel="noreferrer">
+          {t('What is sent, exactly')}
+        </a>
+      </p>
     </Modal>
   );
 }

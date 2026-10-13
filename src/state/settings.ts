@@ -72,6 +72,11 @@ interface Settings {
   digitTints: boolean;
   /** how much of the digit's own hue is mixed in, in percent */
   tintStrength: number;
+  /** count this device's plays, offline ones included (src/state/telemetry.ts):
+   *  the queue it keeps and the day it began exist only while this is on */
+  countPlays: boolean;
+  /** the win screen has pointed at that switch, once */
+  countPlaysAsked: boolean;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -98,6 +103,8 @@ export const useSettings = create<Settings>()(
       confirmAssist: true,
       digitTints: false,
       tintStrength: 50,
+      countPlays: false,
+      countPlaysAsked: false,
       toggleTheme: () =>
         set((s) => ({
           theme:

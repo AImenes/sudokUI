@@ -209,20 +209,31 @@ export async function checkResult(body: unknown, no: number, daily: Daily, now: 
 
 /** submissions allowed per address per window, in this isolate's memory */
 export const RATE_LIMIT = { count: 20, windowMs: 10 * 60 * 1000 };
-const seen = new Map<string, { count: number; until: number }>();
+
+/**
+ * A limiter for one route: true when an address has sent more than the
+ * allowance within its window. The counts live in this isolate's memory
+ * only, keyed by the address for the length of the window and cleared
+ * wholesale when they grow past ten thousand; nothing is written anywhere.
+ * The telemetry route (telemetry.ts) keeps one of its own.
+ */
+export function makeRateLimiter(limit: { count: number; windowMs: number }): (address: string | null, now: number) => boolean {
+  const seen = new Map<string, { count: number; until: number }>();
+  return (address, now) => {
+    if (!address) return false;
+    if (seen.size > 10_000) seen.clear();
+    const entry = seen.get(address);
+    if (!entry || entry.until <= now) {
+      seen.set(address, { count: 1, until: now + limit.windowMs });
+      return false;
+    }
+    entry.count++;
+    return entry.count > limit.count;
+  };
+}
 
 /** true when this address has sent too many results lately; nothing is stored beyond the window */
-export function rateLimited(address: string | null, now: number): boolean {
-  if (!address) return false;
-  if (seen.size > 10_000) seen.clear();
-  const entry = seen.get(address);
-  if (!entry || entry.until <= now) {
-    seen.set(address, { count: 1, until: now + RATE_LIMIT.windowMs });
-    return false;
-  }
-  entry.count++;
-  return entry.count > RATE_LIMIT.count;
-}
+export const rateLimited = makeRateLimiter(RATE_LIMIT);
 
 // ---- the routes -----------------------------------------------------------------
 

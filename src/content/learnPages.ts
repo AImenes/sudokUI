@@ -23,6 +23,7 @@ import { describe } from '../engine/hintFrames';
 import { techSlug, slugify } from './slugs';
 import { linkGlossary } from './glossaryLinks';
 import { LANDING_PAGES, LandingPage, RATING_URL } from './landing';
+import { PRIVACY, PRIVACY_URL } from './privacy';
 import { EXAMPLES } from './examples';
 import { boardSvg, legendOf, BOARD_SIZE } from './boardSvg';
 import { FREQUENCY, byWorth } from './frequency';
@@ -323,7 +324,8 @@ ${opts.body}
         { label: lt.s('Difficulty rating'), href: at(opts.lang, RATING_URL) },
         { label: lt.s('Techniques'), href: at(opts.lang, '/learn/') },
         { label: lt.s('Intuition'), href: at(opts.lang, INTUITION_URL) },
-        { label: lt.s('Glossary'), href: glossaryUrl(opts.lang) }
+        { label: lt.s('Glossary'), href: glossaryUrl(opts.lang) },
+        { label: PRIVACY[opts.lang].name, href: at(opts.lang, PRIVACY_URL) }
       ]
         .map((l) => `<a href="${l.href}">${esc(l.label)}</a>`)
         .join(' · ')}</p>
@@ -850,6 +852,40 @@ ${part.sections.map(section).join('\n')}`
   };
 }
 
+/**
+ * The privacy page in a language (src/content/privacy.ts): what the app
+ * sends, exactly, with the site's header and footer, like a landing page
+ */
+function privacyPage(lang: Lang): Page {
+  const c = PRIVACY[lang];
+  const url = at(lang, PRIVACY_URL);
+  const source = '<a href="https://github.com/AImenes/sudokUI" rel="noopener">github.com/AImenes/sudokUI</a>';
+  const para = (p: string) => `      <p>${esc(p).replace('{source}', source)}</p>`;
+  const body = `      <h1>${esc(c.h1)}</h1>
+      <p class="lead">${esc(c.lead)}</p>
+${c.sections.map((s) => `      <h2>${esc(s.heading)}</h2>\n${s.paragraphs.map(para).join('\n')}`).join('\n')}
+      <p class="meta">${esc(c.updated)}</p>`;
+  return {
+    path: `${url.slice(1)}index.html`,
+    url,
+    lang,
+    alternateOf: PRIVACY_URL,
+    html: layout({
+      lang,
+      url,
+      title: fitTitle(c.title),
+      description: c.description,
+      alternateOf: PRIVACY_URL,
+      crumbs: [
+        { name: 'sudokUI', url: app(lang) },
+        { name: c.name, url }
+      ],
+      jsonLd: [article(lang, url, c.h1, c.description)],
+      body
+    })
+  };
+}
+
 export function buildLearnPages(): Page[] {
   return LEARN_LANGS.flatMap((lang) => [
     ...LANDING_PAGES.map((p) => landingPage(p, lang)),
@@ -857,6 +893,7 @@ export function buildLearnPages(): Page[] {
     indexPage(lang),
     intuitionPage(lang),
     glossaryPage(lang),
+    privacyPage(lang),
     ...ALL_TECHS.map((tech, i) => techniquePage(lang, tech, ALL_TECHS[i - 1], ALL_TECHS[i + 1]))
   ]);
 }

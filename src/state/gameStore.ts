@@ -28,6 +28,7 @@ import type { CellDigit } from '../engine/steps';
 import { Level, Tech } from '../engine/ratings';
 import { useSettings } from './settings';
 import { useStats } from './stats';
+import { useTelemetry } from './telemetry';
 import { justifyMove } from './pools';
 import { translator, msg } from '../content/i18n';
 import type { TextPosition } from '../content/textGrid';
@@ -441,10 +442,12 @@ function foundNotice(tech: Tech): string {
 }
 
 /** a finished game goes into the band record; practice starts part-way
- *  through and compares with nothing */
+ *  through and compares with nothing. The solve is counted too, with
+ *  nothing that names the player (src/state/telemetry.ts) */
 function recordWin(s: GameStore) {
   if (!s.info || s.info.practiceTech) return;
   useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
+  useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000));
 }
 
 export const useGame = create<GameStore>()(
@@ -530,6 +533,7 @@ export const useGame = create<GameStore>()(
           practiceTarget = solvePath(puzzle).find((step) => step.tech === practiceTech) ?? null;
         }
         useStats.getState().newGame();
+        const prev = get();
         set({
           info: {
             puzzle,
@@ -572,6 +576,10 @@ export const useGame = create<GameStore>()(
           // the pattern, and the game is already marked assisted above.
           autoCandidates: !!fastForward
         });
+        // counted as a game begun, with nothing that names the player
+        // (src/state/telemetry.ts); a practice puzzle starts part-way
+        // through, and a restart of the puzzle in play is the same game
+        if (!practiceTech && !(prev.info?.puzzle === puzzle && !prev.won)) useTelemetry.getState().track('started', level, 0);
       },
 
       restart: () => {

@@ -9,6 +9,7 @@ import { STATIC_ROUTES } from './src/content/staticRoutes';
 import { renderHome, homeLangOfPath, HOME_LANGS, APP_NAVIGATION } from './src/content/home';
 import { shareParamsOf, renderSharePage } from './src/content/share';
 import { handleDailyApi, memoryStore } from './worker/daily';
+import { handleTelemetry, memoryEvents } from './worker/telemetry';
 import dailies from './src/content/dailies.json';
 import type { Daily } from './src/content/dailies';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -67,16 +68,19 @@ function staticPagesDev(): Plugin {
  *   the Worker (worker/index.ts) fills for each share address on request.
  */
 /**
- * The daily's API (worker/daily.ts) on the dev and preview servers, over a
- * store in memory: the win screen's statistics work locally and in the
- * browser smoke test without a database, and forget everything when the
- * server stops.
+ * The Worker's API on the dev and preview servers: the daily's
+ * (worker/daily.ts) over a store in memory, so the win screen's statistics
+ * work locally and in the browser smoke test without a database, and the
+ * telemetry route (worker/telemetry.ts) over a dataset in memory, so the
+ * app's beacons are answered and nothing is logged; both forget everything
+ * when the server stops.
  */
-function dailyApi(): (req: IncomingMessage, res: ServerResponse, next: () => void) => void {
+function workerApi(): (req: IncomingMessage, res: ServerResponse, next: () => void) => void {
   const store = memoryStore();
+  const events = memoryEvents();
   return (req, res, next) => {
     const url = req.url ?? '';
-    if (!url.startsWith('/api/daily/')) return next();
+    if (!url.startsWith('/api/daily/') && url.split(/[?#]/)[0] !== '/api/t') return next();
     const chunks: Buffer[] = [];
     req.on('data', (c: Buffer) => chunks.push(c));
     req.on('end', async () => {
@@ -86,7 +90,7 @@ function dailyApi(): (req: IncomingMessage, res: ServerResponse, next: () => voi
         headers: Object.entries(req.headers).flatMap(([k, v]) => (typeof v === 'string' ? [[k, v] as [string, string]] : [])),
         body: body && req.method !== 'GET' && req.method !== 'HEAD' ? body : undefined
       });
-      const response = (await handleDailyApi(request, store)) ?? new Response('not found', { status: 404 });
+      const response = (await handleDailyApi(request, store)) ?? (await handleTelemetry(request, events)) ?? new Response('not found', { status: 404 });
       res.statusCode = response.status;
       response.headers.forEach((value, key) => res.setHeader(key, value));
       res.end(Buffer.from(await response.arrayBuffer()));
@@ -105,7 +109,7 @@ function homePages(): Plugin[] {
       name: 'sudokui-home-dev',
       apply: 'serve',
       configureServer(server) {
-        server.middlewares.use(dailyApi());
+        server.middlewares.use(workerApi());
         server.middlewares.use((req, _res, next) => {
           const url = req.url ?? '';
           if (homeLangOfPath(pathOf(url)) || shareOf(url)) req.url = '/index.html';
@@ -117,7 +121,7 @@ function homePages(): Plugin[] {
       // and the daily's API over a store in memory: the browser smoke test
       // (tests/e2e) lands on a share address and submits a daily
       configurePreviewServer(server) {
-        server.middlewares.use(dailyApi());
+        server.middlewares.use(workerApi());
         server.middlewares.use((req, res, next) => {
           const share = shareOf(req.url ?? '');
           if (!share) return next();

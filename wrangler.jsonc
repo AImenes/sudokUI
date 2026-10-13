@@ -3,10 +3,11 @@
 // file there is served without running any code. The Worker script
 // (worker/index.ts) runs only for the paths that are not files: the share
 // addresses, /p/<puzzle> and /daily/<date>, which it renders with a
-// preview for chat apps and crawlers, and the daily's API under /api/daily/
-// over D1 (docs/online-goals.md, phases 1 and 2). With this file present,
-// wrangler skips its framework auto-detection (which would demand
-// Vite >= 6) and just ships.
+// preview for chat apps and crawlers, the daily's API under /api/daily/
+// over D1, the telemetry route /api/t over Workers Analytics Engine and
+// the private dashboard /admin (docs/online-goals.md, phases 1 to 3).
+// With this file present, wrangler skips its framework auto-detection
+// (which would demand Vite >= 6) and just ships.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sudokui",
@@ -26,7 +27,7 @@
     // the 404 page itself, before the Worker runs: a share link that
     // unfurled perfectly in a chat app opened as "Page not found". These
     // paths go to the Worker first; everything else stays a free file
-    "run_worker_first": ["/p/*", "/nb/p/*", "/es/p/*", "/daily/*", "/nb/daily/*", "/es/daily/*", "/api/*"]
+    "run_worker_first": ["/p/*", "/nb/p/*", "/es/p/*", "/daily/*", "/nb/daily/*", "/es/daily/*", "/api/*", "/admin"]
   },
   // The shared daily's results (docs/online-goals.md, phase 2): two small
   // tables, created by `npx wrangler d1 migrations apply sudokui-db
@@ -34,5 +35,15 @@
   // 503 and the app says the global times are unavailable; play goes on.
   "d1_databases": [
     { "binding": "DB", "database_name": "sudokui-db", "database_id": "1957ccc7-7b13-45e3-92d4-f193a51d5e9a", "migrations_dir": "migrations" }
+  ],
+  // The plays counted (docs/online-goals.md, phase 3): the app's events
+  // and the share pages' landings go to this Workers Analytics Engine
+  // dataset (worker/telemetry.ts), never to D1. The dataset needs no
+  // creating: it appears with the first point written. The dashboard,
+  // /admin (worker/admin.ts), reads it back through the SQL API with two
+  // secrets set by hand, ADMIN_ACCOUNT_ID and ADMIN_TOKEN, and sits behind
+  // Cloudflare Access (docs/connect-the-analytics.md).
+  "analytics_engine_datasets": [
+    { "binding": "EVENTS", "dataset": "sudokui_events" }
   ]
 }

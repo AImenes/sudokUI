@@ -1567,6 +1567,19 @@ kbd {
   color: var(--accent-text);
 }
 
+/* the win screen's one-time line about counting plays: its Settings is a
+   button that reads as a link, so the line stays one sentence */
+.count-note button {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--accent-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .footer-learn {
   font-size: 13px;
   margin-bottom: 6px;
