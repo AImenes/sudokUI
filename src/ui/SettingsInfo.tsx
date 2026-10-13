@@ -156,7 +156,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <Toggle
         label={t('Highlight cells with two candidates')}
         hint={t(
-          'Draws a dashed ring in every cell whose pencil marks leave exactly two possibilities, where wings, chains and remote pairs begin. Only while your marks are complete: auto candidates, or candidates you have declared complete. A view of your own marks, never a look at the solution, so it does not count as help'
+          'Draws a dashed ring in every cell whose pencil marks leave exactly two possibilities, in the two digits’ colours, so cells holding the same pair match from across the board: where wings, chains and remote pairs begin. Only while your marks are complete: auto candidates, or candidates you have declared complete. A view of your own marks, never a look at the solution, so it does not count as help'
         )}
         value={s.highlightBivalue}
         onChange={(v) => useGame.getState().setBivalueHighlight(v)}
