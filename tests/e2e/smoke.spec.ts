@@ -974,6 +974,127 @@ test.describe('positions as text', () => {
   });
 });
 
+test.describe('counting plays', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  /** every empty cell gets its digit; the clock ticks once before the last */
+  async function solveBoard(page: Page, puzzle: string) {
+    const solution = gridToString(solve(parseGrid(puzzle)!)!);
+    const empties = [...puzzle].map((ch, i) => (ch === '.' ? i : -1)).filter((i) => i >= 0);
+    for (const cell of empties) {
+      if (cell === empties[empties.length - 1]) await page.waitForTimeout(1100);
+      const c = await cellBox(page, cell);
+      await page.mouse.click(c.x, c.y);
+      await page.keyboard.press(`Digit${solution[cell]}`);
+    }
+    await expect(page.getByRole('dialog', { name: 'Puzzle solved' })).toBeVisible();
+  }
+  type Line = Record<string, unknown> & { event: string };
+
+  test('a completed game sends one beacon, with nothing kept on the device', async ({ page }) => {
+    const batches: Line[][] = [];
+    await page.route('**/api/t', async (route) => {
+      batches.push(JSON.parse(route.request().postData() ?? '[]'));
+      await route.fulfill({ status: 204 });
+    });
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    await page.goto(`/p/${EASY}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    // the start went as the game opened
+    await expect.poll(() => batches.flat().filter((e) => e.event === 'started').length).toBe(1);
+    await solveBoard(page, EASY);
+    await expect.poll(() => batches.flat().filter((e) => e.event === 'completed').length).toBe(1);
+    const completed = batches.flat().find((e) => e.event === 'completed')!;
+    expect(completed).toEqual({
+      event: 'completed',
+      band: expect.stringMatching(/^(Beginner|Easy|Medium|Tricky|Hard|Unfair|Extreme|Nightmare)$/),
+      bucket: 0,
+      standalone: false,
+      version: expect.stringMatching(/^\d+\.\d+\.\d+/),
+      source: 'tab'
+    });
+    // one beacon for the solve, and nothing on the device for it
+    expect(batches.filter((b) => b.some((e) => e.event === 'completed'))).toHaveLength(1);
+    expect(await page.evaluate(() => localStorage.getItem('sudokui-telemetry-v1'))).toBeNull();
+    // the win screen points at the switch, this first time
+    const dialog = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(dialog).toContainText('Plays are counted without identifying anyone');
+    await expect(dialog.getByRole('link', { name: 'What is sent' })).toHaveAttribute('href', '/privacy/');
+    await dialog.getByRole('button', { name: 'Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    await expect(settings.getByRole('switch', { name: 'Help count plays, including offline ones' })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  test('offline with the switch off, nothing is sent and nothing is kept', async ({ page, context }) => {
+    const attempts: string[] = [];
+    page.on('request', (r) => {
+      if (r.url().endsWith('/api/t')) attempts.push(r.method());
+    });
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    await page.goto(`/p/${EASY}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect.poll(() => attempts.length).toBe(1);
+    await context.setOffline(true);
+    await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(false);
+    await solveBoard(page, EASY);
+    await page.waitForTimeout(1500);
+    expect(attempts).toHaveLength(1);
+    expect(await page.evaluate(() => localStorage.getItem('sudokui-telemetry-v1'))).toBeNull();
+    await context.setOffline(false);
+  });
+
+  test('with the switch on, an offline solve is kept and sent when the connection returns', async ({ page, context }) => {
+    const batches: Line[][] = [];
+    await page.route('**/api/t', async (route) => {
+      batches.push(JSON.parse(route.request().postData() ?? '[]'));
+      await route.fulfill({ status: 204 });
+    });
+    await page.addInitScript(() => {
+      localStorage.setItem('sudokui-welcomed', '1');
+      localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { countPlays: true, countPlaysAsked: true }, version: 0 }));
+    });
+    await page.goto(`/p/${EASY}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect.poll(() => batches.flat().filter((e) => e.event === 'started').length).toBe(1);
+    expect(batches.flat()[0]).toMatchObject({ event: 'started', optin: true, returning: false });
+    await context.setOffline(true);
+    await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(false);
+    await solveBoard(page, EASY);
+    // kept on the device, marked as made offline
+    const kept = await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-telemetry-v1') ?? 'null'));
+    expect(kept.queue).toHaveLength(1);
+    expect(kept.queue[0]).toMatchObject({ event: 'completed', offline: true, optin: true, returning: false });
+    expect(kept.firstSeen).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(batches.flat().filter((e) => e.event === 'completed')).toHaveLength(0);
+    // and sent when the connection returns
+    await context.setOffline(false);
+    await expect.poll(() => batches.flat().filter((e) => e.event === 'completed').length).toBe(1);
+    expect(batches.flat().find((e) => e.event === 'completed')).toMatchObject({ offline: true, optin: true });
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-telemetry-v1') ?? 'null')?.queue?.length)).toBe(0);
+    // the switch off takes the rest with it
+    await page.getByRole('dialog', { name: 'Puzzle solved' }).getByRole('button', { name: 'Admire the grid' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    await settings.getByRole('switch', { name: 'Help count plays, including offline ones' }).click();
+    expect(await page.evaluate(() => localStorage.getItem('sudokui-telemetry-v1'))).toBeNull();
+  });
+
+  test('the privacy page exists in three languages, and the footer links to it', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    await open(page);
+    await expect(page.locator('.app-footer a', { hasText: 'Privacy' })).toHaveAttribute('href', '/privacy/');
+    for (const [path, h1] of [
+      ['/privacy/', 'What sudokUI sends, and what it keeps'],
+      ['/nb/privacy/', 'Hva sudokUI sender, og hva appen beholder'],
+      ['/es/privacy/', 'Qué envía sudokUI y qué conserva']
+    ]) {
+      const response = await page.goto(path);
+      expect(response?.status(), path).toBe(200);
+      await expect(page.locator('h1')).toHaveText(h1);
+    }
+  });
+});
+
 test.describe('a link from another site', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 

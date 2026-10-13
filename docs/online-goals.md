@@ -8,10 +8,11 @@ It is written to be pasted into a prompt as context, so it states the
 current code, the decisions, the budgets and the open questions in one
 place. It is not translated.
 
-Status: phases 1 and 2 are built, October 2026 (share links that preview;
-the shared daily with global times); phases 3 and 4 are decided and not
-built. Dates and limits were checked in October 2026 and must be
-re-checked before each phase ships.
+Status: phases 1, 2 and 3 are built, October 2026 (share links that
+preview; the shared daily with global times; the plays counted, with the
+opt-in and the private dashboard); phase 4 is decided and not built.
+Dates and limits were checked in October 2026 and must be re-checked
+before each phase ships.
 
 ## The one-paragraph version
 
@@ -114,6 +115,21 @@ Facts a prompt can rely on, with the files that hold them:
   (`/es/`) as well as English. Any new route or share text must go through
   the same `t()` templates and language roots as the rest of the app, and
   share pages carry the language of the sender.
+- **The plays are counted, ID-less.** `src/state/telemetry.ts` sends a
+  `started` and a `completed` line per game while online, by
+  `sendBeacon` with `fetch` keepalive behind it, to `POST /api/t`
+  (`worker/telemetry.ts`), which checks each line against a closed list
+  and writes it to the Workers Analytics Engine dataset `sudokui_events`
+  (`wrangler.jsonc`, binding `EVENTS`). The share route counts a
+  `landing` point for a person arriving from outside the site. The
+  Settings switch `countPlays` (`src/state/settings.ts`) is the one
+  opt-in: on, the app keeps offline lines and the day the switch went on
+  in `localStorage` (`sudokui-telemetry-v1`) and sends them later; off,
+  nothing is stored. `/privacy/` (`src/content/privacy.ts`, built like
+  the landing pages) says exactly what is sent, in three languages.
+  `/admin` (`worker/admin.ts`) renders the metrics from the SQL API with
+  two Worker secrets, behind Cloudflare Access
+  ([connect-the-analytics.md](connect-the-analytics.md)).
 
 ## Status against the research (8 October 2026)
 
@@ -124,7 +140,7 @@ recommended a v1 of three. Where each one stands, in the research's order:
 |---|---|---|---|
 | 1 | Daily + global stats + share card | **Built** (phase 2). One published puzzle per local day, D1 histogram of unassisted solves, the win screen's panel, the text share line; the tables were created by hand in October 2026 | `src/content/dailies.ts`, `worker/daily.ts`, `src/state/dailyStats.ts`, `migrations/` |
 | 2 | Path-based share links with OG previews (`/p/…`, `/daily/…`) | **Built** (phase 1), with the "challenge a friend" time (`?vs=`) from the research's note h | `src/content/share.ts`, `worker/index.ts`, `public/og/` |
-| 3 | ID-less telemetry to WAE, opt-in offline counter, private `/admin` | **Not built.** Phase 3; the research asked for it to ship with rank 1, and it is the next piece. Nothing is measured yet | — |
+| 3 | ID-less telemetry to WAE, opt-in offline counter, private `/admin` | **Built** (phase 3). Two lines per game while online, nothing stored by default; the opt-in keeps offline lines; landings counted from the share route; the dashboard reads WAE; the secrets and Access are hand steps | `src/state/telemetry.ts`, `worker/telemetry.ts`, `worker/admin.ts`, `src/content/privacy.ts` |
 | 4 | Daily archive pages | **Not built.** Phase 4, after data. `/daily/<date>` today is the app with a preview, `noindex`, not an indexable page | — |
 | 5 | Crowd-calibrated solve times per band | **Not built.** Phase 4. The daily results that would feed it are being collected from the first accepted result on | `src/content/solveTimes.ts` keeps the model |
 | 6 | Anonymous daily leaderboard | **Not built**, by decision: the percentile on the win screen and in the share line carries the competitive pull | — |
@@ -137,7 +153,8 @@ remains only as a fallback for a day outside the published list); the
 share card is a text line, no emoji grid, and the optional technique
 emoji row is still open; the RSS feed and the "daily per band" pick are
 not built; no launch moment has been made yet, which the research tied
-to rank 3 being in place. Two things differ from the research's sketch:
+to rank 3 being in place, and rank 3 now is. Two things differ from the
+research's sketch:
 the histogram's last bucket takes two hours and up, so a day is at most
 481 rows, and a result is accepted up to a week late so an offline retry
 on the next open counts. Everything under "Do not build" still holds.
@@ -298,8 +315,8 @@ Built, October 2026, with these decisions:
   ([deployment.md](deployment.md)); until the tables exist the routes
   answer 503 and the win screen says the global times are unavailable.
   It was applied to the production database in October 2026.
-- Phase 3 (telemetry) has not shipped with it, against this document's
-  own advice; it is the next piece.
+- Phase 3 (telemetry) did not ship with it, against this document's own
+  advice; it followed a week later.
 
 ### Phase 3: counting plays, including offline ones
 
@@ -347,6 +364,57 @@ secret, rendering a dozen numbers and a thirty-day sparkline.
    no internal referrer.
 5. New against returning, from the opted-in cohort only.
 6. Search clicks from Search Console for archive and learn pages.
+
+Built, October 2026, with these decisions:
+
+- **Two lines per game, by default, while online.** `started` when a
+  game begins (not a practice puzzle, which starts part-way through, and
+  not a restart of the puzzle in play) and `completed` when it is solved,
+  each with the band, the time in the daily's 15-second buckets (0 for a
+  start), whether `display-mode: standalone` matched, the app's version
+  and `pwa` or `tab`. The Worker adds the country from `request.cf` and
+  nothing else: no address, no header, no token. Offline with the switch
+  off, a line is dropped and nothing is kept.
+- **The opt-in adds three flags and stores two things.** With "Help
+  count plays, including offline ones" on, a line carries `optin`, an
+  offline line is kept and sent later with `offline`, and `returning`
+  says whether the device had played on an earlier day than the day the
+  switch went on; the queue and that day are the whole of what is stored
+  (`localStorage`, `sudokui-telemetry-v1`), and both go the moment the
+  switch goes off. No install ID, as decided. The win dialog points at
+  the switch once, with a link to the privacy page; no banner.
+- **One point per distinct line, with a count.** WAE takes at most 25
+  `writeDataPoint` calls per invocation, so identical lines in a batch
+  fold into one point with a count (`double2`), the app sends at most 25
+  lines per request, and the route reads up to 250 and keeps a foreign
+  batch to its first 25 points. Index: the event; blobs: band, source,
+  version, country; doubles: bucket, count, standalone, offline, optin,
+  returning. Every query multiplies by `_sample_interval`.
+- **A landing is a person.** The share route writes a `landing` point
+  (band, `p` or `daily` in the source slot) when the request is a GET
+  navigation with no referrer from the site and a browser's user agent
+  that is not a known crawler or a chat app's preview fetcher. A HEAD,
+  an unfurl and a click from inside the app count nothing.
+- **The dashboard is the plan's list.** Twelve numbers for the last
+  seven full days (completed live, yesterday's, offline reported,
+  offline estimated, the total estimate, starts, completion rate,
+  installed share, landings yesterday and over the week, new and
+  returning among opted-in starts), a thirty-day sparkline of completed
+  games and a table of every day, in plain HTML without a script. The
+  offline estimate is everyone else's live solves times the opted-in
+  cohort's offline-to-online ratio, labelled an estimate and "—" until
+  the cohort exists. The sixth metric stays in Search Console.
+- **404 until it is yours.** `/admin` renders only with both secrets set
+  and the `Cf-Access-Jwt-Assertion` header that Cloudflare Access adds;
+  the header is a latch (not verified), Access is the lock. A failing API
+  answers 502 with what it said, never the secrets.
+- **The privacy page** is `/privacy/`, `/nb/privacy/`, `/es/privacy/`,
+  built with the landing pages, linked from the app's footer, from every
+  static page's footer and from the Settings switch. It names the two
+  lines, the bucket, the country, what the switch adds, the daily's
+  token, what a share link carries, and what is never collected.
+- **Hand steps**, in [connect-the-analytics.md](connect-the-analytics.md):
+  the WAE billing status, the two secrets, Access on `/admin`.
 
 ### Phase 4, after four to eight weeks of data
 
@@ -416,7 +484,8 @@ Operational rules that follow:
 - Stats return 503 past the cap; the UI shows "stats unavailable"; play is
   unaffected.
 - Re-check the WAE billing status on the account before phase 3; one
-  preview copy of the pricing page said billing had not yet started.
+  preview copy of the pricing page said billing had not yet started. The
+  check is step 1 of [connect-the-analytics.md](connect-the-analytics.md).
 
 ## Norwegian law, in brief (not legal advice)
 
@@ -452,7 +521,8 @@ questions and can be asked directly.
   behind a setting.
 - How often to extend `dailies.json`, and whether to shorten the published
   horizon if spoilers turn out to matter.
-- What the privacy page says, in all three languages.
+- Whether the `/admin` latch should verify the Access token (JWKS from
+  the team domain) rather than only require its header.
 
 ## Evidence this rests on
 

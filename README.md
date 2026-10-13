@@ -341,9 +341,11 @@ Toward the best open-source sudoku tool anywhere:
 - **Teacher / annotation mode** — arrows, shapes and freehand drawing over
   the board for streams and classroom use
 - **Statistics & streaks** — local solve history, per-technique mastery
-  tracking; counting plays without identifying anyone, and daily archive
-  pages, next (see [docs/online-goals.md](docs/online-goals.md), phases 3
-  and 4); never accounts
+  tracking; plays are counted without identifying anyone (two anonymous
+  lines per game, an opt-in for offline ones, everything on
+  [sudokui.app/privacy](https://sudokui.app/privacy/)); daily archive
+  pages next (see [docs/online-goals.md](docs/online-goals.md), phase 4);
+  never accounts
 - **Curated library** — classic named puzzles (Escargot, Golden Nugget…) and
   a daily puzzle per difficulty band, next to today's shared daily
 - **Custom solve-order editor** — reorder/disable techniques and see how

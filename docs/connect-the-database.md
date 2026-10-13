@@ -141,7 +141,8 @@ thousands of players a day stay far below it).
 ## What this does not do
 
 It does not count plays, visitors or shares: that is phase 3 in
-[online-goals.md](online-goals.md), not yet built. It does not store
+[online-goals.md](online-goals.md), with its own hand steps in
+[connect-the-analytics.md](connect-the-analytics.md). It does not store
 anything about a player beyond the time they chose to send. And it does
 not need to be repeated: future deploys keep using the same tables, and
 a future migration file (`migrations/0002_….sql`) is applied with the

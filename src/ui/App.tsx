@@ -40,7 +40,8 @@ import { techFromParam } from '../content/slugs';
 import { parseShareUrl, sharePath, clockOf } from '../content/share';
 import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, parseDailyUrl, dailyPath } from '../content/dailies';
 import { useDailyStats } from '../state/dailyStats';
-import { RATING_URL } from '../content/staticRoutes';
+import { useTelemetry } from '../state/telemetry';
+import { RATING_URL, PRIVACY_URL } from '../content/staticRoutes';
 
 /** the name, the same in every language: "sudok" and a coloured "UI" */
 const BRAND = ['sudok', 'UI'] as const;
@@ -417,6 +418,24 @@ export default function App() {
     flush();
     window.addEventListener('online', flush);
     return () => window.removeEventListener('online', flush);
+  }, []);
+
+  // the plays counted (src/state/telemetry.ts): what waits goes on the
+  // open, when the app is hidden or left, and when the connection comes back
+  useEffect(() => {
+    const flush = () => void useTelemetry.getState().flush();
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    flush();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('online', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+      window.removeEventListener('online', flush);
+    };
   }, []);
 
   // toasts fade after a few seconds
@@ -855,6 +874,9 @@ export default function App() {
               {t('Open source on GitHub')}
             </a>
             <span> · {t('feedback welcome')}</span>
+            <span aria-hidden="true"> · </span>
+            {/* what the app sends, exactly: a static page in the app's language */}
+            <a href={`${langRoot(t.lang)}${PRIVACY_URL.slice(1)}`}>{t('Privacy')}</a>
             <span className="dedication">{t('for thth ♥')}</span>
           </footer>
         </aside>
@@ -1026,6 +1048,10 @@ export default function App() {
               : undefined
           }
           onClose={() => setVictoryDismissed(true)}
+          onSettings={() => {
+            setVictoryDismissed(true);
+            setDialog('settings');
+          }}
           onProgress={() => {
             setVictoryDismissed(true);
             setDialog('progress');

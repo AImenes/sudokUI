@@ -3,6 +3,9 @@
 // installed app would answer them with its own shell. Every one of them
 // also exists in Norwegian and Spanish, under /nb/ and /es/, which are
 // themselves the app (src/content/home.ts) and so are not matched here.
-export const STATIC_ROUTES = /^\/(?:(?:nb|es)\/)?(learn|daily-sudoku|sudoku-solver|sudoku-difficulty-rating|hodoku|how-the-best-solve)(\/|$)/;
+export const STATIC_ROUTES = /^\/(?:(?:nb|es)\/)?(learn|daily-sudoku|sudoku-solver|sudoku-difficulty-rating|hodoku|how-the-best-solve|privacy)(\/|$)/;
 
 export const RATING_URL = '/sudoku-difficulty-rating/';
+
+/** what the app sends, exactly, in the three languages (src/content/privacy.ts) */
+export const PRIVACY_URL = '/privacy/';

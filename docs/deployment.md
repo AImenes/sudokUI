@@ -2,8 +2,10 @@
 
 sudokUI is a static PWA with one small Worker in front of it. The engine,
 the generator and the hints all run in the visitor's browser; the Worker
-renders only the share pages, `/p/<puzzle>` ([online-goals.md](online-goals.md),
-phase 1). The app deploys to Cloudflare's edge network directly from
+renders the share pages, `/p/<puzzle>` and `/daily/<date>`, and answers
+the daily's API, the telemetry route and the private dashboard
+([online-goals.md](online-goals.md), phases 1 to 3). The app deploys to
+Cloudflare's edge network directly from
 GitHub — free, globally cached, and for the static part effectively
 unlimited in scale. (An earlier plan used a Hetzner VPS; that is
 unnecessary.)
@@ -111,3 +113,26 @@ For local work, `npx wrangler dev` needs the local tables too
 (`--local` on the migration command) and, on Windows, `npm approve-scripts
 workerd` once. The dev and preview servers do not need any of it: they
 answer the API over a store in memory (`vite.config.ts`).
+
+## The analytics (phase 3: counting plays)
+
+The app's `started` and `completed` lines and the share pages' landings
+go to a Workers Analytics Engine dataset, `sudokui_events`, bound as
+`EVENTS` in [`wrangler.jsonc`](../wrangler.jsonc) and written by the same
+Worker (`worker/telemetry.ts`, `POST /api/t`). The dataset needs no
+creating. The dashboard, `/admin` (`worker/admin.ts`), reads it through
+the SQL API with two secrets set by hand, and sits behind Cloudflare
+Access, also set by hand:
+
+```bash
+npx wrangler secret put ADMIN_ACCOUNT_ID
+npx wrangler secret put ADMIN_TOKEN
+```
+
+Until both exist and Access is in front of `/admin`, the page is a 404;
+play and counting are unaffected. The steps, and how to see the first
+numbers, are in [connect-the-analytics.md](connect-the-analytics.md).
+`npx wrangler deploy --dry-run` must list `env.EVENTS (sudokui_events)`
+among the bindings. The dev and preview servers answer `/api/t` over a
+dataset in memory (`vite.config.ts`), so the browser smoke test's beacons
+are answered and nothing is logged.

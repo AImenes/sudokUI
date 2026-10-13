@@ -27,6 +27,7 @@ import { puzzleFromLink } from '../content/importLinks';
 import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
 import { fasterThan, dailyNumber, localDateKey, LATE_DAYS } from '../content/dailies';
 import { useDailyStats, playedFrom, SubmitOutcome } from '../state/dailyStats';
+import { PRIVACY_URL } from '../content/staticRoutes';
 import { HubTabs } from './HubTabs';
 import { techniquesByFamily } from '../content/categories';
 import { useLearnLocale } from './useLearnLocale';
@@ -1052,7 +1053,8 @@ export function VictoryDialog({
   onNewGame,
   onClose,
   onAnother,
-  onProgress
+  onProgress,
+  onSettings
 }: {
   onNewGame: () => void;
   onClose: () => void;
@@ -1060,6 +1062,8 @@ export function VictoryDialog({
   onAnother?: () => void;
   /** open the path and the record */
   onProgress?: () => void;
+  /** open Settings, where the plays-counting switch is */
+  onSettings?: () => void;
 }) {
   const info = useGame((s) => s.info);
   const assisted = useGame((s) => s.assisted);
@@ -1090,6 +1094,13 @@ export function VictoryDialog({
         if (!s) setStatsFailed(true);
       });
   }, [dailyNo]);
+  // the plays counted (src/state/telemetry.ts): one line, the first time
+  // only, pointing at the switch in Settings and at what is sent
+  const countPlays = useSettings((s) => s.countPlays);
+  const [askCount] = useState(() => !useSettings.getState().countPlays && !useSettings.getState().countPlaysAsked);
+  useEffect(() => {
+    if (askCount) useSettings.getState().set({ countPlaysAsked: true });
+  }, [askCount]);
   if (!info) return null;
   const secs = Math.floor(elapsedMs() / 1000);
   const mm = Math.floor(secs / 60);
@@ -1283,6 +1294,26 @@ export function VictoryDialog({
               <button onClick={sendDaily}>🌍 {t('Send my time and compare')}</button>
             )}
           </div>
+        )}
+        {askCount && !countPlays && (
+          <p className="dialog-note count-note">
+            {rich(
+              t('Plays are counted without identifying anyone, online only. To count yours offline too, turn on “{setting}” in {settings}.'),
+              {
+                setting: t('Help count plays, including offline ones'),
+                settings: onSettings ? (
+                  <button type="button" onClick={onSettings}>
+                    {t('Settings')}
+                  </button>
+                ) : (
+                  t('Settings')
+                )
+              }
+            )}{' '}
+            <a href={`${t.lang === 'en' ? '' : `/${t.lang}`}${PRIVACY_URL}`} target="_blank" rel="noreferrer">
+              {t('What is sent')}
+            </a>
+          </p>
         )}
         <div className="hint-actions">
           {info.practiceTech && onAnother && (

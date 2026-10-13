@@ -13,7 +13,13 @@
  *   from the home page;
  * - the daily's API, /api/daily/<n>/stats and /api/daily/<n>/result
  *   (worker/daily.ts), over D1 when it is bound and its tables exist, and
- *   answering 503 otherwise, so play is never affected.
+ *   answering 503 otherwise, so play is never affected;
+ * - the telemetry route, POST /api/t (worker/telemetry.ts): the app's
+ *   counts of games started and solved, written to Workers Analytics
+ *   Engine; a share address counts a landing there too when a person
+ *   arrives from outside the site;
+ * - the private dashboard, /admin (worker/admin.ts), behind Cloudflare
+ *   Access, reading those counts back; a 404 until its secrets are set.
  *
  * Everything else goes back to the assets, which answer with the 404
  * page of the nearest language.
@@ -21,18 +27,28 @@
  * Budget (docs/online-goals.md): one invocation per share landing, one
  * asset fetch and a string fill; one invocation and one bounded D1 read
  * per statistics request (edge-cached a minute), two writes and one read
- * per submitted result. No identifier, no cookie, nothing stored that
- * names a player.
+ * per submitted result; one invocation and at most 25 data points per
+ * telemetry batch. No identifier, no cookie, nothing stored that names a
+ * player.
  */
 import { shareParamsOf, renderSharePage } from '../src/content/share';
 import dailies from '../src/content/dailies.json';
 import type { Daily } from '../src/content/dailies';
 import { handleDailyApi, d1Store, D1Like } from './daily';
+import { handleTelemetry, countLanding, AnalyticsEngineLike } from './telemetry';
+import { handleAdmin, ADMIN_PATH } from './admin';
 
-/** what wrangler.jsonc binds: the static assets in dist/, and the database once it is bound */
+/**
+ * What wrangler.jsonc binds: the static assets in dist/, the database, the
+ * analytics dataset; and the dashboard's two secrets, set by hand
+ * (docs/connect-the-analytics.md)
+ */
 export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
   DB?: D1Like;
+  EVENTS?: AnalyticsEngineLike;
+  ADMIN_ACCOUNT_ID?: string;
+  ADMIN_TOKEN?: string;
 }
 
 /** what the runtime hands a fetch handler besides the request and the bindings */
@@ -62,8 +78,14 @@ export async function handleRequest(request: Request, env: Env, ctx?: Context): 
     waitUntil: ctx ? (p) => ctx.waitUntil(p) : undefined
   });
   if (api) return api;
+  const telemetry = await handleTelemetry(request, env.EVENTS ?? null);
+  if (telemetry) return telemetry;
 
   const url = new URL(request.url);
+  if (url.pathname === ADMIN_PATH || url.pathname === ADMIN_PATH + '/') {
+    // without its secrets, or outside Access, the dashboard is an unknown path
+    return (await handleAdmin(request, env)) ?? env.ASSETS.fetch(request);
+  }
   const share = request.method === 'GET' || request.method === 'HEAD' ? shareParamsOf(url, dailies as Daily[]) : null;
   if (!share) return env.ASSETS.fetch(request);
 
@@ -72,6 +94,8 @@ export async function handleRequest(request: Request, env: Env, ctx?: Context): 
   // (a 404) is still honest, and the app's hash links keep working
   if (!template.ok) return env.ASSETS.fetch(request);
 
+  // a person arriving from outside the site is a landing, counted once
+  countLanding(env.EVENTS, request, share);
   const html = renderSharePage(await template.text(), share);
   return new Response(request.method === 'HEAD' ? null : html, {
     status: 200,
