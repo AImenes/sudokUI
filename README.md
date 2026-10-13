@@ -32,9 +32,11 @@ natively for iOS and Android via Capacitor.
   key press away when stuck, a ring around every cell left with exactly two
   candidates in the pair's two colours, so the same pair matches from
   across the board, where wings and chains begin
-- Import/export puzzles as 81-character strings or as the **pencil-mark
-  grid** the forums paste (its candidates come along as centre marks, and
-  Share copies the board back as one), copy any hint as a **step line** in
+- Import/export puzzles as 81-character strings, as **links from SudokuPad,
+  f-puzzles, Sudoku Exchange and sudoku.coach** (classic puzzles; a variant
+  is refused by what it carries), or as the **pencil-mark grid** the forums
+  paste (its candidates come along as centre marks, and Share copies the
+  board back as one), copy any hint as a **step line** in
   Eureka or HoDoKu notation (see [Text formats](#text-formats)), or **scan
   a photo** of a printed puzzle (camera or file; turned, tilted or mirrored
   is fine) and check the result on the board before playing (see
@@ -187,12 +189,20 @@ renaming a technique, is in [docs/search.md](docs/search.md).
 
 Positions and steps travel between players as text, so sudokUI reads and
 writes the formats the community, and HoDoKu, use
-(`src/content/textGrid.ts`, `src/content/eureka.ts`).
+(`src/content/textGrid.ts`, `src/content/eureka.ts`,
+`src/content/importLinks.ts`).
 
 **Import reads**
 
 - the 81-character puzzle string, dots or zeros for empty cells, with
   whatever frame is drawn around it;
+- a link from SudokuPad (`sudokupad.app/scl…`, `/fpuzzles…` or `/scf…`; a
+  short id such as `sudokupad.app/6dP4FN27HB` needs SudokuPad's own lookup
+  and is refused), f-puzzles (`f-puzzles.com/?load=…`), Sudoku Exchange
+  (`sudokuexchange.com/play/?s=…`, long or shortened) or sudoku.coach
+  (`sudoku.coach/en/play/…`), and the app's own `/p/` links, pasted on
+  their own or inside a sentence; a variant puzzle (cages, thermometers,
+  extra rules) is refused with what it carries;
 - the pencil-mark grid: nine rows of nine cells, a placed digit or the
   cell's candidates in each, with or without box lines, drawn with
   `.`, `:`, `'` and `-` (HoDoKu and most forum posts) or `+` and `-`
@@ -350,4 +360,6 @@ The rating model (per-technique scores and difficulty bands) and much of the
 technique semantics follow **HoDoKu** by Bernhard Hobiger; several newer
 strategies follow the definitions documented at **sudokuwiki.org**. sudokUI
 is an independent implementation, released under the **GPL-3.0** license
-(see [LICENSE](LICENSE)).
+(see [LICENSE](LICENSE)). The link import decodes f-puzzles and SudokuPad
+payloads with a port of the base64 flavour of **lz-string** by pieroxy
+(`src/content/lzString.ts`; MIT licence, copyright 2013 pieroxy).

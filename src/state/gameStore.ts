@@ -346,6 +346,13 @@ interface GameStore {
    * puzzle was refused, or null once it is on the board.
    */
   importText: (position: TextPosition) => string | null;
+  /**
+   * A puzzle from a link or a string (src/content/importLinks.ts), checked
+   * and rated as every import is; when the site it came from is named, the
+   * notice says so. Returns why the puzzle was refused, or null once it is
+   * on the board.
+   */
+  importPuzzle: (puzzle: string, site?: string | null) => string | null;
   /** blank board the user types givens onto; the running game is backed up */
   startCustomEntry: () => void;
   cancelCustomEntry: () => void;
@@ -1592,6 +1599,17 @@ export const useGame = create<GameStore>()(
               : {})
           };
         });
+        return null;
+      },
+
+      importPuzzle: (puzzle, site) => {
+        const v = validatePuzzle(puzzle);
+        if (!v.ok) return v.reason;
+        get().startGame(puzzle, v.score, v.level);
+        if (site) {
+          const t = translator();
+          set({ notice: t('Imported from {site}, rated {score} ({level})', { site, score: v.score, level: t.level(v.level) }) });
+        }
         return null;
       },
 
