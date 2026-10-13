@@ -20,7 +20,13 @@
     // Worker hands it back here (answering it with the app shell would be
     // a "soft 404" to crawlers)
     "not_found_handling": "404-page",
-    "html_handling": "auto-trailing-slash"
+    "html_handling": "auto-trailing-slash",
+    // A browser's click is a navigation request (Sec-Fetch-Mode: navigate),
+    // and for those the asset hosting answers a path that is no file with
+    // the 404 page itself, before the Worker runs: a share link that
+    // unfurled perfectly in a chat app opened as "Page not found". These
+    // paths go to the Worker first; everything else stays a free file
+    "run_worker_first": ["/p/*", "/nb/p/*", "/es/p/*", "/daily/*", "/nb/daily/*", "/es/daily/*", "/api/*"]
   },
   // The shared daily's results (docs/online-goals.md, phase 2): two small
   // tables, created by `npx wrangler d1 migrations apply sudokui-db

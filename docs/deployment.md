@@ -45,6 +45,13 @@ push.
 - After a deploy: paste a `/p/` link into a chat app and watch the preview
   arrive; `curl -I https://sudokui.app/p/<81 chars>` answers 200 with
   `x-robots-tag: noindex`, and an unknown path still answers 404.
+- Then the same as a browser would ask for it:
+  `curl -I -H 'Sec-Fetch-Mode: navigate' https://sudokui.app/p/<81 chars>`
+  must answer 200 too. A click is a navigation request, and for those the
+  asset hosting serves the 404 page for any path that is no file *before*
+  the Worker runs, unless the path is listed under `run_worker_first` in
+  `wrangler.jsonc`. The first check alone passed for a week while every
+  real click on a share link opened "Page not found".
 
 The free plan allows 100,000 Worker requests a day; static files are not
 counted. Only share landings and unknown paths reach the Worker, so the
