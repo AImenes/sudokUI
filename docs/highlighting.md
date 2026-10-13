@@ -102,6 +102,23 @@ needs:
   Overlay, Chute Remote Pair, Extended Rectangle) keeps its drawing and
   names its colours.
 
+## The player's own highlights
+
+Beside what a hint draws, the board tints and rings things for the
+player, and none of it counts as help: it looks at the board and at the
+player's own marks, never at the solution. The row, column and box of the
+selected cell; every cell holding the selected digit, and its pencil
+occurrences; a digit that repeats within a house, in red; and, on request
+(Settings, or B), a dashed ring around every unsolved cell left with
+exactly two candidates, where XY-Wings, chains, remote pairs and unique
+rectangles begin and what a stuck player scans for. The ring is a pattern,
+not a colour: the player's own colouring, the grammar above, the accent of
+a tracked digit and the tints of peers and matches all mean something
+already. It shows only where the hints would read the marks
+(`src/state/bivalue.ts`): under auto candidates, or marks declared
+complete, and then the marks as the player wrote them; and it steps aside
+while a hint is drawn.
+
 ## The rules
 
 1. A technique's colours are never changed for taste. They change only

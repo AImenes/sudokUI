@@ -85,6 +85,9 @@ export function engineGrid(cells: CellState[]): Grid {
  */
 export type MarkContract = 'unknown' | 'exhaustive' | 'open';
 
+/** what the ring around bivalue cells says when the marks are notes */
+const NOTES_RING_NOTHING = msg('Cells with two candidates show only while your marks are complete; yours are notes for now. Fill candidates completes them');
+
 /** any pencil marks on empty cells? (the contract question is pointless
  *  on a bare board) */
 export function hasManualMarks(cells: CellState[]): boolean {
@@ -300,6 +303,9 @@ interface GameStore {
   markContract: MarkContract;
   /** the one-time contract question is being shown (set by requestHint) */
   contractPrompt: boolean;
+  /** what raised it: a hint goes on once it is answered, the ring around
+   *  bivalue cells simply shows */
+  contractFor: 'hint' | 'highlight';
   errors: number[];
   /** why each wrong digit found by check() is wrong */
   proofs: Proof[];
@@ -360,6 +366,10 @@ interface GameStore {
   requestHint: () => void;
   /** declare the marks' meaning without any follow-up action (Scan) */
   setMarkContract: (contract: 'exhaustive' | 'open') => void;
+  /** the ring around cells with two candidates (settings.highlightBivalue,
+   *  src/state/bivalue.ts): turned on over manual marks never declared, it
+   *  asks the contract question once; over notes it says why nothing shows */
+  setBivalueHighlight: (on: boolean) => void;
   /** answer the contract question and continue with the pending hint */
   answerContract: (contract: 'exhaustive' | 'open') => void;
   dismissContractPrompt: () => void;
@@ -447,6 +457,7 @@ export const useGame = create<GameStore>()(
       walkIndex: 0,
       markContract: 'unknown' as MarkContract,
       contractPrompt: false,
+      contractFor: 'hint' as const,
       errors: [],
       proofs: [],
       notice: null,
@@ -1132,7 +1143,7 @@ export const useGame = create<GameStore>()(
         // manual marks whose meaning was never declared: ask the one-time
         // contract question first (the answer re-enters this action)
         if (!s.autoCandidates && s.markContract === 'unknown' && hasManualMarks(s.cells)) {
-          set({ contractPrompt: true });
+          set({ contractPrompt: true, contractFor: 'hint' });
           return;
         }
         const sol = s.info.solution;
@@ -1184,13 +1195,38 @@ export const useGame = create<GameStore>()(
 
       setMarkContract: (contract) => set({ markContract: contract, contractPrompt: false }),
 
-      answerContract: (contract) => {
-        set({ markContract: contract, contractPrompt: false });
-        // the question was only ever raised on the way to a hint
-        get().requestHint();
+      setBivalueHighlight: (on) => {
+        useSettings.getState().set({ highlightBivalue: on });
+        const s = get();
+        if (!on) {
+          // turned off while its question was still open: the question goes too
+          if (s.contractPrompt && s.contractFor === 'highlight') set({ contractPrompt: false });
+          return;
+        }
+        // the ring reads the marks as the player wrote them: auto candidates
+        // speak for themselves, so does a board without marks, and a board
+        // still being typed in (custom entry) is no game yet
+        if (!s.info || s.autoCandidates || !hasManualMarks(s.cells)) return;
+        if (s.markContract === 'unknown') set({ contractPrompt: true, contractFor: 'highlight' });
+        else if (s.markContract === 'open') set({ notice: translator()(NOTES_RING_NOTHING) });
       },
 
-      dismissContractPrompt: () => set({ contractPrompt: false }),
+      answerContract: (contract) => {
+        const asked = get().contractFor;
+        set({ markContract: contract, contractPrompt: false });
+        // raised on the way to a hint, the hint goes on; raised by the ring
+        // around bivalue cells, the answer is all it needed, and "notes"
+        // means nothing will show, which the player should hear
+        if (asked === 'hint') get().requestHint();
+        else if (contract === 'open') set({ notice: translator()(NOTES_RING_NOTHING) });
+      },
+
+      // the ring's question closed unanswered is a "no": the setting goes
+      // off again rather than staying on with nothing to show
+      dismissContractPrompt: () => {
+        if (get().contractFor === 'highlight') useSettings.getState().set({ highlightBivalue: false });
+        set({ contractPrompt: false });
+      },
 
       revealHint: () => set({ hintStage: 'full' }),
 
