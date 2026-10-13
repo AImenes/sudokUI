@@ -96,7 +96,7 @@ test.describe('desktop, 1280 x 800', () => {
 
   test('B rings the cells with two candidates, once there are candidates to read', async ({ page }) => {
     await open(page);
-    const rings = page.locator('svg.board rect.bivalue');
+    const rings = page.locator('svg.board g.bivalue');
     // no marks and no auto candidates: nothing to ring, though the setting is on
     await page.keyboard.press('b');
     await expect(rings).toHaveCount(0);
@@ -107,6 +107,18 @@ test.describe('desktop, 1280 x 800', () => {
     const expected = Array.from({ length: 81 }, (_, i) => i).filter((i) => digitsOf(g.cands[i]).length === 2).length;
     expect(expected).toBeGreaterThan(0);
     await expect(rings).toHaveCount(expected);
+    // each ring names its pair, smaller digit first, and wears one colour per half
+    const pairsSeen = await rings.evaluateAll((els) =>
+      els.map((el) => ({
+        pair: el.getAttribute('data-pair'),
+        strokes: [...el.querySelectorAll('path')].map((p) => p.getAttribute('stroke'))
+      }))
+    );
+    for (const { pair, strokes } of pairsSeen) {
+      expect(pair).toMatch(/^[1-9][1-9]$/);
+      expect(pair![0] < pair![1]).toBe(true);
+      expect(strokes).toEqual([`var(--tint-${pair![0]}, var(--cand))`, `var(--tint-${pair![1]}, var(--cand))`]);
+    }
     // off again
     await page.keyboard.press('b');
     await expect(rings).toHaveCount(0);

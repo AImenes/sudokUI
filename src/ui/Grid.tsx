@@ -6,7 +6,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useGame, engineGrid, CellState } from '../state/gameStore';
 import { useSettings } from '../state/settings';
-import { bivalueCells } from '../state/bivalue';
+import { bivaluePairs } from '../state/bivalue';
 import { bit, digitsOf, PEERS, UNITS } from '../engine/board';
 import { ChainLink, CellDigit } from '../engine/steps';
 import { walkFrames, Part } from '../engine/hintFrames';
@@ -483,11 +483,15 @@ export function Grid() {
     () => (autoCandidates ? engineGrid(cells) : null),
     [cells, autoCandidates]
   );
-  // the cells left with exactly two candidates, ringed on request
-  // (Settings, or B): a view of the marks as the hints read them, and out
-  // of the way while a hint draws, so the drawing has the board to itself
+  // the cells left with exactly two candidates, each with its pair, ringed
+  // on request (Settings, or B): a view of the marks as the player wrote
+  // them, and out of the way while a hint draws, so the drawing has the
+  // board to itself
   const pairs = React.useMemo(
-    () => new Set(highlightBivalue && !showHint ? bivalueCells(cells, autoCandidates, markContract, canonical ?? undefined) : []),
+    () =>
+      highlightBivalue && !showHint
+        ? bivaluePairs(cells, autoCandidates, markContract, canonical ?? undefined)
+        : new Map<number, [number, number]>(),
     [highlightBivalue, showHint, cells, autoCandidates, markContract, canonical]
   );
 
@@ -1137,22 +1141,31 @@ export function Grid() {
                   opacity={0.9}
                 />
               )}
-              {/* a pattern, not a colour: every colour on the board means
-                  something already, and the ring must not be read as one */}
+              {/* a dashed ring in the pair's two colours, the digit tints,
+                  half each (the smaller digit on the left): cells holding
+                  the same pair wear the same two colours, so a remote pair
+                  or a W-Wing shows from across the board. A thin dashed
+                  stroke, so it is never read as a hint's colour or the
+                  player's own, which fill cells and ring candidates */}
               {pairs.has(i) && (!paused || won) && (
-                <rect
-                  className="bivalue"
-                  x={x + 7}
-                  y={y + 7}
-                  width={SIZE - 14}
-                  height={SIZE - 14}
-                  rx={9}
-                  fill="none"
-                  stroke="var(--cand)"
-                  strokeWidth={3.5}
-                  strokeDasharray="8 6"
-                  opacity={0.75}
-                />
+                <g className="bivalue" data-pair={pairs.get(i)!.join('')}>
+                  <path
+                    d={`M ${x + 50} ${y + 7} H ${x + 16} A 9 9 0 0 0 ${x + 7} ${y + 16} V ${y + 84} A 9 9 0 0 0 ${x + 16} ${y + 93} H ${x + 50}`}
+                    fill="none"
+                    stroke={`var(--tint-${pairs.get(i)![0]}, var(--cand))`}
+                    strokeWidth={3.5}
+                    strokeDasharray="8 6"
+                    opacity={0.85}
+                  />
+                  <path
+                    d={`M ${x + 50} ${y + 7} H ${x + 84} A 9 9 0 0 1 ${x + 93} ${y + 16} V ${y + 84} A 9 9 0 0 1 ${x + 84} ${y + 93} H ${x + 50}`}
+                    fill="none"
+                    stroke={`var(--tint-${pairs.get(i)![1]}, var(--cand))`}
+                    strokeWidth={3.5}
+                    strokeDasharray="8 6"
+                    opacity={0.85}
+                  />
+                </g>
               )}
               {isErr && (
                 <rect x={x} y={y} width={SIZE} height={SIZE} fill="var(--error-bg)" opacity={0.5} />

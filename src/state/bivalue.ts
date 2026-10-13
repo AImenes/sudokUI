@@ -9,22 +9,27 @@ import { engineGrid } from './gameStore';
 import type { CellState, MarkContract } from './gameStore';
 
 /**
- * The unsolved cells with exactly two candidates. Under auto candidates
- * they are the machine's, struck ones left out; under marks the player
- * declared complete (the exhaustive contract) they are the corner and
- * centre marks together, as the player wrote them; under notes, or marks
- * whose meaning was never declared, a cell with two marks is not a
- * bivalue cell, and nothing is. `grid` saves the engine's work when the
- * caller has it already.
+ * The unsolved cells with exactly two candidates, each with its pair,
+ * smaller digit first. Under auto candidates they are the machine's,
+ * struck ones left out; under marks the player declared complete (the
+ * exhaustive contract) they are the corner and centre marks together, as
+ * the player wrote them; under notes, or marks whose meaning was never
+ * declared, a cell with two marks is not a bivalue cell, and nothing is.
+ * `grid` saves the engine's work when the caller has it already.
  */
-export function bivalueCells(cells: CellState[], autoCandidates: boolean, contract: MarkContract, grid?: Grid): number[] {
-  if (!autoCandidates && contract !== 'exhaustive') return [];
+export function bivaluePairs(cells: CellState[], autoCandidates: boolean, contract: MarkContract, grid?: Grid): Map<number, [number, number]> {
+  const out = new Map<number, [number, number]>();
+  if (!autoCandidates && contract !== 'exhaustive') return out;
   const cands = autoCandidates ? (grid ?? engineGrid(cells)).cands : null;
-  const out: number[] = [];
   for (let i = 0; i < 81; i++) {
     if (cells[i].value) continue;
-    const mask = cands ? cands[i] : cells[i].corner | cells[i].center;
-    if (digitsOf(mask).length === 2) out.push(i);
+    const digits = digitsOf(cands ? cands[i] : cells[i].corner | cells[i].center);
+    if (digits.length === 2) out.set(i, [digits[0], digits[1]]);
   }
   return out;
+}
+
+/** the bivalue cells alone, in board order */
+export function bivalueCells(cells: CellState[], autoCandidates: boolean, contract: MarkContract, grid?: Grid): number[] {
+  return [...bivaluePairs(cells, autoCandidates, contract, grid).keys()];
 }

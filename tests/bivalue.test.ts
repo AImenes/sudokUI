@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { parseGrid, digitsOf, bit } from '../src/engine/board';
-import { bivalueCells } from '../src/state/bivalue';
+import { bivalueCells, bivaluePairs } from '../src/state/bivalue';
 import type { CellState } from '../src/state/gameStore';
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
@@ -19,6 +19,9 @@ describe('bivalue cells', () => {
     const expected = [...Array(81).keys()].filter((i) => !cells[i].value && digitsOf(g.cands[i]).length === 2);
     expect(expected.length).toBeGreaterThan(0);
     expect(bivalueCells(cells, true, 'unknown')).toEqual(expected);
+    // each with its pair, smaller digit first
+    const pairs = bivaluePairs(cells, true, 'unknown');
+    for (const i of expected) expect(pairs.get(i)).toEqual(digitsOf(g.cands[i]));
     // the engine's grid can be handed in, and gives the same answer
     expect(bivalueCells(cells, true, 'open', g)).toEqual(expected);
     // a struck candidate counts as gone: one digit left is no pair
@@ -37,6 +40,10 @@ describe('bivalue cells', () => {
     cells[b].center = bit(7);
     cells[c].corner = bit(3) | bit(4) | bit(5);
     expect(bivalueCells(cells, false, 'exhaustive')).toEqual([a, b]);
+    expect([...bivaluePairs(cells, false, 'exhaustive')]).toEqual([
+      [a, [1, 6]],
+      [b, [2, 7]]
+    ]);
     // notes, or marks never declared: two marks are not two candidates
     expect(bivalueCells(cells, false, 'open')).toEqual([]);
     expect(bivalueCells(cells, false, 'unknown')).toEqual([]);

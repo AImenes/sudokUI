@@ -111,10 +111,13 @@ selected cell; every cell holding the selected digit, and its pencil
 occurrences; a digit that repeats within a house, in red; and, on request
 (Settings, or B), a dashed ring around every unsolved cell left with
 exactly two candidates, where XY-Wings, chains, remote pairs and unique
-rectangles begin and what a stuck player scans for. The ring is a pattern,
-not a colour: the player's own colouring, the grammar above, the accent of
-a tracked digit and the tints of peers and matches all mean something
-already. It shows only where the hints would read the marks
+rectangles begin and what a stuck player scans for. The ring wears the
+two digits' own colours, the ones Digit tints uses, half each with the
+smaller digit on the left: every cell holding the same pair wears the
+same two colours, so a remote pair, a W-Wing or a unique rectangle shows
+from across the board. A thin dashed stroke is never read as the
+player's own colouring or a hint's colour, which fill cells and ring
+candidates. It shows only where the hints would read the marks
 (`src/state/bivalue.ts`): under auto candidates, or marks declared
 complete, and then the marks as the player wrote them; and it steps aside
 while a hint is drawn.
