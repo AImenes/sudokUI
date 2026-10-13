@@ -973,3 +973,24 @@ test.describe('positions as text', () => {
     expect(await copied(page)).toBe(text);
   });
 });
+
+test.describe('a link from another site', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test('a pasted Sudoku Exchange link opens its puzzle, and the notice names the site', async ({ page }) => {
+    // on one puzzle, the link of another, as Sudoku Exchange writes it: 81 digits, 0 for empty, and the band
+    await open(page, `#p=${HARD}`);
+    const link = `https://sudokuexchange.com/play/?s=${EASY.replace(/\./g, '0')}&d=1`;
+    await page.locator('.menu-row button', { hasText: 'Import' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Import a puzzle' });
+    await dialog.locator('textarea').fill(link);
+    await dialog.getByRole('button', { name: 'Load puzzle' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.locator('.toast, [role=status]').filter({ hasText: 'Imported from Sudoku Exchange' })).toBeVisible();
+    // the board is that puzzle: r1c3 holds its given 3, and the address names it
+    const c = await cellBox(page, 2);
+    await page.mouse.click(c.x, c.y);
+    await expect(page.locator('#board-status')).toHaveText('Row 1, column 3: 3, given.');
+    await expect.poll(() => page.evaluate(() => location.pathname)).toBe(`/p/${EASY}`);
+  });
+});

@@ -26,12 +26,12 @@ production build and its tests (770 unit tests, 32 browser tests).
 | Engine and correctness | 9 | 9 | 9 | 77 verified techniques, a soundness harness, per-position proofs, every unaided move justified and every wrong digit proved wrong. 15 techniques still have no worked example and four practice targets can never be served. |
 | Technique highlighter | 5 | 8.5 | 8.5 | Every technique names its colours and draws its logic: bands for houses, arrows for inference with a start and an order, ties for conjugate pairs, forcing chains as their line of forced singles, Medusa's ties straight and its arrows arriving square, and a walk through any drawing one idea at a time. The Forcing Net is not drawn, and the hand-made techniques (Exocet, Pattern Overlay) keep plainer drawings. |
 | Learning product | 6 | 8.5 | 8.5 | A teacher now, not only a textbook: every move credited, "you found it" in practice, why-not on every mistake with the proof shown, the game summed up, mastery in the guide, "learn next", and Learn as one place under the board that lands on your path (what to learn next), with the practice list and the theory a tab away. The chain trainer: build a chain on the board, candidate by candidate, and the engine checks each link and says what it proves. The hints and the guide now read Norwegian and Spanish too. Still no speed drills. |
-| Playing experience | 6.5 | 8.5 | 9 | Everything in September, and now: a touch that highlights in the frame it lands and settles by movement, so a thumb never waits and a swipe never selects; one daily for the whole world with everyone's times to compare against; a win shared as a challenge with the time to beat. No SudokuPad or f-puzzles link import yet, and no campaign-shaped way in for a newcomer. |
+| Playing experience | 6.5 | 8.5 | 9 | Everything in September, and now: a touch that highlights in the frame it lands and settles by movement, so a thumb never waits and a swipe never selects; one daily for the whole world with everyone's times to compare against; a win shared as a challenge with the time to beat. Links from SudokuPad, f-puzzles, Sudoku Exchange and sudoku.coach now open their puzzle here; no campaign-shaped way in for a newcomer yet. |
 | UX design | 7 | 8 | 8.5 | One visual grammar from the board to the guide to the social cards, dark and light, 44 px targets, every dialog with a way out, three languages that say the same thing. The win screen is getting long (verdict, summary, record, streak, challenge, the day's times), and the New game dialog still reads as a list of bands rather than a choice. |
 | Learnability | 6 | 8 | 8 | A newcomer is met by the welcome, number-first entry, hints that teach and a path that says what to learn next; the daily is a reason to come back and the share page explains the puzzle before the app opens. Still no campaign or guided first week, and the techniques' names are a wall until the guide is opened. |
 | Easiness (how little the app asks) | 7 | 8.5 | 9 | No account, no sign-in, no banner, nothing to configure: open a link and play, offline too. Sending a daily time is one tap and a random token. The only friction left is the first explanation of modes and candidates. |
 | Engineering | 6 | 7.5 | 8 | Everything in September, and now a Worker with code in front of the static site, D1 with every query on a key and a bounded histogram, a store in memory that lets the whole flow run and be tested without a database, 770 unit tests and 32 browser tests, two rounds of refuting review on each change. Deploys are still not gated on CI, the database migration is a hand step, no lint, no bundle budget, and the board is not a real grid for a screen reader. |
-| Reach | 4 | 5 | 6.5 | The loop that grows puzzle games: a daily everyone plays, a spoiler-free line to share it with, and links that unfurl with a card and a time to beat, in three languages. Nothing is measured yet (phase 3), no store presence, no link import, a name that is hard to search, and the forum and search work in search.md is still a plan. |
+| Reach | 4 | 5 | 6.5 | The loop that grows puzzle games: a daily everyone plays, a spoiler-free line to share it with, and links that unfurl with a card and a time to beat, in three languages. Nothing is measured yet (phase 3), no store presence, a name that is hard to search, and the forum and search work in search.md is still a plan. |
 
 **Overall: 8.5 of 10 as a product, today** (was 6, then 7.5, then 8).
 For the sudoku lover, 9 (was 8, then 9): nothing else rates any puzzle,
@@ -202,8 +202,9 @@ confirmed in the code afterwards.
   competitor ships.
 - No campaign; sudoku.coach's 50-level campaign is what its reviews
   praise.
-- Import takes an 81-character string only: no SudokuPad, f-puzzles or
-  Sudoku Exchange links, no camera.
+- Import reads a string, a pencil-mark grid, a photo, and links from
+  SudokuPad, f-puzzles, Sudoku Exchange and sudoku.coach (classic puzzles;
+  a SudokuPad short id still needs the site's own lookup).
 - Hints and worked examples are English in Norwegian and Spanish.
 - The name is hard to find and the README invites the SudokuPad
   comparison that variants make unwinnable; "classic sudoku trainer with
@@ -238,7 +239,8 @@ touches the 70 daily players.
    that reads out its selection, the guide loaded on demand, a Playwright
    smoke test in CI (all built); still to come: the board as a real grid
    for screen readers, locales precached on demand, lint.
-5. **Reach**: import of SudokuPad, f-puzzles and Sudoku Exchange links;
+5. **Reach**: import of SudokuPad, f-puzzles, Sudoku Exchange and
+   sudoku.coach links (built);
    statistics and streaks on top of step 3; print; a store build through
    Capacitor done for real or the claim removed; keyword-led titles and
    the r/sudoku and Enjoy Sudoku forum seeding search.md already plans;

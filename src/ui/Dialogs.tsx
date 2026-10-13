@@ -4,7 +4,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   useGame,
-  validatePuzzle,
   solvePath,
   encodePosition,
   contractGrid,
@@ -23,7 +22,9 @@ import { cruxIndex } from '../engine/generator';
 import { timeVerdict, percentileText, MODE_LABEL, SolveMode } from '../content/solveTimes';
 import { useT, translator, msg, rich, Translator } from '../content/i18n';
 import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
-import { parsePencilGrid, puzzleStringOf, looksLikeGrid, formatPencilGrid } from '../content/textGrid';
+import { parsePencilGrid, looksLikeGrid, formatPencilGrid } from '../content/textGrid';
+import { puzzleFromLink } from '../content/importLinks';
+import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
 import { fasterThan, dailyNumber, localDateKey, LATE_DAYS } from '../content/dailies';
 import { useDailyStats, playedFrom, SubmitOutcome } from '../state/dailyStats';
 import { HubTabs } from './HubTabs';
@@ -767,8 +768,78 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
   );
 }
 
+/** the sites a link can come from, as the notice names them (src/content/importLinks.ts) */
+const SOURCE_NAMES: Record<LinkSource, string> = {
+  sudokupad: 'SudokuPad',
+  fpuzzles: 'f-puzzles',
+  sudokuexchange: 'Sudoku Exchange',
+  sudokucoach: 'sudoku.coach',
+  sudokui: msg('a sudokUI link')
+};
+
+/** what a variant puzzle carries, as the refusal lists it */
+const VARIANT_LABELS: Record<VariantMark, string> = {
+  diagonals: msg('diagonals'),
+  antiknight: msg('an anti-knight rule'),
+  antiking: msg('an anti-king rule'),
+  disjointgroups: msg('disjoint groups'),
+  nonconsecutive: msg('a non-consecutive rule'),
+  extraregions: msg('extra regions'),
+  irregularregions: msg('irregular regions'),
+  windoku: msg('windoku regions'),
+  parity: msg('odd and even cells'),
+  thermometers: msg('thermometers'),
+  palindromes: msg('palindromes'),
+  renban: msg('renban lines'),
+  whispers: msg('whisper lines'),
+  betweenlines: msg('between lines'),
+  regionsumlines: msg('region sum lines'),
+  entropiclines: msg('entropic lines'),
+  lines: msg('lines'),
+  killercages: msg('killer cages'),
+  cages: msg('cages'),
+  littlekillers: msg('little killer sums'),
+  sandwiches: msg('sandwich sums'),
+  xsums: msg('X-sums'),
+  skyscrapers: msg('skyscrapers'),
+  kropki: msg('kropki dots'),
+  xv: msg('XV pairs'),
+  clones: msg('clones'),
+  arrows: msg('arrows'),
+  quadruples: msg('quadruples'),
+  minmax: msg('minimum and maximum cells'),
+  cosmetics: msg('text and shapes'),
+  shapes: msg('shapes on the grid'),
+  negative: msg('negative constraints'),
+  fog: msg('fog of war'),
+  other: msg('other rules')
+};
+
+/** why a link gave no puzzle, in words */
+function refusalText(r: LinkRefusal, t: Translator): string {
+  const site = t(SOURCE_NAMES[r.source]);
+  switch (r.reason) {
+    case 'short-id':
+      return r.source === 'sudokupad'
+        ? t(
+            'This SudokuPad link is a short id that only SudokuPad can look up. Use a link that carries the puzzle itself, sudokupad.app/scl… or sudokupad.app/fpuzzles…, or paste the puzzle as a string.'
+          )
+        : t('This {site} link is a short id that only the site can look up. Use a link that carries the puzzle itself, or paste the puzzle as a string.', { site });
+    case 'variant':
+      return t('This is a variant puzzle ({list}); sudokUI plays classic sudoku only.', {
+        list: r.found.slice(0, 4).map((mark) => t(VARIANT_LABELS[mark])).join(', ')
+      });
+    case 'size':
+      return t('This puzzle is not 9×9; sudokUI plays classic 9×9 sudoku only.');
+    case 'unreadable':
+      return t('The puzzle in this {site} link could not be read.', { site });
+    case 'no-puzzle':
+      return t('This {site} link carries no puzzle.', { site });
+  }
+}
+
 export function ImportDialog({ onClose }: { onClose: () => void }) {
-  const startGame = useGame((s) => s.startGame);
+  const importPuzzle = useGame((s) => s.importPuzzle);
   const importText = useGame((s) => s.importText);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
@@ -785,27 +856,33 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       else onClose();
       return;
     }
-    const cleaned = puzzleStringOf(text);
-    if (!cleaned) {
+    // a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach, the
+    // app's own share link, or the bare 81 characters (src/content/importLinks.ts)
+    const link = puzzleFromLink(text);
+    if (!link) {
       setError(
         looksLikeGrid(text)
           ? t('The pencil-mark grid could not be read: it needs 9 rows of 9 cells, each a digit or its candidates.')
-          : t('A puzzle needs exactly 81 characters (digits and dots).')
+          : t('A puzzle needs exactly 81 characters (digits and dots), or a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach.')
       );
       return;
     }
-    const v = validatePuzzle(cleaned);
-    if (!v.ok) {
-      setError(v.reason);
+    if (!link.ok) {
+      setError(refusalText(link, t));
       return;
     }
-    startGame(cleaned, v.score, v.level);
-    onClose();
+    const reason = importPuzzle(link.puzzle, link.source && t(SOURCE_NAMES[link.source]));
+    if (reason) setError(reason);
+    else onClose();
   };
 
   return (
     <Modal title={t('Import a puzzle')} onClose={onClose}>
-      <p className="dialog-note">{t('Paste an 81-character puzzle string (dots or zeros for empty cells), or a pencil-mark grid with its candidates.')}</p>
+      <p className="dialog-note">
+        {t(
+          'Paste an 81-character puzzle string (dots or zeros for empty cells), a pencil-mark grid with its candidates, or a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach.'
+        )}
+      </p>
       <textarea
         rows={3}
         value={text}
