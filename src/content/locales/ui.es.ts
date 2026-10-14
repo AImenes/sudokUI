@@ -221,7 +221,7 @@ const ui: Dictionary = {
   "Don't fill anything": "No rellenar nada",
   "Just switch off. Your own marks stay as they were": "Solo desactivar. Tus propias anotaciones se quedan como estaban",
   "Practice||the Learn tab": "Práctica",
-  "The techniques worth learning, in the order puzzles need them. A technique counts as learned once you have played it unaided {n} times; every move of your own is credited with the easiest technique that justifies it. Nothing leaves this device.": "Las técnicas que vale la pena aprender, en el orden en que los sudokus las necesitan. Una técnica cuenta como aprendida cuando la has jugado sin ayuda {n} veces; cada movimiento tuyo se atribuye a la técnica más fácil que lo justifica. Nada sale de este dispositivo.",
+  "The techniques worth learning, in the order puzzles need them: the ones at least one puzzle in a hundred needs. The rarer ones, most unique rectangle types among them, wait in Practice and the guide. A technique counts as learned once you have played it unaided {n} times; every move of your own is credited with the easiest technique that justifies it. Nothing leaves this device.": "Las técnicas que vale la pena aprender, en el orden en que los sudokus las necesitan: las que al menos un sudoku de cada cien necesita. Las más raras, entre ellas la mayoría de los tipos de rectángulo único, esperan en Práctica y en la guía. Una técnica cuenta como aprendida cuando la has jugado sin ayuda {n} veces; cada movimiento tuyo se atribuye a la técnica más fácil que lo justifica. Nada sale de este dispositivo.",
   "{n} of {total} learned": "{n} de {total} aprendidas",
   "next: {tech}": "siguiente: {tech}",
   "fewer than 1 in {n} puzzles": "menos de 1 de cada {n} sudokus",

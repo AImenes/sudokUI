@@ -65,7 +65,7 @@ export function ProgressDialog({
       <HubTabs active="path" onPractice={onPracticeList} onTheory={() => onLearn({ tab: 'techniques' })} />
       <p className="dialog-note">
         {t(
-          'The techniques worth learning, in the order puzzles need them. A technique counts as learned once you have played it unaided {n} times; every move of your own is credited with the easiest technique that justifies it. Nothing leaves this device.',
+          'The techniques worth learning, in the order puzzles need them: the ones at least one puzzle in a hundred needs. The rarer ones, most unique rectangle types among them, wait in Practice and the guide. A technique counts as learned once you have played it unaided {n} times; every move of your own is credited with the easiest technique that justifies it. Nothing leaves this device.',
           { n: LEARNED_AT }
         )}
       </p>

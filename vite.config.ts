@@ -224,7 +224,9 @@ export default defineConfig({
   ],
   test: {
     environment: 'node',
-    // the browser smoke test is Playwright's (npm run test:e2e)
-    exclude: ['**/node_modules/**', 'tests/e2e/**']
+    // the browser smoke test is Playwright's (npm run test:e2e), and a side
+    // session's worktree under .claude/worktrees/ carries a copy of the
+    // whole tree, tests included: those are its to run, not ours
+    exclude: ['**/node_modules/**', 'tests/e2e/**', '.claude/**']
   }
 } as any);

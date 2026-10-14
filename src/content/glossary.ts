@@ -100,7 +100,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     id: 'band',
     term: 'band',
     definition: 'Three boxes side by side, covering three neighbouring rows. The grid has three bands: top, middle and bottom. Not to be confused with a difficulty band.',
-    aka: ['floor'],
+    aka: [],
     see: ['stack', 'chute', 'difficulty-band'],
     group: 'The board'
   },
@@ -851,6 +851,38 @@ export const GLOSSARY: GlossaryEntry[] = [
     definition: 'Four cells, none of them givens, in two rows, two columns and two boxes, sharing the same two candidates. With only those two digits in all four it would be a deadly pattern, so at least one extra candidate in the rectangle is true.',
     aka: ['UR', 'uniqueness test'],
     see: ['deadly-pattern', 'uniqueness', 'hidden-rectangle'],
+    group: 'Uniqueness'
+  },
+  {
+    id: 'corner',
+    term: 'corner',
+    definition: 'One of the four cells of a rectangle pattern, where its two rows and two columns cross. In a unique rectangle, two corners hold only the pair, the floor, and two hold something more, the roof.',
+    aka: ['corners'],
+    see: ['unique-rectangle', 'floor', 'roof'],
+    group: 'Uniqueness'
+  },
+  {
+    id: 'floor',
+    term: 'floor',
+    definition: 'The two corners of a unique rectangle that hold only its pair. Whatever else happens, they can only ever be those two digits, which is what makes the rectangle dangerous; the two other corners are the roof.',
+    aka: ['floor cells'],
+    see: ['roof', 'corner', 'unique-rectangle', 'bivalue-cell'],
+    group: 'Uniqueness'
+  },
+  {
+    id: 'roof',
+    term: 'roof',
+    definition: 'The two corners of a unique rectangle that hold a candidate besides its pair. At least one of those extra candidates must be true, or the four corners would be a deadly pattern, and every uniqueness test is a way of using that.',
+    aka: ['roof cells'],
+    see: ['floor', 'corner', 'extra-candidate', 'unique-rectangle', 'deadly-pattern'],
+    group: 'Uniqueness'
+  },
+  {
+    id: 'extra-candidate',
+    term: 'extra candidate',
+    definition: 'In a unique rectangle, a candidate in a corner beyond the rectangle\'s own pair. The extras live in the roof, and at least one of them is true.',
+    aka: ['extras', 'extra candidates'],
+    see: ['roof', 'unique-rectangle'],
     group: 'Uniqueness'
   },
   {
