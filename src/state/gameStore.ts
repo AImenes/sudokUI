@@ -25,7 +25,7 @@ import { justify, Move } from '../engine/justify';
 import { contradictionStep } from '../engine/techniques/forcing';
 import { Chain, EMPTY_CHAIN, extend, chainStep, conclusions } from '../engine/chainTrainer';
 import type { CellDigit } from '../engine/steps';
-import { Level, Tech } from '../engine/ratings';
+import { Level, Tech, SOLVE_ORDER, hintOrder } from '../engine/ratings';
 import { useSettings } from './settings';
 import { useStats } from './stats';
 import { useTelemetry } from './telemetry';
@@ -206,6 +206,8 @@ export function proveWrong(cells: CellState[], solution: string, wrongCells: num
   const g = parseGrid(clean);
   if (!g) return [];
   const proofs: Proof[] = [];
+  // the techniques a proof may use: without uniqueness, if the player so set
+  const order = hintOrder(useSettings.getState().useUniqueness);
   for (const cell of wrongCells.slice(0, PROOFS_MAX)) {
     const wrong = cells[cell].value;
     const right = Number(solution[cell]);
@@ -215,7 +217,7 @@ export function proveWrong(cells: CellState[], solution: string, wrongCells: num
       proofs.push({ ...base, conflict, tech: null, steps: [] });
       continue;
     }
-    const out = justify(g, { cell, digit: wrong, placed: false }, PROOF_BUDGET);
+    const out = justify(g, { cell, digit: wrong, placed: false }, PROOF_BUDGET, order);
     if (out.tech && out.steps.length <= 2) {
       proofs.push({ ...base, tech: out.tech, steps: out.steps });
       continue;
@@ -230,7 +232,7 @@ export function proveWrong(cells: CellState[], solution: string, wrongCells: num
       proofs.push({ ...base, tech: out.tech, steps: out.steps });
       continue;
     }
-    const inn = justify(g, { cell, digit: right, placed: true }, PROOF_BUDGET);
+    const inn = justify(g, { cell, digit: right, placed: true }, PROOF_BUDGET, order);
     proofs.push({ ...base, tech: inn.tech, steps: inn.steps, places: true });
   }
   return proofs;
@@ -250,8 +252,10 @@ export function matchesTarget(target: Step, before: Grid, move: Move): boolean {
 /** Credit the player's own moves with the easiest technique that justifies
  *  each, worked out in the worker (docs/technique-stats.md). */
 function credit(before: Grid, moves: Move[]) {
+  // a player who does not use uniqueness is never credited with it
+  const noUniqueness = !useSettings.getState().useUniqueness;
   for (const move of moves) {
-    justifyMove(before, move).then((j) => j && useStats.getState().recordUnaided(j.tech));
+    justifyMove(before, move, undefined, noUniqueness).then((j) => j && useStats.getState().recordUnaided(j.tech));
   }
 }
 
@@ -1198,7 +1202,10 @@ export const useGame = create<GameStore>()(
             return;
           }
         }
-        const step = findNextStep(contractGrid(s.cells, s.autoCandidates, s.markContract));
+        // the techniques the player uses: without uniqueness, if so set
+        const useUniqueness = useSettings.getState().useUniqueness;
+        const position = contractGrid(s.cells, s.autoCandidates, s.markContract);
+        const step = findNextStep(position, hintOrder(useUniqueness));
         if (step && stepMatchesSolution(step, sol)) {
           // even the technique's name is information — the solve is no
           // longer clean
@@ -1211,6 +1218,13 @@ export const useGame = create<GameStore>()(
             hintStage: 'hidden',
             assisted: true,
             notice: t('Your pencil marks lead to an impossible deduction. Run Check')
+          });
+        } else if (!useUniqueness && findNextStep(position)) {
+          // only uniqueness moves on from here: say so, never hint it anyway
+          set({
+            hint: null,
+            hintStage: 'hidden',
+            notice: t('Only a uniqueness technique finds the next step here. Turn on “Use uniqueness in hints” in Settings to see it')
           });
         } else {
           set({ hint: null, hintStage: 'hidden' });
@@ -1651,7 +1665,8 @@ export const useGame = create<GameStore>()(
       jumpToStep: (k) => {
         const s = get();
         if (!s.info) return;
-        const steps = solvePath(s.info.puzzle);
+        // the path the Steps dialog listed: without uniqueness, if so set
+        const steps = solvePath(s.info.puzzle, hintOrder(useSettings.getState().useUniqueness));
         const cells = Array.from({ length: 81 }, (_, i) => {
           const cell = emptyCell();
           const ch = s.info!.puzzle[i];
@@ -1734,16 +1749,22 @@ export const useGame = create<GameStore>()(
 );
 
 // the full solve path of the current puzzle, cached — rating a hard puzzle
-// can take a few hundred milliseconds and the path never changes
-let pathCache: { puzzle: string; steps: Step[] } | null = null;
+// can take a few hundred milliseconds and the path never changes — one per
+// order, since Steps follows the player's choice on uniqueness while the
+// share link's techniques and practice follow HoDoKu's
+const pathCache = new Map<Tech[], { puzzle: string; steps: Step[] }>();
 
-/** Ordered list of solver steps from the puzzle's start to its solution. */
-export function solvePath(puzzle: string): Step[] {
-  if (pathCache?.puzzle !== puzzle) {
-    const rating = ratePuzzle(puzzle);
-    pathCache = { puzzle, steps: rating?.steps ?? [] };
-  }
-  return pathCache.steps;
+/**
+ * Ordered list of solver steps from the puzzle's start to its solution.
+ * `order` is HoDoKu's by default (what the rating, the share link's
+ * techniques and practice use); Steps passes the player's (hintOrder).
+ */
+export function solvePath(puzzle: string, order: Tech[] = SOLVE_ORDER): Step[] {
+  const hit = pathCache.get(order);
+  if (hit?.puzzle === puzzle) return hit.steps;
+  const steps = ratePuzzle(puzzle, order)?.steps ?? [];
+  pathCache.set(order, { puzzle, steps });
+  return steps;
 }
 
 /* ---------- shareable position links (#s=<payload>) ----------

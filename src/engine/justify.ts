@@ -16,7 +16,7 @@
  */
 import { Grid, UNITS, CELL_UNITS, bit, cloneGrid } from './board';
 import { Step } from './steps';
-import { Tech, TECHS } from './ratings';
+import { Tech, TECHS, SOLVE_ORDER } from './ratings';
 import { findNextStep, applyStep } from './humanSolver';
 import { fullHouseStep, nakedSingleStep, hiddenSingleStep } from './techniques/singles';
 
@@ -63,7 +63,8 @@ export function singleAt(g: Grid, cell: number, digit: number): Step | null {
 const hardest = (steps: Step[]): Tech =>
   steps.reduce((best, s) => (TECHS[s.tech].index > TECHS[best].index ? s.tech : best), steps[0].tech);
 
-export function justify(g: Grid, move: Move, budget: Budget = DEFAULT_BUDGET): Justification {
+/** `order` is the techniques a justification may use, cheapest first (hintOrder in ratings.ts) */
+export function justify(g: Grid, move: Move, budget: Budget = DEFAULT_BUDGET, order: Tech[] = SOLVE_ORDER): Justification {
   const none: Justification = { tech: null, steps: [], direct: false };
   if (g.values[move.cell] !== 0) return none;
   if (!(g.cands[move.cell] & bit(move.digit))) return none;
@@ -75,7 +76,7 @@ export function justify(g: Grid, move: Move, budget: Budget = DEFAULT_BUDGET): J
   const path: Step[] = [];
   const start = performance.now();
   for (let i = 0; i < budget.steps && performance.now() - start < budget.ms; i++) {
-    const step = findNextStep(work);
+    const step = findNextStep(work, order);
     if (!step) return none;
     applyStep(work, step);
     path.push(step);

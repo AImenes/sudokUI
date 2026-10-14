@@ -711,7 +711,7 @@ const es: LearnLocale = {
     },
     "Uniqueness": {
       "label": categoryLabels["Uniqueness"],
-      "note": "Patrones que darían al sudoku dos soluciones y que, por eso, no pueden aparecer en un sudoku que tiene exactamente una."
+      "note": "Patrones que darían al sudoku dos soluciones y que, por eso, no pueden aparecer en un sudoku que tiene exactamente una. Algunos jugadores los dejan de lado, porque se apoyan en que el sudoku tenga una sola solución; un ajuste los deja fuera de las pistas."
     },
     "Chains and Loops": {
       "label": categoryLabels["Chains and Loops"],

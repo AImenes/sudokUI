@@ -659,7 +659,7 @@ const nb: LearnLocale = {
     },
     "Uniqueness": {
       "label": categoryLabels["Uniqueness"],
-      "note": "Mønstre som ville gi oppgaven to løsninger, og som derfor ikke kan forekomme i en oppgave som har nøyaktig én."
+      "note": "Mønstre som ville gi oppgaven to løsninger, og som derfor ikke kan forekomme i en oppgave som har nøyaktig én. Noen løsere lar dem ligge, siden de bygger på at oppgaven har én løsning; en innstilling holder dem utenfor hintene."
     },
     "Chains and Loops": {
       "label": categoryLabels["Chains and Loops"],

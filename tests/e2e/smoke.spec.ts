@@ -125,6 +125,43 @@ test.describe('desktop, 1280 x 800', () => {
     await expect(rings).toHaveCount(0);
   });
 
+  test('with uniqueness off, hints and Steps find another way', async ({ page }) => {
+    test.setTimeout(60_000);
+    // the puzzle Cracking the Cryptic solved with two chains, declining the
+    // unique rectangle the engine reaches for at the same point
+    const UNIQ = '1...........6......6.935.....234..6.3....1..2.......84.5..6......1..2.9.8......71';
+    await open(page, `#p=${UNIQ}`);
+    // Steps, uniqueness on: the path takes a unique rectangle
+    await page.getByRole('button', { name: /Steps/ }).first().click();
+    await page.getByRole('button', { name: 'Use Steps' }).click();
+    let path = page.getByRole('dialog', { name: 'Solution path' });
+    const ur = path.locator('.path-row', { hasText: 'Unique Rectangle Type 3' });
+    await expect(ur).toBeVisible({ timeout: 20_000 });
+    // the board just before it: the hint is that rectangle
+    await ur.click();
+    await page.keyboard.press('KeyH');
+    const panel = page.locator('.hint-panel');
+    await expect(panel).toContainText('Unique Rectangle Type 3');
+    await panel.getByRole('button', { name: 'Close' }).click();
+    // uniqueness off in Settings: the same position gives another technique
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    const toggle = settings.getByRole('switch', { name: 'Use uniqueness in hints' });
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('KeyH');
+    await expect(panel).toContainText('Finned Swordfish');
+    await expect(panel).not.toContainText('Unique Rectangle');
+    await panel.getByRole('button', { name: 'Close' }).click();
+    // and Steps lists a path without any of the family
+    await page.getByRole('button', { name: /Steps/ }).first().click();
+    path = page.getByRole('dialog', { name: 'Solution path' });
+    await expect(path.locator('.path-row').first()).toBeVisible({ timeout: 20_000 });
+    await expect(path.locator('.path-row', { hasText: /Unique Rectangle|BUG\+1|Hidden Rectangle|Avoidable Rectangle|Extended Rectangle/ })).toHaveCount(0);
+  });
+
   test('a digit pressed with nothing selected is armed, and a tap enters it', async ({ page }) => {
     await open(page);
     await page.keyboard.press('Escape');

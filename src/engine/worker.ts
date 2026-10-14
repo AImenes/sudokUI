@@ -17,7 +17,7 @@ import { ratePuzzle } from './humanSolver';
 import { transformPuzzle } from './transform';
 import { parseGrid } from './board';
 import { justify, Move, Budget } from './justify';
-import { Level, Tech, SOLVE_ORDER } from './ratings';
+import { Level, Tech, SOLVE_ORDER, NO_UNIQUENESS_ORDER } from './ratings';
 
 export interface PoolEntry {
   puzzle: string;
@@ -33,7 +33,7 @@ export type WorkerRequest =
   | { id: number; kind: 'tech'; tech: Tech; maxAttempts?: number; urgent?: boolean; seeds?: string[] }
   /** what justifies a move in a position: the values as 81 characters and
    *  the candidates of the empty cells as masks (src/engine/justify.ts) */
-  | { id: number; kind: 'justify'; values: string; cands: number[]; move: Move; budget?: Budget }
+  | { id: number; kind: 'justify'; values: string; cands: number[]; move: Move; budget?: Budget; noUniqueness?: boolean }
   | { id: number; kind: 'cancel' };
 
 export type WorkerResponse =
@@ -54,7 +54,7 @@ export function serveJustify(req: JustifyRequest, post: (msg: WorkerResponse) =>
     return;
   }
   for (let i = 0; i < 81; i++) if (!g.values[i] && req.cands[i]) g.cands[i] &= req.cands[i];
-  const j = justify(g, req.move, req.budget);
+  const j = justify(g, req.move, req.budget, req.noUniqueness ? NO_UNIQUENESS_ORDER : SOLVE_ORDER);
   post({ id: req.id, type: 'justified', tech: j.tech, direct: j.direct, steps: j.steps.length });
 }
 

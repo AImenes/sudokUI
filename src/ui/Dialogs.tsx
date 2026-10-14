@@ -13,7 +13,7 @@ import {
 } from '../state/gameStore';
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
-import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER, NOT_PRACTISABLE } from '../engine/ratings';
+import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER, NOT_PRACTISABLE, hintOrder } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntries, practisable, GenerationHandle } from '../state/pools';
 import { useStats, gameSummary, dailyStreak } from '../state/stats';
 import { practiceSeeds } from '../content/practicePuzzles';
@@ -356,14 +356,16 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const t = useT();
+  // the path follows the player's choice on uniqueness, as hints do
+  const useUniqueness = useSettings((s) => s.useUniqueness);
 
   useEffect(() => {
     if (!info) return;
     markAssisted(); // seeing the path (even its shape) is assistance
     // defer the (possibly slow) rating so the dialog paints first
-    const timer = setTimeout(() => setSteps(solvePath(info.puzzle)), 30);
+    const timer = setTimeout(() => setSteps(solvePath(info.puzzle, hintOrder(useUniqueness))), 30);
     return () => clearTimeout(timer);
-  }, [info?.puzzle]);
+  }, [info?.puzzle, useUniqueness]);
 
   if (!info) return null;
 
@@ -530,12 +532,16 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
   // a technique answers to its name in the player's language and in English
   const names = (tech: Tech) => [TECHS[tech].name.toLowerCase(), t.tech(tech).toLowerCase()];
   const matching = SOLVE_ORDER.filter((tech) => names(tech).some((n) => n.includes(q)));
+  // the scan looks for the techniques the player uses: without uniqueness, if so set
+  const useUniqueness = useSettings((s) => s.useUniqueness);
   // the technique named exactly, when it does not fire: said in so many
   // words even if its finned and franken cousins do
   const exact = SOLVE_ORDER.find((tech) => names(tech).includes(q));
   const missing =
     exact && steps && !steps.some((st) => st.tech === exact)
-      ? t('No {name} fires in this position with your candidates.', { name: t.tech(exact) })
+      ? !useUniqueness && TECHS[exact].category === 'Uniqueness'
+        ? t('{name} is a uniqueness technique, and uniqueness is off in Settings.', { name: t.tech(exact) })
+        : t('No {name} fires in this position with your candidates.', { name: t.tech(exact) })
       : null;
   const shown = steps?.filter((st) => !q || names(st.tech).some((n) => n.includes(q))) ?? null;
 
@@ -556,14 +562,14 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
       }
       // scan from the declared candidates; a step the marks faked (one that
       // would contradict the solution) is silently dropped, never listed
-      const all = findAllSteps(contractGrid(cells, auto, contract)).filter(
+      const all = findAllSteps(contractGrid(cells, auto, contract), hintOrder(useUniqueness)).filter(
         (st) => !solution || stepMatchesSolution(st, solution)
       );
       setSteps(all);
     }, 30);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsContract, contract]);
+  }, [needsContract, contract, useUniqueness]);
 
   return (
     <Modal title={t("What's in this position?")} onClose={onClose}>
@@ -913,6 +919,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
  */
 function useShareTechs(puzzle: string | undefined): () => Tech[] {
   const [ready, setReady] = useState<{ puzzle: string; techs: Tech[] } | null>(null);
+  // the puzzle's own techniques, by HoDoKu's path, whatever the player's hint setting
   const compute = (p: string) => techsWorthNaming(solvePath(p).map((s) => s.tech));
   useEffect(() => {
     if (!puzzle) return;

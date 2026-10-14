@@ -224,6 +224,14 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         value={s.confirmAssist}
         onChange={(v) => s.set({ confirmAssist: v })}
       />
+      <Toggle
+        label={t('Use uniqueness in hints')}
+        hint={t(
+          'Unique rectangles and their kin assume the puzzle has exactly one solution. Off, hints, Steps and Scan find another way, as many solvers prefer. The rating is unchanged'
+        )}
+        value={s.useUniqueness}
+        onChange={(v) => s.set({ useUniqueness: v })}
+      />
 
       <h4 className="setting-group">{t('Practice||the settings heading')}</h4>
       <Toggle

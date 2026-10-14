@@ -192,7 +192,9 @@ export function requestPuzzle(
 export function justifyMove(
   g: Grid,
   move: Move,
-  budget?: Budget
+  budget?: Budget,
+  /** the player does not use uniqueness (settings.useUniqueness): no credit from it */
+  noUniqueness = false
 ): Promise<{ tech: Tech | null; direct: boolean; steps: number } | null> {
   let w: Worker;
   try {
@@ -221,6 +223,6 @@ export function justifyMove(
       w.removeEventListener('message', listener);
       resolve(null);
     });
-    w.postMessage({ id, kind: 'justify', values, cands, move, budget } satisfies WorkerRequest);
+    w.postMessage({ id, kind: 'justify', values, cands, move, budget, noUniqueness } satisfies WorkerRequest);
   });
 }

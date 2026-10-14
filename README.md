@@ -54,7 +54,9 @@ natively for iOS and Android via Capacitor.
   HoDoKu-style), colouring as quiet ties with the witnesses as arrows,
   forcing chains as their line of forced singles. "Walk through it" reveals
   any drawing one idea at a time, ← and →, with a sentence for each
-  (see [docs/highlighting.md](docs/highlighting.md))
+  (see [docs/highlighting.md](docs/highlighting.md)). A setting leaves the
+  uniqueness family out of hints, Steps and Scan, for solvers who do not use
+  it; the rating stays HoDoKu's
 - **Practice mode** for 61 named techniques: pick one and get a generated
   puzzle that genuinely requires it — with nothing harder needed before it.
   The game fast-forwards through the routine steps so the chosen pattern is

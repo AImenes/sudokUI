@@ -19,7 +19,7 @@ export const CATEGORY_NOTES: Record<Category, string> = {
   Wings:
     'A few cells whose candidates guarantee that one of them holds a particular digit, so every cell seeing all of them loses it.',
   Uniqueness:
-    'Patterns that would give the puzzle two solutions, and so cannot occur in a puzzle that has exactly one.',
+    'Patterns that would give the puzzle two solutions, and so cannot occur in a puzzle that has exactly one. Some solvers leave them aside, since they lean on the puzzle having one solution; a setting leaves them out of hints.',
   'Chains and Loops':
     'Inferences passed along strong and weak links until the two ends settle something.',
   Coloring:
