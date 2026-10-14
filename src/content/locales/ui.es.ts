@@ -319,6 +319,8 @@ const ui: Dictionary = {
   "Puzzle link": "Enlace al sudoku",
   "Position link": "Enlace a la posición",
   "Puzzle string": "Sudoku en texto",
+  "Say what it needs": "Decir qué requiere",
+  "Names the techniques the puzzle needs in the preview: a spoiler for the player who opens it": "Nombra en la vista previa las técnicas que requiere el sudoku: un spoiler para el jugador que abra el enlace",
   "Generating {level} puzzle": "Generando un sudoku de nivel {level}",
   "Generating {name} practice": "Generando un sudoku para practicar {name}",
   "{n} puzzles examined||one puzzle": "{n} sudoku examinado",

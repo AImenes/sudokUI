@@ -904,10 +904,12 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 }
 
 /**
- * The techniques a share link names (src/content/share.ts), from the
- * puzzle's solve path. The rater takes up to a second over the hardest
- * bands, so they are worked out once the dialog has settled rather than
- * on the click, and on the click only when they have not arrived yet.
+ * The techniques a share link names when the sender asks for them
+ * (src/content/share.ts), from the puzzle's solve path. The rater takes up
+ * to a second over the hardest bands, so they are worked out once the box
+ * is ticked and the dialog has settled rather than on the click, and on
+ * the click only when they have not arrived yet. No puzzle, no rating: the
+ * dialog passes none while the box is off.
  */
 function useShareTechs(puzzle: string | undefined): () => Tech[] {
   const [ready, setReady] = useState<{ puzzle: string; techs: Tech[] } | null>(null);
@@ -926,35 +928,44 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   const markContract = useGame((s) => s.markContract);
   const info = useGame((s) => s.info);
   const [copied, setCopied] = useState('');
+  // whether the link names the techniques the puzzle needs. Off every time
+  // the dialog opens and never remembered: the names tell the recipient
+  // what to look for, which the app otherwise never does unasked, so the
+  // sender ticks the box for this link on purpose (docs/online-goals.md)
+  const [nameTechs, setNameTechs] = useState(false);
   const t = useT();
-  const shareTechs = useShareTechs(info?.puzzle);
+  const shareTechs = useShareTechs(nameTechs ? info?.puzzle : undefined);
 
   const currentAsString = () =>
     cells.map((c) => (c.given ? String(c.value) : '.')).join('');
 
+  // the game this board is, when it is the one in play (a puzzle pasted
+  // with zeros for its empty cells is the same puzzle)
+  const known = info?.puzzle.replace(/0/g, '.') === currentAsString() ? info : null;
+  // a published daily's address is its day (src/content/dailies.ts), and
+  // what its preview says is published with it, so a daily's link carries
+  // no hints and names no techniques whatever the box says
+  const daily = known?.dailyNo && known.dailyKey ? { no: known.dailyNo, date: known.dailyKey } : undefined;
+
   // the share address of this puzzle (src/content/share.ts): the path
   // carries the puzzle, so the link previews when pasted into a chat, and
-  // the query what the preview says about it (the band, the score and the
-  // techniques its path needs). On this origin, so a link copied from the
-  // dev server opens there. The puzzle string doubles as the seed: anyone
-  // opening this link plays the exact same game
-  const shareLink = () => {
-    const puzzle = currentAsString();
-    // (a puzzle pasted with zeros for its empty cells is the same puzzle)
-    const known = info?.puzzle.replace(/0/g, '.') === puzzle ? info : null;
-    return shareUrl(
+  // the query what the preview says about it (the band, the score and,
+  // when the box is ticked, the techniques its path needs). On this
+  // origin, so a link copied from the dev server opens there. The puzzle
+  // string doubles as the seed: anyone opening this link plays the exact
+  // same game
+  const shareLink = () =>
+    shareUrl(
       {
         lang: t.lang,
-        puzzle,
+        puzzle: currentAsString(),
         level: known?.level,
         score: known?.score,
-        techs: known ? shareTechs() : undefined,
-        // a published daily's address is its day (src/content/dailies.ts)
-        daily: known?.dailyNo && known.dailyKey ? { no: known.dailyNo, date: known.dailyKey } : undefined
+        techs: known && nameTechs ? shareTechs() : undefined,
+        daily
       },
       window.location.origin
     );
-  };
   // the position link additionally carries every entry, pencil mark,
   // exclusion and colour in its fragment — the recipient continues exactly
   // where you are, and the preview still describes the puzzle
@@ -986,6 +997,15 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
           }
         )}
       </p>
+      {known && !daily && (
+        <label className="tick-row">
+          <input type="checkbox" checked={nameTechs} onChange={(e) => setNameTechs(e.target.checked)} />
+          <span className="setting-text">
+            <span>{t('Say what it needs')}</span>
+            <small>{t('Names the techniques the puzzle needs in the preview: a spoiler for the player who opens it')}</small>
+          </span>
+        </label>
+      )}
       <div className="hint-actions">
         <button onClick={() => copy('link')}>
           {copied === 'link' ? `✓ ${t('Copied')}` : `🔗 ${t('Puzzle link')}`}
@@ -1075,7 +1095,6 @@ export function VictoryDialog({
   const dailyDays = useStats((s) => s.dailyDays);
   const [copied, setCopied] = useState(false);
   const t = useT();
-  const shareTechs = useShareTechs(info?.puzzle);
   // a published daily's global statistics (src/state/dailyStats.ts):
   // fetched when the screen opens; the player's own time goes in only
   // when the player asks, and only from an unassisted solve
@@ -1162,9 +1181,11 @@ export function VictoryDialog({
   };
 
   // same-puzzle challenge: the share text carries the share address of
-  // this grid, which previews in a chat and names the band, the score and
-  // the techniques, with this time as the one to beat; a daily's text is
-  // the spoiler-free line of docs/online-goals.md, with the crowd's
+  // this grid, which previews in a chat and names the band and the score,
+  // with this time as the one to beat. Never the techniques: a challenge
+  // is about the time, and their names would tell the challenged what to
+  // look for (the Share dialog names them only when asked). A daily's text
+  // is the spoiler-free line of docs/online-goals.md, with the crowd's
   // percentile once an unassisted time is in
   const shareResult = () => {
     const link = shareUrl({
@@ -1172,7 +1193,6 @@ export function VictoryDialog({
       puzzle: info.puzzle,
       level: info.level,
       score: info.score,
-      techs: shareTechs(),
       daily: info.dailyNo && info.dailyKey ? { no: info.dailyNo, date: info.dailyKey } : undefined,
       // a game that started part-way through sets no time to beat for
       // anyone solving from the start

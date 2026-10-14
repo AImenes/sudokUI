@@ -42,8 +42,9 @@ natively for iOS and Android via Capacitor.
   is fine) and check the result on the board before playing (see
   [docs/scan.md](docs/scan.md)) — every import is rated
 - **Shareable links**: `sudokui.app/p/<81 chars>` opens the exact puzzle, and
-  pasted into a chat it previews with the band, the score and the techniques
-  it needs; a win can be shared as a challenge with the time to beat
+  pasted into a chat it previews with the band, the score and, if you choose,
+  the techniques it needs; a win can be shared as a challenge with the time
+  to beat
 
 **Learn**
 - Progressive hints: first the technique name, then the full explanation with
