@@ -68,6 +68,11 @@ interface Settings {
   /** the first assist in a clean game asks first: it says what the button
    *  does (touch screens have no hover) and guards against a stray tap */
   confirmAssist: boolean;
+  /** hints, Steps, Scan, the why-not proofs and the credit of a move may use
+   *  the uniqueness family (unique rectangles, BUG+1 and their kin). Off,
+   *  they find another way, as many solvers prefer: uniqueness leans on the
+   *  puzzle having exactly one solution. The rating is HoDoKu's either way */
+  useUniqueness: boolean;
   /** give each digit 1 to 9 a slight colour of its own on the board */
   digitTints: boolean;
   /** how much of the digit's own hue is mixed in, in percent */
@@ -101,6 +106,7 @@ export const useSettings = create<Settings>()(
       frameHighlights: true,
       highlightBivalue: false,
       confirmAssist: true,
+      useUniqueness: true,
       digitTints: false,
       tintStrength: 50,
       countPlays: false,

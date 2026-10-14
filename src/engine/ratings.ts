@@ -181,6 +181,17 @@ export const SOLVE_ORDER: Tech[] = (Object.keys(TECHS) as Tech[])
   .sort((a, b) => TECHS[a].index - TECHS[b].index);
 
 /**
+ * The solve order without the uniqueness family, for a player who does not
+ * accept uniqueness (settings.useUniqueness): what hints, Steps, Scan, the
+ * why-not proofs and the credit of a move look for. The rating never uses
+ * it: a score is HoDoKu's, and HoDoKu's solver uses uniqueness.
+ */
+export const NO_UNIQUENESS_ORDER: Tech[] = SOLVE_ORDER.filter((t) => TECHS[t].category !== 'Uniqueness');
+
+/** the order steps are looked for in, for a player who does or does not use uniqueness */
+export const hintOrder = (useUniqueness: boolean): Tech[] => (useUniqueness ? SOLVE_ORDER : NO_UNIQUENESS_ORDER);
+
+/**
  * Implemented, enabled techniques that practice cannot serve, with the
  * reason the practice picker shows: in 5.5 million generated puzzles none
  * of them was ever the step the solver took (docs/generator.md), so no
