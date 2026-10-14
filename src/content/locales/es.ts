@@ -1008,9 +1008,7 @@ const es: LearnLocale = {
     },
     "band": {
       "term": "banda",
-      "aka": [
-        "piso"
-      ],
+      "aka": [],
       "definition": "Tres cajas una al lado de otra, que cubren tres filas contiguas. La cuadrícula tiene tres bandas: superior, central e inferior. No debe confundirse con un nivel de dificultad, que en inglés se llama difficulty band."
     },
     "stack": {
@@ -1654,6 +1652,26 @@ const es: LearnLocale = {
         "prueba de unicidad"
       ],
       "definition": "Cuatro casillas, ninguna de ellas con un número dado, en dos filas, dos columnas y dos cajas, que comparten los mismos dos candidatos. Con solo esos dos números en las cuatro sería un patrón mortal, así que al menos un candidato extra del rectángulo es verdadero."
+    },
+    "corner": {
+      "term": "esquina",
+      "aka": ["esquinas"],
+      "definition": "Una de las cuatro casillas de un patrón rectangular, donde se cruzan sus dos filas y sus dos columnas. En un rectángulo único, dos esquinas tienen solo el par, el suelo, y dos tienen algo más, el techo."
+    },
+    "floor": {
+      "term": "suelo",
+      "aka": ["casillas del suelo"],
+      "definition": "Las dos esquinas de un rectángulo único que tienen solo su par. Pase lo que pase, solo pueden ser esos dos números, y eso es lo que hace peligroso al rectángulo; las otras dos esquinas son el techo."
+    },
+    "roof": {
+      "term": "techo",
+      "aka": ["casillas del techo"],
+      "definition": "Las dos esquinas de un rectángulo único que tienen un candidato además de su par. Al menos uno de esos candidatos extra debe ser cierto, o las cuatro esquinas serían un patrón mortal, y cada prueba de unicidad es una forma de usarlo."
+    },
+    "extra-candidate": {
+      "term": "candidato extra",
+      "aka": ["extras", "candidatos extra"],
+      "definition": "En un rectángulo único, un candidato en una esquina más allá del par del rectángulo. Los extras viven en el techo, y al menos uno de ellos es cierto."
     },
     "hidden-rectangle": {
       "term": "rectángulo oculto",

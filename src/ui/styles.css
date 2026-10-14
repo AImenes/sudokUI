@@ -2754,11 +2754,17 @@ html:not([lang='en']) .zone-note {
 }
 
 /* the ladder's rows, scoped: the technique lists in the dialogs share the
-   class names and lay their rows out as a flex row */
+   class names and lay their rows out as a flex row. The ladder is not a
+   scroller of its own: the solution path's list scrolls inside its dialog
+   (max-height above), but a ladder inside a scrolling dialog would be a
+   scroll inside a scroll, and a thumb reaching for the harder rungs would
+   stall in the easier ones */
 .path-section .path-list {
   list-style: none;
   margin: 0 0 6px;
   padding: 0;
+  max-height: none;
+  overflow: visible;
 }
 
 .path-section .path-row {

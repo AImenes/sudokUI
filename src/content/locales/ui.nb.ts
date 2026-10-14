@@ -221,7 +221,7 @@ const ui: Dictionary = {
   "Don't fill anything": "Ikke fyll inn noe",
   "Just switch off. Your own marks stay as they were": "Bare slå av. Dine egne notater blir som de var",
   "Practice||the Learn tab": "Øving",
-  "The techniques worth learning, in the order puzzles need them. A technique counts as learned once you have played it unaided {n} times; every move of your own is credited with the easiest technique that justifies it. Nothing leaves this device.": "Teknikkene som er verdt å lære, i den rekkefølgen oppgavene trenger dem. En teknikk regnes som lært når du har spilt den uten hjelp {n} ganger; hvert trekk du gjør selv, godskrives den letteste teknikken som begrunner det. Ingenting forlater denne enheten.",
+  "The techniques worth learning, in the order puzzles need them: the ones at least one puzzle in a hundred needs. The rarer ones, most unique rectangle types among them, wait in Practice and the guide. A technique counts as learned once you have played it unaided {n} times; every move of your own is credited with the easiest technique that justifies it. Nothing leaves this device.": "Teknikkene som er verdt å lære, i den rekkefølgen oppgavene trenger dem: de som minst én oppgave av hundre trenger. De sjeldnere, de fleste typene unikt rektangel blant dem, venter i Øving og i guiden. En teknikk regnes som lært når du har spilt den uten hjelp {n} ganger; hvert trekk du gjør selv, godskrives den letteste teknikken som begrunner det. Ingenting forlater denne enheten.",
   "{n} of {total} learned": "{n} av {total} lært",
   "next: {tech}": "neste: {tech}",
   "fewer than 1 in {n} puzzles": "færre enn 1 av {n} oppgaver",

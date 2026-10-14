@@ -956,9 +956,7 @@ const nb: LearnLocale = {
     },
     "band": {
       "term": "bånd",
-      "aka": [
-        "etasje"
-      ],
+      "aka": [],
       "definition": "Tre bokser side om side, som dekker tre tilstøtende rader. Rutenettet har tre bånd: øverst, i midten og nederst. Må ikke forveksles med vanskelighetsgrad."
     },
     "stack": {
@@ -1591,6 +1589,26 @@ const nb: LearnLocale = {
         "entydighetstest"
       ],
       "definition": "Fire ruter, ingen av dem gitte tall, i to rader, to kolonner og to bokser, med de samme to kandidatene. Med bare disse to tallene i alle fire ville det vært et dødelig mønster, så minst én ekstra kandidat i rektangelet er sann."
+    },
+    "corner": {
+      "term": "hjørne",
+      "aka": ["hjørner"],
+      "definition": "Én av de fire rutene i et rektangelmønster, der de to radene og de to kolonnene krysser hverandre. I et unikt rektangel holder to hjørner bare paret, gulvet, og to holder noe mer, taket."
+    },
+    "floor": {
+      "term": "gulv",
+      "aka": ["gulvruter"],
+      "definition": "De to hjørnene i et unikt rektangel som bare holder paret. Uansett hva som skjer kan de bare bli disse to tallene, og det er det som gjør rektangelet farlig; de to andre hjørnene er taket."
+    },
+    "roof": {
+      "term": "tak",
+      "aka": ["takruter"],
+      "definition": "De to hjørnene i et unikt rektangel som holder en kandidat i tillegg til paret. Minst én av disse ekstrakandidatene må være sann, ellers ville de fire hjørnene vært et dødelig mønster, og hver entydighetstest er en måte å bruke det på."
+    },
+    "extra-candidate": {
+      "term": "ekstrakandidat",
+      "aka": ["ekstra", "ekstrakandidater"],
+      "definition": "I et unikt rektangel: en kandidat i et hjørne utover rektangelets eget par. Ekstrakandidatene bor i taket, og minst én av dem er sann."
     },
     "hidden-rectangle": {
       "term": "skjult rektangel",
