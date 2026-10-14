@@ -774,19 +774,37 @@ test.describe('a share link', () => {
   };
   const copied = (page: Page) => page.evaluate(() => (window as any).__copied as string);
 
-  test('the Share dialog copies the share address of the puzzle on this origin, techniques named', async ({ page }) => {
+  test('the Share dialog copies the share address of the puzzle on this origin, naming techniques only when asked', async ({ page }) => {
     await page.addInitScript(keepClipboard);
     // a Hard puzzle, whose path plays techniques worth naming
     await page.goto(`/#p=${HARD}`);
     await expect(page.locator('svg.board')).toBeVisible();
     await page.locator('.menu-row button', { hasText: 'Share' }).click();
     const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
+    const puzzle = HARD.replace(/\./g, '\\.');
+    // the link carries the band and the score, and no technique: the names
+    // would tell the recipient what to look for
     await dialog.getByRole('button', { name: 'Puzzle link' }).click();
     const link = await copied(page);
-    expect(link).toMatch(new RegExp(`^http://localhost:4173/p/${HARD.replace(/\./g, '\\.')}\\?b=[a-z]+&s=\\d+&t=[a-z0-9-]+(,[a-z0-9-]+){0,2}$`));
+    expect(link).toMatch(new RegExp(`^http://localhost:4173/p/${puzzle}\\?b=[a-z]+&s=\\d+$`));
     await dialog.getByRole('button', { name: 'Position link' }).click();
     const position = await copied(page);
     expect(position.startsWith(link + '#s=')).toBe(true);
+    // ticking "Say what it needs" names them, in both links
+    const box = dialog.getByRole('checkbox', { name: 'Say what it needs' });
+    await expect(box).not.toBeChecked();
+    await box.check();
+    await dialog.getByRole('button', { name: 'Puzzle link' }).click();
+    const named = await copied(page);
+    expect(named).toMatch(new RegExp(`^http://localhost:4173/p/${puzzle}\\?b=[a-z]+&s=\\d+&t=[a-z0-9-]+(,[a-z0-9-]+){0,2}$`));
+    expect(named.startsWith(`${link}&t=`)).toBe(true);
+    await dialog.getByRole('button', { name: 'Position link' }).click();
+    expect((await copied(page)).startsWith(named + '#s=')).toBe(true);
+    // the choice is not remembered: the box is off again the next time the dialog opens
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    await expect(dialog.getByRole('checkbox', { name: 'Say what it needs' })).not.toBeChecked();
   });
 
   test('a win against a challenge compares the times, and shares this time as the one to beat', async ({ page }) => {
@@ -810,7 +828,8 @@ test.describe('a share link', () => {
     await dialog.getByRole('button', { name: /Challenge a friend/ }).click();
     const text = await copied(page);
     expect(text).toMatch(/^I solved an? [A-Za-z]+ sudoku \(rating \d+\) in \d+:\d\d/);
-    expect(text).toMatch(new RegExp(`https://sudokui\\.app/p/${EASY.replace(/\./g, '\\.')}\\?b=[a-z]+&s=\\d+(&t=[a-z0-9,-]+)?&vs=\\d+$`));
+    // the band, the score and the time to beat, never the techniques: a challenge is about the time
+    expect(text).toMatch(new RegExp(`https://sudokui\\.app/p/${EASY.replace(/\./g, '\\.')}\\?b=[a-z]+&s=\\d+&vs=\\d+$`));
   });
 
   test('/nb/p/ is the share page in Norwegian, and starts the app in Norwegian', async ({ page }) => {

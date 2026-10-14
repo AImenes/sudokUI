@@ -10,7 +10,11 @@
 // Everything the page says about the puzzle comes from the address: the
 // band, the score and the techniques are query hints the client puts there
 // when it builds the link (?b=hard&s=1420&t=x-wing,skyscraper), and a
-// challenger's time rides along as ?vs=<seconds>. They are spoofable,
+// challenger's time rides along as ?vs=<seconds>. The techniques go in
+// only when the sender asks (the Share dialog's tick-box): naming them
+// tells the recipient what to look for, so a link is spoiler-free unless
+// made otherwise, while a link that carries them previews with the names
+// as it always did. They are spoofable,
 // which is harmless on a page nothing indexes, and they spare the Worker
 // from rating the puzzle, which the free plan's 10 ms of CPU could not
 // afford. Nothing here touches the network or the DOM: the Worker, the
@@ -32,7 +36,7 @@ export interface ShareParams {
   puzzle: string;
   level?: Level;
   score?: number;
-  /** the techniques worth naming, hardest first, at most SHARE_TECHS */
+  /** the techniques worth naming, hardest first, at most SHARE_TECHS; in a link only when the sender asked for them */
   techs?: Tech[];
   /** a challenger's time, in whole seconds */
   vs?: number;

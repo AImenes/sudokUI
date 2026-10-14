@@ -81,7 +81,8 @@ Facts a prompt can rely on, with the files that hold them:
   dialog in `src/ui/Dialogs.tsx` computes the streak from it.
 - **Share links are path URLs.** `/p/<81 chars>` under each language root
   (`/nb/p/`, `/es/p/`), with query hints the client adds when it builds the
-  link: `b` the band, `s` the score, `t` up to three technique slugs, `vs`
+  link: `b` the band, `s` the score, `t` up to three technique slugs (only
+  when the sender ticks "Say what it needs" in the share dialog), `vs`
   a challenger's time in whole seconds (`src/content/share.ts`). The share
   dialog and the win dialog build them with `shareUrl`, the app boots from
   them and keeps the address bar on one (`src/ui/App.tsx`), and the Worker
@@ -192,6 +193,16 @@ the share and win dialogs building the links, `tests/sharePage.test.ts`
 that lands on a share address. The cards show the band's name in the
 language and a real board of that band, never the shared puzzle: the
 image is fetched once per link and rendered once per band.
+
+October 14, 2026: the links the app builds are spoiler-free by default.
+The share dialog's links and the win screen's challenge link carry the
+band and the score and no `t=`; the techniques go in only when the sender
+ticks "Say what it needs" in the share dialog (off each time it opens,
+never remembered), and the challenge link never names them, since a
+challenge is about the time. Naming them tells the recipient what to look
+for, which the app otherwise never does unasked, and the daily's share
+line was made spoiler-free for the same reason. A link that carries `t=`
+previews with the names as before, so links already shared keep working.
 
 ### Phase 2: the shared daily with global stats and a share line
 

@@ -991,6 +991,24 @@ button {
   font-size: 13px;
 }
 
+/* a tick-box with its one-line hint (the Share dialog's "Say what it needs") */
+.tick-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0;
+  cursor: pointer;
+}
+
+.tick-row input[type='checkbox'] {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .practice-group h4 {
   margin: 12px 0 6px;
   color: var(--muted);

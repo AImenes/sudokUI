@@ -319,6 +319,8 @@ const ui: Dictionary = {
   "Puzzle link": "Oppgavelenke",
   "Position link": "Stillingslenke",
   "Puzzle string": "Tegnstreng",
+  "Say what it needs": "Si hva den krever",
+  "Names the techniques the puzzle needs in the preview: a spoiler for the player who opens it": "Nevner teknikkene oppgaven krever i forhåndsvisningen: en spoiler for spilleren som åpner lenken",
   "Generating {level} puzzle": "Lager en oppgave på nivået {level}",
   "Generating {name} practice": "Lager en øvingsoppgave for {name}",
   "{n} puzzles examined||one puzzle": "{n} oppgave undersøkt",
