@@ -28,6 +28,11 @@ natively for iOS and Android via Capacitor.
   undo/redo; timer & pause
 - Auto-candidates with per-cell strike-through exclusions, one-click candidate
   fill, error check with restore-to-last-correct
+- **Set tracker** (Settings, off by default): paint two groups of cells in two
+  colours and a line under the board counts their cells and digits, says what
+  each still needs, and proves whether they must hold the same digits by
+  counting rows, columns and boxes, the way Phistomefel's ring is proved; a
+  cell in both colours counts in neither and shows no colour
 - Highlights that are not help: peers, matching digits, conflicts, and, a
   key press away when stuck, a ring around every cell left with exactly two
   candidates in the pair's two colours, so the same pair matches from

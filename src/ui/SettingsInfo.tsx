@@ -10,6 +10,7 @@ import { BandTable } from './BandTable';
 import { RATING_SUMMARY } from '../content/rating';
 import { useLearnLocale } from './useLearnLocale';
 import { PRIVACY_URL } from '../content/staticRoutes';
+import { PALETTE } from './Grid';
 
 // The rating summary in the chosen language. English is at hand; a
 // translation comes from the guide's own locale file (useLearnLocale.ts),
@@ -162,6 +163,43 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         value={s.highlightBivalue}
         onChange={(v) => useGame.getState().setBivalueHighlight(v)}
       />
+      <Toggle
+        label={t('Track two sets of cells')}
+        hint={t(
+          'Paint two groups of cells in two colours, and a line under the board counts the cells and digits in each, says what each still needs, and tells you whether they must hold the same digits, proved by counting rows, columns and boxes the way Phistomefel’s ring is proved. A cell in both colours counts in neither and shows no colour, so four rows against four columns needs no cleanup. It reads only your own board, never the solution, so it does not count as help'
+        )}
+        value={s.setTracker}
+        onChange={(v) => s.set({ setTracker: v })}
+      />
+      {s.setTracker && (
+        <div className="setting-row set-colours">
+          <div className="setting-text">
+            <span>{t('The two colours')}</span>
+            <small>{t('Paint the sets with these in Colour mode: keys {a} and {b}', { a: s.setColors[0] + 1, b: s.setColors[1] + 1 })}</small>
+          </div>
+          {([0, 1] as const).map((side) => (
+            <div key={side} className="swatch-row" role="radiogroup" aria-label={side === 0 ? t('First set') : t('Second set')}>
+              {PALETTE.map((colour, k) => (
+                <button
+                  key={k}
+                  role="radio"
+                  aria-checked={s.setColors[side] === k}
+                  aria-label={t('Colour {n}', { n: k + 1 })}
+                  className={`swatch${s.setColors[side] === k ? ' on' : ''}`}
+                  style={{ background: colour }}
+                  onClick={() => {
+                    const next: [number, number] = [...s.setColors];
+                    // the other set's colour: the two swap
+                    if (next[1 - side] === k) next[1 - side] = next[side];
+                    next[side] = k;
+                    s.set({ setColors: next });
+                  }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
       <Toggle
         label={t('Show conflicts')}
         hint={t(

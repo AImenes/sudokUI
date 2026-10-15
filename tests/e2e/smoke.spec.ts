@@ -1171,3 +1171,54 @@ test.describe('a link from another site', () => {
     await expect.poll(() => page.evaluate(() => location.pathname)).toBe(`/p/${EASY}`);
   });
 });
+
+test.describe('the set tracker', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test('a row against a column: the overlap drops out, the line counts both and proves them equal', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudokui-welcomed', '1');
+      localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { setTracker: true }, version: 0 }));
+    });
+    await page.goto(`/#p=${EASY}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    const tracker = page.locator('.set-tracker');
+    await expect(tracker).toHaveCount(0);
+    // row 2 in colour 6 (the first set's), column 2 in colour 2 (the second's)
+    const paint = async (from: number, key: 'ArrowRight' | 'ArrowDown', colour: string) => {
+      const c = await cellBox(page, from);
+      await page.mouse.click(c.x, c.y);
+      for (let i = 0; i < 8; i++) await page.keyboard.press(`Shift+${key}`);
+      await page.keyboard.press('KeyV');
+      await page.keyboard.press(`Digit${colour}`);
+    };
+    await paint(9, 'ArrowRight', '6');
+    await expect(tracker).toContainText('Paint the other set');
+    await paint(1, 'ArrowDown', '2');
+    // row 2 holds 9, 3, 5 and 1; column 2 is empty; r2c2 is in both and counts in neither
+    await expect(tracker).toContainText('8 cells, 4 placed');
+    await expect(tracker).toContainText('8 cells, 0 placed, still needs 1, 3, 5 and 9');
+    await expect(tracker).toContainText('Same digits, proved by counting houses');
+    // the board shows what is counted: eight blue, eight orange, and r2c2, in both, in neither
+    await expect(page.locator('svg.board rect[fill="#5b8fe0"]')).toHaveCount(8);
+    await expect(page.locator('svg.board rect[fill="#e8934a"]')).toHaveCount(8);
+    await tracker.getByRole('button', { name: 'Why?' }).click();
+    await expect(tracker).toContainText('with column 2 covers the same cells as');
+    await expect(tracker).toContainText('with row 2. Each house holds every digit once');
+    // it is not help
+    await expect(page.locator('.level-badge').first()).toBeVisible();
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state?.assisted ?? false)).toBe(false);
+  });
+});
+
+test.describe('tablet', () => {
+  test.use({ viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true });
+
+  test('the mode buttons are a finger’s size, the same width as before', async ({ page }) => {
+    await open(page);
+    const mode = (await page.locator('.mode-btn').first().boundingBox())!;
+    expect(mode.height).toBeGreaterThanOrEqual(52);
+    const wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+    expect(wide).toBe(false);
+  });
+});

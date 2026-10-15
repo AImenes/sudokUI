@@ -65,6 +65,13 @@ interface Settings {
    *  never of the solution, so it never counts as help; drawn only while
    *  the marks are complete (src/state/bivalue.ts) */
   highlightBivalue: boolean;
+  /** two palette colours are two sets of cells, and a line under the board
+   *  counts them, says what each still needs and whether they must hold the
+   *  same digits (src/engine/sets.ts, src/ui/SetTracker.tsx). A view of the
+   *  player's own board, never of the solution, so it never counts as help */
+  setTracker: boolean;
+  /** the palette indices of the two sets (0..8; key n paints index n - 1) */
+  setColors: [number, number];
   /** the first assist in a clean game asks first: it says what the button
    *  does (touch screens have no hover) and guards against a stray tap */
   confirmAssist: boolean;
@@ -105,6 +112,9 @@ export const useSettings = create<Settings>()(
       showPoodle: false,
       frameHighlights: true,
       highlightBivalue: false,
+      setTracker: false,
+      // blue and orange: keys 6 and 2 in Colour mode
+      setColors: [5, 1],
       confirmAssist: true,
       useUniqueness: true,
       digitTints: false,
