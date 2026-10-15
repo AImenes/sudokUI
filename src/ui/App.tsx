@@ -11,6 +11,7 @@ import { useAppStatus } from '../state/appStatus';
 import { useT, translator, rich, langRoot } from '../content/i18n';
 import type { Translator } from '../content/i18n';
 import { Grid } from './Grid';
+import { SetTracker } from './SetTracker';
 import { Poodle } from './Poodle';
 import { Controls } from './Controls';
 import { HintPanel, ChainPanel } from './HintPanel';
@@ -717,6 +718,7 @@ export default function App() {
       >
         <div className="board-col">
           <Grid />
+          <SetTracker />
           {/* while paused, Nutella moves onto the pause card instead */}
           {showPoodle && (!paused || won) && <Poodle />}
         </div>

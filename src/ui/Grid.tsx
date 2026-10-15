@@ -446,9 +446,22 @@ export function Grid() {
     frameHighlights,
     highlightBivalue,
     digitTints,
-    tintStrength
+    tintStrength,
+    setTracker,
+    setColors
   } = useSettings();
   const t = useT();
+  /**
+   * The colours a cell shows. With the set tracker on, a cell painted in
+   * both sets' colours shows neither: it counts in neither set
+   * (src/engine/sets.ts), so the board shows exactly what is counted. Only
+   * the drawing changes; the cell keeps its colours, and they come back
+   * when the tracker is switched off.
+   */
+  const shownColors = (colors: number[]) =>
+    setTracker && colors.includes(setColors[0]) && colors.includes(setColors[1])
+      ? colors.filter((c) => c !== setColors[0] && c !== setColors[1])
+      : colors;
 
   // entered digits that repeat within a row, column or box: a rule check
   // against the board alone, nothing to do with the solution
@@ -1101,18 +1114,17 @@ export function Grid() {
           return (
             <g key={i}>
               <rect x={x} y={y} width={SIZE} height={SIZE} fill="var(--cell-bg)" />
-              {cell.colors.length > 0 &&
-                cell.colors.map((col, k) => (
-                  <rect
-                    key={k}
-                    x={x + (SIZE / cell.colors.length) * k}
-                    y={y}
-                    width={SIZE / cell.colors.length}
-                    height={SIZE}
-                    fill={PALETTE[col]}
-                    opacity={0.55}
-                  />
-                ))}
+              {shownColors(cell.colors).map((col, k, shown) => (
+                <rect
+                  key={k}
+                  x={x + (SIZE / shown.length) * k}
+                  y={y}
+                  width={SIZE / shown.length}
+                  height={SIZE}
+                  fill={PALETTE[col]}
+                  opacity={0.55}
+                />
+              ))}
               {samePeer && (
                 <rect x={x} y={y} width={SIZE} height={SIZE} fill="var(--peer-bg)" />
               )}
