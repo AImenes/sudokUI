@@ -213,7 +213,9 @@ confirmed in the code afterwards.
 ## The road from here
 
 In order, each step shippable on its own and held by tests before it
-touches the 70 daily players.
+touches the players. (When this road was written there were no counts
+yet; since 13 October 2026 the plays are counted, see
+[online-goals.md](online-goals.md), phase 3.)
 
 1. **The first minute** (small, safe, days): conflict highlighting on by
    default; the hint panel above the fold with Hint and H stepping

@@ -128,6 +128,8 @@ const ui: Dictionary = {
   "Privacy": "Privacidad",
   "Counting plays": "Recuento de partidas",
   "Help count plays, including offline ones": "Ayudar a contar partidas, también sin conexión",
+  "Leave this device out of the counts": "Dejar este dispositivo fuera del recuento",
+  "Nothing is sent from this browser to count plays, online or offline: for the developer’s and testers’ own devices, or if you would rather not be counted. An app added to a home screen may keep its own settings. Daily times are still sent only when you tap Send": "No se envía nada desde este navegador para contar partidas, con o sin conexión: para los dispositivos del desarrollador y de quienes prueban la app, o si prefieres no ser contado. Una app añadida a la pantalla de inicio puede tener sus propios ajustes. Los tiempos del sudoku del día se siguen enviando solo cuando pulsas Enviar",
   "Anonymous totals, no ID, never your address. On, the app keeps plays made offline on this device and sends them when it is back online; off, nothing is kept": "Totales anónimos, sin ID, nunca tu dirección. Activado, la app guarda en este dispositivo las partidas sin conexión y las envía cuando vuelve a estar en línea; desactivado, no guarda nada",
   "What is sent, exactly": "Qué se envía, exactamente",
   "Plays are counted without identifying anyone, online only. To count yours offline too, turn on “{setting}” in {settings}.": "Las partidas se cuentan sin identificar a nadie, solo en línea. Para contar también las tuyas sin conexión, activa «{setting}» en {settings}.",

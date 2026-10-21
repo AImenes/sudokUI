@@ -43,28 +43,34 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
       {
         heading: 'By default: two lines per game, while online',
         paragraphs: [
-          'When a game starts and when it is solved, the app sends one short line to sudokui.app: which of the two it was, the puzzle’s difficulty band, the solve time rounded down to a 15-second step (two hours and up count as one step), whether the app runs installed or in a browser tab, and the app’s version. The server adds the country the connection came from, as Cloudflare reports it, and keeps the counts for three months in Cloudflare’s Workers Analytics Engine.',
-          'That is all. The line carries no name, no account, no cookie, no device ID and no IP address: the server reads the address only to refuse floods, in memory, and never writes it down. One game cannot be linked to another. Nothing is stored on your device for this. Offline, nothing is sent and nothing is kept.',
-          'A practice puzzle, which starts part-way through, sends nothing. Restarting a puzzle does not count as a new game.'
+          'When you make the first move of a game and when it is solved, the app sends one short line to sudokui.app: which of the two it was, the puzzle’s difficulty band, the solve time rounded down to a 15-second step (two hours and up count as one step), whether the app runs installed or in a browser tab, and the app’s version. The server adds the country the connection came from, as Cloudflare reports it, and keeps the counts for three months in Cloudflare’s Workers Analytics Engine.',
+          'That is all. The line carries no name, no account, no cookie, no device ID and no IP address: the server reads the address only to refuse floods, in memory, and the user agent your browser sends (its name and system, sometimes the device model) only to leave out robots: search engines, link previews, headless browsers and test tools. It writes down neither. One game cannot be linked to another. Nothing is stored on your device for this. Offline, nothing is sent and nothing is kept.',
+          'A game you open but never play sends nothing, and neither does a practice puzzle. Anything you put on the board is a first move: a digit, a mark, a colour, or candidates shown. A position someone shares with you, or a grid you paste, that opens with any of these on it counts as begun when it opens. Restarting the puzzle you are playing before you have solved it, or choosing it again while it is still on the board, does not count as a new game; playing a puzzle again after solving it does, even if you undid the last digit.'
         ]
       },
       {
         heading: 'If you ask: counting your offline plays too',
         paragraphs: [
-          'Settings has a switch, “Help count plays, including offline ones”. It is off until you turn it on. On, the app keeps the same lines on your device while you are offline and sends them, marked as sent late, the next time it is open online. It also remembers the day you turned the switch on, so a line can say whether this device had played on an earlier day. Both are deleted the moment you turn the switch off.',
+          'Settings has a switch, “Help count plays, including offline ones”. It is off until you turn it on. On, the app keeps the same lines on your device while you are offline and sends them, marked as sent late, the next time it is open online. It also remembers the day it first counted a game with the switch on, so a line can say whether this device had played on an earlier day. Both are deleted the moment you turn the switch off.',
           'Still no identifier: the lines are the ones above, plus “sent late”, “counting on” and “played before”. They let the counts estimate how much is played offline without following anyone.'
+        ]
+      },
+      {
+        heading: 'If you ask: leaving this device out of the counts',
+        paragraphs: [
+          'Settings also has “Leave this device out of the counts”. On, the app sends neither line from this device, online or offline, and deletes anything the other switch had kept. The setting itself is remembered on your device, like your other settings, because you asked for it. It holds in every ordinary window of the browser you turn it on in, not in a private one; an app added to a home screen may keep its own settings, so turn it on there too. Two things it does not change: a share or daily link opened from outside sudokui.app in a browser or app where the switch is not on can still count as a landing, because the server counts it from the request and cannot see any switch; and daily times are still sent only when you tap the button.'
         ]
       },
       {
         heading: 'The daily puzzle’s times',
         paragraphs: [
-          'After an unassisted solve of the daily, the win screen offers “Send my time and compare”. Only if you tap it, the app sends your time, the finished grid and a random token it keeps for that day, so the same time is not counted twice. The server keeps the time in 15-second steps with the day’s other times, and the token with it. Nothing links one day’s token to another day’s.'
+          'After an unassisted solve of the daily, the win screen offers “Send my time and compare”. Only if you tap it, the app sends your time, the finished grid, that you solved it without help, and a random token it keeps for that day, so the same time is not counted twice. The server keeps the time in its 15-second step with the day’s other times, and with it the token and the day it arrived. Nothing links one day’s token to another day’s. To show how many have solved the day’s puzzle, the win screen also asks the server for the day’s numbers; that request carries nothing about you.'
         ]
       },
       {
         heading: 'Share links',
         paragraphs: [
-          'A link you share carries the puzzle, its band and rating, up to three technique names and, if you choose to challenge someone, your time in seconds. When someone opens it from outside sudokui.app, the server counts one landing, with the band and the country; who opened it is not recorded.'
+          'A link you share carries the puzzle, its band and rating, up to three technique names and, if you choose to challenge someone, your time in seconds. When someone opens it, or a daily puzzle’s link, from outside sudokui.app, the server counts one landing, with the band and the country, unless the browser already holds sudokUI and opens the link itself; who opened it is not recorded.'
         ]
       },
       {
@@ -94,28 +100,34 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
       {
         heading: 'Som standard: to linjer per spill, når du er på nett',
         paragraphs: [
-          'Når et spill starter og når det er løst, sender appen én kort linje til sudokui.app: hvilken av de to det var, oppgavens vanskelighetsgrad, løsetiden rundet ned til nærmeste 15 sekunder (to timer og mer teller som ett trinn), om appen kjører installert eller i en nettleserfane, og appens versjon. Tjeneren legger til landet tilkoblingen kom fra, slik Cloudflare oppgir det, og beholder tallene i tre måneder i Cloudflares Workers Analytics Engine.',
-          'Det er alt. Linjen inneholder ingen navn, ingen konto, ingen informasjonskapsel, ingen enhets-ID og ingen IP-adresse: tjeneren leser adressen bare for å avvise flommer, i minnet, og skriver den aldri ned. Ett spill kan ikke knyttes til et annet. Ingenting lagres på enheten din for dette. Uten nett sendes ingenting, og ingenting beholdes.',
-          'En øvingsoppgave, som starter et stykke ut i løsningen, sender ingenting. Å starte en oppgave på nytt teller ikke som et nytt spill.'
+          'Når du gjør det første trekket i et spill og når det er løst, sender appen én kort linje til sudokui.app: hvilken av de to det var, oppgavens vanskelighetsgrad, løsetiden rundet ned til nærmeste 15 sekunder (to timer og mer teller som ett trinn), om appen kjører installert eller i en nettleserfane, og appens versjon. Tjeneren legger til landet tilkoblingen kom fra, slik Cloudflare oppgir det, og beholder tallene i tre måneder i Cloudflares Workers Analytics Engine.',
+          'Det er alt. Linjen inneholder ingen navn, ingen konto, ingen informasjonskapsel, ingen enhets-ID og ingen IP-adresse: tjeneren leser adressen bare for å avvise flommer, i minnet, og brukeragenten nettleseren din sender (navnet og systemet, noen ganger enhetsmodellen) bare for å holde roboter utenfor: søkemotorer, lenkeforhåndsvisninger, hodeløse nettlesere og testverktøy. Ingen av delene skrives ned. Ett spill kan ikke knyttes til et annet. Ingenting lagres på enheten din for dette. Uten nett sendes ingenting, og ingenting beholdes.',
+          'Et spill du åpner men aldri spiller, sender ingenting, og det gjør heller ikke en øvingsoppgave. Alt du setter på brettet, er et første trekk: et tall, et notat, en farge eller kandidater som vises. En stilling noen deler med deg, eller et brett du limer inn, som åpnes med noe av dette, teller som påbegynt når det åpnes. Å starte oppgaven du holder på med på nytt før du har løst den, eller velge den igjen mens den fortsatt står på brettet, teller ikke som et nytt spill; å spille en oppgave på nytt etter at du har løst den, gjør det, også om du angret det siste tallet.'
         ]
       },
       {
         heading: 'Hvis du ber om det: telle spillene dine uten nett også',
         paragraphs: [
-          'I innstillingene finnes bryteren «Hjelp til å telle spill, også uten nett». Den er av til du slår den på. Når den er på, beholder appen de samme linjene på enheten din mens du er uten nett, og sender dem, merket som sendt sent, neste gang den er åpen på nett. Den husker også dagen du slo bryteren på, slik at en linje kan si om denne enheten hadde spilt en tidligere dag. Begge deler slettes i det øyeblikket du slår bryteren av.',
+          'I innstillingene finnes bryteren «Hjelp til å telle spill, også uten nett». Den er av til du slår den på. Når den er på, beholder appen de samme linjene på enheten din mens du er uten nett, og sender dem, merket som sendt sent, neste gang den er åpen på nett. Den husker også dagen den første gang telte et spill med bryteren på, slik at en linje kan si om denne enheten hadde spilt en tidligere dag. Begge deler slettes i det øyeblikket du slår bryteren av.',
           'Fortsatt ingen identifikator: linjene er de samme som over, pluss «sendt sent», «telling på» og «spilt før». De lar tallene anslå hvor mye som spilles uten nett, uten å følge noen.'
+        ]
+      },
+      {
+        heading: 'Hvis du ber om det: holde denne enheten utenfor tellingen',
+        paragraphs: [
+          'I innstillingene finnes også «Hold denne enheten utenfor tellingen». Når den er på, sender appen ingen av de to linjene fra denne enheten, verken på nett eller uten, og sletter det den andre bryteren hadde beholdt. Selve innstillingen huskes på enheten din, som de andre innstillingene, fordi du har bedt om det. Den gjelder i alle vanlige vinduer i nettleseren du slår den på i, men ikke i private vinduer; en app lagt til på en hjemskjerm kan ha egne innstillinger, så slå den på der også. To ting endrer den ikke: en delingslenke eller en lenke til dagens sudoku som åpnes fra utsiden av sudokui.app i en nettleser eller app der bryteren ikke er på, kan fortsatt telles som en landing, fordi tjeneren teller den ut fra forespørselen og ikke kan se noen bryter; og tidene på dagens sudoku sendes fortsatt bare når du trykker på knappen.'
         ]
       },
       {
         heading: 'Tidene på dagens sudoku',
         paragraphs: [
-          'Etter en løsning av dagens sudoku uten hjelp tilbyr seiersskjermen «Send inn tiden min og sammenlign». Bare hvis du trykker på den, sender appen tiden din, det ferdige brettet og et tilfeldig merke appen beholder for den dagen, slik at samme tid ikke telles to ganger. Tjeneren beholder tiden i trinn på 15 sekunder sammen med dagens andre tider, og merket sammen med den. Ingenting knytter én dags merke til en annen dags.'
+          'Etter en løsning av dagens sudoku uten hjelp tilbyr seiersskjermen «Send inn tiden min og sammenlign». Bare hvis du trykker på den, sender appen tiden din, det ferdige brettet, at du løste den uten hjelp, og et tilfeldig merke appen beholder for den dagen, slik at samme tid ikke telles to ganger. Tjeneren beholder tiden i trinnet på 15 sekunder den faller i, sammen med dagens andre tider, og med den merket og dagen den kom inn. Ingenting knytter én dags merke til en annen dags. For å vise hvor mange som har løst dagens oppgave, spør seiersskjermen også tjeneren om dagens tall; den forespørselen inneholder ingenting om deg.'
         ]
       },
       {
         heading: 'Delingslenker',
         paragraphs: [
-          'En lenke du deler, bærer oppgaven, dens vanskelighetsgrad og poengsum, opptil tre teknikknavn og, hvis du velger å utfordre noen, tiden din i sekunder. Når noen åpner den fra utsiden av sudokui.app, teller tjeneren én landing, med vanskelighetsgraden og landet; hvem som åpnet den, registreres ikke.'
+          'En lenke du deler, bærer oppgaven, dens vanskelighetsgrad og poengsum, opptil tre teknikknavn og, hvis du velger å utfordre noen, tiden din i sekunder. Når noen åpner den, eller en lenke til dagens sudoku, fra utsiden av sudokui.app, teller tjeneren én landing, med vanskelighetsgraden og landet, med mindre nettleseren allerede har sudokUI lagret og åpner lenken selv; hvem som åpnet den, registreres ikke.'
         ]
       },
       {
@@ -145,28 +157,34 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
       {
         heading: 'Por defecto: dos líneas por partida, mientras estás en línea',
         paragraphs: [
-          'Cuando una partida empieza y cuando se resuelve, la app envía una línea corta a sudokui.app: cuál de las dos fue, el nivel de dificultad del sudoku, el tiempo de resolución redondeado hacia abajo a tramos de 15 segundos (dos horas o más cuentan como un solo tramo), si la app funciona instalada o en una pestaña del navegador, y la versión de la app. El servidor añade el país desde el que llegó la conexión, tal como lo indica Cloudflare, y conserva los recuentos durante tres meses en Workers Analytics Engine de Cloudflare.',
-          'Eso es todo. La línea no lleva nombre, ni cuenta, ni cookie, ni identificador del dispositivo, ni dirección IP: el servidor lee la dirección solo para rechazar avalanchas, en memoria, y nunca la anota. Una partida no puede vincularse con otra. No se guarda nada en tu dispositivo para esto. Sin conexión, no se envía nada y no se conserva nada.',
-          'Un sudoku de práctica, que empieza a medio resolver, no envía nada. Reiniciar un sudoku no cuenta como una partida nueva.'
+          'Cuando haces el primer movimiento de una partida y cuando se resuelve, la app envía una línea corta a sudokui.app: cuál de las dos fue, el nivel de dificultad del sudoku, el tiempo de resolución redondeado hacia abajo a tramos de 15 segundos (dos horas o más cuentan como un solo tramo), si la app funciona instalada o en una pestaña del navegador, y la versión de la app. El servidor añade el país desde el que llegó la conexión, tal como lo indica Cloudflare, y conserva los recuentos durante tres meses en Workers Analytics Engine de Cloudflare.',
+          'Eso es todo. La línea no lleva nombre, ni cuenta, ni cookie, ni identificador del dispositivo, ni dirección IP: el servidor lee la dirección solo para rechazar avalanchas, en memoria, y el agente de usuario que envía tu navegador (su nombre y su sistema, a veces el modelo del dispositivo) solo para dejar fuera a los robots: buscadores, vistas previas de enlaces, navegadores sin interfaz y herramientas de prueba. No anota ninguno de los dos. Una partida no puede vincularse con otra. No se guarda nada en tu dispositivo para esto. Sin conexión, no se envía nada y no se conserva nada.',
+          'Una partida que abres pero no juegas no envía nada, y tampoco un sudoku de práctica. Todo lo que pones en el tablero es un primer movimiento: un número, una anotación, un color o los candidatos a la vista. Una posición que alguien comparte contigo, o un tablero que pegas, que se abre con algo de esto cuenta como empezada al abrirse. Reiniciar el sudoku que estás jugando antes de resolverlo, o volver a elegirlo mientras sigue en el tablero, no cuenta como una partida nueva; volver a jugarlo después de resolverlo sí, aunque hayas deshecho el último número.'
         ]
       },
       {
         heading: 'Si lo pides: contar también tus partidas sin conexión',
         paragraphs: [
-          'En Ajustes hay un interruptor, «Ayudar a contar partidas, también sin conexión». Está apagado hasta que lo enciendes. Encendido, la app conserva las mismas líneas en tu dispositivo mientras estás sin conexión y las envía, marcadas como enviadas tarde, la próxima vez que esté abierta en línea. También recuerda el día en que encendiste el interruptor, para que una línea pueda decir si este dispositivo ya había jugado otro día. Ambas cosas se borran en el momento en que apagas el interruptor.',
+          'En Ajustes hay un interruptor, «Ayudar a contar partidas, también sin conexión». Está apagado hasta que lo enciendes. Encendido, la app conserva las mismas líneas en tu dispositivo mientras estás sin conexión y las envía, marcadas como enviadas tarde, la próxima vez que esté abierta en línea. También recuerda el día en que contó por primera vez una partida con el interruptor encendido, para que una línea pueda decir si este dispositivo ya había jugado otro día. Ambas cosas se borran en el momento en que apagas el interruptor.',
           'Sigue sin haber identificador: las líneas son las mismas de arriba, más «enviada tarde», «recuento activado» y «ya había jugado». Permiten que los recuentos estimen cuánto se juega sin conexión sin seguir a nadie.'
+        ]
+      },
+      {
+        heading: 'Si lo pides: dejar este dispositivo fuera del recuento',
+        paragraphs: [
+          'En Ajustes también está «Dejar este dispositivo fuera del recuento». Encendido, la app no envía ninguna de las dos líneas desde este dispositivo, con o sin conexión, y borra lo que hubiera conservado el otro interruptor. El ajuste en sí se recuerda en tu dispositivo, como tus demás ajustes, porque lo has pedido. Vale en todas las ventanas normales del navegador en el que lo enciendes, no en las privadas; una app añadida a la pantalla de inicio puede tener sus propios ajustes, así que enciéndelo también allí. Hay dos cosas que no cambia: un enlace compartido o del sudoku del día abierto desde fuera de sudokui.app en un navegador o una app donde el interruptor no está encendido puede seguir contando como una llegada, porque el servidor la cuenta a partir de la petición y no puede ver ningún interruptor; y los tiempos del sudoku del día se siguen enviando solo cuando pulsas el botón.'
         ]
       },
       {
         heading: 'Los tiempos del sudoku del día',
         paragraphs: [
-          'Tras resolver el sudoku del día sin ayuda, la pantalla de victoria ofrece «Enviar mi tiempo y comparar». Solo si lo pulsas, la app envía tu tiempo, el tablero terminado y una ficha aleatoria que conserva para ese día, para que el mismo tiempo no se cuente dos veces. El servidor guarda el tiempo en tramos de 15 segundos junto con los demás tiempos del día, y la ficha con él. Nada vincula la ficha de un día con la de otro.'
+          'Tras resolver el sudoku del día sin ayuda, la pantalla de victoria ofrece «Enviar mi tiempo y comparar». Solo si lo pulsas, la app envía tu tiempo, el tablero terminado, que lo resolviste sin ayuda y una ficha aleatoria que conserva para ese día, para que el mismo tiempo no se cuente dos veces. El servidor guarda el tiempo en su tramo de 15 segundos junto con los demás tiempos del día, y con él la ficha y el día en que llegó. Nada vincula la ficha de un día con la de otro. Para mostrar cuántos han resuelto el sudoku del día, la pantalla de victoria también pide al servidor las cifras del día; esa petición no lleva nada sobre ti.'
         ]
       },
       {
         heading: 'Enlaces para compartir',
         paragraphs: [
-          'Un enlace que compartes lleva el sudoku, su nivel y su puntuación, hasta tres nombres de técnicas y, si decides retar a alguien, tu tiempo en segundos. Cuando alguien lo abre desde fuera de sudokui.app, el servidor cuenta una llegada, con el nivel y el país; quién lo abrió no se registra.'
+          'Un enlace que compartes lleva el sudoku, su nivel y su puntuación, hasta tres nombres de técnicas y, si decides retar a alguien, tu tiempo en segundos. Cuando alguien lo abre, o abre el enlace de un sudoku del día, desde fuera de sudokui.app, el servidor cuenta una llegada, con el nivel y el país, salvo que el navegador ya tenga sudokUI guardado y abra el enlace por sí mismo; quién lo abrió no se registra.'
         ]
       },
       {

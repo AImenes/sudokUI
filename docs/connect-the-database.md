@@ -17,9 +17,11 @@ as before.
 - **The tables** are what is missing. They are two small ones:
   `daily_result` (one row per time a player sends in) and `daily_hist`
   (the day's times counted in 15-second buckets). Their definition is the
-  file `migrations/0001_daily.sql`. Creating them is called "applying the
-  migration", and a deploy never does it on its own: you do it once, by
-  hand, with the command below.
+  file `migrations/0001_daily.sql`; a second file,
+  `migrations/0002_daily_steps.sql`, rounds any times stored before
+  21 October 2026 to the 15-second steps the privacy page promises.
+  Running them is called "applying the migrations", and a deploy never
+  does it on its own: you do it by hand, with the command below.
 - **What players get once the tables exist.** When someone finishes the
   daily, the win screen shows how many have solved it without help and
   their median time. After an unassisted solve, the button "Send my time
@@ -66,17 +68,25 @@ npx wrangler d1 migrations apply sudokui-db --remote
 ```
 
 `--remote` means the real database on Cloudflare, not a local copy.
-Wrangler lists the migration it is about to apply (`0001_daily.sql`) and
-asks you to confirm. Answer **y**. The output ends with a line saying the
-migration was applied, something like:
+Wrangler lists the migrations it is about to apply (`0001_daily.sql` and
+`0002_daily_steps.sql`) and asks you to confirm. Answer **y**. The output
+ends with a table saying each was applied, something like:
 
 ```
-┌───────────────┬────────┐
-│ name          │ status │
-├───────────────┼────────┤
-│ 0001_daily.sql│ ✅     │
-└───────────────┴────────┘
+┌──────────────────────┬────────┐
+│ name                 │ status │
+├──────────────────────┼────────┤
+│ 0001_daily.sql       │ ✅     │
+│ 0002_daily_steps.sql │ ✅     │
+└──────────────────────┴────────┘
 ```
+
+If you already did this step before 21 October 2026, run the same
+command once more, after the change of that date is live (the Info
+dialog in the app shows a version ending in `+` and a commit): Wrangler
+remembers what it applied and lists only `0002_daily_steps.sql`. Answer
+**y**. Run it before then and the old code may still store a time to the
+second, which the migration, applied once, would not round.
 
 That is the whole connection. The deployed code notices on the very next
 request; there is nothing to redeploy and nothing to click in the
@@ -145,5 +155,5 @@ It does not count plays, visitors or shares: that is phase 3 in
 [connect-the-analytics.md](connect-the-analytics.md). It does not store
 anything about a player beyond the time they chose to send. And it does
 not need to be repeated: future deploys keep using the same tables, and
-a future migration file (`migrations/0002_….sql`) is applied with the
+a later migration file (`migrations/0003_….sql`) is applied with the
 same command in step 2.

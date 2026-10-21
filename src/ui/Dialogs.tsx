@@ -26,7 +26,7 @@ import { parsePencilGrid, looksLikeGrid, formatPencilGrid } from '../content/tex
 import { puzzleFromLink } from '../content/importLinks';
 import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
 import { fasterThan, dailyNumber, localDateKey, LATE_DAYS } from '../content/dailies';
-import { useDailyStats, playedFrom, SubmitOutcome } from '../state/dailyStats';
+import { useDailyStats, SubmitOutcome } from '../state/dailyStats';
 import { PRIVACY_URL } from '../content/staticRoutes';
 import { HubTabs } from './HubTabs';
 import { techniquesByFamily } from '../content/categories';
@@ -1123,7 +1123,9 @@ export function VictoryDialog({
   // the plays counted (src/state/telemetry.ts): one line, the first time
   // only, pointing at the switch in Settings and at what is sent
   const countPlays = useSettings((s) => s.countPlays);
-  const [askCount] = useState(() => !useSettings.getState().countPlays && !useSettings.getState().countPlaysAsked);
+  const [askCount] = useState(
+    () => !useSettings.getState().countPlays && !useSettings.getState().countPlaysAsked && !useSettings.getState().dontCount
+  );
   useEffect(() => {
     if (askCount) useSettings.getState().set({ countPlaysAsked: true });
   }, [askCount]);
@@ -1181,8 +1183,7 @@ export function VictoryDialog({
         .join(''),
       seconds: secs,
       hints: Object.values(game.hinted).reduce((sum, n) => sum + (n ?? 0), 0),
-      unassisted: !assisted,
-      source: playedFrom()
+      unassisted: !assisted
     });
     setSent(outcome);
   };

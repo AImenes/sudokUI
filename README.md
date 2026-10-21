@@ -13,8 +13,10 @@ library available in a browser: **80 techniques catalogued, 77 implemented**,
 from a beginner's first Naked Single to Exocets and Tridagons, each one
 explainable step by step.
 
-It runs as an installable, offline-capable web app (PWA). The same build wraps
-natively for iOS and Android via Capacitor.
+It runs as an installable, offline-capable web app (PWA): Safari, Chrome, Edge
+and most Android browsers can add it to a home screen or desktop, and it plays
+offline once loaded. It is not in an
+app store yet; the steps for a Capacitor wrapper are under Mobile builds.
 
 ## Highlights
 
@@ -331,6 +333,9 @@ meant to double as a course in advanced sudoku solving.
    `npx vite-node scripts/hunt-examples.ts` to find it a worked example.
 
 ## Mobile builds
+
+Not done yet: the repository holds no native project. These are the steps
+for wrapping the web build with Capacitor when the time comes.
 
 ```bash
 npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android

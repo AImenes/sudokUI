@@ -2,7 +2,9 @@
 // POST /api/t (worker/telemetry.ts) so the owner can tell whether anyone
 // plays, without identifying anyone.
 //
-// By default, while online: a `started` line when a game begins and a
+// By default, while online: a `started` line at a game's first move, or
+// when a shared position or a pasted grid opens with entries on it (a
+// game opened and never touched is not counted; gameStore.ts) and a
 // `completed` line when it is solved, each with the band, the time in
 // 15-second buckets, whether display-mode: standalone matched, the app's
 // version and where it ran (the installed app or a tab). Nothing is stored
@@ -16,6 +18,13 @@
 // (`returning`). Both go the moment the switch goes off. That is the whole
 // of what the opt-in stores: a queue and a date, no identifier, and the
 // privacy page (src/content/privacy.ts) says so.
+//
+// The other switch, "Leave this device out of the counts" (dontCount),
+// sends no line at all from this device, live or kept; it also takes the
+// opt-in's queue and date with it. It is how the owner keeps their own and
+// their testers' plays out of the numbers, and anyone may use it. (A
+// landing is counted by the Worker from the page request itself, before
+// any of this runs, when the request reaches it, so it cannot reach that.)
 //
 // Transport: navigator.sendBeacon, which survives a closing tab, with
 // fetch keepalive as the other path. Live events wait a second for
@@ -103,7 +112,8 @@ function drop(): void {
   }
 }
 
-const optedIn = () => useSettings.getState().countPlays;
+const optedIn = () => useSettings.getState().countPlays && !useSettings.getState().dontCount;
+const leftOut = () => useSettings.getState().dontCount;
 const online = () => typeof navigator === 'undefined' || navigator.onLine !== false;
 
 /**
@@ -139,6 +149,8 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
   pending: [],
 
   track: (event, band, seconds) => {
+    // a device left out of the counts sends nothing and keeps nothing
+    if (leftOut()) return;
     const source = playedFrom();
     const e: PlayEvent = { event, band, bucket: bucketOf(seconds), standalone: source === 'pwa', version: APP_VERSION, source };
     const optin = optedIn();
@@ -187,6 +199,9 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
       while (get().queue.length) {
         const chunk = get().queue.slice(0, BATCH_MAX);
         if (!(await deliver(chunk))) break;
+        // the switch went off while the batch travelled: what it kept is
+        // gone already, and must not be written back
+        if (!optedIn()) break;
         const queue = get().queue.slice(chunk.length);
         set({ queue });
         keep({ queue, firstSeen: get().firstSeen });
@@ -203,7 +218,21 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
 }));
 
 // the switch going off takes the queue and the date with it, whichever
-// way it was turned
+// way it was turned; so does leaving the device out, which also drops
+// whatever live line was still waiting to go. The switch going on picks up
+// what the device kept: nothing when it is turned on here, but when it was
+// turned on in another window (settings.ts follows that one), the queue
+// and the date that window kept, which this window must add to, not write
+// over
 useSettings.subscribe((s, prev) => {
+  if (!(prev.countPlays && !prev.dontCount) && s.countPlays && !s.dontCount) useTelemetry.setState(kept());
   if (prev.countPlays && !s.countPlays) useTelemetry.getState().forget();
+  if (!prev.dontCount && s.dontCount) {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    useTelemetry.setState({ pending: [] });
+    useTelemetry.getState().forget();
+  }
 });

@@ -43,6 +43,8 @@ export interface Totals {
   /** completed plus the estimate */
   total: number;
   completionRate: number | null;
+  /** completions played from the installed app (display-mode: standalone): a home-screen or desktop icon, not a store */
+  standalone: number;
   installedShare: number | null;
   optinOnline: number;
   optinOffline: number;

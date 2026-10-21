@@ -427,6 +427,70 @@ Built, October 2026, with these decisions:
 - **Hand steps**, in [connect-the-analytics.md](connect-the-analytics.md):
   the WAE billing status, the two secrets, Access on `/admin`.
 
+Cleaned up on 21 October 2026, before any promotion, so later numbers
+can be trusted:
+
+- **A start is a game begun.** `started` goes the first time a game's
+  board shows anything beyond its givens (a digit, a mark, a colour,
+  candidates switched on by Auto, Steps or the chain trainer, an applied
+  hint), not when the game opens: the app's own first game on a first
+  visit, and a share link opened and never played, count nothing. A
+  shared position (`#s=`) or a pasted grid that opens with any of these
+  on it counts when it opens.
+  Nothing is saved for it: the flag lives in memory, and a game resumed
+  from storage counts as begun when its board shows anything beyond the
+  givens, which is exactly when it was counted, so a reload does not
+  count it twice. Two gaps, since nothing about counting is saved: a
+  game whose moves were all undone or erased before a reload counts
+  again at its next move, and a game counted, then left out of the
+  counts across a reload, counts again when the switch goes off. Starting the
+  puzzle still on the board again (Restart, or choosing the same daily
+  anew) before it was ever solved is the same game; a puzzle played
+  again after a solve, even one undone, is a new one (`countFirstMove`
+  in `src/state/gameStore.ts`). A solve counts once per game, in the
+  counts and in the player's own record: one undone and solved again by
+  the same digit or by Redo is the same solve (`recordWin`). Whether a
+  game was solved is saved with it, like whether it is won, for the
+  player's own record, so this holds across a reload. The other gap: two
+  windows open on one game can each count its start. Starts before this
+  counted every game opened, and the change reaches each device as it
+  updates (the service worker asks first), so the series has a seam from
+  21 October spread over the following days: lines from the new builds
+  carry a version with `+`, the old ones a bare `1.0.0`. A game opened
+  but not yet played on an old build, and played after the update,
+  counts once in each series.
+- **"Leave this device out of the counts"** (Settings) sends no play
+  lines at all from a device and deletes what the opt-in had kept. The
+  owner's and testers' devices use it; anyone may. It holds in every
+  ordinary window of the browser it is turned on in (not a private one),
+  and an app added to a home screen may keep its own settings, so it is
+  turned on there too. A game played on while left out is counted the
+  moment the switch goes off, ahead of its solve. Two things it cannot
+  touch: a landing, which the server counts from the request for a share
+  page opened in a browser where the switch is not on (a browser that
+  holds the app answers the link itself, and counts nothing), and a
+  daily time, which goes only when its button is tapped.
+- **No lines from crawlers, headless browsers or audit tools.** `/api/t`
+  takes them and writes nothing (`isPersonAgent` in worker/telemetry.ts),
+  as the landing count already did. The browsers inside apps such as X,
+  LinkedIn, Pinterest and Telegram count as people; the apps' preview
+  fetchers still do not.
+- **The daily keeps no more than the privacy page says.** A sent time is
+  stored in its 15-second step with the day it arrived, not to the
+  second, and without where the app ran; the app no longer sends that.
+  `migrations/0002_daily_steps.sql` rounds the rows sent before, once
+  applied ([connect-the-database.md](connect-the-database.md)).
+- **Every build names its commit.** The app's version is `1.0.0+abc1234`
+  (vite.config.ts, from Workers Builds' `WORKERS_CI_COMMIT_SHA`), in the
+  Info dialog and on every line the app sends, so a change in the
+  numbers or a bug report can be tied to a deploy. (A landing is written
+  by the Worker and carries package.json's plain version.) The Info dialog's "what's new" links to
+  the commit history instead of a releases page that stopped at v1.0.0.
+- **The dashboard says what it counts.** "Installed" is "Solved in
+  installed app": games played from a home-screen or desktop icon added
+  through the browser, not a count of installs. Every percentage shows
+  the counts it comes from.
+
 ### Phase 4, after four to eight weeks of data
 
 - **Daily archive pages.** One page per day at `/daily/<date>` with the
@@ -523,8 +587,9 @@ pattern:
 | Offline event queue flushed later | Yes | Opt-in only |
 | Self-computed retention bucket sent without an ID | Yes, it reads local history for analytics | Opt-in only |
 
-If certainty is wanted, Nkom is the designated authority for exemption
-questions and can be asked directly.
+If certainty is wanted, two authorities share the rule: Nkom answers
+questions on its scope and its exemptions, and Datatilsynet on whether
+information and consent meet the GDPR. Both can be asked directly.
 
 ## Open questions
 

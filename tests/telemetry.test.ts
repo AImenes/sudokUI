@@ -15,6 +15,7 @@ import {
   memoryEvents,
   countLanding,
   isLanding,
+  isPersonAgent,
   BATCH_MAX,
   POINTS_MAX,
   BODY_MAX,
@@ -47,10 +48,12 @@ const good = (over: Record<string, unknown> = {}) => ({
   source: 'tab',
   ...over
 });
+/** a person's browser: the route writes only what one sends (isPersonAgent) */
+const ROUTE_BROWSER = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36';
 const post = (body: unknown, headers: Record<string, string> = {}) =>
   new Request(`${SITE}/api/t`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...headers },
+    headers: { 'content-type': 'application/json', 'user-agent': ROUTE_BROWSER, ...headers },
     body: typeof body === 'string' ? body : JSON.stringify(body)
   });
 
@@ -367,7 +370,10 @@ describe('the dashboard', () => {
     expect(html).toContain('<dt>Offline, estimated</dt><dd>4</dd>');
     expect(html).toContain('<dt>Completed, total estimate</dt><dd>10</dd>');
     expect(html).toContain('<dt>Completion rate</dt><dd>60%</dd>');
-    expect(html).toContain('<dt>Installed share</dt><dd>50%</dd>');
+    expect(html).toContain('<dt>Solved in installed app</dt><dd>50%</dd>');
+    expect(html).toContain('not a count of installs');
+    expect(html).toContain('<th>In installed app</th>');
+    expect(html).not.toContain('<th>Installed</th>');
     expect(html).toContain('<dt>Landings yesterday</dt><dd>5</dd>');
     expect(html).toContain('<dt>New players</dt><dd>75%</dd>');
     expect(html).toContain('<dt>Returning players</dt><dd>25%</dd>');
@@ -479,6 +485,83 @@ describe('the privacy page', () => {
     for (const page of pages) {
       const prefix = page.lang === 'en' ? '' : `/${page.lang}`;
       expect(page.html, page.url).toContain(`<a href="${prefix}${PRIVACY_URL}">${PRIVACY[page.lang].name}</a>`);
+    }
+  });
+});
+
+describe('who is counted', () => {
+  it('takes the lines of a crawler, a headless browser or an audit tool, and writes none of them', async () => {
+    for (const agent of [
+      '',
+      'curl/8.4.0',
+      'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+      'Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)',
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36 Chrome-Lighthouse'
+    ]) {
+      const events = memoryEvents();
+      const res = (await handleTelemetry(post([good(), good({ event: 'started', bucket: 0 })], { 'user-agent': agent }), events))!;
+      expect(res.status, agent).toBe(204);
+      expect(events.points, agent).toEqual([]);
+    }
+    // a person's browser is written
+    const events = memoryEvents();
+    expect((await handleTelemetry(post([good()]), events))!.status).toBe(204);
+    expect(events.points).toHaveLength(1);
+    // and a refused body is still refused, whoever sends it
+    expect((await handleTelemetry(post([{ event: 'nope' }], { 'user-agent': 'curl/8.4.0' }), memoryEvents()))!.status).toBe(400);
+  });
+
+  it('counts the people in the X, LinkedIn and Pinterest apps, and not those apps’ preview fetchers', () => {
+    for (const agent of [
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [LinkedInApp]/9.31.1234',
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Twitter for iPhone/10.80',
+      'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36 [Pinterest/Android]'
+    ]) {
+      expect(isPersonAgent(agent), agent).toBe(true);
+      expect(isLanding(landing(`/p/${EASY}`, { 'user-agent': agent })), agent).toBe(true);
+    }
+    for (const agent of [
+      'LinkedInBot/1.0 (compatible; Mozilla/5.0; Apache-HttpClient +http://www.linkedin.com)',
+      'Twitterbot/1.0',
+      'Mozilla/5.0 (compatible; Pinterestbot/1.0; +http://www.pinterest.com/bot.html)'
+    ]) {
+      expect(isPersonAgent(agent), agent).toBe(false);
+      expect(isLanding(landing(`/p/${EASY}`, { 'user-agent': agent })), agent).toBe(false);
+    }
+  });
+
+  it('counts a game played in Telegram’s browser, or in Instagram’s on a CUBOT phone, and not Skype’s preview fetcher', async () => {
+    for (const agent of [
+      'Mozilla/5.0 (Linux; Android 14; SM-A155F Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36 Telegram-Android/11.11.0 (Samsung SM-A155F; Android 14; SDK 34; AVERAGE)',
+      'Mozilla/5.0 (Linux; Android 12; KINGKONG 9 Build/SP1A.210812.016; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36 Instagram 400.0.0.0.0 Android (31/12; 480dpi; 1080x2400; CUBOT; KINGKONG 9; KINGKONG_9; mt6789; en_GB; 800000000)'
+    ]) {
+      expect(isPersonAgent(agent), agent).toBe(true);
+      expect(isLanding(landing(`/p/${EASY}`, { 'user-agent': agent })), agent).toBe(true);
+      const events = memoryEvents();
+      expect((await handleTelemetry(post([good()], { 'user-agent': agent }), events))!.status, agent).toBe(204);
+      expect(events.points, agent).toHaveLength(1);
+    }
+    expect(isPersonAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) SkypeUriPreview Preview/0.5 skype-url-preview@microsoft.com')).toBe(false);
+    // another rugged-phone brand in Instagram's agent
+    expect(
+      isPersonAgent(
+        'Mozilla/5.0 (Linux; Android 13; F102 Build/TP1A.220624.014; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36 Instagram 400.0.0.0.0 Android (33/13; 400dpi; 1080x2408; FOSSiBOT; F102; F102; mt6789; en_GB; 800000000)'
+      )
+    ).toBe(true);
+  });
+
+  it('leaves out Google’s inspection and read-aloud fetchers, the fetches AI assistants make for a user, and Bluesky’s link cards', () => {
+    for (const agent of [
+      'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36 (compatible; Google-InspectionTool/1.0;)',
+      'Mozilla/5.0 (compatible; GoogleOther)',
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 (compatible; Google-Read-Aloud; +https://support.google.com/webmasters/answer/1061943)',
+      'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Claude-User/1.0; +Claude-User@anthropic.com)',
+      'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)',
+      // Bluesky's link cards
+      'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Bluesky Cardyb/1.1; +mailto:support@bsky.app) Chrome/124.0.6367.207 Safari/537.36'
+    ]) {
+      expect(isPersonAgent(agent), agent).toBe(false);
     }
   });
 });

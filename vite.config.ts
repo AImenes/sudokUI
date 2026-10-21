@@ -4,6 +4,26 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { version } from './package.json';
+import { execSync } from 'node:child_process';
+
+/**
+ * The build's own name, 1.0.0+abc1234: package.json's version and the
+ * commit it was built from, so the app's Info dialog, a bug report and
+ * every counted line say which deploy they came from. Cloudflare's Workers
+ * Builds sets WORKERS_CI_COMMIT_SHA, GitHub Actions GITHUB_SHA; a local
+ * build asks git, and a build with no git at all is the version alone.
+ */
+function buildCommit(): string {
+  const fromCi = process.env.WORKERS_CI_COMMIT_SHA || process.env.GITHUB_SHA;
+  if (fromCi) return fromCi.slice(0, 7);
+  try {
+    return execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    return '';
+  }
+}
+const COMMIT = buildCommit();
+const BUILD_VERSION = /^[0-9a-f]{7}$/.test(COMMIT) ? `${version}+${COMMIT}` : version;
 import type { Plugin } from 'vite';
 import { STATIC_ROUTES } from './src/content/staticRoutes';
 import { renderHome, homeLangOfPath, HOME_LANGS, APP_NAVIGATION } from './src/content/home';
@@ -172,7 +192,7 @@ function homePages(): Plugin[] {
 
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(version)
+    __APP_VERSION__: JSON.stringify(BUILD_VERSION)
   },
   plugins: [
     react(),

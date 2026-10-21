@@ -29,6 +29,7 @@ import {
   HistogramRow,
   EARLY_DAYS,
   LATE_DAYS,
+  BUCKET_SECONDS,
   bucketOf,
   dailyDate,
   dailyNumber,
@@ -52,11 +53,11 @@ export interface DailyStore {
 export interface StoredResult {
   no: number;
   token: string;
+  /** the time's 15-second step, in seconds (capped at two hours, like the histogram): no finer than the privacy page says */
   seconds: number;
   unassisted: boolean;
   hints: number;
-  source: 'pwa' | 'tab' | null;
-  /** seconds since the epoch */
+  /** the day it arrived: seconds since the epoch at midnight UTC, not the second */
   createdAt: number;
 }
 
@@ -96,10 +97,10 @@ export function d1Store(db: D1Like): DailyStore {
           .bind(r.no, bucket, r.unassisted ? 1 : 0, r.token),
         db
           .prepare(
-            'INSERT OR IGNORE INTO daily_result (puzzle_no, token, seconds, unassisted, hints, source, created_at) ' +
-              'VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)'
+            'INSERT OR IGNORE INTO daily_result (puzzle_no, token, seconds, unassisted, hints, created_at) ' +
+              'VALUES (?1, ?2, ?3, ?4, ?5, ?6)'
           )
-          .bind(r.no, r.token, r.seconds, r.unassisted ? 1 : 0, r.hints, r.source, r.createdAt)
+          .bind(r.no, r.token, r.seconds, r.unassisted ? 1 : 0, r.hints, r.createdAt)
       ]);
       return (inserted.meta?.changes ?? 0) > 0;
     }
@@ -142,6 +143,7 @@ export interface ResultBody {
   hints: number;
   /** must be true: only an unassisted solve is counted */
   unassisted: boolean;
+  /** where the app ran, sent by builds before 21 October 2026: checked, never stored */
   source?: 'pwa' | 'tab';
 }
 
@@ -196,11 +198,13 @@ export async function checkResult(body: unknown, no: number, daily: Daily, now: 
     result: {
       no,
       token: b.token,
-      seconds: b.seconds,
+      // kept no finer than the privacy page says: the time in its
+      // 15-second step and the day, which is all the histogram and the
+      // one-result-per-token rule need
+      seconds: bucketOf(b.seconds) * BUCKET_SECONDS,
       unassisted: b.unassisted,
       hints: b.hints,
-      source: (b.source as 'pwa' | 'tab' | undefined) ?? null,
-      createdAt: Math.floor(now.getTime() / 1000)
+      createdAt: Math.floor(now.getTime() / 86_400_000) * 86_400
     }
   };
 }
