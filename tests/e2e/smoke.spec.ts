@@ -92,6 +92,35 @@ async function expectPracticeBarFits(page: Page, path: string, longest: string, 
   }
 }
 
+/** the keys and buttons of the control column (digits, modes, actions,
+ *  the menu) that stick out of the column or whose label overflows its
+ *  button, judged by their boxes: a key past the column's edge is cut
+ *  off without the page ever scrolling sideways */
+const controlMisfits = (page: Page) =>
+  page.locator('.side').evaluate((side) => {
+    const column = side.getBoundingClientRect();
+    const misfits: string[] = [];
+    for (const el of side.querySelectorAll<HTMLElement>('.num-btn, .mode-btn, .action-row button, .menu-row button')) {
+      if (!el.getClientRects().length) continue; // not shown here
+      const r = el.getBoundingClientRect();
+      const name = el.innerText.replace(/\s+/g, ' ').trim();
+      if (r.left < column.left - 0.5 || r.right > column.right + 0.5) misfits.push(`${name} sticks out of the column`);
+      if (el.scrollWidth > el.clientWidth) misfits.push(`${name} overflows its button`);
+    }
+    return misfits;
+  });
+
+/** the control column at one size, in each language */
+async function expectControlsFit(page: Page, width: number, height: number) {
+  await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+  await page.setViewportSize({ width, height });
+  for (const path of ['/', '/nb/', '/es/']) {
+    await page.goto(`${path}#p=${EASY}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    expect(await controlMisfits(page), `${path} at ${width} x ${height}`).toEqual([]);
+  }
+}
+
 test.describe('desktop, 1280 x 800', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
@@ -669,6 +698,14 @@ test.describe('phone, 390 x 844', () => {
       await expectPracticeBarFits(page, path, longest, [390, 375, 360, 320]);
     }
   });
+
+  test('on a 320 px phone the nine keys and every button fit the column, in every language', async ({ page }) => {
+    await expectControlsFit(page, 320, 640);
+    // narrower than wide, and still 44 px tall
+    const key = (await page.locator('.num-btn').first().boundingBox())!;
+    expect(key.width).toBeLessThan(34);
+    expect(key.height).toBeGreaterThanOrEqual(44);
+  });
 });
 
 test.describe('phone, 390 x 844, multi-select', () => {
@@ -742,6 +779,10 @@ test.describe('phone on its side, 844 x 390', () => {
     const key = (await page.locator('.num-btn').first().boundingBox())!;
     expect(key.x).toBeGreaterThan(board.x + board.width - 1);
     await expect(page.locator('.num-btn').first()).toBeInViewport();
+  });
+
+  test('a 320 px phone on its side: every key and button fits the column beside the board, in every language', async ({ page }) => {
+    await expectControlsFit(page, 568, 320);
   });
 });
 

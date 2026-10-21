@@ -2320,8 +2320,10 @@ kbd {
     overflow-anchor: none;
   }
 
+  /* minmax(0, ...): a plain 1fr will not shrink a column below its key's
+     minimum width, and nine keys must fit a 320px phone (see 560px below) */
   .numpad {
-    grid-template-columns: repeat(9, 1fr);
+    grid-template-columns: repeat(9, minmax(0, 1fr));
     gap: 3px;
   }
 
@@ -2362,10 +2364,15 @@ kbd {
 }
 
 /* phones: nine keys cannot be 40px wide on a 375px screen, so they grow
-   taller instead (placed last: the 860px block above also sizes them) */
+   taller instead (placed last: the 860px block above also sizes them).
+   The width is the column's, never the ratio's: left to the ratio, the
+   44px minimum height would pass through it as a 34px minimum width, and
+   nine of those overflow a 320px phone; there the key is narrower and
+   just 44px tall */
 @media (max-width: 560px) {
   .num-btn {
     aspect-ratio: 0.78;
+    width: 100%;
     border-radius: 10px;
   }
 }
@@ -2545,12 +2552,22 @@ html:not([lang='en']) .zone-note {
   margin-left: 0;
 }
 
-@media (max-width: 480px) {
+/* a narrow phone, and a 320px phone on its side, where the controls'
+   column beside the board is narrower still */
+@media (max-width: 480px), (max-width: 600px) and (max-height: 520px) and (orientation: landscape) {
   html:not([lang='en']) .menu-row button,
   html:not([lang='en']) .action-row button {
     font-size: 11px;
     padding-left: 2px;
     padding-right: 2px;
+  }
+}
+
+/* on its side that column is 288px, narrower than on any phone held
+   upright: the five menu buttons' gaps give "Compartir" its room */
+@media (max-width: 600px) and (max-height: 520px) and (orientation: landscape) {
+  html:not([lang='en']) .menu-row {
+    gap: 4px;
   }
 }
 
