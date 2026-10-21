@@ -11,48 +11,57 @@ comes from a reviewer's measurement it says so.
 
 ## The rating
 
-Three columns: the rating when this review was written; the rating after
+Four columns: the rating when this review was written; the rating after
 the work it set out (the first minute, the highlighter, the learner's
 loop, robustness, the path) and what followed it (the chain trainer, the
 photo scanner, Learn as one place, the phone header and touch scrolling);
-and the rating after the online work of October 2026 (the whole site in
+the rating after the online work of early October 2026 (the whole site in
 three languages, share links that preview, a board that highlights the
-moment a finger lands, and the shared daily with everyone's times,
-[online-goals.md](online-goals.md) phases 1 and 2), judged on the
-production build and its tests (770 unit tests, 32 browser tests).
+moment a finger lands, the shared daily with everyone's times, links from
+the other solvers, [online-goals.md](online-goals.md) phases 1 and 2);
+and the rating on 21 October 2026, after plays began to be counted
+without identifying anyone (phase 3 and its clean-up), the set tracker,
+hints without uniqueness, spoiler-free share links, the phone and tablet
+fits, and the site submitted to Google and Bing. The last column was
+judged by three independent raters (a sudoku expert and teacher, a casual
+player on a phone with a designer's eye, a web engineer and growth
+strategist) on the production build and its tests (920 unit tests, 52
+browser tests); they agreed on every row.
 
-| | Then | Sept. | Oct. | Why not higher |
-| --- | --- | --- | --- | --- |
-| Engine and correctness | 9 | 9 | 9 | 77 verified techniques, a soundness harness, per-position proofs, every unaided move justified and every wrong digit proved wrong. 15 techniques still have no worked example and four practice targets can never be served. |
-| Technique highlighter | 5 | 8.5 | 8.5 | Every technique names its colours and draws its logic: bands for houses, arrows for inference with a start and an order, ties for conjugate pairs, forcing chains as their line of forced singles, Medusa's ties straight and its arrows arriving square, and a walk through any drawing one idea at a time. The Forcing Net is not drawn, and the hand-made techniques (Exocet, Pattern Overlay) keep plainer drawings. |
-| Learning product | 6 | 8.5 | 8.5 | A teacher now, not only a textbook: every move credited, "you found it" in practice, why-not on every mistake with the proof shown, the game summed up, mastery in the guide, "learn next", and Learn as one place under the board that lands on your path (what to learn next), with the practice list and the theory a tab away. The chain trainer: build a chain on the board, candidate by candidate, and the engine checks each link and says what it proves. The hints and the guide now read Norwegian and Spanish too. Still no speed drills. |
-| Playing experience | 6.5 | 8.5 | 9 | Everything in September, and now: a touch that highlights in the frame it lands and settles by movement, so a thumb never waits and a swipe never selects; one daily for the whole world with everyone's times to compare against; a win shared as a challenge with the time to beat. Links from SudokuPad, f-puzzles, Sudoku Exchange and sudoku.coach now open their puzzle here; no campaign-shaped way in for a newcomer yet. |
-| UX design | 7 | 8 | 8.5 | One visual grammar from the board to the guide to the social cards, dark and light, 44 px targets, every dialog with a way out, three languages that say the same thing. The win screen is getting long (verdict, summary, record, streak, challenge, the day's times), and the New game dialog still reads as a list of bands rather than a choice. |
-| Learnability | 6 | 8 | 8 | A newcomer is met by the welcome, number-first entry, hints that teach and a path that says what to learn next; the daily is a reason to come back and the share page explains the puzzle before the app opens. Still no campaign or guided first week, and the techniques' names are a wall until the guide is opened. |
-| Easiness (how little the app asks) | 7 | 8.5 | 9 | No account, no sign-in, no banner, nothing to configure: open a link and play, offline too. Sending a daily time is one tap and a random token. The only friction left is the first explanation of modes and candidates. |
-| Engineering | 6 | 7.5 | 8 | Everything in September, and now a Worker with code in front of the static site, D1 with every query on a key and a bounded histogram, a store in memory that lets the whole flow run and be tested without a database, 770 unit tests and 32 browser tests, two rounds of refuting review on each change. Deploys are still not gated on CI, the database migration is a hand step, no lint, no bundle budget, and the board is not a real grid for a screen reader. |
-| Reach | 4 | 5 | 6.5 | The loop that grows puzzle games: a daily everyone plays, a spoiler-free line to share it with, and links that unfurl with a card and a time to beat, in three languages. Nothing is measured yet (phase 3), no store presence, a name that is hard to search, and the forum and search work in search.md is still a plan. |
+| | Then | Sept. | Oct. | 21 Oct. | Why not higher |
+| --- | --- | --- | --- | --- | --- |
+| Engine and correctness | 9 | 9 | 9 | 9 | 77 verified techniques, a soundness harness, per-position proofs, every wrong digit proved wrong; now a set tracker that proves two sets equal by counting houses, and hints that can leave uniqueness out. 15 techniques still have no worked example and four practice targets can never be served. |
+| Technique highlighter | 5 | 8.5 | 8.5 | 8.5 | Every technique names its colours and draws its logic, with a walk through each drawing. The Forcing Net is not drawn, Exocet and Pattern Overlay keep plainer drawings, and the set tracker's proof is a sentence: the houses it counts are not shaded on the board. |
+| Learning product | 6 | 8.5 | 8.5 | 8.5 | Hints, Steps and the proofs can now leave uniqueness out, as many teachers solve; the path says why the rarer techniques wait, and the glossary defines corner, floor and roof. Still no speed drills, and the set tracker has no page in the guide. |
+| Playing experience | 6.5 | 8.5 | 9 | 9 | Share links no longer give the techniques away unless asked, all nine keys fit a 320 px phone, and tablets have finger-sized mode buttons. A challenge on a phone is copied to the clipboard rather than offered to the share sheet, the one daily is often Tricky or Hard, and there is no campaign for a newcomer. |
+| UX design | 7 | 8 | 8.5 | 8.5 | New features keep the one visual grammar (the set tracker is a line under the board with a Why?), and the narrow-phone, landscape and tablet fits are fixed. The win screen is longer still (a first-win note about counting), Settings has grown to about twenty switches without grouping, and New game still reads as a list of bands. |
+| Learnability | 6 | 8 | 8 | 8 | Small steps on a good base: Learn says why a technique waits and defines the rectangle terms. The welcome's main button can land a newcomer in a Hard daily, a phone shows every entry mode and assist from the first second, and there is still no guided first week. |
+| Easiness (how little the app asks) | 7 | 8.5 | 9 | 9 | Plays are counted with no account, no cookie, no ID and no banner; counting offline is opt-in, and one switch leaves a device out. The first explanation of modes and candidates is the only friction, and Settings gains a switch with each feature. |
+| Engineering | 6 | 7.5 | 8 | 8 | 920 unit tests and 52 browser tests, the counting tested end to end against a store in memory with five refuting review rounds, and a database that keeps no more than the privacy page says. But deploys are not gated on CI: the browser tests have failed on GitHub's Linux runner since the 320 px fit merged on 21 October, and both pushes went live. No lint, no bundle budget, migrations by hand, /admin trusts Access's header without checking its token, and the board is not a real grid for a screen reader. |
+| Reach | 4 | 5 | 6.5 | 7 | Plays, solves and landings are counted without identifying anyone, the sitemap is in Google and Bing, and the GitHub page has a homepage and topics: the loop can be read for the first time. The English home page is titled just "sudokUI" while the Norwegian and Spanish ones carry keywords, a phone shares only by copying, there is no store listing, and nothing has been seeded where the expert audience reads. |
 
-**Overall: 8.5 of 10 as a product, today** (was 6, then 7.5, then 8).
-For the sudoku lover, 9 (was 8, then 9): nothing else rates any puzzle,
-explains 77 techniques in three languages, draws the logic of each one,
-drills 65 of them, lets you build a chain and checks every link, proves a
-mistake wrong, knows what its player can do, and now puts one daily in
-front of the whole expert audience with the median to beat. For the
-casual player, 8 (was 5.5, then 7.5): the first minute hits none of the
-gaps the mainstream apps closed, a thumb on a phone gets an instant
-answer, a friend's link opens the very puzzle with a time to beat, and the
-daily is a habit with a number at the end of it; what is missing is the
-shape of a campaign and a way to be found.
+**Overall: 8.5 of 10 as a product, today** (was 6, then 7.5, then 8,
+then 8.5). These two weeks were measurement and polish, not a new layer:
+the counting is privacy by design and the loop can finally be read, and
+experts got two tools no mainstream app has. For the sudoku lover, 9
+(was 8, then 9): nothing else rates any puzzle, explains and draws 77
+techniques in three languages, drills 65 of them, lets you build a chain
+and checks every link, proves a mistake wrong, gives hints that respect a
+solver who refuses uniqueness, and proves a Phistomefel-style set
+equivalence by counting houses; it lacks speed drills, variants and a
+guide page for its newest tool. For the casual player, 8 (was 5.5, then
+7.5, then 8): the first minute is clean even on a 320 px phone, a
+friend's link opens the very puzzle with a time to beat, and the daily
+has a number at the end of it; what is missing is an easy way into the
+day, the phone's share sheet, the shape of a campaign and a way to be
+found.
 
-The road to 9 is still reach and shape, not engine: phase 3 so the loop
-can be measured, speed drills on the stats that exist, link import, the
-board as a real grid, and the search and store work already planned.
-
-The road to 9 is reach and shape, not engine: speed drills on the stats
-that now exist, structured hint descriptions so the hints can be
-translated, link import, the board as a real grid, and the search and
-store work already planned.
+The road to 9 is still reach and shape, not engine: make main green and
+let only a green build deploy; the phone's share sheet for a challenge
+and the daily line; a first minute that never starts in a Hard daily; a
+keyword title for the English home page; teach and draw the set tracker;
+speed drills on the stats that exist; a campaign; the board as a real
+grid; and the forum and store work in search.md.
 
 ## The technique highlighter, measured
 
