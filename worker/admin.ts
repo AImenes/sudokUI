@@ -6,17 +6,20 @@
  * and an API token held as Worker secrets, ADMIN_ACCOUNT_ID and
  * ADMIN_TOKEN (docs/connect-the-analytics.md).
  *
- * The page answers only when both secrets are set and the request came
- * through Cloudflare Access (the Cf-Access-Jwt-Assertion header Access
- * adds); otherwise it is a 404 like any unknown path. Access is the lock,
- * set up by hand on the account; the header check is a latch, so that a
- * deploy without Access shows nothing, not a verification of the token.
+ * The page answers only when its four secrets are set and the request
+ * came through Cloudflare Access for this application: the token Access
+ * adds (the Cf-Access-Jwt-Assertion header) is verified here, signature,
+ * issuer, audience and expiry, against the team's published keys, with
+ * the team domain and the application's AUD tag held as the secrets
+ * ACCESS_TEAM_DOMAIN and ACCESS_AUD (access.ts). Otherwise it is a 404
+ * like any unknown path, on whatever address the Worker was reached.
  *
  * The arithmetic (metricsOf) and the page (renderAdmin) are pure, so the
  * tests run them over rows of their own; only handleAdmin talks to the
  * API, through a fetch it is given.
  */
 import { DAYS_SHOWN, DATASET, type DayRow, type Metrics, type Totals } from './adminModel';
+import { accessKeys, cameThroughAccess, type AccessEnv, type AccessKeys } from './access';
 
 export { DAYS_SHOWN, DATASET };
 export type { DayRow, Metrics, Totals };
@@ -295,31 +298,36 @@ const page = (html: string, status = 200) =>
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex' }
   });
 
-export interface AdminEnv {
+export interface AdminEnv extends AccessEnv {
   ADMIN_ACCOUNT_ID?: string;
   ADMIN_TOKEN?: string;
 }
+
+/** the Access keys, fetched once per isolate and kept an hour (access.ts) */
+const ISOLATE_KEYS = accessKeys();
 
 export interface AdminOptions {
   /** how the API is reached, for tests */
   fetch?: typeof fetch;
   now?: () => Date;
+  /** the Access keys, for tests; the isolate's cache otherwise */
+  accessKeys?: AccessKeys;
 }
 
 /**
- * Answers /admin, or returns null: for any other address, when the
- * secrets are not set, or when the request did not come through Access;
- * the caller then answers as for an unknown path (a 404). An API that
- * fails answers 502 with what it said, never the secrets.
+ * Answers /admin, or returns null: for any other address, when a secret
+ * is not set, or when the request carries no valid Access token for the
+ * application; the caller then answers as for an unknown path (a 404).
+ * An API that fails answers 502 with what it said, never the secrets.
  */
 export async function handleAdmin(request: Request, env: AdminEnv, options: AdminOptions = {}): Promise<Response | null> {
   const url = new URL(request.url);
   if (url.pathname !== ADMIN_PATH && url.pathname !== ADMIN_PATH + '/') return null;
   if (!env.ADMIN_ACCOUNT_ID || !env.ADMIN_TOKEN) return null;
-  if (!request.headers.get('cf-access-jwt-assertion')) return null;
+  const now = options.now ? options.now() : new Date();
+  if (!(await cameThroughAccess(request, env, options.accessKeys ?? ISOLATE_KEYS, now))) return null;
   if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405, headers: { allow: 'GET, HEAD' } });
   const doFetch = options.fetch ?? fetch;
-  const now = options.now ? options.now() : new Date();
   let answer: unknown;
   try {
     const res = await doFetch(sqlApi(env.ADMIN_ACCOUNT_ID), {

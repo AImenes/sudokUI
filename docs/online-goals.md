@@ -129,8 +129,9 @@ Facts a prompt can rely on, with the files that hold them:
   nothing is stored. `/privacy/` (`src/content/privacy.ts`, built like
   the landing pages) says exactly what is sent, in three languages.
   `/admin` (`worker/admin.ts`) renders the metrics from the SQL API with
-  two Worker secrets, behind Cloudflare Access
-  ([connect-the-analytics.md](connect-the-analytics.md)).
+  two Worker secrets, behind Cloudflare Access, whose token the Worker
+  verifies with two more (`worker/access.ts`;
+  [connect-the-analytics.md](connect-the-analytics.md)).
 
 ## Status against the research (8 October 2026)
 
@@ -415,17 +416,23 @@ Built, October 2026, with these decisions:
   offline estimate is everyone else's live solves times the opted-in
   cohort's offline-to-online ratio, labelled an estimate and "—" until
   the cohort exists. The sixth metric stays in Search Console.
-- **404 until it is yours.** `/admin` renders only with both secrets set
-  and the `Cf-Access-Jwt-Assertion` header that Cloudflare Access adds;
-  the header is a latch (not verified), Access is the lock. A failing API
-  answers 502 with what it said, never the secrets.
+- **404 until it is yours.** `/admin` renders only with its four secrets
+  set and a valid `Cf-Access-Jwt-Assertion` token, the one Cloudflare
+  Access adds: the Worker checks its RS256 signature against the team's
+  published keys (fetched from the team domain, kept an hour), its
+  issuer, its audience (the application's AUD tag) and its expiry, with
+  WebCrypto and no library (`worker/access.ts`). Anything less is the
+  unknown path's 404, on any address; the Worker has no `workers.dev`
+  address or preview URLs besides. A failing API answers 502 with what
+  it said, never the secrets.
 - **The privacy page** is `/privacy/`, `/nb/privacy/`, `/es/privacy/`,
   built with the landing pages, linked from the app's footer, from every
   static page's footer and from the Settings switch. It names the two
   lines, the bucket, the country, what the switch adds, the daily's
   token, what a share link carries, and what is never collected.
 - **Hand steps**, in [connect-the-analytics.md](connect-the-analytics.md):
-  the WAE billing status, the two secrets, Access on `/admin`.
+  the WAE billing status, the four secrets, Access on `/admin`, and that
+  the `workers.dev` address is off.
 
 Cleaned up on 21 October 2026, before any promotion, so later numbers
 can be trusted:
@@ -597,8 +604,6 @@ information and consent meet the GDPR. Both can be asked directly.
   behind a setting.
 - How often to extend `dailies.json`, and whether to shorten the published
   horizon if spoilers turn out to matter.
-- Whether the `/admin` latch should verify the Access token (JWKS from
-  the team domain) rather than only require its header.
 
 ## Evidence this rests on
 
