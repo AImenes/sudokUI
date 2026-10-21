@@ -141,11 +141,11 @@ describe('supporting copy', () => {
     expect(COUNTS.catalogued).toBe(ALL_TECHS.length);
     expect(COUNTS.practice).toBe(PRACTICE_TECHS.length);
     // the English home page (index.html, filled in by src/content/home.ts)
-    // quotes both numbers, and keeps its bare tab title
+    // quotes both numbers, and its title says what a searcher types
     const home = renderHome(indexHtml, 'en');
     expect(home).toContain(`${COUNTS.implemented} `);
     expect(home).toContain(`${COUNTS.practice} `);
-    expect(home).toContain('<title>sudokUI</title>');
+    expect(home).toContain('<title>Free sudoku online: play and learn the techniques | sudokUI</title>');
   });
 });
 

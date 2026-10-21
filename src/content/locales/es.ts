@@ -858,7 +858,7 @@ const es: LearnLocale = {
           "heading": "Una carrera justa",
           "paragraphs": [
             "El sudoku del día empieza con los candidatos automáticos desactivados para todos. Si terminas sin usar nada del cuadro Ayuda, como las pistas, las revisiones o los candidatos automáticos, la partida cuenta como resuelta sin ayuda.",
-            "Al terminar, el botón «Reta a un amigo» copia un mensaje con tu tiempo y un enlace que contiene el propio sudoku."
+            "Al terminar, el botón «Reta a un amigo» abre el menú de compartir del móvil o la tableta con un mensaje con tu tiempo y un enlace al sudoku del día; en un ordenador, o donde no hay menú de compartir, copia el mensaje para que lo pegues."
           ]
         }
       ],

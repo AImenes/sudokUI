@@ -27,6 +27,7 @@ import { puzzleFromLink } from '../content/importLinks';
 import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
 import { fasterThan, dailyNumber, localDateKey, LATE_DAYS } from '../content/dailies';
 import { useDailyStats, SubmitOutcome } from '../state/dailyStats';
+import { sendText, copyText } from './send';
 import { PRIVACY_URL } from '../content/staticRoutes';
 import { HubTabs } from './HubTabs';
 import { techniquesByFamily } from '../content/categories';
@@ -85,7 +86,11 @@ export function useNewGame() {
     // the player is waiting. The hardest bands and the rarest techniques
     // come from puzzles saved at build time, each served through a random
     // isomorphism, so they start at once and never repeat; the rest is
-    // generated, with the rating capped at what was asked for
+    // generated, with the rating capped at what was asked for. A game that
+    // starts meanwhile (the daily tapped in the welcome while the first
+    // visit's own game is still being made, a link) wins: what arrives
+    // after it is dropped, never put over it
+    const asked = useGame.getState().info;
     const seeds = req.kind === 'level' ? await seedPuzzles(req.level) : await practiceSeeds(req.tech);
     const { promise, handle } = requestPuzzle(
       { ...req, seeds },
@@ -96,6 +101,10 @@ export function useNewGame() {
     const entry = await promise;
     clearTimeout(show);
     setGenState(null);
+    if (useGame.getState().info !== asked) {
+      cancelled.current = false;
+      return false;
+    }
     if (entry) {
       startGame(entry.puzzle, entry.score, entry.level, req.kind === 'tech' ? req.tech : null);
       topUp(req);
@@ -983,12 +992,22 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   // candidates in every cell, as the board shows them
   const positionText = () => formatPencilGrid(cells, autoCandidates, markContract);
 
+  // the two links go to a person: a phone's share sheet, else the
+  // clipboard; the puzzle string and the pencil-mark grid go into another
+  // tool, so they are always copied (src/ui/send.ts). The tick says Copied
+  // only when they were
   const copy = (what: 'link' | 'position' | 'string' | 'text') => {
-    navigator.clipboard?.writeText(
-      what === 'link' ? shareLink() : what === 'position' ? positionLink() : what === 'text' ? positionText() : currentAsString()
-    );
-    setCopied(what);
-    setTimeout(() => setCopied(''), 2000);
+    const sent =
+      what === 'link'
+        ? sendText(shareLink(), 'url')
+        : what === 'position'
+          ? sendText(positionLink(), 'url')
+          : copyText(what === 'text' ? positionText() : currentAsString());
+    void sent.then((outcome) => {
+      if (outcome !== 'copied') return;
+      setCopied(what);
+      setTimeout(() => setCopied(''), 2000);
+    });
   };
 
   return (
@@ -1232,9 +1251,12 @@ export function VictoryDialog({
       : assisted
         ? t('I solved a {level} sudoku (rating {score}) in {time} on sudokUI. Can you beat that? {link}', vars)
         : t('I solved a {level} sudoku (rating {score}) in {time}, no assists, every mark my own on sudokUI. Can you beat that? {link}', vars);
-    navigator.clipboard?.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    // to a friend: a phone's share sheet, else the clipboard (src/ui/send.ts)
+    void sendText(text).then((outcome) => {
+      if (outcome !== 'copied') return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   return (

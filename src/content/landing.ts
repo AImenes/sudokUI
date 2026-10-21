@@ -56,7 +56,7 @@ export const LANDING_PAGES: LandingPage[] = [
         heading: 'A fair race',
         paragraphs: [
           'The daily starts with automatic candidates off for everyone. Finish without anything from the Assist box, such as hints, checks or automatic candidates, and the result counts as an unassisted solve.',
-          'When you finish, Challenge a friend copies a message with your time and a link that carries the puzzle itself.'
+          'When you finish, Challenge a friend opens the share menu of your phone or tablet with a message carrying your time and a link to the day’s puzzle; on a computer, or where there is no share menu, it copies the message for you to paste.'
         ]
       }
     ],

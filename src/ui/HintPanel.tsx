@@ -10,6 +10,7 @@ import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 import { stepText } from '../content/eureka';
+import { copyText } from './send';
 import { useT, rich, Translator } from '../content/i18n';
 import { useLearnLocale } from './useLearnLocale';
 
@@ -158,13 +159,16 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
   }, [hint, stage, showKey]);
 
   // the step as one line of the forums' notation (src/content/eureka.ts),
-  // for a post or a second opinion; the button confirms for a moment
+  // for a post or a second opinion; the button confirms for a moment, and
+  // only when the clipboard took it (src/ui/send.ts)
   const [copied, setCopied] = useState(false);
   const copyStep = () => {
     if (!hint) return;
-    navigator.clipboard?.writeText(stepText(hint));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    void copyText(stepText(hint)).then((outcome) => {
+      if (outcome !== 'copied') return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   // stacked layouts (phone, tablet) and short desktop windows: the panel
