@@ -19,7 +19,8 @@
  *   Engine; a share address counts a landing there too when a person
  *   arrives from outside the site;
  * - the private dashboard, /admin (worker/admin.ts), behind Cloudflare
- *   Access, reading those counts back; a 404 until its secrets are set.
+ *   Access, reading those counts back; a 404 until its secrets are set,
+ *   and for any request without a valid Access token (worker/access.ts).
  *
  * Everything else goes back to the assets, which answer with the 404
  * page of the nearest language.
@@ -36,12 +37,14 @@ import dailies from '../src/content/dailies.json';
 import type { Daily } from '../src/content/dailies';
 import { handleDailyApi, d1Store, D1Like } from './daily';
 import { handleTelemetry, countLanding, AnalyticsEngineLike } from './telemetry';
-import { handleAdmin, ADMIN_PATH } from './admin';
+import { handleAdmin, ADMIN_PATH, AdminOptions } from './admin';
 
 /**
  * What wrangler.jsonc binds: the static assets in dist/, the database, the
- * analytics dataset; and the dashboard's two secrets, set by hand
- * (docs/connect-the-analytics.md)
+ * analytics dataset; and the dashboard's four secrets, set by hand
+ * (docs/connect-the-analytics.md): the SQL API's account id and token, and
+ * the Access team domain and application AUD tag that its visitors'
+ * tokens are checked against
  */
 export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
@@ -49,6 +52,8 @@ export interface Env {
   EVENTS?: AnalyticsEngineLike;
   ADMIN_ACCOUNT_ID?: string;
   ADMIN_TOKEN?: string;
+  ACCESS_TEAM_DOMAIN?: string;
+  ACCESS_AUD?: string;
 }
 
 /** what the runtime hands a fetch handler besides the request and the bindings */
@@ -72,7 +77,8 @@ function edgeCache(): Cache | null {
   return c && c.default ? c.default : null;
 }
 
-export async function handleRequest(request: Request, env: Env, ctx?: Context): Promise<Response> {
+/** `admin` stands in for the dashboard's API and Access keys under test */
+export async function handleRequest(request: Request, env: Env, ctx?: Context, admin?: AdminOptions): Promise<Response> {
   const api = await handleDailyApi(request, env.DB ? d1Store(env.DB) : null, {
     cache: edgeCache(),
     waitUntil: ctx ? (p) => ctx.waitUntil(p) : undefined
@@ -83,8 +89,8 @@ export async function handleRequest(request: Request, env: Env, ctx?: Context): 
 
   const url = new URL(request.url);
   if (url.pathname === ADMIN_PATH || url.pathname === ADMIN_PATH + '/') {
-    // without its secrets, or outside Access, the dashboard is an unknown path
-    return (await handleAdmin(request, env)) ?? env.ASSETS.fetch(request);
+    // without its secrets, or without a valid Access token, the dashboard is an unknown path
+    return (await handleAdmin(request, env, admin)) ?? env.ASSETS.fetch(request);
   }
   const share = request.method === 'GET' || request.method === 'HEAD' ? shareParamsOf(url, dailies as Daily[]) : null;
   if (!share) return env.ASSETS.fetch(request);

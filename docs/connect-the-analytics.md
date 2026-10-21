@@ -32,9 +32,16 @@ as before. It is the companion of
 - **The lock.** `/admin` shows numbers only, never a player, but it is
   yours. It must sit behind **Cloudflare Access**, which asks for a login
   (a one-time code to your e-mail) before the Worker even sees the
-  request. The page also refuses to render unless the request came
-  through Access, so until step 4 is done it is a 404 for everyone,
-  secrets or not.
+  request. After the login, Access hands every request a signed pass (a
+  token), and the Worker checks that pass itself: that Cloudflare signed
+  it for your team, for this one application, and that it has not run
+  out. For that it needs two more **secrets**, `ACCESS_TEAM_DOMAIN` (your
+  team's login address) and `ACCESS_AUD` (the application's tag). A
+  request without a good pass, on any address, gets "Page not found",
+  so until steps 4 and 5 are done the page is a 404 for everyone,
+  secrets or not. The Worker also answers on `sudokui.app` only: its
+  spare `workers.dev` address and its preview addresses are switched off
+  (step 6), since Access does not stand in front of those.
 - **The opt-in.** By default nothing is stored on a player's device for
   this. A player who turns on "Help count plays, including offline ones"
   in Settings lets the app keep lines made offline and send them later;
@@ -138,7 +145,8 @@ code before anything is shown.
    first time, it asks for a team name (any short name; it becomes
    `<name>.cloudflareaccess.com`, the login page's address) and the free
    plan. Confirm.
-2. **Access → Applications → Add an application → Self-hosted**.
+2. **Access controls → Applications → Add an application → Self-hosted**
+   (older dashboards call the menu **Access → Applications**).
    - Application name: `sudokUI admin`
    - Session duration: a day, or what you like
    - Public hostname: domain `sudokui.app`, path `admin`
@@ -150,9 +158,68 @@ code before anything is shown.
    setting up: Access e-mails you a code.
 
 From now on a request for `/admin` reaches the Worker only after that
-login, and carries the header the Worker looks for.
+login, and carries the signed pass the Worker checks in the next step.
 
-## Step 5: see the first numbers
+## Step 5: tell the Worker which team and which application to trust
+
+The Worker checks Access's pass against two things only you can give
+it: your team's login address and the application's tag. Until both are
+stored, `/admin` stays "Page not found", even after the login.
+
+1. **The team domain.** In Zero Trust (<https://one.dash.cloudflare.com/>),
+   open **Settings**. **Team name and domain** shows an address that ends
+   in `.cloudflareaccess.com`, such as `myteam.cloudflareaccess.com`;
+   copy it. (It is also the address of the login page Access shows when
+   you open `/admin`.) The bare team name, `myteam`, works too.
+2. **The AUD tag.** Still in Zero Trust, open **Access controls →
+   Applications** (older dashboards: **Access → Applications**), find
+   `sudokUI admin` and click **Configure** (or the three dots → **Edit**).
+   Under **Additional settings** (older dashboards: the **Overview** tab),
+   **Application Audience (AUD) Tag** is a long string of letters and
+   digits; copy it with the copy button beside it.
+3. **Store both with the Worker.** In PowerShell, inside the repository
+   folder, run the first command, paste the team domain when it asks and
+   press Enter; then the second, and paste the tag. The value may not
+   show on the screen as you paste it; that is normal.
+
+```bash
+npx wrangler secret put ACCESS_TEAM_DOMAIN
+```
+
+```bash
+npx wrangler secret put ACCESS_AUD
+```
+
+Each answers with a line saying the secret was uploaded. To see that all
+four are there, run `npx wrangler secret list`: it names `ACCESS_AUD`,
+`ACCESS_TEAM_DOMAIN`, `ADMIN_ACCOUNT_ID` and `ADMIN_TOKEN` (never their
+values). If you ever delete the Access application and make a new one,
+its tag changes: store the new one with the second command again.
+
+## Step 6: check that the Worker has no other address
+
+Cloudflare can give a Worker a spare address of its own,
+`sudokui.<your-subdomain>.workers.dev`, and a preview address for each
+version. Access stands in front of `sudokui.app/admin` only, not in
+front of those. The Worker refuses a request without a valid pass on any
+address, but it is simpler still if the spare addresses do not exist.
+The repository switches both off (`"workers_dev": false` and
+`"preview_urls": false` in `wrangler.jsonc`), and every deploy applies
+that. To see it:
+
+1. In the Cloudflare dashboard, open **Workers & Pages → sudokui →
+   Settings → Domains & Routes**.
+2. `sudokui.app` is listed as a custom domain. The **workers.dev** line
+   must say it is disabled (or be missing), and so must **Preview URLs**.
+   If either is on, click it, or the three dots beside it, and choose
+   **Disable**. The next deploy keeps it off.
+3. To be sure, open the old address in a browser: it is
+   `https://sudokui.<your-subdomain>.workers.dev`, where the subdomain is
+   the one **Workers & Pages → Overview** shows for the account (on the
+   right, under **Subdomain**). It must not show the game: Cloudflare
+   answers it with an error page of its own.
+
+## Step 7: see the first numbers
 
 Open <https://sudokui.app/admin>. Access asks for your e-mail, sends a
 code, and shows the page: twelve numbers for the last seven days, a line
@@ -162,20 +229,32 @@ number reads "—" until some player has turned the opt-in on and finished
 a game online, because the estimate is the ratio of that cohort's offline
 to online solves applied to everyone else.
 
-The same numbers from the terminal, if you ever want them raw (put the
-token and the account id in the two variables first):
+The same numbers from the terminal, if you ever want them raw. In
+PowerShell, put the token and the account id in two variables first
+(they last until the window is closed):
 
-```bash
-curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$ADMIN_ACCOUNT_ID/analytics_engine/sql" --data "SELECT index1 AS event, SUM(_sample_interval * double2) AS n FROM sudokui_events WHERE timestamp > NOW() - INTERVAL '7' DAY GROUP BY event FORMAT JSON"
+```powershell
+$env:ADMIN_TOKEN = "paste the token here"
+$env:ADMIN_ACCOUNT_ID = "paste the account id here"
 ```
+
+```powershell
+curl.exe -s -H "Authorization: Bearer $env:ADMIN_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$env:ADMIN_ACCOUNT_ID/analytics_engine/sql" --data "SELECT index1 AS event, SUM(_sample_interval * double2) AS n FROM sudokui_events WHERE timestamp > NOW() - INTERVAL '7' DAY GROUP BY event FORMAT JSON"
+```
+
+(`curl.exe`, not `curl`: in Windows PowerShell, `curl` is another
+command.)
 
 ## If something goes wrong
 
-- **/admin says "Page not found"**: one of three things. A secret is
-  missing (step 3; `npx wrangler secret list` names the ones that exist).
-  Access is not in front of the path yet, or you reached the page without
-  going through it (step 4; the Worker refuses a request that did not
-  come through Access). Or the branch is not deployed yet (step 2).
+- **/admin says "Page not found"**: one of four things. A secret is
+  missing (steps 3 and 5; `npx wrangler secret list` names the ones that
+  exist, and all four must be there). Access is not in front of the path
+  yet, or you reached the page without going through it (step 4; the
+  Worker refuses a request without Access's pass). The team domain or
+  the AUD tag stored is not the one Zero Trust shows: copy both again
+  (step 5) and store them again with the same commands. Or the branch is
+  not deployed yet (step 2).
 - **/admin says "The analytics API answered 403"** (or 401): the token
   cannot read the analytics. Make a new one with exactly **Account
   Analytics: Read** on this account (step 3) and store it again with
@@ -184,7 +263,7 @@ curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "https://api.cloudflare.com/clie
   dataset: nothing has been written yet, so the dataset does not exist.
   Finish a puzzle in the app and wait a few minutes.
 - **Access shows a login page but never e-mails a code**: check the
-  policy's e-mail address in Zero Trust → Access → Applications.
+  policy's e-mail address in Zero Trust → Access controls → Applications.
 - **Every number is zero although people play**: the Worker's version
   may predate the binding. `npx wrangler deploy --dry-run` lists the
   bindings the code ships with; **Analytics Engine Datasets: EVENTS** must
@@ -197,10 +276,10 @@ curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "https://api.cloudflare.com/clie
 The dashboard is the intended way. The dataset is also listed under
 **Workers & Pages → Analytics Engine** with its daily volume against the
 allowance, and the SQL API answers any query over it, such as the
-landings per band:
+landings per band (in PowerShell, with the two variables of step 7):
 
-```bash
-curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$ADMIN_ACCOUNT_ID/analytics_engine/sql" --data "SELECT blob1 AS band, SUM(_sample_interval * double2) AS n FROM sudokui_events WHERE index1 = 'landing' AND timestamp > NOW() - INTERVAL '30' DAY GROUP BY band FORMAT JSON"
+```powershell
+curl.exe -s -H "Authorization: Bearer $env:ADMIN_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$env:ADMIN_ACCOUNT_ID/analytics_engine/sql" --data "SELECT blob1 AS band, SUM(_sample_interval * double2) AS n FROM sudokui_events WHERE index1 = 'landing' AND timestamp > NOW() - INTERVAL '30' DAY GROUP BY band FORMAT JSON"
 ```
 
 What each column holds: `index1` the event (`started`, `completed`,

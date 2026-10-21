@@ -13,6 +13,14 @@
   "name": "sudokui",
   "main": "worker/index.ts",
   "compatibility_date": "2026-07-01",
+  // The Worker answers on its custom domain, sudokui.app, and nowhere else:
+  // no <name>.<subdomain>.workers.dev address (on by default when the file
+  // names no routes) and no preview URL per version. Those addresses have
+  // no Cloudflare Access in front of them; /admin checks the Access token
+  // itself (worker/access.ts), and these keep the rest of the Worker on
+  // the one address too.
+  "workers_dev": false,
+  "preview_urls": false,
   "assets": {
     "directory": "./dist",
     // what the Worker reaches the files through (env.ASSETS)
@@ -42,7 +50,8 @@
   // creating: it appears with the first point written. The dashboard,
   // /admin (worker/admin.ts), reads it back through the SQL API with two
   // secrets set by hand, ADMIN_ACCOUNT_ID and ADMIN_TOKEN, and sits behind
-  // Cloudflare Access (docs/connect-the-analytics.md).
+  // Cloudflare Access, whose token it verifies against two more,
+  // ACCESS_TEAM_DOMAIN and ACCESS_AUD (docs/connect-the-analytics.md).
   "analytics_engine_datasets": [
     { "binding": "EVENTS", "dataset": "sudokui_events" }
   ]

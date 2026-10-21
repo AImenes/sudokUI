@@ -122,15 +122,22 @@ go to a Workers Analytics Engine dataset, `sudokui_events`, bound as
 Worker (`worker/telemetry.ts`, `POST /api/t`). The dataset needs no
 creating. The dashboard, `/admin` (`worker/admin.ts`), reads it through
 the SQL API with two secrets set by hand, and sits behind Cloudflare
-Access, also set by hand:
+Access, also set by hand, whose signed token the Worker verifies
+(`worker/access.ts`) against two more secrets, the Access team domain
+and the application's AUD tag:
 
 ```bash
 npx wrangler secret put ADMIN_ACCOUNT_ID
 npx wrangler secret put ADMIN_TOKEN
+npx wrangler secret put ACCESS_TEAM_DOMAIN
+npx wrangler secret put ACCESS_AUD
 ```
 
-Until both exist and Access is in front of `/admin`, the page is a 404;
-play and counting are unaffected. The steps, and how to see the first
+Until all four exist and Access is in front of `/admin`, the page is a
+404, and so is any request without a valid Access token; play and
+counting are unaffected. The Worker has no `workers.dev` address and no
+preview URLs (`workers_dev` and `preview_urls` are `false` in
+`wrangler.jsonc`), so it answers on `sudokui.app` only. The steps, and how to see the first
 numbers, are in [connect-the-analytics.md](connect-the-analytics.md).
 `npx wrangler deploy --dry-run` must list `env.EVENTS (sudokui_events)`
 among the bindings. The dev and preview servers answer `/api/t` over a

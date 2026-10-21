@@ -3,10 +3,11 @@
  * telemetry route (worker/telemetry.ts) with its closed list, its folding
  * of a batch into points, the rate limit and nothing written from a
  * refused body; the landing count of the share pages; the dashboard's
- * arithmetic and page (worker/admin.ts), with a stand-in for the SQL API;
+ * arithmetic and page (worker/admin.ts), with a stand-in for the SQL API
+ * and a signed Access token (tests/accessToken.ts);
  * and the privacy page in three languages (src/content/privacy.ts).
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import {
   handleTelemetry,
   checkEvent,
@@ -24,6 +25,8 @@ import {
 } from '../worker/telemetry';
 import { handleAdmin, adminQuery, rowsOf, metricsOf, renderAdmin, sqlApi, DATASET, Row, ADMIN_PATH } from '../worker/admin';
 import { handleRequest, Env, SHARE_TEMPLATE } from '../worker/index';
+import { ACCESS_HEADER, type AccessKeys } from '../worker/access';
+import { ACCESS_SECRETS, certsEndpoint, claimsAt, keysOver, signer, type Signer } from './accessToken';
 import template from '../index.html?raw';
 import { LEVELS } from '../src/engine/ratings';
 import { BUCKET_MAX } from '../src/content/dailies';
@@ -294,8 +297,16 @@ describe('the dashboard', () => {
     // today so far
     row('2026-10-13', 'completed', 'tab', { n: 1 })
   ];
-  const secrets = { ADMIN_ACCOUNT_ID: 'acc0unt1d', ADMIN_TOKEN: 's3cret-token' };
-  const access = { 'cf-access-jwt-assertion': 'eyJ.header.payload' };
+  const secrets = { ADMIN_ACCOUNT_ID: 'acc0unt1d', ADMIN_TOKEN: 's3cret-token', ...ACCESS_SECRETS };
+  // a token Access signed for the dashboard (tests/accessToken.ts), and the team's keys behind a stand-in endpoint
+  let team: Signer;
+  let access: Record<string, string>;
+  let accessKeys: AccessKeys;
+  beforeAll(async () => {
+    team = await signer('9338abe1baf2fe492f646a736f25afbf7b025e35c627be4f60c414d4c73069b8');
+    access = { [ACCESS_HEADER]: await team.sign(claimsAt(NOW())) };
+    accessKeys = keysOver(certsEndpoint(() => [team]));
+  });
   /** the SQL API as a stand-in: what it was asked, and the answer it gives */
   function api(answer: () => Response) {
     const calls: { url: string; init?: RequestInit }[] = [];
@@ -382,21 +393,55 @@ describe('the dashboard', () => {
     expect(html).toContain('<td>2026-10-12</td><td>10</td><td>5</td><td>1</td><td>3</td><td>5</td><td>3</td><td>1</td>');
   });
 
-  it('is an unknown path without its secrets, and outside Access', async () => {
-    for (const env of [assets(), assets({ ADMIN_ACCOUNT_ID: 'x' }), assets({ ADMIN_TOKEN: 'y' })]) {
-      const res = await handleRequest(new Request(`${SITE}${ADMIN_PATH}`, { headers: access }), env);
+  it('is an unknown path without its four secrets, or without a valid Access token, wherever it is reached', async () => {
+    const sql = api(() => json({ meta: [], data: ROWS, rows: ROWS.length }));
+    const admin = { fetch: sql.fetch, now: NOW, accessKeys };
+    /** the answer must be the one an unknown path gets, to the byte */
+    const asUnknown = async (res: Response) => {
+      const unknown = await handleRequest(new Request(`${SITE}/no-such-page`), assets(secrets));
       expect(res.status).toBe(404);
-      expect(res.headers.get('x-answered-by')).toBe('assets');
+      expect(res.status).toBe(unknown.status);
+      expect([...res.headers]).toEqual([...unknown.headers]);
+      expect(await res.text()).toBe(await unknown.text());
+    };
+    const get = (headers: Record<string, string> = {}, base = SITE, method = 'GET') => new Request(`${base}${ADMIN_PATH}`, { method, headers });
+    // a valid token, but a secret missing
+    for (const missing of ['ADMIN_ACCOUNT_ID', 'ADMIN_TOKEN', 'ACCESS_TEAM_DOMAIN', 'ACCESS_AUD'] as const) {
+      const env = assets({ ...secrets, [missing]: undefined });
+      await asUnknown(await handleRequest(get(access), env, undefined, admin));
     }
-    const outside = await handleRequest(new Request(`${SITE}${ADMIN_PATH}`), assets(secrets));
-    expect(outside.status).toBe(404);
-    expect(outside.headers.get('x-answered-by')).toBe('assets');
-    expect(await handleAdmin(new Request(`${SITE}/admin/x`, { headers: access }), secrets)).toBeNull();
+    await asUnknown(await handleRequest(get(access), assets(), undefined, admin));
+    // every secret set, and a token that is missing, made up, or not Access's for this application now
+    const stranger = await signer(team.kid);
+    const t = NOW().getTime() / 1000;
+    const tokens = [
+      '',
+      'eyJ.header.payload',
+      await stranger.sign(claimsAt(NOW())),
+      await team.sign(claimsAt(NOW(), { aud: ['another-app'] })),
+      await team.sign(claimsAt(NOW(), { iss: 'https://another-team.cloudflareaccess.com' })),
+      await team.sign(claimsAt(NOW(), { exp: t - 1 }))
+    ];
+    await asUnknown(await handleRequest(get(), assets(secrets), undefined, admin));
+    for (const token of tokens) {
+      await asUnknown(await handleRequest(get({ [ACCESS_HEADER]: token }), assets(secrets), undefined, admin));
+      // the same on an address Access does not stand in front of, and for a method the page refuses
+      await asUnknown(await handleRequest(get({ [ACCESS_HEADER]: token }, 'https://sudokui.someone.workers.dev'), assets(secrets), undefined, admin));
+      await asUnknown(await handleRequest(get({ [ACCESS_HEADER]: token }, SITE, 'POST'), assets(secrets), undefined, admin));
+    }
+    // the analytics were never asked
+    expect(sql.calls).toHaveLength(0);
+    expect(await handleAdmin(new Request(`${SITE}/admin/x`, { headers: access }), secrets, admin)).toBeNull();
+    // and the valid token, with every secret, opens it
+    const res = await handleRequest(get(access), assets(secrets), undefined, admin);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-answered-by')).toBeNull();
+    expect(sql.calls).toHaveLength(1);
   });
 
   it('reads the dataset through the SQL API with the token, which never reaches the page', async () => {
     const { calls, fetch } = api(() => json({ meta: [], data: ROWS, rows: ROWS.length }));
-    const res = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}/`, { headers: access }), secrets, { fetch, now: NOW }))!;
+    const res = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}/`, { headers: access }), secrets, { fetch, now: NOW, accessKeys }))!;
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
     expect(res.headers.get('cache-control')).toBe('private, no-store');
@@ -410,16 +455,19 @@ describe('the dashboard', () => {
     expect(html).toContain('<dt>Completed, total estimate</dt><dd>10</dd>');
     expect(html).not.toContain(secrets.ADMIN_TOKEN);
     expect(html).not.toContain(secrets.ADMIN_ACCOUNT_ID);
-    const head = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { method: 'HEAD', headers: access }), secrets, { fetch, now: NOW }))!;
+    // nor anything of the Access token: the owner's address, the token itself
+    expect(html).not.toContain('owner@example.com');
+    expect(html).not.toContain(access[ACCESS_HEADER].split('.')[2]);
+    const head = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { method: 'HEAD', headers: access }), secrets, { fetch, now: NOW, accessKeys }))!;
     expect(head.status).toBe(200);
     expect(await head.text()).toBe('');
-    const wrong = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { method: 'POST', headers: access }), secrets, { fetch, now: NOW }))!;
+    const wrong = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { method: 'POST', headers: access }), secrets, { fetch, now: NOW, accessKeys }))!;
     expect(wrong.status).toBe(405);
   });
 
   it('says what the API said when it fails, without the secrets', async () => {
     const refused = api(() => json({ errors: [{ message: 'Authentication error' }] }, 403));
-    const res = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: access }), secrets, { fetch: refused.fetch, now: NOW }))!;
+    const res = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: access }), secrets, { fetch: refused.fetch, now: NOW, accessKeys }))!;
     expect(res.status).toBe(502);
     const html = await res.text();
     expect(html).toContain('answered 403');
@@ -428,11 +476,11 @@ describe('the dashboard', () => {
     const down = api(() => {
       throw new Error('fetch failed');
     });
-    const gone = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: access }), secrets, { fetch: down.fetch, now: NOW }))!;
+    const gone = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: access }), secrets, { fetch: down.fetch, now: NOW, accessKeys }))!;
     expect(gone.status).toBe(502);
     expect(await gone.text()).toContain('fetch failed');
     const html404 = api(() => new Response('<html>', { status: 200 }));
-    expect((await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: access }), secrets, { fetch: html404.fetch, now: NOW }))!.status).toBe(502);
+    expect((await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: access }), secrets, { fetch: html404.fetch, now: NOW, accessKeys }))!.status).toBe(502);
   });
 });
 
