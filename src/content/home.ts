@@ -83,7 +83,7 @@ export interface HomeCopy {
 
 export const HOME: Record<Lang, HomeCopy> = {
   en: {
-    title: 'sudokUI',
+    title: 'Free sudoku online: play and learn the techniques | sudokUI',
     description:
       'Play free sudoku, rate the difficulty of any puzzle (HoDoKu-compatible scores) and practise 61 solving techniques with hints that explain every step.',
     ogTitle: 'sudokUI: free sudoku, technique trainer and difficulty rating',

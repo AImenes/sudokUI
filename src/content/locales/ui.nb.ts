@@ -146,6 +146,8 @@ const ui: Dictionary = {
   "Learn, under the board, is where you follow your path, practise a technique and read the theory of every technique and the words solvers use; ⓘ in the top bar covers modes, shortcuts and the candidate system.": "«Lær», under brettet, er der du følger din vei, øver på en teknikk og leser teorien bak hver teknikk og ordene sudokuløsere bruker; ⓘ i topplinjen tar for seg moduser, hurtigtaster og kandidatsystemet.",
   "Play today's daily": "Spill dagens oppgave",
   "Just play": "Bare spill",
+  "Start with an easy puzzle": "Begynn med en lett oppgave",
+  "Today's daily ({level})": "Dagens oppgave ({level})",
   "Restart puzzle?": "Starte oppgaven på nytt?",
   "The board and timer reset to the beginning of the practice position. Your progress on this puzzle is lost.": "Brettet og klokken settes tilbake til starten av øvingsstillingen. Det du har gjort i denne oppgaven, går tapt.",
   "The board and timer reset to the beginning. Your progress on this puzzle is lost.": "Brettet og klokken settes tilbake til starten. Det du har gjort i denne oppgaven, går tapt.",

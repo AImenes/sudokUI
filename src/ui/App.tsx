@@ -3,7 +3,7 @@
 // toast display and the first-visit bootstrap game.
 import React, { Suspense, useEffect, useState, useRef } from 'react';
 import { SLOP_PX } from './touchIntent';
-import { useGame, rateImport, validatePuzzle, Proof } from '../state/gameStore';
+import { useGame, rateImport, validatePuzzle, Proof, playedOn } from '../state/gameStore';
 import { cellName, PEERS } from '../engine/board';
 import { dailyPuzzle } from '../engine/daily';
 import { useSettings } from '../state/settings';
@@ -36,7 +36,7 @@ import type { LearnTarget } from './Learn';
 // the guide is a third of the app's code and prose: fetched the first time
 // it opens (and precached for offline), never as part of loading the game
 const LearnDialog = React.lazy(() => import('./Learn').then((m) => ({ default: m.LearnDialog })));
-import { PRACTICE_TECHS, Tech } from '../engine/ratings';
+import { PRACTICE_TECHS, Tech, Level, LEVELS } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { parseShareUrl, sharePath, clockOf } from '../content/share';
 import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, parseDailyUrl, dailyPath } from '../content/dailies';
@@ -249,6 +249,51 @@ export default function App() {
     localStorage.setItem('sudokui-welcomed', '1');
     setWelcome(false);
   };
+  // today's published daily and its band, for the welcome: a first visit
+  // never starts in a puzzle that needs more than the basics. undefined
+  // while it is read; the band is null when today has no published daily
+  // (the derived one is not worked out just for this). The day is kept
+  // with it, so a welcome left open past midnight starts the daily it named
+  const [welcomeDaily, setWelcomeDaily] = useState<{ key: string; level: Level | null } | undefined>(undefined);
+  useEffect(() => {
+    if (!welcome) return;
+    let live = true;
+    const key = localDateKey();
+    loadDailies().then((list) => live && setWelcomeDaily({ key, level: findDaily(list, key)?.level ?? null }));
+    return () => {
+      live = false;
+    };
+  }, [welcome]);
+  /** the daily needs more than the basics (Tricky or harder), or its band is not known */
+  const hardDaily =
+    !!welcomeDaily && (welcomeDaily.level === null || LEVELS.indexOf(welcomeDaily.level) >= LEVELS.indexOf('Tricky'));
+  /** a game on the board someone has begun and not finished: the welcome never replaces it */
+  const underWay = useGame((s) => !!s.info && !s.won && playedOn(s));
+  /** the welcome's daily: started, unless it is the game already under way, which is kept, not restarted */
+  const playWelcomeDaily = () => {
+    if (!welcomeDaily) return;
+    dismissWelcome();
+    const g = useGame.getState();
+    if (g.info?.dailyKey === welcomeDaily.key && !g.won) return;
+    startDaily(welcomeDaily.key);
+  };
+  /** the welcome's easy start: a first visit's own game is an easy one, kept;
+   *  a game above Easy, practice, or one already won, none of them begun,
+   *  makes way for one (a game still being made is that easy one) */
+  const startEasyFirst = () => {
+    dismissWelcome();
+    const g = useGame.getState();
+    if (g.info && (g.won || g.info.practiceTech || LEVELS.indexOf(g.info.level) > LEVELS.indexOf('Easy'))) {
+      // an earlier visit's win does not show its screen while the easy one is made
+      if (g.won) setVictoryDismissed(true);
+      start({ kind: 'level', level: 'Easy' });
+    }
+  };
+  /** the band on a hard day, unless it is unknown or the player hides it before a solve */
+  const welcomeDailyLabel =
+    hardDaily && welcomeDaily?.level && !hideRating
+      ? t("Today's daily ({level})", { level: t.level(welcomeDaily.level) })
+      : t("Play today's daily");
   // the daily for a day, today's unless a date is given: the published
   // puzzle (src/content/dailies.ts), which has global statistics; or, for
   // a day the published list does not cover, the one derived from the date
@@ -982,19 +1027,29 @@ export default function App() {
               'Learn, under the board, is where you follow your path, practise a technique and read the theory of every technique and the words solvers use; ⓘ in the top bar covers modes, shortcuts and the candidate system.'
             )}
           </p>
-          <div className="hint-actions">
-            <button
-              onClick={() => {
-                dismissWelcome();
-                startDaily();
-              }}
-            >
-              {t("Play today's daily")}
-            </button>
-            <button className="ghost" onClick={dismissWelcome}>
-              {t('Just play')}
-            </button>
-          </div>
+          {/* the buttons wait the moment it takes to read today's band. A
+              game under way stays first, whatever the day; then, on a hard
+              day, an easy puzzle; else the daily */}
+          {welcomeDaily !== undefined && (
+            <div className="hint-actions">
+              {underWay ? (
+                <button onClick={dismissWelcome}>{t('Just play')}</button>
+              ) : hardDaily ? (
+                <button onClick={startEasyFirst}>{t('Start with an easy puzzle')}</button>
+              ) : (
+                <button onClick={playWelcomeDaily}>{welcomeDailyLabel}</button>
+              )}
+              {underWay || hardDaily ? (
+                <button className="ghost" onClick={playWelcomeDaily}>
+                  {welcomeDailyLabel}
+                </button>
+              ) : (
+                <button className="ghost" onClick={dismissWelcome}>
+                  {t('Just play')}
+                </button>
+              )}
+            </div>
+          )}
         </Modal>
       )}
       {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
@@ -1037,7 +1092,8 @@ export default function App() {
       {genState && !welcome && (
         <GeneratingDialog label={genState.label} attempts={genState.attempts} onCancel={cancel} />
       )}
-      {won && !victoryDismissed && (
+      {/* the welcome first: a game won on an earlier visit does not cover it */}
+      {won && !victoryDismissed && !welcome && (
         <VictoryDialog
           onNewGame={() => {
             setVictoryDismissed(true);

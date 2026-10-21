@@ -141,14 +141,14 @@ describe('the home page', () => {
   });
 
   it('keeps titles and descriptions to what search results show', () => {
-    // English keeps its bare tab title
-    expect(HOME.en.title).toBe('sudokUI');
-    for (const lang of OTHER) {
+    // every language's title says what a searcher types, then the name
+    const searched: Record<string, string> = { en: 'free sudoku', nb: 'sudoku gratis', es: 'sudoku gratis' };
+    for (const lang of HOME_LANGS) {
       const { title, description } = HOME[lang];
       expect(title.length, title).toBeLessThanOrEqual(60);
       expect(title.length, title).toBeGreaterThanOrEqual(40);
       expect(title).toMatch(/ \| sudokUI$/);
-      expect(title.toLowerCase()).toContain('sudoku gratis');
+      expect(title.toLowerCase()).toContain(searched[lang]);
       expect(description.length, description).toBeGreaterThanOrEqual(120);
     }
     for (const lang of HOME_LANGS) {

@@ -146,6 +146,8 @@ const ui: Dictionary = {
   "Learn, under the board, is where you follow your path, practise a technique and read the theory of every technique and the words solvers use; ⓘ in the top bar covers modes, shortcuts and the candidate system.": "En «Aprender», bajo el tablero, sigues tu camino, practicas una técnica y lees la teoría de cada técnica y las palabras que usan los jugadores de sudoku; ⓘ en la barra superior explica los modos, los atajos y el sistema de candidatos.",
   "Play today's daily": "Jugar el sudoku del día",
   "Just play": "Solo jugar",
+  "Start with an easy puzzle": "Empieza con un sudoku fácil",
+  "Today's daily ({level})": "El sudoku del día ({level})",
   "Restart puzzle?": "¿Reiniciar el sudoku?",
   "The board and timer reset to the beginning of the practice position. Your progress on this puzzle is lost.": "El tablero y el cronómetro vuelven al principio de la posición de práctica. Se pierde tu progreso en este sudoku.",
   "The board and timer reset to the beginning. Your progress on this puzzle is lost.": "El tablero y el cronómetro vuelven al principio. Se pierde tu progreso en este sudoku.",

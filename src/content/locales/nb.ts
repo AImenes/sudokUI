@@ -806,7 +806,7 @@ const nb: LearnLocale = {
           "heading": "Et rettferdig kappløp",
           "paragraphs": [
             "Dagens oppgave starter med autokandidater slått av for alle. Fullfør uten noe fra Hjelp-boksen, som hint, sjekk eller autokandidater, så teller resultatet som løst uten hjelp.",
-            "Når du er ferdig, kopierer knappen «Utfordre en venn» en melding med tiden din og en lenke som inneholder selve oppgaven."
+            "Når du er ferdig, åpner knappen «Utfordre en venn» delingsmenyen på mobilen eller nettbrettet med en melding med tiden din og en lenke til dagens oppgave; på en datamaskin, eller der det ikke finnes noen delingsmeny, kopieres meldingen så du kan lime den inn."
           ]
         }
       ],
