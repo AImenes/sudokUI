@@ -324,8 +324,17 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         hint={t(
           'Anonymous totals, no ID, never your address. On, the app keeps plays made offline on this device and sends them when it is back online; off, nothing is kept'
         )}
-        value={s.countPlays}
+        value={s.countPlays && !s.dontCount}
+        disabled={s.dontCount}
         onChange={(v) => s.set({ countPlays: v })}
+      />
+      <Toggle
+        label={t('Leave this device out of the counts')}
+        hint={t(
+          'Nothing is sent from this browser to count plays, online or offline: for the developer’s and testers’ own devices, or if you would rather not be counted. An app added to a home screen may keep its own settings. Daily times are still sent only when you tap Send'
+        )}
+        value={s.dontCount}
+        onChange={(v) => s.set(v ? { dontCount: true, countPlays: false } : { dontCount: false })}
       />
       <p className="dialog-note">
         <a href={`${t.lang === 'en' ? '' : `/${t.lang}`}${PRIVACY_URL}`} target="_blank" rel="noreferrer">
@@ -537,8 +546,10 @@ export function InfoDialog({
       </p>
       <p className="dialog-note version-note">
         sudokUI v{__APP_VERSION__} ·{' '}
+        {/* every change, newest first: the releases page stopped at v1.0.0
+            while the app kept moving (the version names the commit since) */}
         <a
-          href="https://github.com/AImenes/sudokUI/releases"
+          href="https://github.com/AImenes/sudokUI/commits/main/"
           target="_blank"
           rel="noreferrer"
         >

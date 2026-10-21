@@ -82,6 +82,18 @@ after a few minutes look at **Workers & Pages → Analytics Engine**: the
 dataset `sudokui_events` is listed, with a count of data points. Nothing
 else changes for players.
 
+Once that check is done, keep your own plays out of the numbers: on every
+browser you play in, and inside the app wherever you added it to a home
+screen or desktop (it may keep its own settings), open **Settings →
+Counting plays** and turn on **Leave this device out of the counts**. Do
+the same on testers' devices. From then on the dashboard's starts and
+solves leave those devices out. Landings cannot be switched off: the
+server counts one from the request when a share or daily link is opened
+from outside the site in a browser that does not hold the app yet (one
+that does answers the link itself, and counts nothing). A link you tap
+in a chat on your own phone, which opens in that app's own browser,
+can still count as one.
+
 ## Step 3: give the dashboard its two secrets
 
 The dashboard reads the dataset through Cloudflare's API, as you, with a

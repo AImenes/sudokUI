@@ -18,7 +18,9 @@
  *
  * Nothing here identifies a player. No IP is written: the rate limit per
  * address lives in this isolate's memory, as the daily's does. No token,
- * no cookie, no header beyond the country is read.
+ * no cookie, no header beyond the country and the user agent is read, and
+ * the user agent only to tell a person's browser from a crawler, a
+ * headless browser or an audit tool, whose lines are not written.
  *
  * The share route counts a `landing` point of its own (countLanding) when
  * a browser arrives at /p/<puzzle> or /daily/<date> from outside the site:
@@ -172,9 +174,24 @@ export function memoryEvents(): AnalyticsEngineLike & { points: DataPoint[] } {
 
 // ---- the landing count ------------------------------------------------------------
 
-/** what fetches share pages without being a person: crawlers, and the preview fetchers of chat apps */
+/**
+ * What fetches pages or posts events without being a person: crawlers, the
+ * preview fetchers of chat apps, headless browsers and audit tools. The
+ * fetchers of X, LinkedIn, Pinterest and Discord all say "bot" (Twitterbot,
+ * LinkedInBot, Pinterestbot, Discordbot), Skype's says "Preview",
+ * Bluesky's is Cardyb, and
+ * those of WhatsApp, Telegram and Slack do not say Mozilla/ at all. The
+ * apps' own browsers say none of this (Telegram's on Android adds
+ * "Telegram-Android"), and the people in them are counted. "bot" inside
+ * CUBOT or FOSSiBOT, phone brands that in-app browsers name, is not a bot.
+ * Google's inspection and read-aloud fetchers, and the fetches AI
+ * assistants make for a user, say none of these words, so they are named.
+ */
 const NOT_A_PERSON =
-  /bot|crawl|spider|slurp|facebookexternalhit|facebookcatalog|whatsapp|telegram|slack|discord|twitter|linkedin|pinterest|skype|iframely|embedly|mastodon|pleroma|misskey|preview|headless|curl|wget|python|go-http|okhttp|java\//i;
+  /(?<!cu|fossi)bot|crawl|spider|slurp|facebookexternalhit|facebookcatalog|iframely|embedly|mastodon|pleroma|misskey|cardyb|preview|headless|lighthouse|pagespeed|inspectiontool|googleother|google-read-aloud|(?:chatgpt|claude|perplexity)-user|curl|wget|python|go-http|okhttp|java\//i;
+
+/** a user agent that is a person's browser: it says Mozilla/ and names nothing on the list above */
+export const isPersonAgent = (agent: string) => agent.startsWith('Mozilla/') && !NOT_A_PERSON.test(agent);
 
 /** the country a request came from, as Cloudflare reports it; '' when the runtime does not say (the dev server, a test) */
 export function countryOf(request: Request): string {
@@ -195,8 +212,7 @@ export function isLanding(request: Request): boolean {
   if (mode && mode !== 'navigate') return false;
   const dest = headers.get('sec-fetch-dest');
   if (dest && dest !== 'document') return false;
-  const agent = headers.get('user-agent') ?? '';
-  if (!agent.startsWith('Mozilla/') || NOT_A_PERSON.test(agent)) return false;
+  if (!isPersonAgent(headers.get('user-agent') ?? '')) return false;
   const referer = headers.get('referer');
   if (referer) {
     try {
@@ -270,6 +286,10 @@ export async function handleTelemetry(request: Request, dataset: AnalyticsEngine
   }
   const events = checkBatch(body);
   if (!events) return json({ error: 'a JSON list of events is expected' }, 400);
+  // a crawler that runs the app's script, a headless browser or an audit
+  // tool plays no game: its lines are taken and not written, so it learns
+  // nothing from the answer
+  if (!isPersonAgent(request.headers.get('user-agent') ?? '')) return new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } });
   if (!dataset) return json({ error: 'unavailable' }, 503, { 'retry-after': '600' });
   try {
     writeBatch(dataset, events, options.country ?? countryOf(request));

@@ -146,6 +146,7 @@ export function totalsOf(days: DayRow[]): Totals {
   const starts = sum((d) => d.starts);
   const startsOptin = sum((d) => d.startsOptin);
   const startsReturning = sum((d) => d.startsReturning);
+  const standalone = sum((d) => d.completedStandalone);
   return {
     starts,
     completed,
@@ -154,7 +155,8 @@ export function totalsOf(days: DayRow[]): Totals {
     offlineEstimate,
     total: completed + (offlineEstimate ?? 0),
     completionRate: ratio(completed, starts),
-    installedShare: ratio(sum((d) => d.completedStandalone), completed),
+    standalone,
+    installedShare: ratio(standalone, completed),
     optinOnline,
     optinOffline,
     landings: sum((d) => d.landings),
@@ -233,13 +235,21 @@ export function renderAdmin(m: Metrics): string {
     number('Offline, reported', num(w.offlineReported), 'kept by opted-in devices, 7 days'),
     number('Offline, estimated', num(w.offlineEstimate), w.offlineEstimate === null ? 'needs an opted-in device with online solves' : `others at the cohort's ratio, ${num(w.optinOffline)} to ${num(w.optinOnline)}`),
     number('Completed, total estimate', num(w.total), 'live + reported + estimated, 7 days'),
-    number('Starts, last 7 days', num(w.starts), 'participants, roughly: one start, one sitting'),
-    number('Completion rate', pct(w.completionRate), 'completed against started, 7 days'),
-    number('Installed share', pct(w.installedShare), 'completions from the installed app'),
+    number('Starts, last 7 days', num(w.starts), 'games begun: counted at the first move'),
+    number('Completion rate', pct(w.completionRate), `${num(w.completed)} completed of ${num(w.starts)} begun, 7 days`),
+    number(
+      'Solved in installed app',
+      pct(w.installedShare),
+      `${num(w.standalone)} of ${num(w.completed)}, played from a home-screen or desktop icon; not a count of installs`
+    ),
     number('Landings yesterday', num(d.landings), `${num(d.landingsDaily)} on a daily's address`),
     number('Landings, last 7 days', num(w.landings), 'share pages opened from outside the site, by people'),
-    number('New players', pct(w.newShare), `of ${num(w.startsOptin)} opted-in starts, 7 days`),
-    number('Returning players', pct(w.newShare === null ? null : 1 - w.newShare), `${num(w.startsReturning)} starts on a later day than the first`)
+    number('New players', pct(w.newShare), `${num(w.startsNew)} of ${num(w.startsOptin)} opted-in starts, 7 days`),
+    number(
+      'Returning players',
+      pct(w.newShare === null ? null : 1 - w.newShare),
+      `${num(w.startsReturning)} of ${num(w.startsOptin)} opted-in starts on a later day than the device's first`
+    )
   ].join('\n');
   const rows = m.days
     .map(
@@ -265,15 +275,15 @@ ${numbers}
     </dl>
     <h2>Completed per day, last ${DAYS_SHOWN} days</h2>
     ${sparkline(m.days.slice(0, -1))}
-    <p class="meta">${DAYS_SHOWN} days: ${num(month.starts)} starts, ${num(month.completed)} completed (${num(month.offlineReported)} reported offline, ${num(month.offlineEstimate)} estimated), ${num(month.landings)} landings, completion ${pct(month.completionRate)}, installed ${pct(month.installedShare)}.</p>
+    <p class="meta">${DAYS_SHOWN} days: ${num(month.starts)} starts, ${num(month.completed)} completed (${num(month.offlineReported)} reported offline, ${num(month.offlineEstimate)} estimated), ${num(month.landings)} landings, completion ${pct(month.completionRate)}, solved in the installed app ${pct(month.installedShare)}.</p>
     <h2>Every day</h2>
     <table>
-      <thead><tr><th>Day</th><th>Starts</th><th>Completed</th><th>Offline</th><th>Installed</th><th>Landings</th><th>New</th><th>Returning</th></tr></thead>
+      <thead><tr><th>Day</th><th>Starts</th><th>Completed</th><th>Offline</th><th>In installed app</th><th>Landings</th><th>New</th><th>Returning</th></tr></thead>
       <tbody>
 ${rows}
       </tbody>
     </table>
-    <p class="meta">Today's row is the day so far. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. The sixth metric of the plan, search clicks, is in Search Console.</p>
+    <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. The sixth metric of the plan, search clicks, is in Search Console.</p>
   </body>
 </html>
 `;

@@ -89,6 +89,10 @@ interface Settings {
   countPlays: boolean;
   /** the win screen has pointed at that switch, once */
   countPlaysAsked: boolean;
+  /** this device sends no counted lines at all (src/state/telemetry.ts): for
+   *  the owner's and testers' devices, and for anyone who would rather not
+   *  be counted. Kept at the player's request, like every setting */
+  dontCount: boolean;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -121,6 +125,7 @@ export const useSettings = create<Settings>()(
       tintStrength: 50,
       countPlays: false,
       countPlaysAsked: false,
+      dontCount: false,
       toggleTheme: () =>
         set((s) => ({
           theme:
@@ -137,3 +142,13 @@ export const useSettings = create<Settings>()(
     { name: 'sudokui-settings-v1' }
   )
 );
+
+// A setting changed in another tab, or in the installed app's window, is
+// taken here too, so a switch such as leaving the device out of the counts
+// holds in every open window at once, and this window's next write of its
+// settings does not put the old value back
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'sudokui-settings-v1') void useSettings.persist.rehydrate();
+  });
+}

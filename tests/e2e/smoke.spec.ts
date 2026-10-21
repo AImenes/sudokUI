@@ -1056,9 +1056,12 @@ test.describe('counting plays', () => {
     await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
     await page.goto(`/p/${EASY}`);
     await expect(page.locator('svg.board')).toBeVisible();
-    // the start went as the game opened
-    await expect.poll(() => batches.flat().filter((e) => e.event === 'started').length).toBe(1);
+    // opened and not yet played: nothing is counted
+    await page.waitForTimeout(1500);
+    expect(batches.flat()).toHaveLength(0);
     await solveBoard(page, EASY);
+    // the first move counted the start, the last one the solve
+    await expect.poll(() => batches.flat().filter((e) => e.event === 'started').length).toBe(1);
     await expect.poll(() => batches.flat().filter((e) => e.event === 'completed').length).toBe(1);
     const completed = batches.flat().find((e) => e.event === 'completed')!;
     expect(completed).toEqual({
@@ -1089,12 +1092,15 @@ test.describe('counting plays', () => {
     await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
     await page.goto(`/p/${EASY}`);
     await expect(page.locator('svg.board')).toBeVisible();
-    await expect.poll(() => attempts.length).toBe(1);
+    // opened and not yet played: nothing sent
+    await page.waitForTimeout(1500);
+    expect(attempts).toHaveLength(0);
     await context.setOffline(true);
     await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(false);
+    // the whole game, its first move included, offline: nothing goes
     await solveBoard(page, EASY);
     await page.waitForTimeout(1500);
-    expect(attempts).toHaveLength(1);
+    expect(attempts).toHaveLength(0);
     expect(await page.evaluate(() => localStorage.getItem('sudokui-telemetry-v1'))).toBeNull();
     await context.setOffline(false);
   });
@@ -1111,6 +1117,12 @@ test.describe('counting plays', () => {
     });
     await page.goto(`/p/${EASY}`);
     await expect(page.locator('svg.board')).toBeVisible();
+    // the first move, online: a corner mark in r1c1, which the solve then overwrites
+    const first = await cellBox(page, 0);
+    await page.mouse.click(first.x, first.y);
+    await page.keyboard.press('Shift+Digit1');
+    // (a click on the lone selected cell would deselect it: start the solve from nothing selected)
+    await page.keyboard.press('Escape');
     await expect.poll(() => batches.flat().filter((e) => e.event === 'started').length).toBe(1);
     expect(batches.flat()[0]).toMatchObject({ event: 'started', optin: true, returning: false });
     await context.setOffline(true);
@@ -1133,6 +1145,30 @@ test.describe('counting plays', () => {
     const settings = page.getByRole('dialog', { name: 'Settings' });
     await settings.getByRole('switch', { name: 'Help count plays, including offline ones' }).click();
     expect(await page.evaluate(() => localStorage.getItem('sudokui-telemetry-v1'))).toBeNull();
+  });
+
+  test('a device left out of the counts sends nothing for a whole game, and says so in Settings', async ({ page }) => {
+    const attempts: string[] = [];
+    page.on('request', (r) => {
+      if (r.url().endsWith('/api/t')) attempts.push(r.method());
+    });
+    await page.addInitScript(() => {
+      localStorage.setItem('sudokui-welcomed', '1');
+      localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { dontCount: true }, version: 0 }));
+    });
+    await page.goto(`/p/${EASY}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    await solveBoard(page, EASY);
+    await page.waitForTimeout(1500);
+    expect(attempts).toHaveLength(0);
+    // no pointer at the counting switch on the win screen either
+    const dialog = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(dialog).not.toContainText('Plays are counted without identifying anyone');
+    await dialog.getByRole('button', { name: 'Admire the grid' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    await expect(settings.getByRole('switch', { name: 'Leave this device out of the counts' })).toHaveAttribute('aria-checked', 'true');
+    await expect(settings.getByRole('switch', { name: 'Help count plays, including offline ones' })).toBeDisabled();
   });
 
   test('the privacy page exists in three languages, and the footer links to it', async ({ page }) => {

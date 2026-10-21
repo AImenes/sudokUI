@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { useDailyStats, DailyResult, migrateKept } from '../src/state/dailyStats';
 import type { DailyStats } from '../src/content/dailies';
 
-const result: DailyResult = { no: 7, grid: '1'.repeat(81), seconds: 552, hints: 0, unassisted: true, source: 'tab' };
+const result: DailyResult = { no: 7, grid: '1'.repeat(81), seconds: 552, hints: 0, unassisted: true };
 const stats = (count: number): DailyStats => ({ no: 7, count, median: count ? 552 : null, histogram: count ? [[36, count]] : [] });
 
 /** the next answers fetch gives, in order; a function throws as a network error */
@@ -59,7 +59,11 @@ describe('the daily statistics store', () => {
     expect(calls[0].url).toBe('/api/daily/7/result');
     expect(calls[0].init?.method).toBe('POST');
     expect(sent.token).toMatch(/^[A-Za-z0-9_-]{16,64}$/);
-    expect(sent).toMatchObject({ no: 7, seconds: 552, hints: 0, unassisted: true, source: 'tab' });
+    expect(sent).toMatchObject({ no: 7, seconds: 552, hints: 0, unassisted: true });
+    // exactly what worker/daily.ts takes; where the app ran is not sent,
+    // the server would not keep it
+    expect(Object.keys(sent).sort()).toEqual(['grid', 'hints', 'no', 'seconds', 'token', 'unassisted']);
+    expect(sent.grid).toBe('1'.repeat(81));
     const s = useDailyStats.getState();
     expect(s.submitted[7]).toBe(552);
     expect(s.stats[7]).toEqual(stats(1));
@@ -94,6 +98,16 @@ describe('the daily statistics store', () => {
     expect(await useDailyStats.getState().submit({ ...result, no: 9 })).toBe('refused');
     expect(useDailyStats.getState().pending[9]).toBeUndefined();
     expect(useDailyStats.getState().submitted[9]).toBeUndefined();
+  });
+
+  it('sends a result an older build kept without where the app ran', async () => {
+    // kept by a build from before 21 October 2026, which sent source too
+    useDailyStats.setState({ pending: { 7: { ...result, source: 'tab' } as DailyResult } });
+    answers = [json({ ok: true, accepted: true, stats: stats(1) })];
+    await useDailyStats.getState().flushPending();
+    const sent = JSON.parse(String(calls[0].init?.body));
+    expect(sent).toMatchObject({ no: 7, seconds: 552, hints: 0, unassisted: true, grid: '1'.repeat(81) });
+    expect(Object.keys(sent).sort()).toEqual(['grid', 'hints', 'no', 'seconds', 'token', 'unassisted']);
   });
 
   it('drops the statistics kept from before only unassisted solves counted, and keeps the rest', () => {

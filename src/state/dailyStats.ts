@@ -19,7 +19,6 @@ export interface DailyResult {
   seconds: number;
   hints: number;
   unassisted: boolean;
-  source: 'pwa' | 'tab';
 }
 
 export type SubmitOutcome = 'accepted' | 'repeat' | 'offline' | 'refused' | 'unavailable';
@@ -114,7 +113,9 @@ export const useDailyStats = create<DailyStatsState>()(
           res = await fetch(api(result.no, 'result'), {
             method: 'POST',
             headers: { 'content-type': 'application/json', accept: 'application/json' },
-            body: JSON.stringify({ ...result, token })
+            // the fields by name: a result an older build kept also carries
+            // where the app ran, which is no longer sent
+            body: JSON.stringify({ no: result.no, grid: result.grid, seconds: result.seconds, hints: result.hints, unassisted: result.unassisted, token })
           });
         } catch {
           set((s) => ({ pending: { ...s.pending, [key]: result } }));

@@ -294,6 +294,17 @@ interface GameStore {
   elapsedBefore: number;
   paused: boolean;
   won: boolean;
+  /** the game's first move has been counted as a start (countFirstMove,
+   *  below the store). In memory only, never saved: nothing is stored on
+   *  the device for counting, and a game resumed from storage is taken as
+   *  counted when its board shows a move (playedOn) */
+  counted: boolean;
+  /** the game has been solved: its solve is in the band record, and was
+   *  counted unless the device was left out (recordWin). Unlike won, Undo does not clear it, so a solve
+   *  undone and solved again is the same solve, and the puzzle started
+   *  again is a new game. Saved with the game, like won, for the player's
+   *  own record; a save from before it existed has it when it was won */
+  solved: boolean;
   /** true once any assist was used this game — hint, check, steps, scan,
    *  revert, auto candidates or fill. A solve is "clean" only while this
    *  stays false; swapping corner↔centre marks never sets it. Reset by
@@ -447,9 +458,14 @@ function foundNotice(tech: Tech): string {
 
 /** a finished game goes into the band record; practice starts part-way
  *  through and compares with nothing. The solve is counted too, with
- *  nothing that names the player (src/state/telemetry.ts) */
+ *  nothing that names the player (src/state/telemetry.ts). Once per game:
+ *  a solve undone (Undo clears the win) and solved again, by the same
+ *  digit or by Redo, is the same solve. A solved puzzle started again,
+ *  by Restart or otherwise, even after its solve was undone, is a new
+ *  game (startGame), and its solve counts again */
 function recordWin(s: GameStore) {
-  if (!s.info || s.info.practiceTech) return;
+  if (!s.info || s.info.practiceTech || s.solved) return;
+  useGame.setState({ solved: true });
   useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
   useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000));
 }
@@ -474,6 +490,8 @@ export const useGame = create<GameStore>()(
       elapsedBefore: 0,
       paused: false,
       won: false,
+      counted: false,
+      solved: false,
       assisted: false,
       hint: null,
       hintStage: 'hidden' as const,
@@ -537,7 +555,15 @@ export const useGame = create<GameStore>()(
           practiceTarget = solvePath(puzzle).find((step) => step.tech === practiceTech) ?? null;
         }
         useStats.getState().newGame();
+        // the start is counted at the game's first move, not here: a game
+        // the app opens by itself, or a link nobody plays, is no game
+        // begun (countFirstMove, below the store). Starting the puzzle
+        // under way again, by Restart or by choosing it anew, before it
+        // was ever solved, is the same game, so its start stays counted;
+        // playing a solved puzzle again, even one whose solve was undone,
+        // is a new one
         const prev = get();
+        const same = !practiceTech && !prev.info?.practiceTech && prev.info?.puzzle === puzzle && !prev.won && !prev.solved;
         set({
           info: {
             puzzle,
@@ -562,6 +588,8 @@ export const useGame = create<GameStore>()(
           elapsedBefore: 0,
           paused: false,
           won: false,
+          counted: same && prev.counted,
+          solved: false,
           // fast-forwarded practice switches auto candidates on for you,
           // which under the house rules already counts as assistance
           assisted: !!fastForward,
@@ -580,10 +608,6 @@ export const useGame = create<GameStore>()(
           // the pattern, and the game is already marked assisted above.
           autoCandidates: !!fastForward
         });
-        // counted as a game begun, with nothing that names the player
-        // (src/state/telemetry.ts); a practice puzzle starts part-way
-        // through, and a restart of the puzzle in play is the same game
-        if (!practiceTech && !(prev.info?.puzzle === puzzle && !prev.won)) useTelemetry.getState().track('started', level, 0);
       },
 
       restart: () => {
@@ -682,6 +706,9 @@ export const useGame = create<GameStore>()(
           hintStage: 'hidden',
           errors: []
         });
+        // the game back on the board may have been played on while the
+        // device was left out, and the switch gone off since: it is begun
+        countStart();
       },
 
       finishCustomEntry: () => {
@@ -979,14 +1006,20 @@ export const useGame = create<GameStore>()(
         const s = get();
         if (!s.future.length) return;
         const [next, ...rest] = s.future;
+        // redoing the winning move wins again (the game is already
+        // solved, so its solve is not recorded twice)
+        const won = s.info ? checkWin(next, s.info.solution) : false;
         set({
           cells: next,
           future: rest,
           history: [...s.history, cloneCells(s.cells)],
           hint: null,
           hintStage: 'hidden',
-          errors: []
+          errors: [],
+          won,
+          ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {})
         });
+        if (won) recordWin(get());
       },
 
       /**
@@ -1732,6 +1765,8 @@ export const useGame = create<GameStore>()(
         autoCandidates: s.autoCandidates,
         elapsedBefore: s.elapsedMs(),
         won: s.won,
+        // solved survives an Undo of the winning digit, and a reload with it
+        solved: s.solved,
         assisted: s.assisted,
         // the declared meaning of the marks survives a reload with them
         markContract: s.markContract,
@@ -1742,11 +1777,73 @@ export const useGame = create<GameStore>()(
         if (state) {
           state.startedAt = Date.now();
           state.paused = state.won; // stopped timer for finished games
+          // the board says whether this game was begun, so nothing about
+          // counting needs saving: a move on it was counted when made, and
+          // so was a position opened with entries on it (countStart). Not
+          // practice, never counted; and not while the device is left out,
+          // when nothing was counted, so the start still goes ahead of the
+          // solve if the switch goes off later
+          state.counted = !state.info?.practiceTech && !useSettings.getState().dontCount && playedOn(state);
+          // a save from before solved was kept has it when it was won;
+          // practice is never solved for the record
+          state.solved = !state.info?.practiceTech && (!!state.solved || state.won);
         }
       }
     }
   )
 );
+
+/** the board shows a move of the player's: a digit, a mark, an exclusion, a colour, or auto candidates switched on */
+export function playedOn(s: Pick<GameStore, 'cells' | 'autoCandidates'>): boolean {
+  return s.autoCandidates || s.cells.some((c) => (!c.given && c.value) || c.corner || c.center || c.excluded || c.colors.length);
+}
+
+/**
+ * A game is counted as begun (src/state/telemetry.ts) the first time its
+ * board shows anything beyond the givens (playedOn): the player's first
+ * digit, mark or colour, candidates switched on (by Auto, Steps or the
+ * chain trainer), an applied hint; or, for a shared position or a pasted
+ * grid that opens with any of these on it, the moment it opens. A game
+ * the app opens by itself on a first visit, or a link opened and never
+ * played, is not a game begun. Practice puzzles are never counted. The
+ * flag lives in memory only; a game resumed from storage is taken as
+ * counted when its board shows anything beyond the givens, which is
+ * exactly when it was counted, so a reload does not count it again. Two
+ * gaps, since nothing about counting is saved: a game whose moves were
+ * all undone or erased before a reload counts as begun again at its next
+ * move; and a game counted, then left out of the counts across a reload,
+ * counts as begun again when the switch goes off. While the device is left out
+ * of the counts nothing is marked; when the switch goes off, a game
+ * already played on is counted at once (below), ahead of its solve.
+ */
+export function countFirstMove(s: GameStore, prev: GameStore) {
+  // a game won before this change is past counting: its solve was
+  // counted, or the device was left out of it
+  if (!s.info || s.counted || prev.won) return;
+  // a new game's own first state is not a move (a position's entries,
+  // put on the board right after, are)
+  if (s.info.puzzle !== prev.info?.puzzle) return;
+  countStart();
+}
+useGame.subscribe(countFirstMove);
+
+// the device rejoins the counts: a game already played on while it was
+// left out is begun now, before its solve, and before a reload could
+// take its board for one already counted
+useSettings.subscribe((s, prev) => {
+  if (prev.dontCount && !s.dontCount && !useGame.getState().won) countStart();
+});
+
+/** counts the game on the board as begun, once: not practice, not while the device is left out */
+function countStart() {
+  const s = useGame.getState();
+  // a solved game is past counting: its start was counted before the
+  // win, or the device was left out of it, and its solve too
+  if (!s.info || s.counted || s.solved || s.info.practiceTech || !playedOn(s)) return;
+  if (useSettings.getState().dontCount) return;
+  useGame.setState({ counted: true });
+  useTelemetry.getState().track('started', s.info.level, 0);
+}
 
 // the full solve path of the current puzzle, cached — rating a hard puzzle
 // can take a few hundred milliseconds and the path never changes — one per

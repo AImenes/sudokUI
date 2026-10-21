@@ -82,7 +82,8 @@ describe('the daily API', () => {
     expect(repeat.accepted).toBe(false);
     expect(repeat.stats.count).toBe(1);
 
-    const other = (await handleDailyApi(post(NO, good({ token: 'another-token-of-sixteen-plus', seconds: 1200 })), store, { now: NOW }))!;
+    // a build from 21 October 2026 on sends no source at all
+    const other = (await handleDailyApi(post(NO, good({ token: 'another-token-of-sixteen-plus', seconds: 1200, source: undefined })), store, { now: NOW }))!;
     const two = await other.json();
     expect(two.accepted).toBe(true);
     expect(two.stats.count).toBe(2);
@@ -91,8 +92,10 @@ describe('the daily API', () => {
       [bucketOf(1200), 1]
     ]);
     expect(store.results).toHaveLength(2);
-    expect(store.results[0]).toMatchObject({ no: NO, token: TOKEN, seconds: 552, unassisted: true, hints: 0, source: 'tab' });
-    expect(store.results[0].createdAt).toBe(Math.floor(NOW().getTime() / 1000));
+    // kept no finer than the privacy page says: the 15-second step, the
+    // day, and not where the app ran (an older build still sends that)
+    expect(store.results[0]).toEqual({ no: NO, token: TOKEN, seconds: bucketOf(552) * 15, unassisted: true, hints: 0, createdAt: Date.parse(`${DAILY.date}T00:00:00Z`) / 1000 });
+    expect(store.results[1].seconds).toBe(1200);
     // what the statistics read says the same
     expect(await (await handleDailyApi(get(NO), store, { now: NOW }))!.json()).toEqual(two.stats);
   });
@@ -151,7 +154,7 @@ describe('the daily API', () => {
   it('leaves an assisted time already kept out of the statistics', async () => {
     const store = memoryStore();
     // a run through Steps, sent before the server refused assisted solves
-    store.results.push({ no: NO, token: 'assisted-token-from-before', seconds: 590, unassisted: false, hints: 0, source: 'tab', createdAt: 1 });
+    store.results.push({ no: NO, token: 'assisted-token-from-before', seconds: 590, unassisted: false, hints: 0, createdAt: 1 });
     expect(await (await handleDailyApi(get(NO), store, { now: NOW }))!.json()).toEqual({ no: NO, count: 0, median: null, histogram: [] });
     const body = await (await handleDailyApi(post(NO, good()), store, { now: NOW }))!.json();
     expect(body.stats).toEqual({ no: NO, count: 1, median: bucketOf(552) * 15 + 8, histogram: [[bucketOf(552), 1]] });
@@ -234,12 +237,13 @@ describe('the D1 store', () => {
     expect(await store.histogram(NO)).toEqual([{ bucket: 36, n: 2, n_unassisted: 1 }]);
     expect(calls[0].sql).toMatch(/^SELECT bucket, n, n_unassisted FROM daily_hist WHERE puzzle_no = \?1$/);
     expect(calls[0].values).toEqual([NO]);
-    const accepted = await store.record({ no: NO, token: TOKEN, seconds: 552, unassisted: true, hints: 0, source: 'pwa', createdAt: 1 });
+    const accepted = await store.record({ no: NO, token: TOKEN, seconds: 540, unassisted: true, hints: 0, createdAt: 1 });
     expect(accepted).toBe(true);
     expect(calls[1].sql).toMatch(/INSERT INTO daily_hist .* WHERE NOT EXISTS \(SELECT 1 FROM daily_result WHERE puzzle_no = \?1 AND token = \?4\) ON CONFLICT \(puzzle_no, bucket\) DO UPDATE SET n = n \+ 1/);
-    expect(calls[1].values).toEqual([NO, bucketOf(552), 1, TOKEN]);
+    expect(calls[1].values).toEqual([NO, bucketOf(540), 1, TOKEN]);
     expect(calls[2].sql).toMatch(/^INSERT OR IGNORE INTO daily_result/);
-    expect(calls[2].values).toEqual([NO, TOKEN, 552, 1, 0, 'pwa', 1]);
+    expect(calls[2].sql).not.toMatch(/source/);
+    expect(calls[2].values).toEqual([NO, TOKEN, 540, 1, 0, 1]);
   });
 });
 
