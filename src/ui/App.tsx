@@ -750,25 +750,27 @@ export default function App() {
           />
           {info?.practiceTech && !custom && (
             <div className="practice-bar">
-              <span>
+              <span className="practice-label">
                 {rich(t('Practicing {tech}'), { tech: <strong>{t.tech(info.practiceTech)}</strong> })}
                 {practiceFound && <span className="practice-found"> · {t('found||the technique being practised')} 🎯</span>}
               </span>
-              {!practiceFound &&
-                !chain &&
-                practiceTarget?.links?.length &&
-                practiceTarget.links.every((l) => l.from.length === 1 && l.to.length === 1) && (
-                  <button
-                    className="ghost"
-                    onClick={() => startChain(practiceTarget.eliminations)}
-                    title={t("Open the chain trainer with this technique's removal as the goal")}
-                  >
-                    {t('Build it yourself')}
-                  </button>
-                )}
-              <button onClick={() => start({ kind: 'tech', tech: info.practiceTech! })}>
-                {t('Next puzzle (N)')}
-              </button>
+              <div className="practice-actions">
+                {!practiceFound &&
+                  !chain &&
+                  practiceTarget?.links?.length &&
+                  practiceTarget.links.every((l) => l.from.length === 1 && l.to.length === 1) && (
+                    <button
+                      className="ghost"
+                      onClick={() => startChain(practiceTarget.eliminations)}
+                      title={t("Open the chain trainer with this technique's removal as the goal")}
+                    >
+                      {t('Build it yourself')}
+                    </button>
+                  )}
+                <button onClick={() => start({ kind: 'tech', tech: info.practiceTech! })}>
+                  {t('Next puzzle (N)')}
+                </button>
+              </div>
             </div>
           )}
           {chain ? <ChainPanel /> : <HintPanel onLearn={(tech) => openLearn({ tab: 'techniques', tech })} />}
