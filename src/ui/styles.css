@@ -613,13 +613,15 @@ button {
   margin-left: 6px;
 }
 
-/* menu buttons: icon stacked above a short label, consistently */
+/* menu buttons: icon stacked above a short label, consistently. The label
+   is centred, so side padding shows only when a label needs the whole
+   button: there it gives the label its room */
 .menu-row button {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 8px 4px;
+  padding: 8px 2px;
 }
 
 .menu-icon {
@@ -2527,20 +2529,54 @@ kbd {
   font-weight: 600;
 }
 
-/* Translated labels run longer than English: every button row must take a
-   longer word without breaking its line or its neighbours */
+/* Translated labels run longer than English, and every label runs longer
+   in a wide font: Verdana sets the Spanish menu a quarter wider than Segoe
+   UI does, and DejaVu Sans, Linux's usual sans-serif, is about as wide as
+   Verdana. So a button is never narrower
+   than its label, and a long label takes its room from a shorter
+   neighbour; the buttons stay of one width wherever their labels allow.
+   A row that cannot hold its labels at all wraps, rather than letting a
+   label run over its button's border or the row past the column */
+.menu-row,
+.mode-row,
+.action-row {
+  flex-wrap: wrap;
+}
+
 .menu-row button,
 .action-row button,
 .mode-btn {
-  min-width: 0;
+  min-width: min-content;
   line-height: 1.2;
+}
+
+/* a menu that had to wrap: its last buttons centred under the rest, not
+   one stretched across the column */
+.menu-row {
+  justify-content: center;
+}
+
+.menu-row button {
+  max-width: 40%;
 }
 
 html:not([lang='en']) .menu-row button,
 html:not([lang='en']) .action-row button {
   font-size: 12px;
+}
+
+html:not([lang='en']) .action-row button {
   padding-left: 4px;
   padding-right: 4px;
+}
+
+/* the desktop's control column is 300px, as narrow as a 320px phone's:
+   its menu takes the phone's type, or "Compartir" needs a second row even
+   in Segoe UI */
+@media (min-width: 861px) {
+  html:not([lang='en']) .menu-row button {
+    font-size: 11px;
+  }
 }
 
 html:not([lang='en']) .mode-btn {

@@ -7,7 +7,9 @@ export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
-  reporter: 'list',
+  // on GitHub a failure is also an annotation on the commit, which the
+  // public API serves without a login (the job's log asks for one)
+  reporter: process.env.GITHUB_ACTIONS ? [['list'], ['github']] : 'list',
   use: {
     baseURL: 'http://localhost:4173',
     launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
