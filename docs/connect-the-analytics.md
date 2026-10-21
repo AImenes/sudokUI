@@ -255,6 +255,14 @@ command.)
   the AUD tag stored is not the one Zero Trust shows: copy both again
   (step 5) and store them again with the same commands. Or the branch is
   not deployed yet (step 2).
+- **`npx wrangler secret put` says the latest version of your Worker
+  isn't currently deployed**: a branch pushed to GitHub has uploaded a
+  newer preview version of the Worker since `main` last deployed, and
+  the command will not put a secret on top of it. Run it again just
+  after the next deploy of `main`, before any other branch is pushed.
+  Do not use `wrangler versions secret put` or deploy a version instead:
+  those start from the newest uploaded version, which may be a branch's
+  code.
 - **/admin says "The analytics API answered 403"** (or 401): the token
   cannot read the analytics. Make a new one with exactly **Account
   Analytics: Read** on this account (step 3) and store it again with
