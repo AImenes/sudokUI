@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # a session's branch (claude/...) is tested when pushed, before it is
+    # merged: a merge to main deploys whatever CI says
+    branches: [main, 'claude/**']
   pull_request:
     branches: [main]
 
