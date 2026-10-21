@@ -378,6 +378,35 @@ describe('a game solved', () => {
 });
 
 describe('custom entry', () => {
+  it('does not count the game Cancel brings back after a reload a second time', async () => {
+    useGame.getState().startGame(EASY, 196, 'Beginner');
+    play(EMPTY[0], Number(solution()[EMPTY[0]]));
+    expect(tracked).toEqual(['started']);
+    useGame.getState().startCustomEntry();
+    useGame.getState().select([0], false);
+    useGame.getState().input(5);
+    await reload();
+    expect(useGame.getState().custom).toBe(true);
+    useGame.getState().cancelCustomEntry();
+    expect(useGame.getState().info?.puzzle).toBe(EASY);
+    expect(tracked).toEqual(['started']);
+    // and its next move counts nothing either
+    play(EMPTY[1], Number(solution()[EMPTY[1]]));
+    expect(tracked).toEqual(['started']);
+  });
+
+  it('counts the game Cancel brings back after a reload when nothing had been played on it', async () => {
+    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startCustomEntry();
+    useGame.getState().select([0], false);
+    useGame.getState().input(5);
+    await reload();
+    useGame.getState().cancelCustomEntry();
+    expect(tracked).toEqual([]);
+    play(EMPTY[0], Number(solution()[EMPTY[0]]));
+    expect(tracked).toEqual(['started']);
+  });
+
   it('counts the game Cancel brings back when it was played on while left out and the switch went off meanwhile', () => {
     useSettings.setState({ dontCount: true });
     useGame.getState().startGame(EASY, 196, 'Beginner');

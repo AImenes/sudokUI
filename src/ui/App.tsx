@@ -267,14 +267,18 @@ export default function App() {
   /** the daily needs more than the basics (Tricky or harder), or its band is not known */
   const hardDaily =
     !!welcomeDaily && (welcomeDaily.level === null || LEVELS.indexOf(welcomeDaily.level) >= LEVELS.indexOf('Tricky'));
-  /** a game on the board someone has begun and not finished: the welcome never replaces it */
-  const underWay = useGame((s) => !!s.info && !s.won && playedOn(s));
-  /** the welcome's daily: started, unless it is the game already under way, which is kept, not restarted */
+  /** a game on the board someone has begun and not finished, or a puzzle being typed in: the welcome never replaces it */
+  const underWay = useGame((s) => s.custom || (!!s.info && !s.won && playedOn(s)));
+  /** the welcome's daily: started, unless it is already on the board, under
+   *  way or solved, which is kept, not restarted (closing the welcome then
+   *  shows a solved one's win screen, with its time still to send) */
   const playWelcomeDaily = () => {
     if (!welcomeDaily) return;
     dismissWelcome();
     const g = useGame.getState();
-    if (g.info?.dailyKey === welcomeDaily.key && !g.won) return;
+    if (!g.custom && g.info?.dailyKey === welcomeDaily.key) return;
+    // another game's win does not show its screen while the daily is fetched
+    if (g.won) setVictoryDismissed(true);
     startDaily(welcomeDaily.key);
   };
   /** the welcome's easy start: a first visit's own game is an easy one, kept;
@@ -330,7 +334,8 @@ export default function App() {
   // boot: a shared link wins over everything — #s= carries a full position
   // (entries, marks, colours), /p/<puzzle> and #p= just the puzzle, and a
   // share path may carry a challenger's time (src/content/share.ts);
-  // otherwise a saved game resumes, otherwise start an easy one. The
+  // otherwise a saved game resumes (or a puzzle being typed in, which has
+  // no address of its own), otherwise start an easy one. The
   // /learn/ pages deep-link in with #practice=<technique> (start practising
   // it) and #learn=<topic> (open the guide there). StrictMode-guarded.
   useEffect(() => {
@@ -401,7 +406,8 @@ export default function App() {
         useGame.setState({ notice: t('The shared puzzle could not be opened. {reason}', { reason: v ? v.reason : '' }).trim() });
       }
     }
-    if (!useGame.getState().info) start({ kind: 'level', level: 'Easy' });
+    const now = useGame.getState();
+    if (!now.info && !now.custom) start({ kind: 'level', level: 'Easy' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -434,8 +440,28 @@ export default function App() {
   // puts them in a link made for someone else), and so does a challenger's
   // time: the player's own copy of the link should not carry it. The
   // tab's title, which a share page sets to its puzzle, goes back to the
-  // app's own, so it never names a puzzle that has left the board.
+  // app's own, so it never names a puzzle that has left the board. A
+  // puzzle being typed in has no address yet: the bar shows the home page,
+  // so a reload keeps the entry (the boot, above) rather than reopening the
+  // game that was on the board before it.
   useEffect(() => {
+    const homeTitle = () =>
+      import('../content/home')
+        .then((m) => {
+          document.title = m.HOME[lang].title;
+        })
+        .catch(() => {});
+    if (custom) {
+      try {
+        window.history.replaceState(null, '', langRoot(lang));
+      } catch {
+        // an origin that allows no path of its own (a file:// build): at
+        // least the old puzzle's hash goes, so a reload does not reopen it
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+      homeTitle();
+      return;
+    }
     if (!info?.puzzle) return;
     const rated = !(hideRating && !won);
     try {
@@ -450,12 +476,8 @@ export default function App() {
       // hash link still names the puzzle, and the app still reads it
       window.history.replaceState(null, '', `#p=${info.puzzle}`);
     }
-    import('../content/home')
-      .then((m) => {
-        document.title = m.HOME[lang].title;
-      })
-      .catch(() => {});
-  }, [info?.puzzle, info?.level, info?.score, info?.dailyNo, info?.dailyKey, lang, hideRating, won]);
+    homeTitle();
+  }, [custom, info?.puzzle, info?.level, info?.score, info?.dailyNo, info?.dailyKey, lang, hideRating, won]);
 
   // a daily result that could not be sent goes on the next open, and when
   // the connection comes back (src/state/dailyStats.ts)
@@ -855,6 +877,10 @@ export default function App() {
                     onClick={() => {
                       setCustomError(null);
                       cancelCustomEntry();
+                      // the game from before the entry comes back, a reload
+                      // or not; with none (a save from before the backup was
+                      // kept), a fresh easy one
+                      if (!useGame.getState().info) start({ kind: 'level', level: 'Easy' });
                     }}
                   >
                     {t('Cancel')}

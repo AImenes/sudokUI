@@ -1760,8 +1760,10 @@ export const useGame = create<GameStore>()(
       partialize: (s) => ({
         info: s.info,
         cells: s.cells,
-        // an in-progress custom entry survives a reload (its backup doesn't)
+        // an in-progress custom entry survives a reload, and so does the
+        // game it was opened over, which Cancel brings back
         custom: s.custom,
+        customBackup: s.custom ? s.customBackup : null,
         autoCandidates: s.autoCandidates,
         elapsedBefore: s.elapsedMs(),
         won: s.won,
@@ -1783,7 +1785,10 @@ export const useGame = create<GameStore>()(
           // practice, never counted; and not while the device is left out,
           // when nothing was counted, so the start still goes ahead of the
           // solve if the switch goes off later
-          state.counted = !state.info?.practiceTech && !useSettings.getState().dontCount && playedOn(state);
+          // (while a puzzle is being typed in, the game Cancel will bring
+          // back is judged by its own saved board)
+          const g = state.custom && state.customBackup ? state.customBackup : state;
+          state.counted = !!g.info && !g.info.practiceTech && !useSettings.getState().dontCount && playedOn(g);
           // a save from before solved was kept has it when it was won;
           // practice is never solved for the record
           state.solved = !state.info?.practiceTech && (!!state.solved || state.won);
