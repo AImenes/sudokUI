@@ -639,17 +639,38 @@ button {
   border-color: var(--accent-fill);
 }
 
-/* practice mode: technique name + one-click next puzzle */
+/* practice mode: technique name + one-click next puzzle. The buttons sit
+   beside the name while they fit; once they do not (two buttons in the
+   300px column, a long technique name, a longer language) they wrap onto
+   a row of their own under it and share that row */
 .practice-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px 10px;
   padding: 8px 12px;
   border-radius: 10px;
   background: var(--panel);
   font-size: 13px;
   color: var(--muted);
+}
+
+/* the name takes nearly all the spare room on a shared row, so the
+   buttons grow only when they have a row to themselves */
+.practice-label {
+  flex: 999 1 auto;
+}
+
+.practice-actions {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.practice-actions button {
+  flex: 1 1 auto;
 }
 
 .practice-bar strong {

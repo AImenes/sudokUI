@@ -10,6 +10,9 @@ import { formatPencilGrid } from '../../src/content/textGrid';
 import { readFileSync } from 'node:fs';
 import { localDateKey } from '../../src/content/dailies';
 import type { Daily } from '../../src/content/dailies';
+import { TECHS, PRACTICE_TECHS } from '../../src/engine/ratings';
+import { techNames as nbNames } from '../../src/content/locales/names.nb';
+import { techNames as esNames } from '../../src/content/locales/names.es';
 
 /** the published dailies, read as a file: Playwright's loader takes no JSON import without an attribute */
 const dailies: Daily[] = JSON.parse(new TextDecoder().decode(readFileSync('src/content/dailies.json')));
@@ -31,6 +34,63 @@ const cellBox = async (page: Page, cell: number) => {
   const size = box.width / 9;
   return { x: box.x + ((cell % 9) + 0.5) * size, y: box.y + (Math.floor(cell / 9) + 0.5) * size };
 };
+
+/** the languages, each with the longest technique name its practice bar can show */
+const PRACTICE_LANGS = [
+  { path: '/', names: {} },
+  { path: '/nb/', names: nbNames },
+  { path: '/es/', names: esNames }
+].map(({ path, names }) => ({
+  path,
+  longest: PRACTICE_TECHS.map((t) => (names as Record<string, string>)[t] ?? TECHS[t].name).reduce((a, b) => (b.length > a.length ? b : a))
+}));
+
+/** a practice puzzle of X-Chain: its links are single cells, so the bar
+ *  carries both buttons, Build it yourself and Next puzzle */
+async function openPractice(page: Page, path = '/') {
+  await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+  await page.goto(`${path}#practice=X_CHAIN`);
+  await expect(page.locator('.practice-bar button')).toHaveCount(2, { timeout: 15_000 });
+}
+
+/** what of the practice bar does not fit (empty when all of it does): the
+ *  name or a button past the bar's padding, two of them overlapping, a
+ *  clipped label, the bar past its column, the page scrolling sideways */
+const practiceBarMisfits = (page: Page) =>
+  page.locator('.practice-bar').evaluate((bar) => {
+    const box = bar.getBoundingClientRect();
+    const style = getComputedStyle(bar);
+    const left = box.left + parseFloat(style.paddingLeft);
+    const right = box.right - parseFloat(style.paddingRight);
+    const column = bar.parentElement!.getBoundingClientRect();
+    const misfits: string[] = [];
+    if (box.left < column.left - 0.5 || box.right > column.right + 0.5) misfits.push('the bar leaves its column');
+    if (document.documentElement.scrollWidth > window.innerWidth) misfits.push('the page scrolls sideways');
+    const parts = [...bar.querySelectorAll<HTMLElement>('.practice-label, button')];
+    const rects = parts.map((el) => el.getBoundingClientRect());
+    const name = (i: number) => parts[i].innerText.replace(/\s+/g, ' ');
+    rects.forEach((r, i) => {
+      if (r.left < left - 0.5 || r.right > right + 0.5 || r.top < box.top - 0.5 || r.bottom > box.bottom + 0.5)
+        misfits.push(`${name(i)} sticks out of the bar`);
+      if (parts[i].scrollWidth > parts[i].clientWidth + 1) misfits.push(`${name(i)} is clipped`);
+      rects.forEach((o, j) => {
+        if (j > i && r.left < o.right - 0.5 && o.left < r.right - 0.5 && r.top < o.bottom - 0.5 && o.top < r.bottom - 0.5)
+          misfits.push(`${name(i)} overlaps ${name(j)}`);
+      });
+    });
+    return misfits;
+  });
+
+/** the bar as served, then with the language's longest technique name */
+async function expectPracticeBarFits(page: Page, path: string, longest: string, widths: number[]) {
+  for (const tech of [null, longest]) {
+    if (tech) await page.locator('.practice-bar strong').evaluate((el, n) => (el.textContent = n), tech);
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: page.viewportSize()!.height });
+      expect(await practiceBarMisfits(page), `${path} at ${width} px${tech ? `, practising ${tech}` : ''}`).toEqual([]);
+    }
+  }
+}
 
 test.describe('desktop, 1280 x 800', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
@@ -198,6 +258,13 @@ test.describe('desktop, 1280 x 800', () => {
     await page.getByRole('button', { name: /Hint/ }).first().click();
     await page.getByRole('button', { name: 'Use Hint' }).click();
     await expect(page.locator('.toast, [role=status]').filter({ hasText: 'A placed digit is wrong' })).toBeVisible();
+  });
+
+  test('the practice bar keeps its buttons inside it, in the 300 px column, in every language', async ({ page }) => {
+    for (const { path, longest } of PRACTICE_LANGS) {
+      await openPractice(page, path);
+      await expectPracticeBarFits(page, path, longest, [1280, 1024]);
+    }
   });
 });
 
@@ -593,6 +660,14 @@ test.describe('phone, 390 x 844', () => {
     });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.locator('#board-status')).toHaveText('5 cells selected.');
+  });
+
+  test('the practice bar keeps its buttons inside it, down to 320 px, in every language', async ({ page }) => {
+    for (const { path, longest } of PRACTICE_LANGS) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await openPractice(page, path);
+      await expectPracticeBarFits(page, path, longest, [390, 375, 360, 320]);
+    }
   });
 });
 
