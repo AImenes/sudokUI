@@ -35,8 +35,9 @@ describe('human solver', () => {
     const rating = ratePuzzle(EASY)!;
     expect(rating).not.toBeNull();
     expect(rating.solvable).toBe(true);
-    // singles-only and a low score: the gentlest of the eight bands
-    expect(rating.level).toBe('Beginner');
+    // singles-only and a low score: Easy, and a Beginner within it
+    expect(rating.level).toBe('Easy');
+    expect(rating.score).toBeLessThanOrEqual(400);
     const techs = Object.keys(rating.techniques);
     for (const t of techs) {
       expect(['FULL_HOUSE', 'NAKED_SINGLE', 'HIDDEN_SINGLE']).toContain(t);
@@ -56,21 +57,21 @@ describe('human solver', () => {
   it('rates a hard puzzle above Easy and reaches the solution', () => {
     const rating = ratePuzzle(HARD);
     expect(rating).not.toBeNull();
-    expect(['Beginner', 'Easy']).not.toContain(rating!.level);
+    expect(rating!.level).not.toBe('Easy');
     expect(rating!.score).toBeGreaterThan(300);
   });
 
-  it('maps scores to the eight difficulty bands', async () => {
+  it("maps scores to HoDoKu's five difficulty levels", async () => {
     const { levelForScore, LEVELS } = await import('../src/engine/ratings');
-    expect(LEVELS).toHaveLength(8);
-    expect(levelForScore(300)).toBe('Beginner');
-    expect(levelForScore(401)).toBe('Easy');
-    expect(levelForScore(900)).toBe('Medium');
-    expect(levelForScore(1100)).toBe('Tricky');
+    expect(LEVELS).toHaveLength(5);
+    expect(levelForScore(300)).toBe('Easy');
+    expect(levelForScore(800)).toBe('Easy');
+    expect(levelForScore(801)).toBe('Medium');
+    expect(levelForScore(1100)).toBe('Hard');
     expect(levelForScore(1500)).toBe('Hard');
     expect(levelForScore(1700)).toBe('Unfair');
     expect(levelForScore(2500)).toBe('Extreme');
-    expect(levelForScore(4354)).toBe('Nightmare');
+    expect(levelForScore(4354)).toBe('Extreme');
   });
 });
 

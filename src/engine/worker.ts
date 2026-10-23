@@ -17,7 +17,7 @@ import { ratePuzzle } from './humanSolver';
 import { transformPuzzle } from './transform';
 import { parseGrid } from './board';
 import { justify, Move, Budget } from './justify';
-import { Level, Tech, SOLVE_ORDER, NO_UNIQUENESS_ORDER } from './ratings';
+import { Level, LevelPick, Tech, SOLVE_ORDER, NO_UNIQUENESS_ORDER } from './ratings';
 
 export interface PoolEntry {
   puzzle: string;
@@ -29,7 +29,7 @@ export interface PoolEntry {
 }
 
 export type WorkerRequest =
-  | { id: number; kind: 'level'; level: Level; maxAttempts?: number; urgent?: boolean; seeds?: string[] }
+  | { id: number; kind: 'level'; level: LevelPick; maxAttempts?: number; urgent?: boolean; seeds?: string[] }
   | { id: number; kind: 'tech'; tech: Tech; maxAttempts?: number; urgent?: boolean; seeds?: string[] }
   /** what justifies a move in a position: the values as 81 characters and
    *  the candidates of the empty cells as masks (src/engine/justify.ts) */

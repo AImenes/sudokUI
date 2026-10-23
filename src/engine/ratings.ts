@@ -1,48 +1,88 @@
 // Technique catalog ported from HoDoKu (Options.java DEFAULT_SOLVER_STEPS).
 // Scores are HoDoKu's defaults, so puzzle ratings are directly comparable
-// with HoDoKu's.
+// with HoDoKu's: the HoDoKu rating.
 //
-// Difficulty runs on eight named bands. The five HoDoKu bands keep their
-// original thresholds (Easy 800 / Medium 1000 / Hard 1600 / Unfair 1800),
-// so a puzzle HoDoKu calls Hard is still Hard here; the three new bands
-// subdivide the extremes: Beginner splits off the gentlest singles-only
-// puzzles, Tricky sits between Medium and Hard for grinds that need no new
-// technique but lots of bookkeeping, and Nightmare splits off the monsters
-// past 3000 (forcing nets, Exocet territory — ratings of 4000+ exist).
-// A puzzle's band is max(hardest technique's band, band from total score).
+// Difficulty is HoDoKu's five levels, with HoDoKu's own limits and HoDoKu's
+// own rule (solver/SudokuSolver.java): a puzzle's level is the highest
+// level of any technique its solve path uses, raised one level at a time
+// while the total score is above that level's maximum. Source: HoDoKu SVN
+// r147, https://sourceforge.net/p/hodoku/code/147/tree/HoDoKu/trunk/src/sudoku/Options.java
+// (DEFAULT_DIFFICULTY_LEVELS, DEFAULT_SOLVER_STEPS) and
+// src/solver/SudokuSolver.java (solve, getHint); tests/hodoku.test.ts
+// holds the engine to them.
+//
+// The New game list also offers two narrower picks inside them (PICKS):
+// Beginner, the gentlest Easy puzzles, and Nightmare, the monsters of
+// Extreme past 3000 (forcing nets, Exocet territory; ratings of 4000+
+// exist). They choose which puzzles are served; a puzzle's level is
+// always one of the five. Before the five were the site's categories it
+// had eight bands of its own, Beginner, Easy, Medium, Tricky, Hard,
+// Unfair, Extreme and Nightmare, each inside one HoDoKu level: those
+// names may still arrive from saved games, links and older app builds,
+// and asLevel reads them.
 
-export type Level =
-  | 'Beginner'
-  | 'Easy'
-  | 'Medium'
-  | 'Tricky'
-  | 'Hard'
-  | 'Unfair'
-  | 'Extreme'
-  | 'Nightmare';
+/** HoDoKu's five difficulty levels, easiest first: the site's main categories */
+export type Level = 'Easy' | 'Medium' | 'Hard' | 'Unfair' | 'Extreme';
 
-export const LEVELS: Level[] = [
-  'Beginner',
-  'Easy',
-  'Medium',
-  'Tricky',
-  'Hard',
-  'Unfair',
-  'Extreme',
-  'Nightmare'
-];
+export const LEVELS: Level[] = ['Easy', 'Medium', 'Hard', 'Unfair', 'Extreme'];
 
-/** Max total score per level (HoDoKu thresholds, subdivided). */
+/**
+ * The most a puzzle of each level may score: HoDoKu's
+ * DEFAULT_DIFFICULTY_LEVELS (sudoku/Options.java, r147), Extreme's being
+ * Java's Integer.MAX_VALUE, so it has no limit.
+ */
 export const LEVEL_MAX_SCORE: Record<Level, number> = {
-  Beginner: 400,
   Easy: 800,
   Medium: 1000,
-  Tricky: 1150,
   Hard: 1600,
   Unfair: 1800,
-  Extreme: 3000,
-  Nightmare: Number.MAX_SAFE_INTEGER
+  Extreme: 2147483647
 };
+
+/** what a player can ask New game for: a level, or one of the two narrower picks inside one */
+export type LevelPick = Level | 'Beginner' | 'Nightmare';
+
+/** the New game list's order: Beginner before Easy, Nightmare after Extreme */
+export const PICKS: LevelPick[] = ['Beginner', 'Easy', 'Medium', 'Hard', 'Unfair', 'Extreme', 'Nightmare'];
+
+/** Beginner: an Easy puzzle scoring this or less */
+export const BEGINNER_MAX_SCORE = 400;
+/** Nightmare: an Extreme puzzle scoring more than this */
+export const NIGHTMARE_MIN_SCORE = 3000;
+
+/** the level a pick's puzzles are */
+export const pickLevel = (pick: LevelPick): Level => (pick === 'Beginner' ? 'Easy' : pick === 'Nightmare' ? 'Extreme' : pick);
+
+/** the narrower pick a puzzle of this level and score also answers, if any */
+export function subPick(level: Level, score: number): 'Beginner' | 'Nightmare' | null {
+  if (level === 'Easy' && score <= BEGINNER_MAX_SCORE) return 'Beginner';
+  if (level === 'Extreme' && score > NIGHTMARE_MIN_SCORE) return 'Nightmare';
+  return null;
+}
+
+/** does a puzzle of this level and score answer the pick */
+export const inPick = (pick: LevelPick, level: Level, score: number): boolean =>
+  pick === level || pick === subPick(level, score);
+
+/**
+ * The narrowest pick a puzzle answers: Beginner or Nightmare when it is
+ * one, else its level. What the solve times and the seed library go by,
+ * so their Easy and Extreme are the rest of those levels.
+ */
+export const pickOf = (level: Level, score: number): LevelPick => subPick(level, score) ?? level;
+
+/**
+ * The level of the band names from before the five: every one of the
+ * eight bands lay inside one HoDoKu level, so the reading is exact.
+ */
+const LEGACY_LEVELS: Record<string, Level> = { Beginner: 'Easy', Tricky: 'Hard', Nightmare: 'Extreme' };
+
+/** a level, or a band name from before the five read as its level; null for anything else */
+export function asLevel(name: unknown): Level | null {
+  if (typeof name !== 'string') return null;
+  if ((LEVELS as string[]).includes(name)) return name as Level;
+  return Object.prototype.hasOwnProperty.call(LEGACY_LEVELS, name) ? LEGACY_LEVELS[name] : null;
+}
 
 export type Category =
   | 'Singles'
@@ -85,9 +125,9 @@ const t = (
 
 /** Keys follow HoDoKu's SolutionType names. */
 export const TECHS = {
-  FULL_HOUSE: t(100, 'Full House', 'Beginner', 'Singles', 4),
-  NAKED_SINGLE: t(200, 'Naked Single', 'Beginner', 'Singles', 4),
-  HIDDEN_SINGLE: t(300, 'Hidden Single', 'Beginner', 'Singles', 14),
+  FULL_HOUSE: t(100, 'Full House', 'Easy', 'Singles', 4),
+  NAKED_SINGLE: t(200, 'Naked Single', 'Easy', 'Singles', 4),
+  HIDDEN_SINGLE: t(300, 'Hidden Single', 'Easy', 'Singles', 14),
   LOCKED_PAIR: t(1000, 'Locked Pair', 'Medium', 'Intersections', 40),
   LOCKED_TRIPLE: t(1100, 'Locked Triple', 'Medium', 'Intersections', 60),
   LOCKED_CANDIDATES_1: t(1200, 'Locked Candidates (Pointing)', 'Medium', 'Intersections', 50),
@@ -224,25 +264,16 @@ export function maxLevel(a: Level, b: Level): Level {
 }
 
 /**
- * Puzzle-band floor of a technique class. Hard-class techniques (fish,
- * wings, single-digit patterns) floor a puzzle only at Tricky: a puzzle
- * whose one advanced move is an X-Wing is a Tricky puzzle, while Hard
- * proper means those techniques in force (score past 1300). Every other
- * class floors at itself.
- */
-/**
- * The hardest band a practice puzzle for a technique may be. A class up to
- * Hard gets one band above its own, so a player drilling X-Wings is never
- * dropped into an Extreme puzzle after the move. The chain techniques of
- * Unfair class and above have no ceiling but the top: a puzzle that needs
- * an AIC is an Extreme or a Nightmare by nature, and that is the point.
+ * The hardest level a practice puzzle for a technique may be. Singles keep
+ * to Easy, a puzzle of singles only. Medium and Hard classes get one level
+ * above their own, so a player drilling X-Wings is never dropped into an
+ * Extreme puzzle after the move. The chain techniques of Unfair class and
+ * above have no ceiling: a puzzle that needs an AIC is an Extreme by
+ * nature, and that is the point.
  */
 export function practiceCeiling(tech: Tech): Level {
   const at = LEVELS.indexOf(TECHS[tech].level);
   const top = LEVELS.length - 1;
-  return LEVELS[Math.min(at >= LEVELS.indexOf('Unfair') ? top : at + 1, top)];
-}
-
-export function bandFloor(l: Level): Level {
-  return l === 'Hard' ? 'Tricky' : l;
+  if (at === 0) return LEVELS[0];
+  return LEVELS[at >= LEVELS.indexOf('Unfair') ? top : at + 1];
 }

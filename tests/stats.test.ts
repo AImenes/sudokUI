@@ -93,3 +93,54 @@ describe('the streak on local dates', () => {
     expect(dailyStreak(['2026-10-01', '2026-10-02'], nearMidnight)).toBe(2);
   });
 });
+
+describe('band records from before HoDoKu\'s five levels', () => {
+  it('fold into the level each band lay in: solves, unassisted and time add up, the best is the faster', async () => {
+    const { foldBands } = await import('../src/state/stats');
+    const old = {
+      Beginner: { solves: 4, unassisted: 3, bestMs: 200_000, totalMs: 1_000_000 },
+      Easy: { solves: 2, unassisted: 2, bestMs: 300_000, totalMs: 700_000 },
+      Medium: { solves: 1, unassisted: 0, bestMs: 500_000, totalMs: 500_000 },
+      Tricky: { solves: 3, unassisted: 1, bestMs: 0, totalMs: 2_000_000 },
+      Hard: { solves: 1, unassisted: 1, bestMs: 900_000, totalMs: 900_000 },
+      Nightmare: { solves: 1, unassisted: 1, bestMs: 4_000_000, totalMs: 4_000_000 },
+      Bogus: { solves: 9, unassisted: 9, bestMs: 1, totalMs: 9 }
+    };
+    const folded = foldBands(old);
+    expect(folded).toEqual({
+      Easy: { solves: 6, unassisted: 5, bestMs: 200_000, totalMs: 1_700_000 },
+      Medium: { solves: 1, unassisted: 0, bestMs: 500_000, totalMs: 500_000 },
+      // a best of 0 is no best: the other record's stands
+      Hard: { solves: 4, unassisted: 2, bestMs: 900_000, totalMs: 2_900_000 },
+      Extreme: { solves: 1, unassisted: 1, bestMs: 4_000_000, totalMs: 4_000_000 }
+    });
+    // folding again changes nothing
+    expect(foldBands(folded)).toEqual(folded);
+  });
+
+  it('are folded when the device\'s record is read, and a solve after adds to the level', async () => {
+    store.set(
+      'sudokui-stats-v1',
+      JSON.stringify({
+        state: {
+          techs: { X_WING: { unaided: 2, hinted: 0, lastUsed: '2026-10-01' } },
+          bands: {
+            Tricky: { solves: 2, unassisted: 1, bestMs: 700_000, totalMs: 1_500_000 },
+            Hard: { solves: 1, unassisted: 1, bestMs: 800_000, totalMs: 800_000 }
+          },
+          dailyDays: ['2026-10-02']
+        },
+        version: 0
+      })
+    );
+    await useStats.persist.rehydrate();
+    const s = useStats.getState();
+    expect(s.bands).toEqual({ Hard: { solves: 3, unassisted: 2, bestMs: 700_000, totalMs: 2_300_000 } });
+    expect(s.techs.X_WING?.unaided).toBe(2);
+    expect(s.dailyDays).toEqual(['2026-10-02']);
+    s.recordSolve('Hard', 600_000, true);
+    expect(useStats.getState().bands.Hard).toEqual({ solves: 4, unassisted: 3, bestMs: 600_000, totalMs: 2_900_000 });
+    // and the device keeps the five from then on
+    expect(Object.keys(JSON.parse(store.get('sudokui-stats-v1')!).state.bands)).toEqual(['Hard']);
+  });
+});

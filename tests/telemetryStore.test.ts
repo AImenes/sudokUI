@@ -109,11 +109,11 @@ describe('the plays counted, with the switch on', () => {
     useSettings.setState({ countPlays: true });
     setNavigator({ onLine: false });
     const s = useTelemetry.getState();
-    s.track('started', 'Tricky', 0);
-    s.track('completed', 'Tricky', 700);
+    s.track('started', 'Hard', 0);
+    s.track('completed', 'Hard', 700);
     const queue = useTelemetry.getState().queue;
     expect(queue).toHaveLength(2);
-    expect(queue[1]).toEqual({ event: 'completed', band: 'Tricky', bucket: 46, standalone: false, version: expect.any(String), source: 'tab', offline: true, optin: true, returning: false });
+    expect(queue[1]).toEqual({ event: 'completed', band: 'Hard', bucket: 46, standalone: false, version: expect.any(String), source: 'tab', offline: true, optin: true, returning: false });
     expect(useTelemetry.getState().firstSeen).toBe(today);
     expect(JSON.parse(storage.get(STORAGE_KEY)!)).toEqual({ queue, firstSeen: today });
     // still offline: nothing goes
@@ -325,14 +325,14 @@ describe('a link shared', () => {
     const s = useTelemetry.getState();
     s.track('completed', 'Hard', 552);
     s.shared('challenge', 'sheet', 'Hard');
-    s.shared('position', 'copy', 'Tricky');
+    s.shared('position', 'copy', 'Medium');
     answers = [ok()];
     await useTelemetry.getState().flush();
     expect(calls).toHaveLength(1);
     expect(sent(0)).toEqual([
       expect.objectContaining({ event: 'completed' }),
       { event: 'shared', band: 'Hard', bucket: 0, standalone: false, version: expect.any(String), source: 'tab', what: 'challenge', via: 'sheet' },
-      { event: 'shared', band: 'Tricky', bucket: 0, standalone: false, version: expect.any(String), source: 'tab', what: 'position', via: 'copy' }
+      { event: 'shared', band: 'Medium', bucket: 0, standalone: false, version: expect.any(String), source: 'tab', what: 'position', via: 'copy' }
     ]);
     expect(storage.has(STORAGE_KEY)).toBe(false);
   });
@@ -366,7 +366,7 @@ describe('a link shared', () => {
   it('says only what the Worker takes', async () => {
     const { checkEvent, SHARE_KINDS, SHARE_VIAS } = await import('../worker/telemetry');
     answers = SHARE_KINDS.map(() => ok());
-    for (const what of SHARE_KINDS) for (const via of SHARE_VIAS) useTelemetry.getState().shared(what, via, 'Nightmare');
+    for (const what of SHARE_KINDS) for (const via of SHARE_VIAS) useTelemetry.getState().shared(what, via, 'Extreme');
     await useTelemetry.getState().flush();
     const lines = calls.flatMap((_, i) => sent(i));
     expect(lines).toHaveLength(SHARE_KINDS.length * SHARE_VIAS.length);

@@ -953,16 +953,16 @@ export const GLOSSARY: GlossaryEntry[] = [
   {
     id: 'rating',
     term: 'rating',
-    definition: "A puzzle's difficulty as a number: the sum of the technique scores of every step along the solve path. Because scores and solving order follow HoDoKu, ratings can be compared with HoDoKu's for puzzles that need only techniques HoDoKu also has.",
-    aka: ['difficulty rating', 'puzzle score'],
+    definition: "A puzzle's difficulty as a number, called the HoDoKu rating: the sum of the technique scores of every step along the solve path. Because scores and solving order follow HoDoKu, ratings can be compared with HoDoKu's for puzzles that need only techniques HoDoKu also has.",
+    aka: ['HoDoKu rating', 'difficulty rating', 'puzzle score'],
     see: ['solve-path', 'technique-score', 'difficulty-band', 'hodoku'],
     group: 'Solving and rating'
   },
   {
     id: 'difficulty-band',
-    term: 'difficulty band',
-    definition: "One of eight named levels of difficulty: Beginner, Easy, Medium, Tricky, Hard, Unfair, Extreme and Nightmare. A puzzle's band follows from its total score and from the hardest techniques it needs: one Hard-class step makes it at least Tricky, two make it at least Hard. HoDoKu itself has five levels.",
-    aka: ['difficulty level', 'level'],
+    term: 'difficulty level',
+    definition: "One of HoDoKu's five levels of difficulty: Easy, Medium, Hard, Unfair and Extreme. A puzzle's level is the highest level of any technique it needs, raised one level at a time while its total score is above the level's limit: 800, 1000, 1600 and 1800, as in HoDoKu. New game also offers Beginner, the Easy puzzles scoring 400 or less, and Nightmare, the Extreme puzzles scoring over 3000.",
+    aka: ['difficulty band', 'level'],
     see: ['rating', 'technique', 'hodoku', 'band'],
     group: 'Solving and rating',
     app: true
@@ -978,7 +978,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   {
     id: 'hodoku',
     term: 'HoDoKu',
-    definition: "A free, open source (GPLv3) sudoku program in Java by Bernhard Hobiger, known for its solver, technique guide and difficulty scores. sudokUI takes its technique scores and solving order from HoDoKu, so ratings of puzzles that need only HoDoKu's techniques can be compared.",
+    definition: "A free, open source (GPLv3) sudoku program in Java by Bernhard Hobiger, known for its solver, technique guide and difficulty scores. sudokUI takes its technique scores, solving order and five difficulty levels from HoDoKu, so ratings of puzzles that need only HoDoKu's techniques can be compared.",
     aka: [],
     see: ['rating', 'difficulty-band', 'technique'],
     group: 'Solving and rating'

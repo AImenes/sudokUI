@@ -21,7 +21,7 @@ const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..
 describe('a hint and the settings it was found under', () => {
   it('keeps them when a setting changes while the hint is shown, and takes them anew with the next hint', () => {
     useSettings.setState({ useUniqueness: true });
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     useGame.getState().requestHint();
     const first = useGame.getState().hint;
     expect(first).not.toBeNull();

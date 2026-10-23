@@ -64,7 +64,7 @@ const reload = async () => {
 
 describe('a game begun', () => {
   it('is counted at the first move, once, not when the game opens', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     expect(tracked).toEqual([]);
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     expect(tracked).toEqual(['started']);
@@ -76,18 +76,18 @@ describe('a game begun', () => {
   });
 
   it('counts a mark or a colour as a first move too', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     useGame.getState().select([EMPTY[0]], false);
     useGame.getState().input(4, 'corner');
     expect(tracked).toEqual(['started']);
-    useGame.getState().startGame(EASY.replace('..3', '4.3'), 196, 'Beginner');
+    useGame.getState().startGame(EASY.replace('..3', '4.3'), 196, 'Easy');
     useGame.getState().select([2], false);
     useGame.getState().input(1, 'color');
     expect(tracked).toEqual(['started', 'started']);
   });
 
   it('is not counted again after a restart of the game under way, or the same daily chosen again', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner', null, '2026-10-21');
+    useGame.getState().startGame(EASY, 196, 'Easy', null, '2026-10-21');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     useGame.getState().restart();
     expect(useGame.getState().counted).toBe(true);
@@ -95,14 +95,14 @@ describe('a game begun', () => {
     expect(tracked).toEqual(['started']);
     // New game > Daily puzzle while that daily is under way: the board
     // starts over, and it is still the same game
-    useGame.getState().startGame(EASY, 196, 'Beginner', null, '2026-10-21');
+    useGame.getState().startGame(EASY, 196, 'Easy', null, '2026-10-21');
     expect(useGame.getState().counted).toBe(true);
     play(EMPTY[1], Number(solution()[EMPTY[1]]));
     expect(tracked).toEqual(['started']);
   });
 
   it('saves nothing for counting, and is not counted again after a reload of a game begun', async () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     expect(tracked).toEqual(['started']);
     expect(storage.get('sudokui-game-v1')).not.toMatch(/counted/);
@@ -115,7 +115,7 @@ describe('a game begun', () => {
   });
 
   it('counts a game resumed from storage at its first move when nothing had been played', async () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     await reload();
     expect(useGame.getState().counted).toBe(false);
     expect(tracked).toEqual([]);
@@ -125,7 +125,7 @@ describe('a game begun', () => {
 
   it('marks nothing while the device is left out, so the start goes ahead of the solve when the switch goes off', () => {
     useSettings.setState({ dontCount: true });
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     expect(useGame.getState().counted).toBe(false);
     useSettings.setState({ dontCount: false });
@@ -135,7 +135,7 @@ describe('a game begun', () => {
   });
 
   it('counts a puzzle played again after its solve as a new game', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     for (const cell of EMPTY) play(cell, Number(solution()[cell]));
     expect(useGame.getState().won).toBe(true);
     expect(tracked).toEqual(['started', 'completed']);
@@ -146,7 +146,7 @@ describe('a game begun', () => {
   });
 
   it('counts a game restarted before its first move at that move, not at the restart', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     useGame.getState().restart();
     expect(useGame.getState().counted).toBe(false);
     expect(tracked).toEqual([]);
@@ -155,7 +155,7 @@ describe('a game begun', () => {
   });
 
   it('counts a shared position with entries when it opens, once, and its solve after a reload', async () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     const sol = solution();
     const cells = useGame.getState().cells.map((c) => ({ ...c, colors: [...c.colors] }));
     cells[EMPTY[0]].value = Number(sol[EMPTY[0]]);
@@ -180,7 +180,7 @@ describe('a game begun', () => {
 
   it('keeps the start ahead of the solve when a game played while left out is reloaded and then counted', async () => {
     useSettings.setState({ dontCount: true });
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     await reload();
     expect(useGame.getState().counted).toBe(false);
@@ -191,7 +191,7 @@ describe('a game begun', () => {
 
   it('does not take a resumed practice game as counted, so the same puzzle played for real counts', async () => {
     useSettings.setState({ practiceFastForward: true });
-    useGame.getState().startGame(EASY, 196, 'Beginner', 'HIDDEN_SINGLE');
+    useGame.getState().startGame(EASY, 196, 'Easy', 'HIDDEN_SINGLE');
     await reload();
     expect(useGame.getState().counted).toBe(false);
     expect(useGame.getState().importPuzzle(EASY)).toBeNull();
@@ -201,7 +201,7 @@ describe('a game begun', () => {
   });
 
   it('counts a game begun by opening the chain trainer, which switches candidates on, and not again after a reload', async () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     useGame.getState().startChain();
     useGame.getState().endChain();
     expect(tracked).toEqual(['started']);
@@ -213,7 +213,7 @@ describe('a game begun', () => {
 
   it('counts a game played while left out the moment the switch goes off, so a reload before the next move loses nothing', async () => {
     useSettings.setState({ dontCount: true });
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     expect(tracked).toEqual([]);
     useSettings.setState({ dontCount: false });
@@ -224,7 +224,7 @@ describe('a game begun', () => {
   });
 
   it('counts a shared position that opens with only a colour on it when it opens', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     const cells = useGame.getState().cells.map((c) => ({ ...c, colors: [...c.colors] }));
     cells[EMPTY[0]].colors = [2];
     const encoded = encodePosition(cells, false);
@@ -234,7 +234,7 @@ describe('a game begun', () => {
   });
 
   it('never counts a practice puzzle', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner', 'HIDDEN_SINGLE');
+    useGame.getState().startGame(EASY, 196, 'Easy', 'HIDDEN_SINGLE');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     expect(tracked).toEqual([]);
   });
@@ -255,7 +255,7 @@ describe('a game solved', () => {
   const last = () => EMPTY[EMPTY.length - 1];
 
   it('is recorded and counted once when undone and the same digit is put back', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     solveAll();
     undoWin();
     play(last(), Number(solution()[last()]));
@@ -265,7 +265,7 @@ describe('a game solved', () => {
   });
 
   it('wins again on Redo of the winning digit, recorded and counted once', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     solveAll();
     useGame.getState().undo();
     expect(useGame.getState().won).toBe(false);
@@ -277,7 +277,7 @@ describe('a game solved', () => {
   });
 
   it('makes a puzzle solved, undone and Restarted a new game, as the privacy page says', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     solveAll();
     undoWin();
     useGame.getState().restart();
@@ -288,7 +288,7 @@ describe('a game solved', () => {
   });
 
   it('counts a solved puzzle Restarted while won, and solved again, as a second game', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     solveAll();
     useGame.getState().restart();
     solveAll();
@@ -298,7 +298,7 @@ describe('a game solved', () => {
 
   it('records the solve once on a device left out of the counts, which counts nothing', () => {
     useSettings.setState({ dontCount: true });
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     solveAll();
     undoWin();
     play(last(), Number(solution()[last()]));
@@ -310,7 +310,7 @@ describe('a game solved', () => {
   });
 
   it('takes a won game resumed from storage as solved', async () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     solveAll();
     await reload();
     expect(useGame.getState().solved).toBe(true);
@@ -318,7 +318,7 @@ describe('a game solved', () => {
   });
 
   it('takes a won game saved before solved was kept as solved: Steps and a re-solve record nothing more', async () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     solveAll();
     // a save from before 21 October 2026 has no solved key
     const old = JSON.parse(storage.get('sudokui-game-v1')!);
@@ -336,7 +336,7 @@ describe('a game solved', () => {
   });
 
   it('remembers a solve undone across a reload: the digit put back records nothing more', async () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     solveAll();
     undoWin();
     await reload();
@@ -350,7 +350,7 @@ describe('a game solved', () => {
   });
 
   it('makes a puzzle solved, undone, reloaded and Restarted a new game', async () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     solveAll();
     undoWin();
     await reload();
@@ -364,7 +364,7 @@ describe('a game solved', () => {
 
   it('sends no start for a game solved while left out, after the switch goes off and the win is undone', () => {
     useSettings.setState({ dontCount: true });
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     solveAll();
     useSettings.setState({ dontCount: false });
     undoWin();
@@ -379,7 +379,7 @@ describe('a game solved', () => {
 
 describe('custom entry', () => {
   it('does not count the game Cancel brings back after a reload a second time', async () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     expect(tracked).toEqual(['started']);
     useGame.getState().startCustomEntry();
@@ -396,7 +396,7 @@ describe('custom entry', () => {
   });
 
   it('counts the game Cancel brings back after a reload when nothing had been played on it', async () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     useGame.getState().startCustomEntry();
     useGame.getState().select([0], false);
     useGame.getState().input(5);
@@ -409,7 +409,7 @@ describe('custom entry', () => {
 
   it('counts the game Cancel brings back when it was played on while left out and the switch went off meanwhile', () => {
     useSettings.setState({ dontCount: true });
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     useGame.getState().startCustomEntry();
     useSettings.setState({ dontCount: false });
@@ -417,5 +417,32 @@ describe('custom entry', () => {
     useGame.getState().cancelCustomEntry();
     expect(tracked).toEqual(['started']);
     expect(useGame.getState().counted).toBe(true);
+  });
+});
+
+describe("a game saved before HoDoKu's five levels", () => {
+  it('plays on as its level, its board and its time as they were', async () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    play(EMPTY[0], Number(solution()[EMPTY[0]]));
+    const saved = JSON.parse(storage.get('sudokui-game-v1')!);
+    for (const [band, level] of [['Beginner', 'Easy'], ['Tricky', 'Hard'], ['Nightmare', 'Extreme'], ['Medium', 'Medium']]) {
+      saved.state.info.level = band;
+      storage.set('sudokui-game-v1', JSON.stringify(saved));
+      await reload();
+      const g = useGame.getState();
+      expect(g.info?.level, band).toBe(level);
+      expect(g.info?.score).toBe(196);
+      expect(g.cells[EMPTY[0]].value).toBe(Number(solution()[EMPTY[0]]));
+    }
+  });
+
+  it('keeps the game a custom entry was opened over, as its level', async () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    const saved = JSON.parse(storage.get('sudokui-game-v1')!);
+    saved.state.custom = true;
+    saved.state.customBackup = { info: { ...saved.state.info, level: 'Tricky' }, cells: saved.state.cells, autoCandidates: false, elapsedBefore: 0, won: false };
+    storage.set('sudokui-game-v1', JSON.stringify(saved));
+    await reload();
+    expect(useGame.getState().customBackup?.info?.level).toBe('Hard');
   });
 });

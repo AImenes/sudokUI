@@ -739,24 +739,22 @@ const es: LearnLocale = {
     "Beginner": "Un comienzo suave",
     "Easy": "Tranquilo",
     "Medium": "Las anotaciones ayudan",
-    "Tricky": "Un truco nuevo",
-    "Hard": "Varios patrones a la vez",
+    "Hard": "Un truco o varios",
     "Unfair": "Para expertos",
     "Extreme": "Para expertos, y largo",
     "Nightmare": "Lo más difícil que existe"
   },
   "bandNotes": {
     "Beginner": "full houses y únicos sencillos",
-    "Easy": "solo únicos, pero más numerosos",
+    "Easy": "solo únicos",
     "Medium": "candidatos bloqueados y subconjuntos",
-    "Tricky": "un primer pez, wing o kite",
-    "Hard": "peces, wings y patrones en abundancia",
+    "Hard": "peces, wings, kites y rectángulos únicos",
     "Unfair": "cadenas, ALS y peces con aletas",
     "Extreme": "cadenas largas, coloreado y redes",
     "Nightmare": "redes forzadas y Exocets"
   },
   "rating": {
-    "summary": "sudokUI puntúa un sudoku resolviéndolo como lo haría una persona. En cada paso usa la técnica más fácil que permite avanzar y suma la puntuación de esa técnica. El total es la puntuación del sudoku.",
+    "summary": "sudokUI puntúa un sudoku resolviéndolo como lo haría una persona. En cada paso usa la técnica más fácil que permite avanzar y suma la puntuación de esa técnica. El total es la puntuación HoDoKu del sudoku.",
     "points": [
       {
         "title": "La técnica más fácil, primero",
@@ -767,15 +765,19 @@ const es: LearnLocale = {
         "text": "Las puntuaciones y el orden de búsqueda son los predeterminados de HoDoKu, el analizador de sudokus de referencia, así que las puntuaciones se pueden comparar con las de HoDoKu. Un Único desnudo cuesta 4; un X-Wing, 140; una Forcing Net, 700. Las técnicas que HoDoKu no conoce reciben una puntuación cercana a la de sus parientes más próximos."
       },
       {
-        "title": "Ocho niveles de dificultad",
-        "text": "El nivel es el más alto de dos lecturas: el nivel que corresponde a la puntuación total y el nivel de la técnica más difícil que se necesita. Un sudoku que necesita un solo pez, wing o kite es como mínimo Engañoso, y uno que necesita varios es como mínimo Difícil."
+        "title": "Los cinco niveles de HoDoKu",
+        "text": "El nivel se fija como lo fija HoDoKu. Empieza en el nivel de la técnica más difícil que se necesita y sube un nivel cada vez mientras el total supere el límite del nivel: 800 para Fácil, 1000 para Medio, 1600 para Difícil y 1800 para Injusto. Un sudoku que necesita un X-Wing es como mínimo Difícil, y uno con más de 1800 puntos es Extremo."
+      },
+      {
+        "title": "Principiante y Pesadilla",
+        "text": "Nueva partida también ofrece dos opciones más acotadas: Principiante, los sudokus de nivel Fácil con 400 puntos o menos, y Pesadilla, los de nivel Extremo con más de 3000 puntos. Deciden qué sudokus te tocan, pero el nivel que muestra un sudoku sigue siendo uno de los cinco."
       },
       {
         "title": "Puntúa cualquier sudoku",
         "text": "Importa un sudoku de 81 caracteres o escríbelo a mano. sudokUI comprueba primero que tiene exactamente una solución y después lo puntúa, antes de que empieces a jugar."
       }
     ],
-    "solveTimeNote": "Referencias aproximadas a partir de los tiempos típicos que comunican los jugadores en línea, repartidas como se reparten los tiempos de resolución: la mayoría cerca del centro y una larga cola detrás. La marca de Clase mundial la fijan los jugadores de campeonato. Escribir tus propias anotaciones lleva más tiempo que usar candidatos automáticos, y el papel, más todavía, así que cada forma de resolver tiene su propia tabla. Un sudoku en lo más alto de su nivel lleva más tiempo que uno en lo más bajo.",
+    "solveTimeNote": "Referencias aproximadas a partir de los tiempos típicos que comunican los jugadores en línea, repartidas como se reparten los tiempos de resolución: la mayoría cerca del centro y una larga cola detrás. La marca de Clase mundial la fijan los jugadores de campeonato. Escribir tus propias anotaciones lleva más tiempo que usar candidatos automáticos, y el papel, más todavía, así que cada forma de resolver tiene su propia tabla. Los sudokus Principiante y Pesadilla tienen filas propias, así que las filas Fácil y Extremo son para el resto de esos niveles. Un sudoku en lo más alto de su nivel lleva más tiempo que uno en lo más bajo.",
     "modes": {
       "auto": "con candidatos automáticos",
       "marks": "con tus propias anotaciones",
@@ -851,7 +853,7 @@ const es: LearnLocale = {
         {
           "heading": "¿Qué dificultad tiene?",
           "paragraphs": [
-            "El sudoku del día suele ser Medio, Engañoso o Difícil. Su nivel de dificultad y su puntuación se muestran en la barra superior, como en cualquier otro sudoku."
+            "El sudoku del día suele ser Medio o Difícil. Su nivel de dificultad y su puntuación HoDoKu se muestran en la barra superior, como en cualquier otro sudoku."
           ]
         },
         {
@@ -929,8 +931,8 @@ const es: LearnLocale = {
         {
           "heading": "Qué comparte sudokUI con HoDoKu",
           "paragraphs": [
-            "sudokUI usa la puntuación predeterminada de HoDoKu para cada técnica y su orden de búsqueda predeterminado, y puntúa un sudoku de la misma manera: lo resuelve con la primera técnica que funciona en cada paso y suma las puntuaciones.",
-            "Los umbrales de puntuación de Fácil (800), Medio (1000), Difícil (1600) e Injusto (1800) también son los de HoDoKu."
+            "sudokUI usa la puntuación predeterminada de HoDoKu para cada técnica y su orden de búsqueda predeterminado, y puntúa un sudoku de la misma manera: lo resuelve con la primera técnica que funciona en cada paso y suma las puntuaciones. El total es la puntuación HoDoKu.",
+            "Los cinco niveles de dificultad también son los de HoDoKu, con sus mismos límites: Fácil (800), Medio (1000), Difícil (1600), Injusto (1800) y Extremo por encima. El nivel de un sudoku es el más alto entre los de las técnicas que necesita, subido mientras su puntuación supere el límite, como en HoDoKu."
           ]
         },
         {
@@ -938,7 +940,7 @@ const es: LearnLocale = {
           "paragraphs": [
             "sudokUI es un proyecto independiente y no tiene relación con HoDoKu.",
             "Añade técnicas que HoDoKu no tiene, como 3D Medusa, Chute Remote Pair, Fireworks, Tridagon y Exocet, con puntuaciones cercanas a las de sus parientes más próximos, y deja fuera algunas de las más raras de HoDoKu, como los peces mutantes y los peces Kraken. En un sudoku que necesite una de ellas, la ruta de resolución y la puntuación pueden ser distintas.",
-            "sudokUI distingue ocho niveles de dificultad donde HoDoKu tiene cinco: Principiante, Engañoso y Pesadilla son nuevos."
+            "Nueva partida también ofrece dos opciones más acotadas que HoDoKu no tiene: Principiante, los sudokus de nivel Fácil con 400 puntos o menos, y Pesadilla, los de nivel Extremo con más de 3000 puntos. El nivel de un sudoku siempre es uno de los cinco de HoDoKu."
           ]
         },
         {
@@ -1730,10 +1732,11 @@ const es: LearnLocale = {
     "rating": {
       "term": "puntuación",
       "aka": [
+        "puntuación HoDoKu",
         "puntuación de dificultad",
         "puntuación del sudoku"
       ],
-      "definition": "La dificultad de un sudoku expresada como número: la suma de las puntuaciones de técnica de cada paso de la ruta de resolución. Como las puntuaciones y el orden de resolución siguen a HoDoKu, las puntuaciones se pueden comparar con las de HoDoKu en los sudokus que solo necesitan técnicas que HoDoKu también tiene."
+      "definition": "La dificultad de un sudoku expresada como número, llamada puntuación HoDoKu: la suma de las puntuaciones de técnica de cada paso de la ruta de resolución. Como las puntuaciones y el orden de resolución siguen a HoDoKu, las puntuaciones se pueden comparar con las de HoDoKu en los sudokus que solo necesitan técnicas que HoDoKu también tiene."
     },
     "difficulty-band": {
       "term": "nivel de dificultad",
@@ -1741,7 +1744,7 @@ const es: LearnLocale = {
         "nivel",
         "grado de dificultad"
       ],
-      "definition": "Uno de los ocho niveles de dificultad con nombre: Principiante, Fácil, Medio, Engañoso, Difícil, Injusto, Extremo y Pesadilla. El nivel de un sudoku depende de su puntuación total y de las técnicas más difíciles que necesita: un paso de clase Difícil lo convierte como mínimo en Engañoso, y dos pasos así, como mínimo en Difícil. El propio HoDoKu tiene cinco niveles."
+      "definition": "Uno de los cinco niveles de dificultad de HoDoKu: Fácil, Medio, Difícil, Injusto y Extremo. El nivel de un sudoku es el más alto entre los de las técnicas que necesita, subido un nivel cada vez mientras su puntuación total supere el límite del nivel: 800, 1000, 1600 y 1800, como en HoDoKu. Nueva partida también ofrece Principiante, los sudokus de nivel Fácil con 400 puntos o menos, y Pesadilla, los de nivel Extremo con más de 3000 puntos."
     },
     "brute-force": {
       "term": "fuerza bruta",
@@ -1755,7 +1758,7 @@ const es: LearnLocale = {
     "hodoku": {
       "term": "HoDoKu",
       "aka": [],
-      "definition": "Un programa de sudoku gratuito y de código abierto (GPLv3) escrito en Java por Bernhard Hobiger, conocido por su resolvedor, su guía de técnicas y sus puntuaciones de dificultad. sudokUI toma de HoDoKu las puntuaciones de las técnicas y el orden de resolución, así que, en los sudokus que solo necesitan técnicas de HoDoKu, las puntuaciones se pueden comparar con las suyas."
+      "definition": "Un programa de sudoku gratuito y de código abierto (GPLv3) escrito en Java por Bernhard Hobiger, conocido por su resolvedor, su guía de técnicas y sus puntuaciones de dificultad. sudokUI toma de HoDoKu las puntuaciones de las técnicas, el orden de resolución y los cinco niveles de dificultad, así que, en los sudokus que solo necesitan técnicas de HoDoKu, las puntuaciones se pueden comparar con las suyas."
     }
   },
   "intuition": {
@@ -2039,7 +2042,7 @@ const es: LearnLocale = {
     "Learn next first": "Primero lo que toca aprender",
     "The techniques most worth learning that you have used least on your own. Every move you make is credited with the easiest technique that justifies it, and a technique you have played unaided moves down the list. Your play stays on this device.": "Las técnicas que más vale aprender y que menos has usado por tu cuenta. Cada movimiento que haces se atribuye a la técnica más fácil que lo justifica, y una técnica que has jugado sin ayuda baja en la lista. Tu juego se queda en este dispositivo.",
     "Your play: {n} unaided, {h} from hints": "Tu juego: {n} por tu cuenta, {h} con pistas",
-    "Added to a puzzle's rating each time the solver needs this technique": "Se suma a la puntuación de un sudoku cada vez que el resolvedor necesita esta técnica",
+    "Added to a puzzle's HoDoKu rating each time the solver needs this technique": "Se suma a la puntuación HoDoKu de un sudoku cada vez que el resolvedor necesita esta técnica",
     "Needed in {freq}": "Se necesita en {freq}",
     "Never needed": "Nunca se necesita",
     "Why it works": "Por qué funciona",
@@ -2095,7 +2098,7 @@ const es: LearnLocale = {
     "Techniques": "Técnicas",
     "Intuition": "Intuición",
     "Glossary": "Glosario",
-    "Rating": "Dificultad",
+    "HoDoKu rating": "Puntuación HoDoKu",
     "Play": "Jugar",
     "Learn": "Aprender",
     "Language": "Idioma",
@@ -2119,10 +2122,10 @@ const es: LearnLocale = {
     "sudokUI generates a puzzle that needs {name} and takes you straight to the position where it applies. Hints draw the pattern on the board and explain the step.": "sudokUI genera un sudoku que necesita {name} y te lleva directamente a la posición donde se aplica. Las pistas dibujan el patrón en el tablero y explican el paso.",
     "Practice {name}": "Practica {name}",
     "Open in the app's guide": "Ábrela en la guía de la app",
-    "In a puzzle's rating": "En la puntuación de un sudoku",
-    "Each time the solver needs {name}, the puzzle's difficulty rating grows by {score}. Its class is {level}.": "Cada vez que el resolvedor necesita {name}, la puntuación de dificultad del sudoku aumenta en {score}. Es una técnica de nivel {level}.",
+    "In a puzzle's HoDoKu rating": "En la puntuación HoDoKu de un sudoku",
+    "Each time the solver needs {name}, the puzzle's HoDoKu rating grows by {score}. Its class is {level}.": "Cada vez que el resolvedor necesita {name}, la puntuación HoDoKu del sudoku aumenta en {score}. Es una técnica de nivel {level}.",
     "It is needed in {freq} that sudokUI generates.": "Se necesita en {freq} que genera sudokUI.",
-    "How the rating works": "Cómo funciona la puntuación",
+    "How the HoDoKu rating works": "Cómo funciona la puntuación HoDoKu",
     "More {family}": "Otras técnicas de la familia: {family}",
     "Sudoku solving techniques: all {n} explained": "Técnicas de sudoku: las {n} explicadas una a una",
     "All {n} sudoku solving techniques explained in plain words, from Naked Single to Exocet, grouped by family. Practise each one free in the app.": "Las {n} técnicas para resolver sudokus explicadas con sencillez, del Único desnudo al Exocet y agrupadas por familias. Practica cada una gratis en la app.",
@@ -2148,7 +2151,7 @@ const es: LearnLocale = {
     "Open in the app": "Abrir en la app",
     "All techniques": "Todas las técnicas",
     "Sudoku difficulty rating: how hard is your puzzle?": "Dificultad del sudoku: ¿qué nivel tiene el tuyo?",
-    "How sudoku difficulty is rated: HoDoKu-compatible technique scores, eight bands from Beginner to Nightmare and the full score table. Rate any puzzle free.": "Cómo se mide la dificultad del sudoku: puntuaciones compatibles con HoDoKu, ocho niveles de Principiante a Pesadilla y la tabla completa. Puntúa el tuyo gratis.",
+    "How sudoku difficulty is rated: the HoDoKu rating, HoDoKu’s five levels from Easy to Extreme and the full score table. Rate any puzzle free.": "Cómo se mide la dificultad del sudoku: la puntuación HoDoKu, los cinco niveles de HoDoKu de Fácil a Extremo y la tabla completa. Puntúa el tuyo gratis.",
     "Sudoku difficulty rating": "Puntuación de dificultad del sudoku",
     "Rate your own sudoku": "Puntúa tu propio sudoku",
     "Rate this puzzle": "Puntuar este sudoku",
@@ -2156,15 +2159,16 @@ const es: LearnLocale = {
     "This box needs JavaScript. You can also {open} and choose Import.": "Este cuadro necesita JavaScript. También puedes {open} y elegir Importar.",
     "open sudokUI": "abrir sudokUI",
     "A puzzle needs exactly 81 cells. This one has {n}.": "Un sudoku necesita exactamente 81 casillas. Este tiene {n}.",
-    "The puzzle opens in sudokUI with its rating and band in the top bar. Nothing is uploaded: the rating is computed on your own device. No string at hand? {open}, choose New, then Custom, and type the puzzle onto the board. See also {hodoku}.": "El sudoku se abre en sudokUI con su puntuación y su nivel en la barra superior. No se sube nada: la puntuación se calcula en tu propio dispositivo. ¿No tienes el sudoku en texto? {open}, elige Nuevo y luego Personalizado, y escribe el sudoku en el tablero. Consulta también {hodoku}.",
+    "The puzzle opens in sudokUI with its HoDoKu rating and level in the top bar. Nothing is uploaded: the rating is computed on your own device. No string at hand? {open}, choose New, then Custom, and type the puzzle onto the board. See also {hodoku}.": "El sudoku se abre en sudokUI con su puntuación HoDoKu y su nivel en la barra superior. No se sube nada: la puntuación se calcula en tu propio dispositivo. ¿No tienes el sudoku en texto? {open}, elige Nuevo y luego Personalizado, y escribe el sudoku en el tablero. Consulta también {hodoku}.",
     "Open sudokUI": "Abre sudokUI",
     "how this compares with HoDoKu": "cómo se compara con HoDoKu",
-    "The eight difficulty bands": "Los ocho niveles de dificultad",
+    "The five difficulty levels": "Los cinco niveles de dificultad",
+    "Level": "Nivel",
     "Band": "Nivel",
     "Total score": "Puntuación total",
     "Typical techniques": "Técnicas típicas",
     "Score of every technique": "Puntuación de cada técnica",
-    "The cost added to a puzzle's rating each time the solver needs the technique, and how many of the puzzles sudokUI generates need it at least once (measured on {sample} puzzles).": "Lo que suma cada técnica a la puntuación de un sudoku cada vez que el resolvedor la necesita, y cuántos de los sudokus que genera sudokUI la necesitan al menos una vez (medido en {sample} sudokus).",
+    "The cost added to a puzzle's HoDoKu rating each time the solver needs the technique, and how many of the puzzles sudokUI generates need it at least once (measured on {sample} puzzles).": "Lo que suma cada técnica a la puntuación HoDoKu de un sudoku cada vez que el resolvedor la necesita, y cuántos de los sudokus que genera sudokUI la necesitan al menos una vez (medido en {sample} sudokus).",
     "Technique": "Técnica",
     "Class": "Nivel",
     "Score": "Puntuación",

@@ -11,7 +11,7 @@
  * adds the days that are missing up to the end date, so run it again
  * whenever the file is within a month or two of running out (the test in
  * tests/dailies.test.ts says when). Each day's band comes round in turn
- * (Medium, Tricky, Hard, dailyBand), each puzzle is generated afresh,
+ * (Medium, Hard, Hard, dailyBand), each puzzle is generated afresh,
  * checked to have one solution and to rate in its band today, and stored
  * with its band, score, the techniques worth naming and the SHA-256 of
  * its solution, never the solution itself.

@@ -67,7 +67,7 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
 - **Practice mode** for 61 named techniques: pick one and get a generated
   puzzle that genuinely requires it — with nothing harder needed before it.
   The game fast-forwards through the routine steps so the chosen pattern is
-  the very next move, the puzzle stays within one band of the technique,
+  the very next move, the puzzle stays within one level of the technique,
   and the bar says **found** when your own move is the one it was prepared
   for. The rarest techniques come from puzzles found in advance by a
   multi-hour search, so they start instantly too
@@ -108,13 +108,14 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
   map of sudoku solving
 
 **Rate**
-- Every puzzle gets a difficulty score: the solver plays it with the easiest
+- Every puzzle gets a HoDoKu rating: the solver plays it with the easiest
   applicable technique at each step and sums per-technique scores
   (HoDoKu-compatible model)
-- Eight bands: Beginner (≤400), Easy (≤800), Medium (≤1000), Tricky (≤1150),
-  Hard (≤1600), Unfair (≤1800), Extreme (≤3000) and Nightmare above — the
-  HoDoKu thresholds, with the extremes subdivided. One fish or wing makes a
-  puzzle Tricky; several make it Hard
+- HoDoKu's five levels, with HoDoKu's limits and rule: Easy (≤800),
+  Medium (≤1000), Hard (≤1600), Unfair (≤1800) and Extreme above. A puzzle's
+  level is that of the hardest technique it needs, raised while its score is
+  over the limit. New game also offers two narrower picks: Beginner (Easy,
+  ≤400) and Nightmare (Extreme, >3000)
 - Optional hidden-rating mode and "Surprise me"
 
 **Generate**
@@ -274,7 +275,7 @@ src/
   engine/            framework-free TypeScript solving engine
     board.ts         bitmask grid model, units/peers/candidates
     bruteForce.ts    backtracking solver + solution counter
-    ratings.ts       technique catalogue: scores, difficulty bands, ordering
+    ratings.ts       technique catalogue: scores, HoDoKu's levels, ordering
     humanSolver.ts   applies techniques in order, rates puzzles
     generator.ts     full-grid + hole-digging generator, targets, filters
     transform.ts     grid isomorphisms (how a seed is served, never twice)
@@ -371,7 +372,7 @@ Toward the best open-source sudoku tool anywhere:
 
 ## Credits & license
 
-The rating model (per-technique scores and difficulty bands) and much of the
+The rating model (per-technique scores and difficulty levels) and much of the
 technique semantics follow **HoDoKu** by Bernhard Hobiger; several newer
 strategies follow the definitions documented at **sudokuwiki.org**. sudokUI
 is an independent implementation, released under the **GPL-3.0** license

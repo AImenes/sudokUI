@@ -910,9 +910,9 @@ YAML. `see` lists entry ids and is shared by all three languages. Render cross-r
   category: rating
   sudokui_specific: true
   see: [rating, technique, hodoku, band]
-  en: {term: difficulty band, aliases: [difficulty level, level], definition: "One of eight named levels of difficulty: Beginner, Easy, Medium, Tricky, Hard, Unfair, Extreme and Nightmare. A puzzle's band follows from its rating and from the hardest technique it needs. HoDoKu itself has five levels."}
-  nb: {term: vanskelighetsgrad, aliases: [nivå], definition: "Ett av åtte navngitte vanskelighetsnivåer: Nybegynner, Lett, Middels, Lur, Vanskelig, Urettferdig, Ekstrem og Mareritt. En oppgaves grad følger av poengsummen og av den vanskeligste teknikken den krever. HoDoKu selv har fem nivåer."}
-  es: {term: nivel de dificultad, aliases: [nivel], definition: "Uno de ocho niveles de dificultad con nombre: Principiante, Fácil, Medio, Engañoso, Difícil, Injusto, Extremo y Pesadilla. El nivel de un sudoku se deriva de su puntuación y de la técnica más difícil que necesita. HoDoKu tiene cinco niveles."}
+  en: {term: difficulty level, aliases: [difficulty band, level], definition: "One of HoDoKu's five levels of difficulty: Easy, Medium, Hard, Unfair and Extreme, with HoDoKu's limits. A puzzle's level is that of the hardest technique it needs, raised while its rating is over the level's limit. New game also offers Beginner and Nightmare, narrower picks inside Easy and Extreme."}
+  nb: {term: vanskelighetsgrad, aliases: [nivå], definition: "Ett av HoDoKus fem vanskelighetsnivåer: Lett, Middels, Vanskelig, Urettferdig og Ekstrem, med HoDoKus grenser. En oppgaves nivå er nivået til den vanskeligste teknikken den krever, hevet så lenge poengsummen er over nivåets grense. Nytt spill har også Nybegynner og Mareritt, smalere valg innenfor Lett og Ekstrem."}
+  es: {term: nivel de dificultad, aliases: [nivel], definition: "Uno de los cinco niveles de dificultad de HoDoKu: Fácil, Medio, Difícil, Injusto y Extremo, con sus mismos límites. El nivel de un sudoku es el de la técnica más difícil que necesita, subido mientras su puntuación supere el límite del nivel. Nueva partida también ofrece Principiante y Pesadilla, opciones más acotadas dentro de Fácil y Extremo."}
 - id: brute-force
   category: rating
   sudokui_specific: false

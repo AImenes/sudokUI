@@ -3,7 +3,7 @@
 // docs/glossary_input.md, section 4), the difficulty bands and the
 // technique families. Shared by the Learn locale (nb.ts) and the app
 // locale (app.nb.ts).
-import type { Tech, Level, Category } from '../../engine/ratings';
+import type { Tech, LevelPick, Category } from '../../engine/ratings';
 
 export const techNames: Partial<Record<Tech, string>> = {
   "NAKED_SINGLE": "Naken singel",
@@ -31,11 +31,10 @@ export const techNames: Partial<Record<Tech, string>> = {
   "BRUTE_FORCE": "Prøving og feiling"
 };
 
-export const levels: Record<Level, string> = {
+export const levels: Record<LevelPick, string> = {
   "Beginner": "Nybegynner",
   "Easy": "Lett",
   "Medium": "Middels",
-  "Tricky": "Lur",
   "Hard": "Vanskelig",
   "Unfair": "Urettferdig",
   "Extreme": "Ekstrem",

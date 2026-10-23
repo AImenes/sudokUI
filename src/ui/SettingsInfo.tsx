@@ -242,7 +242,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <Toggle
         label={t('Hide difficulty while playing')}
         hint={t(
-          "No badge and no rating until you solve the puzzle. Pairs well with '{surprise}' in {newGame}",
+          "No badge and no HoDoKu rating until you solve the puzzle. Pairs well with '{surprise}' in {newGame}",
           { surprise: t('Surprise me'), newGame: t('New game') }
         )}
         value={s.hideRating}
@@ -265,7 +265,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <Toggle
         label={t('Use uniqueness in hints')}
         hint={t(
-          'Unique rectangles and their kin assume the puzzle has exactly one solution. Off, hints, Steps and Scan find another way, as many solvers prefer. The rating is unchanged'
+          'Unique rectangles and their kin assume the puzzle has exactly one solution. Off, hints, Steps and Scan find another way, as many solvers prefer. The HoDoKu rating is unchanged'
         )}
         value={s.useUniqueness}
         onChange={(v) => s.set({ useUniqueness: v })}
@@ -375,7 +375,7 @@ const SHORTCUTS: [string, string][] = [
   ['Ctrl/Cmd + A', msg('Select every cell (Erase and W then act board-wide)')],
   ['Ctrl/Cmd + Z · Y', msg('Undo · Redo')],
   ['H', msg('Hint: names the technique; again shows it on the board; again applies it')],
-  ['L', msg('Learn: every technique explained, glossary, rating')],
+  ['L', msg('Learn: every technique explained, glossary, HoDoKu rating')],
   ['S', msg('Swap corner ↔ centre marks (selection, or the whole board)')],
   ['N', msg('Next practice puzzle (in practice mode)')],
   ['P', msg('Pause')],
@@ -450,11 +450,11 @@ export function InfoDialog({
         )}
       </p>
 
-      <h4 className="setting-group">{t('Difficulty rating')}</h4>
+      <h4 className="setting-group">{t('HoDoKu rating')}</h4>
       <p className="dialog-note">
         {ratingSummary}{' '}
         <button className="learn-link" onClick={() => onLearn({ tab: 'rating' })}>
-          {t('How rating works, in full')}
+          {t('How the HoDoKu rating works, in full')}
         </button>
       </p>
       <BandTable />

@@ -49,7 +49,7 @@ export const LANDING_PAGES: LandingPage[] = [
       {
         heading: 'How hard is it?',
         paragraphs: [
-          'The daily is usually Medium, Tricky or Hard. Its difficulty band and rating are shown in the top bar, like for any other puzzle.'
+          'The daily is usually Medium or Hard. Its difficulty level and HoDoKu rating are shown in the top bar, like for any other puzzle.'
         ]
       },
       {
@@ -131,8 +131,8 @@ export const LANDING_PAGES: LandingPage[] = [
       {
         heading: 'What sudokUI shares with it',
         paragraphs: [
-          'sudokUI uses HoDoKu’s default score for each technique and its default search order, and rates a puzzle the same way: solve it with the first technique that works at every step, and add up the scores.',
-          'The score thresholds for Easy (800), Medium (1000), Hard (1600) and Unfair (1800) are HoDoKu’s as well.'
+          'sudokUI uses HoDoKu’s default score for each technique and its default search order, and rates a puzzle the same way: solve it with the first technique that works at every step, and add up the scores. The total is the HoDoKu rating.',
+          'The five difficulty levels are HoDoKu’s as well, with HoDoKu’s limits: Easy (800), Medium (1000), Hard (1600), Unfair (1800) and Extreme above that. A puzzle’s level is the highest level of any technique it needs, raised while its score is above the limit, as in HoDoKu.'
         ]
       },
       {
@@ -140,7 +140,7 @@ export const LANDING_PAGES: LandingPage[] = [
         paragraphs: [
           'sudokUI is an independent project and is not affiliated with HoDoKu.',
           'It adds techniques HoDoKu does not have, such as 3D Medusa, Chute Remote Pair, Fireworks, Tridagon and Exocet, scored next to their closest relatives, and it leaves out a few of HoDoKu’s rarest, such as Mutant and Kraken Fish. On a puzzle that needs one of these, the solve path and the rating can differ.',
-          'sudokUI names eight difficulty bands where HoDoKu has five: Beginner, Tricky and Nightmare are additions.'
+          'New game also offers two narrower picks HoDoKu does not have: Beginner, the Easy puzzles scoring 400 or less, and Nightmare, the Extreme puzzles scoring over 3000. A puzzle’s level is always one of HoDoKu’s five.'
         ]
       },
       {

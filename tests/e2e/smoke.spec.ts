@@ -989,7 +989,7 @@ test.describe('a share link', () => {
     await expect(dialog).toContainText(/Challenge beaten: 9:12 to beat, you took \d+:\d\d/);
     await dialog.getByRole('button', { name: /Challenge a friend/ }).click();
     const text = await copied(page);
-    expect(text).toMatch(/^I solved an? [A-Za-z]+ sudoku \(rating \d+\) in \d+:\d\d/);
+    expect(text).toMatch(/^I solved an? [A-Za-z]+ sudoku \(HoDoKu rating \d+\) in \d+:\d\d/);
     // the band, the score and the time to beat, never the techniques: a challenge is about the time
     expect(text).toMatch(new RegExp(`https://sudokui\\.app/p/${EASY.replace(/\./g, '\\.')}\\?b=[a-z]+&s=\\d+&vs=\\d+$`));
   });
@@ -1191,7 +1191,7 @@ test.describe('counting plays', () => {
     const completed = batches.flat().find((e) => e.event === 'completed')!;
     expect(completed).toEqual({
       event: 'completed',
-      band: expect.stringMatching(/^(Beginner|Easy|Medium|Tricky|Hard|Unfair|Extreme|Nightmare)$/),
+      band: expect.stringMatching(/^(Easy|Medium|Hard|Unfair|Extreme)$/),
       bucket: 0,
       standalone: false,
       version: expect.stringMatching(/^\d+\.\d+\.\d+/),
@@ -1624,7 +1624,7 @@ test.describe('sending from a phone', () => {
     await expect.poll(() => shares().length).toBe(1);
     expect(shares()[0]).toEqual({
       event: 'shared',
-      band: expect.stringMatching(/^(Beginner|Easy|Medium|Tricky|Hard|Unfair|Extreme|Nightmare)$/),
+      band: expect.stringMatching(/^(Easy|Medium|Hard|Unfair|Extreme)$/),
       bucket: 0,
       standalone: false,
       version: expect.stringMatching(/^\d+\.\d+\.\d+/),
@@ -1871,5 +1871,104 @@ test.describe('feedback', () => {
     await dialogOf(page, 'How to play sudokUI').getByRole('button', { name: 'Send feedback' }).click();
     await expect(dialogOf(page, 'Send feedback')).toBeVisible();
     await expect(dialogOf(page, 'How to play sudokUI')).toHaveCount(0);
+  });
+});
+
+test.describe('the HoDoKu rating in the top bar', () => {
+  /** a Nightmare of the seed library (src/content/seeds.json): Extreme, rated 3020, a four-figure rating */
+  const NIGHTMARE = '......1.3.91......7..1...492.5.6.....7.9.5.8.....4.5.142...3..6......81.6.9......';
+  const LANGS = [
+    { path: '/', word: 'HoDoKu rating' },
+    { path: '/nb/', word: 'HoDoKu-poengsum' },
+    { path: '/es/', word: 'Puntuación HoDoKu' }
+  ];
+
+  async function openNightmare(page: Page, path: string, width: number) {
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(`${path}#p=${NIGHTMARE}`);
+    await expect(page.locator('.score-btn strong')).toHaveText('3020', { timeout: 15_000 });
+  }
+
+  /** what of the bar does not fit (empty when all of it does): the bar or the
+   *  page scrolling sideways, the rating group overflowing or running under
+   *  the timer, any of its parts clipped */
+  const misfits = (page: Page) =>
+    page.evaluate(() => {
+      const out: string[] = [];
+      const bar = document.querySelector('.topbar')!;
+      if (bar.scrollWidth > bar.clientWidth + 1) out.push('the bar scrolls');
+      if (document.documentElement.scrollWidth > innerWidth + 1) out.push('the page scrolls sideways');
+      const meta = document.querySelector('.game-meta')!;
+      if (meta.scrollWidth > meta.clientWidth + 1) out.push('the rating group overflows');
+      const m = meta.getBoundingClientRect();
+      const right = document.querySelector('.topbar-right')!.getBoundingClientRect();
+      if (m.right > right.left + 1) out.push('the rating group runs under the timer');
+      for (const sel of ['.game-meta .level-badge', '.score-btn strong', '.rating-word', '.rating-gauge', '.mini-i']) {
+        const e = document.querySelector(sel);
+        if (!e) continue;
+        const b = e.getBoundingClientRect();
+        if (b.width === 0) continue;
+        if (b.left < m.left - 1 || b.right > m.right + 1) out.push(`${sel} clipped`);
+        if (b.right > right.left + 1) out.push(`${sel} under the timer`);
+      }
+      return out;
+    });
+  const twoFrames = (page: Page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+
+  for (const { path, word } of LANGS) {
+    test(`fits every width from 320 to 1440 px, with the words and the gauge where there is room (${path})`, async ({ page }) => {
+      await openNightmare(page, path, 1440);
+      const shown = (sel: string) => page.locator(sel).evaluate((e) => e.getBoundingClientRect().width > 0);
+      for (let width = 320; width <= 1440; width += 20) {
+        await page.setViewportSize({ width, height: 800 });
+        // the bar is measured again after a resize (useRatingFit, RatingGauge.tsx)
+        await twoFrames(page);
+        expect(await misfits(page), `${path} at ${width} px`).toEqual([]);
+        // the level's name and the rating are there at every width
+        expect(await shown('.game-meta .level-badge'), `${path} at ${width} px: the level`).toBe(true);
+        expect(await shown('.score-btn strong'), `${path} at ${width} px: the rating`).toBe(true);
+        // a phone keeps the compact form
+        if (width <= 560) expect(await shown('.rating-gauge'), `${path} at ${width} px: no gauge`).toBe(false);
+        // a laptop has room for all of it
+        if (width >= 1000) {
+          expect(await shown('.rating-gauge'), `${path} at ${width} px: the gauge`).toBe(true);
+          expect(await shown('.rating-word'), `${path} at ${width} px: the words`).toBe(true);
+        }
+      }
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await expect(page.locator('.rating-word')).toHaveText(new RegExp(`^${word}`));
+    });
+  }
+
+  test('the gauge sweeps up into its level and hovers there, inside the arc, and says nothing to a screen reader', async ({ page }) => {
+    await openNightmare(page, '/', 1280);
+    const gauge = page.locator('.rating-gauge');
+    await expect(gauge).toBeVisible();
+    await expect(gauge).toHaveAttribute('aria-hidden', 'true');
+    const angle = () =>
+      page.locator('.gauge-needle').evaluate((n) => Number(/rotate\(([-\d.]+)deg\)/.exec((n as SVGElement).style.transform)![1]));
+    await page.waitForTimeout(2500);
+    // Extreme is the fifth arc, 144 to 180 degrees; the needle keeps 3.5 degrees inside its ends
+    const seen = new Set<number>();
+    for (let i = 0; i < 12; i++) {
+      const a = await angle();
+      expect(a).toBeGreaterThanOrEqual(147.5);
+      expect(a).toBeLessThanOrEqual(176.5);
+      seen.add(Math.round(a * 100));
+      await page.waitForTimeout(250);
+    }
+    // it hovers: never one angle all along
+    expect(seen.size).toBeGreaterThan(1);
+  });
+
+  test('with reduced motion the needle stands at its place', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openNightmare(page, '/', 1280);
+    const needle = page.locator('.gauge-needle');
+    const first = await needle.evaluate((n) => (n as SVGElement).style.transform);
+    await page.waitForTimeout(1500);
+    expect(await needle.evaluate((n) => (n as SVGElement).style.transform)).toBe(first);
+    expect(first).toMatch(/^rotate\(1(4[89]|[5-6]\d|7[0-6])(\.\d+)?deg\)$/);
   });
 });

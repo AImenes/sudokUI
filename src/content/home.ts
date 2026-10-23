@@ -94,7 +94,7 @@ export const HOME: Record<Lang, HomeCopy> = {
       'Free open-source sudoku app that rates the difficulty of any puzzle with HoDoKu-compatible scores and teaches 61 named solving techniques with hints that explain every step.',
     requirements: 'Requires JavaScript',
     features: [
-      'Difficulty rating for any sudoku, with HoDoKu-compatible scores and eight bands',
+      'A HoDoKu rating for any sudoku, with HoDoKu’s five difficulty levels',
       '77 machine-verified solving techniques with step-by-step hints',
       'Practice mode for 61 named techniques, X-Wing to Exocet',
       'A step-by-step solver that names and explains every step',
@@ -128,7 +128,7 @@ export const HOME: Record<Lang, HomeCopy> = {
       'Gratis sudokuapp med åpen kildekode som vurderer vanskelighetsgraden til enhver oppgave med poeng som i HoDoKu, og som lærer deg 61 navngitte løsningsteknikker med hint som forklarer hvert steg.',
     requirements: 'Krever JavaScript',
     features: [
-      'Vanskelighetsvurdering av enhver sudoku, med poeng som i HoDoKu og åtte vanskelighetsgrader',
+      'HoDoKu-poengsum for enhver sudoku, med HoDoKus fem vanskelighetsnivåer',
       '77 maskinkontrollerte løsningsteknikker med hint steg for steg',
       'Øvingsmodus for 61 navngitte teknikker, fra X-Wing til Exocet',
       'En sudokuløser som går steg for steg og navngir og forklarer hvert steg',
@@ -162,7 +162,7 @@ export const HOME: Record<Lang, HomeCopy> = {
       'App de sudoku gratuita y de código abierto que mide la dificultad de cualquier sudoku con puntuaciones compatibles con HoDoKu y enseña 61 técnicas de resolución con nombre propio, con pistas que explican cada paso.',
     requirements: 'Requiere JavaScript',
     features: [
-      'Puntuación de dificultad de cualquier sudoku, compatible con HoDoKu y con ocho niveles',
+      'Puntuación HoDoKu de cualquier sudoku, con los cinco niveles de dificultad de HoDoKu',
       '77 técnicas de resolución verificadas automáticamente, con pistas paso a paso',
       'Modo de práctica para 61 técnicas con nombre propio, del X-Wing al Exocet',
       'Un resolvedor paso a paso que nombra y explica cada paso',

@@ -15,6 +15,7 @@ import { SetTracker } from './SetTracker';
 import { Poodle } from './Poodle';
 import { Controls } from './Controls';
 import { HintPanel, ChainPanel } from './HintPanel';
+import { RatingGauge, useRatingFit } from './RatingGauge';
 import {
   useNewGame,
   warmSeededPools,
@@ -269,9 +270,9 @@ export default function App() {
       live = false;
     };
   }, [welcome]);
-  /** the daily needs more than the basics (Tricky or harder), or its band is not known */
+  /** the daily needs more than the basics (Hard or harder), or its level is not known */
   const hardDaily =
-    !!welcomeDaily && (welcomeDaily.level === null || LEVELS.indexOf(welcomeDaily.level) >= LEVELS.indexOf('Tricky'));
+    !!welcomeDaily && (welcomeDaily.level === null || LEVELS.indexOf(welcomeDaily.level) >= LEVELS.indexOf('Hard'));
   /** a game on the board someone has begun and not finished, or a puzzle being typed in: the welcome never replaces it */
   const underWay = useGame((s) => s.custom || (!!s.info && !s.won && playedOn(s)));
   /** the welcome's daily: started, unless it is already on the board, under
@@ -539,6 +540,10 @@ export default function App() {
     };
   }, [setTempMode]);
 
+  /** the top bar's rating group: how much of the rating it has room for (RatingGauge.tsx) */
+  const metaRef = useRef<HTMLDivElement>(null);
+  useRatingFit(metaRef, [!!info, info?.level, info?.score, info?.practiceTech, hideRating, won, lang]);
+
   /** where a pointer landed on the empty space around the board, until it lifts */
   const layoutTap = useRef<{ x: number; y: number } | null>(null);
   const emptySpace = (el: EventTarget | null) =>
@@ -700,7 +705,7 @@ export default function App() {
           </h1>
         </div>
         {info && (
-          <div className="game-meta">
+          <div className="game-meta" ref={metaRef}>
             {hideRating && !won ? (
               <button
                 className="score-btn hidden-rating"
@@ -711,14 +716,15 @@ export default function App() {
               </button>
             ) : (
               <>
+                <RatingGauge level={info.level} score={info.score} />
                 <span className={`level-badge level-${info.level.toLowerCase()}`}>{t.level(info.level)}</span>
                 <button
                   className="score-btn"
                   onClick={() => openLearn({ tab: 'rating' })}
                   title={t('How this rating is calculated')}
-                  aria-label={t('Rating {score}. How the rating is calculated', { score: info.score })}
+                  aria-label={t('HoDoKu rating {score}. How the rating is calculated', { score: info.score })}
                 >
-                  <span className="rating-word">{t("Rating||the puzzle's score, before the number")}{NBSP}</span><strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
+                  <span className="rating-word">{t("HoDoKu rating||the puzzle's score, before the number")}{NBSP}</span><strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
                 </button>
               </>
             )}
@@ -951,7 +957,7 @@ export default function App() {
               </a>
               <span aria-hidden="true"> · </span>
               <a href={`${langRoot(t.lang)}${RATING_URL.slice(1)}`} onClick={learnLink({ tab: 'rating' })}>
-                {t('Rating')}
+                {t('HoDoKu rating')}
               </a>
             </nav>
             <a href="https://github.com/AImenes/sudokUI" target="_blank" rel="noreferrer">

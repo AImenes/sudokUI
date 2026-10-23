@@ -12,21 +12,29 @@
 // and one spread for all bands, calibrated so that the top 0.1% matches
 // championship times. Solving with your own pencil marks, and on paper,
 // take longer: each is a multiple of the screen-with-candidates time.
-import { Level, LEVELS } from '../engine/ratings';
+import { Level, LevelPick, PICKS, pickOf } from '../engine/ratings';
 import { translator, msg } from './i18n';
 import type { Lang } from '../state/settings';
 
-/** median solve time of a typical online solver, in seconds, per band */
-export const MEDIAN_SECONDS: Record<Level, number> = {
+/**
+ * Median solve time of a typical online solver, in seconds, per time band:
+ * HoDoKu's five levels, with Beginner and Nightmare puzzles timed on their
+ * own (timeBand), so Easy and Extreme here are the rest of those levels.
+ * Hard took in two bands of its own, Tricky (18 minutes) and Hard (28):
+ * 23 minutes lies between them, weighted by how often each is generated.
+ */
+export const MEDIAN_SECONDS: Record<LevelPick, number> = {
   Beginner: 240,
   Easy: 420,
   Medium: 720,
-  Tricky: 1080,
-  Hard: 1680,
+  Hard: 1380,
   Unfair: 2700,
   Extreme: 5400,
   Nightmare: 10800
 };
+
+/** the band a puzzle's time is compared in: Beginner or Nightmare when it is one, else its level */
+export const timeBand = (level: Level, score: number): LevelPick => pickOf(level, score);
 
 /**
  * spread of the log-normal distribution of times (standard deviation of
@@ -66,13 +74,13 @@ function phi(z: number): number {
 }
 
 /** share of solvers of this band who take longer than `seconds`, 0 to 1 */
-export function timePercentile(level: Level, seconds: number, mode: SolveMode = 'auto'): number {
+export function timePercentile(level: LevelPick, seconds: number, mode: SolveMode = 'auto'): number {
   if (seconds <= 0) return 1;
   return phi((Math.log(MEDIAN_SECONDS[level] * MODE_FACTOR[mode]) - Math.log(seconds)) / SIGMA);
 }
 
 /** the time at which exactly `share` of solvers are slower, in seconds */
-export function timeAtPercentile(level: Level, share: number, mode: SolveMode = 'auto'): number {
+export function timeAtPercentile(level: LevelPick, share: number, mode: SolveMode = 'auto'): number {
   // inverse of timePercentile by bisection on ln t: plenty fast for a table
   let lo = Math.log(1),
     hi = Math.log(24 * 3600);
@@ -104,7 +112,7 @@ export const VERDICTS: { label: string; key: string; atLeast: number }[] = [
 ];
 
 /** the verdict on a time, its word in the player's language */
-export function timeVerdict(level: Level, seconds: number, mode: SolveMode = 'auto'): TimeVerdict {
+export function timeVerdict(level: LevelPick, seconds: number, mode: SolveMode = 'auto'): TimeVerdict {
   const percentile = timePercentile(level, seconds, mode);
   const { key } = VERDICTS.find((v) => percentile >= v.atLeast)!;
   const t = translator();
@@ -146,7 +154,7 @@ export function formatSeconds(seconds: number, lang: Lang = 'en'): string {
 }
 
 export interface SolveTimeRow {
-  level: Level;
+  level: LevelPick;
   /** Slow: the slowest fifth take longer than this */
   slow: string;
   /** the median solver */
@@ -161,7 +169,7 @@ export interface SolveTimeRow {
 
 /** the benchmark table for one way of solving, one row per band */
 export function solveTimeRows(mode: SolveMode, lang: Lang = 'en'): SolveTimeRow[] {
-  return LEVELS.map((level) => ({
+  return PICKS.map((level) => ({
     level,
     slow: formatSeconds(timeAtPercentile(level, 0.2, mode), lang),
     typical: formatSeconds(MEDIAN_SECONDS[level] * MODE_FACTOR[mode], lang),
@@ -185,4 +193,4 @@ export const SOLVE_TIME_TABLES = solveTimeTables('en');
 export const SOLVE_TIME_ROWS: SolveTimeRow[] = solveTimeRows('auto');
 
 export const SOLVE_TIME_NOTE =
-  'Rough benchmarks from the typical times online solvers report, spread the way solve times spread: most near the middle, a long tail behind. The world class mark is set by championship solvers. Writing your own marks takes longer than automatic candidates, and paper longer still, so each way of solving has its own table. A puzzle at the top of its band takes longer than one at the bottom.';
+  'Rough benchmarks from the typical times online solvers report, spread the way solve times spread: most near the middle, a long tail behind. The world class mark is set by championship solvers. Writing your own marks takes longer than automatic candidates, and paper longer still, so each way of solving has its own table. Beginner and Nightmare puzzles are timed on rows of their own, so the Easy and Extreme rows are for the rest of those levels. A puzzle at the top of its band takes longer than one at the bottom.';

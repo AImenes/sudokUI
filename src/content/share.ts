@@ -20,7 +20,7 @@
 // afford. Nothing here touches the network or the DOM: the Worker, the
 // build and the app all import it, so it stays light (the catalogue, the
 // name tables and home.ts).
-import { TECHS, LEVELS, Tech, Level } from '../engine/ratings';
+import { TECHS, LEVELS, Tech, Level, asLevel } from '../engine/ratings';
 import type { Lang } from '../state/settings';
 import { techSlug, techFromParam } from './slugs';
 import { SITE, homePath, ogCard, fillTemplate } from './home';
@@ -50,7 +50,10 @@ export const SHARE_TECHS = 3;
 /** the path of a share address, in any language, with or without a trailing slash */
 export const SHARE_PATH = /^\/(?:(nb|es)\/)?p\/([0-9.]{81})\/?$/;
 
-const LEVEL_BY_SLUG = new Map<string, Level>(LEVELS.map((l) => [l.toLowerCase(), l]));
+/** a level by its slug in a link; the slugs of the bands from before HoDoKu's five levels read as their level (?b=tricky is Hard) */
+const LEVEL_BY_SLUG = new Map<string, Level>(
+  [...LEVELS, 'Beginner', 'Tricky', 'Nightmare'].map((name) => [name.toLowerCase(), asLevel(name)!])
+);
 
 /** a time as the app writes it, 9:12 */
 export const clockOf = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
@@ -117,14 +120,14 @@ export const shareUrl = (p: ShareParams, origin = SITE) => origin + sharePath(p)
 
 /**
  * The techniques a link names, given those the puzzle's solve path plays
- * (solvePath in gameStore.ts): the hardest three, singles and the rest of
- * the Beginner band left out (every puzzle needs them), and brute force
+ * (solvePath in gameStore.ts): the hardest three, singles (the Easy class)
+ * left out (every puzzle needs them), and brute force
  * left out too: a puzzle the catalogue cannot finish needs no technique
  * by that name
  */
 export function techsWorthNaming(techs: Iterable<Tech>): Tech[] {
   return [...new Set(techs)]
-    .filter((t) => TECHS[t] && TECHS[t].level !== 'Beginner' && t !== 'BRUTE_FORCE')
+    .filter((t) => TECHS[t] && TECHS[t].level !== 'Easy' && t !== 'BRUTE_FORCE')
     .sort((a, b) => TECHS[b].index - TECHS[a].index)
     .slice(0, SHARE_TECHS);
 }
@@ -169,19 +172,19 @@ export interface ShareCopy {
 
 export const SHARE: Record<Lang, ShareCopy> = {
   en: {
-    title: '{level} sudoku, rated {score} | sudokUI',
+    title: '{level} sudoku, HoDoKu rating {score} | sudokUI',
     titleNoScore: '{level} sudoku | sudokUI',
     titleUnknown: 'A sudoku to solve | sudokUI',
     ogTitle: 'Can you solve this {level} sudoku?',
     ogTitleUnknown: 'Can you solve this sudoku?',
     ogTitleVs: 'Solved in {time}. Can you beat it?',
-    description: '{a} {level} sudoku rated {score}{techs}. Play it free on sudokUI, with hints that explain every step.',
+    description: '{a} {level} sudoku with a HoDoKu rating of {score}{techs}. Play it free on sudokUI, with hints that explain every step.',
     descriptionNoScore: '{a} {level} sudoku{techs}. Play it free on sudokUI, with hints that explain every step.',
     descriptionUnknown: 'A sudoku shared from sudokUI. Play it free, with hints that explain every step.',
-    titleDaily: 'Daily #{no}: {level} sudoku, rated {score} | sudokUI',
+    titleDaily: 'Daily #{no}: {level} sudoku, HoDoKu rating {score} | sudokUI',
     ogTitleDaily: 'sudokUI Daily #{no}, {date}: can you solve it?',
     descriptionDaily:
-      'The daily for {date}: {a} {level} sudoku rated {score}{techs}. One board for the whole world, with everyone’s times to compare against. Play it free on sudokUI.',
+      'The daily for {date}: {a} {level} sudoku with a HoDoKu rating of {score}{techs}. One board for the whole world, with everyone’s times to compare against. Play it free on sudokUI.',
     needing: ', needing {list}',
     vs: 'Solved in {time} on sudokUI: can you beat it?',
     and: 'and',
@@ -191,19 +194,19 @@ export const SHARE: Record<Lang, ShareCopy> = {
     noscript: 'sudokUI needs JavaScript to run. The app is free and open source:'
   },
   nb: {
-    title: 'Sudoku på nivået {level}, poengsum {score} | sudokUI',
+    title: 'Sudoku på nivået {level}, HoDoKu-poengsum {score} | sudokUI',
     titleNoScore: 'Sudoku på nivået {level} | sudokUI',
     titleUnknown: 'En sudoku å løse | sudokUI',
     ogTitle: 'Klarer du denne sudokuen på nivået {level}?',
     ogTitleUnknown: 'Klarer du denne sudokuen?',
     ogTitleVs: 'Løst på {time}. Klarer du å slå det?',
-    description: '{a} sudoku på nivået {level} med poengsum {score}{techs}. Spill den gratis i sudokUI, med hint som forklarer hvert steg.',
+    description: '{a} sudoku på nivået {level} med HoDoKu-poengsum {score}{techs}. Spill den gratis i sudokUI, med hint som forklarer hvert steg.',
     descriptionNoScore: '{a} sudoku på nivået {level}{techs}. Spill den gratis i sudokUI, med hint som forklarer hvert steg.',
     descriptionUnknown: 'En sudoku delt fra sudokUI. Spill den gratis, med hint som forklarer hvert steg.',
-    titleDaily: 'Dagens sudoku #{no}: nivået {level}, poengsum {score} | sudokUI',
+    titleDaily: 'Dagens sudoku #{no}: nivået {level}, HoDoKu-poengsum {score} | sudokUI',
     ogTitleDaily: 'Dagens sudoku #{no}, {date}: klarer du den?',
     descriptionDaily:
-      'Dagens sudoku for {date}: {a} sudoku på nivået {level} med poengsum {score}{techs}. Ett brett for hele verden, med alles tider å måle seg mot. Spill den gratis i sudokUI.',
+      'Dagens sudoku for {date}: {a} sudoku på nivået {level} med HoDoKu-poengsum {score}{techs}. Ett brett for hele verden, med alles tider å måle seg mot. Spill den gratis i sudokUI.',
     needing: ' som krever {list}',
     vs: 'Løst på {time} i sudokUI: klarer du å slå det?',
     and: 'og',
@@ -213,19 +216,19 @@ export const SHARE: Record<Lang, ShareCopy> = {
     noscript: 'sudokUI trenger JavaScript for å kjøre. Appen er gratis og har åpen kildekode:'
   },
   es: {
-    title: 'Sudoku de nivel {level}, puntuación {score} | sudokUI',
+    title: 'Sudoku de nivel {level}, puntuación HoDoKu {score} | sudokUI',
     titleNoScore: 'Sudoku de nivel {level} | sudokUI',
     titleUnknown: 'Un sudoku para resolver | sudokUI',
     ogTitle: '¿Puedes resolver este sudoku de nivel {level}?',
     ogTitleUnknown: '¿Puedes resolver este sudoku?',
     ogTitleVs: 'Resuelto en {time}. ¿Puedes superarlo?',
-    description: '{a} sudoku de nivel {level} con puntuación {score}{techs}. Juégalo gratis en sudokUI, con pistas que explican cada paso.',
+    description: '{a} sudoku de nivel {level} con puntuación HoDoKu {score}{techs}. Juégalo gratis en sudokUI, con pistas que explican cada paso.',
     descriptionNoScore: '{a} sudoku de nivel {level}{techs}. Juégalo gratis en sudokUI, con pistas que explican cada paso.',
     descriptionUnknown: 'Un sudoku compartido desde sudokUI. Juégalo gratis, con pistas que explican cada paso.',
-    titleDaily: 'Sudoku del día n.º {no}: nivel {level}, puntuación {score} | sudokUI',
+    titleDaily: 'Sudoku del día n.º {no}: nivel {level}, puntuación HoDoKu {score} | sudokUI',
     ogTitleDaily: 'Sudoku del día n.º {no}, {date}: ¿puedes resolverlo?',
     descriptionDaily:
-      'El sudoku del día {date}: {a} sudoku de nivel {level} con puntuación {score}{techs}. Un solo tablero para todo el mundo, con los tiempos de todos para compararte. Juégalo gratis en sudokUI.',
+      'El sudoku del día {date}: {a} sudoku de nivel {level} con puntuación HoDoKu {score}{techs}. Un solo tablero para todo el mundo, con los tiempos de todos para compararte. Juégalo gratis en sudokUI.',
     needing: ' que requiere {list}',
     vs: 'Resuelto en {time} en sudokUI: ¿puedes superarlo?',
     and: 'y',

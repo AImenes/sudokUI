@@ -92,12 +92,15 @@ Nothing leaves the device.
 ## The practice ceiling
 
 A practice puzzle needs nothing harder than its technique before the
-target move, and now nothing much harder after it either. A technique of
-a class up to Hard is practised in a puzzle at most one band above its
-class (`practiceCeiling` in `src/engine/ratings.ts`), so an X-Wing drill
-is never an Extreme puzzle after the move. Unfair-class techniques and
-above have no ceiling but the top: a puzzle that needs an AIC is an
-Extreme or a Nightmare by nature. The stored practice puzzles were
+target move, and now nothing much harder after it either. Singles are
+practised in an Easy puzzle, one of singles only; a technique of Medium
+or Hard class in a puzzle at most one of HoDoKu's levels above its class
+(`practiceCeiling` in `src/engine/ratings.ts`), so an X-Wing drill is
+never an Extreme puzzle after the move. Unfair-class techniques and
+above have no ceiling: a puzzle that needs an AIC is an Extreme by
+nature. (Before HoDoKu's five were the site's levels, a Medium-class
+drill stopped at the band then called Tricky, the gentlest Hard puzzles;
+it may now be any Hard puzzle.) The stored practice puzzles were
 refiltered and rebuilt under the rule (`scripts/build-practice.ts`), the
 worker rates practice candidates no further than the ceiling, and the
 pools file a puzzle under a technique only when it is within it.

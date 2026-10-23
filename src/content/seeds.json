@@ -1424,7 +1424,7 @@
   {
    "puzzle": "......1.3.91......7..1...492.5.6.....7.9.5.8.....4.5.142...3..6......81.6.9......",
    "score": 3020,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1438,7 +1438,7 @@
   {
    "puzzle": "..1.953.6.6........3.....18..6.7..9.94.8....2.7...3.......3..65.....2.....2..6..9",
    "score": 3034,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1457,7 +1457,7 @@
   {
    "puzzle": ".......8.4.8...26..5.9....3....567...752.491...489....7....9.2..26...8.5.4.......",
    "score": 3088,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1477,7 +1477,7 @@
   {
    "puzzle": "3...6..85......34..64.......7...5....3.9..4..8....65.25..3.8.....27.1.......9....",
    "score": 3108,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1496,7 +1496,7 @@
   {
    "puzzle": ".2....6.4.91.5......4.......1....2..5...9..8.8.3....95...6....7...47..1..5...9...",
    "score": 3118,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1513,7 +1513,7 @@
   {
    "puzzle": ".1..96.....4.13.7.6..5.2....6....524..1.....7....6.1.......53.22.7...4...5...1...",
    "score": 3136,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1532,7 +1532,7 @@
   {
    "puzzle": ".....12....3..7.8..5.9...471...34.9...........8.76...287...9.6..9.4..8....42.....",
    "score": 3140,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1548,7 +1548,7 @@
   {
    "puzzle": "..72..19.3.9....465...4........13....3.....2....56........9...845....9.1.96..52..",
    "score": 3184,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1565,7 +1565,7 @@
   {
    "puzzle": ".7...4..6....152..5.96....7.9.....434....87...21........6497...9.........8..3....",
    "score": 3194,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1580,7 +1580,7 @@
   {
    "puzzle": "72..5.9.....8..65.........4.3...95...6.5.8.9...24...1.2.........98..2.....3.7..29",
    "score": 3230,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1595,7 +1595,7 @@
   {
    "puzzle": "2.3....8.8.6..32.47....26..3....6.........5..67.4...9....2.48....41.7..2....38..1",
    "score": 3242,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "NAKED_PAIR",
@@ -1609,7 +1609,7 @@
   {
    "puzzle": "4.....76...97......6..35..1.8......2..1.8.5..5......7.3..87..9......63...25.....4",
    "score": 3250,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1622,7 +1622,7 @@
   {
    "puzzle": "...37...1.5......23...5.7..7..9...6...67.13...8...6..7..2.6...36......4.9...14...",
    "score": 3292,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_TRIPLE",
@@ -1639,7 +1639,7 @@
   {
    "puzzle": "..259...7..8.37.2..1...85...861.........5.6...2....1..3.....2...5.8..........57.9",
    "score": 3370,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1656,7 +1656,7 @@
   {
    "puzzle": "8..6......9....4..5...47.1...5..6..7.83...65.6..1..2...6.83...4..9....7......2..6",
    "score": 3392,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_PAIR",
@@ -1673,7 +1673,7 @@
   {
    "puzzle": "..8.72..5....8...9.9.1..2..24..1.5.............6.5..24..2..8.6.9...4....1..72.4..",
    "score": 3420,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1691,7 +1691,7 @@
   {
    "puzzle": "....5183.34..2...........6..1.2....6..5.8.9...9...6.5.7...........9.82...52...1..",
    "score": 3488,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1709,7 +1709,7 @@
   {
    "puzzle": "..2..6......4.7..3....5..1.6..........4..31.5.23.1..8.8.75..3.1..9...76....9.....",
    "score": 3664,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1723,7 +1723,7 @@
   {
    "puzzle": "..6..8.2..794...........37......6.....7.1.....915..4.......358...4.65....68......",
    "score": 3812,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1739,7 +1739,7 @@
   {
    "puzzle": ".37.4......67.8...........972.....61..91.54..14.....856...........9.28......8.23.",
    "score": 3842,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1752,7 +1752,7 @@
   {
    "puzzle": ".......2..3..1..949....6..55.....6.....9.8.7.....2......2....4.86..7....1.7.35...",
    "score": 3908,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1771,7 +1771,7 @@
   {
    "puzzle": ".......95......8...5982.4..5...3...9.1...954.3.2.....71...5.3...47..........48.1.",
    "score": 3960,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1788,7 +1788,7 @@
   {
    "puzzle": "....7.359.5..1......8...7..7...2...6.1.9....2.....3...5..3...8..4.78..1......462.",
    "score": 4084,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1801,7 +1801,7 @@
   {
    "puzzle": "....64........8..4.6.3..27..9......1.82.9.73.5......9..73..6.8.4..8........17....",
    "score": 4104,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1815,7 +1815,7 @@
   {
    "puzzle": "..9.....5.2...94..63.....2.....6..42.4.2.3.7.86..1.....7.....51..64...9.2.....3..",
    "score": 4376,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1831,7 +1831,7 @@
   {
    "puzzle": "8...14.9.7.4.....5.....58.364.8....9.........1....2.784.95.....5.....7.4.8.43...6",
    "score": 4442,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1849,7 +1849,7 @@
   {
    "puzzle": "..74....69.....1..8..5.97.....14.2...1.....5...6.35.....23.8..7..5.....41....46..",
    "score": 4496,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1863,7 +1863,7 @@
   {
    "puzzle": "9....3.2.....1.3.7...8..9...38.46........84...6.7.............8..9..5..11.5.9.7..",
    "score": 4500,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1875,7 +1875,7 @@
   {
    "puzzle": "......69......91.4...23......5.23.4.4..8.5..6.6.17.2......82...7.35......42......",
    "score": 4536,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1893,7 +1893,7 @@
   {
    "puzzle": "39...6...4.8........529.....8..7.53...9...7...34.2..9.....138........3.5...5...42",
    "score": 4616,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1905,7 +1905,7 @@
   {
    "puzzle": ".8.......1.4..7.....79.1.2.6....52...9.....1...54.6..3.....8.6...96...7....71.5.8",
    "score": 4760,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_2",
@@ -1920,7 +1920,7 @@
   {
    "puzzle": "7..24..8.15.8..9.2.....6..781..9..3...........7..2..589..4.....2.1..9.73.8..32..9",
    "score": 4774,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1940,7 +1940,7 @@
   {
    "puzzle": "....34.6.....1......98.......8....7..7.94.5..2.6.....99..27.1.6..1.....8......74.",
    "score": 4898,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1958,7 +1958,7 @@
   {
    "puzzle": "..1..569.8......7..7..9...5...3..48.3...6...7.87..1...9...7..3..2......6.462..7..",
    "score": 4936,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -1979,7 +1979,7 @@
   {
    "puzzle": "..67...5.1.7.3......46.89..4....3.92.2..6..8............2.5...7....712..8....6.15",
    "score": 5162,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -1993,7 +1993,7 @@
   {
    "puzzle": "6..4....3.2..1..9.4..9..1...6.....7.3...4...2.8.....3...1..6..9.7..3..5.2....5..8",
    "score": 5338,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -2011,7 +2011,7 @@
   {
    "puzzle": ".4....2.3...42..1....8.17.....6.78..7.......1....1.36.6.........21....85.8..9.6..",
    "score": 5774,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -2030,7 +2030,7 @@
   {
    "puzzle": "...6...9...7..3....98.....4...3..1........5.38...47....35..1.7.6.4.9............5",
    "score": 6036,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_TRIPLE",
@@ -2048,7 +2048,7 @@
   {
    "puzzle": "..31.....4.28..5...68.5....5.....18..2.....7..96.....3....6.83...9..14.5.....47..",
    "score": 6160,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -2065,7 +2065,7 @@
   {
    "puzzle": "12...3.....79......59..8.......6.2....35.17...453..8...1.....92......47...2..7..1",
    "score": 6218,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "NAKED_TRIPLE",
@@ -2082,7 +2082,7 @@
   {
    "puzzle": ".9...5....3267....8.1......3..8...9.2..5.4..6.4...7..3......7.9....9312....2...3.",
    "score": 6334,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -2099,7 +2099,7 @@
   {
    "puzzle": "...58...292..43....7.....4.8.....4....7.9.5....1.....3.6.....3....75..261...36...",
    "score": 6380,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -2115,7 +2115,7 @@
   {
    "puzzle": ".2..71.3.5.7..4.....4...9.......2..81.....5..4...63.9.23..1..4........5....3.8..2",
    "score": 6446,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -2131,7 +2131,7 @@
   {
    "puzzle": "9.....71...693..2..8.4........74.6..4.......7..2.63........7.5..1..593...37.....1",
    "score": 6900,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
@@ -2147,7 +2147,7 @@
   {
    "puzzle": "35.4..........7.....19..8..24.75....5....6..7...8...3........817..5..9....21..4.5",
    "score": 7030,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "TWO_STRING_KITE",
@@ -2163,7 +2163,7 @@
   {
    "puzzle": "8...6.7.22..3...5..6.....1..1.4...........2..58.9...7.3.65.8..1......9.5..8.1....",
    "score": 7400,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -2182,7 +2182,7 @@
   {
    "puzzle": ".5.....284...........3.617....9..5.292..4.........7.1...6..2...7....3.5..8.4....7",
    "score": 7956,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -2198,7 +2198,7 @@
   {
    "puzzle": ".......1.34.5...6...86.4....6..4..59.........7...63..2.853......1...28..9.....2..",
    "score": 9306,
-   "level": "Nightmare",
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",

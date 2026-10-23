@@ -13,13 +13,13 @@ import {
 } from '../state/gameStore';
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
-import { Level, LEVELS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER, NOT_PRACTISABLE, hintOrder } from '../engine/ratings';
+import { Level, LevelPick, PICKS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER, NOT_PRACTISABLE, hintOrder } from '../engine/ratings';
 import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntries, practisable, GenerationHandle } from '../state/pools';
 import { useStats, gameSummary, dailyStreak } from '../state/stats';
 import { practiceSeeds } from '../content/practicePuzzles';
 import { seedPuzzles, SEEDED_LEVELS } from '../content/seeds';
 import { cruxIndex } from '../engine/generator';
-import { timeVerdict, percentileText, MODE_LABEL, SolveMode } from '../content/solveTimes';
+import { timeVerdict, timeBand, percentileText, MODE_LABEL, SolveMode } from '../content/solveTimes';
 import { useT, translator, msg, rich, Translator } from '../content/i18n';
 import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
 import { parsePencilGrid, looksLikeGrid, formatPencilGrid } from '../content/textGrid';
@@ -36,14 +36,14 @@ import { HubTabs } from './HubTabs';
 import { techniquesByFamily } from '../content/categories';
 import { useLearnLocale } from './useLearnLocale';
 import type { LearnLocale } from '../content/learnLocale';
-import { BAND_LEADS, BAND_NOTES } from '../content/rating';
+import { BAND_LEADS, BAND_NOTES, rangeOf } from '../content/rating';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { KIN } from '../content/kin';
 import { useSettings } from '../state/settings';
 import type { Lang } from '../state/settings';
 
-/** what is being generated: a band's puzzle or a technique's practice puzzle */
-type GenRequest = { kind: 'level'; level: Level } | { kind: 'tech'; tech: Tech };
+/** what is being generated: a puzzle of a level or a narrower pick, or a technique's practice puzzle */
+type GenRequest = { kind: 'level'; level: LevelPick } | { kind: 'tech'; tech: Tech };
 
 interface GenState {
   label: GenRequest;
@@ -52,7 +52,7 @@ interface GenState {
 }
 
 /** keep the pool of a band or technique stocked, in the background and rated in full */
-function topUp(req: { kind: 'level'; level: Level } | { kind: 'tech'; tech: Tech }) {
+function topUp(req: GenRequest) {
   const key = req.kind === 'level' ? levelKey(req.level) : techKey(req.tech);
   if (poolSize(key) >= 2) return;
   requestPuzzle(req).promise.then((entry) => entry && filePoolEntries([entry]));
@@ -75,7 +75,7 @@ export function useNewGame() {
   const [genState, setGenState] = useState<GenState | null>(null);
   const cancelled = useRef(false);
 
-  const start = async (req: { kind: 'level'; level: Level } | { kind: 'tech'; tech: Tech }) => {
+  const start = async (req: GenRequest) => {
     const key = req.kind === 'level' ? levelKey(req.level) : techKey(req.tech);
     // named in the player's language where it is shown (GeneratingDialog)
     const label: GenRequest = req;
@@ -140,7 +140,7 @@ export function useNewGame() {
 // from the content modules: the guide itself stays in its own chunk.
 
 /** what a level asks of you, in plain words, then the techniques behind it */
-const levelDescription = (loc: LearnLocale | undefined, level: Level) =>
+const levelDescription = (loc: LearnLocale | undefined, level: LevelPick) =>
   `${(loc?.bandLeads ?? BAND_LEADS)[level]}: ${(loc?.bandNotes ?? BAND_NOTES)[level]}`;
 /** what a technique is, in one line */
 const techWhat = (loc: LearnLocale | undefined, tech: Tech) => loc?.techDocs[tech]?.what ?? TECH_DOCS[tech].what;
@@ -169,7 +169,7 @@ export function NewGameDialog({
   onDaily
 }: {
   onClose: () => void;
-  onStart: (level: Level) => void;
+  onStart: (level: LevelPick) => void;
   onCustom: () => void;
   onDaily: () => void;
 }) {
@@ -186,7 +186,7 @@ export function NewGameDialog({
         </button>
         <button
           className="level-btn surprise"
-          onClick={() => onStart(LEVELS[Math.floor(Math.random() * LEVELS.length)])}
+          onClick={() => onStart(PICKS[Math.floor(Math.random() * PICKS.length)])}
         >
           <strong>{t('Surprise me')}</strong>
           <span>
@@ -196,13 +196,19 @@ export function NewGameDialog({
             })}
           </span>
         </button>
-        {LEVELS.map((level) => (
+        {PICKS.map((level) => (
           <button
             key={level}
             className={`level-btn level-${level.toLowerCase()}`}
             onClick={() => onStart(level)}
           >
-            <strong>{t.level(level)}</strong>
+            <strong>
+              {t.level(level)}
+              <span className="level-range">
+                {' · '}
+                {rangeOf(level, t.level, (n) => t('up to {n}', { n }), (n) => t('above {n}', { n }))}
+              </span>
+            </strong>
             <span>{levelDescription(loc, level)}</span>
           </button>
         ))}
@@ -244,7 +250,7 @@ export function PracticeDialog({
         {t('Pick a technique. sudokUI builds a puzzle that needs it, with nothing harder before it, and takes you to the move where it applies.')}
       </p>
       <p className="dialog-note">
-        {t("The number on each button is the technique's cost. A puzzle's difficulty rating is the sum of the costs of every step needed to solve it.")}
+        {t("The number on each button is the technique's cost. A puzzle's HoDoKu rating is the sum of the costs of every step needed to solve it.")}
       </p>
       <p className="tech-count">
         {rich(t('{n} of {total} techniques playable', { total: shown.length }), { n: <strong>{playable.length}</strong> })}
@@ -1171,7 +1177,9 @@ export function VictoryDialog({
   // through, so its time compares with nothing
   const partWay = !!info.practiceTech || !!info.fromPosition;
   const mode = autoCandidates ? 'auto' : 'marks';
-  const verdict = partWay ? null : timeVerdict(info.level, secs, mode);
+  // Beginner and Nightmare puzzles are timed against their own (solveTimes.ts)
+  const timedAs = timeBand(info.level, info.score);
+  const verdict = partWay ? null : timeVerdict(timedAs, secs, mode);
   // what the player did, technique by technique (docs/technique-stats.md)
   const summary = gameSummary(game);
   const band = info.practiceTech ? null : bands[info.level];
@@ -1258,14 +1266,14 @@ export function VictoryDialog({
           : t('sudokUI Daily #{no} · {level} ({score}) · {time} · unassisted · {link}', vars)
       : verdict
       ? assisted
-        ? t('I solved a {level} sudoku (rating {score}) in {time}, {standing} on sudokUI. Can you beat that? {link}', vars)
+        ? t('I solved a {level} sudoku (HoDoKu rating {score}) in {time}, {standing} on sudokUI. Can you beat that? {link}', vars)
         : t(
-            'I solved a {level} sudoku (rating {score}) in {time}, {standing}, no assists, every mark my own on sudokUI. Can you beat that? {link}',
+            'I solved a {level} sudoku (HoDoKu rating {score}) in {time}, {standing}, no assists, every mark my own on sudokUI. Can you beat that? {link}',
             vars
           )
       : assisted
-        ? t('I solved a {level} sudoku (rating {score}) in {time} on sudokUI. Can you beat that? {link}', vars)
-        : t('I solved a {level} sudoku (rating {score}) in {time}, no assists, every mark my own on sudokUI. Can you beat that? {link}', vars);
+        ? t('I solved a {level} sudoku (HoDoKu rating {score}) in {time} on sudokUI. Can you beat that? {link}', vars)
+        : t('I solved a {level} sudoku (HoDoKu rating {score}) in {time}, no assists, every mark my own on sudokUI. Can you beat that? {link}', vars);
     // to a friend: a phone's share sheet, else the clipboard (src/ui/send.ts)
     void sendText(text).then((outcome) => {
       countShare(outcome, info.dailyNo ? 'daily' : 'challenge', info.level);
@@ -1284,19 +1292,19 @@ export function VictoryDialog({
       </div>
       <div className="modal victory" role="dialog" aria-modal="true" aria-label={t('Puzzle solved')}>
         <h3>{t('Solved!')} 🎉</h3>
-        <p>{t('{level} · score {score} · {time}', { level: t.level(info.level), score: info.score, time: `${mm}:${ss}` })}</p>
+        <p>{t('{level} · HoDoKu rating {score} · {time}', { level: t.level(info.level), score: info.score, time: `${mm}:${ss}` })}</p>
         {verdict && (
           <p
             className="solve-verdict"
             title={t('Against typical times of online solvers of this band. See {learn}, {rating}', {
               learn: t('Learn'),
-              rating: t('Rating')
+              rating: t('HoDoKu rating')
             })}
           >
             {rich(
               t('{verdict}: {standing} of {level} puzzles {mode}', {
                 standing: percentileText(verdict.percentile),
-                level: t.level(info.level),
+                level: t.level(timedAs),
                 mode: modeLabel(t, mode)
               }),
               { verdict: <strong>{verdict.label}</strong> }
