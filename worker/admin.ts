@@ -243,19 +243,19 @@ const SHARE_LABELS: Record<ShareKind, string> & Record<string, string | undefine
 /** each word a landing's referrer becomes (telemetry.ts, landingFrom) */
 const FROM_LABELS: Record<LandingFrom | '', string> & Record<string, string | undefined> = {
   none: 'No referrer: typed, a bookmark, most apps',
-  search: 'A search engine',
+  search: "A search engine (and links Google's own redirect passed on)",
   ai: 'An AI assistant',
   reddit: 'Reddit',
   enjoysudoku: 'Enjoy Sudoku forum',
   hackernews: 'Hacker News',
   facebook: 'Facebook',
   discord: 'Discord',
-  social: 'Another social site',
-  chat: 'A chat app on the web',
-  mail: 'A webmail',
+  social: 'Another social site or app',
+  chat: 'A chat app or site',
+  mail: 'A mail app or webmail',
   github: 'GitHub',
   sudoku: 'Another sudoku site',
-  other: 'Another site',
+  other: 'Another site or app',
   '': 'Not recorded: counted before the word was kept'
 };
 
@@ -387,7 +387,7 @@ ${fromRows || '      <tr><td>No landings</td><td>0</td><td>—</td></tr>'}
 ${rows}
       </tbody>
     </table>
-    <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge or the daily's line that the share sheet took or that was copied, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most chat and mail apps send none, so No referrer is mostly them. The sixth metric of the plan, search clicks, is in Search Console.</p>
+    <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge or the daily's line that the share sheet took or that was copied, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most apps send none (on Android some name themselves), so No referrer is mostly links opened from apps. The sixth metric of the plan, search clicks, is in Search Console.</p>
   </body>
 </html>
 `;

@@ -341,7 +341,23 @@ describe('the landing count', () => {
       ['https://evilreddit.com/', 'other'],
       ['android-app://com.example.unknown/', 'other'],
       ['ftp://github.com/', 'other'],
-      ['https://WWW.GOOGLE.COM./', 'search']
+      ['https://WWW.GOOGLE.COM./', 'search'],
+      // a search engine is its search host, not its whole domain
+      ['https://chat.google.com/', 'chat'],
+      ['https://sites.google.com/view/club', 'other'],
+      ['https://groups.google.com/g/rec.puzzles', 'other'],
+      ['https://docs.google.com/', 'other'],
+      ['https://news.yahoo.com/', 'other'],
+      ['https://no.search.yahoo.com/', 'search'],
+      ['https://mail.naver.com/', 'mail'],
+      ['https://search.naver.com/', 'search'],
+      ['https://cafe.naver.com/', 'other'],
+      ['https://email.seznam.cz/', 'mail'],
+      ['https://www.seznam.cz/', 'search'],
+      ['https://tieba.baidu.com/', 'other'],
+      ['https://www.baidu.com/', 'search'],
+      ['https://yandex.ru/', 'search'],
+      ['https://music.yandex.ru/', 'other']
     ];
     for (const [referer, word] of cases) expect(landingFrom(referer), String(referer)).toBe(word);
     // every word is on the list

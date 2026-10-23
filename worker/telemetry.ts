@@ -265,9 +265,11 @@ export function isLanding(request: Request): boolean {
 /**
  * Where a landing came from, as one word of a closed list, the one the
  * privacy page names: `none` when the browser sends no referrer (a link
- * typed, a bookmark, or an app that sends none, as most chat and mail
- * apps do), `other` for any site the list does not know. The word is all
- * that is written, never the address.
+ * typed, a bookmark, or an app that sends none, as most do), `other` for
+ * any site or app the list does not know. A referrer is usually another
+ * site's address; on Android it can be the app the link was opened from
+ * (FROM_APPS), so `chat` and `mail` cover apps as well as sites. The word
+ * is all that is written, never the address.
  */
 export const LANDING_FROM = [
   'none',
@@ -290,11 +292,28 @@ export type LandingFrom = (typeof LANDING_FROM)[number];
 /**
  * The sites each word stands for, matched on the host and its subdomains
  * (old.reddit.com is reddit, l.facebook.com facebook). The first match
- * wins, so a webmail and an assistant go before the search engine on the
- * same domain; Google's search on its country domains is GOOGLE below.
+ * wins, so a webmail and an assistant go before the search engine of the
+ * same company. A search engine is named by its search host, not its
+ * whole domain, which also serves mail, news and forums; the search pages
+ * on a whole domain's own root are SEARCH_ROOTS below.
  */
 const FROM_HOSTS: [LandingFrom, string[]][] = [
-  ['mail', ['mail.google.com', 'outlook.live.com', 'outlook.office.com', 'outlook.office365.com', 'mail.yahoo.com', 'mail.proton.me', 'mail.aol.com', 'mail.yandex.ru', 'mail.yandex.com']],
+  [
+    'mail',
+    [
+      'mail.google.com',
+      'outlook.live.com',
+      'outlook.office.com',
+      'outlook.office365.com',
+      'mail.yahoo.com',
+      'mail.proton.me',
+      'mail.aol.com',
+      'mail.yandex.ru',
+      'mail.yandex.com',
+      'mail.naver.com',
+      'email.seznam.cz'
+    ]
+  ],
   ['ai', ['chatgpt.com', 'chat.openai.com', 'perplexity.ai', 'claude.ai', 'gemini.google.com', 'copilot.microsoft.com']],
   ['reddit', ['reddit.com', 'redd.it']],
   ['enjoysudoku', ['enjoysudoku.com']],
@@ -305,17 +324,24 @@ const FROM_HOSTS: [LandingFrom, string[]][] = [
     'social',
     ['t.co', 'x.com', 'twitter.com', 'linkedin.com', 'lnkd.in', 'bsky.app', 'instagram.com', 'threads.net', 'threads.com', 'pinterest.com', 'tumblr.com', 'mastodon.social', 'youtube.com', 'tiktok.com', 'vk.com']
   ],
-  ['chat', ['whatsapp.com', 'telegram.org', 't.me', 'messenger.com', 'slack.com', 'teams.microsoft.com', 'teams.live.com', 'signal.org', 'snapchat.com']],
+  ['chat', ['whatsapp.com', 'telegram.org', 't.me', 'messenger.com', 'slack.com', 'teams.microsoft.com', 'teams.live.com', 'signal.org', 'snapchat.com', 'chat.google.com']],
   ['github', ['github.com']],
   [
     'sudoku',
     ['sudokuwiki.org', 'sudoku.coach', 'sudokupad.app', 'f-puzzles.com', 'sudokuexchange.com', 'hodoku.sourceforge.net', 'logic-masters.de', 'sudoku-solutions.com', 'crackingthecryptic.com']
   ],
-  ['search', ['bing.com', 'duckduckgo.com', 'ecosia.org', 'startpage.com', 'search.brave.com', 'qwant.com', 'yahoo.com', 'baidu.com', 'kagi.com', 'yandex.com', 'yandex.ru', 'naver.com', 'seznam.cz']]
+  ['search', ['bing.com', 'duckduckgo.com', 'ecosia.org', 'startpage.com', 'search.brave.com', 'qwant.com', 'search.yahoo.com', 'm.baidu.com', 'kagi.com', 'ya.ru', 'search.naver.com', 'search.seznam.cz']]
 ];
 
-/** Google's search on any of its domains: google.com, www.google.no, google.co.uk */
-const GOOGLE = /(?:^|\.)google\.(?:com?\.)?[a-z]{2,3}$/;
+/**
+ * Search engines whose search is the domain's own root: Google on its
+ * country domains (google.com, www.google.no, google.co.uk), Yandex, Baidu
+ * and Seznam. The root only, so Google's Docs, Sites, Groups or Classroom
+ * are another site, and its chat and mail are named above. A link that
+ * Gmail or Docs passes through Google's redirect arrives from www.google
+ * and reads as search: the browser says no more than that.
+ */
+const SEARCH_ROOTS = /^(?:www\.)?(?:google\.(?:com?\.)?[a-z]{2,3}|yandex\.(?:ru|com|com\.tr|by|kz|uz)|baidu\.com|seznam\.cz)$/;
 
 /** Android's apps name themselves as android-app://<package>: the ones a link to us is likely opened from */
 const FROM_APPS: [LandingFrom, string[]][] = [
@@ -344,7 +370,7 @@ export function landingFrom(referer: string | null): LandingFrom {
   for (const [word, hosts] of FROM_HOSTS) {
     if (hosts.some((h) => host === h || host.endsWith(`.${h}`))) return word;
   }
-  return GOOGLE.test(host) ? 'search' : 'other';
+  return SEARCH_ROOTS.test(host) ? 'search' : 'other';
 }
 
 /**

@@ -30,9 +30,11 @@
 // links, the win screen's challenge and daily line) sends a `shared` line
 // once the share sheet took it or it was copied: what was shared, which
 // way, and the puzzle's band, with the version and where the app ran.
-// Never the link, the text or where it went. It goes live or not at all:
-// offline it is dropped, with or without the opt-in, so it carries none
-// of the opt-in's flags; a device left out sends none.
+// Never the link, the text or where it went. It goes live or not at all,
+// and nothing is kept on the device for it: offline it is dropped, with
+// or without the opt-in, so it carries none of the opt-in's flags; a
+// device left out sends none. (The Worker writes it like the play lines,
+// with the country, and keeps the count three months.)
 //
 // Transport: navigator.sendBeacon, which survives a closing tab, with
 // fetch keepalive as the other path. Live events wait a second for
@@ -91,7 +93,7 @@ interface TelemetryState extends Kept {
   pending: PlayEvent[];
   /** a game began or was solved: sent now while online, kept with the opt-in while offline, dropped otherwise */
   track(event: 'started' | 'completed', band: Level, seconds: number): void;
-  /** a link went to someone, through the share sheet or a copy: sent now while online, else dropped; never kept */
+  /** a link went to someone, through the share sheet or a copy: sent now while online, else dropped; never kept on the device */
   shared(what: ShareKind, via: ShareVia, band: Level): void;
   /** sends what waits: the live batch at once, then the kept queue while online and opted in */
   flush(): Promise<void>;
