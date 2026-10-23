@@ -390,7 +390,17 @@ the values above are its final ones.
   examples. To photograph the app's own board with an example's hint, a
   scratch Playwright run on port 4174 opens each example's position link
   (kept in the git-ignored `.vite/`).
-- [ ] Phase 2: truth
+- [ ] Phase 2: truth. 2a done (commit 16556da): `truth: 'derived'` on
+  every AIC-form finder, `src/engine/truth.ts` with its self-check, the
+  examples refreshed, tests/truth.test.ts (518 chain steps of a solve batch,
+  all clean). Next, 2b: the chain trainer's `chainStep`
+  (src/engine/chainTrainer.ts) draws the kind each link is USED as
+  (position parity, i % 2 === 0 strong) and says `truth: 'derived'`, with
+  its walk sentence naming a pair used weakly; then both renderers draw
+  true discs and false rings from `deriveTruth` (groupTrue members keep the
+  pattern disc until phase 4's hulls), arrows dashed iff the target is
+  false, and the legend's words. Start 2b after the phase 1 review's
+  findings are fixed (workflow run wf_aae14104-777).
 - [ ] Phase 3: colouring
 - [ ] Phase 4: sets
 - [ ] Phase 5: forcing
