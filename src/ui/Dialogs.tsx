@@ -206,7 +206,7 @@ export function NewGameDialog({
               {t.level(level)}
               <span className="level-range">
                 {' · '}
-                {rangeOf(level, t.level, (n) => t('up to {n}', { n }), (n) => t('above {n}', { n }))}
+                {rangeOf(level, t.level, (n) => t('up to {n}', { n }), (n) => t('above {n}', { n }), t('no limit||the scores of Extreme'))}
               </span>
             </strong>
             <span>{levelDescription(loc, level)}</span>

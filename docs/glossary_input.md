@@ -53,7 +53,7 @@ The most important product caveat is that HoDoKu does not implement WXYZ-wing or
    - **Author and licence:** the HoDoKu manual pages on hodoku.sourceforge.net give "meta-author: Bernhard Hobiger" and show a GPLv3 logo linking to gnu.org/licenses/gpl-3.0.html.\[8\]\[9\]
    - **Rating:** the score is the sum of step scores ("The 'score' of all steps in the solution is simply summed up").\[9\]\[10\] The solver restarts from the first technique after each step.\[8\]
    - **Score range:** the New Sudoku Players' Forum thread "How is the difficulty of a Sudoku puzzle determined?" says "All of the scores attached to each strategy have 'default' values both in 'Score' [a number ranging from 4 to 10000 ] and in 'Level' [Easy, Medium, Hard, Unfair, Extreme]."\[11\]
-   - **Levels:** the HoDoKu User Manual, Chapter 4, says "The 'level' assignes the technique to one of HoDoKu's five difficulty levels (Easy, Medium, Hard, Unfair, Extreme)".\[9\] So Beginner, Tricky and Nightmare are sudokUI-only bands.
+   - **Levels:** the HoDoKu User Manual, Chapter 4, says "The 'level' assignes the technique to one of HoDoKu's five difficulty levels (Easy, Medium, Hard, Unfair, Extreme)".\[9\] sudokUI uses these five; Beginner and Nightmare are sudokUI-only picks inside Easy and Extreme (the earlier band Tricky is retired into Hard).
    - **Typical scores:** the same chapter says "Medium" "contains Singles, Locked Candidates, Pairs, and Triples and normally scores between 600 and 1200 approximately".\[9\]
 
 ## 2. Audit change log
@@ -124,9 +124,9 @@ Not added: minimal puzzle, unique loop, set-logic truth/link/rank, Eureka notati
 | rating | poengsum | puntuación | coined / alt. | med |
 | difficulty band | vanskelighetsgrad | nivel de dificultad | est. / est. | high |
 
-**Difficulty bands.**
-- **NB:** Nybegynner, Lett, Middels, Lur, Vanskelig, Urettferdig, Ekstrem, Mareritt. Lett, Middels and Vanskelig are attested by kryssordet.no; the rest are coined.\[20\]
-- **ES:** Principiante, Fácil, Medio, Engañoso, Difícil, Injusto, Extremo, Pesadilla.
+**Difficulty levels and picks.**
+- **NB:** Lett, Middels, Vanskelig, Urettferdig, Ekstrem; the picks Nybegynner and Mareritt. Lett, Middels and Vanskelig are attested by kryssordet.no; the rest are coined.\[20\]
+- **ES:** Fácil, Medio, Difícil, Injusto, Extremo; the picks Principiante and Pesadilla.
 
 **UI labels.**
 | EN | NB | ES |

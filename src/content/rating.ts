@@ -13,11 +13,11 @@ export const RATING_POINTS: { title: string; text: string }[] = [
   },
   {
     title: 'Scores compatible with HoDoKu',
-    text: 'Scores and search order are the defaults of HoDoKu, the reference sudoku analyser, so ratings can be compared with HoDoKu’s. A Naked Single costs 4, an X-Wing 140, a Forcing Net 700. Techniques HoDoKu does not know are scored next to their closest relatives.'
+    text: 'Scores and search order are the defaults of HoDoKu, the reference sudoku analyser. A Naked Single costs 4, an X-Wing 140, a Forcing Net 700. Techniques HoDoKu does not know, such as WXYZ-Wing, Chute Remote Pair and 3D Medusa, are scored next to their closest relatives. On a puzzle whose solve path uses only HoDoKu’s techniques, the rating can be compared with HoDoKu’s. Many paths use one of the others, and then the score, and sometimes the level, can differ from what HoDoKu gives.'
   },
   {
     title: 'HoDoKu’s five levels',
-    text: 'The level is set the way HoDoKu sets it. It starts at the level of the hardest technique needed, then rises one level at a time while the total is above the level’s limit: 800 for Easy, 1000 for Medium, 1600 for Hard and 1800 for Unfair. A puzzle needing an X-Wing is at least Hard, and one scoring over 1800 is Extreme.'
+    text: 'The level is set the way HoDoKu sets it. It starts at the level of the hardest technique on the solve path, then rises one level at a time while the total is above the level’s limit: 800 for Easy, 1000 for Medium, 1600 for Hard and 1800 for Unfair. Extreme has no limit. A solve path with an X-Wing makes a puzzle at least Hard, and a total over 1800 makes it Extreme.'
   },
   {
     title: 'Beginner and Nightmare',
@@ -52,17 +52,24 @@ export const BAND_NOTES: Record<LevelPick, string> = {
 };
 
 /**
- * The scores a level or pick covers, in words: "up to 800", "above 1800";
- * a pick says its level first, "Easy, up to 400"
+ * The scores a level or pick covers, in words, as HoDoKu's limits have
+ * them: "up to 800", and for Extreme "no limit" (any score above 1800 is
+ * Extreme, but so is a lower one that needs an Extreme technique). A pick
+ * says its level first: "Easy, up to 400", "Extreme, above 3000".
  */
 export function rangeOf(
   pick: LevelPick,
   levelOf: (l: Level) => string,
   upTo: (n: number) => string,
-  above: (n: number) => string
+  above: (n: number) => string,
+  noLimit: string
 ): string {
   if (pick === 'Beginner') return `${levelOf('Easy')}, ${upTo(BEGINNER_MAX_SCORE)}`;
   if (pick === 'Nightmare') return `${levelOf('Extreme')}, ${above(NIGHTMARE_MIN_SCORE)}`;
-  const i = LEVELS.indexOf(pick);
-  return i === LEVELS.length - 1 ? above(LEVEL_MAX_SCORE[LEVELS[i - 1]]) : upTo(LEVEL_MAX_SCORE[pick]);
+  return LEVELS.indexOf(pick) === LEVELS.length - 1 ? noLimit : upTo(LEVEL_MAX_SCORE[pick]);
 }
+
+/** the levels and picks in a table: each pick right under the level it lies in */
+export const TABLE_ORDER: LevelPick[] = LEVELS.flatMap((l): LevelPick[] =>
+  l === 'Easy' ? ['Easy', 'Beginner'] : l === 'Extreme' ? ['Extreme', 'Nightmare'] : [l]
+);

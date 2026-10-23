@@ -716,7 +716,7 @@ export default function App() {
               </button>
             ) : (
               <>
-                <RatingGauge level={info.level} score={info.score} />
+                <RatingGauge level={info.level} score={info.score} puzzle={info.puzzle} />
                 <span className={`level-badge level-${info.level.toLowerCase()}`}>{t.level(info.level)}</span>
                 <button
                   className="score-btn"

@@ -175,6 +175,7 @@ export function RatingExplainer() {
         note={(l) => lt.loc.bandNotes[l]}
         upTo={(n) => lt.s('up to {n}', { n })}
         above={(n) => lt.s('above {n}', { n })}
+        noLimit={lt.s('no limit')}
       />
       <section className="learn-group">
         <h4>{lt.s('How fast is fast?')}</h4>

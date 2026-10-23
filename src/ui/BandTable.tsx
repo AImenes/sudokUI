@@ -6,8 +6,8 @@
 // imports the guide's locale machinery (src/content/learnLocale.ts), which
 // would pull all of the guide's English into the main chunk.
 import React from 'react';
-import { PICKS, LevelPick, pickLevel } from '../engine/ratings';
-import { BAND_LEADS, BAND_NOTES, rangeOf } from '../content/rating';
+import { LevelPick, pickLevel } from '../engine/ratings';
+import { BAND_LEADS, BAND_NOTES, rangeOf, TABLE_ORDER } from '../content/rating';
 import { useT } from '../content/i18n';
 import { useLearnLocale } from './useLearnLocale';
 
@@ -33,12 +33,14 @@ export function BandTable({
   level,
   note,
   upTo,
-  above
+  above,
+  noLimit
 }: {
   level?: (l: LevelPick) => string;
   note?: (l: LevelPick) => string;
   upTo?: (n: number) => string;
   above?: (n: number) => string;
+  noLimit?: string;
 }) {
   const t = useT();
   const words = useBandWords();
@@ -46,16 +48,17 @@ export function BandTable({
   const noteOf = note ?? ((l: LevelPick) => words.notes[l]);
   const upToOf = upTo ?? ((n: number) => t('up to {n}', { n }));
   const aboveOf = above ?? ((n: number) => t('above {n}', { n }));
+  const unlimited = noLimit ?? t('no limit||the scores of Extreme');
   return (
     <table className="shortcut-table band-table">
       <tbody>
-        {PICKS.map((p) => (
+        {TABLE_ORDER.map((p) => (
           <tr key={p} className={pickLevel(p) === p ? undefined : 'band-pick'}>
             <td>
               <span className={`level-badge level-${p.toLowerCase()}`}>{levelOf(p)}</span>
             </td>
             <td>
-              {rangeOf(p, levelOf, upToOf, aboveOf)}: {noteOf(p)}
+              {rangeOf(p, levelOf, upToOf, aboveOf, unlimited)}: {noteOf(p)}
             </td>
           </tr>
         ))}

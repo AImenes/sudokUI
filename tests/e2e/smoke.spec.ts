@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { localDateKey } from '../../src/content/dailies';
 import type { Daily } from '../../src/content/dailies';
 import { TECHS, PRACTICE_TECHS } from '../../src/engine/ratings';
+import { dialAngle, TREMOR } from '../../src/ui/RatingGauge';
 import { techNames as nbNames } from '../../src/content/locales/names.nb';
 import { techNames as esNames } from '../../src/content/locales/names.es';
 
@@ -1887,20 +1888,33 @@ test.describe('feedback', () => {
   });
 });
 
+
 test.describe('the HoDoKu rating in the top bar', () => {
   /** a Nightmare of the seed library (src/content/seeds.json): Extreme, rated 3020, a four-figure rating */
   const NIGHTMARE = '......1.3.91......7..1...492.5.6.....7.9.5.8.....4.5.142...3..6......81.6.9......';
+  /** an Unfair seed rated 1800, the widest level name (Urettferdig) with a four-figure rating */
+  const UNFAIR = '..79..1..5...8..7..6.2.1...1..5.....7.4...5.3.....7..8...3.6.4..7..2...5..5..83..';
+  /** a Fireworks practice puzzle: Extreme by its technique, rated only 1752 */
+  const FIREWORKS = '....89....6.2.....8..7..4....7.5.......6...95...31..7.......21..1.8.....732.....6';
   const LANGS = [
     { path: '/', word: 'HoDoKu rating' },
     { path: '/nb/', word: 'HoDoKu-poengsum' },
     { path: '/es/', word: 'Puntuación HoDoKu' }
   ];
 
-  async function openNightmare(page: Page, path: string, width: number) {
+  /** the page's uncaught errors, a ResizeObserver loop among them */
+  const errorsOf = (page: Page) => {
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('console', (m) => m.type() === 'error' && /ResizeObserver/.test(m.text()) && errors.push(m.text()));
+    return errors;
+  };
+
+  async function openPuzzle(page: Page, path: string, width: number, puzzle: string, score: string) {
     await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
     await page.setViewportSize({ width, height: 800 });
-    await page.goto(`${path}#p=${NIGHTMARE}`);
-    await expect(page.locator('.score-btn strong')).toHaveText('3020', { timeout: 15_000 });
+    await page.goto(`${path}#p=${puzzle}`);
+    await expect(page.locator('.score-btn strong')).toHaveText(score, { timeout: 15_000 });
   }
 
   /** what of the bar does not fit (empty when all of it does): the bar or the
@@ -1917,7 +1931,7 @@ test.describe('the HoDoKu rating in the top bar', () => {
       const m = meta.getBoundingClientRect();
       const right = document.querySelector('.topbar-right')!.getBoundingClientRect();
       if (m.right > right.left + 1) out.push('the rating group runs under the timer');
-      for (const sel of ['.game-meta .level-badge', '.score-btn strong', '.rating-word', '.rating-gauge', '.mini-i']) {
+      for (const sel of ['.game-meta .level-badge', '.score-btn strong', '.rating-word', '.rating-gauge', '.mini-i', '.practice-badge']) {
         const e = document.querySelector(sel);
         if (!e) continue;
         const b = e.getBoundingClientRect();
@@ -1928,60 +1942,114 @@ test.describe('the HoDoKu rating in the top bar', () => {
       return out;
     });
   const twoFrames = (page: Page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const shown = (page: Page, sel: string) => page.locator(sel).evaluate((e) => e.getBoundingClientRect().width > 0);
+
+  /** every width from a phone to a wide laptop: the bar fits, the level and the rating always show */
+  async function sweep(page: Page, label: string) {
+    for (let width = 320; width <= 1440; width += 20) {
+      await page.setViewportSize({ width, height: 800 });
+      // the bar is measured again after a resize (useRatingFit, RatingGauge.tsx)
+      await twoFrames(page);
+      expect(await misfits(page), `${label} at ${width} px`).toEqual([]);
+      expect(await shown(page, '.game-meta .level-badge'), `${label} at ${width} px: the level`).toBe(true);
+      expect(await shown(page, '.score-btn strong'), `${label} at ${width} px: the rating`).toBe(true);
+      // a phone keeps the compact form
+      if (width <= 560) expect(await shown(page, '.rating-gauge'), `${label} at ${width} px: no gauge`).toBe(false);
+      // a laptop has room for all of it
+      if (width >= 1000) {
+        expect(await shown(page, '.rating-gauge'), `${label} at ${width} px: the gauge`).toBe(true);
+        expect(await shown(page, '.rating-word'), `${label} at ${width} px: the words`).toBe(true);
+      }
+    }
+  }
 
   for (const { path, word } of LANGS) {
     test(`fits every width from 320 to 1440 px, with the words and the gauge where there is room (${path})`, async ({ page }) => {
-      await openNightmare(page, path, 1440);
-      const shown = (sel: string) => page.locator(sel).evaluate((e) => e.getBoundingClientRect().width > 0);
-      for (let width = 320; width <= 1440; width += 20) {
-        await page.setViewportSize({ width, height: 800 });
-        // the bar is measured again after a resize (useRatingFit, RatingGauge.tsx)
-        await twoFrames(page);
-        expect(await misfits(page), `${path} at ${width} px`).toEqual([]);
-        // the level's name and the rating are there at every width
-        expect(await shown('.game-meta .level-badge'), `${path} at ${width} px: the level`).toBe(true);
-        expect(await shown('.score-btn strong'), `${path} at ${width} px: the rating`).toBe(true);
-        // a phone keeps the compact form
-        if (width <= 560) expect(await shown('.rating-gauge'), `${path} at ${width} px: no gauge`).toBe(false);
-        // a laptop has room for all of it
-        if (width >= 1000) {
-          expect(await shown('.rating-gauge'), `${path} at ${width} px: the gauge`).toBe(true);
-          expect(await shown('.rating-word'), `${path} at ${width} px: the words`).toBe(true);
-        }
-      }
+      const errors = errorsOf(page);
+      await openPuzzle(page, path, 1440, NIGHTMARE, '3020');
+      await sweep(page, `${path} Extreme 3020`);
       await page.setViewportSize({ width: 1280, height: 800 });
       await expect(page.locator('.rating-word')).toHaveText(new RegExp(`^${word}`));
+      expect(errors).toEqual([]);
     });
   }
 
-  test('the gauge sweeps up into its level and hovers there, inside the arc, and says nothing to a screen reader', async ({ page }) => {
-    await openNightmare(page, '/', 1280);
-    const gauge = page.locator('.rating-gauge');
-    await expect(gauge).toBeVisible();
-    await expect(gauge).toHaveAttribute('aria-hidden', 'true');
-    const angle = () =>
-      page.locator('.gauge-needle').evaluate((n) => Number(/rotate\(([-\d.]+)deg\)/.exec((n as SVGElement).style.transform)![1]));
-    await page.waitForTimeout(2500);
-    // Extreme is the fifth arc, 144 to 180 degrees; the needle keeps 3.5 degrees inside its ends
-    const seen = new Set<number>();
-    for (let i = 0; i < 12; i++) {
-      const a = await angle();
-      expect(a).toBeGreaterThanOrEqual(147.5);
-      expect(a).toBeLessThanOrEqual(176.5);
-      seen.add(Math.round(a * 100));
-      await page.waitForTimeout(250);
-    }
-    // it hovers: never one angle all along
-    expect(seen.size).toBeGreaterThan(1);
+  test('fits every width with the widest level name too, Urettferdig with a four-figure rating', async ({ page }) => {
+    const errors = errorsOf(page);
+    await openPuzzle(page, '/nb/', 1440, UNFAIR, '1800');
+    await expect(page.locator('.game-meta .level-badge')).toHaveText('Urettferdig');
+    await sweep(page, '/nb/ Unfair 1800');
+    expect(errors).toEqual([]);
   });
+
+  test('gives a practice badge its room before the gauge and the words', async ({ page }) => {
+    const errors = errorsOf(page);
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/es/#practice=X_CHAIN');
+    await expect(page.locator('.practice-badge')).toBeVisible({ timeout: 15_000 });
+    for (let width = 320; width <= 1440; width += 20) {
+      await page.setViewportSize({ width, height: 800 });
+      await twoFrames(page);
+      expect(await misfits(page), `practice at ${width} px`).toEqual([]);
+      const cut = await page.locator('.practice-badge').evaluate((b) => b.scrollWidth > b.clientWidth);
+      // the technique's name is cut short only once the gauge and the words have gone
+      if (cut) expect(await page.locator('.game-meta').getAttribute('data-fit'), `practice at ${width} px`).toBe('2');
+    }
+    expect(errors).toEqual([]);
+  });
+
+  /** the angle the needle is drawn at right now, from its computed transform, mid-transition too */
+  const drawnAngle = (page: Page) =>
+    page.locator('.gauge-needle').evaluate((n) => {
+      const m = new DOMMatrix(getComputedStyle(n).transform);
+      return (Math.atan2(m.b, m.a) * 180) / Math.PI;
+    });
+
+  for (const { name, puzzle, score, level } of [
+    { name: 'a Nightmare rated 3020', puzzle: NIGHTMARE, score: 3020, level: 'Extreme' as const },
+    { name: 'a puzzle Extreme by its technique, rated 1752', puzzle: FIREWORKS, score: 1752, level: 'Extreme' as const }
+  ]) {
+    test(`the gauge sweeps up into its level and hovers there, never past its place (${name})`, async ({ page }) => {
+      const errors = errorsOf(page);
+      await openPuzzle(page, '/', 1280, puzzle, String(score));
+      const gauge = page.locator('.rating-gauge');
+      await expect(gauge).toBeVisible();
+      await expect(gauge).toHaveAttribute('aria-hidden', 'true');
+      const target = dialAngle(level, score);
+      // the sweep, as drawn: from zero up, never beyond the needle's hover
+      const sweep: number[] = [];
+      for (let i = 0; i < 30; i++) {
+        sweep.push(await drawnAngle(page));
+        await page.waitForTimeout(50);
+      }
+      for (const a of sweep) expect(a, 'the sweep').toBeLessThanOrEqual(target + TREMOR + 0.01);
+      await page.waitForTimeout(2000);
+      // then it hovers: a tremor either way of its place, and never still
+      const seen = new Set<number>();
+      for (let i = 0; i < 16; i++) {
+        const a = await drawnAngle(page);
+        expect(a, 'hovering').toBeGreaterThanOrEqual(target - TREMOR - 0.01);
+        expect(a, 'hovering').toBeLessThanOrEqual(target + TREMOR + 0.01);
+        seen.add(Math.round(a * 100));
+        await page.waitForTimeout(150);
+      }
+      expect(seen.size).toBeGreaterThan(1);
+      // and its place lies inside Extreme's arc, 144 to 180 degrees
+      expect(target - TREMOR).toBeGreaterThan(144);
+      expect(target + TREMOR).toBeLessThan(180);
+      expect(errors).toEqual([]);
+    });
+  }
 
   test('with reduced motion the needle stands at its place', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await openNightmare(page, '/', 1280);
-    const needle = page.locator('.gauge-needle');
-    const first = await needle.evaluate((n) => (n as SVGElement).style.transform);
+    await openPuzzle(page, '/', 1280, NIGHTMARE, '3020');
+    const target = dialAngle('Extreme', 3020);
+    await page.waitForTimeout(300);
+    const first = await drawnAngle(page);
+    expect(first).toBeCloseTo(target, 3);
     await page.waitForTimeout(1500);
-    expect(await needle.evaluate((n) => (n as SVGElement).style.transform)).toBe(first);
-    expect(first).toMatch(/^rotate\(1(4[89]|[5-6]\d|7[0-6])(\.\d+)?deg\)$/);
+    expect(await drawnAngle(page)).toBeCloseTo(first, 6);
   });
 });

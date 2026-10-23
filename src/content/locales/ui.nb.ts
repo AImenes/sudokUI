@@ -270,6 +270,7 @@ const ui: Dictionary = {
   "Daily streak: {n} days · {solved} daily puzzles solved": "Dagens oppgave: {n} dager på rad · {solved} løst i alt",
   "up to {n}": "opptil {n}",
   "above {n}": "over {n}",
+  "no limit||the scores of Extreme": "ingen grense",
   "No {level} puzzle could be found this time. Please try again": "Fant ingen oppgave på nivået {level} denne gangen. Prøv igjen",
   "No {name} practice could be found this time. Please try again": "Fant ingen øvingsoppgave for {name} denne gangen. Prøv igjen",
   "never needed in practice: X-Chains, which run first, find the same loops": "trengs aldri i praksis: X-Chains, som prøves først, finner de samme sløyfene",

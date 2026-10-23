@@ -710,11 +710,11 @@ const nb: LearnLocale = {
       },
       {
         "title": "Poeng som stemmer med HoDoKu",
-        "text": "Poengene og søkerekkefølgen er standardverdiene fra HoDoKu, referanseverktøyet for sudokuanalyse, så poengsummene kan sammenlignes med HoDoKus. En naken singel koster 4, en X-Wing 140 og en Forcing Net 700. Teknikker som HoDoKu ikke kjenner, plasseres på poengskalaen like ved sine nærmeste slektninger."
+        "text": "Poengene og søkerekkefølgen er standardverdiene fra HoDoKu, referanseverktøyet for sudokuanalyse. En naken singel koster 4, en X-Wing 140 og en Forcing Net 700. Teknikker som HoDoKu ikke kjenner, som WXYZ-Wing, Chute Remote Pair og 3D Medusa, plasseres på poengskalaen like ved sine nærmeste slektninger. For en oppgave der løsningsstien bare bruker HoDoKus teknikker, kan poengsummen sammenlignes med HoDoKus. Mange stier bruker en av de andre, og da kan poengsummen, og noen ganger nivået, bli et annet enn det HoDoKu gir."
       },
       {
         "title": "HoDoKus fem nivåer",
-        "text": "Nivået settes slik HoDoKu setter det. Det begynner på nivået til den vanskeligste teknikken som trengs, og stiger så ett nivå om gangen så lenge summen er over nivåets grense: 800 for Lett, 1000 for Middels, 1600 for Vanskelig og 1800 for Urettferdig. En oppgave som trenger en X-Wing, er minst Vanskelig, og en med over 1800 poeng er Ekstrem."
+        "text": "Nivået settes slik HoDoKu setter det. Det begynner på nivået til den vanskeligste teknikken i løsningsstien, og stiger så ett nivå om gangen så lenge summen er over nivåets grense: 800 for Lett, 1000 for Middels, 1600 for Vanskelig og 1800 for Urettferdig. Ekstrem har ingen grense. En løsningssti med en X-Wing gjør oppgaven minst Vanskelig, og en sum over 1800 gjør den Ekstrem."
       },
       {
         "title": "Nybegynner og Mareritt",
@@ -725,7 +725,7 @@ const nb: LearnLocale = {
         "text": "Importer en oppgave på 81 tegn, eller skriv den inn for hånd. sudokUI sjekker først at den har nøyaktig én løsning, og vurderer den så før du spiller."
       }
     ],
-    "solveTimeNote": "Grove referansetider, hentet fra de typiske tidene som løsere på nettet oppgir, og fordelt slik løsetider fordeler seg: de fleste nær midten, med en lang hale bak. Grensen for verdensklasse er satt av løsere på mesterskapsnivå. Å skrive egne notater tar lengre tid enn autokandidater, og papir enda lengre, så hver måte å løse på har sin egen tabell. Oppgaver på Nybegynner og Mareritt har egne rader, så radene for Lett og Ekstrem gjelder resten av de nivåene. En oppgave øverst i sin grad tar lengre tid enn en nederst.",
+    "solveTimeNote": "Grove referansetider, hentet fra de typiske tidene som løsere på nettet oppgir, og fordelt slik løsetider fordeler seg: de fleste nær midten, med en lang hale bak. Grensen for verdensklasse er satt av løsere på mesterskapsnivå. Å skrive egne notater tar lengre tid enn autokandidater, og papir enda lengre, så hver måte å løse på har sin egen tabell. Oppgaver på Nybegynner og Mareritt har egne rader, så radene for Lett og Ekstrem gjelder resten av disse nivåene. En oppgave øverst på sitt nivå tar lengre tid enn en nederst.",
     "modes": {
       "auto": "med autokandidater",
       "marks": "med egne notater",
@@ -814,7 +814,7 @@ const nb: LearnLocale = {
       ],
       "cta": "Spill dagens sudoku",
       "related": [
-        "Slik vurderes vanskelighetsgraden",
+        "Slik regnes HoDoKu-poengsummen ut",
         "Alle teknikkene forklart"
       ]
     },
@@ -860,7 +860,7 @@ const nb: LearnLocale = {
       "puzzleBox": "Løs denne oppgaven",
       "related": [
         "Alle teknikkene forklart",
-        "Slik vurderes vanskelighetsgraden"
+        "Slik regnes HoDoKu-poengsummen ut"
       ]
     },
     "/hodoku/": {
@@ -880,14 +880,14 @@ const nb: LearnLocale = {
           "heading": "Hva sudokUI har felles med HoDoKu",
           "paragraphs": [
             "sudokUI bruker HoDoKus standardpoeng for hver teknikk og standard søkerekkefølge, og vurderer en oppgave på samme måte: løs den med den første teknikken som virker i hvert steg, og legg sammen poengene. Summen er HoDoKu-poengsummen.",
-            "De fem vanskelighetsnivåene er også HoDoKus, med HoDoKus grenser: Lett (800), Middels (1000), Vanskelig (1600), Urettferdig (1800) og Ekstrem over det. En oppgaves nivå er det høyeste nivået blant teknikkene den krever, hevet så lenge poengsummen er over grensen, som i HoDoKu."
+            "De fem vanskelighetsnivåene er også HoDoKus, med HoDoKus grenser: Lett (800), Middels (1000), Vanskelig (1600), Urettferdig (1800) og Ekstrem uten grense. En oppgaves nivå er det høyeste nivået blant teknikkene i løsningsstien, hevet så lenge poengsummen er over grensen, som i HoDoKu."
           ]
         },
         {
           "heading": "Hvor de skiller seg",
           "paragraphs": [
             "sudokUI er et uavhengig prosjekt og har ingen tilknytning til HoDoKu.",
-            "Det legger til teknikker som HoDoKu ikke har, som 3D Medusa, Chute Remote Pair, Fireworks, Tridagon og Exocet, plassert på poengskalaen like ved sine nærmeste slektninger, og det utelater noen av HoDoKus sjeldneste, som mutantfisk og Kraken-fisk. I en oppgave som trenger en av disse, kan løsningsstien og poengsummen bli forskjellige.",
+            "Det legger til teknikker som HoDoKu ikke har, som WXYZ-Wing, Chute Remote Pair, 3D Medusa, Fireworks, Tridagon og Exocet, plassert på poengskalaen like ved sine nærmeste slektninger, og det utelater noen av HoDoKus, som Finned Franken-fisk, mutantfisk og Kraken-fisk. I en oppgave der løsningsstien bruker en av disse, og det gjør mange, kan løsningsstien, poengsummen og noen ganger nivået bli et annet enn i HoDoKu.",
             "Nytt spill har også to smalere valg som HoDoKu ikke har: Nybegynner, oppgavene på Lett med 400 poeng eller mindre, og Mareritt, oppgavene på Ekstrem med over 3000 poeng. En oppgaves nivå er alltid ett av HoDoKus fem."
           ]
         },
@@ -900,7 +900,7 @@ const nb: LearnLocale = {
       ],
       "cta": "Åpne sudokUI",
       "related": [
-        "Slik vurderes vanskelighetsgraden",
+        "Slik regnes HoDoKu-poengsummen ut",
         "Poeng for hver teknikk",
         "HoDoKus egen nettside"
       ]
@@ -959,7 +959,7 @@ const nb: LearnLocale = {
     "band": {
       "term": "bånd",
       "aka": [],
-      "definition": "Tre bokser side om side, som dekker tre tilstøtende rader. Rutenettet har tre bånd: øverst, i midten og nederst. Må ikke forveksles med vanskelighetsgrad."
+      "definition": "Tre bokser side om side, som dekker tre tilstøtende rader. Rutenettet har tre bånd: øverst, i midten og nederst. Må ikke forveksles med vanskelighetsnivå."
     },
     "stack": {
       "term": "stabel",
@@ -1676,12 +1676,12 @@ const nb: LearnLocale = {
       "definition": "En oppgaves vanskelighet som et tall, kalt HoDoKu-poengsummen: summen av teknikkpoengene for hvert steg i løsningsstien. Fordi poengene og løsningsrekkefølgen følger HoDoKu, kan poengsummen sammenlignes med HoDoKus for oppgaver som bare krever teknikker HoDoKu også har."
     },
     "difficulty-band": {
-      "term": "vanskelighetsgrad",
+      "term": "vanskelighetsnivå",
       "aka": [
-        "vanskelighetsnivå",
+        "vanskelighetsgrad",
         "nivå"
       ],
-      "definition": "Ett av HoDoKus fem vanskelighetsnivåer: Lett, Middels, Vanskelig, Urettferdig og Ekstrem. En oppgaves nivå er det høyeste nivået blant teknikkene den krever, hevet ett nivå om gangen så lenge den samlede poengsummen er over nivåets grense: 800, 1000, 1600 og 1800, som i HoDoKu. Nytt spill har også Nybegynner, oppgavene på Lett med 400 poeng eller mindre, og Mareritt, oppgavene på Ekstrem med over 3000 poeng."
+      "definition": "Ett av HoDoKus fem vanskelighetsnivåer: Lett, Middels, Vanskelig, Urettferdig og Ekstrem. En oppgaves nivå er det høyeste nivået blant teknikkene i løsningsstien, hevet ett nivå om gangen så lenge den samlede poengsummen er over nivåets grense: 800, 1000, 1600 og 1800, som i HoDoKu. Nytt spill har også Nybegynner, oppgavene på Lett med 400 poeng eller mindre, og Mareritt, oppgavene på Ekstrem med over 3000 poeng."
     },
     "brute-force": {
       "term": "prøving og feiling",
@@ -2014,6 +2014,7 @@ const nb: LearnLocale = {
     "World class": "Verdensklasse",
     "above {n}": "over {n}",
     "up to {n}": "opptil {n}",
+    "no limit": "ingen grense",
     "Slow is where the slowest fifth begins. Typical is the median solver. Fast is faster than four solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000.": "Langsom er der den tregeste femtedelen begynner. Typisk er medianløseren. Rask er raskere enn fire av fem løsere, Ekspert raskere enn 99 av 100, Verdensklasse raskere enn 999 av 1 000.",
     "The app says where each of your solves lands.": "Appen viser hvor hver av løsetidene dine havner.",
     "fewer than 1 in {n} puzzles": "færre enn 1 av {n} oppgaver",
@@ -2042,7 +2043,6 @@ const nb: LearnLocale = {
     "sudokUI is a free, open-source sudoku app: no ads, no account, works offline.": "sudokUI er en gratis sudokuapp med åpen kildekode: ingen reklame, ingen konto, og den virker uten nett.",
     "Play at sudokui.app": "Spill på sudokui.app",
     "Source on GitHub": "Kildekode på GitHub",
-    "Difficulty rating": "Vanskelighetsgrad",
     "Sudoku techniques": "Sudokuteknikker",
     "{name}: sudoku technique explained": "{name} i sudoku: teknikken forklart",
     "{what} Why it works, how to spot it, and a puzzle to practise on.": "{what} Hvorfor den virker, hvordan du finner den, og en oppgave å øve på.",
@@ -2070,7 +2070,6 @@ const nb: LearnLocale = {
     "All {n} solving techniques in sudokUI's catalogue, grouped by the idea behind them. Each one says what the pattern is, why it works and how to spot it.": "Alle {n} løsningsteknikker i katalogen til sudokUI, ordnet etter ideen bak dem. For hver av dem står det hva mønsteret er, hvorfor det virker, og hvordan du finner det.",
     "Play sudokUI": "Spill sudokUI",
     "How they fit together": "Slik henger de sammen",
-    "How rating works": "Slik fungerer vurderingen",
     "Worth learning first": "Verdt å lære først",
     "How often a technique is needed, weighted by its rating cost, over the {sample} puzzles sudokUI has generated and rated. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it.": "Hvor ofte en teknikk trengs, vektet etter poengverdien, i de {sample} oppgavene sudokUI har laget og vurdert. Vanskelighet og hyppighet er to forskjellige ting: en vanskelig teknikk som dukker opp ofte, er verdt innsatsen det koster å lære den.",
     "{level}, needed in {freq}": "{level}, trengs i {freq}",
@@ -2099,9 +2098,8 @@ const nb: LearnLocale = {
     "The puzzle opens in sudokUI with its HoDoKu rating and level in the top bar. Nothing is uploaded: the rating is computed on your own device. No string at hand? {open}, choose New, then Custom, and type the puzzle onto the board. See also {hodoku}.": "Oppgaven åpnes i sudokUI med HoDoKu-poengsum og vanskelighetsnivå i topplinjen. Ingenting lastes opp: poengsummen regnes ut på din egen enhet. Har du ingen tegnstreng for hånden? {open}, velg Ny og så Egendefinert, og skriv oppgaven inn på brettet. Se også {hodoku}.",
     "Open sudokUI": "Åpne sudokUI",
     "how this compares with HoDoKu": "sammenligningen med HoDoKu",
-    "The five difficulty levels": "De fem vanskelighetsnivåene",
+    "The five levels and two picks": "De fem nivåene og to smalere valg",
     "Level": "Nivå",
-    "Band": "Grad",
     "Total score": "Samlet poengsum",
     "Typical techniques": "Typiske teknikker",
     "Score of every technique": "Poeng for hver teknikk",
@@ -2111,7 +2109,6 @@ const nb: LearnLocale = {
     "Score": "Poeng",
     "Needed in": "Trengs i",
     "Every technique explained": "Alle teknikkene forklart",
-    "How the difficulty rating works": "Slik vurderes vanskelighetsgraden"
   }
 };
 

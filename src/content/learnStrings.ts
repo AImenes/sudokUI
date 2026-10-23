@@ -62,6 +62,7 @@ export const LEARN_STRINGS = [
   'World class',
   'above {n}',
   'up to {n}',
+  'no limit',
   'Slow is where the slowest fifth begins. Typical is the median solver. Fast is faster than four solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000.',
   'The app says where each of your solves lands.',
   // frequencies
@@ -93,7 +94,6 @@ export const LEARN_STRINGS = [
   'sudokUI is a free, open-source sudoku app: no ads, no account, works offline.',
   'Play at sudokui.app',
   'Source on GitHub',
-  'Difficulty rating',
   'Sudoku techniques',
   // static pages: a technique
   '{name}: sudoku technique explained',
@@ -123,7 +123,6 @@ export const LEARN_STRINGS = [
   "All {n} solving techniques in sudokUI's catalogue, grouped by the idea behind them. Each one says what the pattern is, why it works and how to spot it.",
   'Play sudokUI',
   'How they fit together',
-  'How rating works',
   'Worth learning first',
   'How often a technique is needed, weighted by its rating cost, over the {sample} puzzles sudokUI has generated and rated. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it.',
   '{level}, needed in {freq}',
@@ -155,9 +154,8 @@ export const LEARN_STRINGS = [
   'The puzzle opens in sudokUI with its HoDoKu rating and level in the top bar. Nothing is uploaded: the rating is computed on your own device. No string at hand? {open}, choose New, then Custom, and type the puzzle onto the board. See also {hodoku}.',
   'Open sudokUI',
   'how this compares with HoDoKu',
-  'The five difficulty levels',
+  'The five levels and two picks',
   'Level',
-  'Band',
   'Total score',
   'Typical techniques',
   'Score of every technique',
@@ -168,7 +166,6 @@ export const LEARN_STRINGS = [
   'Needed in',
   // static pages: How the best solve
   'Every technique explained',
-  'How the difficulty rating works'
 ] as const;
 
 export type LearnString = (typeof LEARN_STRINGS)[number];

@@ -112,7 +112,7 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
   applicable technique at each step and sums per-technique scores
   (HoDoKu-compatible model)
 - HoDoKu's five levels, with HoDoKu's limits and rule: Easy (≤800),
-  Medium (≤1000), Hard (≤1600), Unfair (≤1800) and Extreme above. A puzzle's
+  Medium (≤1000), Hard (≤1600), Unfair (≤1800) and Extreme with no limit. A puzzle's
   level is that of the hardest technique it needs, raised while its score is
   over the limit. New game also offers two narrower picks: Beginner (Easy,
   ≤400) and Nightmare (Extreme, >3000)

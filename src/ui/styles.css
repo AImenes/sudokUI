@@ -310,6 +310,18 @@ button {
   stroke: currentColor;
   stroke-width: 10;
 }
+/* the light themes' badge colours are dark and alike, so the arcs take
+   mid tones there, each apart from its neighbours */
+:root[data-theme='light'] .gauge-arc.level-easy,
+:root[data-theme='rose'] .gauge-arc.level-easy { color: #3c9a46; }
+:root[data-theme='light'] .gauge-arc.level-medium,
+:root[data-theme='rose'] .gauge-arc.level-medium { color: #93a82e; }
+:root[data-theme='light'] .gauge-arc.level-hard,
+:root[data-theme='rose'] .gauge-arc.level-hard { color: #d9a40c; }
+:root[data-theme='light'] .gauge-arc.level-unfair,
+:root[data-theme='rose'] .gauge-arc.level-unfair { color: #e2782a; }
+:root[data-theme='light'] .gauge-arc.level-extreme,
+:root[data-theme='rose'] .gauge-arc.level-extreme { color: #cf3d4c; }
 .gauge-needle {
   stroke: var(--text);
   stroke-width: 4;
@@ -2256,6 +2268,25 @@ kbd {
 }
 
 /* ---------- responsive ---------- */
+/* the narrowest phones: the longest level name (Urettferdig) and a
+   four-figure rating fit beside the timer and the buttons; with a wider
+   font than the system's, the name gives way before the number does */
+@media (max-width: 359px) {
+  .topbar .game-meta {
+    gap: 4px;
+  }
+  .topbar .game-meta .level-badge {
+    padding: 3px 6px;
+    font-size: 12px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar .score-btn {
+    padding: 3px 2px;
+  }
+}
+
 @media (max-width: 560px) {
   .topbar {
     gap: 8px;

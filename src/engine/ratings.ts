@@ -268,8 +268,8 @@ export function maxLevel(a: Level, b: Level): Level {
  * to Easy, a puzzle of singles only. Medium and Hard classes get one level
  * above their own, so a player drilling X-Wings is never dropped into an
  * Extreme puzzle after the move. The chain techniques of Unfair class and
- * above have no ceiling: a puzzle that needs an AIC is an Extreme by
- * nature, and that is the point.
+ * above have no ceiling: a puzzle that needs an AIC is seldom easier than
+ * Unfair, and that is the point.
  */
 export function practiceCeiling(tech: Tech): Level {
   const at = LEVELS.indexOf(TECHS[tech].level);

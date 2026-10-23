@@ -14,8 +14,8 @@
 // back into the app, in the page's language (/ in English, /nb/ and /es/):
 // /#practice=<KEY> starts a practice puzzle, /nb/#learn=<KEY> opens the
 // guide at that technique in Norwegian.
-import { TECHS, ALL_TECHS, PICKS, Tech, Category, pickLevel } from '../engine/ratings';
-import { rangeOf } from './rating';
+import { TECHS, ALL_TECHS, Tech, Category, pickLevel } from '../engine/ratings';
+import { rangeOf, TABLE_ORDER } from './rating';
 import type { Lang } from '../state/settings';
 import { setEngineText, EngineTable } from '../engine/text';
 import { GLOSSARY, GLOSSARY_GROUPS } from './glossary';
@@ -323,7 +323,7 @@ ${opts.body}
       <p>${[
         ...landing.map((p) => ({ label: lt.landing(p.url).name, href: at(opts.lang, p.url) })),
         { label: method.name, href: at(opts.lang, METHOD_URL) },
-        { label: lt.s('Difficulty rating'), href: at(opts.lang, RATING_URL) },
+        { label: lt.s('HoDoKu rating'), href: at(opts.lang, RATING_URL) },
         { label: lt.s('Techniques'), href: at(opts.lang, '/learn/') },
         { label: lt.s('Intuition'), href: at(opts.lang, INTUITION_URL) },
         { label: lt.s('Glossary'), href: glossaryUrl(opts.lang) },
@@ -507,7 +507,7 @@ ${techs
     .join('\n');
   const body = `      <h1>${esc(lt.s('Sudoku solving techniques'))}</h1>
       <p class="lead">${esc(lt.s("All {n} solving techniques in sudokUI's catalogue, grouped by the idea behind them. Each one says what the pattern is, why it works and how to spot it.", { n }))}</p>
-      <p><a class="cta" href="${app(lang)}">${esc(lt.s('Play sudokUI'))}</a><a class="cta ghost" href="${at(lang, INTUITION_URL)}">${esc(lt.s('How they fit together'))}</a><a class="cta ghost" href="${glossaryUrl(lang)}">${esc(lt.s('Glossary'))}</a><a class="cta ghost" href="${at(lang, RATING_URL)}">${esc(lt.s('How rating works'))}</a></p>
+      <p><a class="cta" href="${app(lang)}">${esc(lt.s('Play sudokUI'))}</a><a class="cta ghost" href="${at(lang, INTUITION_URL)}">${esc(lt.s('How they fit together'))}</a><a class="cta ghost" href="${glossaryUrl(lang)}">${esc(lt.s('Glossary'))}</a><a class="cta ghost" href="${at(lang, RATING_URL)}">${esc(lt.s('How the HoDoKu rating works'))}</a></p>
       <h2 id="worth-learning">${esc(lt.s('Worth learning first'))}</h2>
       <p>${esc(lt.s('How often a technique is needed, weighted by its rating cost, over the {sample} puzzles sudokUI has generated and rated. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it.', { sample: lt.num(FREQUENCY.sample) }))}</p>
       <ol class="techs">
@@ -646,10 +646,10 @@ function ratingPage(lang: Lang): Page {
     'How sudoku difficulty is rated: the HoDoKu rating, HoDoKu’s five levels from Easy to Extreme and the full score table. Rate any puzzle free.'
   );
   // HoDoKu's five levels, each narrower pick of New game set in under its level
-  const bands = PICKS.map(
+  const bands = TABLE_ORDER.map(
     (pick) =>
       `        <tr${pickLevel(pick) === pick ? '' : ' class="pick"'}><td><span class="badge">${esc(lt.level(pick))}</span></td><td class="n">${esc(
-        rangeOf(pick, lt.level, (n) => lt.s('up to {n}', { n }), (n) => lt.s('above {n}', { n }))
+        rangeOf(pick, lt.level, (n) => lt.s('up to {n}', { n }), (n) => lt.s('above {n}', { n }), lt.s('no limit'))
       )}</td><td>${esc(lt.loc.bandNotes[pick])}</td></tr>`
   ).join('\n');
   const scores = byCategory()
@@ -678,7 +678,7 @@ ${puzzleForm(lt, lt.s('Rate this puzzle'))}
         }
       )}</p>
 ${rating.points.map((p) => `      <h2>${esc(p.title)}</h2>\n      <p>${esc(p.text)}</p>`).join('\n')}
-      <h2 id="bands">${esc(lt.s('The five difficulty levels'))}</h2>
+      <h2 id="bands">${esc(lt.s('The five levels and two picks'))}</h2>
       <table>
         <tr><th>${esc(lt.s('Level'))}</th><th class="n">${esc(lt.s('Total score'))}</th><th>${esc(lt.s('Typical techniques'))}</th></tr>
 ${bands}
@@ -686,7 +686,7 @@ ${bands}
       <h2 id="solve-times">${esc(lt.s('How fast is fast?'))}</h2>
       <p>${esc(rating.solveTimeNote)}</p>
       <table>
-        <tr><th>${esc(lt.s('Band'))}</th><th class="n">${esc(lt.s('Slow'))}</th><th class="n">${esc(lt.s('Typical'))}</th><th class="n">${esc(lt.s('Fast'))}</th><th class="n">${esc(lt.s('Expert'))}</th><th class="n">${esc(lt.s('World class'))}</th></tr>
+        <tr><th>${esc(lt.s('Level'))}</th><th class="n">${esc(lt.s('Slow'))}</th><th class="n">${esc(lt.s('Typical'))}</th><th class="n">${esc(lt.s('Fast'))}</th><th class="n">${esc(lt.s('Expert'))}</th><th class="n">${esc(lt.s('World class'))}</th></tr>
 ${solveTimeTables(lang).map((t) => {
   const label = rating.modes[t.mode];
   return `        <tr><th colspan="6">${esc(label[0].toUpperCase() + label.slice(1))}</th></tr>
@@ -741,7 +741,7 @@ function landingPage(page: LandingPage, lang: Lang): Page {
   const related = isMethod
     ? [
         { label: lt.s('Every technique explained'), href: at(lang, '/learn/') },
-        { label: lt.s('How the difficulty rating works'), href: at(lang, RATING_URL) }
+        { label: lt.s('How the HoDoKu rating works'), href: at(lang, RATING_URL) }
       ]
     : page.related.map((r, i) => ({ label: text.related[i], href: r.href.startsWith('/') ? at(lang, r.href) : r.href }));
   const body = `      <h1>${esc(text.h1)}</h1>

@@ -99,7 +99,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   {
     id: 'band',
     term: 'band',
-    definition: 'Three boxes side by side, covering three neighbouring rows. The grid has three bands: top, middle and bottom. Not to be confused with a difficulty band.',
+    definition: 'Three boxes side by side, covering three neighbouring rows. The grid has three bands: top, middle and bottom. Not to be confused with a difficulty level.',
     aka: [],
     see: ['stack', 'chute', 'difficulty-band'],
     group: 'The board'
@@ -961,7 +961,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   {
     id: 'difficulty-band',
     term: 'difficulty level',
-    definition: "One of HoDoKu's five levels of difficulty: Easy, Medium, Hard, Unfair and Extreme. A puzzle's level is the highest level of any technique it needs, raised one level at a time while its total score is above the level's limit: 800, 1000, 1600 and 1800, as in HoDoKu. New game also offers Beginner, the Easy puzzles scoring 400 or less, and Nightmare, the Extreme puzzles scoring over 3000.",
+    definition: "One of HoDoKu's five levels of difficulty: Easy, Medium, Hard, Unfair and Extreme. A puzzle's level is the highest level of any technique on its solve path, raised one level at a time while its total score is above the level's limit: 800, 1000, 1600 and 1800, as in HoDoKu. New game also offers Beginner, the Easy puzzles scoring 400 or less, and Nightmare, the Extreme puzzles scoring over 3000.",
     aka: ['difficulty band', 'level'],
     see: ['rating', 'technique', 'hodoku', 'band'],
     group: 'Solving and rating',
