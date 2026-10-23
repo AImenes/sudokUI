@@ -77,7 +77,7 @@ export function SetTracker() {
   } else if (verdict.kind === 'sizes') {
     verdictText = t('Not the same digits: {a} cells against {b}', { a: verdict.a, b: verdict.b });
   } else if (verdict.kind === 'differ') {
-    verdictText = t('Not the same digits: no count of houses links them, and a valid grid fills them differently');
+    verdictText = t('Not necessarily the same digits: no count of houses links them, and some valid grid fills them differently');
   } else if (verdict.kind === 'unproved') {
     verdictText = t('Not proved: no count of rows, columns and boxes links these sets');
   } else if (impossible) {

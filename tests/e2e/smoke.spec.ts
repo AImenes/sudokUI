@@ -3,7 +3,7 @@
  * meets in the first minute, at a laptop size and on a phone. Run with
  * `npm run test:e2e` after `npm run build`.
  */
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page, Locator } from '@playwright/test';
 import { parseGrid, gridToString, digitsOf, bit } from '../../src/engine/board';
 import { solve } from '../../src/engine/bruteForce';
 import { formatPencilGrid } from '../../src/content/textGrid';
@@ -214,7 +214,7 @@ test.describe('desktop, 1280 x 800', () => {
     await expect(rings).toHaveCount(0);
   });
 
-  test('with uniqueness off, hints and Steps find another way', async ({ page }) => {
+  test('with uniqueness off, hints, Steps and Scan find another way', async ({ page }) => {
     test.setTimeout(60_000);
     // the puzzle Cracking the Cryptic solved with two chains, declining the
     // unique rectangle the engine reaches for at the same point
@@ -232,6 +232,14 @@ test.describe('desktop, 1280 x 800', () => {
     const panel = page.locator('.hint-panel');
     await expect(panel).toContainText('Unique Rectangle Type 3');
     await panel.getByRole('button', { name: 'Close' }).click();
+    // and Scan lists it there
+    const FAMILY = /Unique Rectangle|BUG\+1|Hidden Rectangle|Avoidable Rectangle|Extended Rectangle/;
+    await page.getByRole('button', { name: /Scan/ }).first().click();
+    let scan = page.getByRole('dialog', { name: "What's in this position?" });
+    await expect(scan.locator('.path-row').first()).toBeVisible({ timeout: 20_000 });
+    await expect(scan.locator('.path-row', { hasText: 'Unique Rectangle Type 3' })).toHaveCount(1);
+    await page.keyboard.press('Escape');
+    await expect(scan).toHaveCount(0);
     // uniqueness off in Settings: the same position gives another technique
     await page.getByRole('button', { name: 'Settings' }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });
@@ -244,11 +252,30 @@ test.describe('desktop, 1280 x 800', () => {
     await expect(panel).toContainText('Finned Swordfish');
     await expect(panel).not.toContainText('Unique Rectangle');
     await panel.getByRole('button', { name: 'Close' }).click();
+    // Scan, at the same position, lists none of the family, and asked for the rectangle by name says why
+    await page.getByRole('button', { name: /Scan/ }).first().click();
+    scan = page.getByRole('dialog', { name: "What's in this position?" });
+    await expect(scan.locator('.path-row').first()).toBeVisible({ timeout: 20_000 });
+    await expect(scan.locator('.path-row', { hasText: 'Finned Swordfish' }).first()).toBeVisible();
+    await expect(scan.locator('.path-row', { hasText: FAMILY })).toHaveCount(0);
+    await scan.getByRole('searchbox', { name: 'Technique to look for' }).fill('Unique Rectangle Type 3');
+    await expect(scan).toContainText('Unique Rectangle Type 3 is a uniqueness technique, and uniqueness is off in Settings.');
+    await page.keyboard.press('Escape');
+    await expect(scan).toHaveCount(0);
     // and Steps lists a path without any of the family
     await page.getByRole('button', { name: /Steps/ }).first().click();
     path = page.getByRole('dialog', { name: 'Solution path' });
     await expect(path.locator('.path-row').first()).toBeVisible({ timeout: 20_000 });
-    await expect(path.locator('.path-row', { hasText: /Unique Rectangle|BUG\+1|Hidden Rectangle|Avoidable Rectangle|Extended Rectangle/ })).toHaveCount(0);
+    await expect(path.locator('.path-row', { hasText: FAMILY })).toHaveCount(0);
+    // a row past the point where the two paths part (step 22, a Finned
+    // Swordfish where the engine's path takes the rectangle) sets the board
+    // to the path without uniqueness: the hint there is that row's step,
+    // where the engine's own path would have left a Hidden Single
+    const row = path.locator('.path-row', { has: page.locator('.path-jump', { hasText: /^23$/ }) });
+    await expect(row).toContainText('Finned Jellyfish');
+    await row.click();
+    await page.keyboard.press('KeyH');
+    await expect(panel).toContainText('Finned Jellyfish');
   });
 
   test('a digit pressed with nothing selected is armed, and a tap enters it', async ({ page }) => {
@@ -1360,6 +1387,194 @@ test.describe('the set tracker', () => {
     // it is not help
     await expect(page.locator('.level-badge').first()).toBeVisible();
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state?.assisted ?? false)).toBe(false);
+  });
+
+  /**
+   * The board with the tracker on, in colour mode: cells are toggled in a
+   * colour by a click and its key, from nothing selected (a click on the one
+   * selected cell would let go of it, and the key would then arm a digit)
+   */
+  async function tracking(page: Page) {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudokui-welcomed', '1');
+      localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { setTracker: true }, version: 0 }));
+    });
+    await page.goto(`/#p=${EASY}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    await page.keyboard.press('KeyV');
+    return async (cells: number[], colour: string) => {
+      for (const cell of cells) {
+        await page.keyboard.press('Escape');
+        const c = await cellBox(page, cell);
+        await page.mouse.click(c.x, c.y);
+        await page.keyboard.press(`Digit${colour}`);
+      }
+    };
+  }
+
+  /** the claim and its proof go together: no "Same digits", no Why?, no proof, no list of digits */
+  async function claimsNothing(tracker: Locator) {
+    await expect(tracker).toContainText('Not necessarily the same digits: no count of houses links them, and some valid grid fills them differently');
+    await expect(tracker).not.toContainText('Same digits');
+    await expect(tracker.locator('.set-verdict.proved')).toHaveCount(0);
+    await expect(tracker.locator('.set-why')).toHaveCount(0);
+    await expect(tracker.locator('.set-proof')).toHaveCount(0);
+    await expect(tracker).not.toContainText('still needs');
+    await expect(tracker).not.toContainText('the rest is exactly');
+  }
+
+  /**
+   * What an element of the tracker says, as the player sees it: each
+   * swatch written as the colour the browser draws it in ("[#5b8fe0]", or
+   * "[unseen]" when it has no size), buttons left out
+   */
+  const said = (loc: Locator) =>
+    loc.evaluate((el) => {
+      const swatch = (e: Element) => {
+        const box = e.getBoundingClientRect();
+        if (!box.width || !box.height) return '[unseen]';
+        const rgb = (getComputedStyle(e).backgroundColor.match(/\d+/g) ?? []).slice(0, 3);
+        return `[#${rgb.map((x) => Number(x).toString(16).padStart(2, '0')).join('')}]`;
+      };
+      const walk = (n: Node): string =>
+        n.nodeType === Node.TEXT_NODE
+          ? (n.textContent ?? '')
+          : n instanceof HTMLButtonElement
+            ? ''
+            : n instanceof Element && n.classList.contains('set-swatch')
+              ? swatch(n)
+              : [...n.childNodes].map(walk).join('');
+      return walk(el).trim();
+    });
+
+  /** the colours the board draws on a cell, as it writes them */
+  const fillsOf = (page: Page, cell: number) =>
+    page
+      .locator(`svg.board rect[y="${4 + Math.floor(cell / 9) * 100}"][height="100"][opacity="0.55"]`)
+      .evaluateAll(
+        (rects, x) =>
+          rects
+            .filter((r) => Number(r.getAttribute('x')) >= x && Number(r.getAttribute('x')) < x + 100)
+            .map((r) => r.getAttribute('fill')),
+        4 + (cell % 9) * 100
+      );
+
+  /** the two sets' colours as the board draws them: colour 6 and colour 2 */
+  const [BLUE, ORANGE] = ['#5b8fe0', '#e8934a'];
+  const PROOF_END = 'Each house holds every digit once, so the two sets hold the same digits.';
+
+  /** proved again: whatever proof shows is this pair's, and the button says whether it shows */
+  async function provedAgain(tracker: Locator, proof: string) {
+    await expect(tracker).toContainText('Same digits, proved by counting houses');
+    const why = tracker.locator('.set-why');
+    await expect(why).toHaveCount(1);
+    const proofs = tracker.locator('.set-proof');
+    const open = (await why.getAttribute('aria-expanded')) === 'true';
+    await expect(proofs).toHaveCount(open ? 1 : 0);
+    if (!open) await why.click();
+    await expect(why).toHaveAttribute('aria-expanded', 'true');
+    expect(await said(proofs)).toBe(proof);
+    // and it folds and opens on a click
+    await why.click();
+    await expect(proofs).toHaveCount(0);
+    await expect(why).toHaveText('Why?');
+    await why.click();
+    await expect(why).toHaveText('Hide the proof');
+    expect(await said(proofs)).toBe(proof);
+  }
+
+  test('a proof opened, then a cell repainted: the claim and the proof go, and come back with the pair', async ({ page }) => {
+    const toggle = await tracking(page);
+    const tracker = page.locator('.set-tracker');
+    // row 2 in colour 6, column 2 in colour 2, the proof opened and folded again
+    await toggle([9, 10, 11, 12, 13, 14, 15, 16, 17], '6');
+    await toggle([1, 10, 19, 28, 37, 46, 55, 64, 73], '2');
+    await expect(tracker).toContainText('Same digits, proved by counting houses');
+    const why = tracker.getByRole('button', { name: 'Why?' });
+    await why.click();
+    await expect(tracker.locator('.set-proof')).toContainText('with column 2 covers the same cells as');
+    await expect(tracker.locator('.set-why')).toHaveAttribute('aria-expanded', 'true');
+    await tracker.getByRole('button', { name: 'Hide the proof' }).click();
+    await expect(tracker.locator('.set-proof')).toHaveCount(0);
+    await why.click();
+    await expect(tracker.locator('.set-proof')).toHaveCount(1);
+    // r9c2 out of the second set and r9c1 in: eight against eight, which no count of houses links
+    await toggle([73, 72], '2');
+    await claimsNothing(tracker);
+    await expect(tracker).toContainText('8 cells, 4 placed');
+    // painted back
+    await toggle([72, 73], '2');
+    await provedAgain(tracker, `[${BLUE}] with column 2 covers the same cells as [${ORANGE}] with row 2. ${PROOF_END}`);
+  });
+
+  test('Phistomefel’s ring against its corners, one ring cell moved and moved back', async ({ page }) => {
+    const toggle = await tracking(page);
+    const tracker = page.locator('.set-tracker');
+    const corners = [0, 1, 7, 8, 9, 10, 16, 17, 63, 64, 70, 71, 72, 73, 79, 80];
+    const ring = [20, 21, 22, 23, 24, 29, 33, 38, 42, 47, 51, 56, 57, 58, 59, 60];
+    await toggle(corners, '6');
+    await toggle(ring, '2');
+    await expect(tracker).toContainText('Same digits, proved by counting houses');
+    await tracker.getByRole('button', { name: 'Why?' }).click();
+    // the proof checked cell by cell in tests/setsSoundness.test.ts
+    const proof = `[${BLUE}] with columns 3 and 7 and boxes 2 and 8 covers the same cells as [${ORANGE}] with rows 1, 2, 8 and 9. ${PROOF_END}`;
+    await expect.poll(() => said(tracker.locator('.set-proof'))).toBe(proof);
+    // r3c3 out of the ring and r1c4 in: sixteen against sixteen, unequal
+    await toggle([20, 3], '2');
+    await claimsNothing(tracker);
+    await expect(tracker.locator('.set-side')).toHaveCount(2);
+    await expect(tracker.locator('.set-side').nth(1)).toContainText('16 cells');
+    // moved back
+    await toggle([3, 20], '2');
+    await provedAgain(tracker, proof);
+  });
+
+  test('each swatch is drawn in its set’s colour on the board; an open proof follows the pair into another proof, and the lists follow the digits', async ({ page }) => {
+    const toggle = await tracking(page);
+    const tracker = page.locator('.set-tracker');
+    const side = (k: number) => said(tracker.locator('.set-side').nth(k));
+    const proof = tracker.locator('.set-proof');
+    const row2 = [9, 10, 11, 12, 13, 14, 15, 16, 17];
+    const column2 = [1, 10, 19, 28, 37, 46, 55, 64, 73];
+    await toggle(row2, '6');
+    await toggle(column2, '2');
+    await expect(tracker).toContainText('Same digits, proved by counting houses');
+    // the board fills each set's cells in one colour and r2c2, in both, in neither;
+    // the line's swatches are drawn in those colours, and so are the proof's
+    for (const cell of row2) expect(await fillsOf(page, cell), `r2c${cell - 8}`).toEqual(cell === 10 ? [] : [BLUE]);
+    for (const cell of column2) expect(await fillsOf(page, cell), `r${Math.floor(cell / 9) + 1}c2`).toEqual(cell === 10 ? [] : [ORANGE]);
+    expect(await side(0)).toBe(`[${BLUE}] 8 cells, 4 placed`);
+    expect(await side(1)).toBe(`[${ORANGE}] 8 cells, 0 placed, still needs 1, 3, 5 and 9`);
+    expect(await said(tracker.locator('.set-verdict'))).toBe('✓ Same digits, proved by counting houses');
+    await tracker.getByRole('button', { name: 'Why?' }).click();
+    await expect.poll(() => said(proof)).toBe(`[${BLUE}] with column 2 covers the same cells as [${ORANGE}] with row 2. ${PROOF_END}`);
+
+    // r1c2's 8 placed: the second set has one digit, which the first then needs; taken out, as before
+    await page.keyboard.press('KeyZ');
+    await page.keyboard.press('Escape');
+    const r1c2 = await cellBox(page, 1);
+    await page.mouse.click(r1c2.x, r1c2.y);
+    await page.keyboard.press('Digit8');
+    await expect.poll(() => side(0)).toBe(`[${BLUE}] 8 cells, 4 placed, still needs 8`);
+    await expect.poll(() => side(1)).toBe(`[${ORANGE}] 8 cells, 1 placed, still needs 1, 3, 5 and 9`);
+    await page.keyboard.press('Backspace');
+    await expect.poll(() => side(0)).toBe(`[${BLUE}] 8 cells, 4 placed`);
+    await expect.poll(() => side(1)).toBe(`[${ORANGE}] 8 cells, 0 placed, still needs 1, 3, 5 and 9`);
+    await expect(proof).toHaveCount(1);
+
+    // row 3 painted into the first set, the proof still open: sixteen against seven, no claim and no proof
+    await page.keyboard.press('KeyV');
+    await toggle([18, 19, 20, 21, 22, 23, 24, 25, 26], '6');
+    await expect(tracker).toContainText('Not the same digits: 16 cells against 7');
+    await expect(proof).toHaveCount(0);
+    await expect(tracker.locator('.set-why')).toHaveCount(0);
+    await expect(tracker).not.toContainText('still needs');
+    // and column 3 into the second: rows 2 and 3 against columns 2 and 3, proved, and the proof shown is theirs
+    await toggle([2, 11, 20, 29, 38, 47, 56, 65, 74], '2');
+    await expect(tracker).toContainText('Same digits, proved by counting houses');
+    expect(await side(0)).toBe(`[${BLUE}] 14 cells, 7 placed, still needs 2`);
+    expect(await side(1)).toBe(`[${ORANGE}] 14 cells, 5 placed, still needs 1, 4 and 9`);
+    await provedAgain(tracker, `[${BLUE}] with columns 2 and 3 covers the same cells as [${ORANGE}] with rows 2 and 3. ${PROOF_END}`);
   });
 });
 
