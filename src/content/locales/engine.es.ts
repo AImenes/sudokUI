@@ -206,6 +206,7 @@ const engine: EngineTable = {
   ": the loop holds whichever way round it is read.": ": el bucle es válido sea cual sea el sentido en que se lea.",
   "If the {0} in {1} is false, the {2} in {3} is true (strong link).": "Si el {0} de {1} es falso, el {2} de {3} es verdadero (enlace fuerte).",
   "If the {0} in {1} is true, the {2} in {3} is false (weak link).": "Si el {0} de {1} es verdadero, el {2} de {3} es falso (enlace débil).",
+  "If the {0} in {1} is true, the {2} in {3} is false (a strong link, used here as a weak one).": "Si el {0} de {1} es verdadero, el {2} de {3} es falso (un enlace fuerte, usado aquí como débil).",
   "{0} in {1}": "el {0} de {1}",
   " Every weak link in the loop is a strong link too, so what else could sit in its place is false: {0}.": " Cada enlace débil del bucle también es un enlace fuerte, así que todo lo demás que podría ocupar su lugar es falso: {0}.",
   " The loop holds, but nothing else sits on its weak links: it removes nothing.": " El bucle es válido, pero no hay nada más sobre sus enlaces débiles: no elimina nada.",
