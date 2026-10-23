@@ -58,10 +58,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
   shape carries the meaning without colour vision, in print and in the
   legend; the colour helps everyone else. (HoDoKu: green filled, blue
   filled.)
-- **G3. Removed and placed are their own marks.** A removal is a filled
-  disc in the removal colour **with a diagonal stroke through it**; a
-  placement is a filled disc in the placement colour **with a double ring**.
-  Neither may be told from a true or a false node by colour alone.
+- **G3. Removed and placed are their own marks.** A removal is a ring in
+  the removal colour **with a diagonal bar through it** (it is false, and
+  removed); a placement is a true disc **with an outer ring** (it is true,
+  and written in). Neither may be told from a true or a false node by
+  colour alone.
 - **G4. Pattern roles keep their grammar.** Candidates that are part of a
   pattern but carry no truth claim (fish bases, a subset, a rectangle's
   floor, a wing's pivot) are filled discs in the role colours: pattern,
@@ -284,14 +285,64 @@ data changes later.
   `tests/chainTrainer.test.ts`, `tests/eureka.test.ts`, the soundness
   harnesses, and the browser tests that count arrows.
 
-## Colours
+## Colours and sizes
 
-To be filled from the measured colour study: exact values for true,
-false, removed, placed, pattern, acts-through, exception, four ALS tints,
-cluster hues and shades, arrow, halo and start marker, in each of the four
-themes and the Learn pages, with their contrast against the board and each
-other and their separation under protanopia, deuteranopia and
-tritanopia.
+Measured (WCAG contrast; CIEDE2000 under Machado 2009 protan, deutan and
+tritan, with Viénot and Brettel as cross-checks). LIGHT applies to the
+light and rose themes and the Learn diagrams; DARK to dark and forest. A
+cell is 100 units (the Learn diagrams scale everything by 0.6).
+
+**Principles.** Shape carries truth, hue carries meaning: a filled disc
+is true or a role, a ring is false, a barred ring is removed, a disc with
+an outer ring is placed, a rounded square is a member of a set. Digits on
+fills are near-black (#10131c, weight 700) in every theme, at 5.5:1 or
+more; marks are opaque (today's discs are 0.85 opacity with white digits,
+2.4 to 3.4:1, which is a measured reason HoDoKu reads better: its black on
+pastel is 8 to 11:1). Lightness separates what colour blindness merges:
+true green is the lightest truth colour on light boards and the darkest on
+dark ones. Arrows are the only achromatic mark.
+
+| Token | LIGHT | DARK | Shape |
+| --- | --- | --- | --- |
+| `--hint-true` (fill / ink) | #57c274 / #006c2f | #35a458 | disc r 13; light themes add a 2-unit edge in the ink |
+| `--hint-false` | #175bb7 | #7fbbff (HoDoKu's own off-blue) | ring r 11.5, stroke 3, inside tinted 0.10 / 0.16 |
+| `--hint-removed` | #bc072a | #fe9696 | the false ring in red plus a 45° bar (upper left to lower right, rim to rim, stroke 2.25, over the digit: the ISO "no" bar) |
+| placed | true fill + ring in true ink | same | disc plus a concentric ring r 16.5, stroke 2.5 |
+| `--hint-pattern` (fill / ink) | #498de5 / #175bb7 | #498de5 | disc |
+| `--hint-secondary` (acts-through) | #f8b93f / #805500 | #f8b93f | disc |
+| `--hint-fin` (exception) | #dec4fe / #7646a5 | #dec4fe | disc |
+| `--hint-als-1..5` (fill / light edge) | #ffd3b8/#9b5212, #dfe2fe/#5353ad, #a2b63c/#5b6704, #ec84b8/#9e366f, #a9926b/#745e39 | same fills, no edge | rounded square 24×24, rx 6 |
+| `--hint-arrow` (arrows, ties, start dot, walk badges) | #151a24 | #f2f4f9 | stroke 3; weak dash "8 6" with butt caps; head 14 long × 11 wide; tail and tip 3 units outside the marks' rims |
+| halo | `--cell-bg`, arrow width + 4, opacity 0.85 | same | drawn after the grid lines, with the arrow |
+| band | role fill at alpha 0.07 | 0.10 | outline inset 3.5, stroke 3, rx 8, role ink at full opacity |
+| `--hint-on-fill` / `--hint-in-ring` (digits) | #10131c / #1b2233 | #10131c / #eef1f8 | weight 700 |
+
+Tie: arrow ink, width 2, opacity 0.5, halo 6 at 0.5. Start dot: r 4.5 in
+arrow ink with a 2-unit board-coloured stroke. Walk badge: r 10, arrow
+ink, numeral 13 in `--cell-bg`.
+
+**The blue clash, resolved.** HoDoKu's blue is "false", ours is "the
+pattern". From now on blue is the pattern only as a filled disc and false
+only as a ring; green is always true or placed; red is always removed. In
+a chain step every node takes its truth mark, and pattern-blue discs are
+not used beside truth marks (in the dark theme pattern and true are only
+ΔE 4.1 apart under tritan vision, and both are discs). Gold discs are not
+put beside true discs either (light protan ΔE 8.3).
+
+**Where shape carries it.** True vs false: disc vs ring. Removed: the
+bar. Placed vs true: the outer ring (same colour by design). A set member:
+the square. Strong vs weak: solid vs dashed. Every other pair is told
+apart by colour alone under all three simulations in the light themes;
+in the dark ones true/false (ΔE 11.9 tritan), secondary/removed (5.9) and
+fin/false (5.3) lean on shape.
+
+While a hint draws, the player's peer and same-digit tints step aside
+(the amber same-digit tint reads like a gold band), as the bivalue rings
+already do; the player's own cell colours stay under the marks.
+
+The study's scripts (WCAG, CIEDE2000, the three simulations, a rendered
+specimen of every mark in every theme) are kept outside the repository;
+the values above are its final ones.
 
 ## Status
 
