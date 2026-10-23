@@ -357,7 +357,22 @@ describe('the landing count', () => {
       ['https://tieba.baidu.com/', 'other'],
       ['https://www.baidu.com/', 'search'],
       ['https://yandex.ru/', 'search'],
-      ['https://music.yandex.ru/', 'other']
+      ['https://music.yandex.ru/', 'other'],
+      // Microsoft 365's own hosts, the mail and the chat; its home is another site
+      ['https://outlook.office.com/', 'mail'],
+      ['https://outlook.cloud.microsoft/', 'mail'],
+      ['https://teams.cloud.microsoft/', 'chat'],
+      ['https://m365.cloud.microsoft/', 'other'],
+      // the apps of the services named, and the phone's messages apps
+      ['android-app://com.google.android.youtube/', 'social'],
+      ['android-app://com.whatsapp.w4b/', 'chat'],
+      ['android-app://com.google.android.apps.dynamite/', 'chat'],
+      ['android-app://com.google.android.apps.messaging/', 'chat'],
+      ['android-app://com.samsung.android.messaging/', 'chat'],
+      ['android-app://com.microsoft.teams/', 'chat'],
+      ['android-app://ch.protonmail.android/', 'mail'],
+      // a site that sends its whole address: only the host is read
+      ['https://www.reddit.com/r/sudoku/comments/abc/title/?utm_source=share', 'reddit']
     ];
     for (const [referer, word] of cases) expect(landingFrom(referer), String(referer)).toBe(word);
     // every word is on the list

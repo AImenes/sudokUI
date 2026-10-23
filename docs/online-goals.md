@@ -541,8 +541,10 @@ before the launch:
   (`landingFrom` in worker/telemetry.ts): none, search, ai, reddit,
   enjoysudoku, hackernews, facebook, discord, social, chat, mail, github,
   sudoku, other. The referrer is read for that word and never written.
-  Browsers send another site's origin only, and most apps send nothing,
-  so `none` is mostly them; on Android an app can name itself
+  Browsers usually send only another site's origin, though a site can
+  choose to send its full address, query and all; only the host (or an
+  Android app's package) is used, and nothing of it is written. Most apps
+  send nothing, so `none` is mostly them; on Android an app can name itself
   (`android-app://<package>`), so `chat`, `mail` and `social` cover apps
   as well as sites. A post in the Enjoy Sudoku forum shows as
   `enjoysudoku`; the same link in a WhatsApp group as `none`, or as

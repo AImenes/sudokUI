@@ -305,6 +305,7 @@ const FROM_HOSTS: [LandingFrom, string[]][] = [
       'outlook.live.com',
       'outlook.office.com',
       'outlook.office365.com',
+      'outlook.cloud.microsoft',
       'mail.yahoo.com',
       'mail.proton.me',
       'mail.aol.com',
@@ -324,7 +325,10 @@ const FROM_HOSTS: [LandingFrom, string[]][] = [
     'social',
     ['t.co', 'x.com', 'twitter.com', 'linkedin.com', 'lnkd.in', 'bsky.app', 'instagram.com', 'threads.net', 'threads.com', 'pinterest.com', 'tumblr.com', 'mastodon.social', 'youtube.com', 'tiktok.com', 'vk.com']
   ],
-  ['chat', ['whatsapp.com', 'telegram.org', 't.me', 'messenger.com', 'slack.com', 'teams.microsoft.com', 'teams.live.com', 'signal.org', 'snapchat.com', 'chat.google.com']],
+  [
+    'chat',
+    ['whatsapp.com', 'telegram.org', 't.me', 'messenger.com', 'slack.com', 'teams.microsoft.com', 'teams.live.com', 'teams.cloud.microsoft', 'signal.org', 'snapchat.com', 'chat.google.com']
+  ],
   ['github', ['github.com']],
   [
     'sudoku',
@@ -343,18 +347,55 @@ const FROM_HOSTS: [LandingFrom, string[]][] = [
  */
 const SEARCH_ROOTS = /^(?:www\.)?(?:google\.(?:com?\.)?[a-z]{2,3}|yandex\.(?:ru|com|com\.tr|by|kz|uz)|baidu\.com|seznam\.cz)$/;
 
-/** Android's apps name themselves as android-app://<package>: the ones a link to us is likely opened from */
+/**
+ * Android's apps name themselves as android-app://<package>: the apps of
+ * the services named above, and the phone's own messages apps, which a
+ * share menu hands a link to as often as a chat app
+ */
 const FROM_APPS: [LandingFrom, string[]][] = [
   ['search', ['com.google.android.googlequicksearchbox']],
-  ['mail', ['com.google.android.gm', 'com.microsoft.office.outlook']],
+  ['mail', ['com.google.android.gm', 'com.microsoft.office.outlook', 'ch.protonmail.android', 'com.yahoo.mobile.client.android.mail']],
   ['reddit', ['com.reddit.frontpage']],
   ['facebook', ['com.facebook.katana', 'com.facebook.lite']],
   ['discord', ['com.discord']],
-  ['social', ['com.twitter.android', 'com.linkedin.android', 'com.instagram.android', 'com.instagram.barcelona', 'xyz.blueskyweb.app']],
-  ['chat', ['com.whatsapp', 'org.telegram.messenger', 'com.facebook.orca', 'com.slack', 'org.thoughtcrime.securesms']]
+  [
+    'social',
+    [
+      'com.twitter.android',
+      'com.linkedin.android',
+      'com.instagram.android',
+      'com.instagram.barcelona',
+      'xyz.blueskyweb.app',
+      'com.google.android.youtube',
+      'com.zhiliaoapp.musically',
+      'com.pinterest',
+      'com.tumblr',
+      'org.joinmastodon.android'
+    ]
+  ],
+  [
+    'chat',
+    [
+      'com.whatsapp',
+      'com.whatsapp.w4b',
+      'org.telegram.messenger',
+      'com.facebook.orca',
+      'com.slack',
+      'org.thoughtcrime.securesms',
+      'com.microsoft.teams',
+      'com.google.android.apps.dynamite',
+      'com.snapchat.android',
+      'com.google.android.apps.messaging',
+      'com.samsung.android.messaging'
+    ]
+  ]
 ];
 
-/** the word for a referrer, as landings are counted (LANDING_FROM) */
+/**
+ * The word for a referrer, as landings are counted (LANDING_FROM). A
+ * referrer is usually a site's origin, but a site can send its whole
+ * address, query and all: only the host, or an app's package, is read.
+ */
 export function landingFrom(referer: string | null): LandingFrom {
   if (!referer) return 'none';
   let url: URL;
