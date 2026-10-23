@@ -66,8 +66,9 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
   it; the rating stays HoDoKu's
 - **Practice mode** for 61 named techniques: pick one and get a generated
   puzzle that genuinely requires it — with nothing harder needed before it.
-  The game fast-forwards through the routine steps so the chosen pattern is
-  the very next move, the puzzle stays within one level of the technique,
+  The game plays the standard solver's steps up to it (uniqueness
+  included, whatever the hint setting) so the chosen pattern is the very
+  next move, the puzzle stays within one level of the technique,
   and the bar says **found** when your own move is the one it was prepared
   for. The rarest techniques come from puzzles found in advance by a
   multi-hour search, so they start instantly too
