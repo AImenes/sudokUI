@@ -11,7 +11,9 @@
  * name, the blobs are the band, the source, the app's version and the
  * country the connection came from (request.cf, never the address), and
  * the doubles are the time bucket, how many events the point stands for
- * and the three flags. Identical events fold into one point with a count,
+ * and the three flags. A `shared` line, sent when a player shares a link,
+ * adds two blobs: what was shared and whether the share sheet took it or
+ * it was copied (SHARE_KINDS, SHARE_VIAS). Identical events fold into one point with a count,
  * because WAE takes at most POINTS_MAX writes per invocation: the app
  * never sends more than that many events at once (src/state/telemetry.ts),
  * and a batch from anywhere else is kept to its first POINTS_MAX points.
@@ -26,7 +28,10 @@
  * a browser arrives at /p/<puzzle> or /daily/<date> from outside the site:
  * no referrer from the site itself, a navigation (the Sec-Fetch headers,
  * where the browser sends them), and not a crawler or a chat app's preview
- * fetcher. That is the research's "share-link landings" number.
+ * fetcher. That is the research's "share-link landings" number. Its fifth
+ * blob says where the link was opened from, as one word of a closed list
+ * (landingFrom): the referrer the browser sends is read for that word and
+ * never written.
  *
  * The dataset is an interface, so the tests and the dev and preview
  * servers run the whole thing over memory (memoryEvents).
@@ -38,13 +43,29 @@ import { version as WORKER_VERSION } from '../package.json';
 
 export const API_PATH = '/api/t';
 
-/** the events a point can stand for; `landing` is the Worker's own, the app never sends it */
-export const EVENT_NAMES = ['started', 'completed', 'landing'] as const;
+/** the events a point can stand for; `landing` is the Worker's own */
+export const EVENT_NAMES = ['started', 'completed', 'shared', 'landing'] as const;
 export type EventName = (typeof EVENT_NAMES)[number];
+
+/** the events the route takes: a `landing` is written only by the share route, so none can be posted */
+export const APP_EVENTS = ['started', 'completed', 'shared'] as const;
+export type AppEvent = (typeof APP_EVENTS)[number];
 
 /** where an event came from: the installed app or a browser tab (dailyStats.ts, playedFrom) */
 export const SOURCES = ['pwa', 'tab'] as const;
 export type Source = (typeof SOURCES)[number];
+
+/**
+ * What a `shared` line says was shared: the Share dialog's link to the
+ * puzzle (a daily's own address for a daily) or to the position, the win
+ * screen's challenge, or the daily's line (src/ui/Dialogs.tsx)
+ */
+export const SHARE_KINDS = ['puzzle', 'position', 'challenge', 'daily'] as const;
+export type ShareKind = (typeof SHARE_KINDS)[number];
+
+/** how it went: the device's share sheet took it, or it was copied (src/ui/send.ts) */
+export const SHARE_VIAS = ['sheet', 'copy'] as const;
+export type ShareVia = (typeof SHARE_VIAS)[number];
 
 /** the most events one request may carry */
 export const BATCH_MAX = 250;
@@ -59,9 +80,10 @@ export const RATE_LIMIT = { count: 60, windowMs: 10 * 60 * 1000 };
 
 /** one event, as the app sends it and as it is checked */
 export interface TelemetryEvent {
-  event: EventName;
+  event: AppEvent;
+  /** for a share, the band of the puzzle shared */
   band: Level;
-  /** the time in 15-second buckets, capped as the daily's are (dailies.ts); 0 for a start */
+  /** the time in 15-second buckets, capped as the daily's are (dailies.ts); 0 for a start and a share */
   bucket: number;
   /** display-mode: standalone matched */
   standalone: boolean;
@@ -73,9 +95,12 @@ export interface TelemetryEvent {
   optin: boolean;
   /** the device had played on an earlier day; only an opted-in device knows */
   returning: boolean;
+  /** a share's kind and way; on a `shared` line only, and always there */
+  what?: ShareKind;
+  via?: ShareVia;
 }
 
-/** what goes to WAE: one index, four blobs, six doubles (see the header) */
+/** what goes to WAE: one index, four blobs (six for a share, five for a landing), six doubles (see the header) */
 export interface DataPoint {
   indexes: string[];
   blobs: string[];
@@ -95,7 +120,7 @@ const LEVEL_SET = new Set<string>(LEVELS);
 export function checkEvent(x: unknown): TelemetryEvent | null {
   if (!x || typeof x !== 'object' || Array.isArray(x)) return null;
   const e = x as Record<string, unknown>;
-  if (typeof e.event !== 'string' || !(EVENT_NAMES as readonly string[]).includes(e.event)) return null;
+  if (typeof e.event !== 'string' || !(APP_EVENTS as readonly string[]).includes(e.event)) return null;
   if (typeof e.band !== 'string' || !LEVEL_SET.has(e.band)) return null;
   if (typeof e.bucket !== 'number' || !Number.isInteger(e.bucket) || e.bucket < 0 || e.bucket > BUCKET_MAX) return null;
   if (typeof e.standalone !== 'boolean') return null;
@@ -104,13 +129,22 @@ export function checkEvent(x: unknown): TelemetryEvent | null {
   for (const flag of ['offline', 'optin', 'returning']) {
     if (e[flag] !== undefined && typeof e[flag] !== 'boolean') return null;
   }
+  const shared = e.event === 'shared';
+  if (shared) {
+    // a share says what and how, and nothing a play line says besides:
+    // no time, and never kept, so none of the opt-in's flags
+    if (typeof e.what !== 'string' || !(SHARE_KINDS as readonly string[]).includes(e.what)) return null;
+    if (typeof e.via !== 'string' || !(SHARE_VIAS as readonly string[]).includes(e.via)) return null;
+    if (e.bucket !== 0 || e.offline === true || e.optin === true || e.returning === true) return null;
+  }
   // nothing else rides along: a field this list does not know is refused,
   // so the closed list stays closed
+  const fields = ['event', 'band', 'bucket', 'standalone', 'version', 'source', 'offline', 'optin', 'returning', ...(shared ? ['what', 'via'] : [])];
   for (const key of Object.keys(e)) {
-    if (!['event', 'band', 'bucket', 'standalone', 'version', 'source', 'offline', 'optin', 'returning'].includes(key)) return null;
+    if (!fields.includes(key)) return null;
   }
   return {
-    event: e.event as EventName,
+    event: e.event as AppEvent,
     band: e.band as Level,
     bucket: e.bucket,
     standalone: e.standalone,
@@ -118,7 +152,8 @@ export function checkEvent(x: unknown): TelemetryEvent | null {
     source: e.source as Source,
     offline: e.offline === true,
     optin: e.optin === true,
-    returning: e.returning === true
+    returning: e.returning === true,
+    ...(shared ? { what: e.what as ShareKind, via: e.via as ShareVia } : {})
   };
 }
 
@@ -140,9 +175,12 @@ const flag = (b: boolean) => (b ? 1 : 0);
 
 /** the data point an event becomes, standing for `count` identical events */
 export function pointOf(e: TelemetryEvent, country: string, count = 1): DataPoint {
+  const blobs = [e.band, e.source, e.version, country];
+  // a share's kind and way; a play line keeps its four blobs, as before
+  if (e.event === 'shared') blobs.push(e.what ?? '', e.via ?? '');
   return {
     indexes: [e.event],
-    blobs: [e.band, e.source, e.version, country],
+    blobs,
     doubles: [e.bucket, count, flag(e.standalone), flag(e.offline), flag(e.optin), flag(e.returning)]
   };
 }
@@ -151,7 +189,7 @@ export function pointOf(e: TelemetryEvent, country: string, count = 1): DataPoin
 export function fold(events: TelemetryEvent[], country: string): DataPoint[] {
   const points = new Map<string, DataPoint>();
   for (const e of events) {
-    const key = [e.event, e.band, e.bucket, e.standalone, e.version, e.source, e.offline, e.optin, e.returning].join('|');
+    const key = [e.event, e.band, e.bucket, e.standalone, e.version, e.source, e.offline, e.optin, e.returning, e.what ?? '', e.via ?? ''].join('|');
     const p = points.get(key);
     if (p) p.doubles[1]++;
     else points.set(key, pointOf(e, country));
@@ -225,17 +263,170 @@ export function isLanding(request: Request): boolean {
 }
 
 /**
+ * Where a landing came from, as one word of a closed list, the one the
+ * privacy page names: `none` when the browser sends no referrer (a link
+ * typed, a bookmark, or an app that sends none, as most do), `other` for
+ * any site or app the list does not know. A referrer is usually another
+ * site's address; on Android it can be the app the link was opened from
+ * (FROM_APPS), so `chat` and `mail` cover apps as well as sites. The word
+ * is all that is written, never the address.
+ */
+export const LANDING_FROM = [
+  'none',
+  'search',
+  'ai',
+  'reddit',
+  'enjoysudoku',
+  'hackernews',
+  'facebook',
+  'discord',
+  'social',
+  'chat',
+  'mail',
+  'github',
+  'sudoku',
+  'other'
+] as const;
+export type LandingFrom = (typeof LANDING_FROM)[number];
+
+/**
+ * The sites each word stands for, matched on the host and its subdomains
+ * (old.reddit.com is reddit, l.facebook.com facebook). The first match
+ * wins, so a webmail and an assistant go before the search engine of the
+ * same company. A search engine is named by its search host, not its
+ * whole domain, which also serves mail, news and forums; the search pages
+ * on a whole domain's own root are SEARCH_ROOTS below.
+ */
+const FROM_HOSTS: [LandingFrom, string[]][] = [
+  [
+    'mail',
+    [
+      'mail.google.com',
+      'outlook.live.com',
+      'outlook.office.com',
+      'outlook.office365.com',
+      'outlook.cloud.microsoft',
+      'mail.yahoo.com',
+      'mail.proton.me',
+      'mail.aol.com',
+      'mail.yandex.ru',
+      'mail.yandex.com',
+      'mail.naver.com',
+      'email.seznam.cz'
+    ]
+  ],
+  ['ai', ['chatgpt.com', 'chat.openai.com', 'perplexity.ai', 'claude.ai', 'gemini.google.com', 'copilot.microsoft.com']],
+  ['reddit', ['reddit.com', 'redd.it']],
+  ['enjoysudoku', ['enjoysudoku.com']],
+  ['hackernews', ['news.ycombinator.com', 'hn.algolia.com']],
+  ['facebook', ['facebook.com', 'fb.com', 'fb.me']],
+  ['discord', ['discord.com', 'discordapp.com', 'discord.gg']],
+  [
+    'social',
+    ['t.co', 'x.com', 'twitter.com', 'linkedin.com', 'lnkd.in', 'bsky.app', 'instagram.com', 'threads.net', 'threads.com', 'pinterest.com', 'tumblr.com', 'mastodon.social', 'youtube.com', 'tiktok.com', 'vk.com']
+  ],
+  [
+    'chat',
+    ['whatsapp.com', 'telegram.org', 't.me', 'messenger.com', 'slack.com', 'teams.microsoft.com', 'teams.live.com', 'teams.cloud.microsoft', 'signal.org', 'snapchat.com', 'chat.google.com']
+  ],
+  ['github', ['github.com']],
+  [
+    'sudoku',
+    ['sudokuwiki.org', 'sudoku.coach', 'sudokupad.app', 'f-puzzles.com', 'sudokuexchange.com', 'hodoku.sourceforge.net', 'logic-masters.de', 'sudoku-solutions.com', 'crackingthecryptic.com']
+  ],
+  ['search', ['bing.com', 'duckduckgo.com', 'ecosia.org', 'startpage.com', 'search.brave.com', 'qwant.com', 'search.yahoo.com', 'm.baidu.com', 'kagi.com', 'ya.ru', 'search.naver.com', 'search.seznam.cz']]
+];
+
+/**
+ * Search engines whose search is the domain's own root: Google on its
+ * country domains (google.com, www.google.no, google.co.uk), Yandex, Baidu
+ * and Seznam. The root only, so Google's Docs, Sites, Groups or Classroom
+ * are another site, and its chat and mail are named above. A link that
+ * Gmail or Docs passes through Google's redirect arrives from www.google
+ * and reads as search: the browser says no more than that.
+ */
+const SEARCH_ROOTS = /^(?:www\.)?(?:google\.(?:com?\.)?[a-z]{2,3}|yandex\.(?:ru|com|com\.tr|by|kz|uz)|baidu\.com|seznam\.cz)$/;
+
+/**
+ * Android's apps name themselves as android-app://<package>: the apps of
+ * the services named above, and the phone's own messages apps, which a
+ * share menu hands a link to as often as a chat app
+ */
+const FROM_APPS: [LandingFrom, string[]][] = [
+  ['search', ['com.google.android.googlequicksearchbox']],
+  ['mail', ['com.google.android.gm', 'com.microsoft.office.outlook', 'ch.protonmail.android', 'com.yahoo.mobile.client.android.mail']],
+  ['reddit', ['com.reddit.frontpage']],
+  ['facebook', ['com.facebook.katana', 'com.facebook.lite']],
+  ['discord', ['com.discord']],
+  [
+    'social',
+    [
+      'com.twitter.android',
+      'com.linkedin.android',
+      'com.instagram.android',
+      'com.instagram.barcelona',
+      'xyz.blueskyweb.app',
+      'com.google.android.youtube',
+      'com.zhiliaoapp.musically',
+      'com.pinterest',
+      'com.tumblr',
+      'org.joinmastodon.android'
+    ]
+  ],
+  [
+    'chat',
+    [
+      'com.whatsapp',
+      'com.whatsapp.w4b',
+      'org.telegram.messenger',
+      'com.facebook.orca',
+      'com.slack',
+      'org.thoughtcrime.securesms',
+      'com.microsoft.teams',
+      'com.google.android.apps.dynamite',
+      'com.snapchat.android',
+      'com.google.android.apps.messaging',
+      'com.samsung.android.messaging'
+    ]
+  ]
+];
+
+/**
+ * The word for a referrer, as landings are counted (LANDING_FROM). A
+ * referrer is usually a site's origin, but a site can send its whole
+ * address, query and all: only the host, or an app's package, is read.
+ */
+export function landingFrom(referer: string | null): LandingFrom {
+  if (!referer) return 'none';
+  let url: URL;
+  try {
+    url = new URL(referer);
+  } catch {
+    // an unreadable referrer is no referrer, as isLanding reads it
+    return 'none';
+  }
+  const host = url.hostname.toLowerCase().replace(/\.$/, '');
+  if (url.protocol === 'android-app:') return FROM_APPS.find(([, apps]) => apps.includes(host))?.[0] ?? 'other';
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return 'other';
+  for (const [word, hosts] of FROM_HOSTS) {
+    if (hosts.some((h) => host === h || host.endsWith(`.${h}`))) return word;
+  }
+  return SEARCH_ROOTS.test(host) ? 'search' : 'other';
+}
+
+/**
  * Counts a landing on a share page when the request is one (isLanding):
  * a `landing` point with the band the page knows, which address it was
- * (a puzzle's or a daily's) in the source slot, the Worker's version and
- * the country. True when a point was written.
+ * (a puzzle's or a daily's) in the source slot, the Worker's version, the
+ * country and where it came from (landingFrom). True when a point was
+ * written.
  */
 export function countLanding(dataset: AnalyticsEngineLike | null | undefined, request: Request, share: { level?: Level; daily?: unknown }): boolean {
   if (!dataset || !isLanding(request)) return false;
   try {
     dataset.writeDataPoint({
       indexes: ['landing'],
-      blobs: [share.level ?? '', share.daily ? 'daily' : 'p', WORKER_VERSION, countryOf(request)],
+      blobs: [share.level ?? '', share.daily ? 'daily' : 'p', WORKER_VERSION, countryOf(request), landingFrom(request.headers.get('referer'))],
       doubles: [0, 1, 0, 0, 0, 0]
     });
     return true;

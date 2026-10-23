@@ -16,8 +16,11 @@ as before. It is the companion of
   Worker adds the country and writes each line to **Workers Analytics
   Engine** (WAE), Cloudflare's store for exactly this kind of counting.
   Nothing identifies a player and no IP address is ever written; the
-  privacy page (`/privacy/`) says the same to players. The share pages
-  count a landing there too when a person arrives from outside the site.
+  privacy page (`/privacy/`) says the same to players. A link shared
+  from the app (through the share menu or copied) sends one more line,
+  what was shared and which way, never the link. The share pages count a
+  landing there too when a person arrives from outside the site, with
+  one word for where the link was opened from.
 - **The dataset** is called `sudokui_events`. It needs no creating: the
   deployed code is bound to it (`wrangler.jsonc`, `analytics_engine_datasets`)
   and it appears the moment the first line is written. WAE keeps three
@@ -222,8 +225,10 @@ that. To see it:
 ## Step 7: see the first numbers
 
 Open <https://sudokui.app/admin>. Access asks for your e-mail, sends a
-code, and shows the page: twelve numbers for the last seven days, a line
-of completed games per day over thirty days, and a table of every day.
+code, and shows the page: fourteen numbers, most over the last seven
+days and two for yesterday; a line of completed games per day over
+thirty days; what was shared and where landings came from over the
+week; and a table of every day.
 On the first day it is mostly zeros and dashes; the **Offline, estimated**
 number reads "—" until some player has turned the opt-in on and finished
 a game online, because the estimate is the ratio of that cohort's offline
@@ -291,12 +296,20 @@ curl.exe -s -H "Authorization: Bearer $env:ADMIN_TOKEN" "https://api.cloudflare.
 ```
 
 What each column holds: `index1` the event (`started`, `completed`,
-`landing`); `blob1` the band; `blob2` where it came from (`pwa`, `tab`, or
-for a landing `p` or `daily`); `blob3` the version; `blob4` the country;
-`double1` the 15-second time bucket; `double2` how many events the row
-stands for; `double3` installed; `double4` kept offline; `double5` the
-sender has the opt-in on; `double6` the sender had played on an earlier
-day. Always multiply a count by `_sample_interval`: at volume WAE samples.
+`shared`, `landing`); `blob1` the band; `blob2` where it came from (`pwa`,
+`tab`, or for a landing `p` or `daily`); `blob3` the version; `blob4` the
+country; `blob5` for a share what was shared (`puzzle`, `position`,
+`challenge`, `daily`), for a landing where it came from as one word
+(`none`, `search`, `ai`, `reddit`, `enjoysudoku`, `hackernews`,
+`facebook`, `discord`, `social`, `chat`, `mail`, `github`, `sudoku`,
+`other`; empty for landings counted before the word was kept), empty on
+a play line; `blob6` for a share the way it went (`sheet`, `copy`);
+`double1` the 15-second time bucket (0 for a start and a share);
+`double2` how many events the row stands for; `double3` installed;
+`double4` kept offline; `double5` the sender has the opt-in on;
+`double6` the sender had played on an earlier day (the last three are
+always 0 on a share, which is never kept). Always multiply a count by
+`_sample_interval`: at volume WAE samples.
 
 ## What this does not do
 

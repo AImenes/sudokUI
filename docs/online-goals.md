@@ -523,6 +523,43 @@ GitHub account:
 - **Hand steps**, in [connect-the-feedback.md](connect-the-feedback.md):
   Email Routing on, the address verified, the secret.
 
+The share loop, counted (October 2026), so a launch's effect can be read
+before the launch:
+
+- **A share is a line.** When a link goes from the app to someone (the
+  Share dialog's puzzle or position link, the win screen's challenge or
+  daily line) and the share sheet took it or it was copied, the app sends
+  a `shared` line: what (`puzzle`, `position`, `challenge`, `daily`), the
+  way (`sheet`, `copy`), the band, where it ran and the version. Never
+  the link, the text or where it went; a closed sheet, a failed copy, and
+  copying the puzzle string or the pencil-mark grid count nothing. Live
+  only: never kept on the device, not even with the opt-in, so it
+  carries none of its flags, and none goes from a device left out
+  (`shared` in src/state/telemetry.ts, checked in worker/telemetry.ts).
+  The Worker writes it like the play lines, with the country.
+- **A landing says where it came from**, as one word of a closed list
+  (`landingFrom` in worker/telemetry.ts): none, search, ai, reddit,
+  enjoysudoku, hackernews, facebook, discord, social, chat, mail, github,
+  sudoku, other. The referrer is read for that word and never written.
+  Browsers usually send only another site's origin, though a site can
+  choose to send its full address, query and all; only the host (or an
+  Android app's package) is used, and nothing of it is written. Most apps
+  send nothing, so `none` is mostly them; on Android an app can name itself
+  (`android-app://<package>`), so `chat`, `mail` and `social` cover apps
+  as well as sites. A post in the Enjoy Sudoku forum shows as
+  `enjoysudoku`; the same link in a WhatsApp group as `none`, or as
+  `chat` where Android names the app. A search engine is matched on its
+  search host, not its whole domain, so Google Docs or Sites are `other`;
+  a link Gmail passes through Google's redirect still reads as `search`.
+- **A landing can no longer be posted.** `/api/t` takes `started`,
+  `completed` and `shared`; before, a forged `landing` line was written
+  like the share route's own.
+- **The dashboard** adds the week's shares (sheet and copy), landings per
+  share, what was shared, and where landings came from; landings counted
+  before the word was kept show as not recorded.
+- **The privacy page** says both, in three languages; the Settings switch
+  that leaves a device out names shares too.
+
 ### Phase 4, after four to eight weeks of data
 
 - **Daily archive pages.** One page per day at `/daily/<date>` with the

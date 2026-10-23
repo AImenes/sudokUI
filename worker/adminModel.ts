@@ -27,6 +27,13 @@ export interface DayRow {
   completedStandalone: number;
   landings: number;
   landingsDaily: number;
+  /** landings by where they came from (telemetry.ts, LANDING_FROM); '' for those counted before it was kept */
+  landingsFrom: Record<string, number>;
+  /** links shared, and of them the ones the share sheet took (the rest were copied) */
+  shares: number;
+  sharesSheet: number;
+  /** shares by what was shared (telemetry.ts, SHARE_KINDS), each split by the way it went */
+  sharesBy: Record<string, { sheet: number; copy: number }>;
 }
 
 /** the plan's numbers over some days */
@@ -50,6 +57,12 @@ export interface Totals {
   optinOffline: number;
   landings: number;
   landingsDaily: number;
+  landingsFrom: Record<string, number>;
+  shares: number;
+  sharesSheet: number;
+  sharesBy: Record<string, { sheet: number; copy: number }>;
+  /** landings over shares: how far a shared link travels; null without a share */
+  landingsPerShare: number | null;
   startsOptin: number;
   startsNew: number;
   startsReturning: number;
