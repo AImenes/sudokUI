@@ -907,7 +907,7 @@ test.describe('a share link', () => {
     const html = await response!.text();
     expect(html).toContain('<html lang="en">');
     expect(html).toContain('<meta name="robots" content="noindex" />');
-    expect(html).toContain('<title>Easy sudoku, rated 600 | sudokUI</title>');
+    expect(html).toContain('<title>Easy sudoku, HoDoKu rating 600 | sudokUI</title>');
     expect(html).toContain('<meta property="og:title" content="Solved in 9:12. Can you beat it?" />');
     expect(html).toContain('<meta property="og:image" content="https://sudokui.app/og/easy.png" />');
     expect(html).not.toContain('rel="canonical"');
@@ -915,6 +915,19 @@ test.describe('a share link', () => {
     await expect(page.locator('.toast, [role=status]').filter({ hasText: 'solve it faster than 9:12' })).toBeVisible();
     // the address bar then names the puzzle as the app rates it, without the time to beat
     await expect.poll(() => page.evaluate(() => location.pathname + location.search)).toMatch(/^\/p\/[0-9.]{81}\?b=[a-z]+&s=\d+$/);
+  });
+
+  test('sent before HoDoKu’s five levels, it still opens, named by its level', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    // a link from when the site had eight bands: Tricky lies inside HoDoKu's Hard
+    const response = await page.goto(`/p/${EASY}?b=tricky&s=1100`);
+    const html = await response!.text();
+    expect(html).toContain('<title>Hard sudoku, HoDoKu rating 1100 | sudokUI</title>');
+    expect(html).toContain('<meta property="og:image" content="https://sudokui.app/og/hard.png" />');
+    await expect(page.locator('svg.board')).toBeVisible();
+    // the app rates the puzzle itself, and the address names its level
+    await expect(page.locator('.game-meta .level-badge')).toHaveText('Easy');
+    await expect.poll(() => page.evaluate(() => location.search)).toMatch(/^\?b=easy&s=\d+$/);
   });
 
   /** the clipboard, kept where the test can read it */
