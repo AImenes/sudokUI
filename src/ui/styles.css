@@ -2271,7 +2271,7 @@ kbd {
 /* the narrowest phones: the longest level name (Urettferdig) and a
    four-figure rating fit beside the timer and the buttons; with a wider
    font than the system's, the name gives way before the number does */
-@media (max-width: 359px) {
+@media (max-width: 359.98px) {
   .topbar .game-meta {
     gap: 4px;
   }

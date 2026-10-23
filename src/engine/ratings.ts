@@ -1,6 +1,8 @@
 // Technique catalog ported from HoDoKu (Options.java DEFAULT_SOLVER_STEPS).
-// Scores are HoDoKu's defaults, so puzzle ratings are directly comparable
-// with HoDoKu's: the HoDoKu rating.
+// Scores are HoDoKu's defaults for every technique the two share, so a
+// rating is on HoDoKu's scale: the HoDoKu rating. Techniques HoDoKu lacks,
+// Death Blossom on where HoDoKu has it off, and its Finned Franken fish
+// missing here mean the number is not always HoDoKu's own (rating.ts).
 //
 // Difficulty is HoDoKu's five levels, with HoDoKu's own limits and HoDoKu's
 // own rule (solver/SudokuSolver.java): a puzzle's level is the highest
@@ -268,8 +270,8 @@ export function maxLevel(a: Level, b: Level): Level {
  * to Easy, a puzzle of singles only. Medium and Hard classes get one level
  * above their own, so a player drilling X-Wings is never dropped into an
  * Extreme puzzle after the move. The chain techniques of Unfair class and
- * above have no ceiling: a puzzle that needs an AIC is seldom easier than
- * Unfair, and that is the point.
+ * above have no ceiling: a puzzle whose solve path has an AIC is Unfair or
+ * Extreme by the level rule, and that is the point.
  */
 export function practiceCeiling(tech: Tech): Level {
   const at = LEVELS.indexOf(TECHS[tech].level);

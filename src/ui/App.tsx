@@ -717,7 +717,10 @@ export default function App() {
             ) : (
               <>
                 <RatingGauge level={info.level} score={info.score} puzzle={info.puzzle} />
-                <span className={`level-badge level-${info.level.toLowerCase()}`}>{t.level(info.level)}</span>
+                {/* the title names the level where a narrow phone shortens it */}
+                <span className={`level-badge level-${info.level.toLowerCase()}`} title={t.level(info.level)}>
+                  {t.level(info.level)}
+                </span>
                 <button
                   className="score-btn"
                   onClick={() => openLearn({ tab: 'rating' })}

@@ -2168,6 +2168,10 @@ test.describe('the HoDoKu rating in the top bar', () => {
       expect(await misfits(page), `${label} at ${width} px`).toEqual([]);
       expect(await shown(page, '.game-meta .level-badge'), `${label} at ${width} px: the level`).toBe(true);
       expect(await shown(page, '.score-btn strong'), `${label} at ${width} px: the rating`).toBe(true);
+      // the level's whole name: only a phone narrower than 360 px may shorten it, with its title still whole
+      const badge = page.locator('.game-meta .level-badge');
+      if (width >= 360) expect(await badge.evaluate((b) => b.scrollWidth <= b.clientWidth), `${label} at ${width} px: the whole name`).toBe(true);
+      expect(await badge.getAttribute('title'), `${label} at ${width} px: the title`).toBe(await badge.textContent());
       // a phone keeps the compact form
       if (width <= 560) expect(await shown(page, '.rating-gauge'), `${label} at ${width} px: no gauge`).toBe(false);
       // a laptop has room for all of it

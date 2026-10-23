@@ -97,8 +97,8 @@ practised in an Easy puzzle, one of singles only; a technique of Medium
 or Hard class in a puzzle at most one of HoDoKu's levels above its class
 (`practiceCeiling` in `src/engine/ratings.ts`), so an X-Wing drill is
 never an Extreme puzzle after the move. Unfair-class techniques and
-above have no ceiling: a puzzle that needs an AIC is seldom easier than
-Unfair. (Before HoDoKu's five were the site's levels, a Medium-class
+above have no ceiling: a puzzle whose solve path has an AIC is Unfair or
+Extreme by the level rule. (Before HoDoKu's five were the site's levels, a Medium-class
 drill stopped at the band then called Tricky, the gentlest Hard puzzles;
 it may now be any Hard puzzle.) The stored practice puzzles were
 refiltered and rebuilt under the rule (`scripts/build-practice.ts`), the

@@ -13,7 +13,7 @@ export const RATING_POINTS: { title: string; text: string }[] = [
   },
   {
     title: 'Scores compatible with HoDoKu',
-    text: 'Scores and search order are the defaults of HoDoKu, the reference sudoku analyser. A Naked Single costs 4, an X-Wing 140, a Forcing Net 700. Techniques HoDoKu does not know, such as WXYZ-Wing, Chute Remote Pair and 3D Medusa, are scored next to their closest relatives. On a puzzle whose solve path uses only HoDoKu’s techniques, the rating can be compared with HoDoKu’s. Many paths use one of the others, and then the score, and sometimes the level, can differ from what HoDoKu gives.'
+    text: 'Scores and search order are HoDoKu’s defaults for every technique the two share; HoDoKu is the reference sudoku analyser. A Naked Single costs 4, an X-Wing 140, a Forcing Net 700. sudokUI’s solver also knows techniques HoDoKu does not, such as WXYZ-Wing, Chute Remote Pair and 3D Medusa, scored next to their closest relatives; it uses Death Blossom, which HoDoKu leaves off by default, and lacks HoDoKu’s Finned Franken fish. So the HoDoKu rating follows HoDoKu’s scale and rules, but on many puzzles it is not the number HoDoKu itself gives, and sometimes not the level.'
   },
   {
     title: 'HoDoKu’s five levels',

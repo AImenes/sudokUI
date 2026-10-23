@@ -710,7 +710,7 @@ const nb: LearnLocale = {
       },
       {
         "title": "Poeng som stemmer med HoDoKu",
-        "text": "Poengene og søkerekkefølgen er standardverdiene fra HoDoKu, referanseverktøyet for sudokuanalyse. En naken singel koster 4, en X-Wing 140 og en Forcing Net 700. Teknikker som HoDoKu ikke kjenner, som WXYZ-Wing, Chute Remote Pair og 3D Medusa, plasseres på poengskalaen like ved sine nærmeste slektninger. For en oppgave der løsningsstien bare bruker HoDoKus teknikker, kan poengsummen sammenlignes med HoDoKus. Mange stier bruker en av de andre, og da kan poengsummen, og noen ganger nivået, bli et annet enn det HoDoKu gir."
+        "text": "Poengene og søkerekkefølgen er HoDoKus standardverdier for alle teknikkene de to har felles; HoDoKu er referanseverktøyet for sudokuanalyse. En naken singel koster 4, en X-Wing 140 og en Forcing Net 700. Løseren i sudokUI kjenner også teknikker HoDoKu ikke har, som WXYZ-Wing, Chute Remote Pair og 3D Medusa, plassert på poengskalaen like ved sine nærmeste slektninger. Den bruker Death Blossom, som HoDoKu har slått av som standard, og mangler HoDoKus Finned Franken-fisk. HoDoKu-poengsummen følger derfor HoDoKus skala og regler, men for mange oppgaver er den ikke tallet HoDoKu selv gir, og noen ganger ikke nivået."
       },
       {
         "title": "HoDoKus fem nivåer",
@@ -879,7 +879,7 @@ const nb: LearnLocale = {
         {
           "heading": "Hva sudokUI har felles med HoDoKu",
           "paragraphs": [
-            "sudokUI bruker HoDoKus standardpoeng for hver teknikk og standard søkerekkefølge, og vurderer en oppgave på samme måte: løs den med den første teknikken som virker i hvert steg, og legg sammen poengene. Summen er HoDoKu-poengsummen.",
+            "sudokUI bruker HoDoKus standardpoeng og standard søkerekkefølge for alle teknikkene de to har felles, og vurderer en oppgave på samme måte: løs den med den første teknikken som virker i hvert steg, og legg sammen poengene. Summen er HoDoKu-poengsummen.",
             "De fem vanskelighetsnivåene er også HoDoKus, med HoDoKus grenser: Lett (800), Middels (1000), Vanskelig (1600), Urettferdig (1800) og Ekstrem uten grense. En oppgaves nivå er det høyeste nivået blant teknikkene i løsningsstien, hevet så lenge poengsummen er over grensen, som i HoDoKu."
           ]
         },
@@ -887,7 +887,7 @@ const nb: LearnLocale = {
           "heading": "Hvor de skiller seg",
           "paragraphs": [
             "sudokUI er et uavhengig prosjekt og har ingen tilknytning til HoDoKu.",
-            "Det legger til teknikker som HoDoKu ikke har, som WXYZ-Wing, Chute Remote Pair, 3D Medusa, Fireworks, Tridagon og Exocet, plassert på poengskalaen like ved sine nærmeste slektninger, og det utelater noen av HoDoKus, som Finned Franken-fisk, mutantfisk og Kraken-fisk. I en oppgave der løsningsstien bruker en av disse, og det gjør mange, kan løsningsstien, poengsummen og noen ganger nivået bli et annet enn i HoDoKu.",
+            "Det legger til teknikker som HoDoKu ikke har, som WXYZ-Wing, Chute Remote Pair, 3D Medusa, Fireworks, Tridagon og Exocet, plassert på poengskalaen like ved sine nærmeste slektninger, og det utelater noen av HoDoKus, som Finned Franken-fisk, mutantfisk og Kraken-fisk, og det bruker Death Blossom, som HoDoKu har slått av som standard. I mange oppgaver spiller noe av dette inn, og da kan løsningsstien, poengsummen og noen ganger nivået bli et annet enn i HoDoKu.",
             "Nytt spill har også to smalere valg som HoDoKu ikke har: Nybegynner, oppgavene på Lett med 400 poeng eller mindre, og Mareritt, oppgavene på Ekstrem med over 3000 poeng. En oppgaves nivå er alltid ett av HoDoKus fem."
           ]
         },
@@ -1673,7 +1673,7 @@ const nb: LearnLocale = {
         "vurdering",
         "vanskelighetspoeng"
       ],
-      "definition": "En oppgaves vanskelighet som et tall, kalt HoDoKu-poengsummen: summen av teknikkpoengene for hvert steg i løsningsstien. Fordi poengene og løsningsrekkefølgen følger HoDoKu, kan poengsummen sammenlignes med HoDoKus for oppgaver som bare krever teknikker HoDoKu også har."
+      "definition": "En oppgaves vanskelighet som et tall, kalt HoDoKu-poengsummen: summen av teknikkpoengene for hvert steg i løsningsstien. Poengene og løsningsrekkefølgen følger HoDoKu, men løseren i sudokUI kjenner noen teknikker HoDoKu ikke har, så for mange oppgaver blir tallet et annet enn det HoDoKu selv gir."
     },
     "difficulty-band": {
       "term": "vanskelighetsnivå",
@@ -1695,7 +1695,7 @@ const nb: LearnLocale = {
     "hodoku": {
       "term": "HoDoKu",
       "aka": [],
-      "definition": "Et gratis sudokuprogram med åpen kildekode (GPLv3), skrevet i Java av Bernhard Hobiger, kjent for løseren, teknikkguiden og vanskelighetspoengene. sudokUI henter teknikkpoeng, løsningsrekkefølge og de fem vanskelighetsnivåene fra HoDoKu, så poengsummene for oppgaver som bare krever HoDoKus teknikker, kan sammenlignes."
+      "definition": "Et gratis sudokuprogram med åpen kildekode (GPLv3), skrevet i Java av Bernhard Hobiger, kjent for løseren, teknikkguiden og vanskelighetspoengene. sudokUI henter teknikkpoeng, løsningsrekkefølge og de fem vanskelighetsnivåene fra HoDoKu. Løseren kjenner også teknikker HoDoKu ikke har, så HoDoKu-poengsummen i sudokUI følger HoDoKus skala, men er ikke alltid HoDoKus tall."
     }
   },
   "intuition": {

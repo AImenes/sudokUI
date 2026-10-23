@@ -762,7 +762,7 @@ const es: LearnLocale = {
       },
       {
         "title": "Puntuaciones compatibles con HoDoKu",
-        "text": "Las puntuaciones y el orden de búsqueda son los predeterminados de HoDoKu, el analizador de sudokus de referencia. Un Único desnudo cuesta 4; un X-Wing, 140; una Forcing Net, 700. Las técnicas que HoDoKu no conoce, como WXYZ-Wing, Chute Remote Pair y 3D Medusa, reciben una puntuación cercana a la de sus parientes más próximos. En un sudoku cuya ruta de resolución solo usa técnicas de HoDoKu, la puntuación se puede comparar con la de HoDoKu. Muchas rutas usan alguna de las otras, y entonces la puntuación, y a veces el nivel, puede ser distinta de la que da HoDoKu."
+        "text": "Las puntuaciones y el orden de búsqueda son los predeterminados de HoDoKu para todas las técnicas que ambos comparten; HoDoKu es el analizador de sudokus de referencia. Un Único desnudo cuesta 4; un X-Wing, 140; una Forcing Net, 700. El resolvedor de sudokUI también conoce técnicas que HoDoKu no tiene, como WXYZ-Wing, Chute Remote Pair y 3D Medusa, con puntuaciones cercanas a las de sus parientes más próximos. Usa Death Blossom, que HoDoKu tiene desactivada por defecto, y le faltan los peces Franken con aleta de HoDoKu. Así, la puntuación HoDoKu sigue la escala y las reglas de HoDoKu, pero en muchos sudokus no es el número que da el propio HoDoKu, y a veces tampoco el nivel."
       },
       {
         "title": "Los cinco niveles de HoDoKu",
@@ -931,7 +931,7 @@ const es: LearnLocale = {
         {
           "heading": "Qué comparte sudokUI con HoDoKu",
           "paragraphs": [
-            "sudokUI usa la puntuación predeterminada de HoDoKu para cada técnica y su orden de búsqueda predeterminado, y puntúa un sudoku de la misma manera: lo resuelve con la primera técnica que funciona en cada paso y suma las puntuaciones. El total es la puntuación HoDoKu.",
+            "sudokUI usa la puntuación y el orden de búsqueda predeterminados de HoDoKu para todas las técnicas que ambos comparten, y puntúa un sudoku de la misma manera: lo resuelve con la primera técnica que funciona en cada paso y suma las puntuaciones. El total es la puntuación HoDoKu.",
             "Los cinco niveles de dificultad también son los de HoDoKu, con sus mismos límites: Fácil (800), Medio (1000), Difícil (1600), Injusto (1800) y Extremo sin límite. El nivel de un sudoku es el más alto entre los de las técnicas de su ruta de resolución, subido mientras su puntuación supere el límite, como en HoDoKu."
           ]
         },
@@ -939,7 +939,7 @@ const es: LearnLocale = {
           "heading": "En qué se diferencian",
           "paragraphs": [
             "sudokUI es un proyecto independiente y no tiene relación con HoDoKu.",
-            "Añade técnicas que HoDoKu no tiene, como WXYZ-Wing, Chute Remote Pair, 3D Medusa, Fireworks, Tridagon y Exocet, con puntuaciones cercanas a las de sus parientes más próximos, y deja fuera algunas de HoDoKu, como los peces Franken con aleta, los peces mutantes y los peces Kraken. En un sudoku cuya ruta de resolución use una de ellas, y muchos la usan, la ruta, la puntuación y a veces el nivel pueden ser distintos de los de HoDoKu.",
+            "Añade técnicas que HoDoKu no tiene, como WXYZ-Wing, Chute Remote Pair, 3D Medusa, Fireworks, Tridagon y Exocet, con puntuaciones cercanas a las de sus parientes más próximos, y deja fuera algunas de HoDoKu, como los peces Franken con aleta, los peces mutantes y los peces Kraken, y usa Death Blossom, que HoDoKu tiene desactivada por defecto. En muchos sudokus entra en juego algo de esto, y entonces la ruta, la puntuación y a veces el nivel pueden ser distintos de los de HoDoKu.",
             "Nueva partida también ofrece dos opciones más acotadas que HoDoKu no tiene: Principiante, los sudokus de nivel Fácil con 400 puntos o menos, y Pesadilla, los de nivel Extremo con más de 3000 puntos. El nivel de un sudoku siempre es uno de los cinco de HoDoKu."
           ]
         },
@@ -1736,7 +1736,7 @@ const es: LearnLocale = {
         "puntuación de dificultad",
         "puntuación del sudoku"
       ],
-      "definition": "La dificultad de un sudoku expresada como número, llamada puntuación HoDoKu: la suma de las puntuaciones de técnica de cada paso de la ruta de resolución. Como las puntuaciones y el orden de resolución siguen a HoDoKu, las puntuaciones se pueden comparar con las de HoDoKu en los sudokus que solo necesitan técnicas que HoDoKu también tiene."
+      "definition": "La dificultad de un sudoku expresada como número, llamada puntuación HoDoKu: la suma de las puntuaciones de técnica de cada paso de la ruta de resolución. Las puntuaciones y el orden de resolución siguen a HoDoKu, pero el resolvedor de sudokUI conoce algunas técnicas que HoDoKu no tiene, así que en muchos sudokus el número es distinto del que da el propio HoDoKu."
     },
     "difficulty-band": {
       "term": "nivel de dificultad",
@@ -1758,7 +1758,7 @@ const es: LearnLocale = {
     "hodoku": {
       "term": "HoDoKu",
       "aka": [],
-      "definition": "Un programa de sudoku gratuito y de código abierto (GPLv3) escrito en Java por Bernhard Hobiger, conocido por su resolvedor, su guía de técnicas y sus puntuaciones de dificultad. sudokUI toma de HoDoKu las puntuaciones de las técnicas, el orden de resolución y los cinco niveles de dificultad, así que, en los sudokus que solo necesitan técnicas de HoDoKu, las puntuaciones se pueden comparar con las suyas."
+      "definition": "Un programa de sudoku gratuito y de código abierto (GPLv3) escrito en Java por Bernhard Hobiger, conocido por su resolvedor, su guía de técnicas y sus puntuaciones de dificultad. sudokUI toma de HoDoKu las puntuaciones de las técnicas, el orden de resolución y los cinco niveles de dificultad. Su resolvedor también conoce técnicas que HoDoKu no tiene, así que su puntuación HoDoKu sigue la escala de HoDoKu, pero no siempre es el número de HoDoKu."
     }
   },
   "intuition": {

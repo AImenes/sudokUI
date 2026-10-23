@@ -953,7 +953,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   {
     id: 'rating',
     term: 'rating',
-    definition: "A puzzle's difficulty as a number, called the HoDoKu rating: the sum of the technique scores of every step along the solve path. Because scores and solving order follow HoDoKu, ratings can be compared with HoDoKu's for puzzles that need only techniques HoDoKu also has.",
+    definition: "A puzzle's difficulty as a number, called the HoDoKu rating: the sum of the technique scores of every step along the solve path. Scores and solving order follow HoDoKu, but sudokUI's solver knows some techniques HoDoKu does not, so on many puzzles the number differs from the one HoDoKu itself gives.",
     aka: ['HoDoKu rating', 'difficulty rating', 'puzzle score'],
     see: ['solve-path', 'technique-score', 'difficulty-band', 'hodoku'],
     group: 'Solving and rating'
@@ -978,7 +978,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   {
     id: 'hodoku',
     term: 'HoDoKu',
-    definition: "A free, open source (GPLv3) sudoku program in Java by Bernhard Hobiger, known for its solver, technique guide and difficulty scores. sudokUI takes its technique scores, solving order and five difficulty levels from HoDoKu, so ratings of puzzles that need only HoDoKu's techniques can be compared.",
+    definition: "A free, open source (GPLv3) sudoku program in Java by Bernhard Hobiger, known for its solver, technique guide and difficulty scores. sudokUI takes its technique scores, solving order and five difficulty levels from HoDoKu; its solver also knows techniques HoDoKu does not, so its HoDoKu rating follows HoDoKu's scale but is not always HoDoKu's number.",
     aka: [],
     see: ['rating', 'difficulty-band', 'technique'],
     group: 'Solving and rating'

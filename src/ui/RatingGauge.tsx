@@ -119,11 +119,39 @@ export function RatingGauge({ level, score, puzzle }: { level: Level; score: num
   const [angle, setAngle] = useState(() => (still ? target : 0));
   const [ms, setMs] = useState(0);
   const [ease, setEase] = useState('linear');
+  /** the gauge is drawn (not hidden by the bar's room or a phone's width) */
+  const drawn = useRef(false);
+  /** starts the hover again once the gauge can be seen; set by the effect below */
+  const resume = useRef<() => void>(() => {});
+
+  // whether the gauge is drawn and the page in view: nothing polls, the
+  // hover simply stops while either is not so and starts again after
+  useEffect(() => {
+    const el = svg.current;
+    const shown = () => !document.hidden && resume.current();
+    document.addEventListener('visibilitychange', shown);
+    // without a ResizeObserver the gauge is taken as drawn
+    const watch =
+      el && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(([entry]) => {
+            const was = drawn.current;
+            drawn.current = entry.contentRect.width > 0;
+            if (drawn.current && !was) resume.current();
+          })
+        : null;
+    if (watch && el) watch.observe(el);
+    else drawn.current = true;
+    return () => {
+      watch?.disconnect();
+      document.removeEventListener('visibilitychange', shown);
+    };
+  }, []);
 
   useEffect(() => {
     let live = true;
     let frame = 0;
     let timer: number | undefined;
+    let swept = false;
     setMs(0);
     if (still) {
       setAngle(target);
@@ -131,20 +159,18 @@ export function RatingGauge({ level, score, puzzle }: { level: Level; score: num
     }
     // a new puzzle: from zero, then up to its place like a pedal pressed down
     setAngle(0);
-    // drawn and in view; otherwise the hover waits, without a render
-    const seen = () => !document.hidden && !!svg.current && svg.current.getBoundingClientRect().width > 0;
     const hover = () => {
-      if (!live) return;
-      if (!seen()) {
-        timer = window.setTimeout(hover, 1000);
-        return;
-      }
+      timer = undefined;
+      if (!live || !drawn.current || document.hidden) return;
       // a degree or two either way, each at its own pace
       const pace = 140 + Math.random() * 520;
       setMs(pace);
       setEase('ease-in-out');
       setAngle(target + (Math.random() * 2 - 1) * TREMOR);
       timer = window.setTimeout(hover, pace);
+    };
+    resume.current = () => {
+      if (live && swept && timer === undefined) hover();
     };
     // two frames, so the zero is painted before the sweep starts
     frame = requestAnimationFrame(() => {
@@ -154,11 +180,15 @@ export function RatingGauge({ level, score, puzzle }: { level: Level; score: num
         setMs(sweep);
         setEase('cubic-bezier(0.3, 0.7, 0.25, 1)');
         setAngle(target);
-        timer = window.setTimeout(hover, sweep);
+        timer = window.setTimeout(() => {
+          swept = true;
+          hover();
+        }, sweep);
       });
     });
     return () => {
       live = false;
+      resume.current = () => {};
       cancelAnimationFrame(frame);
       window.clearTimeout(timer);
     };

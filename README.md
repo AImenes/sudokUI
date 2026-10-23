@@ -49,7 +49,7 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
   is fine) and check the result on the board before playing (see
   [docs/scan.md](docs/scan.md)) — every import is rated
 - **Shareable links**: `sudokui.app/p/<81 chars>` opens the exact puzzle, and
-  pasted into a chat it previews with the band, the score and, if you choose,
+  pasted into a chat it previews with the level, the HoDoKu rating and, if you choose,
   the techniques it needs; a win can be shared as a challenge with the time
   to beat
 
@@ -85,7 +85,7 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
   1 × X-Wing. From hints: 1 × XY-Wing."), the guide shows what you have used unaided and
   sorts by **learn next**, the path (Learn → Your path) shows the techniques worth
   learning in the order puzzles need them with the next one a click from
-  its practice, and the win dialog keeps your band records and the daily
+  its practice, and the win dialog keeps your level records and the daily
   streak. **The daily, with everyone's times**: one published puzzle a day,
   the same for the whole world; finish it without help and, if you choose,
   send your time in to see how many solved it unassisted, the median, and
@@ -114,7 +114,7 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
   (HoDoKu-compatible model)
 - HoDoKu's five levels, with HoDoKu's limits and rule: Easy (≤800),
   Medium (≤1000), Hard (≤1600), Unfair (≤1800) and Extreme with no limit. A puzzle's
-  level is that of the hardest technique it needs, raised while its score is
+  level is that of the hardest technique on its solve path, raised while its score is
   over the limit. New game also offers two narrower picks: Beginner (Easy,
   ≤400) and Nightmare (Extreme, >3000)
 - Optional hidden-rating mode and "Surprise me"
@@ -123,9 +123,9 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
 - Unique-solution generator with rotational symmetry; every puzzle is
   minimal (no clue, or with symmetry no pair of clues, can be removed) and
   solvable by the technique catalogue
-- Any difficulty band in well under a second: digging proves uniqueness
+- Any difficulty level or pick in well under a second: digging proves uniqueness
   with a propagating solver, and rating stops the moment a puzzle is past
-  the band asked for. The hardest bands come from a shipped seed library,
+  the level asked for. The hardest picks come from a shipped seed library,
   served through one of 10^12 isomorphisms each time so nothing repeats
   (see [docs/generator.md](docs/generator.md))
 - Background generation in a Web Worker — the UI never blocks
@@ -362,7 +362,7 @@ Toward the best open-source sudoku tool anywhere:
   pages next (see [docs/online-goals.md](docs/online-goals.md), phase 4);
   never accounts
 - **Curated library** — classic named puzzles (Escargot, Golden Nugget…) and
-  a daily puzzle per difficulty band, next to today's shared daily
+  a daily puzzle per difficulty level, next to today's shared daily
 - **Custom solve-order editor** — reorder/disable techniques and see how
   ratings change; export your own rating profile
 - **Accessibility & i18n** — full screen-reader support, colour-blind-safe
