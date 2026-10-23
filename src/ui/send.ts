@@ -2,8 +2,10 @@
 // screen's challenge and daily line): on a phone or a tablet, the device's
 // own share sheet (navigator.share), which puts it in a chat in one tap;
 // elsewhere, and wherever the sheet is missing or refuses, the clipboard,
-// as before. Nothing goes to sudokui.app either way: the sheet hands the
-// text to the app the player picks.
+// as before. The text never goes to sudokui.app: the sheet hands it to the
+// app the player picks. What the caller makes of the outcome is its own:
+// the dialogs count a link that went as a share, by kind and way only
+// (src/state/telemetry.ts, shared).
 
 /** what became of the text */
 export type Sent = 'shared' | 'copied' | 'cancelled' | 'failed';

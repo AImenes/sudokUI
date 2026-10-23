@@ -331,7 +331,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <Toggle
         label={t('Leave this device out of the counts')}
         hint={t(
-          'Nothing is sent from this browser to count plays, online or offline: for the developer’s and testers’ own devices, or if you would rather not be counted. An app added to a home screen may keep its own settings. Daily times are still sent only when you tap Send'
+          'Nothing is sent from this browser to count plays or shares, online or offline: for the developer’s and testers’ own devices, or if you would rather not be counted. An app added to a home screen may keep its own settings. Daily times are still sent only when you tap Send'
         )}
         value={s.dontCount}
         onChange={(v) => s.set(v ? { dontCount: true, countPlays: false } : { dontCount: false })}

@@ -17,6 +17,10 @@ import {
   countLanding,
   isLanding,
   isPersonAgent,
+  landingFrom,
+  LANDING_FROM,
+  SHARE_KINDS,
+  SHARE_VIAS,
   BATCH_MAX,
   POINTS_MAX,
   BODY_MAX,
@@ -49,6 +53,18 @@ const good = (over: Record<string, unknown> = {}) => ({
   standalone: false,
   version: '1.0.0',
   source: 'tab',
+  ...over
+});
+/** a share line, as the app sends one (src/state/telemetry.ts, shared) */
+const shared = (over: Record<string, unknown> = {}) => ({
+  event: 'shared',
+  band: 'Hard',
+  bucket: 0,
+  standalone: false,
+  version: '1.0.0',
+  source: 'tab',
+  what: 'challenge',
+  via: 'copy',
   ...over
 });
 /** a person's browser: the route writes only what one sends (isPersonAgent) */
@@ -123,6 +139,22 @@ describe('the telemetry route', () => {
     // nothing rides along: an unknown field is refused, so the list stays closed
     await refused([good({ ip: '203.0.113.9' })]);
     await refused([good({ id: 'abc' })]);
+    // a landing is the share route's own: none can be posted
+    await refused([good({ event: 'landing', bucket: 0 })]);
+    // a share says what and how, from the lists, with no time and none of the opt-in's flags
+    await refused([shared({ what: undefined })]);
+    await refused([shared({ via: undefined })]);
+    await refused([shared({ what: 'link' })]);
+    await refused([shared({ what: 'https://sudokui.app/p/x' })]);
+    await refused([shared({ via: 'whatsapp' })]);
+    await refused([shared({ bucket: 3 })]);
+    await refused([shared({ optin: true })]);
+    await refused([shared({ offline: true })]);
+    await refused([shared({ returning: true })]);
+    await refused([shared({ to: 'friend' })]);
+    // and a play line carries neither
+    await refused([good({ what: 'puzzle' })]);
+    await refused([good({ event: 'started', bucket: 0, via: 'copy' })]);
     // one bad event refuses the whole batch
     await refused([good(), good(), good({ band: 'x' })]);
     await refused(Array.from({ length: BATCH_MAX + 1 }, () => good()));
@@ -136,7 +168,11 @@ describe('the telemetry route', () => {
   it('checks one event and one batch as the route does', () => {
     expect(checkEvent(good())).toEqual({ ...good(), offline: false, optin: false, returning: false });
     for (const band of LEVELS) expect(checkEvent(good({ band }))?.band).toBe(band);
-    expect(checkEvent(good({ event: 'landing', bucket: 0 }))?.event).toBe('landing');
+    expect(checkEvent(good({ event: 'landing', bucket: 0 }))).toBeNull();
+    for (const what of SHARE_KINDS)
+      for (const via of SHARE_VIAS) expect(checkEvent(shared({ what, via }))).toEqual({ ...shared({ what, via }), offline: false, optin: false, returning: false });
+    // false flags are what a share line has anyway
+    expect(checkEvent(shared({ optin: false, offline: false, returning: false }))).not.toBeNull();
     expect(checkEvent(null)).toBeNull();
     expect(checkEvent([good()])).toBeNull();
     expect(checkBatch([good()])).toHaveLength(1);
@@ -155,6 +191,19 @@ describe('the telemetry route', () => {
     expect(again.points).toHaveLength(POINTS_MAX);
     expect(again.points.map((p) => p.doubles[0])).toEqual(Array.from({ length: POINTS_MAX }, (_, i) => i));
     expect(fold(spread.map((e) => checkEvent(e)!), 'SE')).toHaveLength(BATCH_MAX);
+  });
+
+  it('writes a share as a point with what was shared and how, folded by both', async () => {
+    const events = memoryEvents();
+    const batch = [shared(), shared(), shared({ via: 'sheet' }), shared({ what: 'daily', band: 'Easy' }), good()];
+    expect((await handleTelemetry(post(batch), events, { country: 'NO' }))!.status).toBe(204);
+    expect(events.points).toEqual([
+      { indexes: ['shared'], blobs: ['Hard', 'tab', '1.0.0', 'NO', 'challenge', 'copy'], doubles: [0, 2, 0, 0, 0, 0] },
+      { indexes: ['shared'], blobs: ['Hard', 'tab', '1.0.0', 'NO', 'challenge', 'sheet'], doubles: [0, 1, 0, 0, 0, 0] },
+      { indexes: ['shared'], blobs: ['Easy', 'tab', '1.0.0', 'NO', 'daily', 'copy'], doubles: [0, 1, 0, 0, 0, 0] },
+      // a play line keeps its four blobs
+      { indexes: ['completed'], blobs: ['Hard', 'tab', '1.0.0', 'NO'], doubles: [36, 1, 0, 0, 0, 0] }
+    ]);
   });
 
   it('answers 503 without a dataset, or with one that fails, and 429 past the rate limit', async () => {
@@ -226,14 +275,108 @@ describe('the landing count', () => {
     const env = assets({ EVENTS: events });
     const res = await handleRequest(landing(`/nb/p/${EASY}?b=hard&s=1420`), env);
     expect(res.status).toBe(200);
-    expect(events.points).toEqual([{ indexes: ['landing'], blobs: ['Hard', 'p', version, ''], doubles: [0, 1, 0, 0, 0, 0] }]);
+    expect(events.points).toEqual([{ indexes: ['landing'], blobs: ['Hard', 'p', version, '', 'none'], doubles: [0, 1, 0, 0, 0, 0] }]);
     // a daily's address, with the band from the published list
     await handleRequest(landing(`/daily/${DAILY.date}`), env);
-    expect(events.points[1]).toEqual({ indexes: ['landing'], blobs: [DAILY.level, 'daily', version, ''], doubles: [0, 1, 0, 0, 0, 0] });
+    expect(events.points[1]).toEqual({ indexes: ['landing'], blobs: [DAILY.level, 'daily', version, '', 'none'], doubles: [0, 1, 0, 0, 0, 0] });
     // a link without a band says so
     await handleRequest(landing(`/es/p/${EASY}`), env);
-    expect(events.points[2].blobs).toEqual(['', 'p', version, '']);
-    expect(events.points).toHaveLength(3);
+    expect(events.points[2].blobs).toEqual(['', 'p', version, '', 'none']);
+    // where it came from is one word, never the address
+    const thread = 'http://forum.enjoysudoku.com/viewtopic.php?f=2&t=12345&secret=abc';
+    await handleRequest(landing(`/p/${EASY}`, { referer: thread }), env);
+    expect(events.points[3].blobs).toEqual(['', 'p', version, '', 'enjoysudoku']);
+    expect(JSON.stringify(events.points)).not.toContain('viewtopic');
+    expect(JSON.stringify(events.points)).not.toContain('forum.enjoysudoku.com');
+    expect(events.points).toHaveLength(4);
+  });
+
+  it('turns a referrer into one word of a closed list, and nothing else', () => {
+    const cases: [string | null, string][] = [
+      [null, 'none'],
+      ['', 'none'],
+      ['not a url', 'none'],
+      ['https://www.google.com/', 'search'],
+      ['https://www.google.no/', 'search'],
+      ['https://www.google.co.uk/search?q=sudoku', 'search'],
+      ['https://google.com.br/', 'search'],
+      ['https://www.bing.com/', 'search'],
+      ['https://duckduckgo.com/', 'search'],
+      ['https://search.yahoo.com/', 'search'],
+      ['https://search.brave.com/', 'search'],
+      ['android-app://com.google.android.googlequicksearchbox/', 'search'],
+      ['https://mail.google.com/', 'mail'],
+      ['https://outlook.live.com/', 'mail'],
+      ['https://mail.yahoo.com/', 'mail'],
+      ['android-app://com.google.android.gm/', 'mail'],
+      ['https://gemini.google.com/', 'ai'],
+      ['https://chatgpt.com/', 'ai'],
+      ['https://www.perplexity.ai/', 'ai'],
+      ['https://www.reddit.com/', 'reddit'],
+      ['https://old.reddit.com/r/sudoku/', 'reddit'],
+      ['https://out.reddit.com/', 'reddit'],
+      ['android-app://com.reddit.frontpage/', 'reddit'],
+      ['http://forum.enjoysudoku.com/', 'enjoysudoku'],
+      ['https://news.ycombinator.com/', 'hackernews'],
+      ['https://l.facebook.com/', 'facebook'],
+      ['https://m.facebook.com/', 'facebook'],
+      ['android-app://com.facebook.katana/', 'facebook'],
+      ['https://discord.com/', 'discord'],
+      ['https://t.co/', 'social'],
+      ['https://x.com/', 'social'],
+      ['https://www.linkedin.com/', 'social'],
+      ['https://bsky.app/', 'social'],
+      ['https://web.whatsapp.com/', 'chat'],
+      ['https://web.telegram.org/', 'chat'],
+      ['android-app://org.telegram.messenger/', 'chat'],
+      ['android-app://com.Slack/', 'chat'],
+      ['https://github.com/AImenes/sudokUI', 'github'],
+      ['https://www.sudokuwiki.org/', 'sudoku'],
+      ['https://sudoku.coach/', 'sudoku'],
+      ['https://sudokupad.app/', 'sudoku'],
+      ['https://example.com/', 'other'],
+      ['https://notgoogle.com/', 'other'],
+      ['https://google.evil.example/', 'other'],
+      ['https://reddit.com.evil.example/', 'other'],
+      ['https://evilreddit.com/', 'other'],
+      ['android-app://com.example.unknown/', 'other'],
+      ['ftp://github.com/', 'other'],
+      ['https://WWW.GOOGLE.COM./', 'search'],
+      // a search engine is its search host, not its whole domain
+      ['https://chat.google.com/', 'chat'],
+      ['https://sites.google.com/view/club', 'other'],
+      ['https://groups.google.com/g/rec.puzzles', 'other'],
+      ['https://docs.google.com/', 'other'],
+      ['https://news.yahoo.com/', 'other'],
+      ['https://no.search.yahoo.com/', 'search'],
+      ['https://mail.naver.com/', 'mail'],
+      ['https://search.naver.com/', 'search'],
+      ['https://cafe.naver.com/', 'other'],
+      ['https://email.seznam.cz/', 'mail'],
+      ['https://www.seznam.cz/', 'search'],
+      ['https://tieba.baidu.com/', 'other'],
+      ['https://www.baidu.com/', 'search'],
+      ['https://yandex.ru/', 'search'],
+      ['https://music.yandex.ru/', 'other'],
+      // Microsoft 365's own hosts, the mail and the chat; its home is another site
+      ['https://outlook.office.com/', 'mail'],
+      ['https://outlook.cloud.microsoft/', 'mail'],
+      ['https://teams.cloud.microsoft/', 'chat'],
+      ['https://m365.cloud.microsoft/', 'other'],
+      // the apps of the services named, and the phone's messages apps
+      ['android-app://com.google.android.youtube/', 'social'],
+      ['android-app://com.whatsapp.w4b/', 'chat'],
+      ['android-app://com.google.android.apps.dynamite/', 'chat'],
+      ['android-app://com.google.android.apps.messaging/', 'chat'],
+      ['android-app://com.samsung.android.messaging/', 'chat'],
+      ['android-app://com.microsoft.teams/', 'chat'],
+      ['android-app://ch.protonmail.android/', 'mail'],
+      // a site that sends its whole address: only the host is read
+      ['https://www.reddit.com/r/sudoku/comments/abc/title/?utm_source=share', 'reddit']
+    ];
+    for (const [referer, word] of cases) expect(landingFrom(referer), String(referer)).toBe(word);
+    // every word is on the list
+    for (const [referer] of cases) expect(LANDING_FROM as readonly string[]).toContain(landingFrom(referer));
   });
 
   it('counts no preview fetch, no click from inside the site, and nothing without a dataset', async () => {
@@ -278,6 +421,8 @@ describe('the dashboard', () => {
     day: `${day} 00:00:00`,
     event,
     source,
+    kind: '',
+    via: '',
     n: 0,
     standalone: 0,
     offline: 0,
@@ -289,9 +434,14 @@ describe('the dashboard', () => {
   const ROWS: Row[] = [
     row('2026-10-12', 'started', 'tab', { n: 10, optin: 4, optin_returning: 1 }),
     row('2026-10-12', 'completed', 'tab', { n: 6, standalone: 3, offline: 1, optin: 2, optin_offline: 1 }),
-    row('2026-10-12', 'landing', 'p', { n: 3 }),
-    row('2026-10-12', 'landing', 'daily', { n: 2 }),
+    row('2026-10-12', 'landing', 'p', { n: 3, kind: 'enjoysudoku' }),
+    row('2026-10-12', 'landing', 'daily', { n: 2, kind: 'none' }),
+    row('2026-10-11', 'shared', 'tab', { n: 2, kind: 'challenge', via: 'sheet' }),
+    row('2026-10-11', 'shared', 'tab', { n: 1, kind: 'challenge', via: 'copy' }),
+    row('2026-10-12', 'shared', 'pwa', { n: 1, kind: 'position', via: 'copy' }),
     row('2026-10-01', 'completed', 'pwa', { n: 4, standalone: 4 }),
+    // a landing counted before where it came from was kept
+    row('2026-10-01', 'landing', 'p', { n: 1 }),
     // out of the window
     row('2026-09-01', 'completed', 'tab', { n: 100 }),
     // today so far
@@ -318,18 +468,21 @@ describe('the dashboard', () => {
   }
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
-  it('asks for the last days, per UTC day, event and source, weighted by the sample interval', () => {
+  it('asks for the last days, per UTC day, event, source, kind and way, weighted by the sample interval', () => {
     const sql = adminQuery();
     expect(sql).toContain(`FROM ${DATASET}`);
     expect(sql).toContain("toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day");
+    expect(sql).toContain('blob2 AS source, blob5 AS kind, blob6 AS via');
     expect(sql).toContain('SUM(_sample_interval * double2) AS n');
     expect(sql).toContain("WHERE timestamp > NOW() - INTERVAL '31' DAY");
-    expect(sql).toContain('GROUP BY day, event, source ORDER BY day FORMAT JSON');
+    expect(sql).toContain('GROUP BY day, event, source, kind, via ORDER BY day FORMAT JSON');
     expect(DATASET).toBe('sudokui_events');
   });
 
   it('reads the rows the API gives, and nothing it does not', () => {
     expect(rowsOf({ data: [{ day: '2026-10-12 00:00:00', event: 'started', n: '7' }] })).toEqual([row('2026-10-12', 'started', '', { n: 7 })].map((r) => ({ ...r, day: '2026-10-12' })));
+    expect(rowsOf({ data: [{ day: '2026-10-12', event: 'shared', source: 'tab', kind: 'daily', via: 'sheet', n: 2 }] })[0]).toMatchObject({ kind: 'daily', via: 'sheet', n: 2 });
+    expect(rowsOf({ data: [{ day: '2026-10-12', event: 'landing', kind: 5, via: null, n: 1 }] })[0]).toMatchObject({ kind: '', via: '' });
     expect(rowsOf({ data: [null, 4, { event: 'x' }, { day: 1 }] })).toEqual([]);
     expect(rowsOf('garbage')).toEqual([]);
     expect(rowsOf({ data: [{ day: '2026-10-12', event: 'completed', n: 'many' }] })[0].n).toBe(0);
@@ -362,11 +515,22 @@ describe('the dashboard', () => {
     expect(m.yesterday.landings).toBe(5);
     expect(m.month.completed).toBe(10);
     expect(m.month.installedShare).toBeCloseTo(0.7);
+    // the shares, by kind and way, and where the landings came from
+    expect(w.shares).toBe(4);
+    expect(w.sharesSheet).toBe(2);
+    expect(w.sharesBy).toEqual({ challenge: { sheet: 2, copy: 1 }, position: { sheet: 0, copy: 1 } });
+    expect(w.landingsPerShare).toBeCloseTo(1.25);
+    expect(w.landingsFrom).toEqual({ enjoysudoku: 3, none: 2 });
+    expect(m.yesterday.shares).toBe(1);
+    expect(m.month.landingsFrom).toEqual({ enjoysudoku: 3, none: 2, '': 1 });
+    expect(m.days.find((d) => d.day === '2026-10-11')!.shares).toBe(3);
     // no opted-in device yet: no estimate, and no division by nothing
     const empty = metricsOf([], NOW());
     expect(empty.week.offlineEstimate).toBeNull();
     expect(empty.week.completionRate).toBeNull();
     expect(empty.week.newShare).toBeNull();
+    expect(empty.week.landingsPerShare).toBeNull();
+    expect(empty.week.sharesBy).toEqual({});
     expect(empty.week.total).toBe(0);
     expect(empty.generatedAt).toBe('2026-10-13 12:00 UTC');
   });
@@ -388,9 +552,21 @@ describe('the dashboard', () => {
     expect(html).toContain('<dt>Landings yesterday</dt><dd>5</dd>');
     expect(html).toContain('<dt>New players</dt><dd>75%</dd>');
     expect(html).toContain('<dt>Returning players</dt><dd>25%</dd>');
-    expect(html.match(/<dt>/g)).toHaveLength(12);
+    expect(html).toContain('<dt>Shares, last 7 days</dt><dd>4</dd><small>2 through the share sheet, 2 copied</small>');
+    expect(html).toContain('<dt>Landings per share</dt><dd>1.25</dd>');
+    expect(html.match(/<dt>/g)).toHaveLength(14);
     expect(html.match(/<tr class="today">/g)).toHaveLength(1);
-    expect(html).toContain('<td>2026-10-12</td><td>10</td><td>5</td><td>1</td><td>3</td><td>5</td><td>3</td><td>1</td>');
+    expect(html).toContain('<th>Shares</th><th>Landings</th>');
+    expect(html).toContain('<td>2026-10-12</td><td>10</td><td>5</td><td>1</td><td>3</td><td>1</td><td>5</td><td>3</td><td>1</td>');
+    // what was shared, every kind in the list's order, and where landings came from, the most first
+    expect(html).toContain('<tr><td>Puzzle link (Share)</td><td>0</td><td>0</td><td>0</td></tr>');
+    expect(html).toContain('<tr><td>Challenge (win screen)</td><td>2</td><td>1</td><td>3</td></tr>');
+    expect(html.indexOf('Puzzle link (Share)')).toBeLessThan(html.indexOf('Daily line (win screen)'));
+    expect(html).toContain('<tr><td>Enjoy Sudoku forum</td><td>3</td><td>60%</td></tr>');
+    expect(html).toContain('<tr><td>No referrer: typed, a bookmark, most apps</td><td>2</td><td>40%</td></tr>');
+    expect(html.indexOf('Enjoy Sudoku forum')).toBeLessThan(html.indexOf('No referrer'));
+    // a week without landings says so
+    expect(renderAdmin(metricsOf([], NOW()))).toContain('<tr><td>No landings</td><td>0</td><td>—</td></tr>');
   });
 
   it('is an unknown path without its four secrets, or without a valid Access token, wherever it is reached', async () => {

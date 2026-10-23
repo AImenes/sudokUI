@@ -955,6 +955,12 @@ test.describe('a share link', () => {
   const copied = (page: Page) => page.evaluate(() => (window as any).__copied as string);
 
   test('the Share dialog copies the share address of the puzzle on this origin, naming techniques only when asked', async ({ page }) => {
+    // each link copied counts as a share, by kind and way (src/state/telemetry.ts)
+    const lines: Record<string, unknown>[] = [];
+    await page.route('**/api/t', async (route) => {
+      lines.push(...JSON.parse(route.request().postData() ?? '[]'));
+      await route.fulfill({ status: 204 });
+    });
     await page.addInitScript(keepClipboard);
     // a Hard puzzle, whose path plays techniques worth naming
     await page.goto(`/#p=${HARD}`);
@@ -980,6 +986,9 @@ test.describe('a share link', () => {
     expect(named.startsWith(`${link}&t=`)).toBe(true);
     await dialog.getByRole('button', { name: 'Position link' }).click();
     expect((await copied(page)).startsWith(named + '#s=')).toBe(true);
+    await expect.poll(() => lines.filter((l) => l.event === 'shared').length).toBe(4);
+    expect(lines.filter((l) => l.event === 'shared').map((l) => `${l.what}/${l.via}`)).toEqual(['puzzle/copy', 'position/copy', 'puzzle/copy', 'position/copy']);
+    expect(JSON.stringify(lines)).not.toContain(HARD);
     // the choice is not remembered: the box is off again the next time the dialog opens
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
@@ -1801,8 +1810,18 @@ test.describe('sending from a phone', () => {
   };
   const shared = (page: Page) => page.evaluate(() => (window as any).__shared as { text?: string; url?: string }[]);
   const copied = (page: Page) => page.evaluate(() => (window as any).__copied as string);
+  /** the lines the app sends to count plays and shares (src/state/telemetry.ts) */
+  const countLines = async (page: Page) => {
+    const lines: Record<string, unknown>[] = [];
+    await page.route('**/api/t', async (route) => {
+      lines.push(...JSON.parse(route.request().postData() ?? '[]'));
+      await route.fulfill({ status: 204 });
+    });
+    return () => lines.filter((l) => l.event === 'shared');
+  };
 
   test('a link goes to the share sheet, a puzzle string to the clipboard', async ({ page }) => {
+    const shares = await countLines(page);
     await page.addInitScript(keepSheet);
     await page.goto(`/#p=${EASY}`);
     await expect(page.locator('svg.board')).toBeVisible();
@@ -1816,13 +1835,28 @@ test.describe('sending from a phone', () => {
     // the sheet was the answer: nothing copied, no tick
     expect(await copied(page)).toBe('');
     await expect(dialog.getByRole('button', { name: /Puzzle link/ })).not.toContainText('Copied');
-    // what goes into another tool is copied, never shared
+    // the share is counted: what and how, never the link
+    await expect.poll(() => shares().length).toBe(1);
+    expect(shares()[0]).toEqual({
+      event: 'shared',
+      band: expect.stringMatching(/^(Beginner|Easy|Medium|Tricky|Hard|Unfair|Extreme|Nightmare)$/),
+      bucket: 0,
+      standalone: false,
+      version: expect.stringMatching(/^\d+\.\d+\.\d+/),
+      source: 'tab',
+      what: 'puzzle',
+      via: 'sheet'
+    });
+    // what goes into another tool is copied, never shared, and not counted
     await dialog.getByRole('button', { name: 'Puzzle string' }).click();
     await expect.poll(() => copied(page)).toBe(EASY);
     expect(await shared(page)).toHaveLength(1);
+    await page.waitForTimeout(1500);
+    expect(shares()).toHaveLength(1);
   });
 
   test('a challenge after a win goes to the share sheet', async ({ page }) => {
+    const shares = await countLines(page);
     await page.addInitScript(keepSheet);
     await page.goto(`/#p=${EASY}`);
     await expect(page.locator('svg.board')).toBeVisible();
@@ -1840,6 +1874,8 @@ test.describe('sending from a phone', () => {
     await expect.poll(async () => (await shared(page)).length).toBe(1);
     expect((await shared(page))[0].text).toMatch(/Can you beat that\? https:\/\/sudokui\.app\/p\//);
     expect(await copied(page)).toBe('');
+    await expect.poll(() => shares().length).toBe(1);
+    expect(shares()[0]).toMatchObject({ event: 'shared', what: 'challenge', via: 'sheet', bucket: 0 });
   });
 });
 
