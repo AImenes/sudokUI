@@ -275,7 +275,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <Toggle
         label={t('Jump to the technique')}
         hint={t(
-          'Practice puzzles skip the routine steps and start where the chosen technique applies; off = play from the very beginning'
+          'Practice puzzles skip the steps the standard solver plays first, uniqueness included, and start where the chosen technique applies; off = play from the very beginning'
         )}
         value={s.practiceFastForward}
         onChange={(v) => s.set({ practiceFastForward: v })}
