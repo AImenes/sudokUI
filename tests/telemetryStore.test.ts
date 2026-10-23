@@ -319,3 +319,57 @@ describe('leaving the device out', () => {
     expect(sent(0)).toEqual([expect.objectContaining({ event: 'started', band: 'Easy' })]);
   });
 });
+
+describe('a link shared', () => {
+  it('sends one live line with what and how, in the batch with the plays, and keeps nothing', async () => {
+    const s = useTelemetry.getState();
+    s.track('completed', 'Hard', 552);
+    s.shared('challenge', 'sheet', 'Hard');
+    s.shared('position', 'copy', 'Tricky');
+    answers = [ok()];
+    await useTelemetry.getState().flush();
+    expect(calls).toHaveLength(1);
+    expect(sent(0)).toEqual([
+      expect.objectContaining({ event: 'completed' }),
+      { event: 'shared', band: 'Hard', bucket: 0, standalone: false, version: expect.any(String), source: 'tab', what: 'challenge', via: 'sheet' },
+      { event: 'shared', band: 'Tricky', bucket: 0, standalone: false, version: expect.any(String), source: 'tab', what: 'position', via: 'copy' }
+    ]);
+    expect(storage.has(STORAGE_KEY)).toBe(false);
+  });
+
+  it('is never kept: offline it is dropped even with the switch on, and it carries none of the switch’s flags', async () => {
+    useSettings.getState().set({ countPlays: true });
+    setNavigator({ onLine: false });
+    useTelemetry.getState().shared('daily', 'copy', 'Easy');
+    expect(useTelemetry.getState().pending).toEqual([]);
+    expect(useTelemetry.getState().queue).toEqual([]);
+    expect(storage.has(STORAGE_KEY)).toBe(false);
+    // online with the switch on: live, and plain
+    setNavigator({ onLine: true });
+    answers = [ok()];
+    useTelemetry.getState().shared('puzzle', 'sheet', 'Medium');
+    await useTelemetry.getState().flush();
+    expect(sent(0)).toEqual([{ event: 'shared', band: 'Medium', bucket: 0, standalone: false, version: expect.any(String), source: 'tab', what: 'puzzle', via: 'sheet' }]);
+    expect(useTelemetry.getState().queue).toEqual([]);
+  });
+
+  it('sends nothing from a device left out, and the switch takes a waiting share with it', async () => {
+    useTelemetry.getState().shared('challenge', 'copy', 'Hard');
+    expect(useTelemetry.getState().pending).toHaveLength(1);
+    useSettings.getState().set({ dontCount: true, countPlays: false });
+    expect(useTelemetry.getState().pending).toEqual([]);
+    useTelemetry.getState().shared('challenge', 'copy', 'Hard');
+    await useTelemetry.getState().flush();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('says only what the Worker takes', async () => {
+    const { checkEvent, SHARE_KINDS, SHARE_VIAS } = await import('../worker/telemetry');
+    answers = SHARE_KINDS.map(() => ok());
+    for (const what of SHARE_KINDS) for (const via of SHARE_VIAS) useTelemetry.getState().shared(what, via, 'Nightmare');
+    await useTelemetry.getState().flush();
+    const lines = calls.flatMap((_, i) => sent(i));
+    expect(lines).toHaveLength(SHARE_KINDS.length * SHARE_VIAS.length);
+    for (const line of lines) expect(checkEvent(line), JSON.stringify(line)).not.toBeNull();
+  });
+});

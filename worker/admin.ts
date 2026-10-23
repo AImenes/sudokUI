@@ -20,6 +20,7 @@
  */
 import { DAYS_SHOWN, DATASET, type DayRow, type Metrics, type Totals } from './adminModel';
 import { accessKeys, cameThroughAccess, type AccessEnv, type AccessKeys } from './access';
+import { SHARE_KINDS, type LandingFrom, type ShareKind } from './telemetry';
 
 export { DAYS_SHOWN, DATASET };
 export type { DayRow, Metrics, Totals };
@@ -30,15 +31,17 @@ export const ADMIN_PATH = '/admin';
 export const sqlApi = (account: string) => `https://api.cloudflare.com/client/v4/accounts/${account}/analytics_engine/sql`;
 
 /**
- * Every point of the last days, summed per UTC day, event and source
- * (the share pages' landings are 'p' or 'daily' there). `_sample_interval`
- * weighs each row by the sampling WAE applies at volume. The flags ride in
- * the doubles (telemetry.ts, pointOf), so a product with the count picks
- * out the events that carry them.
+ * Every point of the last days, summed per UTC day, event, source (the
+ * share pages' landings are 'p' or 'daily' there), kind (what a share was,
+ * where a landing came from) and way (a share's sheet or copy; empty for
+ * the rest). `_sample_interval` weighs each row by the sampling WAE
+ * applies at volume. The flags ride in the doubles (telemetry.ts,
+ * pointOf), so a product with the count picks out the events that carry
+ * them.
  */
 export const adminQuery = (days = DAYS_SHOWN) =>
   [
-    "SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, index1 AS event, blob2 AS source,",
+    "SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, index1 AS event, blob2 AS source, blob5 AS kind, blob6 AS via,",
     'SUM(_sample_interval * double2) AS n,',
     'SUM(_sample_interval * double2 * double3) AS standalone,',
     'SUM(_sample_interval * double2 * double4) AS offline,',
@@ -47,7 +50,7 @@ export const adminQuery = (days = DAYS_SHOWN) =>
     'SUM(_sample_interval * double2 * double5 * double6) AS optin_returning',
     `FROM ${DATASET}`,
     `WHERE timestamp > NOW() - INTERVAL '${days + 1}' DAY`,
-    'GROUP BY day, event, source ORDER BY day FORMAT JSON'
+    'GROUP BY day, event, source, kind, via ORDER BY day FORMAT JSON'
   ].join(' ');
 
 /** one row of the query's answer */
@@ -55,6 +58,8 @@ export interface Row {
   day: string;
   event: string;
   source: string;
+  kind: string;
+  via: string;
   n: number;
   standalone: number;
   offline: number;
@@ -74,7 +79,8 @@ export function rowsOf(answer: unknown): Row[] {
     if (!x || typeof x !== 'object') continue;
     const r = x as Record<string, unknown>;
     if (typeof r.day !== 'string' || typeof r.event !== 'string') continue;
-    const row: Row = { day: r.day.slice(0, 10), event: r.event, source: typeof r.source === 'string' ? r.source : '', n: 0, standalone: 0, offline: 0, optin: 0, optin_offline: 0, optin_returning: 0 };
+    const text = (v: unknown) => (typeof v === 'string' ? v : '');
+    const row: Row = { day: r.day.slice(0, 10), event: r.event, source: text(r.source), kind: text(r.kind), via: text(r.via), n: 0, standalone: 0, offline: 0, optin: 0, optin_offline: 0, optin_returning: 0 };
     for (const k of NUMBERS) {
       const v = Number(r[k]);
       row[k] = Number.isFinite(v) ? v : 0;
@@ -99,8 +105,17 @@ const emptyDay = (day: string): DayRow => ({
   completedOptinOffline: 0,
   completedStandalone: 0,
   landings: 0,
-  landingsDaily: 0
+  landingsDaily: 0,
+  landingsFrom: {},
+  shares: 0,
+  sharesSheet: 0,
+  sharesBy: {}
 });
+
+/** adds n to a count kept by name */
+const add = (counts: Record<string, number>, key: string, n: number) => {
+  counts[key] = (counts[key] ?? 0) + n;
+};
 
 /** the rows summed into the days: today and the DAYS_SHOWN before it, oldest first, empty days included */
 export function daysOf(rows: Row[], now: Date): DayRow[] {
@@ -123,6 +138,14 @@ export function daysOf(rows: Row[], now: Date): DayRow[] {
     } else if (r.event === 'landing') {
       d.landings += r.n;
       if (r.source === 'daily') d.landingsDaily += r.n;
+      add(d.landingsFrom, r.kind, r.n);
+    } else if (r.event === 'shared') {
+      d.shares += r.n;
+      const by = (d.sharesBy[r.kind] ??= { sheet: 0, copy: 0 });
+      if (r.via === 'sheet') {
+        d.sharesSheet += r.n;
+        by.sheet += r.n;
+      } else by.copy += r.n;
     }
   }
   return keys.map((k) => days.get(k)!);
@@ -150,6 +173,18 @@ export function totalsOf(days: DayRow[]): Totals {
   const startsOptin = sum((d) => d.startsOptin);
   const startsReturning = sum((d) => d.startsReturning);
   const standalone = sum((d) => d.completedStandalone);
+  const landings = sum((d) => d.landings);
+  const shares = sum((d) => d.shares);
+  const landingsFrom: Record<string, number> = {};
+  const sharesBy: Record<string, { sheet: number; copy: number }> = {};
+  for (const d of days) {
+    for (const [from, n] of Object.entries(d.landingsFrom)) add(landingsFrom, from, n);
+    for (const [what, n] of Object.entries(d.sharesBy)) {
+      const by = (sharesBy[what] ??= { sheet: 0, copy: 0 });
+      by.sheet += n.sheet;
+      by.copy += n.copy;
+    }
+  }
   return {
     starts,
     completed,
@@ -162,8 +197,13 @@ export function totalsOf(days: DayRow[]): Totals {
     installedShare: ratio(standalone, completed),
     optinOnline,
     optinOffline,
-    landings: sum((d) => d.landings),
+    landings,
     landingsDaily: sum((d) => d.landingsDaily),
+    landingsFrom,
+    shares,
+    sharesSheet: sum((d) => d.sharesSheet),
+    sharesBy,
+    landingsPerShare: ratio(landings, shares),
     startsOptin,
     startsNew: startsOptin - startsReturning,
     startsReturning,
@@ -191,6 +231,33 @@ export function metricsOf(rows: Row[], now: Date): Metrics {
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const num = (n: number | null) => (n === null ? '—' : Math.round(n).toLocaleString('en-GB'));
 const pct = (r: number | null) => (r === null ? '—' : `${Math.round(r * 100)}%`);
+
+/** what each kind of share is, where the app offers it */
+const SHARE_LABELS: Record<ShareKind, string> & Record<string, string | undefined> = {
+  puzzle: 'Puzzle link (Share)',
+  position: 'Position link (Share)',
+  challenge: 'Challenge (win screen)',
+  daily: 'Daily line (win screen)'
+};
+
+/** each word a landing's referrer becomes (telemetry.ts, landingFrom) */
+const FROM_LABELS: Record<LandingFrom | '', string> & Record<string, string | undefined> = {
+  none: 'No referrer: typed, a bookmark, most apps',
+  search: 'A search engine',
+  ai: 'An AI assistant',
+  reddit: 'Reddit',
+  enjoysudoku: 'Enjoy Sudoku forum',
+  hackernews: 'Hacker News',
+  facebook: 'Facebook',
+  discord: 'Discord',
+  social: 'Another social site',
+  chat: 'A chat app on the web',
+  mail: 'A webmail',
+  github: 'GitHub',
+  sudoku: 'Another sudoku site',
+  other: 'Another site',
+  '': 'Not recorded: counted before the word was kept'
+};
 
 /** completed games per day as a line, the last DAYS_SHOWN full days, with the peak named */
 export function sparkline(days: DayRow[]): string {
@@ -247,6 +314,12 @@ export function renderAdmin(m: Metrics): string {
     ),
     number('Landings yesterday', num(d.landings), `${num(d.landingsDaily)} on a daily's address`),
     number('Landings, last 7 days', num(w.landings), 'share pages opened from outside the site, by people'),
+    number('Shares, last 7 days', num(w.shares), `${num(w.sharesSheet)} through the share sheet, ${num(w.shares - w.sharesSheet)} copied`),
+    number(
+      'Landings per share',
+      w.landingsPerShare === null ? '—' : w.landingsPerShare.toFixed(2),
+      `${num(w.landings)} landings over ${num(w.shares)} shares, 7 days`
+    ),
     number('New players', pct(w.newShare), `${num(w.startsNew)} of ${num(w.startsOptin)} opted-in starts, 7 days`),
     number(
       'Returning players',
@@ -257,8 +330,22 @@ export function renderAdmin(m: Metrics): string {
   const rows = m.days
     .map(
       (day, i) =>
-        `      <tr${i === m.days.length - 1 ? ' class="today"' : ''}><td>${esc(day.day)}</td><td>${num(day.starts)}</td><td>${num(day.completed - day.completedOffline)}</td><td>${num(day.completedOffline)}</td><td>${num(day.completedStandalone)}</td><td>${num(day.landings)}</td><td>${num(day.startsOptin - day.startsReturning)}</td><td>${num(day.startsReturning)}</td></tr>`
+        `      <tr${i === m.days.length - 1 ? ' class="today"' : ''}><td>${esc(day.day)}</td><td>${num(day.starts)}</td><td>${num(day.completed - day.completedOffline)}</td><td>${num(day.completedOffline)}</td><td>${num(day.completedStandalone)}</td><td>${num(day.shares)}</td><td>${num(day.landings)}</td><td>${num(day.startsOptin - day.startsReturning)}</td><td>${num(day.startsReturning)}</td></tr>`
     )
+    .join('\n');
+  // what was shared, in the list's order, then anything else the data holds
+  const kinds = [...SHARE_KINDS, ...Object.keys(w.sharesBy).filter((k) => !(SHARE_KINDS as readonly string[]).includes(k))];
+  const shareRows = kinds
+    .map((k) => {
+      const by = w.sharesBy[k] ?? { sheet: 0, copy: 0 };
+      return `      <tr><td>${esc(SHARE_LABELS[k] ?? k)}</td><td>${num(by.sheet)}</td><td>${num(by.copy)}</td><td>${num(by.sheet + by.copy)}</td></tr>`;
+    })
+    .join('\n');
+  // where landings came from, the most first; a word with none is left out
+  const fromRows = Object.entries(w.landingsFrom)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([from, n]) => `      <tr><td>${esc(FROM_LABELS[from] ?? from)}</td><td>${num(n)}</td><td>${pct(w.landings > 0 ? n / w.landings : null)}</td></tr>`)
     .join('\n');
   const month = m.month;
   return `<!doctype html>
@@ -271,22 +358,36 @@ export function renderAdmin(m: Metrics): string {
     <style>${STYLE}</style>
   </head>
   <body>
-    <h1>sudokUI: plays, landings, players</h1>
+    <h1>sudokUI: plays, shares, landings, players</h1>
     <p class="meta">Workers Analytics Engine, ${esc(DATASET)}, UTC days. Generated ${esc(m.generatedAt)}. Nothing here names a player.</p>
     <dl class="numbers">
 ${numbers}
     </dl>
     <h2>Completed per day, last ${DAYS_SHOWN} days</h2>
     ${sparkline(m.days.slice(0, -1))}
-    <p class="meta">${DAYS_SHOWN} days: ${num(month.starts)} starts, ${num(month.completed)} completed (${num(month.offlineReported)} reported offline, ${num(month.offlineEstimate)} estimated), ${num(month.landings)} landings, completion ${pct(month.completionRate)}, solved in the installed app ${pct(month.installedShare)}.</p>
+    <p class="meta">${DAYS_SHOWN} days: ${num(month.starts)} starts, ${num(month.completed)} completed (${num(month.offlineReported)} reported offline, ${num(month.offlineEstimate)} estimated), ${num(month.shares)} shares, ${num(month.landings)} landings, completion ${pct(month.completionRate)}, solved in the installed app ${pct(month.installedShare)}.</p>
+    <h2>What was shared, last 7 days</h2>
+    <table>
+      <thead><tr><th>Shared</th><th>Share sheet</th><th>Copied</th><th>All</th></tr></thead>
+      <tbody>
+${shareRows}
+      </tbody>
+    </table>
+    <h2>Where landings came from, last 7 days</h2>
+    <table>
+      <thead><tr><th>From</th><th>Landings</th><th>Of all</th></tr></thead>
+      <tbody>
+${fromRows || '      <tr><td>No landings</td><td>0</td><td>—</td></tr>'}
+      </tbody>
+    </table>
     <h2>Every day</h2>
     <table>
-      <thead><tr><th>Day</th><th>Starts</th><th>Completed</th><th>Offline</th><th>In installed app</th><th>Landings</th><th>New</th><th>Returning</th></tr></thead>
+      <thead><tr><th>Day</th><th>Starts</th><th>Completed</th><th>Offline</th><th>In installed app</th><th>Shares</th><th>Landings</th><th>New</th><th>Returning</th></tr></thead>
       <tbody>
 ${rows}
       </tbody>
     </table>
-    <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. The sixth metric of the plan, search clicks, is in Search Console.</p>
+    <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge or the daily's line that the share sheet took or that was copied, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most chat and mail apps send none, so No referrer is mostly them. The sixth metric of the plan, search clicks, is in Search Console.</p>
   </body>
 </html>
 `;

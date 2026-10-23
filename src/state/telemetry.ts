@@ -26,6 +26,14 @@
 // landing is counted by the Worker from the page request itself, before
 // any of this runs, when the request reaches it, so it cannot reach that.)
 //
+// A link shared from the app (src/ui/Dialogs.tsx: the Share dialog's two
+// links, the win screen's challenge and daily line) sends a `shared` line
+// once the share sheet took it or it was copied: what was shared, which
+// way, and the puzzle's band, with the version and where the app ran.
+// Never the link, the text or where it went. It goes live or not at all:
+// offline it is dropped, with or without the opt-in, so it carries none
+// of the opt-in's flags; a device left out sends none.
+//
 // Transport: navigator.sendBeacon, which survives a closing tab, with
 // fetch keepalive as the other path. Live events wait a second for
 // company and go in one batch; a batch never exceeds BATCH_MAX, the most
@@ -44,11 +52,17 @@ export const STORAGE_KEY = 'sudokui-telemetry-v1';
 /** how long a live event waits for company before it goes, in ms */
 export const BATCH_DELAY = 1000;
 
+/** what a share was: the Share dialog's puzzle or position link, the win screen's challenge or daily line (worker/telemetry.ts, SHARE_KINDS) */
+export type ShareKind = 'puzzle' | 'position' | 'challenge' | 'daily';
+/** the share sheet took it, or it was copied (SHARE_VIAS) */
+export type ShareVia = 'sheet' | 'copy';
+
 /** one line, as the Worker checks it (worker/telemetry.ts, checkEvent) */
 export interface PlayEvent {
-  event: 'started' | 'completed';
+  event: 'started' | 'completed' | 'shared';
+  /** for a share, the band of the puzzle shared */
   band: Level;
-  /** the time in 15-second buckets, capped like the daily's; 0 for a start */
+  /** the time in 15-second buckets, capped like the daily's; 0 for a start and a share */
   bucket: number;
   /** display-mode: standalone matched */
   standalone: boolean;
@@ -60,6 +74,9 @@ export interface PlayEvent {
   optin?: boolean;
   /** this device had played on an earlier day: opt-in only */
   returning?: boolean;
+  /** a share's kind and way: on a share only */
+  what?: ShareKind;
+  via?: ShareVia;
 }
 
 /** what the opt-in keeps on the device */
@@ -74,6 +91,8 @@ interface TelemetryState extends Kept {
   pending: PlayEvent[];
   /** a game began or was solved: sent now while online, kept with the opt-in while offline, dropped otherwise */
   track(event: 'started' | 'completed', band: Level, seconds: number): void;
+  /** a link went to someone, through the share sheet or a copy: sent now while online, else dropped; never kept */
+  shared(what: ShareKind, via: ShareVia, band: Level): void;
   /** sends what waits: the live batch at once, then the kept queue while online and opted in */
   flush(): Promise<void>;
   /** drops the queue and the date, here and from the device */
@@ -143,6 +162,17 @@ export async function deliver(events: PlayEvent[]): Promise<boolean> {
 let timer: ReturnType<typeof setTimeout> | null = null;
 let flushing = false;
 
+/** puts a line in the live batch, which goes within BATCH_DELAY */
+function sendLive(e: PlayEvent): void {
+  useTelemetry.setState((s) => ({ pending: [...s.pending, e] }));
+  if (!timer) {
+    timer = setTimeout(() => {
+      timer = null;
+      void useTelemetry.getState().flush();
+    }, BATCH_DELAY);
+  }
+}
+
 export const useTelemetry = create<TelemetryState>()((set, get) => ({
   // the queue and the date exist only while the switch is on
   ...(optedIn() ? kept() : nothing()),
@@ -165,13 +195,7 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
       e.returning = first < today;
     }
     if (online()) {
-      set((s) => ({ pending: [...s.pending, e] }));
-      if (!timer) {
-        timer = setTimeout(() => {
-          timer = null;
-          void get().flush();
-        }, BATCH_DELAY);
-      }
+      sendLive(e);
       return;
     }
     // offline without the switch: dropped, nothing kept
@@ -180,6 +204,13 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
     const queue = [...get().queue, e];
     set({ queue });
     keep({ queue, firstSeen: get().firstSeen });
+  },
+
+  shared: (what, via, band) => {
+    // live or not at all, and never from a device left out
+    if (leftOut() || !online()) return;
+    const source = playedFrom();
+    sendLive({ event: 'shared', band, bucket: 0, standalone: source === 'pwa', version: APP_VERSION, source, what, via });
   },
 
   flush: async () => {

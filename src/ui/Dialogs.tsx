@@ -28,6 +28,9 @@ import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLink
 import { fasterThan, dailyNumber, localDateKey, LATE_DAYS } from '../content/dailies';
 import { useDailyStats, SubmitOutcome } from '../state/dailyStats';
 import { sendText, copyText } from './send';
+import type { Sent } from './send';
+import { useTelemetry } from '../state/telemetry';
+import type { ShareKind } from '../state/telemetry';
 import { PRIVACY_URL } from '../content/staticRoutes';
 import { HubTabs } from './HubTabs';
 import { techniquesByFamily } from '../content/categories';
@@ -938,6 +941,16 @@ function useShareTechs(puzzle: string | undefined): () => Tech[] {
   return () => (!puzzle ? [] : ready?.puzzle === puzzle ? ready.techs : compute(puzzle));
 }
 
+/**
+ * A link that went to someone, through the share sheet or a copy, counts
+ * as a share: its kind, the way and the band, never what it said
+ * (src/state/telemetry.ts). A closed sheet or a failed copy is not one,
+ * and nor is a board whose band is not known.
+ */
+function countShare(outcome: Sent, what: ShareKind, band: Level | undefined): void {
+  if (band && (outcome === 'shared' || outcome === 'copied')) useTelemetry.getState().shared(what, outcome === 'shared' ? 'sheet' : 'copy', band);
+}
+
 export function ShareDialog({ onClose }: { onClose: () => void }) {
   const cells = useGame((s) => s.cells);
   const autoCandidates = useGame((s) => s.autoCandidates);
@@ -1004,6 +1017,8 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
           ? sendText(positionLink(), 'url')
           : copyText(what === 'text' ? positionText() : currentAsString());
     void sent.then((outcome) => {
+      // the two links count; the string and the grid go into another tool
+      if (what === 'link' || what === 'position') countShare(outcome, what === 'link' ? 'puzzle' : 'position', known?.level);
       if (outcome !== 'copied') return;
       setCopied(what);
       setTimeout(() => setCopied(''), 2000);
@@ -1253,6 +1268,7 @@ export function VictoryDialog({
         : t('I solved a {level} sudoku (rating {score}) in {time}, no assists, every mark my own on sudokUI. Can you beat that? {link}', vars);
     // to a friend: a phone's share sheet, else the clipboard (src/ui/send.ts)
     void sendText(text).then((outcome) => {
+      countShare(outcome, info.dailyNo ? 'daily' : 'challenge', info.level);
       if (outcome !== 'copied') return;
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
