@@ -254,10 +254,12 @@ export default defineConfig({
   ],
   test: {
     environment: 'node',
-    // the browser smoke test is Playwright's (npm run test:e2e), and a side
+    // the browser smoke test is Playwright's (npm run test:e2e), a side
     // session's worktree under .claude/worktrees/ carries a copy of the
-    // whole tree, tests included: those are its to run, not ours
-    exclude: ['**/node_modules/**', 'tests/e2e/**', '.claude/**'],
+    // whole tree, tests included: those are its to run, not ours; and
+    // .vite/ is git-ignored scratch (a local Playwright config and its
+    // specs, scripts/hint-gallery.ts's page)
+    exclude: ['**/node_modules/**', 'tests/e2e/**', '.claude/**', '.vite/**'],
     // the Workers runtime's own module, which only wrangler's bundle has
     alias: { 'cloudflare:email': resolve(__dirname, 'tests/stubs/cloudflare-email.ts') }
   }

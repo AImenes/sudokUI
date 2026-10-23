@@ -133,8 +133,13 @@ describe('worked examples', () => {
       expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
       expect(svg.trim().endsWith('</svg>')).toBe(true);
       expect(svg).not.toMatch(/NaN|undefined/);
-      // one marker per highlighted candidate of an empty cell (a solved
-      // cell shows its colour on the digit), plus the dot where a chain starts
+      // one mark per highlighted candidate of an empty cell (a solved cell
+      // shows its colour on the digit; docs/hint-drawing.md G1-G5): a disc
+      // for a role, a disc and an outer ring for a placement, a tinted ring
+      // for a removal (a colouring's removal fills its ring with the colour
+      // it carried), and a bar over each removed digit
+      const key = (cd: { cell: number; digit: number }) => `${cd.cell}:${cd.digit}`;
+      const empty = (cd: { cell: number }) => ex.values[cd.cell] === '0';
       const marked = new Set(
         [
           ...(ex.step.primary ?? []),
@@ -144,14 +149,36 @@ describe('worked examples', () => {
           ...ex.step.placements,
           ...(ex.step.links ?? []).flatMap((l) => [...l.from, ...l.to])
         ]
-          .filter((cd) => ex.values[cd.cell] === '0')
-          .map((cd) => `${cd.cell}:${cd.digit}`)
+          .filter(empty)
+          .map(key)
       );
-      const links = ex.step.links?.length ?? 0;
-      const arrows = (ex.step.links ?? []).filter((l) => !l.undirected).length;
-      expect((svg.match(/<circle /g) ?? []).length, tech).toBe(marked.size + (arrows ? 1 : 0));
-      // every link is drawn twice: a halo under the arrow
-      expect((svg.match(/<path d="[^"]+" fill="none"/g) ?? []).length, tech).toBe(2 * links);
+      const removed = new Set(ex.step.eliminations.filter(empty).map(key));
+      const placed = new Set(ex.step.placements.filter(empty).map(key));
+      const named = new Set([...(ex.step.primary ?? []), ...(ex.step.secondary ?? []), ...(ex.step.fins ?? [])].map(key));
+      const colouring = ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'].includes(tech);
+      const circlesOf = (k: string) => (removed.has(k) ? (colouring && named.has(k) ? 1 : 2) : placed.has(k) ? 2 : 1);
+      // the arrows: none for a link inside one cell (its two marks say it),
+      // and a dot beside the first node of each branch that infers
+      // something, a switch inside one cell included (a cluster of ties
+      // has no reading order)
+      const links = ex.step.links ?? [];
+      const cells = (node: { cell: number }[]) => [...new Set(node.map((cd) => cd.cell))].sort().join(',');
+      const drawn = links.filter((l) => cells(l.from) !== cells(l.to));
+      let starts = 0;
+      let counted = false;
+      links.forEach((l, i) => {
+        const continues = i > 0 && links[i - 1].to.length === l.from.length && links[i - 1].to.every((cd) => l.from.some((o) => o.cell === cd.cell && o.digit === cd.digit));
+        if (!continues) counted = false;
+        if (l.undirected || counted) return;
+        starts++;
+        counted = true;
+      });
+      const circles = [...marked].reduce((n, k) => n + circlesOf(k), 0) + starts;
+      expect((svg.match(/<circle /g) ?? []).length, tech).toBe(circles);
+      // the grid's 20 lines, and one bar over each removed candidate
+      expect((svg.match(/<line /g) ?? []).length, tech).toBe(20 + removed.size);
+      // every drawn link twice: a halo under the line
+      expect((svg.match(/<path d="[^"]+" fill="none"/g) ?? []).length, tech).toBe(2 * drawn.length);
       const givens = ex.puzzle.replace(/[^1-9]/g, '').length;
       expect((svg.match(/class="giv"/g) ?? []).length, tech).toBe(givens);
     }

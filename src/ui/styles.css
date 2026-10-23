@@ -16,12 +16,25 @@
   --peer-bg: rgba(91, 143, 224, 0.08);
   --same-bg: rgba(230, 199, 76, 0.18);
   --error-bg: #e05563;
-  --hint-primary: #3f7fd4;
-  --hint-secondary: #d9a13c;
-  --hint-fin: #9b74d8;
-  --hint-elim: #e05563;
-  --hint-place: #52ab58;
-  --hint-chain: #d9a13c;
+  /* a hint's marks and arrows (docs/hint-drawing.md, Colours and sizes;
+     src/content/hintPalette.ts holds the same values, tested equal): a role
+     is a fill with a near-black digit, its ink the edge, which on a dark
+     board equals the fill; arrows are the one neutral ink */
+  --hint-primary: #498de5;
+  --hint-primary-ink: #498de5;
+  --hint-secondary: #f8b93f;
+  --hint-secondary-ink: #f8b93f;
+  --hint-fin: #dec4fe;
+  --hint-fin-ink: #dec4fe;
+  --hint-elim: #fe9696;
+  --hint-place: #35a458;
+  --hint-place-ink: #35a458;
+  --hint-false: #7fbbff;
+  --hint-arrow: #f2f4f9;
+  --hint-on-fill: #10131c;
+  --hint-in-ring: #eef1f8;
+  --hint-ring-tint: 0.16;
+  --hint-band-alpha: 0.1;
   /* --accent doubles as a text colour and as a button fill, and no single
      colour is readable in both roles: fills and their lettering, accent
      text and error text each get their own token (all 4.5:1 or better) */
@@ -48,6 +61,21 @@
   --sel-border: #3467c0;
   --peer-bg: rgba(52, 103, 192, 0.07);
   --same-bg: rgba(212, 168, 32, 0.22);
+  --hint-primary: #498de5;
+  --hint-primary-ink: #175bb7;
+  --hint-secondary: #f8b93f;
+  --hint-secondary-ink: #805500;
+  --hint-fin: #dec4fe;
+  --hint-fin-ink: #7646a5;
+  --hint-elim: #bc072a;
+  --hint-place: #57c274;
+  --hint-place-ink: #006c2f;
+  --hint-false: #175bb7;
+  --hint-arrow: #151a24;
+  --hint-on-fill: #10131c;
+  --hint-in-ring: #1b2233;
+  --hint-ring-tint: 0.1;
+  --hint-band-alpha: 0.07;
   --accent-fill: #3467c0;
   --on-accent: #ffffff;
   --accent-text: #3467c0;
@@ -344,7 +372,7 @@ button {
 
 .practice-badge {
   font-size: 13px;
-  color: var(--hint-secondary);
+  color: var(--hint-secondary-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -446,6 +474,35 @@ button {
 .board text {
   pointer-events: none;
   font-family: var(--font);
+}
+
+/* a hint's lines on a phone (docs/hint-drawing.md G14a): the board is
+   about 360 CSS px for 908 units there, so the desktop widths (a 3-unit
+   arrow, a 2.25-unit removal bar) would be a pixel or less; these keep
+   every line at about 1.5 CSS px or more. CSS wins over the drawing's own
+   attributes, and a length here is in the board's units */
+@media (max-width: 600px) {
+  .board .chain-shaft {
+    stroke-width: 4.5px;
+  }
+  .board .chain-shaft.weak {
+    stroke-dasharray: 11px 8px;
+  }
+  .board .chain-halo {
+    stroke-width: 8.5px;
+  }
+  .board .chain-tie {
+    stroke-width: 3px;
+  }
+  .board .chain-tie-halo {
+    stroke-width: 7px;
+  }
+  .board .hint-bar {
+    stroke-width: 3.75px;
+  }
+  .board .hint-ring {
+    stroke-width: 4px;
+  }
 }
 
 /* pause: a calm frosted card floating over the blank board */

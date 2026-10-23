@@ -54,10 +54,12 @@ Every rule is numbered so a commit, a test or a review can cite it.
   bands (G15) and set hulls (G16) are the only areas a hint shades.
 - **G2. Truth by colour and shape.** A chain node that is true under the
   hint's premise is a **filled disc** in the true colour; a node that is
-  false is a **ring** in the false colour around an unfilled digit. The
-  shape carries the meaning without colour vision, in print and in the
-  legend; the colour helps everyone else. (HoDoKu: green filled, blue
-  filled.)
+  false is a **ring** in the false colour, faintly tinted inside, around
+  its digit. The shape carries the meaning without colour vision, in print
+  and in the legend; the colour helps everyone else. (HoDoKu: green
+  filled, blue filled.) A hint always draws the digits it marks, even where
+  the player has not pencilled them: a ring with nothing in it says
+  nothing.
 - **G3. Removed and placed are their own marks.** A removal is a ring in
   the removal colour **with a diagonal bar through it** (it is false, and
   removed); a placement is a true disc **with an outer ring** (it is true,
@@ -78,10 +80,13 @@ Every rule is numbered so a commit, a test or a review can cite it.
   blue because the removals sit in the pattern list). A removed node that
   WAS a chain node keeps its truth ring under the removal mark, because
   the walk names it.
-- **G6. Digits on discs.** A digit on a filled disc is drawn in the
-  colour that contrasts with that disc; a digit inside a ring keeps the
-  board's candidate colour, in bold. Unmarked candidates stay as they are:
-  nothing is dimmed by default (see G17 for digit focus).
+- **G6. Digits on discs.** A digit on a filled disc is near-black in every
+  theme; a digit inside a ring is the theme's strongest ink (the givens'
+  colour), in bold. Unmarked candidates stay as they are: nothing is dimmed
+  by default (see G17 for digit focus). Every mark has a thin keyline in
+  the board's colour, so it stays distinct over the player's own cell
+  colours (an edge-less dark-theme disc on a yellow cell is 1.2:1 without
+  it).
 
 ### Arrows
 
@@ -103,11 +108,16 @@ Every rule is numbered so a commit, a test or a review can cite it.
   segment passes within a disc radius of another mark of the same hint (a
   node, a removal, a member of a set hull), the arrow becomes one gentle
   arc to the side with more clearance, and the arc is checked to clear
-  those marks; if neither side clears, the larger arc wins. Unrelated
+  those marks; if neither side clears, the clearest arc wins. Arcs stay
+  on the board: HoDoKu's loop that seems to leave the grid is an accident
+  of its fixed bend, which always bulges to the left of travel by a set
+  amount and is never checked against what it passes
+  (`SudokuPanel.java:2693-2711`); ours chooses the side. Unrelated
   candidates and digits are crossed straight, readable through the halo
-  (G11). Two arrows sharing a corridor are offset sideways a few units
-  rather than bent. (HoDoKu always bends left by a fixed 20 px and never
-  checks the curve; ours chooses.)
+  (G11). Two arrows joining the same two nodes are drawn side by side. A
+  group node is anchored at the member nearest the other end of the link
+  (a centroid can fall in a cell that is not one of its members); HoDoKu
+  anchors at a member too.
 - **G11. On top, with a halo.** Arrows are drawn last, over discs,
   digits and grid lines, each with a halo in the board's background
   colour so a line stays legible where it crosses a digit or a box line.
@@ -121,14 +131,21 @@ Every rule is numbered so a commit, a test or a review can cite it.
   bivalue cell in colouring) is a thin straight line in the arrow colour
   at reduced opacity, no head, drawn only where the hint needs it (G19).
 - **G14. A start marker.** The first node of each branch carries a small
-  start marker; the walk numbers arrows in reading order, as now.
+  start marker beside its mark (not at the tail of the first drawn arrow:
+  after a switch inside the start cell, that tail is the second node); the
+  walk numbers arrows in reading order, as now.
+- **G14a. Lines that survive a phone.** At a phone's 36-40 CSS pixels a
+  cell, a 0.03-cell arrow is a pixel and the removal bar less; on narrow
+  screens arrows, bars and rings are drawn thicker so none falls below
+  about 1.5 CSS pixels.
 
 ### Areas
 
 - **G15. Bands** shade a whole house under the marks: a fish's base and
   cover lines, a subset's house, a single's house, Locked Candidates' box
-  and line. Base and cover differ by style (filled band vs outlined band),
-  not only by colour.
+  and line. A pattern's band (base) has a solid outline, an acts-through
+  band (cover) a dashed one, so the two differ by shape and not only by
+  colour.
 - **G16. Set hulls.** A group node and an almost locked set are drawn as a
   rounded hull around their candidates, not as discs that each claim a
   truth: a TRUE group means "one of these", and painting every member true
@@ -197,31 +214,44 @@ Every rule is numbered so a commit, a test or a review can cite it.
 
 ## Truth: where it comes from
 
-A node's truth is never guessed by the renderer. The rule:
+A node's truth is never guessed by the renderer, and never inferred from
+the technique's name (the chain trainer reuses X_CHAIN, AIC, X_CYCLES and
+NICE_LOOP for chains whose links carry their real kind, not the kind
+used). A step says how its truth is read, in a new field
+`truth?: 'derived' | 'parity' | 'branches'`; absent means none (patterns).
 
-- A link's `strong` already says what the link infers about its target:
-  `strong` = the target is true, weak = the target is false. That holds
-  for AICs (a strong link enters a true node) and for forcing trails
-  (`strong` = placed in the branch, `forcingTrail.ts:218-234`) alike.
-- The first node of each branch has a declared truth: a new optional
-  field on the link that starts a branch, `fromTrue?: boolean`. Absent
-  means false, the AIC premise ("suppose the start is false").
-- Every other node takes the truth its incoming link gives it. A node
-  given two different truths is either the closing node of a
-  discontinuous loop (allowed, G18) or a bug: a test fails.
+- **derived** (AIC-form chains). A strong link leaves a false node and
+  enters a true one; a weak link leaves a true node and enters a false one.
+  So node 0 is `!links[0].strong` and every target is `link.strong`. That
+  derives the inverted GROUPED_X_CYCLES rule 3 (weak first: assumed true,
+  proven false) with no new field. The derivation checks itself: a link
+  that leaves a node with the wrong truth is a bug, and a node given two
+  truths is a bug except the closing node of a discontinuous loop (G18).
+  Undirected ties carry no truth.
+- **branches** (forcing chains and Check's why-not). `strong` there means
+  "placed in this branch" (`forcingTrail.ts:218-234`), an on-to-on or
+  off-to-on implication, so truth is per branch: each branch carries its
+  premise (the candidate, true or false, and whether its line opens at a
+  single the position already had, whose first node is then a fact and
+  not the premise), and its targets take `strong` as their truth. The same
+  candidate can be true in one branch and false in another (the stored
+  Digit Forcing example assumes 8 in r1c1 both ways), so one map cannot
+  hold it.
+- **parity** (colouring and Remote Pair): a cluster index and a parity
+  per candidate, and the parity proven false where one is (Simple Colors'
+  wrap, Multi Colors rule 1, Medusa rules 1, 2 and 6).
 
-What each finder must add (from the map of what they emit today):
+What each finder must add (checked by replaying the rule on the 21 stored
+examples with links):
 
 | Technique | Today | Needed |
 | --- | --- | --- |
-| X-Chain, XY-Chain, AIC, AIC_GROUPED, AIC_ALS, Skyscraper, Kite, Turbot, W-Wing | alternating links, start strong | nothing: start false, derived |
-| X_CYCLES, GROUPED_X_CYCLES, NICE_LOOP, GROUPED_NICE_LOOP rule 1 (continuous) | alternating + weak closure | nothing (one consistent world; the legend says "if the start is false") |
-| … rule 2 (discontinuous, strong closure) | alternating + strong closure | nothing: start false, proven true, G18 |
-| GROUPED_X_CYCLES rule 3 | inverted, weak first | `fromTrue: true` on its first link |
-| Digit, Cell, Unit, Nishio forcing; Check's why-not | branches; on/off only in the first sentence's text | `fromTrue` on each branch's first link |
-| SIMPLE_COLORS, MULTI_COLORS, MEDUSA_3D, REMOTE_PAIR | ties + witnesses | a cluster index and parity per candidate (new `clusters` field), truth only for a proven wrap |
-| ALS_XZ, ALS_XY_WING, ALS_XY_CHAIN | weak links between groups, implicit ALS links missing | the ALS's internal strong links (digit node to digit node, as AIC_ALS already emits) and an ALS index per set |
-| DEATH_BLOSSOM | a fan of weak links | one branch per stem digit, `fromTrue: true` |
+| X-Chain, XY-Chain, AIC, AIC_GROUPED, AIC_ALS, Skyscraper, Kite, Turbot, W-Wing, all Nice Loops and X-Cycles | alternating links | `truth: 'derived'`; nothing else |
+| Digit, Cell, Unit, Nishio forcing; Check's why-not | branches; on/off only in the first sentence's text | `truth: 'branches'` and a premise per branch |
+| SIMPLE_COLORS, MULTI_COLORS, MEDUSA_3D, REMOTE_PAIR | ties + witnesses (Remote Pair often no links) | `truth: 'parity'`, cluster and parity per candidate, the proven-false parity |
+| ALS_XZ, ALS_XY_WING, ALS_XY_CHAIN | weak links between restricted-common groups only | the end sets' z digit nodes and each set's internal strong links (digit node to digit node, as AIC_ALS emits), an ALS index per node; then `derived` |
+| DEATH_BLOSSOM | a fan of weak links, stem to petal | per stem digit a branch that also runs inside the petal to its z group |
+| the chain trainer | links with their real kind | the kind used on each link (it computes it already), so a pair used weakly is drawn dashed |
 
 ## Phases
 
@@ -231,25 +261,32 @@ when clean. The order puts the biggest visible gain first and the riskiest
 data changes later.
 
 1. **The board foundation** (no data change; every hint benefits):
-   - the shared geometry module (G25 first part): anchors, gaps,
-     straight-or-arc decision with clearance check (G9, G10), arrowheads,
-     in-cell links skipped (G12), corridor offsets; pure functions with
-     unit tests;
+   - the shared geometry module (G25 first part): anchors (a group at its
+     nearest member), gaps, straight-or-arc decision with clearance check
+     (G9, G10), arrowheads, in-cell links skipped (G12), side-by-side
+     pairs, start markers on node 0 (G14); pure functions with unit tests;
    - z-order: arrows over grid lines with a halo (G11);
-   - no hint cell tints (G1); placements get their disc (G3);
+   - no hint cell tints (G1); the measured palette, opaque marks with
+     near-black digits and a keyline (G6); removals as barred rings and
+     placements as ringed discs (G3); bands with solid and dashed outlines
+     (G15); a hint draws its digits even where the player has none (G2);
+     thicker lines on phones (G14a);
    - the arrow colour token, separate from acts-through (G7), in all four
      themes and the Learn pages;
-   - Grid.tsx and boardSvg.ts both use it.
+   - Grid.tsx and boardSvg.ts both use it; the browser test that drew an
+     arrow inside a bivalue cell now expects none.
    Accept: every stored example renders; the gallery (below) shows no
    arrow under a grid line, no loop inside a cell, no arrow crossing one
    of its own hint's marks.
-2. **Truth** (G2, G3, G5, G8, G18): `fromTrue` on ChainLink, the
-   derivation function with its consistency check, true discs and false
-   rings, removal stroke, placement ring, the precedence fix (the blue
-   rings). Accept: a test derives truth for every stored example and
-   every chain step in a solve batch, finds no conflict except loop
-   closures, and checks that every elimination of an AIC sees a true node
-   at each end under the derivation.
+2. **Truth** (G2, G5, G8, G18): the `truth` field, the derivation with
+   its self-check, true discs and false rings for `derived` steps, the
+   trainer's used kinds. Accept: a test derives truth for every stored
+   example and every chain step of a solve batch with no conflict except
+   discontinuous closures (and builds such loops on purpose, since no
+   stored example has one), and checks that every elimination of an AIC
+   conflicts with both end nodes (the start is false and the end true
+   under the derivation, by design); the legend's words follow (G8: solid
+   means "therefore true", which is the strong link only in AIC form).
 3. **Colouring** (G19): `clusters` on the four colouring techniques, hue
    per cluster and shade per parity, witnesses only in their walk frames.
    Accept: coloringViz tests updated; the prose's colour words match the
@@ -346,7 +383,13 @@ the values above are its final ones.
 
 ## Status
 
-- [ ] Phase 1: the board foundation
+- [ ] Phase 1: the board foundation. Built and green (tsc, unit and
+  browser tests), awaiting its refuting review: `src/content/hintGeometry.ts`
+  and `src/content/hintPalette.ts` with their tests, both renderers on
+  them, the CSS tokens, `scripts/hint-gallery.ts` for looking at all 65
+  examples. To photograph the app's own board with an example's hint, a
+  scratch Playwright run on port 4174 opens each example's position link
+  (kept in the git-ignored `.vite/`).
 - [ ] Phase 2: truth
 - [ ] Phase 3: colouring
 - [ ] Phase 4: sets
