@@ -64,12 +64,14 @@ and the budget leaves room for that.
 | Rating, Unfair and Extreme | 30 to 65 ms | the same, less under a cap |
 | Rating, Nightmare | 0.5 to 0.7 s mean, up to 1.8 s | the same |
 
-Random digging yields the bands in these shares: Beginner 53%, Easy 8 to
-10%, Medium 12%, Tricky 5 to 7%, Hard 8%, Unfair 3 to 5%, Extreme 5%,
-Nightmare 2 to 3%. (Easy is thin because it is a score band: singles only,
-but heavy on hidden singles.) The crux filter rejects under 2% of all
-puzzles. With the cap, a waiting player gets a puzzle of the band in
-(20 puzzles per band):
+Random digging yields HoDoKu's five levels in these shares, measured on
+240,000 puzzles: Easy 59.0%, Medium 12.6%, Hard 16.8%, Unfair 4.7% and
+Extreme 6.8%. Of all puzzles, 51.3% are Beginners (Easy, 400 or less)
+and 2.5% Nightmares (Extreme, over 3000). The crux filter rejects under
+2% of all puzzles. With the cap, a waiting player gets a puzzle of the
+band in the times below (20 puzzles per band), measured when the site
+had eight bands of its own: Tricky and Hard are both HoDoKu's Hard now,
+and Easy and Extreme take in Beginner and Nightmare.
 
 | Band | Attempts | Wait, mean | p90 |
 | --- | --- | --- | --- |

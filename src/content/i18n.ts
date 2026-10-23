@@ -27,7 +27,7 @@
 import React, { useMemo } from 'react';
 import { create } from 'zustand';
 import { useSettings, Lang } from '../state/settings';
-import { TECHS, Tech, Level, Category } from '../engine/ratings';
+import { TECHS, Tech, LevelPick, Category } from '../engine/ratings';
 import { setEngineText, EngineTable } from '../engine/text';
 import { categoryLabel } from './categories';
 
@@ -48,7 +48,7 @@ export interface AppLocale {
   engine: EngineTable;
   /** the techniques with a name of their own in this language */
   techNames: Partial<Record<Tech, string>>;
-  levels: Record<Level, string>;
+  levels: Record<LevelPick, string>;
   categoryLabels: Record<Category, string>;
 }
 
@@ -59,8 +59,8 @@ export interface Translator {
   locale: string;
   /** a technique's name in this language (most stay English) */
   tech(t: Tech): string;
-  /** a difficulty band */
-  level(l: Level): string;
+  /** a difficulty level, or one of the narrower picks inside one */
+  level(l: LevelPick): string;
   /** a technique family */
   family(c: Category): string;
   /** a number written the language's way: 12,345 or 12 345 */

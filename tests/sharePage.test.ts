@@ -72,7 +72,8 @@ const words = (text: string) =>
     .toLowerCase()
     .match(/\p{L}[\p{L}\d'-]*/gu) ?? [];
 /** words a translation may share with the English: the brand, and words the language writes the same way */
-const SHARED = new Set(['sudokui', 'sudoku', 'javascript', 'app', 'hint', 'for', 'a', 'en']);
+// names, and HoDoKu's: the program's name is the same in every language
+const SHARED = new Set(['sudokui', 'sudoku', 'javascript', 'app', 'hint', 'for', 'a', 'en', 'hodoku']);
 const englishLeft = (english: string[], translated: string[]) => {
   const vocabulary = new Set(english.flatMap(words));
   return [...new Set(translated.flatMap(words))].filter((w) => vocabulary.has(w) && !SHARED.has(w));
@@ -111,6 +112,12 @@ describe('the share address', () => {
   it('drops a hint that does not parse, and names at most three techniques', () => {
     expect(parse(`/p/${EASY}?b=nope&s=abc&t=unknown&vs=soon`)).toEqual({ lang: 'en', puzzle: EASY });
     expect(parse(`/p/${EASY}?b=HARD`)?.level).toBe('Hard');
+    // the bands from before HoDoKu's five, in links already sent, read as their level
+    expect(parse(`/p/${EASY}?b=tricky`)?.level).toBe('Hard');
+    expect(parse(`/p/${EASY}?b=beginner`)?.level).toBe('Easy');
+    expect(parse(`/p/${EASY}?b=nightmare&s=3200`)).toEqual({ lang: 'en', puzzle: EASY, level: 'Extreme', score: 3200 });
+    // and a link written now names the level
+    expect(shareUrl({ lang: 'en', puzzle: EASY, level: parse(`/p/${EASY}?b=tricky`)!.level })).toBe(`${SITE}/p/${EASY}?b=hard`);
     for (const bad of ['0', '-5', '1.5', '100000', '']) expect(parse(`/p/${EASY}?s=${bad}`)?.score, `s=${bad}`).toBeUndefined();
     for (const bad of ['0', '-1', '9.5', String(24 * 3600), '']) expect(parse(`/p/${EASY}?vs=${bad}`)?.vs, `vs=${bad}`).toBeUndefined();
     expect(parse(`/p/${EASY}?vs=${24 * 3600 - 1}`)?.vs).toBe(24 * 3600 - 1);
@@ -169,7 +176,7 @@ describe('the share address', () => {
     expect(named.length).toBeLessThanOrEqual(SHARE_TECHS);
     for (const tech of named) {
       expect(rating.techniques[tech], tech).toBeGreaterThan(0);
-      expect(TECHS[tech].level).not.toBe('Beginner');
+      expect(TECHS[tech].level).not.toBe('Easy');
     }
     // hardest first, by the catalogue's order
     for (let i = 1; i < named.length; i++) expect(TECHS[named[i - 1]].index).toBeGreaterThan(TECHS[named[i]].index);
@@ -213,10 +220,10 @@ describe('the words of a share page', () => {
 
   it('say what is known about the puzzle, and no more', () => {
     const c = shareCopy(full);
-    expect(c.title).toBe('Hard sudoku, rated 1420 | sudokUI');
+    expect(c.title).toBe('Hard sudoku, HoDoKu rating 1420 | sudokUI');
     expect(c.ogTitle).toBe('Can you solve this Hard sudoku?');
     expect(c.h1).toBe(c.ogTitle);
-    expect(c.description).toBe('A Hard sudoku rated 1420, needing X-Wing and Skyscraper. Play it free on sudokUI, with hints that explain every step.');
+    expect(c.description).toBe('A Hard sudoku with a HoDoKu rating of 1420, needing X-Wing and Skyscraper. Play it free on sudokUI, with hints that explain every step.');
     expect(c.ogImage).toBe(`${SITE}/og/hard.png`);
     expect(c.ogImageAlt).toBe('A Hard sudoku on sudokUI');
 
@@ -236,7 +243,7 @@ describe('the words of a share page', () => {
 
   it('agrees the English article with the band: an Easy, an Unfair, an Extreme sudoku', () => {
     expect(shareCopy({ lang: 'en', puzzle: EASY, level: 'Easy', score: 600 }).description).toBe(
-      'An Easy sudoku rated 600. Play it free on sudokUI, with hints that explain every step.'
+      'An Easy sudoku with a HoDoKu rating of 600. Play it free on sudokUI, with hints that explain every step.'
     );
     expect(shareCopy({ lang: 'en', puzzle: EASY, level: 'Unfair', techs: ['X_WING'] }).description).toBe(
       'An Unfair sudoku, needing X-Wing. Play it free on sudokUI, with hints that explain every step.'
@@ -253,18 +260,18 @@ describe('the words of a share page', () => {
         }
       }
     }
-    expect(shareCopy({ lang: 'nb', puzzle: EASY, level: 'Easy', score: 600 }).description.startsWith('En sudoku på nivået Lett med poengsum 600.')).toBe(true);
-    expect(shareCopy({ lang: 'es', puzzle: EASY, level: 'Easy', score: 600 }).description.startsWith('Un sudoku de nivel Fácil con puntuación 600.')).toBe(true);
+    expect(shareCopy({ lang: 'nb', puzzle: EASY, level: 'Easy', score: 600 }).description.startsWith('En sudoku på nivået Lett med HoDoKu-poengsum 600.')).toBe(true);
+    expect(shareCopy({ lang: 'es', puzzle: EASY, level: 'Easy', score: 600 }).description.startsWith('Un sudoku de nivel Fácil con puntuación HoDoKu 600.')).toBe(true);
   });
 
   it('put the challenge first when a time is set', () => {
     const c = shareCopy({ ...full, vs: 552 });
     expect(c.ogTitle).toBe('Solved in 9:12. Can you beat it?');
     expect(c.description).toBe(
-      'Solved in 9:12 on sudokUI: can you beat it? A Hard sudoku rated 1420, needing X-Wing and Skyscraper. Play it free on sudokUI, with hints that explain every step.'
+      'Solved in 9:12 on sudokUI: can you beat it? A Hard sudoku with a HoDoKu rating of 1420, needing X-Wing and Skyscraper. Play it free on sudokUI, with hints that explain every step.'
     );
     // the tab and the image stay the puzzle's
-    expect(c.title).toBe('Hard sudoku, rated 1420 | sudokUI');
+    expect(c.title).toBe('Hard sudoku, HoDoKu rating 1420 | sudokUI');
     expect(c.h1).toBe('Can you solve this Hard sudoku?');
     expect(c.ogImage).toBe(`${SITE}/og/hard.png`);
     expect(shareCopy({ lang: 'nb', puzzle: EASY, vs: 61 }).ogTitle).toBe('Løst på 1:01. Klarer du å slå det?');
@@ -285,10 +292,10 @@ describe('the words of a share page', () => {
       expect(techName(tech, 'es')).toBe(namesEs.techNames[tech] ?? TECHS[tech].name);
     }
     const nb = shareCopy({ ...full, lang: 'nb' });
-    expect(nb.title).toBe('Sudoku på nivået Vanskelig, poengsum 1420 | sudokUI');
+    expect(nb.title).toBe('Sudoku på nivået Vanskelig, HoDoKu-poengsum 1420 | sudokUI');
     expect(nb.description).toContain(' som krever X-Wing og Skyscraper.');
     const es = shareCopy({ ...full, lang: 'es', techs: ['HIDDEN_PAIR', 'X_WING', 'SKYSCRAPER'] });
-    expect(es.title).toBe('Sudoku de nivel Difícil, puntuación 1420 | sudokUI');
+    expect(es.title).toBe('Sudoku de nivel Difícil, puntuación HoDoKu 1420 | sudokUI');
     expect(es.description).toContain(` que requiere ${techName('HIDDEN_PAIR', 'es')}, X-Wing y Skyscraper.`);
     expect(joinNames([], 'and')).toBe('');
     expect(joinNames(['A'], 'and')).toBe('A');
@@ -363,7 +370,7 @@ describe('the share page', () => {
   });
 
   it('escapes what it writes into the page', () => {
-    const html = page({ lang: 'es', puzzle: EASY, level: 'Tricky', vs: 61 });
+    const html = page({ lang: 'es', puzzle: EASY, level: 'Hard', vs: 61 });
     expect(html).toContain('¿Puedes superarlo?');
     expect(html).toContain('Cargando el sudoku&hellip;');
     expect(html).not.toMatch(/content="[^"]*[<>]/);
@@ -389,10 +396,10 @@ describe('a daily’s share page', () => {
   it('says which daily it is, in every language', () => {
     const p = shareParamsOf(url(`/daily/${d.date}`), list)!;
     const en = shareCopy(p);
-    expect(en.title).toBe(`Daily #${no}: ${d.level} sudoku, rated ${d.score} | sudokUI`);
+    expect(en.title).toBe(`Daily #${no}: ${d.level} sudoku, HoDoKu rating ${d.score} | sudokUI`);
     expect(en.ogTitle).toBe(`sudokUI Daily #${no}, ${d.date}: can you solve it?`);
     expect(en.description.startsWith(`The daily for ${d.date}: `)).toBe(true);
-    expect(en.description).toContain(`${d.level} sudoku rated ${d.score}`);
+    expect(en.description).toContain(`${d.level} sudoku with a HoDoKu rating of ${d.score}`);
     expect(en.ogImage).toBe(ogShareCard(d.level, 'en'));
     const vs = shareCopy({ ...p, vs: 61 });
     expect(vs.ogTitle).toBe('Solved in 1:01. Can you beat it?');
@@ -512,8 +519,11 @@ describe('the band cards', () => {
         expect(b!.length, file).toBeLessThan(250_000);
       }
     }
-    // and nothing else lies there
-    expect(CARDS).toHaveLength(LEVELS.length * HOME_LANGS.length);
+    // and nothing else lies there but the cards of the three bands from
+    // before the five, kept for the previews chat apps may still hold
+    const legacy = ['beginner', 'tricky', 'nightmare'].flatMap((b) => [`${b}.png`, `${b}.nb.png`, `${b}.es.png`]);
+    expect(CARDS.filter((c) => !legacy.includes(c))).toHaveLength(LEVELS.length * HOME_LANGS.length);
+    for (const c of legacy) expect(CARDS, c).toContain(c);
   });
 
   it('are the image of every share page that knows its band, and the home card of one that does not', () => {

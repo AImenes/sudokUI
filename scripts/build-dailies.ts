@@ -11,7 +11,7 @@
  * adds the days that are missing up to the end date, so run it again
  * whenever the file is within a month or two of running out (the test in
  * tests/dailies.test.ts says when). Each day's band comes round in turn
- * (Medium, Tricky, Hard, dailyBand), each puzzle is generated afresh,
+ * (Medium, a gentle Hard, Hard: dailyBand, gentleDaily), each puzzle is generated afresh,
  * checked to have one solution and to rate in its band today, and stored
  * with its band, score, the techniques worth naming and the SHA-256 of
  * its solution, never the solution itself.
@@ -24,7 +24,9 @@ import { ratePuzzle } from '../src/engine/humanSolver';
 import { parseGrid, gridToString } from '../src/engine/board';
 import { solve, countSolutions } from '../src/engine/bruteForce';
 import { techsWorthNaming } from '../src/content/share';
-import { DAILY_EPOCH, dailyBand, dailyDate, dailyNumber, localDateKey, Daily } from '../src/content/dailies';
+import { DAILY_EPOCH, dailyBand, gentleDaily, dailyDate, dailyNumber, localDateKey, Daily } from '../src/content/dailies';
+import { TECHS } from '../src/engine/ratings';
+import type { Rating } from '../src/engine/humanSolver';
 
 const FILE = join(process.cwd(), 'src', 'content', 'dailies.json');
 
@@ -41,6 +43,9 @@ const byDate = new Map(existing.map((d) => [d.date, d]));
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
+/** a gentle Hard puzzle, the band once called Tricky: a score up to 1150 and at most one Hard-class step */
+const gentle = (r: Rating) => r.score <= 1150 && r.steps.filter((s) => TECHS[s.tech].level === 'Hard').length <= 1;
+
 /** a fresh puzzle of the band: one solution, rated in the band today, symmetric when the generator finds one in time */
 function makeDaily(date: string, no: number): Daily {
   const level = dailyBand(no);
@@ -51,6 +56,7 @@ function makeDaily(date: string, no: number): Daily {
     if (countSolutions(grid, 2) !== 1) continue;
     const rating = ratePuzzle(g.puzzle);
     if (!rating || !rating.solvable || rating.level !== level) continue;
+    if (gentleDaily(no) && !gentle(rating)) continue;
     // the first ten tries hold out for symmetry, the rest take what comes
     if (attempt < 10 && !hasSymmetry(grid, 'rotational')) continue;
     const solution = gridToString(solve(grid)!);

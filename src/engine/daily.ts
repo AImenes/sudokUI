@@ -50,7 +50,9 @@ export function dailyPuzzle(date = new Date()): DailyPuzzle {
       const r = ratePuzzle(p);
       if (!r) continue;
       const candidate = { puzzle: gridToString(p), score: r.score, level: r.level, dateKey };
-      if (r.solvable && ['Medium', 'Tricky', 'Hard'].includes(r.level)) return candidate;
+      // HoDoKu's Medium and Hard hold exactly the puzzles of the three bands
+      // this aimed at before (Medium, Tricky, Hard), so no day's puzzle moved
+      if (r.solvable && ['Medium', 'Hard'].includes(r.level)) return candidate;
       fallback = fallback ?? candidate;
     }
     // 60 straight misses of the target bands is astronomically unlikely, but

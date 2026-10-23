@@ -8,7 +8,7 @@ import { engineLang } from '../engine/text';
 import type { Step } from '../engine/steps';
 import { Modal } from './Dialogs';
 import { BandTable } from './BandTable';
-import { TECHS, ALL_TECHS, SOLVE_ORDER, LEVELS, LEVEL_MAX_SCORE, Tech } from '../engine/ratings';
+import { TECHS, ALL_TECHS, SOLVE_ORDER, Tech } from '../engine/ratings';
 import { techStatus, techniquesByFamily } from '../content/categories';
 import { KIN } from '../content/kin';
 import { INTUITION, INTUITION_URL } from '../content/intuition';
@@ -155,7 +155,7 @@ export function glossaryId(term: string | undefined): string | undefined {
   return GLOSSARY.find((e) => e.id === t || e.term.toLowerCase() === t || slugify(e.term) === slugify(term))?.id;
 }
 
-/** the eight difficulty bands with their score ceilings */
+/** how the HoDoKu rating works: the five levels with their score limits, the two picks inside them, and the solve times */
 export function RatingExplainer() {
   const lt = useLearnText();
   const { rating } = lt.loc;
@@ -175,6 +175,7 @@ export function RatingExplainer() {
         note={(l) => lt.loc.bandNotes[l]}
         upTo={(n) => lt.s('up to {n}', { n })}
         above={(n) => lt.s('above {n}', { n })}
+        noLimit={lt.s('no limit')}
       />
       <section className="learn-group">
         <h4>{lt.s('How fast is fast?')}</h4>
@@ -433,7 +434,7 @@ function TechniqueList({
                     {lt.techName(tech)}
                   </span>
                   <span className={`level-badge level-${info.level.toLowerCase()}`}>{lt.level(info.level)}</span>
-                  <span className="learn-score" title={lt.s("Added to a puzzle's rating each time the solver needs this technique")}>
+                  <span className="learn-score" title={lt.s("Added to a puzzle's HoDoKu rating each time the solver needs this technique")}>
                     +{info.score}
                   </span>
                   {lt.kinLine(tech) && <span className="learn-kin">{lt.kinLine(tech)}</span>}
@@ -674,7 +675,7 @@ const TAB_LABELS: Record<LearnTab, string> = {
   intuition: msg('Intuition'),
   method: msg('How to solve'),
   glossary: msg('Glossary'),
-  rating: msg('Rating')
+  rating: msg('HoDoKu rating')
 };
 
 export function LearnDialog({

@@ -39,14 +39,18 @@ describe('generation worker', () => {
     const rest = candidates(out);
     expect(rest.map((c) => c.puzzle)).not.toContain(entry.puzzle);
     // capped: nothing harder than the target was rated to the end
-    for (const c of rest) expect(['Beginner', 'Easy', 'Medium']).toContain(c.level);
+    for (const c of rest) expect(['Easy', 'Medium']).toContain(c.level);
   });
 
   it('a background request rates in full, so harder puzzles are pooled too', () => {
     const out = run({ id: 2, kind: 'level', level: 'Beginner', maxAttempts: 400 });
     answer(out);
-    // nothing is capped, so candidates carry whatever band they are
+    // nothing is capped, so candidates carry whatever level they are
     for (const c of candidates(out)) expect(ratePuzzle(c.puzzle)!.level).toBe(c.level);
+    // and the answer is a Beginner: an Easy puzzle scoring 400 or less
+    const entry = answer(out);
+    expect(entry.level).toBe('Easy');
+    expect(entry.score).toBeLessThanOrEqual(400);
   });
 
   it('serves a band seed first, through an isomorphism, when the band holds', () => {

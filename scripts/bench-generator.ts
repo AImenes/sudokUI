@@ -7,7 +7,7 @@
 import { generatePuzzle, generateFor, attemptFor, hits, clueCount, cruxEmpties } from '../src/engine/generator';
 import { ratePuzzle } from '../src/engine/humanSolver';
 import { gridToString } from '../src/engine/board';
-import { LEVELS, Level } from '../src/engine/ratings';
+import { PICKS, LevelPick, inPick, pickLevel } from '../src/engine/ratings';
 import { transformPuzzle } from '../src/engine/transform';
 
 const PER_BAND = Number(process.argv[2] ?? 20);
@@ -21,8 +21,8 @@ const stats = (xs: number[]) => {
 // 1. one attempt, rated in full: cost and band shares
 {
   const N = 300;
-  const shares: Partial<Record<Level, number>> = {};
-  const rateTime: Partial<Record<Level, number[]>> = {};
+  const shares: Partial<Record<LevelPick, number>> = {};
+  const rateTime: Partial<Record<LevelPick, number[]>> = {};
   let dig = 0;
   let rate = 0;
   let rejected = 0;
@@ -35,14 +35,18 @@ const stats = (xs: number[]) => {
     dig += b - a;
     rate += c - b;
     if (!r || !r.solvable) continue;
-    shares[r.level] = (shares[r.level] ?? 0) + 1;
-    (rateTime[r.level] ??= []).push(c - b);
+    // a level, and the narrower pick inside it the puzzle also answers
+    for (const p of PICKS) {
+      if (!inPick(p, r.level, r.score)) continue;
+      shares[p] = (shares[p] ?? 0) + 1;
+      (rateTime[p] ??= []).push(c - b);
+    }
     if (cruxEmpties(r, clueCount(gridToString(g))) < 20) rejected++;
   }
   console.log(`\nOne attempt (${N} puzzles): dig ${ms(dig / N)}, full rating ${ms(rate / N)}, crux filter rejects ${((100 * rejected) / N).toFixed(1)}%\n`);
   console.log('| Band | Share | Full rating, mean | p90 |');
   console.log('| --- | --- | --- | --- |');
-  for (const level of LEVELS) {
+  for (const level of PICKS) {
     const n = shares[level] ?? 0;
     const t = rateTime[level]?.length ? stats(rateTime[level]!) : null;
     console.log(`| ${level} | ${((100 * n) / N).toFixed(1)}% | ${t ? ms(t.mean) : '-'} | ${t ? ms(t.p90) : '-'} |`);
@@ -50,11 +54,11 @@ const stats = (xs: number[]) => {
 }
 
 // 2. a waiting player: time to a puzzle of each band, rating capped
-const found: Partial<Record<Level, string[]>> = {};
+const found: Partial<Record<LevelPick, string[]>> = {};
 console.log(`\nTime to a puzzle of the band, rating capped (${PER_BAND} per band)\n`);
 console.log('| Band | Attempts, mean | Wait, mean | p50 | p90 | max |');
 console.log('| --- | --- | --- | --- | --- | --- |');
-for (const level of LEVELS) {
+for (const level of PICKS) {
   const waits: number[] = [];
   const attempts: number[] = [];
   for (let i = 0; i < PER_BAND; i++) {
@@ -74,7 +78,7 @@ for (const level of LEVELS) {
 console.log(`\nA seed through a random isomorphism, re-rated with the cap\n`);
 console.log('| Band | Band held | Rating, mean | p90 |');
 console.log('| --- | --- | --- | --- |');
-for (const level of LEVELS) {
+for (const level of PICKS) {
   const seeds = found[level] ?? [];
   if (!seeds.length) continue;
   let held = 0;
@@ -84,7 +88,7 @@ for (const level of LEVELS) {
     for (let k = 0; k < 5; k++) {
       const q = transformPuzzle(seed);
       const a = performance.now();
-      const r = ratePuzzle(q, undefined, { maxLevel: level });
+      const r = ratePuzzle(q, undefined, { maxLevel: pickLevel(level) });
       times.push(performance.now() - a);
       tries++;
       if (r && hits({ kind: 'level', level }, q, r)) held++;

@@ -283,13 +283,56 @@ button {
 .level-beginner { background: #26999930; color: #6fd0cd; }
 .level-easy { background: #2e7d3230; color: #7fd486; }
 .level-medium { background: #38761d30; color: #b5d47f; }
-.level-tricky { background: #8a8a2030; color: #d3d36a; }
 .level-hard { background: #b8860b30; color: #e6c74c; }
 .level-unfair { background: #c0541530; color: #e8934a; }
 .level-extreme { background: #b3123030; color: #ef7783; }
 .level-nightmare { background: #6a1b9a30; color: #b78ae8; }
 /* hide-rating pill: deliberately playful, not an error state */
 .level-hidden { background: rgba(128, 128, 160, 0.18); color: var(--muted); font-style: italic; }
+
+/* the HoDoKu rating as a speedometer, on wider screens (RatingGauge.tsx):
+   each arc wears its level's badge colour, theme by theme. Where the bar
+   is short of room (useRatingFit), the gauge goes first, then the words
+   before the number; the level's name always stays */
+.rating-gauge {
+  flex: none;
+  width: 54px;
+  height: 30px;
+  overflow: visible;
+}
+.game-meta[data-fit='1'] .rating-gauge,
+.game-meta[data-fit='2'] .rating-gauge,
+.game-meta[data-fit='2'] .rating-word {
+  display: none;
+}
+.gauge-arc {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 10;
+}
+/* the light themes' badge colours are dark and alike, so the arcs take
+   mid tones there, each apart from its neighbours */
+:root[data-theme='light'] .gauge-arc.level-easy,
+:root[data-theme='rose'] .gauge-arc.level-easy { color: #3c9a46; }
+:root[data-theme='light'] .gauge-arc.level-medium,
+:root[data-theme='rose'] .gauge-arc.level-medium { color: #93a82e; }
+:root[data-theme='light'] .gauge-arc.level-hard,
+:root[data-theme='rose'] .gauge-arc.level-hard { color: #d9a40c; }
+:root[data-theme='light'] .gauge-arc.level-unfair,
+:root[data-theme='rose'] .gauge-arc.level-unfair { color: #e2782a; }
+:root[data-theme='light'] .gauge-arc.level-extreme,
+:root[data-theme='rose'] .gauge-arc.level-extreme { color: #cf3d4c; }
+.gauge-needle {
+  stroke: var(--text);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transform-box: view-box;
+  transform-origin: 50px 50px;
+}
+.gauge-hub { fill: var(--text); }
+@media (prefers-reduced-motion: reduce) {
+  .gauge-needle { transition: none !important; }
+}
 
 /* daylight theme needs darker badge text for contrast */
 :root[data-theme='light'] .level-beginner,
@@ -298,8 +341,6 @@ button {
 :root[data-theme='rose'] .level-easy { background: #2e7d3226; color: #1d6322; }
 :root[data-theme='light'] .level-medium,
 :root[data-theme='rose'] .level-medium { background: #38761d26; color: #2c5e14; }
-:root[data-theme='light'] .level-tricky,
-:root[data-theme='rose'] .level-tricky { background: #8a8a202e; color: #5c5c08; }
 :root[data-theme='light'] .level-hard,
 :root[data-theme='rose'] .level-hard { background: #b8860b2e; color: #735300; }
 :root[data-theme='light'] .level-unfair,
@@ -997,6 +1038,11 @@ button {
   color: var(--muted);
   font-size: 12.5px;
   line-height: 1.45;
+}
+
+/* the scores a level or pick covers, after its name */
+.level-btn .level-range {
+  font-weight: 400;
 }
 
 .level-btn:hover {
@@ -2110,6 +2156,11 @@ kbd {
   vertical-align: middle;
 }
 
+/* Beginner and Nightmare, the narrower picks inside Easy and Extreme */
+.band-table tr.band-pick td:first-child {
+  padding-left: 14px;
+}
+
 /* the hint panel's technique name opens its entry in the guide */
 .hint-tech {
   display: inline-flex;
@@ -2217,6 +2268,25 @@ kbd {
 }
 
 /* ---------- responsive ---------- */
+/* the narrowest phones: the longest level name (Urettferdig) and a
+   four-figure rating fit beside the timer and the buttons; with a wider
+   font than the system's, the name gives way before the number does */
+@media (max-width: 359.98px) {
+  .topbar .game-meta {
+    gap: 4px;
+  }
+  .topbar .game-meta .level-badge {
+    padding: 3px 6px;
+    font-size: 12px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar .score-btn {
+    padding: 3px 2px;
+  }
+}
+
 @media (max-width: 560px) {
   .topbar {
     gap: 8px;
@@ -2240,7 +2310,8 @@ kbd {
   }
 
   .score-btn .rating-word,
-  .score-btn .mini-i {
+  .score-btn .mini-i,
+  .rating-gauge {
     display: none;
   }
 

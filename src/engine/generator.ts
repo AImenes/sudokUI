@@ -7,7 +7,7 @@ import { Grid, emptyGrid, cloneGrid, setValue, gridToString, gridFromValues, dig
 import { solve } from './bruteForce';
 import { ratePuzzle, Rating, RatingLimit } from './humanSolver';
 import { Step } from './steps';
-import { Level, LEVELS, Tech, TECHS, SOLVE_ORDER, practiceCeiling } from './ratings';
+import { Level, LEVELS, LevelPick, Tech, TECHS, SOLVE_ORDER, practiceCeiling, pickLevel, inPick } from './ratings';
 
 export { practiceCeiling };
 
@@ -226,7 +226,9 @@ export function cruxEmpties(rating: Rating, clues: number): number {
  * The crux on a live board: a puzzle served for its band must meet its
  * hardest technique with this many cells still empty, so the pattern is
  * found on a board with room in it rather than as an endgame formality.
- * Costs about one Tricky puzzle in six and almost nothing elsewhere.
+ * Costs about one in six of the gentlest Hard puzzles (the band once
+ * called Tricky: score up to 1150, at most one Hard-class step) and almost
+ * nothing elsewhere.
  */
 export const CRUX_MIN_EMPTIES = 20;
 
@@ -244,18 +246,19 @@ export function fitForLevel(puzzle: string, rating: Rating): boolean {
 
 // ---- targeted generation ----
 
-export type Target = { kind: 'level'; level: Level } | { kind: 'tech'; tech: Tech };
+/** a level or one of the narrower picks inside one (ratings.ts, PICKS), or a technique to practise */
+export type Target = { kind: 'level'; level: LevelPick } | { kind: 'tech'; tech: Tech };
 
 /** Where the rating of a candidate for this target may stop early. */
 export const limitFor = (target: Target): RatingLimit =>
   target.kind === 'level'
-    ? { maxLevel: target.level }
+    ? { maxLevel: pickLevel(target.level) }
     : { cleanTech: target.tech, maxLevel: practiceCeiling(target.tech) };
 
 /** Whether a rated puzzle is what the target asked for. */
 export function hits(target: Target, puzzle: string, rating: Rating): boolean {
   if (!rating.solvable) return false;
-  if (target.kind === 'level') return rating.level === target.level && fitForLevel(puzzle, rating);
+  if (target.kind === 'level') return inPick(target.level, rating.level, rating.score) && fitForLevel(puzzle, rating);
   return (
     cleanTechniques(rating).includes(target.tech) &&
     LEVELS.indexOf(rating.level) <= LEVELS.indexOf(practiceCeiling(target.tech))

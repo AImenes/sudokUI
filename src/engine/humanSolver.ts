@@ -9,7 +9,7 @@ import { Grid, cloneGrid, setValue, bit, isSolved, isBroken, cellName, parseGrid
 import { solve } from './bruteForce';
 import { Step } from './steps';
 import { tr } from './text';
-import { Tech, TECHS, Level, LEVELS, LEVEL_MAX_SCORE, SOLVE_ORDER, maxLevel, bandFloor } from './ratings';
+import { Tech, TECHS, Level, LEVELS, LEVEL_MAX_SCORE, SOLVE_ORDER, maxLevel } from './ratings';
 import { findFullHouse, findNakedSingle, findHiddenSingle } from './techniques/singles';
 import { findLockedCandidates1, findLockedCandidates2 } from './techniques/intersections';
 import { findNakedSubset, findHiddenSubset } from './techniques/subsets';
@@ -185,8 +185,8 @@ export interface Rating {
 }
 
 /**
- * Where a rating may stop early. A puzzle's band only ever rises along the
- * solve path, so once it is past the band a caller wants there is nothing
+ * Where a rating may stop early. A puzzle's level only ever rises along the
+ * solve path, so once it is past the level a caller wants there is nothing
  * left to learn; likewise a practice puzzle is lost the moment a step
  * harder than the target technique comes before the target (it could no
  * longer need the technique cleanly, see `cleanTechniques`). The generator
@@ -194,20 +194,20 @@ export interface Rating {
  * for, and the hardest ones cost the most to rate.
  */
 export interface RatingLimit {
-  /** stop as soon as the band exceeds this one */
+  /** stop as soon as the level exceeds this one */
   maxLevel?: Level;
   /** stop at the first step harder than this technique before the technique itself */
   cleanTech?: Tech;
 }
 
 /**
- * The band of a path so far: the hardest technique's band floor, Hard once
- * two Hard-class steps are in, then bumped while the score exceeds a cap.
- * Monotone in all three inputs, which is what lets a rating stop early.
+ * The level of a path so far, as HoDoKu's SudokuSolver.solve sets it: the
+ * highest level of the techniques used, raised a level at a time while the
+ * score is above that level's maximum. Monotone in both inputs, which is
+ * what lets a rating stop early.
  */
-function bandOf(techBand: Level, hardSteps: number, score: number): Level {
-  const level = hardSteps >= 2 ? maxLevel(techBand, 'Hard') : techBand;
-  let li = LEVELS.indexOf(level);
+export function levelOf(techLevel: Level, score: number): Level {
+  let li = LEVELS.indexOf(techLevel);
   while (li < LEVELS.length - 1 && score > LEVEL_MAX_SCORE[LEVELS[li]]) li++;
   return LEVELS[li];
 }
@@ -231,8 +231,8 @@ export function ratePuzzle(
   const steps: Step[] = [];
   const techniques: Partial<Record<Tech, number>> = {};
   let score = 0;
-  let level: Level = 'Beginner';
-  let hardSteps = 0;
+  // HoDoKu starts every puzzle at Easy
+  let level: Level = 'Easy';
   let solvable = true;
   const maxLevelIndex = limit?.maxLevel ? LEVELS.indexOf(limit.maxLevel) : -1;
   const cleanIndex = limit?.cleanTech ? TECHS[limit.cleanTech].index : -1;
@@ -263,12 +263,9 @@ export function ratePuzzle(
     techniques[step.tech] = (techniques[step.tech] ?? 0) + 1;
     const info = TECHS[step.tech];
     score += info.score;
-    level = maxLevel(level, bandFloor(info.level));
-    // one Hard-class step (a single fish/wing/kite) floors at Tricky via
-    // bandFloor; needing SEVERAL of them is what Hard proper means
-    if (info.level === 'Hard') hardSteps++;
+    level = maxLevel(level, info.level);
     if (steps.length > 400) return null; // safety
-    if (maxLevelIndex >= 0 && LEVELS.indexOf(bandOf(level, hardSteps, score)) > maxLevelIndex) {
+    if (maxLevelIndex >= 0 && LEVELS.indexOf(levelOf(level, score)) > maxLevelIndex) {
       return null;
     }
     if (cleanIndex >= 0 && !cleanSeen) {
@@ -277,5 +274,5 @@ export function ratePuzzle(
     }
   }
 
-  return { score, level: bandOf(level, hardSteps, score), steps, techniques, solvable };
+  return { score, level: levelOf(level, score), steps, techniques, solvable };
 }

@@ -172,9 +172,9 @@ Buttons are quoted as the app labels them, in that language: Hint, Sjekk,
 Steg, Skann, Hjelp, Autokandidater, Fyll kandidater; Pista, Revisar, Pasos,
 Explorar, Ayuda, Autocandidatos, Rellenar candidatos. (Spanish Explorar is
 the Scan button, which lists every technique in a position; scanning a
-photo is escanear.) The bands are Nybegynner, Lett, Middels, Lur,
-Vanskelig, Urettferdig, Ekstrem, Mareritt and Principiante, Fácil, Medio,
-Engañoso, Difícil, Injusto, Extremo, Pesadilla.
+photo is escanear.) The levels are Lett, Middels, Vanskelig, Urettferdig,
+Ekstrem and Fácil, Medio, Difícil, Injusto, Extremo; the picks inside them
+Nybegynner, Mareritt and Principiante, Pesadilla.
 
 **Norwegian**: bokmål in its moderate, everyday forms, as `nb.ts` writes
 it (boksen, ruten, tallet, kandidatene); address the player as "du";

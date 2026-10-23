@@ -25,7 +25,7 @@ import { justify, Move } from '../engine/justify';
 import { contradictionStep } from '../engine/techniques/forcing';
 import { Chain, EMPTY_CHAIN, extend, chainStep, conclusions } from '../engine/chainTrainer';
 import type { CellDigit } from '../engine/steps';
-import { Level, Tech, SOLVE_ORDER, hintOrder } from '../engine/ratings';
+import { Level, Tech, SOLVE_ORDER, hintOrder, asLevel } from '../engine/ratings';
 import { useSettings } from './settings';
 import { useStats } from './stats';
 import { useTelemetry } from './telemetry';
@@ -727,7 +727,7 @@ export const useGame = create<GameStore>()(
         set({ custom: false, customBackup: null, scanPreview: null, scanDoubts: [] });
         get().startGame(puzzle, v.score, v.level);
         const t = translator();
-        set({ notice: t('Puzzle checked: unique solution, rated {score} ({level})', { score: v.score, level: t.level(v.level) }) });
+        set({ notice: t('Puzzle checked: unique solution, HoDoKu rating {score} ({level})', { score: v.score, level: t.level(v.level) }) });
         return null;
       },
 
@@ -1656,7 +1656,7 @@ export const useGame = create<GameStore>()(
             ...(position.cands
               ? {
                   markContract: 'exhaustive' as MarkContract,
-                  notice: t('Pencil-mark grid loaded: its candidates are your centre marks, rated {score} ({level})', {
+                  notice: t('Pencil-mark grid loaded: its candidates are your centre marks, HoDoKu rating {score} ({level})', {
                     score: v.score,
                     level: t.level(v.level)
                   })
@@ -1673,7 +1673,7 @@ export const useGame = create<GameStore>()(
         get().startGame(puzzle, v.score, v.level);
         if (site) {
           const t = translator();
-          set({ notice: t('Imported from {site}, rated {score} ({level})', { site, score: v.score, level: t.level(v.level) }) });
+          set({ notice: t('Imported from {site}, HoDoKu rating {score} ({level})', { site, score: v.score, level: t.level(v.level) }) });
         }
         return null;
       },
@@ -1785,6 +1785,14 @@ export const useGame = create<GameStore>()(
         practiceTarget: s.practiceTarget,
         practiceFound: s.practiceFound
       }),
+      // a game saved under a band name from before HoDoKu's five levels
+      // plays on as its level (ratings.ts, asLevel)
+      merge: (persisted, current) => {
+        const p = { ...(persisted as Partial<GameStore>) };
+        if (p.info) p.info = levelled(p.info);
+        if (p.customBackup?.info) p.customBackup = { ...p.customBackup, info: levelled(p.customBackup.info) };
+        return { ...current, ...p };
+      },
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.startedAt = Date.now();
@@ -1807,6 +1815,12 @@ export const useGame = create<GameStore>()(
     }
   )
 );
+
+/** a saved game's info with its band as one of HoDoKu's five levels; a name that is no band at all is left as it was */
+export function levelled(info: GameInfo): GameInfo {
+  const level = asLevel(info.level);
+  return level && level !== info.level ? { ...info, level } : info;
+}
 
 /** the board shows a move of the player's: a digit, a mark, an exclusion, a colour, or auto candidates switched on */
 export function playedOn(s: Pick<GameStore, 'cells' | 'autoCandidates'>): boolean {

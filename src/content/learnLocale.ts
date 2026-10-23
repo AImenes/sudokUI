@@ -10,7 +10,7 @@
 // established name (docs/glossary_input.md, section 4): Naken singel,
 // Único desnudo. The English name is then listed among its aliases, so a
 // reader can find it in English sources.
-import { TECHS, LEVELS, Tech, Category, Level } from '../engine/ratings';
+import { TECHS, PICKS, Tech, Category, LevelPick } from '../engine/ratings';
 import type { Lang } from '../state/settings';
 import type { Step } from '../engine/steps';
 import { Grid, parseGrid } from '../engine/board';
@@ -72,9 +72,9 @@ export interface LearnLocale {
   techAka: Partial<Record<Tech, string[]>>;
   kin: Partial<Record<Tech, string[]>>;
   categories: Record<Category, { label: string; note: string }>;
-  levels: Record<Level, string>;
-  bandLeads: Record<Level, string>;
-  bandNotes: Record<Level, string>;
+  levels: Record<LevelPick, string>;
+  bandLeads: Record<LevelPick, string>;
+  bandNotes: Record<LevelPick, string>;
   rating: {
     summary: string;
     points: { title: string; text: string }[];
@@ -108,7 +108,7 @@ export const EN: LearnLocale = {
   categories: Object.fromEntries(
     (Object.keys(CATEGORY_NOTES) as Category[]).map((c) => [c, { label: categoryLabel(c), note: CATEGORY_NOTES[c] }])
   ) as Record<Category, { label: string; note: string }>,
-  levels: Object.fromEntries(LEVELS.map((l) => [l, l])) as Record<Level, string>,
+  levels: Object.fromEntries(PICKS.map((l) => [l, l])) as Record<LevelPick, string>,
   bandLeads: BAND_LEADS,
   bandNotes: BAND_NOTES,
   rating: { summary: RATING_SUMMARY, points: RATING_POINTS, solveTimeNote: SOLVE_TIME_NOTE, modes: MODE_LABEL },
@@ -173,7 +173,7 @@ export interface LearnText {
   kinLine(t: Tech): string;
   category(c: Category): string;
   categoryNote(c: Category): string;
-  level(l: Level): string;
+  level(l: LevelPick): string;
   glossary(id: string): GlossaryText;
   /** a landing page's copy, by its English address */
   landing(url: string): LandingText;

@@ -49,7 +49,7 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
   is fine) and check the result on the board before playing (see
   [docs/scan.md](docs/scan.md)) — every import is rated
 - **Shareable links**: `sudokui.app/p/<81 chars>` opens the exact puzzle, and
-  pasted into a chat it previews with the band, the score and, if you choose,
+  pasted into a chat it previews with the level, the HoDoKu rating and, if you choose,
   the techniques it needs; a win can be shared as a challenge with the time
   to beat
 
@@ -68,7 +68,7 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
   puzzle that genuinely requires it — with nothing harder needed before it.
   The game plays the standard solver's steps up to it (uniqueness
   included, whatever the hint setting) so the chosen pattern is the very
-  next move, the puzzle stays within one band of the technique,
+  next move, the puzzle stays within one level of the technique,
   and the bar says **found** when your own move is the one it was prepared
   for. The rarest techniques come from puzzles found in advance by a
   multi-hour search, so they start instantly too
@@ -85,7 +85,7 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
   1 × X-Wing. From hints: 1 × XY-Wing."), the guide shows what you have used unaided and
   sorts by **learn next**, the path (Learn → Your path) shows the techniques worth
   learning in the order puzzles need them with the next one a click from
-  its practice, and the win dialog keeps your band records and the daily
+  its practice, and the win dialog keeps your level records and the daily
   streak. **The daily, with everyone's times**: one published puzzle a day,
   the same for the whole world; finish it without help and, if you choose,
   send your time in to see how many solved it unassisted, the median, and
@@ -109,22 +109,23 @@ app store yet; the steps for a Capacitor wrapper are under Mobile builds.
   map of sudoku solving
 
 **Rate**
-- Every puzzle gets a difficulty score: the solver plays it with the easiest
+- Every puzzle gets a HoDoKu rating: the solver plays it with the easiest
   applicable technique at each step and sums per-technique scores
   (HoDoKu-compatible model)
-- Eight bands: Beginner (≤400), Easy (≤800), Medium (≤1000), Tricky (≤1150),
-  Hard (≤1600), Unfair (≤1800), Extreme (≤3000) and Nightmare above — the
-  HoDoKu thresholds, with the extremes subdivided. One fish or wing makes a
-  puzzle Tricky; several make it Hard
+- HoDoKu's five levels, with HoDoKu's limits and rule: Easy (≤800),
+  Medium (≤1000), Hard (≤1600), Unfair (≤1800) and Extreme with no limit. A puzzle's
+  level is that of the hardest technique on its solve path, raised while its score is
+  over the limit. New game also offers two narrower picks: Beginner (Easy,
+  ≤400) and Nightmare (Extreme, >3000)
 - Optional hidden-rating mode and "Surprise me"
 
 **Generate**
 - Unique-solution generator with rotational symmetry; every puzzle is
   minimal (no clue, or with symmetry no pair of clues, can be removed) and
   solvable by the technique catalogue
-- Any difficulty band in well under a second: digging proves uniqueness
+- Any difficulty level or pick in well under a second: digging proves uniqueness
   with a propagating solver, and rating stops the moment a puzzle is past
-  the band asked for. The hardest bands come from a shipped seed library,
+  the level asked for. The hardest picks come from a shipped seed library,
   served through one of 10^12 isomorphisms each time so nothing repeats
   (see [docs/generator.md](docs/generator.md))
 - Background generation in a Web Worker — the UI never blocks
@@ -275,7 +276,7 @@ src/
   engine/            framework-free TypeScript solving engine
     board.ts         bitmask grid model, units/peers/candidates
     bruteForce.ts    backtracking solver + solution counter
-    ratings.ts       technique catalogue: scores, difficulty bands, ordering
+    ratings.ts       technique catalogue: scores, HoDoKu's levels, ordering
     humanSolver.ts   applies techniques in order, rates puzzles
     generator.ts     full-grid + hole-digging generator, targets, filters
     transform.ts     grid isomorphisms (how a seed is served, never twice)
@@ -361,7 +362,7 @@ Toward the best open-source sudoku tool anywhere:
   pages next (see [docs/online-goals.md](docs/online-goals.md), phase 4);
   never accounts
 - **Curated library** — classic named puzzles (Escargot, Golden Nugget…) and
-  a daily puzzle per difficulty band, next to today's shared daily
+  a daily puzzle per difficulty level, next to today's shared daily
 - **Custom solve-order editor** — reorder/disable techniques and see how
   ratings change; export your own rating profile
 - **Accessibility & i18n** — full screen-reader support, colour-blind-safe
@@ -372,7 +373,7 @@ Toward the best open-source sudoku tool anywhere:
 
 ## Credits & license
 
-The rating model (per-technique scores and difficulty bands) and much of the
+The rating model (per-technique scores and difficulty levels) and much of the
 technique semantics follow **HoDoKu** by Bernhard Hobiger; several newer
 strategies follow the definitions documented at **sudokuwiki.org**. sudokUI
 is an independent implementation, released under the **GPL-3.0** license

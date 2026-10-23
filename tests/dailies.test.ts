@@ -15,6 +15,7 @@ import {
   BUCKET_SECONDS,
   bucketOf,
   dailyBand,
+  gentleDaily,
   dailyDate,
   dailyNumber,
   dailyPath,
@@ -65,6 +66,18 @@ describe('the published dailies', () => {
       expect(countSolutions(grid, 2), d.date).toBe(1);
       expect(await sha256(gridToString(solve(grid)!)), d.date).toBe(d.solutionHash);
       expect(d.solutionHash).toMatch(/^[0-9a-f]{64}$/);
+    }
+  });
+
+  it('keep the turn they were published in: the second day of each a gentle Hard, the band once called Tricky', async () => {
+    const { ratePuzzle } = await import('../src/engine/humanSolver');
+    for (const [i, d] of LIST.entries()) {
+      if (!gentleDaily(i + 1)) continue;
+      expect(d.level, d.date).toBe('Hard');
+      const r = ratePuzzle(d.puzzle)!;
+      expect(r.score, d.date).toBe(d.score);
+      expect(r.score, d.date).toBeLessThanOrEqual(1150);
+      expect(r.steps.filter((s) => TECHS[s.tech].level === 'Hard').length, d.date).toBeLessThanOrEqual(1);
     }
   });
 

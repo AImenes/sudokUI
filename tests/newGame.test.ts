@@ -18,14 +18,14 @@ describe('auto candidates across games', () => {
 
   it('a new game starts with auto off even when the last game had it on', () => {
     useGame.setState({ autoCandidates: true });
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     expect(useGame.getState().autoCandidates).toBe(false);
     expect(useGame.getState().assisted).toBe(false);
   });
 
   it('fast-forwarded practice turns auto on and counts as assisted', () => {
     useSettings.getState().set({ practiceFastForward: true });
-    useGame.getState().startGame(EASY, 196, 'Beginner', 'NAKED_PAIR');
+    useGame.getState().startGame(EASY, 196, 'Easy', 'NAKED_PAIR');
     expect(useGame.getState().autoCandidates).toBe(true);
     expect(useGame.getState().assisted).toBe(true);
   });
@@ -33,7 +33,7 @@ describe('auto candidates across games', () => {
   it('practice without fast-forward starts bare and clean', () => {
     useSettings.getState().set({ practiceFastForward: false });
     useGame.setState({ autoCandidates: true });
-    useGame.getState().startGame(EASY, 196, 'Beginner', 'NAKED_PAIR');
+    useGame.getState().startGame(EASY, 196, 'Easy', 'NAKED_PAIR');
     expect(useGame.getState().autoCandidates).toBe(false);
     expect(useGame.getState().assisted).toBe(false);
     useSettings.getState().set({ practiceFastForward: true });

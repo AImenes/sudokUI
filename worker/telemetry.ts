@@ -36,7 +36,7 @@
  * The dataset is an interface, so the tests and the dev and preview
  * servers run the whole thing over memory (memoryEvents).
  */
-import { LEVELS, Level } from '../src/engine/ratings';
+import { Level, asLevel } from '../src/engine/ratings';
 import { BUCKET_MAX } from '../src/content/dailies';
 import { makeRateLimiter } from './daily';
 import { version as WORKER_VERSION } from '../package.json';
@@ -114,14 +114,15 @@ export interface AnalyticsEngineLike {
 
 // ---- the checks ---------------------------------------------------------------
 
-const LEVEL_SET = new Set<string>(LEVELS);
-
 /** the event a value is, or null when anything about it is off the closed list */
 export function checkEvent(x: unknown): TelemetryEvent | null {
   if (!x || typeof x !== 'object' || Array.isArray(x)) return null;
   const e = x as Record<string, unknown>;
   if (typeof e.event !== 'string' || !(APP_EVENTS as readonly string[]).includes(e.event)) return null;
-  if (typeof e.band !== 'string' || !LEVEL_SET.has(e.band)) return null;
+  // one of HoDoKu's five levels; an app from before them sends its own eight
+  // band names, each inside one level, and its line is written as that level
+  const band = asLevel(e.band);
+  if (!band) return null;
   if (typeof e.bucket !== 'number' || !Number.isInteger(e.bucket) || e.bucket < 0 || e.bucket > BUCKET_MAX) return null;
   if (typeof e.standalone !== 'boolean') return null;
   if (typeof e.version !== 'string' || !VERSION.test(e.version)) return null;
@@ -145,7 +146,7 @@ export function checkEvent(x: unknown): TelemetryEvent | null {
   }
   return {
     event: e.event as AppEvent,
-    band: e.band as Level,
+    band,
     bucket: e.bucket,
     standalone: e.standalone,
     version: e.version,

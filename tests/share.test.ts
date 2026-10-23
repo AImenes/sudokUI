@@ -65,22 +65,22 @@ describe('position links', () => {
 describe('what a game remembers for its share link', () => {
   it('writes a puzzle with dots whatever the string said, so it always equals its own address', () => {
     const zeros = EASY.replace(/\./g, '0');
-    useGame.getState().startGame(zeros, 196, 'Beginner');
+    useGame.getState().startGame(zeros, 196, 'Easy');
     expect(useGame.getState().info?.puzzle).toBe(EASY);
     expect(useGame.getState().cells.filter((c) => c.given)).toHaveLength(EASY.replace(/\./g, '').length);
   });
 
   it('keeps a challenger’s time through a restart, and drops it with a new puzzle', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     useGame.setState((s) => ({ info: s.info && { ...s.info, challenge: 552 } }));
     useGame.getState().restart();
     expect(useGame.getState().info?.challenge).toBe(552);
-    useGame.getState().startGame(EASY.replace('..3', '4.3'), 196, 'Beginner');
+    useGame.getState().startGame(EASY.replace('..3', '4.3'), 196, 'Easy');
     expect(useGame.getState().info?.challenge).toBeUndefined();
   });
 
   it('marks a game opened from a position link as begun part-way, until it restarts', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     const encoded = encodePosition(fuzzedCells(3), true);
     expect(useGame.getState().loadPosition(encoded)).toBe(true);
     expect(useGame.getState().info?.fromPosition).toBe(true);
@@ -91,7 +91,7 @@ describe('what a game remembers for its share link', () => {
 
 describe('a published daily on the board', () => {
   it('stays that daily through a restart', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner', null, '2026-10-07');
+    useGame.getState().startGame(EASY, 196, 'Easy', null, '2026-10-07');
     useGame.setState((s) => ({ info: s.info && { ...s.info, dailyNo: 1 } }));
     useGame.getState().restart();
     expect(useGame.getState().info?.dailyNo).toBe(1);
