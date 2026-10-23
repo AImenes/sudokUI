@@ -18,6 +18,9 @@
  *   counts of games started and solved, written to Workers Analytics
  *   Engine; a share address counts a landing there too when a person
  *   arrives from outside the site;
+ * - the report route, POST /api/feedback (worker/feedback.ts): a report
+ *   from the app's dialog, e-mailed to the person who runs sudokUI through
+ *   Email Routing, and stored nowhere;
  * - the private dashboard, /admin (worker/admin.ts), behind Cloudflare
  *   Access, reading those counts back; a 404 until its secrets are set,
  *   and for any request without a valid Access token (worker/access.ts).
@@ -38,13 +41,17 @@ import type { Daily } from '../src/content/dailies';
 import { handleDailyApi, d1Store, D1Like } from './daily';
 import { handleTelemetry, countLanding, AnalyticsEngineLike } from './telemetry';
 import { handleAdmin, ADMIN_PATH, AdminOptions } from './admin';
+import { handleFeedback, SendEmailLike } from './feedback';
+import { EmailMessage } from 'cloudflare:email';
 
 /**
  * What wrangler.jsonc binds: the static assets in dist/, the database, the
  * analytics dataset; and the dashboard's four secrets, set by hand
  * (docs/connect-the-analytics.md): the SQL API's account id and token, and
  * the Access team domain and application AUD tag that its visitors'
- * tokens are checked against
+ * tokens are checked against; and the reports' sender, Email Routing's
+ * send_email binding, with the verified address it sends to
+ * (docs/connect-the-feedback.md)
  */
 export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
@@ -54,6 +61,8 @@ export interface Env {
   ADMIN_TOKEN?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
+  FEEDBACK?: SendEmailLike;
+  FEEDBACK_TO?: string;
 }
 
 /** what the runtime hands a fetch handler besides the request and the bindings */
@@ -86,6 +95,12 @@ export async function handleRequest(request: Request, env: Env, ctx?: Context, a
   if (api) return api;
   const telemetry = await handleTelemetry(request, env.EVENTS ?? null);
   if (telemetry) return telemetry;
+  const feedback = await handleFeedback(request, {
+    sender: env.FEEDBACK ?? null,
+    to: env.FEEDBACK_TO,
+    makeMessage: (from, to, raw) => new EmailMessage(from, to, raw)
+  });
+  if (feedback) return feedback;
 
   const url = new URL(request.url);
   if (url.pathname === ADMIN_PATH || url.pathname === ADMIN_PATH + '/') {

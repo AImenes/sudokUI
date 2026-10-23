@@ -3,7 +3,8 @@
 // phase 3). Every sentence describes what the code does: the live lines
 // src/state/telemetry.ts sends by default, what the Settings switch adds,
 // the daily's times (src/state/dailyStats.ts), the share links
-// (src/content/share.ts) and the landing count (worker/telemetry.ts).
+// (src/content/share.ts), the landing count (worker/telemetry.ts) and the
+// reports (src/ui/report.ts, worker/feedback.ts).
 // When one of those changes, change this page.
 //
 // src/content/learnPages.ts builds the page from this copy, like the
@@ -74,15 +75,23 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
         ]
       },
       {
+        heading: 'If you write: reports and letters',
+        paragraphs: [
+          '“Send feedback”, in the footer and in Info, and “Looks wrong?”, under a hint, open a form. Only when you press Send does the app send what you wrote, the kind of report, the app’s version and language, how long the form was open (which the server uses only to tell people from robots, and does not pass on) and, if you give one, your e-mail address for an answer. A hint report also carries the hint: its technique, its line of notation, the uniqueness and marks settings it was found under, and whether the app found it agrees with the solution. While “Include the board” is ticked, the report carries the board as it stands, as a position link; only if you tick “Include my browser’s details” does it carry your browser’s user agent (its name and system, sometimes the device model).',
+          'The server checks the report and passes it on as an e-mail to Anders Imenes, who runs sudokUI; it keeps no copy itself. The IP address the report came from is read only to refuse floods, in memory, as above. Letters to feedback@sudokui.app reach the same inbox. Cloudflare carries the mail through its Email Routing and keeps a log of each letter it handles, with its sender, recipient and subject, for 31 days; that log clears itself, and deleting cannot reach it sooner. Cloudflare, Inc. is in the United States, and the mail passes through it under its data processing terms (the EU–US Data Privacy Framework and the EU’s standard contractual clauses). The inbox itself is with an ordinary mail provider. A report or a letter is kept there until it has been dealt with, at most 12 months, and then deleted, together with any answer to it.',
+          'Anders Imenes, in Norway, is responsible for this (the data controller). A report is handled on the basis of your consent, given by sending it, to fix what it describes or to answer you; you can withdraw it at any time, and what you sent is then deleted. You can ask for a copy of what you sent, also in a machine-readable form, to have it corrected or deleted, or its handling restricted, by writing to feedback@sudokui.app, and you can complain to Datatilsynet, the Norwegian Data Protection Authority.'
+        ]
+      },
+      {
         heading: 'What is never collected',
         paragraphs: [
-          'No account, no e-mail address, no password, no cookie, no fingerprint, no advertising, no third-party script. Your games, pencil marks, statistics, technique record and daily streak stay in your browser’s storage, on your device, and leave it only in the ways this page describes.'
+          'No account, no password, no cookie, no fingerprint, no advertising, no third-party script, and no e-mail address unless you give one in a report or write to feedback@sudokui.app. Your games, pencil marks, statistics, technique record and daily streak stay in your browser’s storage, on your device, and leave it only in the ways this page describes.'
         ]
       },
       {
         heading: 'Who runs this, and how to check',
         paragraphs: [
-          'sudokUI is run from Norway by its author and served by Cloudflare. The source code, including everything this page describes, is public: {source}. Questions and corrections are welcome as an issue there.'
+          'sudokUI is run from Norway by its author, Anders Imenes, and served by Cloudflare. The source code, including everything this page describes, is public: {source}. Questions and corrections are welcome at feedback@sudokui.app, or as an issue there.'
         ]
       }
     ],
@@ -131,15 +140,23 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
         ]
       },
       {
+        heading: 'Hvis du skriver: meldinger og e-post',
+        paragraphs: [
+          '«Send tilbakemelding», i bunnteksten og under Info, og «Ser det feil ut?», under et hint, åpner et skjema. Bare når du trykker på Send, sender appen det du skrev, hva slags melding det er, appens versjon og språk, hvor lenge skjemaet var åpent (som tjeneren bare bruker til å skille mennesker fra roboter, og ikke sender videre) og, hvis du oppgir en, e-postadressen din for å få svar. En melding om et hint har også med hintet: teknikken, linjen med notasjon, innstillingene for entydighet og notater det ble funnet med, og om appen fant at det stemmer med løsningen. Så lenge «Ta med brettet» er krysset av, har meldingen med brettet slik det står, som en stillingslenke; bare hvis du krysser av for «Ta med detaljer om nettleseren min», har den med brukeragenten til nettleseren din (navnet og systemet, noen ganger enhetsmodellen).',
+          'Tjeneren sjekker meldingen og sender den videre som en e-post til Anders Imenes, som driver sudokUI; selv beholder den ingen kopi. IP-adressen meldingen kom fra, leses bare for å avvise flommer, i minnet, som over. Brev til feedback@sudokui.app kommer til den samme innboksen. Cloudflare frakter e-posten gjennom Email Routing og fører en logg over hvert brev selskapet håndterer, med avsender, mottaker og emne, i 31 dager; loggen tømmer seg selv, og sletting kan ikke nå den før. Cloudflare, Inc. holder til i USA, og e-posten går gjennom selskapet etter databehandlingsvilkårene deres (EU–USA-rammeverket for personvern og EUs standardkontraktsbestemmelser). Selve innboksen ligger hos en vanlig e-postleverandør. En melding eller et brev beholdes der til saken er behandlet, høyst i 12 måneder, og slettes så, sammen med et eventuelt svar.',
+          'Anders Imenes, i Norge, er ansvarlig for dette (behandlingsansvarlig). En melding behandles på grunnlag av samtykket ditt, som du gir ved å sende den, for å rette det den beskriver eller svare deg; du kan trekke det tilbake når som helst, og det du sendte, slettes da. Du kan be om en kopi av det du sendte, også i et maskinlesbart format, om å få det rettet eller slettet, eller om at behandlingen begrenses, ved å skrive til feedback@sudokui.app, og du kan klage til Datatilsynet.'
+        ]
+      },
+      {
         heading: 'Hva som aldri samles inn',
         paragraphs: [
-          'Ingen konto, ingen e-postadresse, ingen passord, ingen informasjonskapsel, ingen digitale fingeravtrykk, ingen reklame, ingen skript fra tredjeparter. Spillene dine, notatene, statistikken, teknikkoversikten og rekken på dagens sudoku blir i nettleserens lagring, på enheten din, og forlater den bare på måtene denne siden beskriver.'
+          'Ingen konto, ingen passord, ingen informasjonskapsel, ingen digitale fingeravtrykk, ingen reklame, ingen skript fra tredjeparter, og ingen e-postadresse med mindre du oppgir en i en melding eller skriver til feedback@sudokui.app. Spillene dine, notatene, statistikken, teknikkoversikten og rekken på dagens sudoku blir i nettleserens lagring, på enheten din, og forlater den bare på måtene denne siden beskriver.'
         ]
       },
       {
         heading: 'Hvem som driver dette, og hvordan du kan sjekke det',
         paragraphs: [
-          'sudokUI drives fra Norge av forfatteren og leveres av Cloudflare. Kildekoden, inkludert alt denne siden beskriver, er åpen: {source}. Spørsmål og rettelser er velkomne som en sak der.'
+          'sudokUI drives fra Norge av forfatteren, Anders Imenes, og leveres av Cloudflare. Kildekoden, inkludert alt denne siden beskriver, er åpen: {source}. Spørsmål og rettelser er velkomne på feedback@sudokui.app, eller som en sak der.'
         ]
       }
     ],
@@ -188,15 +205,23 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
         ]
       },
       {
+        heading: 'Si escribes: mensajes y correos',
+        paragraphs: [
+          '«Enviar comentarios», en el pie de página y en Info, y «¿Parece incorrecta?», bajo una pista, abren un formulario. Solo cuando pulsas Enviar, la app envía lo que escribiste, el tipo de mensaje, la versión y el idioma de la app, cuánto tiempo estuvo abierto el formulario (que el servidor usa solo para distinguir personas de robots, y no reenvía) y, si la das, tu dirección de correo para responderte. Un mensaje sobre una pista lleva también la pista: su técnica, su línea de notación, los ajustes de unicidad y de anotaciones con los que se encontró, y si la app comprobó que concuerda con la solución. Mientras «Incluir el tablero» esté marcado, el mensaje lleva el tablero tal como está, como enlace a la posición; solo si marcas «Incluir los datos de mi navegador» lleva el agente de usuario de tu navegador (su nombre y su sistema, a veces el modelo del dispositivo).',
+          'El servidor comprueba el mensaje y lo reenvía como correo electrónico a Anders Imenes, que lleva sudokUI; el servidor no guarda ninguna copia. La dirección IP desde la que llegó el mensaje se lee solo para rechazar avalanchas, en memoria, como arriba. Los correos a feedback@sudokui.app llegan al mismo buzón. Cloudflare transporta el correo mediante su Email Routing y guarda un registro de cada correo que gestiona, con su remitente, destinatario y asunto, durante 31 días; ese registro se borra solo, y borrar no puede alcanzarlo antes. Cloudflare, Inc. tiene su sede en Estados Unidos, y el correo pasa por ella según sus condiciones de tratamiento de datos (el Marco de Privacidad de Datos UE-EE. UU. y las cláusulas contractuales tipo de la UE). El buzón en sí está en un proveedor de correo corriente. Un mensaje o un correo se conserva allí hasta que se ha atendido, como máximo 12 meses, y después se borra, junto con la respuesta, si la hubo.',
+          'Anders Imenes, en Noruega, es el responsable de este tratamiento. Un mensaje se trata con tu consentimiento, que das al enviarlo, para corregir lo que describe o responderte; puedes retirarlo en cualquier momento, y lo que enviaste se borra entonces. Puedes pedir una copia de lo que enviaste, también en un formato legible por máquina, que se corrija o se borre, o que se limite su tratamiento, escribiendo a feedback@sudokui.app, y puedes reclamar ante Datatilsynet, la autoridad noruega de protección de datos.'
+        ]
+      },
+      {
         heading: 'Lo que nunca se recoge',
         paragraphs: [
-          'Sin cuenta, sin dirección de correo, sin contraseña, sin cookie, sin huella digital, sin publicidad, sin scripts de terceros. Tus partidas, tus anotaciones, tus estadísticas, tu registro de técnicas y tu racha del sudoku del día se quedan en el almacenamiento de tu navegador, en tu dispositivo, y solo salen de él de las maneras que describe esta página.'
+          'Sin cuenta, sin contraseña, sin cookie, sin huella digital, sin publicidad, sin scripts de terceros, y sin dirección de correo salvo que la des en un mensaje o escribas a feedback@sudokui.app. Tus partidas, tus anotaciones, tus estadísticas, tu registro de técnicas y tu racha del sudoku del día se quedan en el almacenamiento de tu navegador, en tu dispositivo, y solo salen de él de las maneras que describe esta página.'
         ]
       },
       {
         heading: 'Quién lleva esto, y cómo comprobarlo',
         paragraphs: [
-          'sudokUI lo lleva su autor desde Noruega y lo sirve Cloudflare. El código fuente, incluido todo lo que describe esta página, es público: {source}. Las preguntas y correcciones son bienvenidas como una incidencia allí.'
+          'sudokUI lo lleva su autor, Anders Imenes, desde Noruega y lo sirve Cloudflare. El código fuente, incluido todo lo que describe esta página, es público: {source}. Las preguntas y correcciones son bienvenidas en feedback@sudokui.app o como una incidencia allí.'
         ]
       }
     ],

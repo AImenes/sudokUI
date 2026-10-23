@@ -1,0 +1,26 @@
+name: A translation
+description: A word or a sentence in Norwegian or Spanish that reads wrong, or a language you would like.
+title: "[Translation] "
+labels: ["translation"]
+body:
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      options:
+        - Norsk bokmål
+        - Español
+        - Another language
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where, and what it says now
+      description: The screen, dialog or page, and the text as it reads today.
+    validations:
+      required: true
+  - type: textarea
+    id: better
+    attributes:
+      label: What it should say

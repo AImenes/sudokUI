@@ -1,0 +1,34 @@
+name: Something is not working
+description: A bug, a layout that breaks, a button that does nothing, a crash.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      placeholder: |
+        1. Open ...
+        2. Tap ...
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: iPhone 15, Safari, from the Home Screen
+  - type: input
+    id: position
+    attributes:
+      label: Position link, if the board matters
+      description: Share → **Position link**.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Info (ⓘ) → the version line at the bottom.

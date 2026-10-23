@@ -9,6 +9,8 @@ import type { Translator } from '../content/i18n';
 
 const GAME_KEY = 'sudokui-game-v1';
 const ISSUES = 'github.com/AImenes/sudokUI/issues';
+/** the public address reports go to (src/ui/report.ts), which Email Routing forwards */
+const FEEDBACK_ADDRESS = 'feedback@sudokui.app';
 
 /** the chosen language; English if even that cannot be had, so the panel itself never fails */
 function panelTranslator(): Translator {
@@ -62,10 +64,21 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
           </button>
         </div>
         <p className="crash-detail">
-          {rich(t('If it keeps happening, please report it: {link}'), {
+          {rich(t('If it keeps happening, please write to {address} or report it on {link}'), {
+            // a letter from the player's own mail app, with the error in it:
+            // the app itself may be what is broken
+            address: (
+              <a
+                href={`mailto:${FEEDBACK_ADDRESS}?subject=${encodeURIComponent('[sudokUI] Something went wrong')}&body=${encodeURIComponent(
+                  `${String(error.message || error)}\n\nsudokUI ${typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : ''}`
+                )}`}
+              >
+                {FEEDBACK_ADDRESS}
+              </a>
+            ),
             link: (
               <a href={`https://${ISSUES}`} target="_blank" rel="noopener">
-                {ISSUES}
+                GitHub
               </a>
             )
           })}

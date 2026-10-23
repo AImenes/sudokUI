@@ -387,11 +387,14 @@ const REPO = 'github.com/AImenes/sudokUI';
 
 export function InfoDialog({
   onClose,
-  onLearn
+  onLearn,
+  onFeedback
 }: {
   onClose: () => void;
   /** jump to the Learn dialog (techniques, glossary, rating) */
   onLearn: (target: LearnTarget) => void;
+  /** open the report dialog (src/ui/ReportDialog.tsx) */
+  onFeedback?: () => void;
 }) {
   const t = useT();
   const ratingSummary = useRatingSummary();
@@ -532,14 +535,17 @@ export function InfoDialog({
       </p>
       <p className="dialog-note">
         {rich(
-          t(
-            'sudokUI is open source at {link}. Bug reports, feature requests and technique contributions are very welcome.'
-          ),
+          t('sudokUI is open source at {link}. Found a problem, or have an idea? {feedback}, or open an issue there.'),
           {
             link: (
               <a href={`https://${REPO}`} target="_blank" rel="noreferrer">
                 {REPO}
               </a>
+            ),
+            feedback: (
+              <button className="link-button" onClick={onFeedback}>
+                {t('Send feedback')}
+              </button>
             )
           }
         )}

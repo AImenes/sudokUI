@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '../state/gameStore';
 import { TECHS, Tech } from '../engine/ratings';
+import type { Step } from '../engine/steps';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
@@ -138,7 +139,7 @@ export function ChainPanel() {
 }
 const KEY_VIEWS = 8;
 
-export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
+export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void; onReport?: (hint: Step) => void }) {
   const hint = useGame((s) => s.hint);
   const stage = useGame((s) => s.hintStage);
   const revealHint = useGame((s) => s.revealHint);
@@ -307,6 +308,12 @@ export function HintPanel({ onLearn }: { onLearn: (tech: Tech) => void }) {
             >
               {copied ? `✓ ${t('Copied')}` : t('Copy step')}
             </button>
+            {/* a wrong hint teaches something false: the report carries it, the board and the settings it was found under */}
+            {onReport && (
+              <button className="ghost" onClick={() => onReport(hint)} title={t('Tell the developer this hint looks wrong; it goes with the board')}>
+                {t('Looks wrong?')}
+              </button>
+            )}
             <button className="ghost" onClick={dismissHint}>{t('Close')}</button>
           </div>
         </div>
