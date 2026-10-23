@@ -225,8 +225,10 @@ that. To see it:
 ## Step 7: see the first numbers
 
 Open <https://sudokui.app/admin>. Access asks for your e-mail, sends a
-code, and shows the page: twelve numbers for the last seven days, a line
-of completed games per day over thirty days, and a table of every day.
+code, and shows the page: fourteen numbers, most over the last seven
+days and two for yesterday; a line of completed games per day over
+thirty days; what was shared and where landings came from over the
+week; and a table of every day.
 On the first day it is mostly zeros and dashes; the **Offline, estimated**
 number reads "—" until some player has turned the opt-in on and finished
 a game online, because the estimate is the ratio of that cohort's offline

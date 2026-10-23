@@ -293,7 +293,7 @@ svg{display:block;max-width:100%;height:auto;margin:8px 0}
 a{color:#8ab6f7}
 `.trim();
 
-/** the page: the twelve numbers of the week, the sparkline of the month, and every day of it */
+/** the page: the fourteen numbers, the sparkline of the month, what was shared and where landings came from that week, and every day of the month */
 export function renderAdmin(m: Metrics): string {
   const w = m.week;
   const d = m.yesterday;
