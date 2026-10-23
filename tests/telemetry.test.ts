@@ -111,6 +111,24 @@ describe('the telemetry route', () => {
     expect(JSON.stringify(events.points)).not.toContain('203.0.113.9');
   });
 
+  it("takes the eight band names an app from before HoDoKu's five sends, and writes each as its level", async () => {
+    const events = memoryEvents();
+    const old = ['Beginner', 'Easy', 'Medium', 'Tricky', 'Hard', 'Unfair', 'Extreme', 'Nightmare'];
+    const res = (await handleTelemetry(post(old.map((band) => good({ band }))), events, { country: 'NO' }))!;
+    expect(res.status).toBe(204);
+    // identical once read as levels, so the eight fold into five points
+    expect(events.points.map((p) => [p.blobs[0], p.doubles[1]])).toEqual([
+      ['Easy', 2],
+      ['Medium', 1],
+      ['Hard', 2],
+      ['Unfair', 1],
+      ['Extreme', 2]
+    ]);
+    expect(checkEvent(good({ band: 'Tricky' }))?.band).toBe('Hard');
+    expect(checkEvent(good({ band: 'tricky' }))).toBeNull();
+    expect(checkEvent(good({ band: 'constructor' }))).toBeNull();
+  });
+
   it('refuses whatever is off the closed list, and writes nothing from a refused body', async () => {
     const events = memoryEvents();
     const refused = async (body: unknown, status = 400) => {

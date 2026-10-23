@@ -49,7 +49,7 @@ export const LANDING_PAGES: LandingPage[] = [
       {
         heading: 'How hard is it?',
         paragraphs: [
-          'The daily is usually Medium, Tricky or Hard. Its difficulty band and rating are shown in the top bar, like for any other puzzle.'
+          'The daily is usually Medium or Hard. Its difficulty level and HoDoKu rating are shown in the top bar, like for any other puzzle.'
         ]
       },
       {
@@ -62,7 +62,7 @@ export const LANDING_PAGES: LandingPage[] = [
     ],
     cta: { label: 'Play today’s daily', href: '/#daily' },
     related: [
-      { label: 'How the difficulty rating works', href: RATING_URL },
+      { label: 'How the HoDoKu rating works', href: RATING_URL },
       { label: 'Every technique explained', href: '/learn/' }
     ]
   },
@@ -110,7 +110,7 @@ export const LANDING_PAGES: LandingPage[] = [
     puzzleBox: 'Solve this puzzle',
     related: [
       { label: 'Every technique explained', href: '/learn/' },
-      { label: 'How the difficulty rating works', href: RATING_URL }
+      { label: 'How the HoDoKu rating works', href: RATING_URL }
     ]
   },
   {
@@ -131,16 +131,16 @@ export const LANDING_PAGES: LandingPage[] = [
       {
         heading: 'What sudokUI shares with it',
         paragraphs: [
-          'sudokUI uses HoDoKu’s default score for each technique and its default search order, and rates a puzzle the same way: solve it with the first technique that works at every step, and add up the scores.',
-          'The score thresholds for Easy (800), Medium (1000), Hard (1600) and Unfair (1800) are HoDoKu’s as well.'
+          'sudokUI uses HoDoKu’s default score and search order for every technique the two share, and rates a puzzle the same way: solve it with the first technique that works at every step, and add up the scores. The total is the HoDoKu rating.',
+          'The five difficulty levels are HoDoKu’s as well, with HoDoKu’s limits: Easy (800), Medium (1000), Hard (1600), Unfair (1800) and Extreme with no limit. A puzzle’s level is the highest level of any technique on its solve path, raised while its score is above the limit, as in HoDoKu.'
         ]
       },
       {
         heading: 'Where they differ',
         paragraphs: [
           'sudokUI is an independent project and is not affiliated with HoDoKu.',
-          'It adds techniques HoDoKu does not have, such as 3D Medusa, Chute Remote Pair, Fireworks, Tridagon and Exocet, scored next to their closest relatives, and it leaves out a few of HoDoKu’s rarest, such as Mutant and Kraken Fish. On a puzzle that needs one of these, the solve path and the rating can differ.',
-          'sudokUI names eight difficulty bands where HoDoKu has five: Beginner, Tricky and Nightmare are additions.'
+          'It adds techniques HoDoKu does not have, such as WXYZ-Wing, Chute Remote Pair, 3D Medusa, Fireworks, Tridagon and Exocet, scored next to their closest relatives, and it leaves out a few of HoDoKu’s, such as Finned Franken, Mutant and Kraken Fish, and it uses Death Blossom, which HoDoKu leaves off by default. On many puzzles one of these comes into play, and then the solve path, the rating and sometimes the level can differ from HoDoKu’s.',
+          'New game also offers two narrower picks HoDoKu does not have: Beginner, the Easy puzzles scoring 400 or less, and Nightmare, the Extreme puzzles scoring over 3000. A puzzle’s level is always one of HoDoKu’s five.'
         ]
       },
       {
@@ -152,7 +152,7 @@ export const LANDING_PAGES: LandingPage[] = [
     ],
     cta: { label: 'Open sudokUI', href: '/' },
     related: [
-      { label: 'How the difficulty rating works', href: RATING_URL },
+      { label: 'How the HoDoKu rating works', href: RATING_URL },
       { label: 'Score of every technique', href: `${RATING_URL}#scores` },
       { label: 'HoDoKu’s own site', href: 'https://hodoku.sourceforge.net/' }
     ]
@@ -213,7 +213,7 @@ export const LANDING_PAGES: LandingPage[] = [
     cta: { label: 'Play sudokUI', href: '/' },
     related: [
       { label: 'Every technique explained', href: '/learn/' },
-      { label: 'How the difficulty rating works', href: RATING_URL }
+      { label: 'How the HoDoKu rating works', href: RATING_URL }
     ]
   }
 ];

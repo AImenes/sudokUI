@@ -21,7 +21,7 @@ const cells: CellState[] = [...EASY].map((ch) => ({
   excluded: 0,
   colors: []
 }));
-const info = { puzzle: EASY, solution: SOLUTION, score: 196, level: 'Beginner', practiceTech: null } as GameInfo;
+const info = { puzzle: EASY, solution: SOLUTION, score: 196, level: 'Easy', practiceTech: null } as GameInfo;
 const body: ReportBody = { kind: 'problem', message: 'x', version: '1.0.0', lang: 'en', openedMs: 5000, website: '' };
 
 const originalFetch = globalThis.fetch;

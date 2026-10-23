@@ -6,7 +6,7 @@
  * notation. The terminology follows docs/glossary_input.md.
  */
 import { describe, it, expect } from 'vitest';
-import { ALL_TECHS, LEVELS } from '../src/engine/ratings';
+import { ALL_TECHS, PICKS } from '../src/engine/ratings';
 import { EN, LearnLocale } from '../src/content/learnLocale';
 import { LEARN_STRINGS } from '../src/content/learnStrings';
 import { GLOSSARY, GLOSSARY_GROUPS } from '../src/content/glossary';
@@ -23,8 +23,8 @@ const LOCALES: [string, LearnLocale][] = [
 ];
 
 const BANDS: Record<string, string[]> = {
-  nb: ['Nybegynner', 'Lett', 'Middels', 'Lur', 'Vanskelig', 'Urettferdig', 'Ekstrem', 'Mareritt'],
-  es: ['Principiante', 'Fácil', 'Medio', 'Engañoso', 'Difícil', 'Injusto', 'Extremo', 'Pesadilla']
+  nb: ['Nybegynner', 'Lett', 'Middels', 'Vanskelig', 'Urettferdig', 'Ekstrem', 'Mareritt'],
+  es: ['Principiante', 'Fácil', 'Medio', 'Difícil', 'Injusto', 'Extremo', 'Pesadilla']
 };
 
 const words = (s: string) => s.trim().split(/\s+/).length;
@@ -142,8 +142,8 @@ for (const [lang, loc] of LOCALES) {
     });
 
     it('uses the agreed band names and translates the rating and How to solve', () => {
-      expect(LEVELS.map((l) => loc.levels[l])).toEqual(BANDS[lang]);
-      for (const l of LEVELS) {
+      expect(PICKS.map((l) => loc.levels[l])).toEqual(BANDS[lang]);
+      for (const l of PICKS) {
         houseStyle(loc.bandLeads[l], `bandLeads.${l}`);
         houseStyle(loc.bandNotes[l], `bandNotes.${l}`);
       }
@@ -196,7 +196,7 @@ for (const [lang, loc] of LOCALES) {
         expect(t.related.length, `${url} related`).toBe(en.related.length);
         en.related.forEach((r, i) => faithful(r, t.related[i], `${url} related[${i}]`));
         // the band names the copy quotes are the agreed ones
-        for (const level of LEVELS) {
+        for (const level of PICKS) {
           const quoted = (s: string) => new RegExp(`\\b${level}\\b`).test(s);
           const enText = [en.lead, ...en.sections.flatMap((s) => s.paragraphs)].join(' ');
           const text = [t.lead, ...t.sections.flatMap((s) => s.paragraphs)].join(' ');

@@ -10,12 +10,12 @@ import { parseGrid } from '../src/engine/board';
 import { countSolutions } from '../src/engine/bruteForce';
 import { ratePuzzle } from '../src/engine/humanSolver';
 import { isMinimal, hasSymmetry, fitForLevel, cleanTechniques } from '../src/engine/generator';
-import { Level } from '../src/engine/ratings';
+import { LevelPick, pickOf } from '../src/engine/ratings';
 import type { PoolEntry } from '../src/engine/worker';
 import { SEEDED_LEVELS, SEEDS_PER_LEVEL, StoredSeeds } from '../src/content/seeds';
 import stored from '../src/content/seeds.json';
 
-const entries = Object.entries(stored as StoredSeeds) as [Level, PoolEntry[]][];
+const entries = Object.entries(stored as StoredSeeds) as [LevelPick, PoolEntry[]][];
 
 describe('seed library', () => {
   it('covers every seeded band, and only those, without duplicates', () => {
@@ -39,7 +39,9 @@ describe('seed library', () => {
         const rating = ratePuzzle(e.puzzle);
         expect(rating, 'a valid puzzle').not.toBeNull();
         expect(rating!.solvable, 'solved by techniques alone').toBe(true);
-        expect(rating!.level, e.puzzle).toBe(level);
+        // filed under its narrowest pick: Extreme's seeds are the Extreme puzzles that are no Nightmare
+        expect(pickOf(rating!.level, rating!.score), e.puzzle).toBe(level);
+        expect(rating!.level, e.puzzle).toBe(e.level);
         expect(rating!.score, e.puzzle).toBe(e.score);
         expect(fitForLevel(e.puzzle, rating!), `${e.puzzle}: fit`).toBe(true);
         expect(cleanTechniques(rating!), e.puzzle).toEqual(e.techs);

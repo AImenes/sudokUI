@@ -50,8 +50,21 @@ export interface Daily {
 /** the first published daily, #1 */
 export const DAILY_EPOCH = '2026-10-07';
 
-/** the bands a daily is drawn from, in the order the days cycle through them */
-export const DAILY_BANDS: Level[] = ['Medium', 'Tricky', 'Hard'];
+/**
+ * The levels a daily is drawn from, in the order the days cycle through
+ * them. The days were published as Medium, Tricky and Hard; Tricky lies
+ * inside HoDoKu's Hard, so those days read Hard now, board and score
+ * unchanged. The dailies still to be built follow the same turn, the
+ * first Hard of each a gentle one (gentleDaily), so the mix stays.
+ */
+export const DAILY_BANDS: Level[] = ['Medium', 'Hard', 'Hard'];
+
+/**
+ * Whether a day's Hard puzzle is a gentle one: the day of each turn the
+ * published list had as Tricky, the gentlest Hard puzzles, with a score up
+ * to 1150 and at most one Hard-class step (scripts/build-dailies.ts).
+ */
+export const gentleDaily = (no: number): boolean => (no - 1) % DAILY_BANDS.length === 1;
 
 /** a calendar day as a key, in the player's local time: 2026-10-08 */
 export function localDateKey(now = new Date()): string {
@@ -91,7 +104,7 @@ export const LATE_DAYS = 7;
 /** how early, in days: a day the player's clock has reached before UTC has */
 export const EARLY_DAYS = 1;
 
-/** the band a day's puzzle is drawn from: the three bands in turn */
+/** the level a day's puzzle is drawn from: DAILY_BANDS in turn */
 export const dailyBand = (no: number): Level => DAILY_BANDS[(no - 1) % DAILY_BANDS.length];
 
 /** the daily for a day, out of the published list */

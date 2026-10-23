@@ -57,7 +57,7 @@ describe('practice target', () => {
 
 describe('mistakes', () => {
   it('a wrong digit is counted, and Check proves it wrong', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     expect(useStats.getState().game.errors).toBe(0);
     const s = useGame.getState();
     // r1c1 is 4; a 3 already sits in the row
@@ -114,7 +114,7 @@ describe('mistakes', () => {
   });
 
   it('an applied hint is counted as a hint', () => {
-    useGame.getState().startGame(EASY, 196, 'Beginner');
+    useGame.getState().startGame(EASY, 196, 'Easy');
     useGame.getState().requestHint();
     const tech = useGame.getState().hint!.tech;
     useGame.getState().applyHint();

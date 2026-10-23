@@ -20,7 +20,7 @@ import {
   hits,
   CRUX_MIN_EMPTIES, practiceCeiling, limitFor } from '../src/engine/generator';
 import { ratePuzzle } from '../src/engine/humanSolver';
-import { LEVELS, TECHS, Tech } from '../src/engine/ratings';
+import { LEVELS, TECHS, Tech, pickLevel, inPick } from '../src/engine/ratings';
 import { applyIsomorphism, randomIsomorphism, transformPuzzle, IDENTITY } from '../src/engine/transform';
 
 describe('digging', () => {
@@ -129,12 +129,12 @@ describe('capped rating', () => {
 });
 
 describe('filters and targets', () => {
-  it('the practice ceiling is one band above the class, and the top for Unfair and above', () => {
+  it('the practice ceiling is Easy for singles, one level above the class for Medium and Hard, and the top for Unfair and above', () => {
     expect(practiceCeiling('FULL_HOUSE')).toBe('Easy');
     expect(practiceCeiling('X_WING')).toBe(LEVELS[LEVELS.indexOf(TECHS.X_WING.level) + 1]);
     expect(practiceCeiling('BUG_PLUS_1')).toBe('Unfair');
-    expect(practiceCeiling('AIC')).toBe('Nightmare');
-    expect(practiceCeiling('FIREWORKS')).toBe('Nightmare');
+    expect(practiceCeiling('AIC')).toBe('Extreme');
+    expect(practiceCeiling('FIREWORKS')).toBe('Extreme');
     expect(limitFor({ kind: 'tech', tech: 'X_WING' })).toEqual({ cleanTech: 'X_WING', maxLevel: practiceCeiling('X_WING') });
   });
 
@@ -171,13 +171,14 @@ describe('filters and targets', () => {
     for (const level of ['Beginner', 'Medium', 'Hard'] as const) {
       const res = generateFor({ kind: 'level', level }, 400);
       expect(res, level).not.toBeNull();
-      expect(res!.rating.level).toBe(level);
+      expect(res!.rating.level).toBe(pickLevel(level));
+      expect(inPick(level, res!.rating.level, res!.rating.score)).toBe(true);
       expect(fitForLevel(res!.puzzle, res!.rating)).toBe(true);
       expect(cruxEmpties(res!.rating, clueCount(res!.puzzle))).toBeGreaterThanOrEqual(CRUX_MIN_EMPTIES);
       // and the rating reproduces from the string, uncapped
       const again = ratePuzzle(res!.puzzle)!;
       expect(again.score).toBe(res!.rating.score);
-      expect(again.level).toBe(level);
+      expect(again.level).toBe(pickLevel(level));
     }
   });
 

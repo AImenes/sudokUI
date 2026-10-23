@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { generatePuzzle, hits } from '../src/engine/generator';
 import { gridToString } from '../src/engine/board';
 import { ratePuzzle } from '../src/engine/humanSolver';
-import { Level, TECHS, Tech } from '../src/engine/ratings';
+import { Level, TECHS, Tech, pickOf } from '../src/engine/ratings';
 import { toEntry, PoolEntry } from '../src/engine/worker';
 import { SEEDED_LEVELS, SEEDS_PER_LEVEL, StoredSeeds } from '../src/content/seeds';
 
@@ -51,9 +51,11 @@ if (workerAt >= 0) {
     const puzzle = gridToString(grid);
     const rating = ratePuzzle(puzzle);
     if (!rating || !rating.solvable) continue;
-    if (!SEEDED_LEVELS.includes(rating.level)) continue;
-    if (!hits({ kind: 'level', level: rating.level }, puzzle, rating)) continue;
-    const list = (found[rating.level] ??= []);
+    // filed under its narrowest pick, so Extreme's seeds are the Extreme puzzles that are not Nightmares
+    const pick = pickOf(rating.level, rating.score);
+    if (!SEEDED_LEVELS.includes(pick)) continue;
+    if (!hits({ kind: 'level', level: pick }, puzzle, rating)) continue;
+    const list = (found[pick] ??= []);
     if (list.length < PER_WORKER) list.push(toEntry({ puzzle, rating }));
     full = SEEDED_LEVELS.every((l) => (found[l]?.length ?? 0) >= PER_WORKER);
     if (Date.now() - lastSave > 60_000) {
@@ -92,7 +94,7 @@ if (workerAt >= 0) {
     const seen = new Set<string>();
     const all: PoolEntry[] = [];
     const add = (e: PoolEntry) => {
-      if (e.level !== level || seen.has(e.puzzle)) return;
+      if (pickOf(e.level, e.score) !== level || seen.has(e.puzzle)) return;
       // what is stored is re-checked: the engine may have moved since
       const rating = ratePuzzle(e.puzzle);
       if (!rating || !hits({ kind: 'level', level }, e.puzzle, rating)) return;

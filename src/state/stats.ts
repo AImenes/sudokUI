@@ -5,7 +5,7 @@
 // applied hint with its technique. Nothing leaves the device.
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Tech, Level, TECHS } from '../engine/ratings';
+import { Tech, Level, TECHS, asLevel } from '../engine/ratings';
 import { worth } from '../content/frequency';
 import { translator } from '../content/i18n';
 import { localDateKey } from '../content/dailies';
@@ -97,9 +97,45 @@ export const useStats = create<Stats>()(
           return { bands, dailyDays };
         })
     }),
-    { name: 'sudokui-stats-v1' }
+    {
+      name: 'sudokui-stats-v1',
+      // records kept under the band names from before HoDoKu's five levels
+      // are read as their level's (foldBands); the five names are also old
+      // bands', so a record written now still reads in an older build
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<Stats>;
+        return { ...current, ...p, bands: foldBands(p.bands ?? {}) };
+      }
+    }
   )
 );
+
+/**
+ * The records per band, as HoDoKu's five levels. Before them the site had
+ * eight bands, each inside one level (Beginner and Easy in Easy, Tricky
+ * and Hard in Hard, Extreme and Nightmare in Extreme), so two records fold
+ * into the one their solves would have made: the solves, the unassisted
+ * solves and the time add up, and the best is the faster. A record under a
+ * name that is no band at all is dropped. Folding folded records changes
+ * nothing.
+ */
+export function foldBands(bands: Record<string, BandStat | undefined>): Partial<Record<Level, BandStat>> {
+  const out: Partial<Record<Level, BandStat>> = {};
+  for (const [name, b] of Object.entries(bands)) {
+    const level = asLevel(name);
+    if (!level || !b) continue;
+    const a = out[level];
+    out[level] = a
+      ? {
+          solves: a.solves + b.solves,
+          unassisted: a.unassisted + b.unassisted,
+          bestMs: a.bestMs && b.bestMs ? Math.min(a.bestMs, b.bestMs) : a.bestMs || b.bestMs,
+          totalMs: a.totalMs + b.totalMs
+        }
+      : b;
+  }
+  return out;
+}
 
 /**
  * Days in a row ending today or yesterday on which the daily was solved.

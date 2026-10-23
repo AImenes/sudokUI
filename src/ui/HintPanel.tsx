@@ -205,7 +205,7 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
         </button>
         <span
           className="hint-score"
-          title={t("{level}-class technique. Each use adds {score} to a puzzle's rating", { level, score: info.score })}
+          title={t("{level}-class technique. Each use adds {score} to a puzzle's HoDoKu rating", { level, score: info.score })}
         >
           {t('{level} · cost {score}', { level, score: info.score })}
         </span>

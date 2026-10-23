@@ -1,11 +1,14 @@
 // Puzzle pools: puzzles found during background generation, filed per
 // difficulty level and per technique so new games / practice start instantly.
-import { Level, LEVELS, Tech, practiceCeiling } from '../engine/ratings';
+import { LevelPick, LEVELS, Tech, practiceCeiling, subPick } from '../engine/ratings';
 import type { Grid } from '../engine/board';
 import type { Move, Budget } from '../engine/justify';
 import type { PoolEntry, WorkerRequest, WorkerResponse } from '../engine/worker';
 
-const STORAGE_KEY = 'sudokui-pools-v11'; // v11: entries carry the band filters' verdict
+// v12: HoDoKu's five levels, and the picks inside them. v11 filed the
+// eight bands from before; a pool is only a cache, so it is dropped, not read
+const STORAGE_KEY = 'sudokui-pools-v12';
+const OLD_KEY = 'sudokui-pools-v11';
 const POOL_CAP = 8;
 
 type Pools = Record<string, PoolEntry[]>;
@@ -20,27 +23,29 @@ function load(): Pools {
 
 function save(pools: Pools) {
   try {
+    localStorage.removeItem(OLD_KEY);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pools));
   } catch {
     /* storage full — pools are only a cache */
   }
 }
 
-export const levelKey = (level: Level) => `level:${level}`;
+export const levelKey = (pick: LevelPick) => `level:${pick}`;
 export const techKey = (tech: Tech) => `tech:${tech}`;
 
 /** May this puzzle be served as practice for the technique: within its ceiling? */
 export const practisable = (entry: PoolEntry, tech: Tech) =>
   LEVELS.indexOf(entry.level) <= LEVELS.indexOf(practiceCeiling(tech));
 
-/** File puzzles under their band and their clean techniques, in one write. */
+/** File puzzles under their level, the narrower pick they answer, and their clean techniques, in one write. */
 export function filePoolEntries(entries: PoolEntry[]) {
   const pools = load();
   for (const entry of entries) {
-    // a puzzle that fails its band's filters is still good practice material;
+    // a puzzle that fails its level's filters is still good practice material;
     // one above a technique's ceiling is not practice for that technique
+    const sub = subPick(entry.level, entry.score);
     const keys = [
-      ...(entry.fit === false ? [] : [levelKey(entry.level)]),
+      ...(entry.fit === false ? [] : [levelKey(entry.level), ...(sub ? [levelKey(sub)] : [])]),
       ...entry.techs.filter((t) => practisable(entry, t)).map(techKey)
     ];
     for (const key of keys) {
@@ -136,7 +141,7 @@ export interface GenerationHandle {
  */
 export function requestPuzzle(
   req:
-    | { kind: 'level'; level: Level; seeds?: string[] }
+    | { kind: 'level'; level: LevelPick; seeds?: string[] }
     | { kind: 'tech'; tech: Tech; seeds?: string[] },
   opts: { urgent?: boolean; onProgress?: (attempts: number) => void } = {}
 ): { promise: Promise<PoolEntry | null>; handle: GenerationHandle } {

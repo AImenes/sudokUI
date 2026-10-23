@@ -111,13 +111,13 @@ export function ProgressDialog({
       ))}
       <h4 className="setting-group">{t('Your record')}</h4>
       {played.length === 0 && !streak ? (
-        <p className="dialog-note">{t('No finished games yet. Your solves by band, best times and the daily streak will show here.')}</p>
+        <p className="dialog-note">{t('No finished games yet. Your solves by level, best times and the daily streak will show here.')}</p>
       ) : (
         <>
           <table className="path-record">
             <thead>
               <tr>
-                <th>{t('Band')}</th>
+                <th>{t('Level')}</th>
                 <th>{t('Solves')}</th>
                 <th>{t('Unassisted')}</th>
                 <th>{t('Best')}</th>

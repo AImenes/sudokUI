@@ -1,16 +1,20 @@
 /**
  * The social cards of the share pages (docs/online-goals.md, phase 1): one
- * per difficulty band in each language, 1200 x 630, written to public/og/
- * as <band>.png, <band>.nb.png and <band>.es.png, where share.ts points
- * every share address of that band (ogShareCard). A share page is
- * rendered per puzzle, but its image is one of these twenty-four: a chat
+ * per difficulty level in each language, 1200 x 630, written to public/og/
+ * as <level>.png, <level>.nb.png and <level>.es.png, where share.ts points
+ * every share address of that level (ogShareCard). A share page is
+ * rendered per puzzle, but its image is one of these fifteen: a chat
  * app fetches the image once per link, and a board rendered per puzzle
  * would cost the Worker time the free plan does not have.
  *
- * Each card shows the band's name in the language, where the band sits
- * among the eight, and a board: a real puzzle of that band, held to the
- * rater here so a card never shows a board of another band. It is the
- * band's example, not the puzzle behind the link.
+ * Each card shows the level's name in the language, where the level sits
+ * among HoDoKu's five, and a board: a real puzzle of that level, held to
+ * the rater here so a card never shows a board of another level. It is
+ * the level's example, not the puzzle behind the link.
+ *
+ * The cards of the eight bands from before the five (beginner, tricky and
+ * nightmare among them) stay in public/og, unmade by this script: a chat
+ * app may have kept the address of one with an old link's preview.
  *
  *   npx vite-node scripts/og-share-cards.ts [--svg-only]
  *
@@ -38,26 +42,20 @@ import type { Lang } from '../src/state/settings';
  * the seed library for the hardest bands).
  */
 const BOARD: Record<Level, string> = {
-  Beginner: '.......8...4.5367....76.5..6.2.1....8..5.9..6....3.8.4..5.47....2169.7...9.......',
   Easy: '.95.4...1.18......7..16..8....6..8....37.21....6..5....6..51..3......71.8...9.64.',
   Medium: '.2...8.......9...5..83.6..7...7..2.4..2...9..5.3..9...1..5.37..6...2.......6...9.',
-  Tricky: '3.8..4..2.4..6.5..6....7....3....17...2...4...57....8....9....1..9.1..2.2..8..6.9',
   Hard: '...6..9.1..95....4....4985..241....5....3....9....546..7549....3....12..1.2..3...',
   Unfair: '..1.....5..9.12..3..5...4......4.5.8.2..6..4.3.4.2......6...8..4..79.6..9.....1..',
-  Extreme: '..1.9.67..7.5....1...4.1....4.......2.8..9..66......8.92...8........2..3..3..542.',
-  Nightmare: '......1.3.91......7..1...492.5.6.....7.9.5.8.....4.5.142...3..6......81.6.9......'
+  Extreme: '..1.9.67..7.5....1...4.1....4.......2.8..9..66......8.92...8........2..3..3..542.'
 };
 
 /** the band's colour, as its badge wears it in the app's dark theme (src/ui/styles.css) */
 const BAND_COLOR: Record<Level, string> = {
-  Beginner: '#6fd0cd',
   Easy: '#7fd486',
   Medium: '#b5d47f',
-  Tricky: '#d3d36a',
   Hard: '#e6c74c',
   Unfair: '#e8934a',
-  Extreme: '#ef7783',
-  Nightmare: '#b78ae8'
+  Extreme: '#ef7783'
 };
 
 /** the card's words per language; each line fits the space left of the board */

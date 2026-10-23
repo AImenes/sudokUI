@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LEVELS } from '../src/engine/ratings';
+import { PICKS } from '../src/engine/ratings';
 import {
   MEDIAN_SECONDS,
   timePercentile,
@@ -8,12 +8,21 @@ import {
   percentileText,
   formatSeconds,
   SOLVE_TIME_ROWS,
-  VERDICTS
+  VERDICTS,
+  timeBand
 } from '../src/content/solveTimes';
 
 describe('solve time benchmarks', () => {
+  it('time a Beginner or a Nightmare puzzle on its own row, and every other one on its level', () => {
+    expect(timeBand('Easy', 400)).toBe('Beginner');
+    expect(timeBand('Easy', 401)).toBe('Easy');
+    expect(timeBand('Hard', 1200)).toBe('Hard');
+    expect(timeBand('Extreme', 3000)).toBe('Extreme');
+    expect(timeBand('Extreme', 3001)).toBe('Nightmare');
+  });
+
   it('place the median at 50% and get stricter with speed', () => {
-    for (const level of LEVELS) {
+    for (const level of PICKS) {
       const m = MEDIAN_SECONDS[level];
       expect(timePercentile(level, m)).toBeCloseTo(0.5, 6);
       expect(timePercentile(level, m / 2)).toBeGreaterThan(timePercentile(level, m));
@@ -23,16 +32,16 @@ describe('solve time benchmarks', () => {
   });
 
   it('get harder as the band gets harder', () => {
-    for (let i = 1; i < LEVELS.length; i++) {
-      expect(MEDIAN_SECONDS[LEVELS[i]]).toBeGreaterThan(MEDIAN_SECONDS[LEVELS[i - 1]]);
+    for (let i = 1; i < PICKS.length; i++) {
+      expect(MEDIAN_SECONDS[PICKS[i]]).toBeGreaterThan(MEDIAN_SECONDS[PICKS[i - 1]]);
     }
   });
 
-  it('call 14 minutes on a Tricky puzzle a good solve, and a minute on Easy world class', () => {
-    const tricky = timeVerdict('Tricky', 14 * 60);
-    expect(tricky.label).toBe('Good');
-    expect(tricky.percentile).toBeGreaterThan(0.5);
-    expect(tricky.percentile).toBeLessThan(0.8);
+  it('call 20 minutes on a Hard puzzle a good solve, and a minute on Easy world class', () => {
+    const hard = timeVerdict('Hard', 20 * 60);
+    expect(hard.label).toBe('Good');
+    expect(hard.percentile).toBeGreaterThan(0.5);
+    expect(hard.percentile).toBeLessThan(0.8);
     expect(timeVerdict('Easy', 60).label).toBe('World class');
     expect(timeVerdict('Easy', 30 * 60).label).toBe('Slow');
   });
@@ -44,7 +53,7 @@ describe('solve time benchmarks', () => {
     expect(formatSeconds(270)).toBe('4:30');
     expect(formatSeconds(4320)).toBe('1h 12m');
     expect(VERDICTS[VERDICTS.length - 1].atLeast).toBe(0);
-    expect(SOLVE_TIME_ROWS).toHaveLength(LEVELS.length);
+    expect(SOLVE_TIME_ROWS).toHaveLength(PICKS.length);
     for (const row of SOLVE_TIME_ROWS) expect(row.worldClass < row.typical || row.level).toBeTruthy();
   });
 });
