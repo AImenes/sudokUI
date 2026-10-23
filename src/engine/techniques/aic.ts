@@ -133,6 +133,7 @@ function searchAic(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | nu
           const b = cur;
           return {
             tech: 'AIC',
+            truth: 'derived',
             labels: { primary: tr`the chain` },
             placements: [],
             eliminations: elims,
@@ -151,6 +152,7 @@ function searchAic(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | nu
           // weak entry + strong closure: single flaw at start -> start is TRUE
           return {
             tech: 'NICE_LOOP',
+            truth: 'derived',
             labels: { primary: tr`the loop` },
             placements: [{ cell: nCell(start), digit: nDigit(start) }],
             eliminations: [],
@@ -222,6 +224,7 @@ function continuousLoop(g: Grid, path: number[]): Step | null {
   if (!elims.length) return null;
   return {
     tech: 'NICE_LOOP',
+    truth: 'derived',
     labels: { primary: tr`the loop` },
     placements: [],
     eliminations: elims,

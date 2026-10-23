@@ -214,6 +214,7 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
           const chain = path.map(label).join(' → ');
           return {
             tech: alsInPath ? 'AIC_ALS' : 'AIC_GROUPED',
+            truth: 'derived',
             placements: [],
             eliminations: elims,
             primary: path.flatMap((n) =>
@@ -271,6 +272,7 @@ function loopRule2(
   if (start.cells.length === 1) {
     return {
       tech: 'GROUPED_NICE_LOOP',
+      truth: 'derived',
       labels: { primary: tr`the loop, with grouped nodes` },
       placements: [{ cell: start.cells[0], digit: start.digit }],
       eliminations: [],
@@ -289,6 +291,7 @@ function loopRule2(
   if (!elims.length) return null;
   return {
     tech: 'GROUPED_NICE_LOOP',
+    truth: 'derived',
     labels: { primary: tr`the loop, with grouped nodes` },
     placements: [],
     eliminations: elims,
@@ -336,6 +339,7 @@ function loopRule1(
   if (!elims.length) return null;
   return {
     tech: 'GROUPED_NICE_LOOP',
+    truth: 'derived',
     labels: { primary: tr`the loop, with grouped nodes` },
     placements: [],
     eliminations: elims,

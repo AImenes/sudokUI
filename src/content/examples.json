@@ -2732,6 +2732,7 @@
   ],
   "step": {
    "tech": "SKYSCRAPER",
+   "truth": "derived",
    "placements": [],
    "eliminations": [
     {
@@ -2903,6 +2904,7 @@
   ],
   "step": {
    "tech": "TWO_STRING_KITE",
+   "truth": "derived",
    "placements": [],
    "eliminations": [
     {
@@ -3070,6 +3072,7 @@
   ],
   "step": {
    "tech": "TURBOT_FISH",
+   "truth": "derived",
    "placements": [],
    "eliminations": [
     {
@@ -3370,6 +3373,7 @@
   ],
   "step": {
    "tech": "W_WING",
+   "truth": "derived",
    "placements": [],
    "eliminations": [
     {
@@ -7244,6 +7248,7 @@
   ],
   "step": {
    "tech": "X_CHAIN",
+   "truth": "derived",
    "labels": {
     "primary": "the chain on 1"
    },
@@ -7449,6 +7454,7 @@
   ],
   "step": {
    "tech": "GROUPED_X_CYCLES",
+   "truth": "derived",
    "labels": {
     "primary": "the loop on 2, with grouped nodes"
    },
@@ -7689,6 +7695,7 @@
   ],
   "step": {
    "tech": "XY_CHAIN",
+   "truth": "derived",
    "labels": {
     "primary": "the chain of bivalue cells"
    },
@@ -7908,6 +7915,7 @@
   ],
   "step": {
    "tech": "NICE_LOOP",
+   "truth": "derived",
    "labels": {
     "primary": "the loop"
    },
@@ -8144,6 +8152,7 @@
   ],
   "step": {
    "tech": "GROUPED_NICE_LOOP",
+   "truth": "derived",
    "labels": {
     "primary": "the loop, with grouped nodes"
    },
@@ -8936,6 +8945,7 @@
   ],
   "step": {
    "tech": "AIC",
+   "truth": "derived",
    "labels": {
     "primary": "the chain"
    },
@@ -9141,6 +9151,7 @@
   ],
   "step": {
    "tech": "AIC_GROUPED",
+   "truth": "derived",
    "placements": [],
    "eliminations": [
     {
@@ -9355,6 +9366,7 @@
   ],
   "step": {
    "tech": "AIC_ALS",
+   "truth": "derived",
    "placements": [],
    "eliminations": [
     {

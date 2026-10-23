@@ -125,6 +125,7 @@ export function findWWing(g: Grid): Step | null {
           if (!elims.length) continue;
           return {
             tech: 'W_WING',
+            truth: 'derived',
             placements: [],
             eliminations: elims,
             primary: [

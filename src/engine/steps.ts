@@ -90,5 +90,15 @@ export interface Step {
   chainCells?: number[];
   /** candidate-anchored arrows; when present they replace `chainCells` */
   links?: ChainLink[];
+  /**
+   * How the truth of the chain's nodes is read (docs/hint-drawing.md,
+   * "Truth: where it comes from"); absent for a pattern, which claims none.
+   * 'derived': an AIC-form chain, whose links alternate as used, so a
+   * strong link leaves a false node for a true one and a weak link a true
+   * node for a false one (src/engine/truth.ts). Never inferred from `tech`:
+   * the chain trainer reuses chain techniques' names for chains whose links
+   * carry their real kind.
+   */
+  truth?: 'derived';
   description: string;
 }

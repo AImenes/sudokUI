@@ -98,6 +98,7 @@ export function findTurbotFamily(
             };
             return {
               tech: variant,
+              truth: 'derived',
               placements: [],
               eliminations: elims,
               primary: pattern.map((cell) => ({ cell, digit: d })),
