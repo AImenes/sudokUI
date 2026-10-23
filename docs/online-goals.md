@@ -498,6 +498,31 @@ can be trusted:
   through the browser, not a count of installs. Every percentage shows
   the counts it comes from.
 
+Feedback, version 1 (October 2026), so players can be heard without a
+GitHub account:
+
+- **"Send feedback"** in the footer and in Info, and **"Looks wrong?"**
+  under a hint, open one dialog (src/ui/ReportDialog.tsx). It posts to
+  `/api/feedback` (worker/feedback.ts), which checks every field against a
+  closed format and e-mails the report through Cloudflare Email Routing
+  from feedback@sudokui.app to the owner's inbox (the `FEEDBACK_TO`
+  secret). Nothing is stored. A hint report carries the hint's line of
+  notation, the uniqueness and marks settings, whether the app found the
+  step agrees with the solution, and, with the player's tick, the board as
+  a position link: a wrong hint teaches something false, so these are the
+  reports worth most. Robots: a hidden field, a two-second floor, five per
+  address in ten minutes and thirty an hour per isolate; no third-party
+  script, no cookie.
+- **feedback@sudokui.app** forwards to the same inbox, and the crash
+  screen offers it as a letter with the error in it.
+- **GitHub issue forms** for a wrong hint, a bug, an idea and a
+  translation, for people who prefer public reports.
+- **The privacy page** names the controller (Anders Imenes, Norway), the
+  address, what a report carries, that it is kept until handled and at
+  most 12 months, and the right to complain to Datatilsynet.
+- **Hand steps**, in [connect-the-feedback.md](connect-the-feedback.md):
+  Email Routing on, the address verified, the secret.
+
 ### Phase 4, after four to eight weeks of data
 
 - **Daily archive pages.** One page per day at `/daily/<date>` with the

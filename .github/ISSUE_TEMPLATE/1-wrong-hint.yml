@@ -1,0 +1,59 @@
+name: A hint looks wrong
+description: A hint, Steps, Check's proof or a practice puzzle places or removes the wrong digit, or explains a step wrongly.
+title: "[Hint] "
+labels: ["hint"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A wrong hint teaches something false, so this is the most valuable report there is: thank you.
+        The quickest way is **Looks wrong?** under the hint in the app, which sends the board and the hint privately. Here, the position link below opens the board exactly as you had it, and the two settings after it make the same hint come back.
+  - type: input
+    id: position
+    attributes:
+      label: Position link
+      description: In the app, Share → **Position link**, then paste it here. It carries your entries, marks and colours.
+      placeholder: https://sudokui.app/p/...#s=...
+    validations:
+      required: true
+  - type: input
+    id: technique
+    attributes:
+      label: Technique
+      placeholder: X-Wing
+  - type: textarea
+    id: step
+    attributes:
+      label: The step
+      description: Under the hint, **Copy step** copies it as one line of notation; paste it here.
+      render: text
+  - type: dropdown
+    id: uniqueness
+    attributes:
+      label: Settings → Use uniqueness in hints
+      options:
+        - "On"
+        - "Off"
+        - Not sure
+  - type: dropdown
+    id: marks
+    attributes:
+      label: How hints read your pencil marks
+      description: The app asks once per puzzle whether your marks are complete or just notes; with auto candidates on it does not ask. The position link does not carry this.
+      options:
+        - Complete
+        - Just notes
+        - Auto candidates were on
+        - Not sure
+  - type: textarea
+    id: why
+    attributes:
+      label: What looks wrong
+      description: Which digit, and why you think it is wrong.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Info (ⓘ) → the version line at the bottom, for example 1.0.0+0629179.

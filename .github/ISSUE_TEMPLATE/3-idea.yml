@@ -1,0 +1,12 @@
+name: An idea
+description: Something sudokUI could do, or do better.
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What you would like, and what it would help you do.
+    validations:
+      required: true

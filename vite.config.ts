@@ -30,6 +30,7 @@ import { renderHome, homeLangOfPath, HOME_LANGS, APP_NAVIGATION } from './src/co
 import { shareParamsOf, renderSharePage } from './src/content/share';
 import { handleDailyApi, memoryStore } from './worker/daily';
 import { handleTelemetry, memoryEvents } from './worker/telemetry';
+import { handleFeedback, FEEDBACK_PATH } from './worker/feedback';
 import dailies from './src/content/dailies.json';
 import type { Daily } from './src/content/dailies';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -92,15 +93,20 @@ function staticPagesDev(): Plugin {
  * (worker/daily.ts) over a store in memory, so the win screen's statistics
  * work locally and in the browser smoke test without a database, and the
  * telemetry route (worker/telemetry.ts) over a dataset in memory, so the
- * app's beacons are answered and nothing is logged; both forget everything
+ * app's beacons are answered and nothing is logged; and the report route
+ * (worker/feedback.ts) over an outbox in memory, so a report is checked as
+ * the Worker checks it and nothing is e-mailed. All of it is forgotten
  * when the server stops.
  */
 function workerApi(): (req: IncomingMessage, res: ServerResponse, next: () => void) => void {
   const store = memoryStore();
   const events = memoryEvents();
+  const outbox: unknown[] = [];
+  const feedback = { sender: { send: async (m: unknown) => void outbox.push(m) }, to: 'owner@example.invalid', makeMessage: (from: string, to: string, raw: string) => ({ from, to, raw }) };
   return (req, res, next) => {
     const url = req.url ?? '';
-    if (!url.startsWith('/api/daily/') && url.split(/[?#]/)[0] !== '/api/t') return next();
+    const path = url.split(/[?#]/)[0];
+    if (!url.startsWith('/api/daily/') && path !== '/api/t' && path !== FEEDBACK_PATH) return next();
     const chunks: Buffer[] = [];
     req.on('data', (c: Buffer) => chunks.push(c));
     req.on('end', async () => {
@@ -110,7 +116,11 @@ function workerApi(): (req: IncomingMessage, res: ServerResponse, next: () => vo
         headers: Object.entries(req.headers).flatMap(([k, v]) => (typeof v === 'string' ? [[k, v] as [string, string]] : [])),
         body: body && req.method !== 'GET' && req.method !== 'HEAD' ? body : undefined
       });
-      const response = (await handleDailyApi(request, store)) ?? (await handleTelemetry(request, events)) ?? new Response('not found', { status: 404 });
+      const response =
+        (await handleDailyApi(request, store)) ??
+        (await handleTelemetry(request, events)) ??
+        (await handleFeedback(request, feedback)) ??
+        new Response('not found', { status: 404 });
       res.statusCode = response.status;
       response.headers.forEach((value, key) => res.setHeader(key, value));
       res.end(Buffer.from(await response.arrayBuffer()));
@@ -247,6 +257,8 @@ export default defineConfig({
     // the browser smoke test is Playwright's (npm run test:e2e), and a side
     // session's worktree under .claude/worktrees/ carries a copy of the
     // whole tree, tests included: those are its to run, not ours
-    exclude: ['**/node_modules/**', 'tests/e2e/**', '.claude/**']
+    exclude: ['**/node_modules/**', 'tests/e2e/**', '.claude/**'],
+    // the Workers runtime's own module, which only wrangler's bundle has
+    alias: { 'cloudflare:email': resolve(__dirname, 'tests/stubs/cloudflare-email.ts') }
   }
 } as any);

@@ -54,5 +54,14 @@
   // ACCESS_TEAM_DOMAIN and ACCESS_AUD (docs/connect-the-analytics.md).
   "analytics_engine_datasets": [
     { "binding": "EVENTS", "dataset": "sudokui_events" }
+  ],
+  // Reports from players (worker/feedback.ts): e-mailed through Cloudflare
+  // Email Routing from feedback@sudokui.app to the address in the
+  // FEEDBACK_TO secret, a verified destination set by hand
+  // (docs/connect-the-feedback.md), so it never appears here. Until both
+  // exist the route answers 503 and the app offers the e-mail address and
+  // GitHub instead.
+  "send_email": [
+    { "name": "FEEDBACK" }
   ]
 }

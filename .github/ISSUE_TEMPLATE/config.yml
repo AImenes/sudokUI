@@ -1,0 +1,9 @@
+# The forms below are for public reports. For a private one, with no
+# GitHub account, the app's "Send feedback" (footer, Info) and "Looks
+# wrong?" (under a hint) e-mail it to the developer; so does writing to
+# feedback@sudokui.app.
+blank_issues_enabled: true
+contact_links:
+  - name: Send feedback privately, from the app
+    url: https://sudokui.app/
+    about: '"Send feedback" in the footer, or "Looks wrong?" under a hint, e-mails a private report with the board. No GitHub account needed. Or write to feedback@sudokui.app.'

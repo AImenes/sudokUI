@@ -186,6 +186,8 @@ export interface Proof {
   places: boolean;
   /** the proof assumes the wrong digit and follows the forced singles to a contradiction */
   trail: boolean;
+  /** the uniqueness setting the proof was found under, when Check ran; a report of it says so */
+  useUniqueness: boolean;
 }
 
 /** the chain trainer's opening note; translated where it is shown: t(CHAIN_INTRO) */
@@ -207,11 +209,12 @@ export function proveWrong(cells: CellState[], solution: string, wrongCells: num
   if (!g) return [];
   const proofs: Proof[] = [];
   // the techniques a proof may use: without uniqueness, if the player so set
-  const order = hintOrder(useSettings.getState().useUniqueness);
+  const useUniqueness = useSettings.getState().useUniqueness;
+  const order = hintOrder(useUniqueness);
   for (const cell of wrongCells.slice(0, PROOFS_MAX)) {
     const wrong = cells[cell].value;
     const right = Number(solution[cell]);
-    const base = { cell, wrong, right, conflict: null, places: false, trail: false };
+    const base = { cell, wrong, right, conflict: null, places: false, trail: false, useUniqueness };
     if (!(g.cands[cell] & bit(wrong))) {
       const conflict = PEERS[cell].find((p) => Number(clean[p]) === wrong) ?? null;
       proofs.push({ ...base, conflict, tech: null, steps: [] });
@@ -311,6 +314,10 @@ interface GameStore {
    *  restart/new. */
   assisted: boolean;
   hint: Step | null;
+  /** the settings the hint on screen was found under, taken when it
+   *  appeared (below the store): what a report of it says, even if a
+   *  setting changes while it is shown (src/ui/report.ts) */
+  hintWith: { useUniqueness: boolean; markContract: MarkContract } | null;
   /** tech: the name only; full: the drawing and the explanation; walk: the
    *  drawing revealed one frame at a time (src/engine/hintFrames.ts) */
   hintStage: 'hidden' | 'tech' | 'full' | 'walk';
@@ -494,6 +501,7 @@ export const useGame = create<GameStore>()(
       solved: false,
       assisted: false,
       hint: null,
+      hintWith: null,
       hintStage: 'hidden' as const,
       walkIndex: 0,
       markContract: 'unknown' as MarkContract,
@@ -1591,6 +1599,8 @@ export const useGame = create<GameStore>()(
           revertIndex: null,
           proofs: [],
           hint: last,
+          // found when Check ran, from the digits alone, under the setting of that moment
+          hintWith: { useUniqueness: proof.useUniqueness, markContract: s.markContract },
           hintStage: 'full',
           walkIndex: 0,
           assisted: true,
@@ -1831,6 +1841,14 @@ export function countFirstMove(s: GameStore, prev: GameStore) {
   countStart();
 }
 useGame.subscribe(countFirstMove);
+
+// a hint appearing takes note of what it was found under, unless the
+// action that showed it already did (Check's proof, found earlier)
+useGame.subscribe((s, prev) => {
+  if (s.hint && s.hint !== prev.hint && s.hintWith === prev.hintWith) {
+    useGame.setState({ hintWith: { useUniqueness: useSettings.getState().useUniqueness, markContract: s.markContract } });
+  }
+});
 
 // the device rejoins the counts: a game already played on while it was
 // left out is begun now, before its solve, and before a reload could

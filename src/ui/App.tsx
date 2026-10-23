@@ -29,6 +29,9 @@ import {
   ContractDialog
 } from './Dialogs';
 import { SettingsDialog, InfoDialog } from './SettingsInfo';
+import { ReportDialog } from './ReportDialog';
+import type { ReportKind } from './report';
+import type { Step } from '../engine/steps';
 import { ProgressDialog } from './Progress';
 import { Modal } from './Dialogs';
 import type { LearnTarget } from './Learn';
@@ -236,6 +239,8 @@ export default function App() {
   const restart = useGame((s) => s.restart);
   const [victoryDismissed, setVictoryDismissed] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null);
+  // the report dialog, with the hint it is about when it came from "Looks wrong?"
+  const [report, setReport] = useState<{ kind: ReportKind; hint?: Step } | null>(null);
   // first visit only, and never over a shared or deep link: those visitors
   // arrived with a purpose
   const [welcome, setWelcome] = useState(
@@ -840,7 +845,11 @@ export default function App() {
               </div>
             </div>
           )}
-          {chain ? <ChainPanel /> : <HintPanel onLearn={(tech) => openLearn({ tab: 'techniques', tech })} />}
+          {chain ? (
+            <ChainPanel />
+          ) : (
+            <HintPanel onLearn={(tech) => openLearn({ tab: 'techniques', tech })} onReport={(hint) => setReport({ kind: 'hint', hint })} />
+          )}
           {custom && (
             <div className="hint-panel">
               <div className="hint-head">
@@ -948,7 +957,10 @@ export default function App() {
             <a href="https://github.com/AImenes/sudokUI" target="_blank" rel="noreferrer">
               {t('Open source on GitHub')}
             </a>
-            <span> · {t('feedback welcome')}</span>
+            <span aria-hidden="true"> · </span>
+            <button className="link-button" onClick={() => setReport({ kind: 'problem' })}>
+              {t('Send feedback')}
+            </button>
             <span aria-hidden="true"> · </span>
             {/* what the app sends, exactly: a static page in the app's language */}
             <a href={`${langRoot(t.lang)}${PRIVACY_URL.slice(1)}`}>{t('Privacy')}</a>
@@ -1079,7 +1091,17 @@ export default function App() {
         </Modal>
       )}
       {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
-      {dialog === 'info' && <InfoDialog onClose={() => setDialog('none')} onLearn={openLearn} />}
+      {dialog === 'info' && (
+        <InfoDialog
+          onClose={() => setDialog('none')}
+          onLearn={openLearn}
+          onFeedback={() => {
+            setDialog('none');
+            setReport({ kind: 'problem' });
+          }}
+        />
+      )}
+      {report && <ReportDialog kind={report.kind} hint={report.hint} onClose={() => setReport(null)} />}
       {dialog === 'progress' && (
         <ProgressDialog
           onClose={() => setDialog('none')}

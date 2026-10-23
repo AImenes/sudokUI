@@ -1701,3 +1701,139 @@ test.describe('a puzzle being typed in', () => {
     await expect(panel(page)).toContainText('(4 so far)');
   });
 });
+
+test.describe('feedback', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+  /** the app on the EASY board, with the welcome already seen */
+  const openEasy = async (page: Page) => {
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    await page.goto(`/#p=${EASY}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+  };
+  const dialogOf = (page: Page, name: string) => page.getByRole('dialog', { name });
+  /** presses Send and returns what went to the route and how the preview server's copy of the Worker answered */
+  const sendAndRead = async (page: Page, dialog: ReturnType<typeof dialogOf>) => {
+    const [request, response] = await Promise.all([
+      page.waitForRequest('**/api/feedback'),
+      page.waitForResponse('**/api/feedback'),
+      dialog.getByRole('button', { name: 'Send', exact: true }).click()
+    ]);
+    return { body: JSON.parse(request.postData() ?? '{}'), status: response.status() };
+  };
+
+  test('the footer opens it; a report goes with the board and the browser, and the route takes it', async ({ page }) => {
+    await openEasy(page);
+    await page.locator('.app-footer').getByRole('button', { name: 'Send feedback' }).click();
+    const dialog = dialogOf(page, 'Send feedback');
+    await expect(dialog).toContainText('Anders Imenes');
+    const send = dialog.getByRole('button', { name: 'Send', exact: true });
+    // nothing written yet: nothing to send
+    await expect(send).toBeDisabled();
+    await dialog.getByRole('textbox').first().fill('The timer kept running while paused.');
+    await dialog.getByRole('textbox', { name: /e-mail address/ }).fill('not an address');
+    await expect(dialog.locator('.dialog-error')).toContainText('does not look like an e-mail address');
+    await expect(send).toBeDisabled();
+    await dialog.getByRole('textbox', { name: /e-mail address/ }).fill('player@example.org');
+    // the board goes unless unticked; the browser's details only when ticked
+    await expect(dialog.getByRole('checkbox', { name: /Include the board/ })).toBeChecked();
+    await expect(dialog.getByRole('checkbox', { name: /browser’s details/ })).not.toBeChecked();
+    await dialog.getByRole('checkbox', { name: /browser’s details/ }).check();
+    const { body, status } = await sendAndRead(page, dialog);
+    expect(status).toBe(200);
+    expect(body).toMatchObject({
+      kind: 'problem',
+      message: 'The timer kept running while paused.',
+      reply: 'player@example.org',
+      lang: 'en',
+      board: { puzzle: EASY }
+    });
+    // the hidden field goes only when something filled it in
+    expect(body.website).toBeUndefined();
+    expect(body.version).toMatch(/^\d+\.\d+\.\d+/);
+    expect(body.board.position).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(body.browser).toContain('Mozilla/');
+    expect(body.hint).toBeUndefined();
+    await expect(dialogOf(page, 'Thank you')).toContainText('An answer will come to the address you gave');
+  });
+
+  test('without the ticks, a report carries neither the board nor the browser', async ({ page }) => {
+    await openEasy(page);
+    await page.locator('.app-footer').getByRole('button', { name: 'Send feedback' }).click();
+    const dialog = dialogOf(page, 'Send feedback');
+    await dialog.getByRole('radio', { name: 'An idea' }).check();
+    await dialog.getByRole('textbox').first().fill('A daily for each band, please.');
+    // an idea does not carry the board unless asked to
+    await expect(dialog.getByRole('checkbox', { name: /Include the board/ })).not.toBeChecked();
+    const { body, status } = await sendAndRead(page, dialog);
+    expect(status).toBe(200);
+    expect(body.kind).toBe('idea');
+    expect(body.board).toBeUndefined();
+    expect(body.browser).toBeUndefined();
+    expect(body.reply).toBeUndefined();
+    await expect(dialogOf(page, 'Thank you')).toContainText('Your report is on its way.');
+  });
+
+  test('"Looks wrong?" under a hint sends the hint, the settings and whether it agrees with the solution', async ({ page }) => {
+    await openEasy(page);
+    await page.keyboard.press('KeyH');
+    await page.getByRole('button', { name: 'Use Hint' }).click();
+    await page.getByRole('button', { name: 'Show me' }).click();
+    await page.locator('.hint-panel').getByRole('button', { name: 'Looks wrong?' }).click();
+    const dialog = dialogOf(page, 'Report a hint');
+    await expect(dialog.locator('.report-hint code')).not.toBeEmpty();
+    // a hint report may say nothing, and be sent at once: the dialog waits
+    // out the two seconds the Worker takes a quicker report for a robot's
+    const { body, status } = await sendAndRead(page, dialog);
+    expect(status).toBe(200);
+    expect(body.openedMs).toBeGreaterThanOrEqual(2000);
+    expect(body.kind).toBe('hint');
+    expect(body.message).toBe('');
+    expect(body.hint).toMatchObject({ useUniqueness: true, markContract: 'unknown', agrees: true });
+    expect(body.hint.tech).toMatch(/^[A-Z0-9_]+$/);
+    expect(body.hint.text.length).toBeGreaterThan(5);
+    expect(body.board.puzzle).toBe(EASY);
+  });
+
+  test('when the route cannot take it, the letter and GitHub are offered, with the report in the letter', async ({ page }) => {
+    await page.route('**/api/feedback', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"unavailable"}' }));
+    await openEasy(page);
+    await page.locator('.app-footer').getByRole('button', { name: 'Send feedback' }).click();
+    const dialog = dialogOf(page, 'Send feedback');
+    await dialog.getByRole('textbox').first().fill('The board froze.');
+    await dialog.getByRole('button', { name: 'Send', exact: true }).click();
+    const letter = dialog.getByRole('link', { name: 'feedback@sudokui.app' });
+    await expect(letter).toBeVisible();
+    const href = (await letter.getAttribute('href'))!;
+    expect(href.startsWith('mailto:feedback@sudokui.app?subject=')).toBe(true);
+    expect(decodeURIComponent(href)).toContain('The board froze.');
+    await expect(dialog.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', /github\.com\/AImenes\/sudokUI\/issues/);
+  });
+
+  test('the form is locked while the report waits to go, and closing the dialog then sends nothing', async ({ page }) => {
+    let posts = 0;
+    await page.route('**/api/feedback', (route) => {
+      posts++;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+    });
+    await openEasy(page);
+    await page.locator('.app-footer').getByRole('button', { name: 'Send feedback' }).click();
+    const dialog = dialogOf(page, 'Send feedback');
+    await dialog.getByRole('textbox').first().fill('The timer froze.');
+    await dialog.getByRole('button', { name: 'Send', exact: true }).click();
+    // what is shown is what goes: nothing can change while it waits
+    await expect(dialog.getByRole('textbox').first()).toBeDisabled();
+    await expect(dialog.getByRole('checkbox', { name: /browser’s details/ })).toBeDisabled();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toBeHidden();
+    await page.waitForTimeout(2600);
+    expect(posts).toBe(0);
+  });
+
+  test('Info opens it too', async ({ page }) => {
+    await openEasy(page);
+    await page.getByRole('button', { name: /How to play|Info/ }).first().click();
+    await dialogOf(page, 'How to play sudokUI').getByRole('button', { name: 'Send feedback' }).click();
+    await expect(dialogOf(page, 'Send feedback')).toBeVisible();
+    await expect(dialogOf(page, 'How to play sudokUI')).toHaveCount(0);
+  });
+});
