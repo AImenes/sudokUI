@@ -34,6 +34,8 @@ export interface Layout {
   centre(cd: CellDigit): Point;
   /** a mark's outer radius */
   r: number;
+  /** a mark's outer radius where it is larger than `r` (a placement's outer ring) */
+  radiusOf?(cd: CellDigit): number;
   /** a cell's size; the other sizes are fractions of it */
   cell: number;
   /** the area an arc may use */
@@ -57,6 +59,8 @@ export type ArrowShape =
       tail: Point;
       /** the middle of the shaft, where the walk's number goes */
       mid: Point;
+      /** points along the shaft and the head, for what must keep clear of it */
+      trace: Point[];
     };
 
 /** the sizes, as fractions of a cell (docs/hint-drawing.md, Colours and sizes) */
@@ -65,17 +69,20 @@ export const SIZES = {
   r: 0.13,
   /** the room between a mark's rim and an arrow's end */
   gap: 0.03,
-  /** the shaft */
+  /** the shaft, and its halo's extra width */
   stroke: 0.03,
+  halo: 0.02,
   /** the head's length and width */
   headLength: 0.14,
   headWidth: 0.11,
   /** an arrow passing closer than this to another mark's rim must bend */
   clearance: 0.05,
   /** the bulge of an arc, tried from the smallest */
-  bulges: [0.22, 0.32, 0.45, 0.6, 0.8],
+  bulges: [0.22, 0.32, 0.45, 0.6, 0.8, 1.0],
   /** how far apart two links between the same nodes are drawn */
-  pair: 0.09
+  pair: 0.09,
+  /** the start marker's radius */
+  dot: 0.045
 };
 
 const sub = (a: Point, b: Point): Point => ({ x: a.x - b.x, y: a.y - b.y });
@@ -93,6 +100,8 @@ const f = (n: number) => n.toFixed(1);
 const key = (cd: CellDigit) => `${cd.cell}:${cd.digit}`;
 const sameNode = (a: CellDigit[], b: CellDigit[]) =>
   a.length === b.length && a.every((cd) => b.some((o) => o.cell === cd.cell && o.digit === cd.digit));
+const shareACell = (a: CellDigit[], b: CellDigit[]) => a.some((cd) => b.some((o) => o.cell === cd.cell));
+const digitsOf = (node: CellDigit[]) => [...new Set(node.map((cd) => cd.digit))].sort().join(',');
 
 /** the middle of a node's candidates */
 function centroidOf(node: CellDigit[], layout: Layout): Point {
@@ -100,49 +109,42 @@ function centroidOf(node: CellDigit[], layout: Layout): Point {
   return { x: ps.reduce((s, p) => s + p.x, 0) / ps.length, y: ps.reduce((s, p) => s + p.y, 0) / ps.length };
 }
 
-/** the point a node is joined at: its candidate, or a group's member nearest `towards` */
-export function anchorOf(node: CellDigit[], layout: Layout, towards?: Point): Point {
-  if (node.length === 1 || !towards) return node.length === 1 ? layout.centre(node[0]) : centroidOf(node, layout);
-  let best = layout.centre(node[0]);
-  for (const cd of node) {
-    const p = layout.centre(cd);
-    if (len(sub(p, towards)) < len(sub(best, towards))) best = p;
-  }
+/** a candidate's mark radius on this board */
+const radius = (layout: Layout, cd: CellDigit) => layout.radiusOf?.(cd) ?? layout.r;
+
+/** the member a node is joined at: its candidate, or a group's member nearest `towards` */
+function memberOf(node: CellDigit[], layout: Layout, towards?: Point): CellDigit {
+  if (node.length === 1 || !towards) return node[0];
+  let best = node[0];
+  for (const cd of node) if (len(sub(layout.centre(cd), towards)) < len(sub(layout.centre(best), towards))) best = cd;
   return best;
 }
 
-/** a link starts a new branch: it is the first, or it does not go on from where the one before ended */
-const startsBranch = (links: ChainLink[], i: number) => i === 0 || !sameNode(links[i - 1].to, links[i].from);
-
-/**
- * Where the start markers go (G14): beside the first node of every branch
- * that infers something (a branch of ties only, a colouring's cluster, has
- * no reading order), at the upper left of its mark
- */
-export function startMarkers(links: ChainLink[], layout: Layout): Point[] {
-  const out: Point[] = [];
-  links.forEach((l, i) => {
-    if (!startsBranch(links, i)) return;
-    // the branch's links, up to the next branch
-    let j = i;
-    while (j + 1 < links.length && !startsBranch(links, j + 1)) j++;
-    if (links.slice(i, j + 1).every((b) => b.undirected)) return;
-    const next = links.slice(i, j + 1).find((b) => !insideOneCell(b)) ?? l;
-    const a = anchorOf(l.from, layout, centroidOf(next.to, layout));
-    const off = (layout.r + SIZES.gap * layout.cell) / Math.SQRT2;
-    out.push({ x: a.x - off, y: a.y - off });
-  });
-  return out;
+/** the point a node is joined at: its candidate, or a group's member nearest `towards` */
+export function anchorOf(node: CellDigit[], layout: Layout, towards?: Point): Point {
+  if (node.length > 1 && !towards) return centroidOf(node, layout);
+  return layout.centre(memberOf(node, layout, towards));
 }
 
 /**
- * A link that needs no arrow: its two ends lie in the same cells (a bivalue
- * switch, or one set's two digits): the marks side by side say it (G12)
+ * A link that needs no arrow (G12): its two ends share a cell and differ in
+ * digit. A bivalue switch, or a set's change of digit, whose two digits may
+ * cover different cells of the set: an arrow inside one cell, or from one
+ * member to another, would say more than the set does ("if r8c3 is not 9
+ * it is 3", where r8c3 could be 4 with the 3 elsewhere in the set). The
+ * marks side by side say it, and the walk names it.
  */
 export function insideOneCell(link: ChainLink): boolean {
-  const cells = (node: CellDigit[]) => [...new Set(node.map((cd) => cd.cell))].sort((a, b) => a - b).join(',');
-  return cells(link.from) === cells(link.to);
+  return shareACell(link.from, link.to) && digitsOf(link.from) !== digitsOf(link.to);
 }
+
+/**
+ * A link goes on from the one before: it leaves the node the other reached,
+ * or, in a chain of sets, another digit of the set it reached (the set's
+ * own link, which is not drawn)
+ */
+const goesOn = (links: ChainLink[], i: number) =>
+  i > 0 && (sameNode(links[i - 1].to, links[i].from) || shareACell(links[i - 1].to, links[i].from));
 
 /** the shortest distance from a point to the segment a-b, and where along it (0..1) */
 function toSegment(p: Point, a: Point, b: Point): { dist: number; t: number } {
@@ -158,33 +160,48 @@ const quad = (a: Point, c: Point, b: Point, t: number): Point => ({
   y: (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * c.y + t * t * b.y
 });
 
+/** something an arrow must keep clear of: a mark, or another arrow's end */
+interface Obstacle {
+  p: Point;
+  r: number;
+}
+
 /**
- * How clear a curve keeps of the other marks: the least room left between
- * it and any mark's rim (negative when it crosses one), and minus a cell
- * for every sample outside the board, which no clearance makes up for
+ * How clear a set of points keeps of the obstacles: the least room left
+ * between them and any obstacle's rim (negative when one is crossed), and
+ * minus a cell for a point too near the board's edge for its halo
  */
-function clearanceOf(points: Point[], obstacles: Point[], layout: Layout): number {
+function clearanceOf(points: Point[], obstacles: Obstacle[], layout: Layout, margin: number): number {
   let least = Infinity;
   const { x0, y0, x1, y1 } = layout.bounds;
   for (const p of points) {
-    if (p.x < x0 || p.x > x1 || p.y < y0 || p.y > y1) least = Math.min(least, -layout.cell);
-    for (const o of obstacles) least = Math.min(least, len(sub(p, o)) - layout.r);
+    if (p.x < x0 + margin || p.x > x1 - margin || p.y < y0 + margin || p.y > y1 - margin) least = Math.min(least, -layout.cell);
+    for (const o of obstacles) least = Math.min(least, len(sub(p, o.p)) - o.r);
   }
   return least;
 }
 
+/** the head of an arrow whose last stretch runs along `dir` to `tip` */
+function headAt(tip: Point, dir: Point, layout: Layout): Point[] {
+  const base = sub(tip, mul(dir, SIZES.headLength * layout.cell));
+  const w = (SIZES.headWidth * layout.cell) / 2;
+  return [tip, add(base, mul(perp(dir), w)), sub(base, mul(perp(dir), w))];
+}
+
 /**
- * The arrows of a hint. `obstacles` are the centres of every mark the hint
- * draws (its nodes, removals, placements and pattern candidates); an arrow
- * is never bent for a candidate the hint does not mark.
+ * The arrows of a hint. `obstacles` are every mark the hint draws (its
+ * nodes, removals, placements and pattern candidates); an arrow is never
+ * bent for a candidate the hint does not mark. The arrows also keep their
+ * arcs and heads clear of each other's ends.
  */
 export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellDigit[]): ArrowShape[] {
   const c = layout.cell;
   const gap = SIZES.gap * c;
   const headLength = SIZES.headLength * c;
-  const headWidth = SIZES.headWidth * c;
   const need = SIZES.clearance * c;
-  const marks = obstacles.map((cd) => ({ cd, p: layout.centre(cd) }));
+  const margin = ((SIZES.stroke + SIZES.halo) * c) / 2;
+  const marks = obstacles.map((cd) => ({ cd, p: layout.centre(cd), r: radius(layout, cd) }));
+  const centre = { x: (layout.bounds.x0 + layout.bounds.x1) / 2, y: (layout.bounds.y0 + layout.bounds.y1) / 2 };
 
   // links between the same two nodes, in either direction, are spread apart
   const pairKey = (l: ChainLink) => {
@@ -199,12 +216,32 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     pairs.set(k, [...(pairs.get(k) ?? []), i]);
   });
 
+  // where each link's ends lie, straight: the candidates it joins
+  const ends = links.map((l) => {
+    const fromCd = memberOf(l.from, layout, centroidOf(l.to, layout));
+    const toCd = memberOf(l.to, layout, layout.centre(fromCd));
+    return { fromCd, toCd, a: layout.centre(fromCd), b: layout.centre(toCd) };
+  });
+  // the other arrows' ends, straight, just outside their marks: an arc or a
+  // head keeps clear of them too
+  const arrowEnds = links.flatMap((l, i): (Obstacle & { link: number })[] => {
+    if (insideOneCell(l) || l.undirected) return [];
+    const { fromCd, toCd, a, b } = ends[i];
+    const u = unit(sub(b, a));
+    const w = (SIZES.headWidth * c) / 2;
+    return [
+      { link: i, p: add(a, mul(u, radius(layout, fromCd) + gap)), r: w },
+      { link: i, p: sub(b, mul(u, radius(layout, toCd) + gap + headLength / 2)), r: w }
+    ];
+  });
+
   return links.map((l, i): ArrowShape => {
     if (insideOneCell(l)) return { kind: 'none', link: i };
-
-    // a group is joined at its member nearest the other end
-    const a = anchorOf(l.from, layout, centroidOf(l.to, layout));
-    const b = anchorOf(l.to, layout, a);
+    const { fromCd, toCd, a, b } = ends[i];
+    const ra = radius(layout, fromCd) + gap;
+    const rb = radius(layout, toCd) + gap;
+    // a degenerate link, its ends on one candidate or touching: nothing to draw
+    if (len(sub(b, a)) <= ra + rb) return { kind: 'none', link: i };
     const u = unit(sub(b, a));
     // the two nodes of the pair, spread sideways when more than one link joins them
     const group = pairs.get(pairKey(l)) ?? [i];
@@ -215,63 +252,110 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     const shift = mul(perp(along), spread);
 
     const own = new Set([...l.from, ...l.to].map(key));
-    const others = marks.filter((m) => !own.has(key(m.cd))).map((m) => m.p);
+    const others: Obstacle[] = [
+      ...marks.filter((m) => !own.has(key(m.cd))),
+      // other arrows' ends, but not those that meet this one at its own
+      // marks, where arrows into and out of one node always gather
+      ...arrowEnds.filter((e) => e.link !== i && len(sub(e.p, a)) > ra + headLength + 1 && len(sub(e.p, b)) > rb + headLength + 1)
+    ];
 
     if (l.undirected) {
-      const p0 = add(add(a, mul(u, layout.r + gap)), shift);
-      const p1 = add(sub(b, mul(u, layout.r + gap)), shift);
+      const p0 = add(add(a, mul(u, ra)), shift);
+      const p1 = add(sub(b, mul(u, rb)), shift);
       return { kind: 'tie', link: i, d: `M ${f(p0.x)} ${f(p0.y)} L ${f(p1.x)} ${f(p1.y)}` };
     }
 
-    // straight, if it keeps clear of the hint's other marks (G9, G10)
-    const s0 = add(add(a, mul(u, layout.r + gap)), shift);
-    const tip0 = add(sub(b, mul(u, layout.r + gap)), shift);
-    const blocked = others.some((o) => {
-      const { dist, t } = toSegment(o, s0, tip0);
-      return t > 0 && t < 1 && dist < layout.r + need;
-    });
+    // a candidate drawing, straight or one arc, scored by how clear it keeps
+    // of the hint's other marks and the other arrows' ends, along its whole
+    // length and its head (G9, G10)
+    const shape = (control: Point | null) => {
+      const tail = control ? add(a, mul(unit(sub(control, a)), ra)) : add(add(a, mul(u, ra)), shift);
+      const tip = control ? add(b, mul(unit(sub(control, b)), rb)) : add(sub(b, mul(u, rb)), shift);
+      const dir = unit(sub(tip, control ?? tail));
+      const hasHead = len(sub(tip, tail)) > headLength * 1.4;
+      const head = hasHead ? headAt(tip, dir, layout) : [];
+      const trace = [
+        ...Array.from({ length: 21 }, (_, k) => (control ? quad(tail, control, tip, k / 20) : add(tail, mul(sub(tip, tail), k / 20)))),
+        ...head
+      ];
+      return { tail, tip, dir, head, trace, control, room: clearanceOf(trace, others, layout, margin) };
+    };
 
-    let tail = s0;
-    let tip = tip0;
-    let control: Point | null = null;
-    if (blocked) {
-      // one gentle arc, to the side and of the size that keeps clear of the
-      // other marks along the whole curve; if none does, the clearest one
-      const mid = mul(add(a, b), 0.5);
-      let best: { control: Point; room: number } | null = null;
+    let best = shape(null);
+    if (best.room < need) {
+      // one gentle arc, the smallest that keeps clear, on the side with
+      // more room (the board's middle on a tie, so the choice never rests
+      // on rounding); turning midway first, then near either end, which
+      // lets an arrow come in steeply past a mark beside its target; if
+      // none keeps clear, the clearest drawing of all
       for (const bulge of SIZES.bulges) {
-        for (const side of [1, -1]) {
-          const cp = add(add(mid, mul(perp(u), side * bulge * c * 2)), shift);
-          const t0 = add(a, mul(unit(sub(cp, a)), layout.r + gap));
-          const t1 = add(b, mul(unit(sub(cp, b)), layout.r + gap));
-          const samples = Array.from({ length: 19 }, (_, k) => quad(t0, cp, t1, (k + 1) / 20));
-          const room = clearanceOf(samples, others, layout);
-          if (!best || room > best.room) best = { control: cp, room };
+        for (const at of [0.5, 0.78, 0.22]) {
+          const base = add(a, mul(sub(b, a), at));
+          const [p, q] = [1, -1].map((side) => shape(add(add(base, mul(perp(u), side * bulge * c * 2)), shift)));
+          const pick =
+            Math.abs(p.room - q.room) < 0.5
+              ? len(sub(p.control!, centre)) <= len(sub(q.control!, centre))
+                ? p
+                : q
+              : p.room > q.room
+                ? p
+                : q;
+          if (pick.room > best.room + 0.01) best = pick;
+          if (best.room >= need) break;
         }
-        if (best && best.room >= need) break;
+        if (best.room >= need) break;
       }
-      control = best!.control;
-      tail = add(a, mul(unit(sub(control, a)), layout.r + gap));
-      tip = add(b, mul(unit(sub(control, b)), layout.r + gap));
     }
 
-    // the head points along the curve's last stretch; the shaft stops where
-    // the head begins, so its end never shows past the tip
-    const dir = unit(sub(tip, control ?? tail));
-    const span = len(sub(tip, tail));
-    const hasHead = span > headLength * 1.4;
-    const headBase = hasHead ? sub(tip, mul(dir, headLength)) : tip;
-    const head = hasHead
-      ? [tip, add(headBase, mul(perp(dir), headWidth / 2)), sub(headBase, mul(perp(dir), headWidth / 2))]
-      : [];
+    const { tail, tip, dir, head, trace, control } = best;
     // the shaft runs a little under the head so no seam shows between them
-    const end = hasHead ? sub(tip, mul(dir, headLength * 0.75)) : tip;
+    const end = head.length ? sub(tip, mul(dir, headLength * 0.75)) : tip;
     const d = control
       ? `M ${f(tail.x)} ${f(tail.y)} Q ${f(control.x)} ${f(control.y)} ${f(end.x)} ${f(end.y)}`
       : `M ${f(tail.x)} ${f(tail.y)} L ${f(end.x)} ${f(end.y)}`;
     const mid = control ? quad(tail, control, tip, 0.5) : mul(add(tail, tip), 0.5);
-    return { kind: 'arrow', link: i, d, head, strong: l.strong, tail, mid };
+    return { kind: 'arrow', link: i, d, head, strong: l.strong, tail, mid, trace };
   });
+}
+
+/**
+ * Where the start markers go (G14): beside the first node of every branch
+ * that infers something (a branch of ties only, a colouring's cluster, has
+ * no reading order; a chain of sets goes on through each set, so it has one
+ * start), on whichever side of the mark keeps clearest of the arrows and
+ * the other marks, upper left when all are clear
+ */
+export function startMarkers(links: ChainLink[], layout: Layout, obstacles: CellDigit[] = []): Point[] {
+  const c = layout.cell;
+  const dot = SIZES.dot * c;
+  const traces = arrowShapes(links, layout, obstacles).flatMap((s) => (s.kind === 'arrow' ? s.trace : []));
+  const out: Point[] = [];
+  links.forEach((l, i) => {
+    if (goesOn(links, i)) return;
+    // the branch's links, up to the next branch
+    let j = i;
+    while (j + 1 < links.length && goesOn(links, j + 1)) j++;
+    if (links.slice(i, j + 1).every((b) => b.undirected)) return;
+    const next = links.slice(i, j + 1).find((b) => !insideOneCell(b)) ?? l;
+    const at = memberOf(l.from, layout, centroidOf(next.to, layout));
+    const a = layout.centre(at);
+    const reach = radius(layout, at) + SIZES.gap * c + dot / 2;
+    const own = new Set(l.from.map(key));
+    const marks: Obstacle[] = obstacles.filter((cd) => !own.has(key(cd))).map((cd) => ({ p: layout.centre(cd), r: radius(layout, cd) }));
+    // upper left first, then round the clock
+    let best: { p: Point; room: number } | null = null;
+    for (let k = 0; k < 8; k++) {
+      const angle = Math.PI * (1.25 + k / 4);
+      const p = add(a, mul({ x: Math.cos(angle), y: Math.sin(angle) }, reach));
+      const room = Math.min(
+        clearanceOf([p], marks, layout, dot),
+        ...traces.map((t) => len(sub(p, t)) - (SIZES.stroke * c) / 2)
+      ) - dot;
+      if (!best || room > best.room + 0.5) best = { p, room };
+    }
+    out.push(best!.p);
+  });
+  return out;
 }
 
 /** a polygon's points, for an SVG `points` attribute */

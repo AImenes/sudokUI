@@ -136,8 +136,10 @@ describe('an arrow', () => {
     const other = cd(9, 9, 7);
     const starts = startMarkers([link(r1, r2), link(r2, r3, false), link(other, r3, false)], layout);
     expect(starts).toHaveLength(2);
-    expect(dist(starts[0], layout.centre(r1))).toBeLessThan(layout.r + 5);
-    expect(dist(starts[1], layout.centre(other))).toBeLessThan(layout.r + 5);
+    // beside the mark, just clear of its rim
+    const beside = layout.r + SIZES.gap * 100 + (SIZES.dot * 100) / 2;
+    expect(dist(starts[0], layout.centre(r1))).toBeCloseTo(beside, 5);
+    expect(dist(starts[1], layout.centre(other))).toBeCloseTo(beside, 5);
     expect(startMarkers([link(r1, r2, true, true), link(r2, r3, true, true)], layout)).toEqual([]);
   });
 
@@ -146,6 +148,60 @@ describe('an arrow', () => {
     const b = cd(2, 7, 4);
     const [s, t] = arrowShapes([link(a, b), link(b, a, false)], layout, [a, b]).map(arrow);
     expect(Math.abs(s.mid.y - t.mid.y)).toBeGreaterThan(SIZES.pair * 100 * 0.9);
+  });
+});
+
+describe('what the review of phase 1 found', () => {
+  it('draws no arrow for a set changing digit across different cells of the set', () => {
+    // 9@r8c3 => 3@{r3c3,r8c3}: r8c3 could be 4 with the 3 in r3c3, so an
+    // arrow from the 9 to the 3 of r8c3 would say more than the set does
+    const change = link(cd(8, 3, 9), [cd(3, 3, 3), cd(8, 3, 3)]);
+    expect(insideOneCell(change)).toBe(true);
+    // and the near variant: 3 in rXc1 => 1@{rXc1,rXc2}, whose nearest 1 is in the next cell
+    const near = link(cd(5, 1, 3), [cd(5, 1, 1), cd(5, 2, 1)]);
+    expect(insideOneCell(near)).toBe(true);
+    expect(arrowShapes([change, near], layout, []).map((s) => s.kind)).toEqual(['none', 'none']);
+    // a link from a single to a group in other cells is still an arrow
+    expect(insideOneCell(link(cd(1, 1, 8), [cd(5, 1, 8), cd(6, 1, 8)]))).toBe(false);
+  });
+
+  it('keeps a head off the mark beside its target, arriving steeply when it must', () => {
+    // 2r1c1 => 2r1c9, with 1r1c9 (the next node) beside the target on the line
+    const a = cd(1, 1, 2);
+    const b = cd(1, 9, 2);
+    const beside = cd(1, 9, 1);
+    const s = arrow(arrowShapes([link(a, b), link(b, beside, false)], layout, [a, b, beside])[0]);
+    const o = layout.centre(beside);
+    for (const p of [...s.head, ...s.trace]) expect(dist(p, o)).toBeGreaterThan(layout.r);
+    // and inside the board, halo and all
+    for (const p of s.trace) expect(p.y).toBeGreaterThanOrEqual(layout.bounds.y0 + ((SIZES.stroke + SIZES.halo) * 100) / 2 - 1e-9);
+  });
+
+  it('starts and ends outside a placement\'s outer ring', () => {
+    const a = cd(1, 1, 5);
+    const b = cd(1, 9, 5);
+    const big = SIZES.r * 100 + 5;
+    const ringed: Layout = { ...layout, radiusOf: (x) => (x.cell === b.cell && x.digit === b.digit ? big : layout.r) };
+    const s = arrow(arrowShapes([link(a, b)], ringed, [a, b])[0]);
+    expect(dist(s.head[0], layout.centre(b))).toBeCloseTo(big + SIZES.gap * 100, 0);
+  });
+
+  it('puts the start dot clear of the first arrow, on whichever side has room', () => {
+    // the first arrow leaves up and to the left, where the dot would go by default
+    const a = cd(5, 5, 1);
+    const b = cd(1, 1, 1);
+    const [start] = startMarkers([link(a, b)], layout, [a, b]);
+    const s = arrow(arrowShapes([link(a, b)], layout, [a, b])[0]);
+    for (const p of s.trace) expect(dist(start, p)).toBeGreaterThan((SIZES.dot * 100) / 2);
+  });
+
+  it('gives a chain of sets one start, going on through each set', () => {
+    // A(x) - C(x), then C's other digit y - B(y): the set C is not a new branch
+    const A = [cd(1, 1, 4), cd(1, 2, 4)];
+    const Cx = [cd(1, 6, 4)];
+    const Cy = [cd(1, 6, 7), cd(2, 6, 7)];
+    const B = [cd(6, 6, 7)];
+    expect(startMarkers([link(A, Cx, false), link(Cy, B, false)], layout, [...A, ...Cx, ...Cy, ...B])).toHaveLength(1);
   });
 });
 

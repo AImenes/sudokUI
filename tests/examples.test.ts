@@ -157,17 +157,21 @@ describe('worked examples', () => {
       const named = new Set([...(ex.step.primary ?? []), ...(ex.step.secondary ?? []), ...(ex.step.fins ?? [])].map(key));
       const colouring = ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'].includes(tech);
       const circlesOf = (k: string) => (removed.has(k) ? (colouring && named.has(k) ? 1 : 2) : placed.has(k) ? 2 : 1);
-      // the arrows: none for a link inside one cell (its two marks say it),
-      // and a dot beside the first node of each branch that infers
-      // something, a switch inside one cell included (a cluster of ties
-      // has no reading order)
+      // the arrows: none for a link whose ends share a cell and differ in
+      // digit (a switch inside a cell, or a set's change of digit: its
+      // marks say it), and a dot beside the first node of each branch that
+      // infers something (a cluster of ties has no reading order; a chain
+      // goes on through a node it reached, or through another digit of a
+      // set it reached)
       const links = ex.step.links ?? [];
-      const cells = (node: { cell: number }[]) => [...new Set(node.map((cd) => cd.cell))].sort().join(',');
-      const drawn = links.filter((l) => cells(l.from) !== cells(l.to));
+      const share = (a: { cell: number }[], b: { cell: number }[]) => a.some((x) => b.some((y) => y.cell === x.cell));
+      const digits = (node: { digit: number }[]) => [...new Set(node.map((cd) => cd.digit))].sort().join(',');
+      const silent = (l: (typeof links)[number]) => share(l.from, l.to) && digits(l.from) !== digits(l.to);
+      const drawn = links.filter((l) => !silent(l));
       let starts = 0;
       let counted = false;
       links.forEach((l, i) => {
-        const continues = i > 0 && links[i - 1].to.length === l.from.length && links[i - 1].to.every((cd) => l.from.some((o) => o.cell === cd.cell && o.digit === cd.digit));
+        const continues = i > 0 && share(links[i - 1].to, l.from);
         if (!continues) counted = false;
         if (l.undirected || counted) return;
         starts++;
