@@ -85,7 +85,9 @@ Every rule is numbered so a commit, a test or a review can cite it.
   WAS a chain node keeps its truth ring under the removal mark, because
   the walk names it; until truth is drawn (phase 2b), it keeps the colour
   the step names for it inside the removal ring, as Nishio's removed
-  assumption does, so the legend's words for that colour still find it.
+  assumption does, so the legend's words for that colour still find it. A
+  placed chain node the step names keeps that colour in its disc inside
+  the placement's outer ring, as Digit Forcing's placed assumption does.
 - **G6. Digits on discs.** A digit on a filled disc is near-black in every
   theme; a digit inside a ring is the theme's strongest ink (the givens'
   colour), in bold. Unmarked candidates stay as they are: nothing is dimmed
@@ -120,7 +122,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
   first; if none clears, the clearest arc wins. A head also keeps off the
   other digits its target's cell shows, which are cut out of the arrows
   (G11): an arrow that would land its head on one comes in from a clear
-  side instead, so it never seems to end on the wrong digit. Arcs stay
+  side instead, so it never seems to end on the wrong digit. No arrow runs
+  along another of the same hint (away from the nodes where arrows
+  gather): an arc that would hide another arrow loses to any drawing that
+  does not, and keeping clear of the marks comes first, then not hiding
+  an arrow, then the head's room. Arcs stay
   on the board: HoDoKu's loop that seems to leave the grid is an accident
   of its fixed bend, which always bulges to the left of travel by a set
   amount and is never checked against what it passes
@@ -163,8 +169,14 @@ Every rule is numbered so a commit, a test or a review can cite it.
   order and no marker. The walk numbers each arrow by the frame that adds
   it, so the number on the board is the one the panel shows; a number
   sits on its arrow's shaft, as near the middle as keeps it clear of the
-  numbers placed before it, the marks, the start dots, every head and the
-  digits the board shows, beside the shaft when nothing on it is. The
+  numbers placed before it, the marks, the start dots and every head; on
+  its shaft before beside it (and beside it, never nearer another arrow
+  than its own); clear of the digits the board shows at the size a phone
+  draws it, and off the empty candidate places, where it would read as a
+  candidate the cell does not have; at the wide board's size only when
+  nothing else is clear. The geometry knows where the player's own marks
+  are drawn (a centre line or the edge layout takes the whole cell), and a
+  cell the full view marks keeps its digits on the 3×3 through the walk. The
   arrows, dots and numbers are worked out once for the whole hint, from
   the full view, so an arrow the reader has followed never moves or
   changes shape as the walk goes on; each frame draws the first of them.
@@ -175,7 +187,7 @@ Every rule is numbered so a commit, a test or a review can cite it.
   CSS pixels, and a step thicker again under 330; the start dots grow by
   1.4 and the walk numbers by 1.6, and the geometry leaves room for them
   at that size everywhere. A browser without container queries goes by
-  the window's width instead. The Learn diagrams, small on every screen,
+  the window instead: its width, or its height for a phone on its side. The Learn diagrams, small on every screen,
   draw their lines half again as thick and their start dots at the
   larger size, and put their candidates on the app board's pitch.
 
@@ -459,7 +471,15 @@ the values above are its final ones.
   the walk never moves them, walk numbers off digits and heads, the
   legend per walk frame, one role order in the walk and the full view,
   the fallback's under-330 step, and tests that fail when each fix is
-  undone; round 4 next. Over the chain
+  undone (1a9d6a4). Round 4's are fixed: an arrow no longer runs along
+  another (over 39 puzzles, runs of more than half a cell fell from 181
+  to 56, nearly all of them forcing chains whose branches repeat a link,
+  phase 5), walk numbers at a phone's size and off the empty places (on
+  an empty place: from about 13% to 0.3%), never nearer another arrow
+  beside their shaft, the player's own centre and edge marks known to the
+  geometry, Digit Forcing's placed assumption keeping its colour, the
+  fallback for a phone on its side, and tests that check every head and
+  the heads painted back into the mask; round 5 next. Over the chain
   steps of 70 puzzles (16,448 arrows), 14 arrows come inside another
   mark's rim, by 0.6 units at most, where three of the hint's own marks
   box the start in. To photograph the app's own board with

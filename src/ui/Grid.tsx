@@ -16,9 +16,9 @@ import { CellDigit } from '../engine/steps';
 import { walkFrames } from '../engine/hintFrames';
 import { arrowShapes, startMarkers, badgePoints, pointsOf, SIZES } from '../content/hintGeometry';
 import type { ArrowShape, Point } from '../content/hintGeometry';
-import { SIZE, M, candX, candY, boardLayout } from './boardLayout';
+import { SIZE, M, candX, candY, boardLayout, digitShown } from './boardLayout';
 import { MARK } from '../content/hintPalette';
-import { frameMarks, markedCandidates as markedOf } from '../content/hintMarks';
+import { frameMarks, markedCandidates as markedOf, placedKeys } from '../content/hintMarks';
 import { useT, msg, translator } from '../content/i18n';
 import type { Translator } from '../content/i18n';
 import { touchIntent, cellsBetween, INTENT_MS, SLOP_PX } from './touchIntent';
@@ -207,10 +207,13 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
       </g>
     );
   }
-  const { fill, ink } = MARK_FILL[kind];
-  if (kind === 'place') {
-    // a small board shows the second ring, thicker and moved out with its
-    // thickness so the gap to the disc stays (styles.css; G3, G14a)
+  if (kind === 'place' || kind === 'placeOn') {
+    // the disc in the colour the step names for it, when it is a chain
+    // node (G5), and the placement's outer ring; a small board shows the
+    // second ring, thicker and moved out with its thickness so the gap to
+    // the disc stays (styles.css; G3, G14a)
+    const { fill, ink } = MARK_FILL[kind === 'placeOn' && inside ? inside : 'place'];
+    const ring = MARK_FILL.place.ink;
     return (
       <g>
         {[
@@ -219,13 +222,14 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
         ].map(([cls, r, w]) => (
           <g key={cls as string} className={cls as string}>
             {keyOf((r as number) + (w as number) / 2)}
-            <circle cx={x} cy={y} r={(r as number) * s} fill="none" stroke={ink} strokeWidth={(w as number) * s} />
+            <circle cx={x} cy={y} r={(r as number) * s} fill="none" stroke={ring} strokeWidth={(w as number) * s} />
           </g>
         ))}
         <circle cx={x} cy={y} r={(MARK.disc - MARK.edge / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.edge * s} />
       </g>
     );
   }
+  const { fill, ink } = MARK_FILL[kind];
   return (
     <g>
       {keyline}
@@ -269,7 +273,9 @@ function renderMarks(
   hlDigit = 0,
   frame = false,
   /** the cell is ringed as a bivalue cell: its two digits a touch heavier */
-  pair = false
+  pair = false,
+  /** the hint marks the cell in its full view: its digits stay on the 3×3 grid through every frame of the walk */
+  promote = false
 ): React.ReactNode {
   const cornerDs = digitsOf(cell.corner);
   const centerDs = digitsOf(cell.center);
@@ -320,8 +326,8 @@ function renderMarks(
 
   // hint promotion: union of both layers on the 3×3 grid, and every digit
   // the hint marks, pencilled or not: a mark with no digit says nothing
-  if (marks && marks.size > 0) {
-    const union = [...new Set([...cornerDs, ...centerDs, ...marks.keys()])].sort((a, b) => a - b);
+  if ((marks && marks.size > 0) || promote) {
+    const union = [...new Set([...cornerDs, ...centerDs, ...(marks?.keys() ?? [])])].sort((a, b) => a - b);
     return <>{union.map((d) => gridText(d, cell.corner ? (cell.corner & bit(d)) !== 0 : false))}</>;
   }
 
@@ -545,6 +551,12 @@ export function Grid() {
     const frames = walkFrames(hint);
     return (hint.links ?? []).map((_, i) => frames.findIndex((fr) => fr.links > i) + 1);
   }, [walking, hint]);
+  // the cells the hint marks in its full view: their digits stay at their
+  // places on the 3×3 through every frame, where the geometry expects them
+  const promoted = React.useMemo(
+    () => (showHint ? new Set(frameMarks(hint, null, (c) => cells[c].value > 0).cands.keys()) : new Set<number>()),
+    [showHint, hint, cells]
+  );
   // the arrows, start dots and walk numbers, worked out once for the whole
   // hint, from the full view's marks and every link, so an arrow the reader
   // has followed never moves or changes as the walk goes on; a frame draws
@@ -557,13 +569,9 @@ export function Grid() {
     const solved = (c: number) => cells[c].value > 0;
     const full = frameMarks(hint, null, solved);
     const marks = markedOf(full);
-    const placed = new Set(marks.filter((m) => full.cands.get(m.cell)?.get(m.digit) === 'place').map((m) => `${m.cell}:${m.digit}`));
-    const shown = (cd: CellDigit) => {
-      const c = cells[cd.cell];
-      if (c.value) return false;
-      const pencil = canonical ? canonical.cands[cd.cell] : c.corner | c.center;
-      return !!full.cands.get(cd.cell)?.has(cd.digit) || (pencil & bit(cd.digit)) !== 0;
-    };
+    const placed = placedKeys(full);
+    const shown = (cd: CellDigit) =>
+      digitShown(cells[cd.cell], cd.digit, canonical ? canonical.cands[cd.cell] : null, full.cands.get(cd.cell));
     const layout = boardLayout(placed, shown, solved);
     const shapes = arrowShapes(hint.links, layout, marks);
     const dots = startMarkers(hint.links, layout, marks);
@@ -1141,7 +1149,7 @@ export function Grid() {
                   </React.Fragment>
                 ))
               ) : (
-                renderMarks(cell, x, y, marks, hlDigit, frameHighlights, pairs.has(i))
+                renderMarks(cell, x, y, marks, hlDigit, frameHighlights, pairs.has(i), promoted.has(i))
               )}
             </g>
           );

@@ -132,9 +132,15 @@ describe('worked examples', () => {
       const whole = boardSvg(ex, `${TECHS[tech].name} example`);
       expect(whole.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
       // the digits cut out of the arrows, drawn again in the mask: once, when there are lines
+      const mask = whole.match(/<mask [\s\S]*?<\/mask>/)?.[0] ?? '';
       const svg = whole.replace(/<mask [\s\S]*?<\/mask>/, '');
       const lines = (svg.match(/<path d="[^"]+" fill="none"/g) ?? []).length;
       expect((whole.match(/<mask /g) ?? []).length, tech).toBe(lines ? 1 : 0);
+      // and every head painted back, white, after the digits, so no head is cut
+      const heads = [...svg.matchAll(/<polygon points="([^"]+)" fill="#151a24"\/>/g)].map((m) => m[1]);
+      const back = [...mask.matchAll(/<polygon points="([^"]+)" fill="#ffffff"/g)].map((m) => m[1]);
+      expect(back, tech).toEqual(heads);
+      if (heads.length) expect(mask.indexOf('<polygon'), tech).toBeGreaterThan(mask.indexOf('</g>'));
       expect(svg.trim().endsWith('</svg>')).toBe(true);
       expect(svg).not.toMatch(/NaN|undefined/);
       // one mark per highlighted candidate of an empty cell (a solved cell

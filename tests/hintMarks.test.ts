@@ -55,6 +55,20 @@ describe('the marks', () => {
     expect(hintMarks({ ...s, tech: 'X_CHAIN' }, none).inside.size).toBe(0);
   });
 
+  it('keep the colour a step names for a placed chain node, as Digit Forcing places its own assumption', () => {
+    const links = [{ from: [A], to: [B], strong: false }];
+    const s = step({ tech: 'DIGIT_FORCING_CHAIN', primary: [A], links, placements: [A], labels: { primary: 'the assumption and the singles it forces' } });
+    const m = hintMarks(s, none);
+    expect(m.cands.get(A.cell)?.get(A.digit)).toBe('placeOn');
+    expect(m.inside.get(A.cell)?.get(A.digit)).toBe('primary');
+    // the legend keeps the assumption's words, and the placement's
+    const k = legendKinds(s, m);
+    expect([k.shown.has('place'), k.shown.has('primary'), k.intoPlace]).toEqual([true, true, []]);
+    expect(legendOf(s).map((l) => l.label)).toEqual(['place', 'the assumption and the singles it forces']);
+    // a named placement that is no chain node stays a plain placement
+    expect(hintMarks(step({ primary: [C], placements: [C] }), none).cands.get(C.cell)?.get(C.digit)).toBe('place');
+  });
+
   it('keep the colour a step names for a removed chain node, as Nishio removes its own assumption', () => {
     const links = [{ from: [A], to: [B], strong: true }];
     const s = step({ tech: 'NISHIO_FORCING_CHAIN', primary: [A], links, eliminations: [A] });

@@ -9,8 +9,8 @@
 import { describe, it, expect } from 'vitest';
 import { arrowShapes, startMarkers, badgePoints, insideOneCell, Layout, Point, SIZES, ArrowShape } from '../src/content/hintGeometry';
 import type { CellDigit, ChainLink } from '../src/engine/steps';
-import { boardLayout } from '../src/ui/boardLayout';
-import { hintMarks, markedCandidates } from '../src/content/hintMarks';
+import { boardLayout, digitShown } from '../src/ui/boardLayout';
+import { hintMarks, markedCandidates, placedKeys } from '../src/content/hintMarks';
 import { EXAMPLES } from '../src/content/examples';
 import { parseGrid } from '../src/engine/board';
 import { findNextStep, findAllSteps, applyStep } from '../src/engine/humanSolver';
@@ -32,6 +32,13 @@ function toSegment(p: Point, a: Point, b: Point): number {
   const l2 = ab.x * ab.x + ab.y * ab.y || 1;
   const t = Math.max(0, Math.min(1, ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / l2));
   return dist(p, { x: a.x + ab.x * t, y: a.y + ab.y * t });
+}
+/** the distance from a point to a filled triangle: 0 inside it */
+function toHead(p: Point, head: Point[]): number {
+  const side = (a: Point, b: Point) => Math.sign((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x));
+  const s = [side(head[0], head[1]), side(head[1], head[2]), side(head[2], head[0])];
+  if (s.every((v) => v >= 0) || s.every((v) => v <= 0)) return 0;
+  return Math.min(toSegment(p, head[0], head[1]), toSegment(p, head[1], head[2]), toSegment(p, head[2], head[0]));
 }
 /** the distance from a point to an arrow as drawn: its shaft, read back from its path, and its head's edges */
 function toArrow(p: Point, s: Extract<ArrowShape, { kind: 'arrow' }>): number {
@@ -223,7 +230,7 @@ describe('what the second review of phase 1 found', () => {
   function drawn(step: Parameters<typeof hintMarks>[0], solved: (cell: number) => boolean, cands?: number[]) {
     const marks = hintMarks(step, { solved });
     const marked = markedCandidates(marks);
-    const placed = new Set(marked.filter((m) => marks.cands.get(m.cell)?.get(m.digit) === 'place').map((m) => `${m.cell}:${m.digit}`));
+    const placed = placedKeys(marks);
     // the digits the board shows: the candidates, and every digit the hint marks
     const shown = cands
       ? (cd: CellDigit) => !solved(cd.cell) && ((cands[cd.cell] & (1 << (cd.digit - 1))) !== 0 || !!marks.cands.get(cd.cell)?.has(cd.digit))
@@ -308,7 +315,7 @@ describe('what the third review of phase 1 found', () => {
     const marked = markedCandidates(marks);
     const key = (cd: CellDigit) => `${cd.cell}:${cd.digit}`;
     const mk = new Set(marked.map(key));
-    const placed = new Set(marked.filter((m) => marks.cands.get(m.cell)?.get(m.digit) === 'place').map(key));
+    const placed = placedKeys(marks);
     const shown = (cd: CellDigit) => !solved(cd.cell) && ((ex!.cands[cd.cell] & (1 << (cd.digit - 1))) !== 0 || mk.has(key(cd)));
     return { marked, mk, shown, layout: boardLayout(placed, shown, solved) };
   }
@@ -373,25 +380,87 @@ describe('what the third review of phase 1 found', () => {
     expect(dist(q, { x: 4 + 4.5 * 100, y: 4 + 4.5 * 100 })).toBeGreaterThan(0.2 * 100 + SIZES.badge * 100);
   });
 
-  it('keeps every example\'s walk numbers off the heads and the digits shown', () => {
+  it('keeps every example\'s walk numbers, at a phone\'s size, off every head, the digits shown and the empty places, nearest their own arrow', () => {
     let numbers = 0;
     for (const [tech, ex] of Object.entries(EXAMPLES)) {
       const step = ex!.step;
       if (!step.links?.length) continue;
       const { marked, mk, shown, layout: l } = boardOf(ex);
       const shapes = arrowShapes(step.links, l, marked);
+      const arrows = shapes.flatMap((s) => (s.kind === 'arrow' ? [s] : []));
       const at = badgePoints(shapes, l, marked, startMarkers(step.links, l, marked));
+      const r = SIZES.badgeLarge * 100;
       for (const [i, p] of at) {
         numbers++;
-        for (const s of shapes) if (s.kind === 'arrow' && s.head.length) {
-          for (const h of s.head) expect(dist(p, h) > SIZES.badgeLarge * 100 || s.link !== i, `${tech} number ${i + 1}`).toBe(true);
+        const what = `${tech} number ${i + 1}`;
+        for (const s of arrows) if (s.head.length) expect(toHead(p, s.head), `${what} and the head of link ${s.link + 1}`).toBeGreaterThan(r);
+        for (let cell = 0; cell < 81; cell++) {
+          if (ex!.values[cell] !== '0') {
+            const middle = { x: 4 + (cell % 9) * 100 + 50, y: 4 + Math.floor(cell / 9) * 100 + 50 };
+            expect(dist(p, middle), `${what} on the solved digit of cell ${cell}`).toBeGreaterThan(20 + r);
+            continue;
+          }
+          for (let d = 1; d <= 9; d++) {
+            if (mk.has(`${cell}:${d}`)) continue;
+            const q = l.centre({ cell, digit: d });
+            if (shown({ cell, digit: d })) expect(dist(p, q), `${what} on the ${d} of cell ${cell}`).toBeGreaterThan(0.25 * 28 + r);
+            else expect(dist(p, q), `${what} on the empty place of ${d} in cell ${cell}`).toBeGreaterThan(0.35 * 28);
+          }
         }
-        for (let cell = 0; cell < 81; cell++)
-          for (let d = 1; d <= 9; d++)
-            if (shown({ cell, digit: d }) && !mk.has(`${cell}:${d}`)) expect(dist(p, l.centre({ cell, digit: d })), `${tech} number ${i + 1} on the ${d} of cell ${cell}`).toBeGreaterThan(0.25 * 28 + SIZES.badge * 100 - 3);
+        const own = toArrow(p, arrows.find((s) => s.link === i)!);
+        for (const s of arrows) if (s.link !== i) expect(toArrow(p, s), `${what} nearer link ${s.link + 1}`).toBeGreaterThanOrEqual(own - 0.5);
       }
     }
     expect(numbers).toBeGreaterThan(50);
+  });
+
+  it('runs no arrow along another: an arc that keeps a head off a digit loses to one that does not hide an arrow', () => {
+    // 4r2c1=4r6c1-8r6c1=8r2c1: a head-dodging arc for the first link ran
+    // inside the third for a cell and a half
+    const g = parseGrid('52...6.........7.131..........4..8..6......5...........418.........3..28.387.....')!;
+    const step = findAllSteps(g).find((s) => s.tech === 'AIC' && s.links?.length === 3 && s.links[0].from[0].digit === 4)!;
+    expect(step).toBeDefined();
+    const solved = (c: number) => g.values[c] > 0;
+    const marks = hintMarks(step, { solved });
+    const marked = markedCandidates(marks);
+    const mk = new Set(marked.map((m) => `${m.cell}:${m.digit}`));
+    const l = boardLayout(placedKeys(marks), (cd) => !solved(cd.cell) && ((g.cands[cd.cell] & (1 << (cd.digit - 1))) !== 0 || mk.has(`${cd.cell}:${cd.digit}`)), solved);
+    const arrows = arrowShapes(step.links!, l, marked).flatMap((s) => (s.kind === 'arrow' ? [s] : []));
+    // the middle link is a switch inside r6c1: no arrow
+    expect(arrows.length).toBe(2);
+    for (const x of arrows)
+      for (const y of arrows) {
+        if (x === y) continue;
+        const line = samples(x.d);
+        const ends = [line[0], line[line.length - 1]];
+        let run = 0;
+        for (let k = 0; k + 1 < line.length; k++) {
+          const m = { x: (line[k].x + line[k + 1].x) / 2, y: (line[k].y + line[k + 1].y) / 2 };
+          if (ends.some((e) => dist(m, e) < 45)) continue;
+          if (toArrow(m, y) < (SIZES.stroke + SIZES.halo) * 100 + 1) run += dist(line[k], line[k + 1]);
+        }
+        expect(run, `link ${x.link + 1} along link ${y.link + 1}`).toBeLessThanOrEqual(30);
+      }
+  });
+
+  it('knows where the player\'s own marks are drawn, to keep off them', () => {
+    const bit = (d: number) => 1 << (d - 1);
+    const cell = (corner: number[], center: number[]) => ({ value: 0, corner: corner.reduce((m, d) => m | bit(d), 0), center: center.reduce((m, d) => m | bit(d), 0) });
+    // corner marks alone sit at their places
+    expect([1, 2, 3].map((d) => digitShown(cell([1, 3], []), d, null))).toEqual([true, false, true]);
+    // a short centre line runs through the cell: every place is taken
+    expect([1, 5, 9].map((d) => digitShown(cell([], [3, 7]), d, null))).toEqual([true, true, true]);
+    // five or more centre marks go on the 3×3
+    expect([1, 2, 6].map((d) => digitShown(cell([], [1, 3, 5, 7, 9]), d, null))).toEqual([true, false, false]);
+    // corner marks round the edge with a centre line: every place is taken
+    expect(digitShown(cell([9], [4]), 1, null)).toBe(true);
+    // with auto candidates on, or in a cell the hint marks, the 3×3
+    expect(digitShown(cell([], [3, 7]), 5, bit(2) | bit(5))).toBe(true);
+    expect(digitShown(cell([], [3, 7]), 1, bit(2) | bit(5))).toBe(false);
+    expect(digitShown(cell([], [3, 7]), 1, null, new Set([8]))).toBe(false);
+    expect(digitShown(cell([], [3, 7]), 8, null, new Set([8]))).toBe(true);
+    // a solved cell shows no candidate
+    expect(digitShown({ value: 4, corner: 0, center: 0 }, 4, null)).toBe(false);
   });
 });
 

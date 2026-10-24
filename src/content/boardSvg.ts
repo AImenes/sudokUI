@@ -10,7 +10,7 @@ import { tr } from '../engine/text';
 import { arrowShapes, startMarkers, pointsOf, SIZES } from './hintGeometry';
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
-import { hintMarks, markedCandidates, legendKinds, COLOURING } from './hintMarks';
+import { hintMarks, markedCandidates, legendKinds, placedKeys, COLOURING } from './hintMarks';
 import type { Role } from './hintMarks';
 
 export interface Example {
@@ -151,7 +151,7 @@ export function boardSvg(example: Example, title: string): string {
       const kind = drawn.values.get(cell);
       let fill = '';
       if (kind) {
-        const ink = kind === 'elim' || kind === 'elimOn' ? P.elim : fillOf(P, kind).ink;
+        const ink = kind === 'elim' || kind === 'elimOn' ? P.elim : fillOf(P, kind === 'placeOn' ? 'place' : kind).ink;
         // a style, not an attribute, so the class's own fill cannot win
         fill = ` style="fill:${ink}"`;
         parts.push(
@@ -186,13 +186,15 @@ export function boardSvg(example: Example, title: string): string {
         );
         continue;
       }
-      const { fill, ink } = fillOf(P, kind);
+      // a placed chain node keeps the colour the step names for it inside the placement's ring (G5)
+      const inside = kind === 'placeOn' ? drawn.inside.get(cell)?.get(digit) : undefined;
+      const { fill, ink } = fillOf(P, inside ?? (kind === 'placeOn' ? 'place' : kind));
       parts.push(
         `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - MARK.edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(MARK.edge * s)}"/>`
       );
-      if (kind === 'place') {
+      if (kind === 'place' || kind === 'placeOn') {
         // the ring a small board draws (G3, G14a): thick, and moved out so the gap to the disc stays
-        parts.push(`<circle cx="${x}" cy="${y}" r="${f(MARK.placeRingSmall * s)}" fill="none" stroke="${ink}" stroke-width="${f(MARK.placeRingSmallStroke * s)}"/>`);
+        parts.push(`<circle cx="${x}" cy="${y}" r="${f(MARK.placeRingSmall * s)}" fill="none" stroke="${P.placeInk}" stroke-width="${f(MARK.placeRingSmallStroke * s)}"/>`);
       }
       texts.push(`<text x="${x}" y="${ty}" class="mk">${digit}</text>`);
     }
@@ -217,7 +219,7 @@ export function boardSvg(example: Example, title: string): string {
   // straight, in the one neutral ink, bent only round the hint's own
   // marks; every halo first
   const marked = markedCandidates(drawn);
-  const placed = new Set(marked.filter((cd) => drawn.cands.get(cd.cell)?.get(cd.digit) === 'place').map((cd) => `${cd.cell}:${cd.digit}`));
+  const placed = placedKeys(drawn);
   const layout: Layout = {
     ...LAYOUT,
     shown: (cd) => !Number(example.values[cd.cell]) && (example.cands[cd.cell] & (1 << (cd.digit - 1))) !== 0,

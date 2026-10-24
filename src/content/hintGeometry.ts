@@ -267,6 +267,16 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     ];
   });
 
+  // the line each link is drawn as, once chosen (in link order), and its
+  // straight line until then: an arrow keeps from running along another
+  const chosen: (Point[] | null)[] = links.map(() => null);
+  const lineOf = (j: number): Point[] | null => {
+    if (chosen[j]) return chosen[j];
+    if (insideOneCell(links[j])) return null;
+    const { fromCd, toCd, a, b } = ends[j];
+    return len(sub(b, a)) <= radius(layout, fromCd) + radius(layout, toCd) + 2 * gap ? null : [a, b];
+  };
+
   return links.map((l, i): ArrowShape => {
     if (insideOneCell(l)) return { kind: 'none', link: i };
     const { fromCd, toCd, a, b } = ends[i];
@@ -295,8 +305,24 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     if (l.undirected) {
       const p0 = add(add(a, mul(u, ra)), shift);
       const p1 = add(sub(b, mul(u, rb)), shift);
+      chosen[i] = [p0, p1];
       return { kind: 'tie', link: i, d: `M ${f(p0.x)} ${f(p0.y)} L ${f(p1.x)} ${f(p1.y)}` };
     }
+    // the other links' lines, but those joining the same two nodes, which are
+    // drawn side by side on purpose
+    const lines = links.flatMap((_, j) => (j === i || group.includes(j) ? [] : [lineOf(j)].filter((x): x is Point[] => !!x)));
+    const near = (SIZES.stroke + SIZES.halo) * c + 1;
+    // how far a shaft runs along another line, away from its own ends, where
+    // arrows into and out of a node always gather
+    const runOf = (shaft: Point[]) => {
+      let run = 0;
+      for (let k = 0; k + 1 < shaft.length; k++) {
+        const m = mul(add(shaft[k], shaft[k + 1]), 0.5);
+        if (len(sub(m, a)) < 0.45 * c || len(sub(m, b)) < 0.45 * c) continue;
+        if (lines.some((line) => toPath(m, line) < near)) run += len(sub(shaft[k + 1], shaft[k]));
+      }
+      return run;
+    };
 
     // a candidate drawing, straight or one arc, scored by how clear it keeps
     // of the hint's other marks and the other arrows' ends, along its whole
@@ -311,16 +337,20 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       const trace = [...shaft, ...head];
       // the head's room from the digits round its target (none: all clear)
       const headRoom = head.length ? Math.min(...round.map((o) => toPath(o.p, [], head) - o.r)) : Infinity;
-      return { tail, tip, dir, head, trace, control, room: clearanceOf(shaft, others, layout, margin, head), headRoom };
+      return { tail, tip, dir, head, trace, shaft, control, room: clearanceOf(shaft, others, layout, margin, head), run: runOf(shaft), headRoom };
     };
     type Shape = ReturnType<typeof shape>;
-    // a drawing that keeps clear of the marks and lands its head off the
-    // target cell's other digits; failing that, keeping clear of the marks
-    // comes first, then the head's room
-    const ok = (s: Shape) => s.room >= need && s.headRoom >= 0;
+    // a drawing that keeps clear of the marks, runs along no other arrow and
+    // lands its head off the target cell's other digits; failing that, in
+    // that order: a head on a digit is painted back over the cut (G11), an
+    // arrow lost in another is not
+    const ok = (s: Shape) => s.room >= need && s.run <= 0.3 * c && s.headRoom >= 0;
     const better = (x: Shape, y: Shape) => {
       const [rx, ry] = [Math.min(x.room, need), Math.min(y.room, need)];
-      return rx > ry + 0.01 || (Math.abs(rx - ry) <= 0.01 && Math.min(x.headRoom, 0) > Math.min(y.headRoom, 0) + 0.01);
+      if (Math.abs(rx - ry) > 0.01) return rx > ry;
+      const [ux, uy] = [Math.max(x.run, 0.3 * c), Math.max(y.run, 0.3 * c)];
+      if (Math.abs(ux - uy) > 1) return ux < uy;
+      return Math.min(x.headRoom, 0) > Math.min(y.headRoom, 0) + 0.01;
     };
 
     let best = shape(null);
@@ -344,6 +374,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     }
 
     const { tail, tip, dir, head, trace, control } = best;
+    chosen[i] = best.shaft;
     // the shaft runs a little under the head so no seam shows between them
     const end = head.length ? sub(tip, mul(dir, headLength * 0.75)) : tip;
     const d = control
@@ -450,23 +481,28 @@ export function badgePoints(
   const marks = obstacles.map((cd) => ({ p: layout.centre(cd), r: radius(layout, cd) }));
   const marked = new Set(obstacles.map(key));
   const arrows = shapes.flatMap((s) => (s.kind === 'arrow' ? [s] : []));
-  // the digits drawn round a point: its cell's and the neighbours'
-  const digitsNear = (p: Point): Obstacle[] => {
+  // the digits drawn round a point, its cell's and the neighbours': a
+  // pencilled digit at its place, a solved digit in its cell's middle; and
+  // an unsolved cell's empty places, where a number would read as a
+  // candidate the cell does not have
+  const digitsNear = (p: Point): (Obstacle & { empty: boolean })[] => {
     const col = Math.floor((p.x - layout.bounds.x0) / c);
     const row = Math.floor((p.y - layout.bounds.y0) / c);
-    const out: Obstacle[] = [];
+    const out: (Obstacle & { empty: boolean })[] = [];
     for (let dr = -1; dr <= 1; dr++)
       for (let dc = -1; dc <= 1; dc++) {
         const [rr, cc] = [row + dr, col + dc];
         if (rr < 0 || rr > 8 || cc < 0 || cc > 8) continue;
         const cell = rr * 9 + cc;
         if (layout.solved?.(cell)) {
-          out.push({ p: { x: layout.bounds.x0 + (cc + 0.5) * c, y: layout.bounds.y0 + (rr + 0.5) * c }, r: 0.2 * c });
+          out.push({ p: { x: layout.bounds.x0 + (cc + 0.5) * c, y: layout.bounds.y0 + (rr + 0.5) * c }, r: 0.2 * c, empty: false });
           continue;
         }
         for (let d = 1; d <= 9; d++) {
           const cd = { cell, digit: d };
-          if (!marked.has(key(cd)) && (layout.shown?.(cd) ?? false)) out.push({ p: layout.centre(cd), r: 0.25 * pitchOf(layout, cell) });
+          if (marked.has(key(cd))) continue;
+          const shown = layout.shown?.(cd) ?? false;
+          out.push({ p: layout.centre(cd), r: (shown ? 0.25 : 0.2) * pitchOf(layout, cell), empty: !shown });
         }
       }
     return out;
@@ -485,32 +521,68 @@ export function badgePoints(
       const along = unit(sub(shaft[Math.min(k + 1, shaft.length - 1)], shaft[Math.max(k - 1, 0)]));
       return add(shaft[k], mul(perp(along), side * (r + SIZES.stroke * c)));
     };
-    const spots = [...order.map((k) => shaft[k]), ...order.flatMap((k) => [beside(k, 1), beside(k, -1)])];
-    const hard = (p: Point) =>
+    const spots = [
+      ...order.map((k) => ({ p: shaft[k], on: true })),
+      ...order.flatMap((k) => [beside(k, 1), beside(k, -1)].map((q) => ({ p: q, on: false })))
+    ];
+    const otherShafts = arrows.filter((a) => a !== s).map((a) => partsOf(a).shaft);
+    // what a number must keep clear of: the numbers placed, the marks, the
+    // dots, every head, the board's edge; and, beside its shaft, every other
+    // arrow, so it is never nearer another arrow than its own
+    const hard = (q: { p: Point; on: boolean }) =>
       Math.min(
-        ...placed.map((q) => len(sub(p, q)) - 2 * r),
-        ...marks.map((m) => len(sub(p, m.p)) - m.r - r),
-        ...dots.map((q) => len(sub(p, q)) - SIZES.dotLarge * c - r),
-        ...arrows.map((a) => (a.head.length ? toPath(p, [], a.head) - r : Infinity)),
-        // inside the board
-        p.x - layout.bounds.x0 - r,
-        layout.bounds.x1 - p.x - r,
-        p.y - layout.bounds.y0 - r,
-        layout.bounds.y1 - p.y - r
+        ...placed.map((x) => len(sub(q.p, x)) - 2 * r),
+        ...marks.map((m) => len(sub(q.p, m.p)) - m.r - r),
+        ...dots.map((x) => len(sub(q.p, x)) - SIZES.dotLarge * c - r),
+        ...arrows.map((a) => (a.head.length ? toPath(q.p, [], a.head) - r : Infinity)),
+        ...(q.on ? [] : otherShafts.map((sh) => toPath(q.p, sh) - r - (SIZES.stroke * c) / 2)),
+        q.p.x - layout.bounds.x0 - r,
+        layout.bounds.x1 - q.p.x - r,
+        q.p.y - layout.bounds.y0 - r,
+        layout.bounds.y1 - q.p.y - r
       );
-    const soft = (p: Point) => Math.min(...digitsNear(p).map((o) => len(sub(p, o.p)) - o.r - small));
-    let best: { p: Point; hard: number; soft: number } | null = null;
-    for (const p of spots) {
-      const h = hard(p);
-      const sft = soft(p);
-      if (h >= 0 && sft >= 0) {
-        best = { p, hard: h, soft: sft };
+    // what it had best keep clear of, at a size: the digits, and on its
+    // shaft the other arrows (a crossing is still its own arrow)
+    // empty places count 'clear' (the whole number off them), 'off' (its
+    // middle off them, so it does not stand where a digit would) or not at all
+    const soft = (q: { p: Point; on: boolean }, size: number, empty: 'clear' | 'off' | 'none') =>
+      Math.min(
+        ...digitsNear(q.p).map((o) =>
+          !o.empty ? len(sub(q.p, o.p)) - o.r - size : empty === 'clear' ? len(sub(q.p, o.p)) - o.r - size : empty === 'off' ? len(sub(q.p, o.p)) - 1.75 * o.r : Infinity
+        ),
+        ...(q.on ? otherShafts.map((sh) => toPath(q.p, sh) - size - (SIZES.stroke * c) / 2) : [])
+      );
+    // on its shaft before beside it: clear of every place at the size a
+    // small board draws it, else of the digits shown at that size and off
+    // the empty places; then the same beside the shaft; then the same at
+    // the size a wide board draws it; then off the digits shown only; else
+    // the clearest spot
+    const tiers: [boolean, number, 'clear' | 'off' | 'none'][] = [
+      [true, r, 'clear'],
+      [true, r, 'off'],
+      [false, r, 'clear'],
+      [false, r, 'off'],
+      [true, small, 'off'],
+      [false, small, 'off'],
+      [true, small, 'none'],
+      [false, small, 'none']
+    ];
+    let found: Point | null = null;
+    for (const [on, size, empty] of tiers) {
+      const q = spots.find((x) => x.on === on && hard(x) >= 0 && soft(x, size, empty) >= 0);
+      if (q) {
+        found = q.p;
         break;
       }
-      const score = (x: { hard: number; soft: number }) => (x.hard >= 0 ? 1e6 + x.soft : x.hard);
-      if (!best || score({ hard: h, soft: sft }) > score(best)) best = { p, hard: h, soft: sft };
     }
-    const at = best?.p ?? s.mid;
+    if (!found) {
+      const score = (q: { p: Point; on: boolean }) => {
+        const h = hard(q);
+        return h >= 0 ? 1e6 + soft(q, small, 'none') : h;
+      };
+      found = spots.reduce((x, y) => (score(y) > score(x) ? y : x), spots[0]).p;
+    }
+    const at = found ?? s.mid;
     placed.push(at);
     out.set(s.link, at);
   }

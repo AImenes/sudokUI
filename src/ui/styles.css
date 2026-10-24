@@ -554,8 +554,9 @@ button {
 }
 @supports not (container-type: inline-size) {
   /* a phone's board is the window less the layout's 10 px each side, so a
-     board under 330 px is a window under about 350 */
-  @media (max-width: 600px) {
+     board under 330 px is a window under about 350; held on its side, the
+     board is the window's height less 72 px (the landscape layout below) */
+  @media (max-width: 600px), (max-width: 1000px) and (max-height: 520px) and (orientation: landscape) {
     .board .chain-shaft {
       stroke-width: 4.5px;
     }
@@ -590,7 +591,7 @@ button {
       transform: scale(1.6);
     }
   }
-  @media (max-width: 350px) {
+  @media (max-width: 350px), (max-width: 1000px) and (max-height: 401px) and (orientation: landscape) {
     .board .chain-shaft {
       stroke-width: 5px;
     }
