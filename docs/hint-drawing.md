@@ -74,7 +74,9 @@ Every rule is numbered so a commit, a test or a review can cite it.
   must never use the true colour: painting a fish base "true" teaches that
   it is placed.
 - **G5. Precedence.** One mark per candidate: removed > placed > chain
-  truth > exception > acts-through > pattern. A candidate that is removed
+  truth > a role. A candidate a step lists in more than one role takes the
+  first of pattern, acts-through, exception, in the full view and in every
+  walk frame alike. A candidate that is removed
   keeps no ring of a colour it never had (today four techniques draw a
   removal ringed blue that was never blue: Simple Colors' trap target,
   Multi Colors rule 1 and 2, Medusa rules 3-5, Digit Forcing's removal;
@@ -115,7 +117,10 @@ Every rule is numbered so a commit, a test or a review can cite it.
   those marks along its segments and its head, not only at sample points.
   The arc turns midway first, then nearer either end (an arrow can then
   come in or leave steeply past a mark beside its node), the smallest bulge
-  first; if none clears, the clearest arc wins. Arcs stay
+  first; if none clears, the clearest arc wins. A head also keeps off the
+  other digits its target's cell shows, which are cut out of the arrows
+  (G11): an arrow that would land its head on one comes in from a clear
+  side instead, so it never seems to end on the wrong digit. Arcs stay
   on the board: HoDoKu's loop that seems to leave the grid is an accident
   of its fixed bend, which always bulges to the left of travel by a set
   amount and is never checked against what it passes
@@ -133,7 +138,8 @@ Every rule is numbered so a commit, a test or a review can cite it.
   and passes under a digit: every digit is cut out of the arrows (a mask
   holding the digits, thickened), so a digit an arrow crosses stays whole
   and is never struck through, whatever the cell's colour, and an arrow
-  reads as passing behind it. HoDoKu draws its arrows over the digits and
+  reads as passing behind it. A head is never cut: where no approach keeps
+  it off a digit, the digit is drawn over it. HoDoKu draws its arrows over the digits and
   loses some; the arrows share the givens' ink, so without the cut a 3
   crossed at its edge reads as an 8. Round caps and joins; a weak link's
   dashes have square ends.
@@ -157,7 +163,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
   order and no marker. The walk numbers each arrow by the frame that adds
   it, so the number on the board is the one the panel shows; a number
   sits on its arrow's shaft, as near the middle as keeps it clear of the
-  numbers placed before it, the marks and the start dots.
+  numbers placed before it, the marks, the start dots, every head and the
+  digits the board shows, beside the shaft when nothing on it is. The
+  arrows, dots and numbers are worked out once for the whole hint, from
+  the full view, so an arrow the reader has followed never moves or
+  changes shape as the walk goes on; each frame draws the first of them.
 - **G14a. Lines that survive a phone.** At a phone's 36-40 CSS pixels a
   cell, a 0.03-cell arrow is a pixel and the removal bar less; on a board
   narrower than 600 CSS pixels (measured on the board, not the window)
@@ -234,8 +244,9 @@ Every rule is numbered so a commit, a test or a review can cite it.
   solid and dashed arrow, tie, start marker. It names only what the board
   draws: a role every candidate of which became a removal or a placement
   lends its words to that entry ("remove: the cell that would complete
-  the rectangle"). The marks and the legend both come from
-  `src/content/hintMarks.ts`, so they cannot disagree. Prose and notation can carry the
+  the rectangle"). During a walk it names what the frame shows. The marks
+  and the legend both come from one call in `src/content/hintMarks.ts`
+  (`frameMarks`), so they cannot disagree. Prose and notation can carry the
   same swatches inline ("if r5c1 is ◯ false, then r5c7 is ● true").
 - **G24. Notation.** Every chain hint shows its line in Eureka notation,
   the form the HoDoKu and Enjoy Sudoku community reads:
@@ -441,7 +452,14 @@ the values above are its final ones.
   assumption keeping its colour, band swatches, the trainer's legend
   (solid into a candidate it makes true, dashed into one it makes false),
   the trainer's chain kept when auto candidates switch off, a fallback
-  for browsers without container queries; round 3 next. Over the chain
+  for browsers without container queries (ab0bee9). Round 3's are fixed:
+  heads never cut and steered off the target cell's digits (over the
+  chain steps of 38 puzzles, heads on a digit fell from 1,116 of 9,487 to
+  7, at the cost of 942 more arcs), the arrows worked out once per hint so
+  the walk never moves them, walk numbers off digits and heads, the
+  legend per walk frame, one role order in the walk and the full view,
+  the fallback's under-330 step, and tests that fail when each fix is
+  undone; round 4 next. Over the chain
   steps of 70 puzzles (16,448 arrows), 14 arrows come inside another
   mark's rim, by 0.6 units at most, where three of the hint's own marks
   box the start in. To photograph the app's own board with

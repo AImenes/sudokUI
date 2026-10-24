@@ -12,13 +12,13 @@ import { useGame, engineGrid, CellState } from '../state/gameStore';
 import { useSettings } from '../state/settings';
 import { bivaluePairs } from '../state/bivalue';
 import { bit, digitsOf, PEERS, UNITS } from '../engine/board';
-import { ChainLink, CellDigit } from '../engine/steps';
-import { walkFrames, Part } from '../engine/hintFrames';
+import { CellDigit } from '../engine/steps';
+import { walkFrames } from '../engine/hintFrames';
 import { arrowShapes, startMarkers, badgePoints, pointsOf, SIZES } from '../content/hintGeometry';
-import type { ArrowShape } from '../content/hintGeometry';
+import type { ArrowShape, Point } from '../content/hintGeometry';
 import { SIZE, M, candX, candY, boardLayout } from './boardLayout';
 import { MARK } from '../content/hintPalette';
-import { hintMarks as computeMarks, markedCandidates as markedOf } from '../content/hintMarks';
+import { frameMarks, markedCandidates as markedOf } from '../content/hintMarks';
 import { useT, msg, translator } from '../content/i18n';
 import type { Translator } from '../content/i18n';
 import { touchIntent, cellsBetween, INTENT_MS, SLOP_PX } from './touchIntent';
@@ -39,11 +39,19 @@ const PALETTE = [
   '#9aa3b5'
 ];
 
+/** a hint's arrows, start dots and walk numbers, worked out once for the whole hint */
+interface Drawing {
+  shapes: ArrowShape[];
+  dots: (Point & { link: number })[];
+  badges: Map<number, Point>;
+}
+
 /**
  * A hint's arrows (docs/hint-drawing.md G7-G14), straight from mark to
  * mark in the one neutral ink, solid into a true node and dashed into a
  * false one, bent only round the hint's own marks
- * (src/content/hintGeometry.ts). Drawn in two layers: the lines over the
+ * (src/content/hintGeometry.ts), worked out once for the whole hint (a
+ * `Drawing`) and drawn up to the walk's frame. Drawn in two layers: the lines over the
  * grid lines and the marks but under the digits, every halo before every
  * line, with the digits cut out of them (`mask`), so a digit an arrow
  * crosses stays whole; and the start dots and the walk's numbers over
@@ -52,46 +60,38 @@ const PALETTE = [
  */
 function ChainArrows({
   layer,
-  links,
-  marks,
-  placed,
+  drawing,
+  upTo,
   frameOf,
-  mask,
-  shown
+  mask
 }: {
   layer: 'lines' | 'labels';
-  links: ChainLink[];
-  /** every candidate the hint marks: an arrow bends round these and nothing else */
-  marks: CellDigit[];
-  /** the placements among them */
-  placed: Set<string>;
+  drawing: Drawing;
+  /** how many links are drawn, from the first: all of them, or those the walk's frame has reached */
+  upTo: number;
   /** the walk's frame that brings in a link, when walking: each arrow wears its number */
   frameOf?: (link: number) => number;
   /** the mask that cuts the digits out of the lines */
   mask?: string;
-  /** a digit is drawn at its place in its cell, which a start dot keeps off */
-  shown?: (cd: CellDigit) => boolean;
 }) {
-  const layout = boardLayout(placed, shown);
-  const shapes = arrowShapes(links, layout, marks);
+  const shapes = drawing.shapes.filter((s) => s.link < upTo);
   const w = SIZES.stroke * SIZE;
   const arrows = shapes.filter((s): s is Extract<ArrowShape, { kind: 'arrow' }> => s.kind === 'arrow');
   const ties = shapes.filter((s): s is Extract<ArrowShape, { kind: 'tie' }> => s.kind === 'tie');
   if (layer === 'labels') {
-    const dots = startMarkers(links, layout, marks);
-    const badges = frameOf ? badgePoints(shapes, layout, marks, dots) : null;
     return (
       <g className="chain-labels">
         {/* the first node of each branch wears a dot: reading starts here */}
-        {dots.map((p, k) => (
-          <g key={`s${k}`} transform={`translate(${p.x} ${p.y})`}>
-            <circle className="chain-start" r={SIZES.dot * SIZE} fill="var(--hint-arrow)" stroke="var(--cell-bg)" strokeWidth={2} />
-          </g>
-        ))}
+        {drawing.dots
+          .filter((p) => p.link < upTo)
+          .map((p) => (
+            <g key={`s${p.link}`} transform={`translate(${p.x} ${p.y})`}>
+              <circle className="chain-start" r={SIZES.dot * SIZE} fill="var(--hint-arrow)" stroke="var(--cell-bg)" strokeWidth={2} />
+            </g>
+          ))}
         {frameOf &&
-          badges &&
           arrows.map((s) => {
-            const p = badges.get(s.link) ?? s.mid;
+            const p = drawing.badges.get(s.link) ?? s.mid;
             return (
               <g key={`b${s.link}`} className="walk-badge" transform={`translate(${p.x} ${p.y})`}>
                 <g className="walk-badge-body">
@@ -481,11 +481,9 @@ export function Grid() {
 
   const walking = !!hint && hintStage === 'walk';
   const showHint = hint && (hintStage === 'full' || walking);
-  // the walk shows the drawing one frame at a time
-  const frame = walking && hint ? walkFrames(hint)[walkIndex] : null;
-  const showPart = (part: Part) => !frame || frame.show.has(part);
-  const visibleLinks: ChainLink[] =
-    showHint && hint.links ? (frame ? hint.links.slice(0, frame.links) : hint.links) : [];
+  // the walk shows the drawing one frame at a time (the panel reads the same frame)
+  const frames = walking && hint ? walkFrames(hint) : [];
+  const frame = frames.length ? frames[Math.min(walkIndex, frames.length - 1)] : null;
   // a fresh tip each time the game pauses
   const pauseTip = React.useMemo(
     () => TIPS[Math.floor(Math.random() * TIPS.length)],
@@ -536,33 +534,42 @@ export function Grid() {
   // a hint's marks (src/content/hintMarks.ts, docs/hint-drawing.md G1-G5):
   // a candidate's mark, the colour inside a colouring's removal, a solved
   // cell's colour on its digit. A hint never tints a cell.
-  const bands = showHint && showPart('units') ? (hint.units ?? []) : [];
-  const drawn = showHint
-    ? computeMarks(hint, { solved: (c) => cells[c].value > 0, links: visibleLinks, show: showPart, walking: !!frame })
-    : null;
+  const drawn = showHint ? frameMarks(hint, frame, (c) => cells[c].value > 0) : null;
+  const bands = drawn?.bands ?? [];
   const hintMarks = drawn?.cands ?? new Map<number, Map<number, string>>();
   const hintRings = drawn?.inside ?? new Map<number, Map<number, string>>();
   const valueMarks = drawn?.values ?? new Map<number, string>();
-  // every candidate the hint marks: an arrow bends round these and nothing else
-  const markedCandidates: CellDigit[] = drawn ? markedOf(drawn) : [];
-  // the placements' marks have an outer ring, which arrows keep outside of
-  const placedKeys = new Set(
-    [...hintMarks].flatMap(([cell, m]) => [...m].filter(([, kind]) => kind === 'place').map(([digit]) => `${cell}:${digit}`))
-  );
   // the walk's frame that brings in each link, for the arrows' numbers
   const frameOfLink = React.useMemo(() => {
     if (!walking || !hint) return [] as number[];
     const frames = walkFrames(hint);
     return (hint.links ?? []).map((_, i) => frames.findIndex((fr) => fr.links > i) + 1);
   }, [walking, hint]);
-  // the digits a cell shows at their places in the 3×3 (a cell a hint
-  // marks always shows them so), which a start dot keeps off
-  const digitShown = (cd: CellDigit) => {
-    const c = cells[cd.cell];
-    if (c.value) return false;
-    const pencil = autoCandidates && canonical ? canonical.cands[cd.cell] : c.corner | c.center;
-    return !!hintMarks.get(cd.cell)?.has(cd.digit) || (pencil & bit(cd.digit)) !== 0;
-  };
+  // the arrows, start dots and walk numbers, worked out once for the whole
+  // hint, from the full view's marks and every link, so an arrow the reader
+  // has followed never moves or changes as the walk goes on; a frame draws
+  // the first of them. An arrow bends round the hint's marks and nothing
+  // else; a placement's mark reaches out to its outer ring; a head, a dot
+  // and a number keep off the digits the board shows (a cell a hint marks
+  // shows its digits at their places in the 3×3)
+  const drawing = React.useMemo((): Drawing | null => {
+    if (!showHint || !hint.links?.length) return null;
+    const solved = (c: number) => cells[c].value > 0;
+    const full = frameMarks(hint, null, solved);
+    const marks = markedOf(full);
+    const placed = new Set(marks.filter((m) => full.cands.get(m.cell)?.get(m.digit) === 'place').map((m) => `${m.cell}:${m.digit}`));
+    const shown = (cd: CellDigit) => {
+      const c = cells[cd.cell];
+      if (c.value) return false;
+      const pencil = canonical ? canonical.cands[cd.cell] : c.corner | c.center;
+      return !!full.cands.get(cd.cell)?.has(cd.digit) || (pencil & bit(cd.digit)) !== 0;
+    };
+    const layout = boardLayout(placed, shown, solved);
+    const shapes = arrowShapes(hint.links, layout, marks);
+    const dots = startMarkers(hint.links, layout, marks);
+    return { shapes, dots, badges: badgePoints(shapes, layout, marks, dots) };
+  }, [showHint, hint, cells, canonical]);
+  const upTo = frame ? frame.links : (hint?.links?.length ?? 0);
   // the mask that cuts the digits out of a hint's arrows, named for this board
   const maskId = `knockout${React.useId().replace(/:/g, '')}`;
 
@@ -1140,7 +1147,7 @@ export function Grid() {
           );
         })
       : null; /* pause card is drawn as an HTML overlay below */
-  const arrowsShown = showHint && visibleLinks.length > 0 && (!paused || won);
+  const arrowsShown = !!drawing && upTo > 0 && (!paused || won);
 
   // what a screen reader hears: the selected cell and what is in it, read
   // out as the selection moves (the arrow keys move it; digits enter)
@@ -1327,8 +1334,15 @@ export function Grid() {
             <mask id={maskId} maskUnits="userSpaceOnUse" x={0} y={0} width={SIZE * 9 + M * 2} height={SIZE * 9 + M * 2}>
               <rect width={SIZE * 9 + M * 2} height={SIZE * 9 + M * 2} fill="#fff" />
               <g className="knockout">{content}</g>
+              {/* a head is never cut: where no approach keeps it off a
+                  digit, the digit is drawn over it */}
+              {drawing!.shapes.map((s) =>
+                s.kind === 'arrow' && s.link < upTo && s.head.length ? (
+                  <polygon key={s.link} points={pointsOf(s.head)} fill="#fff" stroke="#fff" strokeWidth={SIZES.halo * SIZE * 2} strokeLinejoin="round" />
+                ) : null
+              )}
             </mask>
-            <ChainArrows layer="lines" links={visibleLinks} marks={markedCandidates} placed={placedKeys} mask={maskId} />
+            <ChainArrows layer="lines" drawing={drawing!} upTo={upTo} mask={maskId} />
           </>
         )}
 
@@ -1361,15 +1375,8 @@ export function Grid() {
           )}
 
         {/* the start dots and the walk's numbers, over everything */}
-        {showHint && visibleLinks.length > 0 && (!paused || won) && (
-          <ChainArrows
-            layer="labels"
-            links={visibleLinks}
-            marks={markedCandidates}
-            placed={placedKeys}
-            frameOf={walking ? (link) => frameOfLink[link] : undefined}
-            shown={digitShown}
-          />
+        {arrowsShown && (
+          <ChainArrows layer="labels" drawing={drawing!} upTo={upTo} frameOf={walking ? (link) => frameOfLink[link] : undefined} />
         )}
 
       </svg>

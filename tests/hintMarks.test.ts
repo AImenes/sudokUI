@@ -7,7 +7,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import type { CellDigit, Step } from '../src/engine/steps';
-import { hintMarks, legendKinds } from '../src/content/hintMarks';
+import { hintMarks, legendKinds, frameMarks } from '../src/content/hintMarks';
+import { walkFrames } from '../src/engine/hintFrames';
 import { boardSvg, legendOf } from '../src/content/boardSvg';
 import { LIGHT } from '../src/content/hintPalette';
 import { EXAMPLES } from '../src/content/examples';
@@ -77,6 +78,37 @@ describe('the marks', () => {
     expect(m.cands.get(B.cell)?.get(B.digit)).toBe('primary');
     expect(m.cands.has(C.cell)).toBe(false);
     expect(m.cands.has(40)).toBe(false);
+  });
+});
+
+describe('the walk', () => {
+  const kinds = (m: ReturnType<typeof hintMarks>) =>
+    [...m.cands].flatMap(([c, d]) => [...d].map(([digit, kind]) => `${c}:${digit}:${kind}`)).sort().join(' ');
+
+  it('ends on the full view: every example\'s last frame marks every candidate as the full view does', () => {
+    for (const [tech, ex] of Object.entries(EXAMPLES)) {
+      const solved = (c: number) => ex!.values[c] !== '0';
+      const frames = walkFrames(ex!.step);
+      expect(kinds(frameMarks(ex!.step, frames[frames.length - 1], solved)), tech).toBe(kinds(frameMarks(ex!.step, null, solved)));
+    }
+  });
+
+  it('colours a chain node listed in two roles the same in the walk as in the full view', () => {
+    const links = [{ from: [A], to: [B], strong: true }];
+    const s = step({ tech: 'ALS_XY_CHAIN', primary: [A, B], secondary: [B], links, eliminations: [C] });
+    const frames = walkFrames(s);
+    expect(frameMarks(s, frames[0], () => false).cands.get(B.cell)?.get(B.digit)).toBe('primary');
+    expect(frameMarks(s, null, () => false).cands.get(B.cell)?.get(B.digit)).toBe('primary');
+  });
+
+  it('gives the legend what the frame draws: a single\'s first frames show the pattern, not yet the placement', () => {
+    const s = step({ tech: 'NAKED_SINGLE', primary: [A], placements: [A], labels: { primary: 'the single' } });
+    const frames = walkFrames(s);
+    const first = legendKinds(s, frameMarks(s, frames[0], () => false));
+    expect(first.shown.has('primary')).toBe(true);
+    expect(first.shown.has('place')).toBe(false);
+    const last = legendKinds(s, frameMarks(s, frames[frames.length - 1], () => false));
+    expect([last.shown.has('place'), last.intoPlace]).toEqual([true, ['primary']]);
   });
 });
 

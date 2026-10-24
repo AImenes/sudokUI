@@ -11,7 +11,7 @@ import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 import { stepText } from '../content/eureka';
-import { hintMarks, legendKinds } from '../content/hintMarks';
+import { frameMarks, legendKinds } from '../content/hintMarks';
 import type { Role } from '../content/hintMarks';
 import { copyText } from './send';
 import { useT, rich, Translator } from '../content/i18n';
@@ -193,10 +193,10 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
   const frames = walkFrames(hint);
   const walking = stage === 'walk';
   const frame = walking ? frames[Math.min(walkIndex, frames.length - 1)] : null;
-  // the legend names what the board draws, and nothing it does not (G22):
-  // a role whose every candidate became a removal or a placement lends its
-  // words to that entry
-  const legend = legendKinds(hint, hintMarks(hint, { solved: (c) => cells[c].value > 0 }));
+  // the legend names what the board draws in the frame shown, and nothing
+  // it does not (G23): a role whose every candidate became a removal or a
+  // placement lends its words to that entry
+  const legend = legendKinds(hint, frameMarks(hint, frame, (c) => cells[c].value > 0));
   const lent = (roles: Role[]) =>
     roles
       .map((r) => (r === 'primary' ? hint.labels?.primary : r === 'secondary' ? hint.labels?.secondary : hint.labels?.fins))

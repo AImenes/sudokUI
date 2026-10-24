@@ -17,7 +17,7 @@ export const candY = (d: number) => 30 + Math.floor((d - 1) / 3) * 28;
 export const PLACED_RADIUS = (MARK.placeRingSmall + MARK.placeRingSmallStroke / 2) * SIZE;
 
 /** where the app board draws its candidates' marks, and which digits it shows, for the hint geometry */
-export const boardLayout = (placed: Set<string> = new Set(), shown?: Layout['shown']): Layout => ({
+export const boardLayout = (placed: Set<string> = new Set(), shown?: Layout['shown'], solved?: Layout['solved']): Layout => ({
   centre: ({ cell, digit }) => ({
     x: M + (cell % 9) * SIZE + candX(digit),
     y: M + Math.floor(cell / 9) * SIZE + candY(digit) - 7
@@ -25,6 +25,7 @@ export const boardLayout = (placed: Set<string> = new Set(), shown?: Layout['sho
   r: SIZES.r * SIZE,
   radiusOf: (cd) => (placed.has(`${cd.cell}:${cd.digit}`) ? PLACED_RADIUS : SIZES.r * SIZE),
   ...(shown ? { shown } : {}),
+  ...(solved ? { solved } : {}),
   cell: SIZE,
   bounds: { x0: M, y0: M, x1: M + 9 * SIZE, y1: M + 9 * SIZE }
 });

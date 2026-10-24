@@ -553,6 +553,8 @@ button {
   container-type: inline-size;
 }
 @supports not (container-type: inline-size) {
+  /* a phone's board is the window less the layout's 10 px each side, so a
+     board under 330 px is a window under about 350 */
   @media (max-width: 600px) {
     .board .chain-shaft {
       stroke-width: 4.5px;
@@ -586,6 +588,20 @@ button {
     }
     .board .walk-badge-body {
       transform: scale(1.6);
+    }
+  }
+  @media (max-width: 350px) {
+    .board .chain-shaft {
+      stroke-width: 5px;
+    }
+    .board .chain-halo {
+      stroke-width: 7px;
+    }
+    .board .hint-bar {
+      stroke-width: 4.5px;
+    }
+    .board .hint-ring {
+      stroke-width: 4.5px;
     }
   }
 }

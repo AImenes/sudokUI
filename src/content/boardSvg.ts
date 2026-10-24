@@ -221,6 +221,7 @@ export function boardSvg(example: Example, title: string): string {
   const layout: Layout = {
     ...LAYOUT,
     shown: (cd) => !Number(example.values[cd.cell]) && (example.cands[cd.cell] & (1 << (cd.digit - 1))) !== 0,
+    solved,
     radiusOf: (cd) => (placed.has(`${cd.cell}:${cd.digit}`) ? (MARK.placeRingSmall + MARK.placeRingSmallStroke / 2) * S : LAYOUT.r)
   };
   const shapes = arrowShapes(step.links ?? [], layout, marked);
@@ -229,7 +230,10 @@ export function boardSvg(example: Example, title: string): string {
   const mask = `knockout-${hash(`${example.puzzle}:${example.stepIndex}:${title}`)}`;
   if (shapes.some((sh) => sh.kind !== 'none')) {
     parts.push(
-      `<mask id="${mask}" maskUnits="userSpaceOnUse" x="0" y="0" width="${BOARD_SIZE}" height="${BOARD_SIZE}"><rect width="${BOARD_SIZE}" height="${BOARD_SIZE}" fill="#ffffff"/><g class="ko">${texts.join('')}</g></mask>`,
+      // a head is never cut: where no approach keeps it off a digit, the digit is drawn over it
+      `<mask id="${mask}" maskUnits="userSpaceOnUse" x="0" y="0" width="${BOARD_SIZE}" height="${BOARD_SIZE}"><rect width="${BOARD_SIZE}" height="${BOARD_SIZE}" fill="#ffffff"/><g class="ko">${texts.join('')}</g>${shapes
+        .map((sh) => (sh.kind === 'arrow' && sh.head.length ? `<polygon points="${pointsOf(sh.head)}" fill="#ffffff" stroke="#ffffff" stroke-width="${f(SIZES.halo * s * 2)}" stroke-linejoin="round"/>` : ''))
+        .join('')}</mask>`,
       `<g mask="url(#${mask})">`
     );
   }

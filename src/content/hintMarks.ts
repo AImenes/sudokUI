@@ -5,16 +5,18 @@
 //
 // One mark per candidate. The first kind a candidate is given wins, except
 // that a removal wins over everything and a placement over everything but
-// a removal. A chain node takes the colour the step names for it, the
-// pattern's when it names none. A solved cell the step names shows the
+// a removal; a candidate the step lists in more than one role takes the
+// first of pattern, acts-through, exception. A chain node takes the colour
+// the step names for it, in that same order, the pattern's when it names
+// none, so a walk's frames colour it as the full view does. A solved cell the step names shows the
 // colour on its digit. A removal keeps, inside its ring, the colour the
 // step names for it where that colour is a colouring's parity or the
 // candidate is one of the chain's own nodes (G5: Nishio's assumption,
 // removed, is still the assumption), so a colour wholly removed is still
 // there to be read; a colour only the chain default gave it is never
 // shown.
-import type { CellDigit, ChainLink, Step } from '../engine/steps';
-import type { Part } from '../engine/hintFrames';
+import type { CellDigit, ChainLink, Step, UnitBand } from '../engine/steps';
+import type { Frame, Part } from '../engine/hintFrames';
 
 export type Role = 'primary' | 'secondary' | 'fin';
 export type CandMark = Role | 'place' | 'elim' | 'elimOn';
@@ -26,6 +28,8 @@ export interface HintMarks {
   inside: Map<number, Map<number, Role>>;
   /** a solved cell's colour, on its digit */
   values: Map<number, CandMark>;
+  /** the houses shaded as bands */
+  bands: UnitBand[];
 }
 
 export interface MarkOptions {
@@ -44,9 +48,9 @@ export const COLOURING = new Set(['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'])
 
 const has = (list: CellDigit[] | undefined, cd: CellDigit) => !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
 
-/** the colour the step names for a candidate, if any */
+/** the colour the step names for a candidate, if any: the first of the lists the full view marks in order */
 export function namedRole(step: Step, cd: CellDigit): Role | null {
-  return has(step.fins, cd) ? 'fin' : has(step.secondary, cd) ? 'secondary' : has(step.primary, cd) ? 'primary' : null;
+  return has(step.primary, cd) ? 'primary' : has(step.secondary, cd) ? 'secondary' : has(step.fins, cd) ? 'fin' : null;
 }
 
 export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
@@ -54,6 +58,7 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const inside = new Map<number, Map<number, Role>>();
   const values = new Map<number, CandMark>();
   const show = opts.show ?? (() => true);
+  const bands = show('units') ? (step.units ?? []) : [];
   const links = opts.links ?? step.links ?? [];
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
@@ -96,7 +101,21 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
       inside.get(cd.cell)!.set(cd.digit, colour);
     }
   }
-  return { cands, inside, values };
+  return { cands, inside, values, bands };
+}
+
+/**
+ * What a hint draws at a walk frame, or in full when there is none: the
+ * one call the board and its legend both make, so the legend names what
+ * the frame shows (G23)
+ */
+export function frameMarks(step: Step, frame: Frame | null, solved: (cell: number) => boolean): HintMarks {
+  return hintMarks(step, {
+    solved,
+    links: frame ? (step.links ?? []).slice(0, frame.links) : step.links,
+    show: frame ? (part) => frame.show.has(part) : undefined,
+    walking: !!frame
+  });
 }
 
 /** every candidate the marks hold, for the arrows to bend round */
@@ -125,7 +144,7 @@ export function legendKinds(
     if (!shown.has(kind)) onValue.add(kind);
   }
   const onBand = new Set<CandMark>();
-  for (const u of step.units ?? []) if (!shown.has(u.role) && !onValue.has(u.role)) onBand.add(u.role);
+  for (const u of marks.bands) if (!shown.has(u.role) && !onValue.has(u.role)) onBand.add(u.role);
   for (const k of [...onValue, ...onBand]) shown.add(k);
   const intoRemove: Role[] = [];
   const intoPlace: Role[] = [];

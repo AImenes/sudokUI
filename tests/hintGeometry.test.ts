@@ -284,18 +284,114 @@ describe('what the second review of phase 1 found', () => {
         expect(x0 + l.cell - p.x, tech).toBeGreaterThan(dot + half(col % 3 === 2));
         expect(p.y - y0, tech).toBeGreaterThan(dot + half(row % 3 === 0));
         expect(y0 + l.cell - p.y, tech).toBeGreaterThan(dot + half(row % 3 === 2));
-        // off the digits the cell shows, but the node's own (the nearest)
+        // in the cell of the node it marks, and off every other digit the cell shows
         const cell = row * 9 + col;
-        const nearest = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-          .filter((d) => l.shown!({ cell, digit: d }))
-          .map((d) => ({ d, at: dist(p, l.centre({ cell, digit: d })) }))
-          .sort((x, y) => x.at - y.at);
-        for (const { d, at } of nearest.slice(1)) expect(at, `${tech}: the ${d} of the cell`).toBeGreaterThan(dot + 0.3 * 28);
+        expect(cell, tech).toBe(p.at.cell);
+        const pitch = dist(l.centre({ cell, digit: 2 }), l.centre({ cell, digit: 1 }));
+        for (const d of [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => d !== p.at.digit && l.shown!({ cell, digit: d }))) {
+          expect(dist(p, l.centre({ cell, digit: d })), `${tech}: the ${d} of the cell`).toBeGreaterThan(dot + 0.3 * pitch);
+        }
         // clear of every arrow
         for (const s of shapes) if (s.kind === 'arrow') expect(toArrow(p, s), tech).toBeGreaterThan(dot + (SIZES.stroke * l.cell) / 2);
       }
     }
     expect(dots).toBeGreaterThan(15);
+  });
+});
+
+describe('what the third review of phase 1 found', () => {
+  /** the app board's layout with the digits of the example's position shown and solved */
+  function boardOf(ex: (typeof EXAMPLES)[keyof typeof EXAMPLES]) {
+    const step = ex!.step;
+    const solved = (c: number) => ex!.values[c] !== '0';
+    const marks = hintMarks(step, { solved });
+    const marked = markedCandidates(marks);
+    const key = (cd: CellDigit) => `${cd.cell}:${cd.digit}`;
+    const mk = new Set(marked.map(key));
+    const placed = new Set(marked.filter((m) => marks.cands.get(m.cell)?.get(m.digit) === 'place').map(key));
+    const shown = (cd: CellDigit) => !solved(cd.cell) && ((ex!.cands[cd.cell] & (1 << (cd.digit - 1))) !== 0 || mk.has(key(cd)));
+    return { marked, mk, shown, layout: boardLayout(placed, shown, solved) };
+  }
+
+  it('measures an arrow\'s clearance along its segments, not only at sample points', () => {
+    // the 2 of r5c3 sits on the line from 1r5c1 to 1r5c9, between two of its samples
+    const a = cd(5, 1, 1);
+    const b = cd(5, 9, 1);
+    const between = cd(5, 3, 2);
+    const s = arrow(arrowShapes([link(a, b)], layout, [a, b, between])[0]);
+    expect(s.d).toContain(' Q ');
+    expect(toArrow(layout.centre(between), s)).toBeGreaterThan(layout.r);
+  });
+
+  it('lands every example\'s heads off the other digits of the target\'s cell, which are cut out of the arrows', () => {
+    let heads = 0;
+    for (const [tech, ex] of Object.entries(EXAMPLES)) {
+      const step = ex!.step;
+      if (!step.links?.length) continue;
+      const { marked, mk, shown, layout: l } = boardOf(ex);
+      arrowShapes(step.links, l, marked).forEach((s, i) => {
+        if (s.kind !== 'arrow' || !s.head.length) return;
+        heads++;
+        for (const t of step.links![i].to) {
+          const pitch = dist(l.centre({ cell: t.cell, digit: 2 }), l.centre({ cell: t.cell, digit: 1 }));
+          for (let d = 1; d <= 9; d++) {
+            if (d === t.digit || mk.has(`${t.cell}:${d}`) || !shown({ cell: t.cell, digit: d })) continue;
+            const o = l.centre({ cell: t.cell, digit: d });
+            const edge = Math.min(...s.head.map((p, k) => {
+              const q = s.head[(k + 1) % 3];
+              const ab = { x: q.x - p.x, y: q.y - p.y };
+              const u = Math.max(0, Math.min(1, ((o.x - p.x) * ab.x + (o.y - p.y) * ab.y) / (ab.x * ab.x + ab.y * ab.y)));
+              return dist(o, { x: p.x + ab.x * u, y: p.y + ab.y * u });
+            }));
+            expect(edge, `${tech} link ${i + 1}: its head and the ${d} of the target's cell`).toBeGreaterThan(0.3 * pitch);
+          }
+        }
+      });
+    }
+    expect(heads).toBeGreaterThan(50);
+  });
+
+  it('keeps a walk number off a mark, a start dot and a digit the board shows, on its own shaft', () => {
+    // 1r5c1 => 1r5c9: the middle of the shaft is the 1 of r5c5
+    const a = cd(5, 1, 1);
+    const b = cd(5, 9, 1);
+    const middle = cd(5, 5, 1);
+    const straight = arrowShapes([link(a, b)], layout, [a, b]);
+    const mid = arrow(straight[0]).mid;
+    // a mark there (an arrow bends round it, so take the straight one's shapes)
+    expect(dist(badgePoints(straight, layout, [a, b, middle]).get(0)!, layout.centre(middle))).toBeGreaterThan(layout.r + SIZES.badgeLarge * 100);
+    // a start dot there
+    expect(dist(badgePoints(straight, layout, [a, b], [mid]).get(0)!, mid)).toBeGreaterThan(SIZES.dotLarge * 100 + SIZES.badgeLarge * 100);
+    // the digit shown there
+    const shownMiddle: Layout = { ...layout, shown: (x) => x.cell === middle.cell && x.digit === middle.digit };
+    const p = badgePoints(straight, shownMiddle, [a, b]).get(0)!;
+    expect(dist(p, layout.centre(middle))).toBeGreaterThan(0.25 * 28 + SIZES.badge * 100);
+    expect(toArrow(p, arrow(straight[0]))).toBeLessThan(1);
+    // a solved digit there
+    const solvedMiddle: Layout = { ...layout, solved: (cell) => cell === middle.cell };
+    const q = badgePoints(straight, solvedMiddle, [a, b]).get(0)!;
+    expect(dist(q, { x: 4 + 4.5 * 100, y: 4 + 4.5 * 100 })).toBeGreaterThan(0.2 * 100 + SIZES.badge * 100);
+  });
+
+  it('keeps every example\'s walk numbers off the heads and the digits shown', () => {
+    let numbers = 0;
+    for (const [tech, ex] of Object.entries(EXAMPLES)) {
+      const step = ex!.step;
+      if (!step.links?.length) continue;
+      const { marked, mk, shown, layout: l } = boardOf(ex);
+      const shapes = arrowShapes(step.links, l, marked);
+      const at = badgePoints(shapes, l, marked, startMarkers(step.links, l, marked));
+      for (const [i, p] of at) {
+        numbers++;
+        for (const s of shapes) if (s.kind === 'arrow' && s.head.length) {
+          for (const h of s.head) expect(dist(p, h) > SIZES.badgeLarge * 100 || s.link !== i, `${tech} number ${i + 1}`).toBe(true);
+        }
+        for (let cell = 0; cell < 81; cell++)
+          for (let d = 1; d <= 9; d++)
+            if (shown({ cell, digit: d }) && !mk.has(`${cell}:${d}`)) expect(dist(p, l.centre({ cell, digit: d })), `${tech} number ${i + 1} on the ${d} of cell ${cell}`).toBeGreaterThan(0.25 * 28 + SIZES.badge * 100 - 3);
+      }
+    }
+    expect(numbers).toBeGreaterThan(50);
   });
 });
 

@@ -36,8 +36,10 @@ export interface Layout {
   r: number;
   /** a mark's outer radius where it is larger than `r` (a placement's outer ring) */
   radiusOf?(cd: CellDigit): number;
-  /** a digit is drawn at its place in its cell (a start dot keeps off it); every place counts when absent */
+  /** a digit is drawn at its place in its cell, cut out of the arrows (G11): a head, a start dot and a walk number keep off it; every place counts when absent */
   shown?(cd: CellDigit): boolean;
+  /** a cell holds a solved digit, drawn large in its middle, which a walk number keeps off */
+  solved?(cell: number): boolean;
   /** a cell's size; the other sizes are fractions of it */
   cell: number;
   /** the grid's area: an arc stays inside it, and a cell's square is found from it */
@@ -224,6 +226,14 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
   const margin = ((SIZES.stroke + SIZES.halo) * c) / 2;
   const marks = obstacles.map((cd) => ({ cd, p: layout.centre(cd), r: radius(layout, cd) }));
   const centre = { x: (layout.bounds.x0 + layout.bounds.x1) / 2, y: (layout.bounds.y0 + layout.bounds.y1) / 2 };
+  const marked = new Set(obstacles.map(key));
+  // the other digits a target's cell shows, which its head keeps off where
+  // it can: every digit is cut out of the arrows (G11), and a head cut away
+  // would seem to end on the wrong digit
+  const digitsRound = (cd: CellDigit): Obstacle[] =>
+    [1, 2, 3, 4, 5, 6, 7, 8, 9]
+      .filter((d) => d !== cd.digit && !marked.has(`${cd.cell}:${d}`) && (layout.shown?.({ cell: cd.cell, digit: d }) ?? false))
+      .map((d) => ({ p: layout.centre({ cell: cd.cell, digit: d }), r: glyphOf(layout, cd.cell) }));
 
   // links between the same two nodes, in either direction, are spread apart
   const pairKey = (l: ChainLink) => {
@@ -274,6 +284,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     const shift = mul(perp(along), spread);
 
     const own = new Set([...l.from, ...l.to].map(key));
+    const round = digitsRound(toCd);
     const others: Obstacle[] = [
       ...marks.filter((m) => !own.has(key(m.cd))),
       // other arrows' ends, but not those that meet this one at its own
@@ -298,33 +309,37 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       const head = hasHead ? headAt(tip, dir, layout) : [];
       const shaft = Array.from({ length: 21 }, (_, k) => (control ? quad(tail, control, tip, k / 20) : add(tail, mul(sub(tip, tail), k / 20))));
       const trace = [...shaft, ...head];
-      return { tail, tip, dir, head, trace, control, room: clearanceOf(shaft, others, layout, margin, head) };
+      // the head's room from the digits round its target (none: all clear)
+      const headRoom = head.length ? Math.min(...round.map((o) => toPath(o.p, [], head) - o.r)) : Infinity;
+      return { tail, tip, dir, head, trace, control, room: clearanceOf(shaft, others, layout, margin, head), headRoom };
+    };
+    type Shape = ReturnType<typeof shape>;
+    // a drawing that keeps clear of the marks and lands its head off the
+    // target cell's other digits; failing that, keeping clear of the marks
+    // comes first, then the head's room
+    const ok = (s: Shape) => s.room >= need && s.headRoom >= 0;
+    const better = (x: Shape, y: Shape) => {
+      const [rx, ry] = [Math.min(x.room, need), Math.min(y.room, need)];
+      return rx > ry + 0.01 || (Math.abs(rx - ry) <= 0.01 && Math.min(x.headRoom, 0) > Math.min(y.headRoom, 0) + 0.01);
     };
 
     let best = shape(null);
-    if (best.room < need) {
-      // one gentle arc, the smallest that keeps clear, on the side with
-      // more room (the board's middle on a tie, so the choice never rests
-      // on rounding); turning midway first, then nearer either end, which
-      // lets an arrow come in steeply past a mark beside its target or
-      // leave steeply past one beside its start; if none keeps clear, the
+    if (!ok(best)) {
+      // one gentle arc, the smallest that does, on the side with more room
+      // (the board's middle on a tie, so the choice never rests on
+      // rounding); turning midway first, then nearer either end, which lets
+      // an arrow come in steeply past a mark or a digit beside its target,
+      // or leave steeply past one beside its start; if none does, the
       // clearest drawing of all
       for (const bulge of SIZES.bulges) {
         for (const at of [0.5, 0.78, 0.22, 0.9, 0.1, 0.65, 0.35, 1, 0]) {
           const base = add(a, mul(sub(b, a), at));
           const [p, q] = [1, -1].map((side) => shape(add(add(base, mul(perp(u), side * bulge * c * 2)), shift)));
-          const pick =
-            Math.abs(p.room - q.room) < 0.5
-              ? len(sub(p.control!, centre)) <= len(sub(q.control!, centre))
-                ? p
-                : q
-              : p.room > q.room
-                ? p
-                : q;
-          if (pick.room > best.room + 0.01) best = pick;
-          if (best.room >= need) break;
+          const pick = better(p, q) ? p : better(q, p) ? q : len(sub(p.control!, centre)) <= len(sub(q.control!, centre)) ? p : q;
+          if (better(pick, best)) best = pick;
+          if (ok(best)) break;
         }
-        if (best.room >= need) break;
+        if (ok(best)) break;
       }
     }
 
@@ -339,6 +354,12 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
   });
 }
 
+/** the distance between two neighbouring digits' places in a cell */
+const pitchOf = (layout: Layout, cell: number) => len(sub(layout.centre({ cell, digit: 2 }), layout.centre({ cell, digit: 1 })));
+
+/** the room a cell's pencilled digit takes in the arrows, cut-out margin and all: its share of the pitch */
+const glyphOf = (layout: Layout, cell: number) => 0.3 * pitchOf(layout, cell) + 0.02 * layout.cell;
+
 /** a drawn arrow's shaft (its points along the line) and head */
 const partsOf = (s: Extract<ArrowShape, { kind: 'arrow' }>) => ({ shaft: s.trace.slice(0, s.trace.length - s.head.length), head: s.head });
 
@@ -352,13 +373,13 @@ const partsOf = (s: Extract<ArrowShape, { kind: 'arrow' }>) => ({ shaft: s.trace
  * the largest size it is drawn: upper left when that is clear, then round
  * the clock, else wherever has most room
  */
-export function startMarkers(links: ChainLink[], layout: Layout, obstacles: CellDigit[] = []): Point[] {
+export function startMarkers(links: ChainLink[], layout: Layout, obstacles: CellDigit[] = []): (Point & { link: number; at: CellDigit })[] {
   const c = layout.cell;
   const dot = SIZES.dotLarge * c;
   // a cell line's half width, a box line's when the edge is one, and a little more
   const line = (box: boolean) => (box ? 0.03 : 0.0075) * c + 0.005 * c;
   const arrows = arrowShapes(links, layout, obstacles).flatMap((s) => (s.kind === 'arrow' ? [partsOf(s)] : []));
-  const out: Point[] = [];
+  const out: (Point & { link: number; at: CellDigit })[] = [];
   links.forEach((l, i) => {
     if (goesOn(links, i)) return;
     // the branch's links, up to the next branch
@@ -403,7 +424,7 @@ export function startMarkers(links: ChainLink[], layout: Layout, obstacles: Cell
       }
       if (!best || room > best.room + 0.5) best = { p, room };
     }
-    out.push(best!.p);
+    out.push({ ...best!.p, link: i, at });
   });
   return out;
 }
@@ -411,39 +432,87 @@ export function startMarkers(links: ChainLink[], layout: Layout, obstacles: Cell
 /**
  * Where the walk's numbers go (G14): on each arrow's own shaft, in link
  * order, as near its middle as keeps clear of the numbers already placed,
- * the hint's marks and the start dots, at the largest size a number is
- * drawn; the clearest place on the shaft when nothing is clear
+ * the hint's marks, the start dots and every head (its own included), at
+ * the largest size a number is drawn, and off the digits the board shows
+ * (a pencilled digit, a solved one) at the size a wide board draws it;
+ * beside the shaft when nothing on it is clear; the clearest place when
+ * nothing is
  */
-export function badgePoints(shapes: ArrowShape[], layout: Layout, obstacles: CellDigit[], dots: Point[] = []): Map<number, Point> {
+export function badgePoints(
+  shapes: ArrowShape[],
+  layout: Layout,
+  obstacles: CellDigit[],
+  dots: Point[] = []
+): Map<number, Point> {
   const c = layout.cell;
   const r = SIZES.badgeLarge * c;
+  const small = SIZES.badge * c;
   const marks = obstacles.map((cd) => ({ p: layout.centre(cd), r: radius(layout, cd) }));
+  const marked = new Set(obstacles.map(key));
+  const arrows = shapes.flatMap((s) => (s.kind === 'arrow' ? [s] : []));
+  // the digits drawn round a point: its cell's and the neighbours'
+  const digitsNear = (p: Point): Obstacle[] => {
+    const col = Math.floor((p.x - layout.bounds.x0) / c);
+    const row = Math.floor((p.y - layout.bounds.y0) / c);
+    const out: Obstacle[] = [];
+    for (let dr = -1; dr <= 1; dr++)
+      for (let dc = -1; dc <= 1; dc++) {
+        const [rr, cc] = [row + dr, col + dc];
+        if (rr < 0 || rr > 8 || cc < 0 || cc > 8) continue;
+        const cell = rr * 9 + cc;
+        if (layout.solved?.(cell)) {
+          out.push({ p: { x: layout.bounds.x0 + (cc + 0.5) * c, y: layout.bounds.y0 + (rr + 0.5) * c }, r: 0.2 * c });
+          continue;
+        }
+        for (let d = 1; d <= 9; d++) {
+          const cd = { cell, digit: d };
+          if (!marked.has(key(cd)) && (layout.shown?.(cd) ?? false)) out.push({ p: layout.centre(cd), r: 0.25 * pitchOf(layout, cell) });
+        }
+      }
+    return out;
+  };
   const placed: Point[] = [];
   const out = new Map<number, Point>();
-  for (const s of shapes) {
-    if (s.kind !== 'arrow') continue;
+  for (const s of arrows) {
     const { shaft } = partsOf(s);
     const middle = (shaft.length - 1) / 2;
-    // from the middle outwards, never into the last fifth at either end
+    // from the middle outwards, never into the last fifth at either end;
+    // then the same places beside the shaft, either side
     const order = Array.from({ length: shaft.length }, (_, k) => k)
       .filter((k) => Math.abs(k - middle) <= shaft.length * 0.3)
       .sort((x, y) => Math.abs(x - middle) - Math.abs(y - middle) || x - y);
-    let best: { p: Point; room: number } = { p: s.mid, room: -Infinity };
-    for (const k of order) {
-      const p = shaft[k];
-      const room = Math.min(
+    const beside = (k: number, side: number) => {
+      const along = unit(sub(shaft[Math.min(k + 1, shaft.length - 1)], shaft[Math.max(k - 1, 0)]));
+      return add(shaft[k], mul(perp(along), side * (r + SIZES.stroke * c)));
+    };
+    const spots = [...order.map((k) => shaft[k]), ...order.flatMap((k) => [beside(k, 1), beside(k, -1)])];
+    const hard = (p: Point) =>
+      Math.min(
         ...placed.map((q) => len(sub(p, q)) - 2 * r),
         ...marks.map((m) => len(sub(p, m.p)) - m.r - r),
-        ...dots.map((q) => len(sub(p, q)) - SIZES.dotLarge * c - r)
+        ...dots.map((q) => len(sub(p, q)) - SIZES.dotLarge * c - r),
+        ...arrows.map((a) => (a.head.length ? toPath(p, [], a.head) - r : Infinity)),
+        // inside the board
+        p.x - layout.bounds.x0 - r,
+        layout.bounds.x1 - p.x - r,
+        p.y - layout.bounds.y0 - r,
+        layout.bounds.y1 - p.y - r
       );
-      if (room >= 0) {
-        best = { p, room };
+    const soft = (p: Point) => Math.min(...digitsNear(p).map((o) => len(sub(p, o.p)) - o.r - small));
+    let best: { p: Point; hard: number; soft: number } | null = null;
+    for (const p of spots) {
+      const h = hard(p);
+      const sft = soft(p);
+      if (h >= 0 && sft >= 0) {
+        best = { p, hard: h, soft: sft };
         break;
       }
-      if (room > best.room) best = { p, room };
+      const score = (x: { hard: number; soft: number }) => (x.hard >= 0 ? 1e6 + x.soft : x.hard);
+      if (!best || score({ hard: h, soft: sft }) > score(best)) best = { p, hard: h, soft: sft };
     }
-    placed.push(best.p);
-    out.set(s.link, best.p);
+    const at = best?.p ?? s.mid;
+    placed.push(at);
+    out.set(s.link, at);
   }
   return out;
 }
