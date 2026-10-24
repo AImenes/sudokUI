@@ -110,5 +110,12 @@ describe('links', () => {
     expect(drawn.secondary).toContainEqual(nodes[2]);
     expect(drawn.fins).toEqual(step.eliminations);
     expect(drawn.labels?.fins).toMatch(/goal/);
+    // a goal candidate the player removed some other way is no longer drawn
+    const gone = step.eliminations[0];
+    const g2 = structuredClone(g);
+    g2.cands[gone.cell] &= ~bit(gone.digit);
+    const rest = chainStep(g2, chain, { goal: step.eliminations }).fins ?? [];
+    expect(rest).not.toContainEqual(gone);
+    expect(rest).toHaveLength(step.eliminations.length - 1);
   });
 });

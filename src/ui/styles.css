@@ -517,12 +517,17 @@ button {
   font-family: var(--font);
 }
 
-/* a hint's lines on a phone (docs/hint-drawing.md G14a): the board is
-   about 360 CSS px for 908 units there, so the desktop widths (a 3-unit
-   arrow, a 2.25-unit removal bar) would be a pixel or less; these keep
-   every line at about 1.5 CSS px or more. CSS wins over the drawing's own
-   attributes, and a length here is in the board's units */
-@media (max-width: 600px) {
+/* a hint's lines on a small board (docs/hint-drawing.md G14a): measured
+   by the board's own width, not the window's, so a phone on its side or a
+   small window counts too. A board of about 360 CSS px holds 908 units, so
+   the desktop widths (a 3-unit arrow, a 2.25-unit removal bar) would be a
+   pixel or less; these keep every line at about 1.5 CSS px or more, and a
+   board under about 330 px gets a step more. CSS wins over the drawing's
+   own attributes, and a length here is in the board's units */
+.grid-wrap {
+  container-type: inline-size;
+}
+@container (max-width: 600px) {
   .board .chain-shaft {
     stroke-width: 4.5px;
   }
@@ -530,19 +535,33 @@ button {
     stroke-dasharray: 11px 8px;
   }
   .board .chain-halo {
-    stroke-width: 8.5px;
+    stroke-width: 6.5px;
   }
   .board .chain-tie {
     stroke-width: 3px;
   }
   .board .chain-tie-halo {
-    stroke-width: 7px;
+    stroke-width: 6px;
   }
   .board .hint-bar {
     stroke-width: 3.75px;
   }
   .board .hint-ring {
     stroke-width: 4px;
+  }
+}
+@container (max-width: 330px) {
+  .board .chain-shaft {
+    stroke-width: 5px;
+  }
+  .board .chain-halo {
+    stroke-width: 7px;
+  }
+  .board .hint-bar {
+    stroke-width: 4.5px;
+  }
+  .board .hint-ring {
+    stroke-width: 4.5px;
   }
 }
 
@@ -998,11 +1017,51 @@ button {
 
 .hint-legend i {
   display: inline-block;
+  box-sizing: border-box;
   width: 10px;
   height: 10px;
   border-radius: 50%;
   margin-right: 5px;
   vertical-align: -1px;
+}
+
+/* a legend's swatch is drawn like its mark on the board (docs/hint-drawing.md
+   G22): a disc with an edge for a role, a disc with an outer ring for a
+   placement, a barred ring for a removal */
+.hint-legend .swatch-primary {
+  background: var(--hint-primary);
+  border: 1px solid var(--hint-primary-ink);
+}
+
+.hint-legend .swatch-secondary {
+  background: var(--hint-secondary);
+  border: 1px solid var(--hint-secondary-ink);
+}
+
+.hint-legend .swatch-fin {
+  background: var(--hint-fin);
+  border: 1px solid var(--hint-fin-ink);
+}
+
+.hint-legend .swatch-place {
+  background: var(--hint-place);
+  border: 1px solid var(--hint-place-ink);
+  box-shadow:
+    0 0 0 1.5px var(--panel),
+    0 0 0 3px var(--hint-place-ink);
+  margin: 0 8px 0 3px;
+}
+
+.hint-legend .swatch-elim {
+  background: linear-gradient(45deg, transparent 40%, var(--hint-elim) 40%, var(--hint-elim) 60%, transparent 60%);
+  border: 1.5px solid var(--hint-elim);
+}
+
+/* a role drawn only on solved digits: the digit's rounded outline */
+.hint-legend .on-value {
+  background: transparent;
+  border-width: 1.5px;
+  border-radius: 3px;
 }
 
 .hint-actions {
@@ -2135,8 +2194,10 @@ kbd {
   font-size: 12.5px;
 }
 
+/* its swatches are drawn inline like the diagram's marks (boardSvg.ts swatchStyle) */
 .learn-legend i {
   display: inline-block;
+  box-sizing: border-box;
   width: 10px;
   height: 10px;
   border-radius: 50%;

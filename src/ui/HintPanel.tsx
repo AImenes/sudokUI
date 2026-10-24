@@ -11,6 +11,8 @@ import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 import { stepText } from '../content/eureka';
+import { hintMarks, legendKinds } from '../content/hintMarks';
+import type { Role } from '../content/hintMarks';
 import { copyText } from './send';
 import { useT, rich, Translator } from '../content/i18n';
 import { useLearnLocale } from './useLearnLocale';
@@ -93,12 +95,12 @@ export function ChainPanel() {
         {n > 1 && (
           <ul className="hint-legend">
             <li>
-              <i style={{ background: 'var(--hint-primary)' }} />
+              <i className="swatch-primary" />
               {t('your chain: solid for a strong link, dashed for a weak one')}
             </li>
             {elims.length > 0 && (
               <li>
-                <i style={{ background: 'var(--hint-elim)' }} />
+                <i className="swatch-elim" />
                 {t('removed by it')}
               </li>
             )}
@@ -147,6 +149,7 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
   const walkIndex = useGame((s) => s.walkIndex);
   const applyHint = useGame((s) => s.applyHint);
   const dismissHint = useGame((s) => s.dismissHint);
+  const cells = useGame((s) => s.cells);
   const t = useT();
   const techWhat = useTechWhat();
 
@@ -189,8 +192,17 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
   const needed = neededIn(t, hint.tech);
   const frames = walkFrames(hint);
   const walking = stage === 'walk';
-  const banded = (role: 'primary' | 'secondary') => !!hint.units?.some((u) => u.role === role);
   const frame = walking ? frames[Math.min(walkIndex, frames.length - 1)] : null;
+  // the legend names what the board draws, and nothing it does not (G22):
+  // a role whose every candidate became a removal or a placement lends its
+  // words to that entry
+  const legend = legendKinds(hint, hintMarks(hint, { solved: (c) => cells[c].value > 0 }));
+  const lent = (roles: Role[]) =>
+    roles
+      .map((r) => (r === 'primary' ? hint.labels?.primary : r === 'secondary' ? hint.labels?.secondary : hint.labels?.fins))
+      .filter((s): s is string => !!s);
+  // a role drawn only on solved digits is shown by the digit's outline
+  const swatch = (role: Role) => `swatch-${role}${legend.onValue.has(role) ? ' on-value' : ''}`;
 
   return (
     <div className="hint-panel" ref={panel} role="region" aria-label={t('Hint')} aria-live="polite">
@@ -257,33 +269,33 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
           )}
           {(
             <ul className="hint-legend">
-              {hint.placements.length > 0 && (
+              {legend.shown.has('place') && (
                 <li>
-                  <i style={{ background: 'var(--hint-place)' }} />
-                  {t('place')}
+                  <i className="swatch-place" />
+                  {[t('place'), ...lent(legend.intoPlace)].join(': ')}
                 </li>
               )}
-              {hint.eliminations.length > 0 && (
+              {legend.shown.has('elim') && (
                 <li>
-                  <i style={{ background: 'var(--hint-elim)' }} />
-                  {t('remove')}
+                  <i className="swatch-elim" />
+                  {[t('remove'), ...lent(legend.intoRemove)].join(': ')}
                 </li>
               )}
-              {(!!hint.primary?.length || !!hint.links?.length || banded('primary')) && (
+              {legend.shown.has('primary') && (
                 <li>
-                  <i style={{ background: 'var(--hint-primary)' }} />
+                  <i className={swatch('primary')} />
                   {hint.labels?.primary ?? t('the pattern')}
                 </li>
               )}
-              {(!!hint.secondary?.length || banded('secondary')) && (
+              {legend.shown.has('secondary') && (
                 <li>
-                  <i style={{ background: 'var(--hint-secondary)' }} />
+                  <i className={swatch('secondary')} />
                   {hint.labels?.secondary ?? t('supporting cells')}
                 </li>
               )}
-              {!!hint.fins?.length && (
+              {legend.shown.has('fin') && (
                 <li>
-                  <i style={{ background: 'var(--hint-fin)' }} />
+                  <i className={swatch('fin')} />
                   {hint.labels?.fins ?? t('fin')}
                 </li>
               )}

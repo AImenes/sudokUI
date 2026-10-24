@@ -16,7 +16,7 @@ import { intuitionDiagram, DIAGRAM_IDS } from '../content/intuitionDiagrams';
 import { GLOSSARY, GLOSSARY_GROUPS } from '../content/glossary';
 import { techSlug, slugify } from '../content/slugs';
 import { linkGlossary } from '../content/glossaryLinks';
-import { boardSvg, legendOf, Example } from '../content/boardSvg';
+import { boardSvg, legendOf, swatchStyle, Example } from '../content/boardSvg';
 import { share, worth } from '../content/frequency';
 import { useStats, learnNextScore } from '../state/stats';
 import { solveTimeTables } from '../content/solveTimes';
@@ -81,9 +81,9 @@ function WorkedExample({
       <img src={src} alt={`${title}. ${text}`} />
       <figcaption>
         <span className="learn-legend">
-          {legendOf(step).map((l) => (
+          {legendOf(step, example.values).map((l) => (
             <span key={l.label}>
-              <i style={{ background: l.colour }} />
+              <i style={swatchStyle(l)} />
               {l.label}
             </span>
           ))}

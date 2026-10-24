@@ -10,7 +10,8 @@ import { tr } from '../engine/text';
 import { arrowShapes, startMarkers, pointsOf, SIZES } from './hintGeometry';
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
-import type { MarkKind } from './hintPalette';
+import { hintMarks, markedCandidates, legendKinds, COLOURING } from './hintMarks';
+import type { Role } from './hintMarks';
 
 export interface Example {
   puzzle: string;
@@ -57,8 +58,6 @@ export const TINTS: Record<string, string> = {
   place: '#dff2e0'
 };
 
-type Kind = MarkKind | 'elimOn';
-
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -79,9 +78,13 @@ const LAYOUT: Layout = {
 
 const P = LIGHT;
 const f = (n: number) => n.toFixed(1);
-
-/** the techniques whose colours are parities a removal still carries */
-const COLOURING = new Set(['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D']);
+/**
+ * The diagrams are small (a cell is about 38 CSS px on a phone, 60 on a
+ * wide page), so their lines are half again as thick as the app's, which
+ * keeps the removal bar and the arrows at a CSS pixel and a half or more
+ * (docs/hint-drawing.md G14a)
+ */
+const LINE = 1.5;
 
 /**
  * The example as an SVG document. `title` becomes the image's accessible
@@ -90,48 +93,16 @@ const COLOURING = new Set(['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D']);
 export function boardSvg(example: Example, title: string): string {
   const { step } = example;
   const given = example.puzzle.split('').map((ch) => ch >= '1' && ch <= '9');
-  const parts: string[] = [];
-
-  // what is marked where, with the precedence the app's board uses
-  // (docs/hint-drawing.md G5): the first kind a candidate is given wins,
-  // except that a removal wins over everything and a placement over
-  // everything but a removal
-  const marks = new Map<string, Kind>();
-  // a colouring's removal keeps the colour the step names for it
-  const inside = new Map<string, Exclude<MarkKind, 'elim'>>();
-  // a solved cell listed in a colour shows it on its digit
-  const valueMarks = new Map<number, MarkKind>();
   const solved = (cell: number) => Number(example.values[cell]) > 0;
-  const mark = (cd: CellDigit, kind: MarkKind) => {
-    const key = `${cd.cell}:${cd.digit}`;
-    if (solved(cd.cell)) {
-      if (!valueMarks.has(cd.cell) || kind === 'elim') valueMarks.set(cd.cell, kind);
-      return;
-    }
-    const prev = marks.get(key);
-    if (!prev || kind === 'elim' || (kind === 'place' && prev !== 'elim')) marks.set(key, kind);
-  };
-  const has = (list: CellDigit[] | undefined, cd: CellDigit) => !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
-  const named = (cd: CellDigit) =>
-    has(step.fins, cd) ? 'fin' : has(step.secondary, cd) ? 'secondary' : has(step.primary, cd) ? 'primary' : null;
-  for (const cd of step.primary ?? []) mark(cd, 'primary');
-  for (const cd of step.secondary ?? []) mark(cd, 'secondary');
-  for (const link of step.links ?? []) for (const cd of [...link.from, ...link.to]) mark(cd, named(cd) ?? 'primary');
-  for (const cd of step.fins ?? []) mark(cd, 'fin');
-  for (const cd of step.eliminations) mark(cd, 'elim');
-  for (const cd of step.placements) mark(cd, 'place');
-  if (COLOURING.has(step.tech)) {
-    for (const cd of step.eliminations) {
-      const colour = named(cd);
-      if (!colour || solved(cd.cell)) continue;
-      marks.set(`${cd.cell}:${cd.digit}`, 'elimOn');
-      inside.set(`${cd.cell}:${cd.digit}`, colour);
-    }
-  }
+  // what is marked where, as the app's board marks it (src/content/hintMarks.ts)
+  const drawn = hintMarks(step, { solved });
+  const s = S;
+  const parts: string[] = [];
 
   parts.push(`<rect x="${L}" y="${L}" width="${9 * S}" height="${9 * S}" fill="#ffffff"/>`);
   // the houses a pattern lives in (G15): a full-strength outline over a
-  // barely-there fill, under everything else
+  // barely-there fill, solid for the pattern and dashed for what it acts
+  // through, under everything else
   for (const { unit, role } of step.units ?? []) {
     const r =
       unit < 9
@@ -143,7 +114,7 @@ export function boardSvg(example: Example, title: string): string {
     const k = S / 100;
     parts.push(
       `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${fill}" fill-opacity="${P.bandAlpha}"/>`,
-      `<rect x="${f(r.x + 3.5 * k)}" y="${f(r.y + 3.5 * k)}" width="${f(r.w - 7 * k)}" height="${f(r.h - 7 * k)}" rx="${f(8 * k)}" fill="none" stroke="${ink}" stroke-width="${f(3 * k)}"${
+      `<rect x="${f(r.x + 3.5 * k)}" y="${f(r.y + 3.5 * k)}" width="${f(r.w - 7 * k)}" height="${f(r.h - 7 * k)}" rx="${f(8 * k)}" fill="none" stroke="${ink}" stroke-width="${f(3 * k * LINE)}"${
         role === 'secondary' ? ` stroke-dasharray="${MARK.coverDash.map((d) => f(d * S)).join(' ')}"` : ''
       }/>`
     );
@@ -155,6 +126,64 @@ export function boardSvg(example: Example, title: string): string {
       `<text x="${L + (i + 0.5) * S}" y="${L - 8}" class="lab">${i + 1}</text>`,
       `<text x="${L - 12}" y="${L + (i + 0.5) * S + 4.5}" class="lab">${i + 1}</text>`
     );
+  }
+
+  // a hint's marks (G1-G5), under the grid lines, the arrows and the
+  // digits: a filled disc with an edge for a role, a disc with an outer
+  // ring for a placement, a tinted ring for a removal; and a rounded
+  // square round a solved digit the step names, a shape as well as a colour
+  const texts: string[] = [];
+  const bars: string[] = [];
+  for (let cell = 0; cell < 81; cell++) {
+    const value = Number(example.values[cell]);
+    if (value) {
+      const kind = drawn.values.get(cell);
+      let fill = '';
+      if (kind) {
+        const ink = kind === 'elim' || kind === 'elimOn' ? P.elim : fillOf(P, kind).ink;
+        // a style, not an attribute, so the class's own fill cannot win
+        fill = ` style="fill:${ink}"`;
+        parts.push(
+          `<rect x="${f(cellX(cell) + 0.09 * S)}" y="${f(cellY(cell) + 0.09 * S)}" width="${f(0.82 * S)}" height="${f(0.82 * S)}" rx="${f(0.14 * S)}" fill="none" stroke="${ink}" stroke-width="${f(0.03 * S)}"/>`
+        );
+      }
+      texts.push(`<text x="${cellX(cell) + S / 2}" y="${cellY(cell) + S / 2 + 12}" class="${given[cell] ? 'giv' : 'ent'}"${fill}>${value}</text>`);
+      continue;
+    }
+    for (let digit = 1; digit <= 9; digit++) {
+      if (!(example.cands[cell] & (1 << (digit - 1)))) continue;
+      const cd = { cell, digit };
+      const kind = drawn.cands.get(cell)?.get(digit);
+      const x = f(candX(cd));
+      const y = f(candY(cd));
+      const ty = f(candY(cd) + 4.4);
+      if (!kind) {
+        texts.push(`<text x="${x}" y="${ty}" class="cd">${digit}</text>`);
+        continue;
+      }
+      if (kind === 'elim' || kind === 'elimOn') {
+        const colour = drawn.inside.get(cell)?.get(digit);
+        const b = MARK.bar * s;
+        parts.push(
+          colour
+            ? `<circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="${fillOf(P, colour).fill}" stroke="${P.elim}" stroke-width="${f(MARK.ringStroke * s * LINE)}"/>`
+            : `<circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="${P.elim}" fill-opacity="${P.ringTint}"/><circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="none" stroke="${P.elim}" stroke-width="${f(MARK.ringStroke * s * LINE)}"/>`
+        );
+        texts.push(`<text x="${x}" y="${ty}" class="${colour ? 'mk' : 'rm'}">${digit}</text>`);
+        bars.push(
+          `<line x1="${f(candX(cd) - b)}" y1="${f(candY(cd) - b)}" x2="${f(candX(cd) + b)}" y2="${f(candY(cd) + b)}" stroke="${P.elim}" stroke-width="${f(MARK.barStroke * s * LINE)}"/>`
+        );
+        continue;
+      }
+      const { fill, ink } = fillOf(P, kind);
+      parts.push(
+        `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - MARK.edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(MARK.edge * s)}"/>`
+      );
+      if (kind === 'place') {
+        parts.push(`<circle cx="${x}" cy="${y}" r="${f(MARK.placeRing * s)}" fill="none" stroke="${ink}" stroke-width="${f(MARK.placeRingStroke * s * LINE)}"/>`);
+      }
+      texts.push(`<text x="${x}" y="${ty}" class="mk">${digit}</text>`);
+    }
   }
 
   // thin cell lines first, the thick box lines on top of them
@@ -170,87 +199,42 @@ export function boardSvg(example: Example, title: string): string {
     }
   }
 
-  // a hint's marks (G1-G5): a filled disc with an edge for a role, a disc
-  // with an outer ring for a placement, a tinted ring with a bar over its
-  // digit for a removal
-  const s = S;
-  for (let cell = 0; cell < 81; cell++) {
-    const value = Number(example.values[cell]);
-    if (value) {
-      const kind = valueMarks.get(cell);
-      const fill = kind ? ` fill="${kind === 'elim' ? P.elim : fillOf(P, kind).ink}"` : '';
-      parts.push(
-        `<text x="${cellX(cell) + S / 2}" y="${cellY(cell) + S / 2 + 12}" class="${given[cell] ? 'giv' : 'ent'}"${fill}>${value}</text>`
-      );
-      continue;
-    }
-    for (let digit = 1; digit <= 9; digit++) {
-      if (!(example.cands[cell] & (1 << (digit - 1)))) continue;
-      const cd = { cell, digit };
-      const key = `${cell}:${digit}`;
-      const kind = marks.get(key);
-      const x = f(candX(cd));
-      const y = f(candY(cd));
-      const ty = f(candY(cd) + 4.4);
-      if (!kind) {
-        parts.push(`<text x="${x}" y="${ty}" class="cd">${digit}</text>`);
-        continue;
-      }
-      if (kind === 'elim' || kind === 'elimOn') {
-        const colour = inside.get(key);
-        const b = MARK.bar * s;
-        parts.push(
-          colour
-            ? `<circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="${fillOf(P, colour).fill}" stroke="${P.elim}" stroke-width="${f(MARK.ringStroke * s)}"/>`
-            : `<circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="${P.elim}" fill-opacity="${P.ringTint}"/><circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="none" stroke="${P.elim}" stroke-width="${f(MARK.ringStroke * s)}"/>`,
-          `<text x="${x}" y="${ty}" class="${colour ? 'mk' : 'rm'}">${digit}</text>`,
-          `<line x1="${f(candX(cd) - b)}" y1="${f(candY(cd) - b)}" x2="${f(candX(cd) + b)}" y2="${f(candY(cd) + b)}" stroke="${P.elim}" stroke-width="${f(MARK.barStroke * s)}"/>`
-        );
-        continue;
-      }
-      const { fill, ink } = fillOf(P, kind);
-      parts.push(
-        `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - MARK.edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(MARK.edge * s)}"/>`
-      );
-      if (kind === 'place') {
-        parts.push(`<circle cx="${x}" cy="${y}" r="${f(MARK.placeRing * s)}" fill="none" stroke="${ink}" stroke-width="${f(MARK.placeRingStroke * s)}"/>`);
-      }
-      parts.push(`<text x="${x}" y="${ty}" class="mk">${digit}</text>`);
-    }
-  }
-
-  // the arrows (G7-G14), over everything: straight, in the one neutral ink,
-  // bent only round the hint's own marks; every halo before every line
-  const marked: CellDigit[] = [...marks.keys()].map((k) => {
-    const [cell, digit] = k.split(':').map(Number);
-    return { cell, digit };
-  });
-  const shapes = arrowShapes(step.links ?? [], LAYOUT, marked);
-  const w = SIZES.stroke * s;
+  // the arrows (G7-G14), over the grid lines and the marks and under the
+  // digits, so a digit an arrow crosses stays whole: straight, in the one
+  // neutral ink, bent only round the hint's own marks; every halo first
+  const marked = markedCandidates(drawn);
+  const placed = new Set(marked.filter((cd) => drawn.cands.get(cd.cell)?.get(cd.digit) === 'place').map((cd) => `${cd.cell}:${cd.digit}`));
+  const layout: Layout = {
+    ...LAYOUT,
+    radiusOf: (cd) => (placed.has(`${cd.cell}:${cd.digit}`) ? (MARK.placeRing + MARK.placeRingStroke / 2) * S : LAYOUT.r)
+  };
+  const shapes = arrowShapes(step.links ?? [], layout, marked);
+  const w = SIZES.stroke * s * LINE;
   for (const sh of shapes) {
     if (sh.kind === 'tie') {
       parts.push(
-        `<path d="${sh.d}" fill="none" stroke="#ffffff" stroke-width="${f(0.06 * s)}" stroke-linecap="round" opacity="0.5"/>`,
-        `<path d="${sh.d}" fill="none" stroke="${P.arrow}" stroke-width="${f(0.02 * s)}" stroke-linecap="round" opacity="0.5"/>`
+        `<path d="${sh.d}" fill="none" stroke="#ffffff" stroke-width="${f(0.05 * s)}" stroke-linecap="round" opacity="0.5"/>`,
+        `<path d="${sh.d}" fill="none" stroke="${P.arrow}" stroke-width="${f(0.02 * s * LINE)}" stroke-linecap="round" opacity="0.5"/>`
       );
     }
   }
   const arrows = shapes.filter((sh): sh is Extract<ArrowShape, { kind: 'arrow' }> => sh.kind === 'arrow');
   for (const sh of arrows) {
-    parts.push(`<path d="${sh.d}" fill="none" stroke="#ffffff" stroke-width="${f(w + 0.04 * s)}" stroke-linecap="round" opacity="0.85"/>`);
-    if (sh.head.length) parts.push(`<polygon points="${pointsOf(sh.head)}" fill="#ffffff" stroke="#ffffff" stroke-width="${f(0.04 * s)}" stroke-linejoin="round" opacity="0.85"/>`);
+    parts.push(`<path d="${sh.d}" fill="none" stroke="#ffffff" stroke-width="${f(w + SIZES.halo * s)}" stroke-linecap="round" opacity="0.75"/>`);
+    if (sh.head.length) parts.push(`<polygon points="${pointsOf(sh.head)}" fill="#ffffff" stroke="#ffffff" stroke-width="${f(SIZES.halo * s)}" stroke-linejoin="round" opacity="0.75"/>`);
   }
   for (const sh of arrows) {
     parts.push(
       `<path d="${sh.d}" fill="none" stroke="${P.arrow}" stroke-width="${f(w)}" stroke-linecap="${sh.strong ? 'round' : 'butt'}"${
-        sh.strong ? '' : ` stroke-dasharray="${f(0.08 * s)} ${f(0.06 * s)}"`
+        sh.strong ? '' : ` stroke-dasharray="${f(0.08 * s * LINE)} ${f(0.06 * s * LINE)}"`
       }/>`
     );
     if (sh.head.length) parts.push(`<polygon points="${pointsOf(sh.head)}" fill="${P.arrow}"/>`);
   }
-  // the first node of each branch wears a dot: reading starts here
-  for (const p of startMarkers(step.links ?? [], LAYOUT)) {
-    parts.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(0.045 * s)}" fill="${P.arrow}" stroke="#ffffff" stroke-width="${f(0.02 * s)}"/>`);
+  // the digits, then the bars over the removed ones, then the start dots
+  parts.push(...texts, ...bars);
+  for (const p of startMarkers(step.links ?? [], layout, marked)) {
+    parts.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(SIZES.dot * s)}" fill="${P.arrow}" stroke="#ffffff" stroke-width="${f(0.02 * s)}"/>`);
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOARD_SIZE} ${BOARD_SIZE}" role="img" aria-label="${esc(title)}">
@@ -262,20 +246,67 @@ ${parts.join('\n')}
 `;
 }
 
+/** a legend entry: the kind of mark (its swatch is drawn like the mark, src/ui/styles.css .swatch-*) and its words */
+export interface LegendEntry {
+  kind: 'place' | 'elim' | 'primary' | 'secondary' | 'fin';
+  label: string;
+  /** the mark's fill and edge on the diagram, for a swatch drawn inline */
+  colour: string;
+  ink: string;
+  /** drawn only on solved digits, as their rounded outline */
+  onValue?: boolean;
+}
+
 /**
- * Which highlight colours a step uses, for the legend under its diagram.
- * The colouring techniques name their own colours in the explanation (blue
- * and gold are the two parities there), so only the removals are listed.
+ * What the legend under a diagram names: the kinds the diagram draws, and
+ * nothing it does not (G22). A role whose every candidate was drawn as a
+ * removal or a placement lends its words to that entry. The colouring
+ * techniques name their own colours in the explanation (blue and gold are
+ * the two parities there), so only the removals and placements are listed.
  */
-export function legendOf(step: Step): { colour: string; label: string }[] {
-  const colouring = COLOURING.has(step.tech);
-  const out: { colour: string; label: string }[] = [];
-  if (step.placements.length) out.push({ colour: P.place, label: tr`place` });
-  if (step.eliminations.length) out.push({ colour: P.elim, label: tr`remove` });
-  if (colouring) return out;
-  const banded = (role: 'primary' | 'secondary') => !!step.units?.some((u) => u.role === role);
-  if (step.primary?.length || step.links?.length || banded('primary')) out.push({ colour: P.primary, label: step.labels?.primary ?? tr`the pattern` });
-  if (step.secondary?.length || banded('secondary')) out.push({ colour: P.secondary, label: step.labels?.secondary ?? tr`supporting cells` });
-  if (step.fins?.length) out.push({ colour: P.fin, label: step.labels?.fins ?? tr`fin` });
+export function legendOf(step: Step, values?: string): LegendEntry[] {
+  const drawn = hintMarks(step, { solved: (cell) => !!values && Number(values[cell]) > 0 });
+  const { shown, onValue, intoRemove, intoPlace } = legendKinds(step, drawn);
+  const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
+  const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
+  const out: LegendEntry[] = [];
+  if (shown.has('place')) out.push({ kind: 'place', label: [tr`place`, ...lent(intoPlace)].join(': '), colour: P.place, ink: P.placeInk });
+  if (shown.has('elim')) out.push({ kind: 'elim', label: [tr`remove`, ...lent(intoRemove)].join(': '), colour: '#ffffff', ink: P.elim });
+  if (COLOURING.has(step.tech)) return out;
+  const role = (kind: Role, label: string, colour: string, ink: string) =>
+    out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : {}) });
+  if (shown.has('primary')) role('primary', step.labels?.primary ?? tr`the pattern`, P.primary, P.primaryInk);
+  if (shown.has('secondary')) role('secondary', step.labels?.secondary ?? tr`supporting cells`, P.secondary, P.secondaryInk);
+  if (shown.has('fin')) role('fin', step.labels?.fins ?? tr`fin`, P.fin, P.finInk);
   return out;
 }
+
+/**
+ * A legend swatch drawn like its mark on the diagram (G22), on a chip of
+ * the diagram's white, since the page round it may be dark: a disc with an
+ * edge for a role, a disc with an outer ring for a placement, a barred ring
+ * for a removal
+ */
+export function swatchStyle(l: LegendEntry): { background: string; border: string; boxShadow: string; borderRadius?: string } {
+  const chip = '0 0 0 1.5px #ffffff';
+  // a role drawn only on solved digits: the digit's rounded outline
+  if (l.onValue) return { background: '#ffffff', border: `1.5px solid ${l.ink}`, boxShadow: chip, borderRadius: '3px' };
+  if (l.kind === 'elim') {
+    return {
+      background: `linear-gradient(45deg,transparent 40%,${l.ink} 40%,${l.ink} 60%,transparent 60%),#ffffff`,
+      border: `1.5px solid ${l.ink}`,
+      boxShadow: chip
+    };
+  }
+  return {
+    background: l.colour,
+    border: `1px solid ${l.ink}`,
+    boxShadow: l.kind === 'place' ? `${chip},0 0 0 3px ${l.ink},0 0 0 4px #ffffff` : chip
+  };
+}
+
+/** the same swatch as a style attribute, for the static pages */
+export const swatchCss = (l: LegendEntry): string => {
+  const s = swatchStyle(l);
+  return `background:${s.background};border:${s.border};box-shadow:${s.boxShadow}${s.borderRadius ? `;border-radius:${s.borderRadius}` : ''}`;
+};

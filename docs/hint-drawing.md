@@ -48,8 +48,9 @@ Every rule is numbered so a commit, a test or a review can cite it.
 ### Marks
 
 - **G1. Candidates only.** A hint marks candidates with discs behind the
-  digit, and solved cells by colouring their digit (as now). It never
-  tints a cell. The player's own layers (selection, peers, same digit,
+  digit, and a solved cell by colouring its digit and drawing a rounded
+  outline round it, so the shape says it as well as the colour (an
+  entered digit is already coloured). It never tints a cell. The player's own layers (selection, peers, same digit,
   their colours, errors) stay under everything and are untouched. House
   bands (G15) and set hulls (G16) are the only areas a hint shades.
 - **G2. Truth by colour and shape.** A chain node that is true under the
@@ -118,26 +119,35 @@ Every rule is numbered so a commit, a test or a review can cite it.
   group node is anchored at the member nearest the other end of the link
   (a centroid can fall in a cell that is not one of its members); HoDoKu
   anchors at a member too.
-- **G11. On top, with a halo.** Arrows are drawn last, over discs,
-  digits and grid lines, each with a halo in the board's background
-  colour so a line stays legible where it crosses a digit or a box line.
-  Round caps and joins.
-- **G12. No arrow inside a cell.** A link between two candidates of one
-  cell (a bivalue switch, an ALS digit change) draws no arrow: the false
-  ring and the true disc side by side say it. The walk still gives it a
-  frame and a sentence. The next arrow starts at the candidate the chain
-  leaves the cell by.
+- **G11. Over the lines and marks, under the digits.** The layers, from
+  the bottom: the player's own layers, bands, marks, solved-digit
+  outlines, grid lines, arrows and ties (every halo before any line),
+  digits, removal bars, start markers and walk numbers. An arrow crosses
+  box lines as HoDoKu's do, with a halo in the board's background colour,
+  and passes under a digit, so a digit it crosses stays whole and
+  readable (HoDoKu draws its arrows over the digits too, and loses some).
+  Round caps and joins; a weak link's dashes have square ends.
+- **G12. No arrow inside a cell.** A link whose two ends share a cell and
+  differ in digit (a bivalue switch; an ALS's change of digit, even where
+  the set spans other cells too) draws no arrow: the false ring and the
+  true disc side by side say it. The walk still gives it a frame and a
+  sentence. The next arrow starts at the candidate the chain leaves the
+  cell by. (Colouring's in-cell ties in 3D Medusa wait for phase 3.)
 - **G13. Ties stay quiet.** An undirected tie (a conjugate pair or a
   bivalue cell in colouring) is a thin straight line in the arrow colour
   at reduced opacity, no head, drawn only where the hint needs it (G19).
 - **G14. A start marker.** The first node of each branch carries a small
-  start marker beside its mark (not at the tail of the first drawn arrow:
-  after a switch inside the start cell, that tail is the second node); the
-  walk numbers arrows in reading order, as now.
+  start marker beside its mark, on its clearest side (not at the tail of
+  the first drawn arrow: after a switch inside the start cell, that tail
+  is the second node). A cluster of undirected ties has no reading order
+  and no marker. The walk numbers each arrow by the frame that adds it, so
+  the number on the board is the one the panel shows.
 - **G14a. Lines that survive a phone.** At a phone's 36-40 CSS pixels a
-  cell, a 0.03-cell arrow is a pixel and the removal bar less; on narrow
-  screens arrows, bars and rings are drawn thicker so none falls below
-  about 1.5 CSS pixels.
+  cell, a 0.03-cell arrow is a pixel and the removal bar less; on a board
+  narrower than 600 CSS pixels (measured on the board, not the window)
+  arrows, bars and rings are drawn thicker so none falls below about 1.5
+  CSS pixels, and a step thicker again under 330. The Learn diagrams,
+  small on every screen, draw their lines half again as thick.
 
 ### Areas
 
@@ -197,8 +207,14 @@ Every rule is numbered so a commit, a test or a review can cite it.
   equal: every node in the notation is drawn, every role drawn is in the
   legend, every link is in exactly one walk frame.
 - **G23. The legend speaks in shapes.** It shows a swatch for each mark
-  the hint uses: true disc, false ring, removed, placed, each role, solid
-  and dashed arrow, tie, start marker. Prose and notation can carry the
+  the hint uses, drawn like the mark: true disc, false ring, removed
+  (a barred ring), placed (a disc with an outer ring), each role (a disc;
+  the rounded outline where the role is drawn only on solved digits),
+  solid and dashed arrow, tie, start marker. It names only what the board
+  draws: a role every candidate of which became a removal or a placement
+  lends its words to that entry ("remove: the cell that would complete
+  the rectangle"). The marks and the legend both come from
+  `src/content/hintMarks.ts`, so they cannot disagree. Prose and notation can carry the
   same swatches inline ("if r5c1 is ◯ false, then r5c7 is ● true").
 - **G24. Notation.** Every chain hint shows its line in Eureka notation,
   the form the HoDoKu and Enjoy Sudoku community reads:
@@ -209,8 +225,12 @@ Every rule is numbered so a commit, a test or a review can cite it.
   diagrams (`src/content/boardSvg.ts`) and the intuition diagrams
   (`src/content/intuitionDiagrams.ts`) draw from one shared module that
   turns a step into a display list (marks, bands, hulls, arrows) with
-  geometry; each renderer only paints it in its own theme. Today they are
-  three separate implementations that differ in 25 ways.
+  geometry; each renderer only paints it in its own theme. Before this
+  work they were three separate implementations that differed in 25 ways;
+  since phase 1 the app board and the Learn diagrams share the marks
+  (`src/content/hintMarks.ts`), the geometry
+  (`src/content/hintGeometry.ts`) and the palette
+  (`src/content/hintPalette.ts`). The intuition diagrams join in phase 7.
 
 ## Truth: where it comes from
 
@@ -384,12 +404,16 @@ the values above are its final ones.
 ## Status
 
 - [ ] Phase 1: the board foundation. Built and green (tsc, unit and
-  browser tests), awaiting its refuting review: `src/content/hintGeometry.ts`
-  and `src/content/hintPalette.ts` with their tests, both renderers on
+  browser tests): `src/content/hintGeometry.ts`, `src/content/hintPalette.ts`
+  and `src/content/hintMarks.ts` with their tests, both renderers on
   them, the CSS tokens, `scripts/hint-gallery.ts` for looking at all 65
-  examples. To photograph the app's own board with an example's hint, a
-  scratch Playwright run on port 4174 opens each example's position link
-  (kept in the git-ignored `.vite/`).
+  examples. Review round 1's findings are fixed (geometry in ee03238; the
+  shared marks, the layer order, value outlines, frame-numbered walk
+  badges, legend swatches drawn like the marks, phone line widths, the
+  trainer's goal and the hint cleared when auto candidates switch in the
+  commit after it); round 2 next. To photograph the app's own board with
+  an example's hint, a scratch Playwright run on port 4174 opens each
+  example's position link (kept in the git-ignored `.vite/`).
 - [ ] Phase 2: truth. 2a done (commit 16556da): `truth: 'derived'` on
   every AIC-form finder, `src/engine/truth.ts` with its self-check, the
   examples refreshed, tests/truth.test.ts (518 chain steps of a solve batch,

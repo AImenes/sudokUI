@@ -248,7 +248,9 @@ export function chainStep(g: Grid, chain: Chain, opts: Drawing = {}): Step {
       : eliminations.length
         ? tr` One of the two ends is true, so every candidate that sees both is false: ${removed()}.`
         : tr` One of the two ends is true, but no candidate sees both yet: keep going, or start elsewhere.`;
-  const goal = (opts.goal ?? []).filter((c) => !eliminations.some((e) => same(e, c)));
+  // the goal still to reach: a candidate the chain has not yet removed and
+  // the player has not already removed or solved some other way
+  const goal = (opts.goal ?? []).filter((c) => isCand(g, c) && !eliminations.some((e) => same(e, c)));
   return {
     tech: chain.closed ? (allSameDigit ? 'X_CYCLES' : 'NICE_LOOP') : allSameDigit ? 'X_CHAIN' : 'AIC',
     placements: [],

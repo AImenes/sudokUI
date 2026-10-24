@@ -1114,6 +1114,10 @@ export const useGame = create<GameStore>()(
           // marks the machine just wrote ARE the remaining candidates — the
           // contract question answers itself
           ...(materialized ? { markContract: 'exhaustive' as MarkContract } : {}),
+          // a hint shown was found and drawn for the candidates the board
+          // showed before; the board now shows others
+          hint: null,
+          hintStage: 'hidden',
           notice
         });
       },
