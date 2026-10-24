@@ -58,15 +58,26 @@ export const TINTS: Record<string, string> = {
   place: '#dff2e0'
 };
 
+/** a short, stable name for a string (djb2) */
+const hash = (s: string) => {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+};
+
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const cellX = (cell: number) => L + (cell % 9) * S;
 const cellY = (cell: number) => L + Math.floor(cell / 9) * S;
 
-/** where a candidate sits inside its cell: the digit's fixed 3×3 spot */
-const candX = (cd: CellDigit) => cellX(cd.cell) + (((cd.digit - 1) % 3) + 0.5) * (S / 3);
-const candY = (cd: CellDigit) => cellY(cd.cell) + (Math.floor((cd.digit - 1) / 3) + 0.5) * (S / 3);
+/**
+ * where a candidate sits inside its cell: the digit's fixed 3×3 spot, on
+ * the app board's pitch (src/ui/boardLayout.ts), which leaves a mark at
+ * the cell's edge room for a placement's ring and a start dot
+ */
+const candX = (cd: CellDigit) => cellX(cd.cell) + (0.22 + ((cd.digit - 1) % 3) * 0.28) * S;
+const candY = (cd: CellDigit) => cellY(cd.cell) + (0.23 + Math.floor((cd.digit - 1) / 3) * 0.28) * S;
 
 /** where the diagram draws its candidates, for the hint geometry */
 const LAYOUT: Layout = {
@@ -180,7 +191,8 @@ export function boardSvg(example: Example, title: string): string {
         `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - MARK.edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(MARK.edge * s)}"/>`
       );
       if (kind === 'place') {
-        parts.push(`<circle cx="${x}" cy="${y}" r="${f(MARK.placeRing * s)}" fill="none" stroke="${ink}" stroke-width="${f(MARK.placeRingStroke * s * LINE)}"/>`);
+        // the ring a small board draws (G3, G14a): thick, and moved out so the gap to the disc stays
+        parts.push(`<circle cx="${x}" cy="${y}" r="${f(MARK.placeRingSmall * s)}" fill="none" stroke="${ink}" stroke-width="${f(MARK.placeRingSmallStroke * s)}"/>`);
       }
       texts.push(`<text x="${x}" y="${ty}" class="mk">${digit}</text>`);
     }
@@ -200,16 +212,27 @@ export function boardSvg(example: Example, title: string): string {
   }
 
   // the arrows (G7-G14), over the grid lines and the marks and under the
-  // digits, so a digit an arrow crosses stays whole: straight, in the one
-  // neutral ink, bent only round the hint's own marks; every halo first
+  // digits, with every digit cut out of them (the mask holds the same
+  // digits, black and thickened), so a digit an arrow crosses stays whole:
+  // straight, in the one neutral ink, bent only round the hint's own
+  // marks; every halo first
   const marked = markedCandidates(drawn);
   const placed = new Set(marked.filter((cd) => drawn.cands.get(cd.cell)?.get(cd.digit) === 'place').map((cd) => `${cd.cell}:${cd.digit}`));
   const layout: Layout = {
     ...LAYOUT,
-    radiusOf: (cd) => (placed.has(`${cd.cell}:${cd.digit}`) ? (MARK.placeRing + MARK.placeRingStroke / 2) * S : LAYOUT.r)
+    shown: (cd) => !Number(example.values[cd.cell]) && (example.cands[cd.cell] & (1 << (cd.digit - 1))) !== 0,
+    radiusOf: (cd) => (placed.has(`${cd.cell}:${cd.digit}`) ? (MARK.placeRingSmall + MARK.placeRingSmallStroke / 2) * S : LAYOUT.r)
   };
   const shapes = arrowShapes(step.links ?? [], layout, marked);
   const w = SIZES.stroke * s * LINE;
+  // the mask's name, unique to this diagram where several share a page
+  const mask = `knockout-${hash(`${example.puzzle}:${example.stepIndex}:${title}`)}`;
+  if (shapes.some((sh) => sh.kind !== 'none')) {
+    parts.push(
+      `<mask id="${mask}" maskUnits="userSpaceOnUse" x="0" y="0" width="${BOARD_SIZE}" height="${BOARD_SIZE}"><rect width="${BOARD_SIZE}" height="${BOARD_SIZE}" fill="#ffffff"/><g class="ko">${texts.join('')}</g></mask>`,
+      `<g mask="url(#${mask})">`
+    );
+  }
   for (const sh of shapes) {
     if (sh.kind === 'tie') {
       parts.push(
@@ -231,15 +254,17 @@ export function boardSvg(example: Example, title: string): string {
     );
     if (sh.head.length) parts.push(`<polygon points="${pointsOf(sh.head)}" fill="${P.arrow}"/>`);
   }
-  // the digits, then the bars over the removed ones, then the start dots
+  if (shapes.some((sh) => sh.kind !== 'none')) parts.push('</g>');
+  // the digits, then the bars over the removed ones, then the start dots,
+  // at the size a small board draws them
   parts.push(...texts, ...bars);
   for (const p of startMarkers(step.links ?? [], layout, marked)) {
-    parts.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(SIZES.dot * s)}" fill="${P.arrow}" stroke="#ffffff" stroke-width="${f(0.02 * s)}"/>`);
+    parts.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(SIZES.dotLarge * s)}" fill="${P.arrow}" stroke="#ffffff" stroke-width="${f(0.02 * s)}"/>`);
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOARD_SIZE} ${BOARD_SIZE}" role="img" aria-label="${esc(title)}">
 <title>${esc(title)}</title>
-<style>text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-anchor:middle}.giv{font-size:34px;font-weight:700;fill:#1b2233}.ent{font-size:34px;font-weight:600;fill:#2f6fd0}.cd{font-size:13px;fill:#5d6577}.mk{font-size:12.5px;font-weight:700;fill:${P.onFill}}.rm{font-size:12.5px;font-weight:700;fill:${P.inRing}}.lab{font-size:12px;fill:#7a8294}</style>
+<style>text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-anchor:middle}.giv{font-size:34px;font-weight:700;fill:#1b2233}.ent{font-size:34px;font-weight:600;fill:#2f6fd0}.cd{font-size:13px;fill:#5d6577}.mk{font-size:12.5px;font-weight:700;fill:${P.onFill}}.rm{font-size:12.5px;font-weight:700;fill:${P.inRing}}.lab{font-size:12px;fill:#7a8294}.ko text{fill:#000!important;stroke:#000;stroke-width:max(.12em,2.4px);stroke-linejoin:round}</style>
 <rect width="${BOARD_SIZE}" height="${BOARD_SIZE}" rx="8" fill="#f5f6fa"/>
 ${parts.join('\n')}
 </svg>
@@ -255,6 +280,8 @@ export interface LegendEntry {
   ink: string;
   /** drawn only on solved digits, as their rounded outline */
   onValue?: boolean;
+  /** drawn only as a house band */
+  onBand?: boolean;
 }
 
 /**
@@ -266,7 +293,7 @@ export interface LegendEntry {
  */
 export function legendOf(step: Step, values?: string): LegendEntry[] {
   const drawn = hintMarks(step, { solved: (cell) => !!values && Number(values[cell]) > 0 });
-  const { shown, onValue, intoRemove, intoPlace } = legendKinds(step, drawn);
+  const { shown, onValue, onBand, intoRemove, intoPlace } = legendKinds(step, drawn);
   const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
@@ -274,7 +301,7 @@ export function legendOf(step: Step, values?: string): LegendEntry[] {
   if (shown.has('elim')) out.push({ kind: 'elim', label: [tr`remove`, ...lent(intoRemove)].join(': '), colour: '#ffffff', ink: P.elim });
   if (COLOURING.has(step.tech)) return out;
   const role = (kind: Role, label: string, colour: string, ink: string) =>
-    out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : {}) });
+    out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });
   if (shown.has('primary')) role('primary', step.labels?.primary ?? tr`the pattern`, P.primary, P.primaryInk);
   if (shown.has('secondary')) role('secondary', step.labels?.secondary ?? tr`supporting cells`, P.secondary, P.secondaryInk);
   if (shown.has('fin')) role('fin', step.labels?.fins ?? tr`fin`, P.fin, P.finInk);
@@ -287,10 +314,20 @@ export function legendOf(step: Step, values?: string): LegendEntry[] {
  * edge for a role, a disc with an outer ring for a placement, a barred ring
  * for a removal
  */
-export function swatchStyle(l: LegendEntry): { background: string; border: string; boxShadow: string; borderRadius?: string } {
+export function swatchStyle(l: LegendEntry): { background: string; border: string; boxShadow: string; borderRadius?: string; width?: string } {
   const chip = '0 0 0 1.5px #ffffff';
   // a role drawn only on solved digits: the digit's rounded outline
   if (l.onValue) return { background: '#ffffff', border: `1.5px solid ${l.ink}`, boxShadow: chip, borderRadius: '3px' };
+  // a role drawn only as a house band: a small band, dashed for a cover
+  if (l.onBand) {
+    return {
+      background: `linear-gradient(${l.colour}4d,${l.colour}4d),#ffffff`,
+      border: `1.5px ${l.kind === 'secondary' ? 'dashed' : 'solid'} ${l.ink}`,
+      boxShadow: chip,
+      borderRadius: '2px',
+      width: '16px'
+    };
+  }
   if (l.kind === 'elim') {
     return {
       background: `linear-gradient(45deg,transparent 40%,${l.ink} 40%,${l.ink} 60%,transparent 60%),#ffffff`,
@@ -306,7 +343,7 @@ export function swatchStyle(l: LegendEntry): { background: string; border: strin
 }
 
 /** the same swatch as a style attribute, for the static pages */
-export const swatchCss = (l: LegendEntry): string => {
-  const s = swatchStyle(l);
-  return `background:${s.background};border:${s.border};box-shadow:${s.boxShadow}${s.borderRadius ? `;border-radius:${s.borderRadius}` : ''}`;
-};
+export const swatchCss = (l: LegendEntry): string =>
+  Object.entries(swatchStyle(l))
+    .map(([k, v]) => `${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}:${v}`)
+    .join(';');

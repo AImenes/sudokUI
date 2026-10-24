@@ -7,19 +7,16 @@
  * side by side; the start marker on each branch's first arrow.
  */
 import { describe, it, expect } from 'vitest';
-import { arrowShapes, startMarkers, insideOneCell, Layout, Point, SIZES, ArrowShape } from '../src/content/hintGeometry';
+import { arrowShapes, startMarkers, badgePoints, insideOneCell, Layout, Point, SIZES, ArrowShape } from '../src/content/hintGeometry';
 import type { CellDigit, ChainLink } from '../src/engine/steps';
+import { boardLayout } from '../src/ui/boardLayout';
+import { hintMarks, markedCandidates } from '../src/content/hintMarks';
+import { EXAMPLES } from '../src/content/examples';
+import { parseGrid } from '../src/engine/board';
+import { findNextStep, findAllSteps, applyStep } from '../src/engine/humanSolver';
 
 /** the app board's layout: 100 units a cell, a 4-unit margin, candidates on a 28 pitch */
-const layout: Layout = {
-  centre: ({ cell, digit }) => ({
-    x: 4 + (cell % 9) * 100 + 22 + ((digit - 1) % 3) * 28,
-    y: 4 + Math.floor(cell / 9) * 100 + 23 + Math.floor((digit - 1) / 3) * 28
-  }),
-  r: SIZES.r * 100,
-  cell: 100,
-  bounds: { x0: 0, y0: 0, x1: 908, y1: 908 }
-};
+const layout: Layout = boardLayout();
 
 const cd = (r: number, c: number, digit: number): CellDigit => ({ cell: (r - 1) * 9 + (c - 1), digit });
 const link = (from: CellDigit | CellDigit[], to: CellDigit | CellDigit[], strong = true, undirected = false): ChainLink => ({
@@ -29,6 +26,21 @@ const link = (from: CellDigit | CellDigit[], to: CellDigit | CellDigit[], strong
   ...(undirected ? { undirected: true } : {})
 });
 const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+/** the distance from a point to the segment a-b */
+function toSegment(p: Point, a: Point, b: Point): number {
+  const ab = { x: b.x - a.x, y: b.y - a.y };
+  const l2 = ab.x * ab.x + ab.y * ab.y || 1;
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / l2));
+  return dist(p, { x: a.x + ab.x * t, y: a.y + ab.y * t });
+}
+/** the distance from a point to an arrow as drawn: its shaft, read back from its path, and its head's edges */
+function toArrow(p: Point, s: Extract<ArrowShape, { kind: 'arrow' }>): number {
+  const line = samples(s.d);
+  let least = Infinity;
+  for (let k = 0; k + 1 < line.length; k++) least = Math.min(least, toSegment(p, line[k], line[k + 1]));
+  for (let k = 0; k < s.head.length; k++) least = Math.min(least, toSegment(p, s.head[k], s.head[(k + 1) % s.head.length]));
+  return least;
+}
 const arrow = (s: ArrowShape) => {
   if (s.kind !== 'arrow') throw new Error(`expected an arrow, got ${s.kind}`);
   return s;
@@ -136,8 +148,8 @@ describe('an arrow', () => {
     const other = cd(9, 9, 7);
     const starts = startMarkers([link(r1, r2), link(r2, r3, false), link(other, r3, false)], layout);
     expect(starts).toHaveLength(2);
-    // beside the mark, just clear of its rim
-    const beside = layout.r + SIZES.gap * 100 + (SIZES.dot * 100) / 2;
+    // beside the mark, just clear of its rim at the largest size it is drawn
+    const beside = layout.r + (SIZES.gap * 100) / 2 + SIZES.dotLarge * 100;
     expect(dist(starts[0], layout.centre(r1))).toBeCloseTo(beside, 5);
     expect(dist(starts[1], layout.centre(other))).toBeCloseTo(beside, 5);
     expect(startMarkers([link(r1, r2, true, true), link(r2, r3, true, true)], layout)).toEqual([]);
@@ -192,7 +204,8 @@ describe('what the review of phase 1 found', () => {
     const b = cd(1, 1, 1);
     const [start] = startMarkers([link(a, b)], layout, [a, b]);
     const s = arrow(arrowShapes([link(a, b)], layout, [a, b])[0]);
-    for (const p of s.trace) expect(dist(start, p)).toBeGreaterThan((SIZES.dot * 100) / 2);
+    // the dot's rim, at its largest, clear of the shaft's edge and the head
+    expect(toArrow(start, s)).toBeGreaterThan(SIZES.dotLarge * 100 + (SIZES.stroke * 100) / 2);
   });
 
   it('gives a chain of sets one start, going on through each set', () => {
@@ -202,6 +215,87 @@ describe('what the review of phase 1 found', () => {
     const Cy = [cd(1, 6, 7), cd(2, 6, 7)];
     const B = [cd(6, 6, 7)];
     expect(startMarkers([link(A, Cx, false), link(Cy, B, false)], layout, [...A, ...Cx, ...Cy, ...B])).toHaveLength(1);
+  });
+});
+
+describe('what the second review of phase 1 found', () => {
+  /** a step's marks and the board's layout for it, as the app board works them out */
+  function drawn(step: Parameters<typeof hintMarks>[0], solved: (cell: number) => boolean, cands?: number[]) {
+    const marks = hintMarks(step, { solved });
+    const marked = markedCandidates(marks);
+    const placed = new Set(marked.filter((m) => marks.cands.get(m.cell)?.get(m.digit) === 'place').map((m) => `${m.cell}:${m.digit}`));
+    // the digits the board shows: the candidates, and every digit the hint marks
+    const shown = cands
+      ? (cd: CellDigit) => !solved(cd.cell) && ((cands[cd.cell] & (1 << (cd.digit - 1))) !== 0 || !!marks.cands.get(cd.cell)?.has(cd.digit))
+      : undefined;
+    return { marked, layout: boardLayout(placed, shown) };
+  }
+
+  it('finds the arc that clears, turning near an end, before settling for the clearest that does not', () => {
+    // 4r2c1=4r6c1-8r6c1=8r2c1-4r2c1, removing 1, 2, 7, 9 from r6c1: the
+    // straight 4r2c1 => 4r6c1 meets its own 1 and 7 beside it, and the
+    // removals of r6c1 sit round its target
+    const g = parseGrid('52...6.........7.13...........4..8..6......5...........418.........3..2...87.....')!;
+    for (let k = 0; k < 3; k++) applyStep(g, findNextStep(g)!);
+    const step = findAllSteps(g).find((s) => s.tech === 'NICE_LOOP' && s.eliminations.length === 5)!;
+    expect(step).toBeDefined();
+    const { marked, layout: l } = drawn(step, (c) => g.values[c] > 0);
+    const shapes = arrowShapes(step.links!, l, marked);
+    shapes.forEach((s, i) => {
+      if (s.kind !== 'arrow') return;
+      const own = new Set([...step.links![i].from, ...step.links![i].to].map((cd) => `${cd.cell}:${cd.digit}`));
+      for (const m of marked) {
+        if (own.has(`${m.cell}:${m.digit}`)) continue;
+        expect(toArrow(l.centre(m), s), `link ${i + 1} and ${m.digit} in cell ${m.cell}`).toBeGreaterThan(l.radiusOf!(m));
+      }
+    });
+  });
+
+  it('keeps the walk numbers of two crossing arrows apart', () => {
+    // two diagonals crossing in r5c5: both middles fall on the crossing
+    const a = link(cd(1, 1, 5), cd(9, 9, 5));
+    const b = link(cd(1, 9, 5), cd(9, 1, 5), false);
+    const nodes = [cd(1, 1, 5), cd(9, 9, 5), cd(1, 9, 5), cd(9, 1, 5)];
+    const shapes = arrowShapes([a, b], layout, nodes);
+    const at = badgePoints(shapes, layout, nodes);
+    expect(dist(at.get(0)!, at.get(1)!)).toBeGreaterThanOrEqual(2 * SIZES.badgeLarge * 100);
+    // each on its own arrow
+    expect(toArrow(at.get(0)!, arrow(shapes[0]))).toBeLessThan(1);
+    expect(toArrow(at.get(1)!, arrow(shapes[1]))).toBeLessThan(1);
+  });
+
+  it('puts every example\'s start dots inside their cell, off its other digits and clear of the arrows', () => {
+    let dots = 0;
+    for (const [tech, ex] of Object.entries(EXAMPLES)) {
+      const step = ex!.step;
+      if (!step.links?.length) continue;
+      const { marked, layout: l } = drawn(step, (c) => ex!.values[c] !== '0', ex!.cands);
+      const shapes = arrowShapes(step.links, l, marked);
+      for (const p of startMarkers(step.links, l, marked)) {
+        dots++;
+        const col = Math.floor((p.x - l.bounds.x0) / l.cell);
+        const row = Math.floor((p.y - l.bounds.y0) / l.cell);
+        const x0 = l.bounds.x0 + col * l.cell;
+        const y0 = l.bounds.y0 + row * l.cell;
+        const dot = SIZES.dotLarge * l.cell;
+        // inside the cell, clear of its lines (a box line 6 units wide, a cell line 1.5)
+        const half = (box: boolean) => (box ? 3 : 0.75);
+        expect(p.x - x0, tech).toBeGreaterThan(dot + half(col % 3 === 0));
+        expect(x0 + l.cell - p.x, tech).toBeGreaterThan(dot + half(col % 3 === 2));
+        expect(p.y - y0, tech).toBeGreaterThan(dot + half(row % 3 === 0));
+        expect(y0 + l.cell - p.y, tech).toBeGreaterThan(dot + half(row % 3 === 2));
+        // off the digits the cell shows, but the node's own (the nearest)
+        const cell = row * 9 + col;
+        const nearest = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+          .filter((d) => l.shown!({ cell, digit: d }))
+          .map((d) => ({ d, at: dist(p, l.centre({ cell, digit: d })) }))
+          .sort((x, y) => x.at - y.at);
+        for (const { d, at } of nearest.slice(1)) expect(at, `${tech}: the ${d} of the cell`).toBeGreaterThan(dot + 0.3 * 28);
+        // clear of every arrow
+        for (const s of shapes) if (s.kind === 'arrow') expect(toArrow(p, s), tech).toBeGreaterThan(dot + (SIZES.stroke * l.cell) / 2);
+      }
+    }
+    expect(dots).toBeGreaterThan(15);
   });
 });
 

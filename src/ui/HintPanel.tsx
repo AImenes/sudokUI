@@ -96,7 +96,7 @@ export function ChainPanel() {
           <ul className="hint-legend">
             <li>
               <i className="swatch-primary" />
-              {t('your chain: solid for a strong link, dashed for a weak one')}
+              {t('your chain: solid into a candidate it makes true, dashed into one it makes false')}
             </li>
             {elims.length > 0 && (
               <li>
@@ -201,8 +201,10 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
     roles
       .map((r) => (r === 'primary' ? hint.labels?.primary : r === 'secondary' ? hint.labels?.secondary : hint.labels?.fins))
       .filter((s): s is string => !!s);
-  // a role drawn only on solved digits is shown by the digit's outline
-  const swatch = (role: Role) => `swatch-${role}${legend.onValue.has(role) ? ' on-value' : ''}`;
+  // a swatch is drawn like the role's mark: a disc, the solved digit's
+  // outline, or a house band
+  const swatch = (role: Role) =>
+    `swatch-${role}${legend.onValue.has(role) ? ' on-value' : legend.onBand.has(role) ? ' on-band' : ''}`;
 
   return (
     <div className="hint-panel" ref={panel} role="region" aria-label={t('Hint')} aria-live="polite">

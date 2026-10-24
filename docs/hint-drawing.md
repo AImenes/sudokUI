@@ -65,7 +65,8 @@ Every rule is numbered so a commit, a test or a review can cite it.
   the removal colour **with a diagonal bar through it** (it is false, and
   removed); a placement is a true disc **with an outer ring** (it is true,
   and written in). Neither may be told from a true or a false node by
-  colour alone.
+  colour alone. On a small board the outer ring is drawn thicker and moved
+  out by as much, so the gap between it and the disc stays visible.
 - **G4. Pattern roles keep their grammar.** Candidates that are part of a
   pattern but carry no truth claim (fish bases, a subset, a rectangle's
   floor, a wing's pivot) are filled discs in the role colours: pattern,
@@ -80,7 +81,9 @@ Every rule is numbered so a commit, a test or a review can cite it.
   Aligned Pair Exclusion, Exocet and Pattern Overlay ring their removals
   blue because the removals sit in the pattern list). A removed node that
   WAS a chain node keeps its truth ring under the removal mark, because
-  the walk names it.
+  the walk names it; until truth is drawn (phase 2b), it keeps the colour
+  the step names for it inside the removal ring, as Nishio's removed
+  assumption does, so the legend's words for that colour still find it.
 - **G6. Digits on discs.** A digit on a filled disc is near-black in every
   theme; a digit inside a ring is the theme's strongest ink (the givens'
   colour), in bold. Unmarked candidates stay as they are: nothing is dimmed
@@ -109,7 +112,10 @@ Every rule is numbered so a commit, a test or a review can cite it.
   segment passes within a disc radius of another mark of the same hint (a
   node, a removal, a member of a set hull), the arrow becomes one gentle
   arc to the side with more clearance, and the arc is checked to clear
-  those marks; if neither side clears, the clearest arc wins. Arcs stay
+  those marks along its segments and its head, not only at sample points.
+  The arc turns midway first, then nearer either end (an arrow can then
+  come in or leave steeply past a mark beside its node), the smallest bulge
+  first; if none clears, the clearest arc wins. Arcs stay
   on the board: HoDoKu's loop that seems to leave the grid is an accident
   of its fixed bend, which always bulges to the left of travel by a set
   amount and is never checked against what it passes
@@ -124,9 +130,13 @@ Every rule is numbered so a commit, a test or a review can cite it.
   outlines, grid lines, arrows and ties (every halo before any line),
   digits, removal bars, start markers and walk numbers. An arrow crosses
   box lines as HoDoKu's do, with a halo in the board's background colour,
-  and passes under a digit, so a digit it crosses stays whole and
-  readable (HoDoKu draws its arrows over the digits too, and loses some).
-  Round caps and joins; a weak link's dashes have square ends.
+  and passes under a digit: every digit is cut out of the arrows (a mask
+  holding the digits, thickened), so a digit an arrow crosses stays whole
+  and is never struck through, whatever the cell's colour, and an arrow
+  reads as passing behind it. HoDoKu draws its arrows over the digits and
+  loses some; the arrows share the givens' ink, so without the cut a 3
+  crossed at its edge reads as an 8. Round caps and joins; a weak link's
+  dashes have square ends.
 - **G12. No arrow inside a cell.** A link whose two ends share a cell and
   differ in digit (a bivalue switch; an ALS's change of digit, even where
   the set spans other cells too) draws no arrow: the false ring and the
@@ -137,17 +147,27 @@ Every rule is numbered so a commit, a test or a review can cite it.
   bivalue cell in colouring) is a thin straight line in the arrow colour
   at reduced opacity, no head, drawn only where the hint needs it (G19).
 - **G14. A start marker.** The first node of each branch carries a small
-  start marker beside its mark, on its clearest side (not at the tail of
-  the first drawn arrow: after a switch inside the start cell, that tail
-  is the second node). A cluster of undirected ties has no reading order
-  and no marker. The walk numbers each arrow by the frame that adds it, so
-  the number on the board is the one the panel shows.
+  start marker beside its mark (not at the tail of the first drawn arrow:
+  after a switch inside the start cell, that tail is the second node),
+  inside the node's cell, off the digits the cell shows and clear of the
+  arrows and the other marks: upper left when that is clear, then round
+  the clock, else wherever has most room (a cell line's real width
+  counts, so a dot boxed in may touch a thin cell line, never a box line
+  when it can help it). A cluster of undirected ties has no reading
+  order and no marker. The walk numbers each arrow by the frame that adds
+  it, so the number on the board is the one the panel shows; a number
+  sits on its arrow's shaft, as near the middle as keeps it clear of the
+  numbers placed before it, the marks and the start dots.
 - **G14a. Lines that survive a phone.** At a phone's 36-40 CSS pixels a
   cell, a 0.03-cell arrow is a pixel and the removal bar less; on a board
   narrower than 600 CSS pixels (measured on the board, not the window)
   arrows, bars and rings are drawn thicker so none falls below about 1.5
-  CSS pixels, and a step thicker again under 330. The Learn diagrams,
-  small on every screen, draw their lines half again as thick.
+  CSS pixels, and a step thicker again under 330; the start dots grow by
+  1.4 and the walk numbers by 1.6, and the geometry leaves room for them
+  at that size everywhere. A browser without container queries goes by
+  the window's width instead. The Learn diagrams, small on every screen,
+  draw their lines half again as thick and their start dots at the
+  larger size, and put their candidates on the app board's pitch.
 
 ### Areas
 
@@ -209,7 +229,8 @@ Every rule is numbered so a commit, a test or a review can cite it.
 - **G23. The legend speaks in shapes.** It shows a swatch for each mark
   the hint uses, drawn like the mark: true disc, false ring, removed
   (a barred ring), placed (a disc with an outer ring), each role (a disc;
-  the rounded outline where the role is drawn only on solved digits),
+  the rounded outline where the role is drawn only on solved digits; a
+  small band, dashed for a cover, where it is drawn only as a house band),
   solid and dashed arrow, tie, start marker. It names only what the board
   draws: a role every candidate of which became a removal or a placement
   lends its words to that entry ("remove: the cell that would complete
@@ -364,7 +385,7 @@ dark ones. Arrows are the only achromatic mark.
 | `--hint-true` (fill / ink) | #57c274 / #006c2f | #35a458 | disc r 13; light themes add a 2-unit edge in the ink |
 | `--hint-false` | #175bb7 | #7fbbff (HoDoKu's own off-blue) | ring r 11.5, stroke 3, inside tinted 0.10 / 0.16 |
 | `--hint-removed` | #bc072a | #fe9696 | the false ring in red plus a 45° bar (upper left to lower right, rim to rim, stroke 2.25, over the digit: the ISO "no" bar) |
-| placed | true fill + ring in true ink | same | disc plus a concentric ring r 16.5, stroke 2.5 |
+| placed | true fill + ring in true ink | same | disc plus a concentric ring r 16.5, stroke 2.5 (on a small board and in Learn r 17.5, stroke 4.5) |
 | `--hint-pattern` (fill / ink) | #498de5 / #175bb7 | #498de5 | disc |
 | `--hint-secondary` (acts-through) | #f8b93f / #805500 | #f8b93f | disc |
 | `--hint-fin` (exception) | #dec4fe / #7646a5 | #dec4fe | disc |
@@ -375,8 +396,10 @@ dark ones. Arrows are the only achromatic mark.
 | `--hint-on-fill` / `--hint-in-ring` (digits) | #10131c / #1b2233 | #10131c / #eef1f8 | weight 700 |
 
 Tie: arrow ink, width 2, opacity 0.5, halo 6 at 0.5. Start dot: r 4.5 in
-arrow ink with a 2-unit board-coloured stroke. Walk badge: r 10, arrow
-ink, numeral 13 in `--cell-bg`.
+arrow ink with a 2-unit board-coloured stroke (6.3 on a small board and
+in Learn). Walk badge: r 10, arrow ink, numeral 13 in `--cell-bg` (1.6
+times on a small board). Digits are cut out of the arrows with a
+0.12em stroke, at least 4 units.
 
 **The blue clash, resolved.** HoDoKu's blue is "false", ours is "the
 pattern". From now on blue is the pattern only as a filled disc and false
@@ -410,8 +433,18 @@ the values above are its final ones.
   examples. Review round 1's findings are fixed (geometry in ee03238; the
   shared marks, the layer order, value outlines, frame-numbered walk
   badges, legend swatches drawn like the marks, phone line widths, the
-  trainer's goal and the hint cleared when auto candidates switch in the
-  commit after it); round 2 next. To photograph the app's own board with
+  trainer's goal and the hint cleared when auto candidates switch in
+  8ebba30). Round 2's are fixed too: the digits cut out of the arrows,
+  arcs measured to their segments and turning nearer the ends, start
+  dots inside their cell and off its digits, walk numbers kept apart and
+  enlarged on phones, the placement ring on small boards, Nishio's
+  assumption keeping its colour, band swatches, the trainer's legend
+  (solid into a candidate it makes true, dashed into one it makes false),
+  the trainer's chain kept when auto candidates switch off, a fallback
+  for browsers without container queries; round 3 next. Over the chain
+  steps of 70 puzzles (16,448 arrows), 14 arrows come inside another
+  mark's rim, by 0.6 units at most, where three of the hint's own marks
+  box the start in. To photograph the app's own board with
   an example's hint, a scratch Playwright run on port 4174 opens each
   example's position link (kept in the git-ignored `.vite/`).
 - [ ] Phase 2: truth. 2a done (commit 16556da): `truth: 'derived'` on

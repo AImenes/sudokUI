@@ -129,8 +129,12 @@ describe('worked examples', () => {
   it('draw as well-formed SVG, one marker per highlighted candidate', () => {
     for (const tech of techs) {
       const ex = EXAMPLES[tech]!;
-      const svg = boardSvg(ex, `${TECHS[tech].name} example`);
-      expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
+      const whole = boardSvg(ex, `${TECHS[tech].name} example`);
+      expect(whole.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
+      // the digits cut out of the arrows, drawn again in the mask: once, when there are lines
+      const svg = whole.replace(/<mask [\s\S]*?<\/mask>/, '');
+      const lines = (svg.match(/<path d="[^"]+" fill="none"/g) ?? []).length;
+      expect((whole.match(/<mask /g) ?? []).length, tech).toBe(lines ? 1 : 0);
       expect(svg.trim().endsWith('</svg>')).toBe(true);
       expect(svg).not.toMatch(/NaN|undefined/);
       // one mark per highlighted candidate of an empty cell (a solved cell
@@ -156,7 +160,10 @@ describe('worked examples', () => {
       const placed = new Set(ex.step.placements.filter(empty).map(key));
       const named = new Set([...(ex.step.primary ?? []), ...(ex.step.secondary ?? []), ...(ex.step.fins ?? [])].map(key));
       const colouring = ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'].includes(tech);
-      const circlesOf = (k: string) => (removed.has(k) ? (colouring && named.has(k) ? 1 : 2) : placed.has(k) ? 2 : 1);
+      // a removal keeps a named colour inside its ring, one filled ring, in a
+      // colouring or on a chain node (Nishio's assumption)
+      const nodes = new Set((ex.step.links ?? []).flatMap((l) => [...l.from, ...l.to]).map(key));
+      const circlesOf = (k: string) => (removed.has(k) ? (named.has(k) && (colouring || nodes.has(k)) ? 1 : 2) : placed.has(k) ? 2 : 1);
       // the arrows: none for a link whose ends share a cell and differ in
       // digit (a switch inside a cell, or a set's change of digit: its
       // marks say it), and a dot beside the first node of each branch that

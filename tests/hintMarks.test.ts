@@ -54,6 +54,18 @@ describe('the marks', () => {
     expect(hintMarks({ ...s, tech: 'X_CHAIN' }, none).inside.size).toBe(0);
   });
 
+  it('keep the colour a step names for a removed chain node, as Nishio removes its own assumption', () => {
+    const links = [{ from: [A], to: [B], strong: true }];
+    const s = step({ tech: 'NISHIO_FORCING_CHAIN', primary: [A], links, eliminations: [A] });
+    const m = hintMarks(s, none);
+    expect(m.cands.get(A.cell)?.get(A.digit)).toBe('elimOn');
+    expect(m.inside.get(A.cell)?.get(A.digit)).toBe('primary');
+    // so the legend still finds the assumption's words
+    expect(legendKinds(s, m).intoRemove).toEqual([]);
+    // a named removal that is no chain node stays a plain ring
+    expect(hintMarks(step({ primary: [C], eliminations: [C] }), none).inside.size).toBe(0);
+  });
+
   it('while walking a chain, mark only the nodes of the links drawn so far', () => {
     const links = [
       { from: [A], to: [B], strong: true },
@@ -95,6 +107,12 @@ describe('the legend', () => {
     expect(legend.map((l) => !!l.onValue)).toEqual([true, false]);
     const banded = step({ units: [{ unit: 3, role: 'secondary' }] });
     expect(legendOf(banded).map((l) => l.kind)).toEqual(['secondary']);
+    // drawn only as a band, its swatch is a band
+    expect(legendOf(banded)[0].onBand).toBe(true);
+    // on solved digits and as a band: the digit's outline
+    const both = step({ secondary: [A], units: [{ unit: 3, role: 'secondary' }] });
+    const k = legendKinds(both, hintMarks(both, { solved: (c) => c === A.cell }));
+    expect([k.onValue.has('secondary'), k.onBand.has('secondary')]).toEqual([true, false]);
   });
 
   it('for a colouring names only the conclusion: the explanation names its colours', () => {
@@ -111,7 +129,8 @@ describe('the Learn diagrams', () => {
 
   it('draw in the spec’s order: marks, grid lines, arrows, digits, bars, start dots (G11)', () => {
     for (const tech of techs) {
-      const svg = boardSvg(EXAMPLES[tech]!, TECHS[tech].name);
+      // the digits cut out of the arrows are drawn in the mask too, before them
+      const svg = boardSvg(EXAMPLES[tech]!, TECHS[tech].name).replace(/<mask [\s\S]*?<\/mask>/, '');
       const dot = new RegExp(`<circle [^>]*fill="${LIGHT.arrow}"`);
       const marks = at(svg, /<circle /).filter((i) => !dot.test(svg.slice(i, svg.indexOf('>', i) + 1)));
       const grid = at(svg, /<line [^>]*stroke="#(?:b4bac8|23293a)"/);
@@ -144,6 +163,25 @@ describe('the Learn diagrams', () => {
 });
 
 describe('the store', () => {
+  it('keeps the chain trainer\'s drawing when auto candidates are switched off, the chain and its candidates unchanged', async () => {
+    const { useGame } = await import('../src/state/gameStore');
+    const { engineGrid } = await import('../src/state/gameStore');
+    useGame.getState().startGame('..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..', 196, 'Easy');
+    useGame.getState().startChain();
+    const g = engineGrid(useGame.getState().cells);
+    const cell = [...g.values].findIndex((v, i) => v === 0 && [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => g.cands[i] & (1 << (d - 1))).length === 2);
+    const [d1, d2] = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => g.cands[cell] & (1 << (d - 1)));
+    useGame.getState().chainTap(cell, d1);
+    useGame.getState().chainTap(cell, d2);
+    expect(useGame.getState().hint?.links).toHaveLength(1);
+    useGame.getState().toggleAutoCandidates();
+    expect(useGame.getState().autoCandidates).toBe(false);
+    expect(useGame.getState().chain?.nodes).toHaveLength(2);
+    expect(useGame.getState().hint?.links).toHaveLength(1);
+    expect(useGame.getState().hintStage).toBe('full');
+    useGame.getState().endChain();
+  });
+
   it('takes a hint away when auto candidates are switched, since the board then shows other candidates', async () => {
     const { useGame } = await import('../src/state/gameStore');
     useGame.getState().startGame('..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..', 196, 'Easy');

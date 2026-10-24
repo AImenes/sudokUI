@@ -115,9 +115,11 @@ export const MARK = {
   /** the removal bar, rim to rim at 45 degrees, over the digit */
   bar: 0.0919,
   barStroke: 0.0225,
-  /** a placement's outer ring */
+  /** a placement's outer ring; on a small board, thicker and moved out with it so the gap to the disc stays (G3, G14a) */
   placeRing: 0.165,
   placeRingStroke: 0.025,
+  placeRingSmall: 0.175,
+  placeRingSmallStroke: 0.045,
   /** a thin ring in the board's colour round every mark, so it stays distinct over the player's own cell colours */
   keyline: 0.015,
   /** the dash of an acts-through (cover) band's outline, so base and cover differ by shape too */

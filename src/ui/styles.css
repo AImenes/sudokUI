@@ -517,15 +517,77 @@ button {
   font-family: var(--font);
 }
 
+/* the digits, black and thickened, in the mask that cuts them out of a
+   hint's arrows (Grid.tsx; docs/hint-drawing.md G11): a digit an arrow
+   crosses stays whole, the line stopping just short of it */
+.board .knockout text,
+.board .knockout tspan {
+  fill: #000 !important;
+}
+.board .knockout text {
+  stroke: #000;
+  stroke-width: max(0.12em, 4px);
+  stroke-linejoin: round;
+}
+.board .knockout rect {
+  display: none;
+}
+
+/* a placement's outer ring on a small board: the second drawing, thicker
+   and moved out with its thickness, so the gap to the disc stays (G3) */
+.board .hint-place-small {
+  display: none;
+}
+
 /* a hint's lines on a small board (docs/hint-drawing.md G14a): measured
    by the board's own width, not the window's, so a phone on its side or a
    small window counts too. A board of about 360 CSS px holds 908 units, so
    the desktop widths (a 3-unit arrow, a 2.25-unit removal bar) would be a
    pixel or less; these keep every line at about 1.5 CSS px or more, and a
-   board under about 330 px gets a step more. CSS wins over the drawing's
-   own attributes, and a length here is in the board's units */
+   board under about 330 px gets a step more. The start dots and the walk's
+   numbers grow too, as far as the geometry leaves room for
+   (src/content/hintGeometry.ts SIZES.dotLarge, badgeLarge). CSS wins over
+   the drawing's own attributes, and a length here is in the board's units.
+   A browser without container queries goes by the window instead */
 .grid-wrap {
   container-type: inline-size;
+}
+@supports not (container-type: inline-size) {
+  @media (max-width: 600px) {
+    .board .chain-shaft {
+      stroke-width: 4.5px;
+    }
+    .board .chain-shaft.weak {
+      stroke-dasharray: 11px 8px;
+    }
+    .board .chain-halo {
+      stroke-width: 6.5px;
+    }
+    .board .chain-tie {
+      stroke-width: 3px;
+    }
+    .board .chain-tie-halo {
+      stroke-width: 6px;
+    }
+    .board .hint-bar {
+      stroke-width: 3.75px;
+    }
+    .board .hint-ring {
+      stroke-width: 4px;
+    }
+    .board .hint-place-wide {
+      display: none;
+    }
+    .board .hint-place-small {
+      display: inline;
+    }
+    .board .chain-start {
+      transform: scale(1.4);
+    }
+    .board .walk-badge-body {
+      transform: scale(1.6);
+    }
+  }
 }
 @container (max-width: 600px) {
   .board .chain-shaft {
@@ -548,6 +610,18 @@ button {
   }
   .board .hint-ring {
     stroke-width: 4px;
+  }
+  .board .hint-place-wide {
+    display: none;
+  }
+  .board .hint-place-small {
+    display: inline;
+  }
+  .board .chain-start {
+    transform: scale(1.4);
+  }
+  .board .walk-badge-body {
+    transform: scale(1.6);
   }
 }
 @container (max-width: 330px) {
@@ -1026,21 +1100,30 @@ button {
 }
 
 /* a legend's swatch is drawn like its mark on the board (docs/hint-drawing.md
-   G22): a disc with an edge for a role, a disc with an outer ring for a
-   placement, a barred ring for a removal */
+   G23): a disc with an edge for a role, a disc with an outer ring for a
+   placement, a barred ring for a removal; a role drawn only on solved
+   digits, the digit's rounded outline; a role drawn only as a house band,
+   a small band, its outline dashed for a cover */
 .hint-legend .swatch-primary {
-  background: var(--hint-primary);
-  border: 1px solid var(--hint-primary-ink);
+  --sw: var(--hint-primary);
+  --sw-ink: var(--hint-primary-ink);
 }
 
 .hint-legend .swatch-secondary {
-  background: var(--hint-secondary);
-  border: 1px solid var(--hint-secondary-ink);
+  --sw: var(--hint-secondary);
+  --sw-ink: var(--hint-secondary-ink);
 }
 
 .hint-legend .swatch-fin {
-  background: var(--hint-fin);
-  border: 1px solid var(--hint-fin-ink);
+  --sw: var(--hint-fin);
+  --sw-ink: var(--hint-fin-ink);
+}
+
+.hint-legend .swatch-primary,
+.hint-legend .swatch-secondary,
+.hint-legend .swatch-fin {
+  background: var(--sw);
+  border: 1px solid var(--sw-ink);
 }
 
 .hint-legend .swatch-place {
@@ -1057,11 +1140,30 @@ button {
   border: 1.5px solid var(--hint-elim);
 }
 
-/* a role drawn only on solved digits: the digit's rounded outline */
 .hint-legend .on-value {
   background: transparent;
   border-width: 1.5px;
   border-radius: 3px;
+}
+
+.hint-legend .on-band {
+  position: relative;
+  width: 16px;
+  background: transparent;
+  border-width: 1.5px;
+  border-radius: 2px;
+}
+
+.hint-legend .on-band::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--sw);
+  opacity: 0.3;
+}
+
+.hint-legend .swatch-secondary.on-band {
+  border-style: dashed;
 }
 
 .hint-actions {

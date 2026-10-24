@@ -7,9 +7,12 @@
 // that a removal wins over everything and a placement over everything but
 // a removal. A chain node takes the colour the step names for it, the
 // pattern's when it names none. A solved cell the step names shows the
-// colour on its digit. A colouring's removal keeps, inside its ring, the
-// colour the step names for it, so a colour wholly removed is still there
-// to be read; a colour only the chain default gave it is never shown.
+// colour on its digit. A removal keeps, inside its ring, the colour the
+// step names for it where that colour is a colouring's parity or the
+// candidate is one of the chain's own nodes (G5: Nishio's assumption,
+// removed, is still the assumption), so a colour wholly removed is still
+// there to be read; a colour only the chain default gave it is never
+// shown.
 import type { CellDigit, ChainLink, Step } from '../engine/steps';
 import type { Part } from '../engine/hintFrames';
 
@@ -82,14 +85,15 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
     }
     for (const cd of step.eliminations) mark(cd, 'elim');
     for (const cd of step.placements) mark(cd, 'place');
-    if (COLOURING.has(step.tech)) {
-      for (const cd of step.eliminations) {
-        const colour = namedRole(step, cd);
-        if (!colour || opts.solved(cd.cell)) continue;
-        cands.get(cd.cell)!.set(cd.digit, 'elimOn');
-        if (!inside.has(cd.cell)) inside.set(cd.cell, new Map());
-        inside.get(cd.cell)!.set(cd.digit, colour);
-      }
+    const colouring = COLOURING.has(step.tech);
+    const nodes = new Set((step.links ?? []).flatMap((l) => [...l.from, ...l.to]).map((cd) => `${cd.cell}:${cd.digit}`));
+    for (const cd of step.eliminations) {
+      const colour = namedRole(step, cd);
+      if (!colour || opts.solved(cd.cell)) continue;
+      if (!colouring && !nodes.has(`${cd.cell}:${cd.digit}`)) continue;
+      cands.get(cd.cell)!.set(cd.digit, 'elimOn');
+      if (!inside.has(cd.cell)) inside.set(cd.cell, new Map());
+      inside.get(cd.cell)!.set(cd.digit, colour);
     }
   }
   return { cands, inside, values };
@@ -100,27 +104,29 @@ export const markedCandidates = (marks: HintMarks): CellDigit[] =>
   [...marks.cands].flatMap(([cell, m]) => [...m.keys()].map((digit) => ({ cell, digit })));
 
 /**
- * What a legend shows (G22): the kinds the board draws, a role's band
- * counting for its role; the kinds drawn only on solved digits, whose
- * swatch is then the digit's rounded outline; and the roles the step names
- * whose every candidate was drawn as a removal or a placement, whose words
- * then belong to that entry ("remove: the cell that would complete the
+ * What a legend shows (G23): the kinds the board draws, and for each the
+ * shape it is drawn in, so the swatch can be drawn the same: on a
+ * candidate (a disc or a ring), only on solved digits (the digit's rounded
+ * outline), or only as a house band. And the roles the step names whose
+ * every candidate was drawn as a removal or a placement, whose words then
+ * belong to that entry ("remove: the cell that would complete the
  * rectangle")
  */
 export function legendKinds(
   step: Step,
   marks: HintMarks
-): { shown: Set<CandMark>; onValue: Set<CandMark>; intoRemove: Role[]; intoPlace: Role[] } {
+): { shown: Set<CandMark>; onValue: Set<CandMark>; onBand: Set<CandMark>; intoRemove: Role[]; intoPlace: Role[] } {
   const shown = new Set<CandMark>();
   for (const m of marks.cands.values()) for (const k of m.values()) shown.add(k === 'elimOn' ? 'elim' : k);
   for (const k of marks.inside.values()) for (const r of k.values()) shown.add(r);
-  for (const u of step.units ?? []) shown.add(u.role);
   const onValue = new Set<CandMark>();
   for (const k of marks.values.values()) {
     const kind = k === 'elimOn' ? 'elim' : k;
     if (!shown.has(kind)) onValue.add(kind);
   }
-  for (const k of onValue) shown.add(k);
+  const onBand = new Set<CandMark>();
+  for (const u of step.units ?? []) if (!shown.has(u.role) && !onValue.has(u.role)) onBand.add(u.role);
+  for (const k of [...onValue, ...onBand]) shown.add(k);
   const intoRemove: Role[] = [];
   const intoPlace: Role[] = [];
   const lists: [Role, CellDigit[] | undefined][] = [['primary', step.primary], ['secondary', step.secondary], ['fin', step.fins]];
@@ -130,5 +136,5 @@ export function legendKinds(
     if (list.every((cd) => kindOf(cd) === 'elim' || kindOf(cd) === 'elimOn')) intoRemove.push(role);
     else if (list.every((cd) => kindOf(cd) === 'place')) intoPlace.push(role);
   }
-  return { shown, onValue, intoRemove, intoPlace };
+  return { shown, onValue, onBand, intoRemove, intoPlace };
 }

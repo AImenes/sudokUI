@@ -1103,6 +1103,19 @@ export const useGame = create<GameStore>()(
           }
         }
         const materialized = s.autoCandidates && useSettings.getState().autoOffMaterialize;
+        // a hint shown was found and drawn for the candidates the board
+        // showed before; the board now shows others. The chain trainer's
+        // drawing is the player's own chain: it stays while every node is
+        // still a candidate (switching auto off changes none of them),
+        // drawn anew over the candidates as they now are, and starts over
+        // if one has gone
+        const g = engineGrid(cells);
+        const chainHolds = !!s.chain && s.chain.nodes.every((n) => !g.values[n.cell] && (g.cands[n.cell] & bit(n.digit)) !== 0);
+        const shown = !s.chain
+          ? { hint: null, hintStage: 'hidden' as const }
+          : chainHolds
+            ? { hint: s.hint ? chainStep(g, s.chain, { suggest: s.chainSuggest, goal: s.chainGoal ?? undefined }) : null }
+            : { chain: EMPTY_CHAIN, chainNote: t(CHAIN_INTRO), hint: null, hintStage: 'hidden' as const };
         set({
           autoCandidates: !s.autoCandidates,
           cells,
@@ -1114,10 +1127,7 @@ export const useGame = create<GameStore>()(
           // marks the machine just wrote ARE the remaining candidates — the
           // contract question answers itself
           ...(materialized ? { markContract: 'exhaustive' as MarkContract } : {}),
-          // a hint shown was found and drawn for the candidates the board
-          // showed before; the board now shows others
-          hint: null,
-          hintStage: 'hidden',
+          ...shown,
           notice
         });
       },
