@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { arrowShapes, startMarkers, badgePoints, insideOneCell, Layout, Point, SIZES, ArrowShape } from '../src/content/hintGeometry';
 import type { CellDigit, ChainLink } from '../src/engine/steps';
+import { alternatingLinks } from '../src/engine/steps';
 import { boardLayout, digitShown } from '../src/ui/boardLayout';
 import { hintMarks, markedCandidates, placedKeys } from '../src/content/hintMarks';
 import { EXAMPLES } from '../src/content/examples';
@@ -56,6 +57,17 @@ const arrow = (s: ArrowShape) => {
 /** points along a shape's shaft, read back from its path */
 function samples(d: string): Point[] {
   const n = d.match(/-?\d+(\.\d+)?/g)!.map(Number);
+  if (d.includes('C')) {
+    const [x0, y0, ax, ay, bx, by, x1, y1] = n;
+    return Array.from({ length: 41 }, (_, k) => {
+      const t = k / 40;
+      const s = 1 - t;
+      return {
+        x: s ** 3 * x0 + 3 * s * s * t * ax + 3 * s * t * t * bx + t ** 3 * x1,
+        y: s ** 3 * y0 + 3 * s * s * t * ay + 3 * s * t * t * by + t ** 3 * y1
+      };
+    });
+  }
   if (d.includes('Q')) {
     const [x0, y0, cx, cy, x1, y1] = n;
     return Array.from({ length: 41 }, (_, k) => {
@@ -461,6 +473,89 @@ describe('what the third review of phase 1 found', () => {
     expect(digitShown(cell([], [3, 7]), 8, null, new Set([8]))).toBe(true);
     // a solved cell shows no candidate
     expect(digitShown({ value: 4, corner: 0, center: 0 }, 4, null)).toBe(false);
+  });
+});
+
+describe('what the fifth review of phase 1 found', () => {
+  /** a step's marks and the app board's layout for it, with the position's candidates shown */
+  function drawn(step: Parameters<typeof hintMarks>[0], solved: (cell: number) => boolean, cands: number[]) {
+    const marks = hintMarks(step, { solved });
+    const marked = markedCandidates(marks);
+    const shown = (x: CellDigit) => !solved(x.cell) && ((cands[x.cell] & (1 << (x.digit - 1))) !== 0 || !!marks.cands.get(x.cell)?.has(x.digit));
+    return { marked, layout: boardLayout(placedKeys(marks), shown, solved) };
+  }
+  const named =(s: string): CellDigit => ({ cell: (Number(s[2]) - 1) * 9 + Number(s[4]) - 1, digit: Number(s[0]) });
+  /** a chain from its nodes, every digit the board shows one of its marks */
+  function chainOf(nodes: string[], extra: string[] = [], placed: string[] = []) {
+    const links = alternatingLinks(nodes.map((s) => [named(s)]));
+    const marks = [...new Map([...links.flatMap((l) => [...l.from, ...l.to]), ...extra.map(named)].map((x) => [`${x.cell}:${x.digit}`, x])).values()];
+    const l = boardLayout(new Set(placed.map((s) => `${named(s).cell}:${named(s).digit}`)), (x) => marks.some((m) => m.cell === x.cell && m.digit === x.digit));
+    return { links, marks, layout: l, shapes: arrowShapes(links, l, marks) };
+  }
+  const inside = (c: ReturnType<typeof chainOf>) =>
+    c.shapes.flatMap((s, i) => {
+      if (s.kind !== 'arrow') return [];
+      const own = new Set([...c.links[i].from, ...c.links[i].to].map((x) => `${x.cell}:${x.digit}`));
+      return c.marks.filter((m) => !own.has(`${m.cell}:${m.digit}`) && toArrow(c.layout.centre(m), s) < c.layout.radiusOf!(m)).map((m) => `link ${i + 1} and ${m.digit} in cell ${m.cell}`);
+    });
+
+  it('draws an arrow boxed in at both ends with two bends, leaving and arriving steeply, clear of every mark', () => {
+    // in r1c6 the 9 sits under the 6, in r9c6 the 3 over the target 6
+    const xy = chainOf(['5r1c2', '1r1c2', '1r1c8', '9r1c8', '9r1c6', '6r1c6', '6r9c6', '3r9c6', '3r9c5', '5r9c5'], ['5r9c2']);
+    expect(inside(xy)).toEqual([]);
+    expect(xy.shapes.some((s) => s.kind === 'arrow' && s.d.includes(' C '))).toBe(true);
+    // a discontinuous Nice Loop placing 7r7c7: 8r7c7 => 8r7c1 past the 9 beside its target
+    const loop = chainOf(['7r7c7', '8r7c7', '8r7c1', '9r7c1', '9r5c1', '8r5c1', '8r5c9', '8r8c9', '2r8c9', '2r8c7', '7r8c7', '7r7c7'], [], ['7r7c7']);
+    expect(inside(loop)).toEqual([]);
+  });
+
+  it('keeps a start dot off the ties, and nearer its own node than any other mark', () => {
+    let dots = 0;
+    for (const [tech, ex] of Object.entries(EXAMPLES)) {
+      const step = ex!.step;
+      if (!step.links?.length) continue;
+      const { marked, layout: l } = drawn(step, (c) => ex!.values[c] !== '0', ex!.cands);
+      const shapes = arrowShapes(step.links, l, marked);
+      for (const p of startMarkers(step.links, l, marked, shapes)) {
+        dots++;
+        for (const s of shapes) if (s.kind === 'tie') expect(toSegment(p, s.trace[0], s.trace[1]), `${tech}: the dot on a tie`).toBeGreaterThan(SIZES.dotLarge * 100 + 1.5);
+        const own = dist(p, l.centre(p.at)) - l.radiusOf!(p.at);
+        for (const m of marked) if (m.cell !== p.at.cell || m.digit !== p.at.digit) expect(dist(p, l.centre(m)) - l.radiusOf!(m), `${tech}: the dot nearer ${m.digit} of cell ${m.cell}`).toBeGreaterThan(own);
+      }
+    }
+    expect(dots).toBeGreaterThan(15);
+    // (7=4)r1c5 - 4r8c5, the 4 right above the 7: the dot is the 7's, not the 4's the first arrow leaves
+    const sw = chainOf(['7r1c5', '4r1c5', '4r8c5']);
+    const [p] = startMarkers(sw.links, sw.layout, sw.marks, sw.shapes);
+    expect(dist(p, sw.layout.centre(named('7r1c5')))).toBeLessThan(dist(p, sw.layout.centre(named('4r1c5'))));
+  });
+
+  it('leaves a short weak arrow a dash, a gap and a dash in sight beside its walk number', () => {
+    let weak = 0;
+    for (const [tech, ex] of Object.entries(EXAMPLES)) {
+      const step = ex!.step;
+      if (!step.links?.length) continue;
+      const { marked, layout: l } = drawn(step, (c) => ex!.values[c] !== '0', ex!.cands);
+      const shapes = arrowShapes(step.links, l, marked);
+      const at = badgePoints(shapes, l, marked, startMarkers(step.links, l, marked, shapes));
+      for (const s of shapes) {
+        if (s.kind !== 'arrow' || s.strong) continue;
+        weak++;
+        const p = at.get(s.link)!;
+        const line = samples(s.d);
+        // where along the shaft the number sits, if on it
+        let k = 0;
+        for (let j = 1; j < line.length; j++) if (dist(line[j], p) < dist(line[k], p)) k = j;
+        if (dist(line[k], p) > 2) continue; // beside the shaft
+        let before = 0;
+        for (let j = 1; j <= k; j++) before += dist(line[j], line[j - 1]);
+        let after = 0;
+        for (let j = k + 1; j < line.length; j++) after += dist(line[j], line[j - 1]);
+        const r = SIZES.badgeLarge * 100;
+        expect(Math.max(before - r, after - r), `${tech} link ${s.link + 1}`).toBeGreaterThanOrEqual(30 - 2);
+      }
+    }
+    expect(weak).toBeGreaterThan(10);
   });
 });
 

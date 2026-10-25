@@ -1111,11 +1111,15 @@ export const useGame = create<GameStore>()(
         // if one has gone
         const g = engineGrid(cells);
         const chainHolds = !!s.chain && s.chain.nodes.every((n) => !g.values[n.cell] && (g.cands[n.cell] & bit(n.digit)) !== 0);
+        // (drawn by the trainer's own rule, as chainTap draws it)
+        const drawn = !!s.chain && (s.chain.links.length > 0 || (s.chainSuggest && s.chain.nodes.length > 0));
         const shown = !s.chain
           ? { hint: null, hintStage: 'hidden' as const }
-          : chainHolds
-            ? { hint: s.hint ? chainStep(g, s.chain, { suggest: s.chainSuggest, goal: s.chainGoal ?? undefined }) : null }
-            : { chain: EMPTY_CHAIN, chainNote: t(CHAIN_INTRO), hint: null, hintStage: 'hidden' as const };
+          : chainHolds && drawn
+            ? { hint: chainStep(g, s.chain, { suggest: s.chainSuggest, goal: s.chainGoal ?? undefined }), hintStage: s.hintStage === 'walk' ? ('walk' as const) : ('full' as const) }
+            : chainHolds
+              ? { hint: null, hintStage: 'hidden' as const }
+              : { chain: EMPTY_CHAIN, chainNote: t(CHAIN_INTRO), hint: null, hintStage: 'hidden' as const };
         set({
           autoCandidates: !s.autoCandidates,
           cells,

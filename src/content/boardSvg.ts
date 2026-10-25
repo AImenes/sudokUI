@@ -264,7 +264,7 @@ export function boardSvg(example: Example, title: string): string {
   // the digits, then the bars over the removed ones, then the start dots,
   // at the size a small board draws them
   parts.push(...texts, ...bars);
-  for (const p of startMarkers(step.links ?? [], layout, marked)) {
+  for (const p of startMarkers(step.links ?? [], layout, marked, shapes)) {
     parts.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(SIZES.dotLarge * s)}" fill="${P.arrow}" stroke="#ffffff" stroke-width="${f(0.02 * s)}"/>`);
   }
 

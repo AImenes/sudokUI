@@ -36,7 +36,12 @@ export interface Layout {
   r: number;
   /** a mark's outer radius where it is larger than `r` (a placement's outer ring) */
   radiusOf?(cd: CellDigit): number;
-  /** a digit is drawn at its place in its cell, cut out of the arrows (G11): a head, a start dot and a walk number keep off it; every place counts when absent */
+  /**
+   * a digit is drawn at its place in its cell, cut out of the arrows (G11):
+   * a head, a start dot and a walk number keep off it. Absent, a head is
+   * steered off no digit, a start dot keeps off every place of its cell,
+   * and a walk number takes every place for an empty one
+   */
   shown?(cd: CellDigit): boolean;
   /** a cell holds a solved digit, drawn large in its middle, which a walk number keeps off */
   solved?(cell: number): boolean;
@@ -49,8 +54,8 @@ export interface Layout {
 export type ArrowShape =
   /** a link inside one cell, or between two digits of one set: no arrow (G12) */
   | { kind: 'none'; link: number }
-  /** a conjugate pair or a bivalue cell in a colouring: a quiet straight line */
-  | { kind: 'tie'; link: number; d: string }
+  /** a conjugate pair or a bivalue cell in a colouring: a quiet straight line, from end to end */
+  | { kind: 'tie'; link: number; d: string; trace: Point[] }
   | {
       kind: 'arrow';
       link: number;
@@ -168,6 +173,15 @@ const quad = (a: Point, c: Point, b: Point, t: number): Point => ({
   x: (1 - t) * (1 - t) * a.x + 2 * (1 - t) * t * c.x + t * t * b.x,
   y: (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * c.y + t * t * b.y
 });
+
+/** a point of the cubic curve a-c-d-b */
+const cubic = (a: Point, c: Point, d: Point, b: Point, t: number): Point => {
+  const s = 1 - t;
+  return {
+    x: s * s * s * a.x + 3 * s * s * t * c.x + 3 * s * t * t * d.x + t * t * t * b.x,
+    y: s * s * s * a.y + 3 * s * s * t * c.y + 3 * s * t * t * d.y + t * t * t * b.y
+  };
+};
 
 /** something an arrow must keep clear of: a mark, or another arrow's end */
 interface Obstacle {
@@ -306,7 +320,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       const p0 = add(add(a, mul(u, ra)), shift);
       const p1 = add(sub(b, mul(u, rb)), shift);
       chosen[i] = [p0, p1];
-      return { kind: 'tie', link: i, d: `M ${f(p0.x)} ${f(p0.y)} L ${f(p1.x)} ${f(p1.y)}` };
+      return { kind: 'tie', link: i, d: `M ${f(p0.x)} ${f(p0.y)} L ${f(p1.x)} ${f(p1.y)}`, trace: [p0, p1] };
     }
     // the other links' lines, but those joining the same two nodes, which are
     // drawn side by side on purpose
@@ -327,17 +341,28 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     // a candidate drawing, straight or one arc, scored by how clear it keeps
     // of the hint's other marks and the other arrows' ends, along its whole
     // length and its head (G9, G10)
-    const shape = (control: Point | null) => {
-      const tail = control ? add(a, mul(unit(sub(control, a)), ra)) : add(add(a, mul(u, ra)), shift);
-      const tip = control ? add(b, mul(unit(sub(control, b)), rb)) : add(sub(b, mul(u, rb)), shift);
-      const dir = unit(sub(tip, control ?? tail));
+    // a candidate drawing: straight (no control point), one arc (one), or,
+    // where marks box in both ends, an arc that leaves and arrives steeply,
+    // each end on its own (two)
+    const shape = (controls: Point[]) => {
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      const tail = first ? add(a, mul(unit(sub(first, a)), ra)) : add(add(a, mul(u, ra)), shift);
+      const tip = last ? add(b, mul(unit(sub(last, b)), rb)) : add(sub(b, mul(u, rb)), shift);
+      const dir = unit(sub(tip, last ?? tail));
       const hasHead = len(sub(tip, tail)) > headLength * 1.4;
       const head = hasHead ? headAt(tip, dir, layout) : [];
-      const shaft = Array.from({ length: 21 }, (_, k) => (control ? quad(tail, control, tip, k / 20) : add(tail, mul(sub(tip, tail), k / 20))));
+      const at = (s: number) =>
+        controls.length === 2
+          ? cubic(tail, controls[0], controls[1], tip, s)
+          : controls.length === 1
+            ? quad(tail, controls[0], tip, s)
+            : add(tail, mul(sub(tip, tail), s));
+      const shaft = Array.from({ length: 21 }, (_, k) => at(k / 20));
       const trace = [...shaft, ...head];
       // the head's room from the digits round its target (none: all clear)
       const headRoom = head.length ? Math.min(...round.map((o) => toPath(o.p, [], head) - o.r)) : Infinity;
-      return { tail, tip, dir, head, trace, shaft, control, room: clearanceOf(shaft, others, layout, margin, head), run: runOf(shaft), headRoom };
+      return { tail, tip, dir, head, trace, shaft, controls, mid: at(0.5), room: clearanceOf(shaft, others, layout, margin, head), run: runOf(shaft), headRoom };
     };
     type Shape = ReturnType<typeof shape>;
     // a drawing that keeps clear of the marks, runs along no other arrow and
@@ -353,7 +378,11 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       return Math.min(x.headRoom, 0) > Math.min(y.headRoom, 0) + 0.01;
     };
 
-    let best = shape(null);
+    // between two equally good drawings, the one bending towards the board's middle
+    const pickOf = (p: Shape, q: Shape) =>
+      better(p, q) ? p : better(q, p) ? q : len(sub(p.controls[0], centre)) <= len(sub(q.controls[0], centre)) ? p : q;
+
+    let best = shape([]);
     if (!ok(best)) {
       // one gentle arc, the smallest that does, on the side with more room
       // (the board's middle on a tie, so the choice never rests on
@@ -364,8 +393,25 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       for (const bulge of SIZES.bulges) {
         for (const at of [0.5, 0.78, 0.22, 0.9, 0.1, 0.65, 0.35, 1, 0]) {
           const base = add(a, mul(sub(b, a), at));
-          const [p, q] = [1, -1].map((side) => shape(add(add(base, mul(perp(u), side * bulge * c * 2)), shift)));
-          const pick = better(p, q) ? p : better(q, p) ? q : len(sub(p.control!, centre)) <= len(sub(q.control!, centre)) ? p : q;
+          const [p, q] = [1, -1].map((side) => shape([add(add(base, mul(perp(u), side * bulge * c * 2)), shift)]));
+          const pick = pickOf(p, q);
+          if (better(pick, best)) best = pick;
+          if (ok(best)) break;
+        }
+        if (ok(best)) break;
+      }
+    }
+    if (!ok(best)) {
+      // marks beside both ends on the line: one arc cannot leave steeply and
+      // arrive steeply too, so two control points, one off each end, on one
+      // side, leaning in, square or out; the smallest that does
+      for (const k of [0.4, 0.6, 0.8, 1.1, 1.5, 2]) {
+        for (const lean of [0, 0.35, -0.35]) {
+          const [p, q] = [1, -1].map((side) => {
+            const off = mul(perp(u), side * k * c);
+            return shape([add(add(add(a, off), mul(u, lean * k * c)), shift), add(add(sub(b, mul(u, lean * k * c)), off), shift)]);
+          });
+          const pick = pickOf(p, q);
           if (better(pick, best)) best = pick;
           if (ok(best)) break;
         }
@@ -373,14 +419,17 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       }
     }
 
-    const { tail, tip, dir, head, trace, control } = best;
+    const { tail, tip, dir, head, trace, controls, mid } = best;
     chosen[i] = best.shaft;
     // the shaft runs a little under the head so no seam shows between them
     const end = head.length ? sub(tip, mul(dir, headLength * 0.75)) : tip;
-    const d = control
-      ? `M ${f(tail.x)} ${f(tail.y)} Q ${f(control.x)} ${f(control.y)} ${f(end.x)} ${f(end.y)}`
-      : `M ${f(tail.x)} ${f(tail.y)} L ${f(end.x)} ${f(end.y)}`;
-    const mid = control ? quad(tail, control, tip, 0.5) : mul(add(tail, tip), 0.5);
+    const pt = (q: Point) => `${f(q.x)} ${f(q.y)}`;
+    const d =
+      controls.length === 2
+        ? `M ${pt(tail)} C ${pt(controls[0])} ${pt(controls[1])} ${pt(end)}`
+        : controls.length === 1
+          ? `M ${pt(tail)} Q ${pt(controls[0])} ${pt(end)}`
+          : `M ${pt(tail)} L ${pt(end)}`;
     return { kind: 'arrow', link: i, d, head, strong: l.strong, tail, mid, trace };
   });
 }
@@ -400,16 +449,25 @@ const partsOf = (s: Extract<ArrowShape, { kind: 'arrow' }>) => ({ shaft: s.trace
  * no reading order; a chain of sets goes on through each set, so it has one
  * start). The dot stays inside its node's cell and off the places of the
  * cell's other digits, so it never sits on a grid line or reads as part of
- * a pencilled digit, and keeps clear of the arrows and the other marks, at
- * the largest size it is drawn: upper left when that is clear, then round
- * the clock, else wherever has most room
+ * a pencilled digit, and keeps clear of the arrows, the ties and the other
+ * marks, at the largest size it is drawn, nearer its own node than any
+ * other mark, so it never seems to mark the node the first arrow leaves
+ * from after a switch: upper left when that is clear, then round the
+ * clock, else wherever has most room among the places that are its node's.
+ * `shapes` are the arrows already worked out, when the board has them
  */
-export function startMarkers(links: ChainLink[], layout: Layout, obstacles: CellDigit[] = []): (Point & { link: number; at: CellDigit })[] {
+export function startMarkers(
+  links: ChainLink[],
+  layout: Layout,
+  obstacles: CellDigit[] = [],
+  shapes: ArrowShape[] = arrowShapes(links, layout, obstacles)
+): (Point & { link: number; at: CellDigit })[] {
   const c = layout.cell;
   const dot = SIZES.dotLarge * c;
   // a cell line's half width, a box line's when the edge is one, and a little more
   const line = (box: boolean) => (box ? 0.03 : 0.0075) * c + 0.005 * c;
-  const arrows = arrowShapes(links, layout, obstacles).flatMap((s) => (s.kind === 'arrow' ? [partsOf(s)] : []));
+  const arrows = shapes.flatMap((s) => (s.kind === 'arrow' ? [partsOf(s)] : []));
+  const ties = shapes.flatMap((s) => (s.kind === 'tie' ? [s.trace] : []));
   const out: (Point & { link: number; at: CellDigit })[] = [];
   links.forEach((l, i) => {
     if (goesOn(links, i)) return;
@@ -428,15 +486,16 @@ export function startMarkers(links: ChainLink[], layout: Layout, obstacles: Cell
     const x0 = layout.bounds.x0 + col * c;
     const y0 = layout.bounds.y0 + row * c;
     const pitch = len(sub(layout.centre({ cell: at.cell, digit: 2 }), layout.centre({ cell: at.cell, digit: 1 })));
+    const marks = obstacles.filter((cd) => !own.has(key(cd))).map((cd) => ({ p: layout.centre(cd), r: radius(layout, cd) }));
     const others: Obstacle[] = [
-      ...obstacles.filter((cd) => !own.has(key(cd))).map((cd) => ({ p: layout.centre(cd), r: radius(layout, cd) })),
+      ...marks,
       ...[1, 2, 3, 4, 5, 6, 7, 8, 9]
         .filter((d) => d !== at.digit && (layout.shown?.({ cell: at.cell, digit: d }) ?? true))
         .map((d) => ({ p: layout.centre({ cell: at.cell, digit: d }), r: 0.3 * pitch }))
     ];
     // clear enough: the first such side in the order below wins
     const enough = (SIZES.gap * c) / 2;
-    let best: { p: Point; room: number } | null = null;
+    let best: { p: Point; room: number; owned: boolean } | null = null;
     for (let k = 0; k < 8; k++) {
       const angle = Math.PI * (1.25 + k / 4);
       const p = add(a, mul({ x: Math.cos(angle), y: Math.sin(angle) }, reach));
@@ -447,13 +506,17 @@ export function startMarkers(links: ChainLink[], layout: Layout, obstacles: Cell
           x0 + c - p.x - line(col % 3 === 2),
           p.y - y0 - line(row % 3 === 0),
           y0 + c - p.y - line(row % 3 === 2),
-          ...arrows.map((s) => toPath(p, s.shaft, s.head) - (SIZES.stroke * c) / 2)
+          ...arrows.map((s) => toPath(p, s.shaft, s.head) - (SIZES.stroke * c) / 2),
+          ...ties.map((tie) => toPath(p, tie) - 0.015 * c)
         ) - dot;
-      if (room >= enough) {
-        best = { p, room };
+      // the node's own: its rim nearer than any other mark's, by a margin
+      const owned = len(sub(p, a)) - radius(layout, at) + 0.02 * c <= Math.min(...marks.map((m) => len(sub(p, m.p)) - m.r));
+      if (room >= enough && owned) {
+        best = { p, room, owned };
         break;
       }
-      if (!best || room > best.room + 0.5) best = { p, room };
+      const rank = (x: { room: number; owned: boolean }) => (x.owned && x.room > -dot / 2 ? 1e6 : 0) + x.room;
+      if (!best || rank({ room, owned }) > rank(best) + 0.5) best = { p, room, owned };
     }
     out.push({ ...best!.p, link: i, at });
   });
@@ -521,11 +584,20 @@ export function badgePoints(
       const along = unit(sub(shaft[Math.min(k + 1, shaft.length - 1)], shaft[Math.max(k - 1, 0)]));
       return add(shaft[k], mul(perp(along), side * (r + SIZES.stroke * c)));
     };
+    // a weak arrow keeps a dash, a gap and a dash in sight on one side of
+    // its number, at the phone's dash, so the frame that brings it in still
+    // shows it is dashed (G8); a short one takes its number beside it
+    const along = shaft.map((_, k) => (k ? len(sub(shaft[k], shaft[k - 1])) : 0)).reduce<number[]>((acc, x, k) => [...acc, (acc[k - 1] ?? 0) + x], []);
+    const total = along[along.length - 1];
+    const dashes = (k: number) => s.strong || Math.max(along[k] - r, total - along[k] - r - SIZES.headLength * c) >= 0.3 * c;
     const spots = [
-      ...order.map((k) => ({ p: shaft[k], on: true })),
+      ...order.filter(dashes).map((k) => ({ p: shaft[k], on: true })),
       ...order.flatMap((k) => [beside(k, 1), beside(k, -1)].map((q) => ({ p: q, on: false })))
     ];
-    const otherShafts = arrows.filter((a) => a !== s).map((a) => partsOf(a).shaft);
+    const otherShafts = [
+      ...arrows.filter((a) => a !== s).map((a) => partsOf(a).shaft),
+      ...shapes.flatMap((x) => (x.kind === 'tie' ? [x.trace] : []))
+    ];
     // what a number must keep clear of: the numbers placed, the marks, the
     // dots, every head, the board's edge; and, beside its shaft, every other
     // arrow, so it is never nearer another arrow than its own

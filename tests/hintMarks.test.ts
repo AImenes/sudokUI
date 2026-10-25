@@ -228,6 +228,23 @@ describe('the store', () => {
     useGame.getState().endChain();
   });
 
+  it('switching auto candidates with the trainer open draws only what the trainer draws', async () => {
+    const { useGame, engineGrid } = await import('../src/state/gameStore');
+    useGame.getState().startGame('..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..', 196, 'Easy');
+    useGame.getState().startChain();
+    const g = engineGrid(useGame.getState().cells);
+    const cell = [...g.values].findIndex((v) => v === 0);
+    const d = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((x) => g.cands[cell] & (1 << (x - 1)))!;
+    // one node, no suggestions: the trainer draws nothing; a hint is asked for anyway
+    useGame.getState().chainTap(cell, d);
+    useGame.getState().requestHint();
+    useGame.getState().toggleAutoCandidates();
+    expect(useGame.getState().chain?.nodes).toHaveLength(1);
+    expect(useGame.getState().hint).toBeNull();
+    expect(useGame.getState().hintStage).toBe('hidden');
+    useGame.getState().endChain();
+  });
+
   it('takes a hint away when auto candidates are switched, since the board then shows other candidates', async () => {
     const { useGame } = await import('../src/state/gameStore');
     useGame.getState().startGame('..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..', 196, 'Easy');

@@ -119,7 +119,10 @@ Every rule is numbered so a commit, a test or a review can cite it.
   those marks along its segments and its head, not only at sample points.
   The arc turns midway first, then nearer either end (an arrow can then
   come in or leave steeply past a mark beside its node), the smallest bulge
-  first; if none clears, the clearest arc wins. A head also keeps off the
+  first. Where marks beside both ends box the arrow in, one arc cannot
+  leave steeply and arrive steeply too, so an arc with a bend off each end
+  is tried next (a cubic, its two control points on one side); if none
+  clears, the clearest drawing wins. A head also keeps off the
   other digits its target's cell shows, which are cut out of the arrows
   (G11): an arrow that would land its head on one comes in from a clear
   side instead, so it never seems to end on the wrong digit. No arrow runs
@@ -414,11 +417,11 @@ dark ones. Arrows are the only achromatic mark.
 | `--hint-fin` (exception) | #dec4fe / #7646a5 | #dec4fe | disc |
 | `--hint-als-1..5` (fill / light edge) | #ffd3b8/#9b5212, #dfe2fe/#5353ad, #a2b63c/#5b6704, #ec84b8/#9e366f, #a9926b/#745e39 | same fills, no edge | rounded square 24×24, rx 6 |
 | `--hint-arrow` (arrows, ties, start dot, walk badges) | #151a24 | #f2f4f9 | stroke 3; weak dash "8 6" with butt caps; head 14 long × 11 wide; tail and tip 3 units outside the marks' rims |
-| halo | `--cell-bg`, arrow width + 4, opacity 0.85 | same | drawn after the grid lines, with the arrow |
+| halo | `--cell-bg`, arrow width + 2 (`SIZES.halo`), opacity 0.75, the head outlined 2 wide | same | drawn after the grid lines, with the arrow; on a small board 6.5 round a 4.5 shaft |
 | band | role fill at alpha 0.07 | 0.10 | outline inset 3.5, stroke 3, rx 8, role ink at full opacity |
 | `--hint-on-fill` / `--hint-in-ring` (digits) | #10131c / #1b2233 | #10131c / #eef1f8 | weight 700 |
 
-Tie: arrow ink, width 2, opacity 0.5, halo 6 at 0.5. Start dot: r 4.5 in
+Tie: arrow ink, width 2, opacity 0.5, halo 5 at 0.5 (on a small board 3 and 6). Start dot: r 4.5 in
 arrow ink with a 2-unit board-coloured stroke (6.3 on a small board and
 in Learn). Walk badge: r 10, arrow ink, numeral 13 in `--cell-bg` (1.6
 times on a small board). Digits are cut out of the arrows with a
@@ -479,10 +482,20 @@ the values above are its final ones.
   beside their shaft, the player's own centre and edge marks known to the
   geometry, Digit Forcing's placed assumption keeping its colour, the
   fallback for a phone on its side, and tests that check every head and
-  the heads painted back into the mask; round 5 next. Over the chain
-  steps of 70 puzzles (16,448 arrows), 14 arrows come inside another
-  mark's rim, by 0.6 units at most, where three of the hint's own marks
-  box the start in. To photograph the app's own board with
+  the heads painted back into the mask (f5793cb). Round 5's are fixed:
+  an arrow boxed in at both ends takes a bend off each end, so it never
+  seems to leave or reach the wrong candidate (over the chain steps of 66
+  puzzles, 12,215 arrows, 58 needed it; 5 still come more than a unit
+  inside another mark's rim, by 3.5 at most, each an ALS arrow passing
+  another candidate of its own set in a cell of the link, which phase 4's
+  set hulls redraw); start dots keep off the ties and nearer their own
+  node than any other mark; a short weak arrow keeps a dash in sight
+  beside its walk number; the start dots reuse the arrows already worked
+  out; no mask when no line is drawn; the trainer's drawing follows its
+  own rule when auto candidates switch; the halo sizes here match the
+  code. Left for phase 7, low: walk numbers on an empty place in about
+  0.3% of arrows, and on a digit at a phone's size in about 1%, where no
+  spot on or beside a short shaft is clear. Round 6 next. To photograph the app's own board with
   an example's hint, a scratch Playwright run on port 4174 opens each
   example's position link (kept in the git-ignored `.vite/`).
 - [ ] Phase 2: truth. 2a done (commit 16556da): `truth: 'derived'` on

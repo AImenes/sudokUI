@@ -574,7 +574,7 @@ export function Grid() {
       digitShown(cells[cd.cell], cd.digit, canonical ? canonical.cands[cd.cell] : null, full.cands.get(cd.cell));
     const layout = boardLayout(placed, shown, solved);
     const shapes = arrowShapes(hint.links, layout, marks);
-    const dots = startMarkers(hint.links, layout, marks);
+    const dots = startMarkers(hint.links, layout, marks, shapes);
     return { shapes, dots, badges: badgePoints(shapes, layout, marks, dots) };
   }, [showHint, hint, cells, canonical]);
   const upTo = frame ? frame.links : (hint?.links?.length ?? 0);
@@ -1156,6 +1156,9 @@ export function Grid() {
         })
       : null; /* pause card is drawn as an HTML overlay below */
   const arrowsShown = !!drawing && upTo > 0 && (!paused || won);
+  // the lines and the mask that cuts the digits out of them, only when a
+  // line is drawn (a switch inside one cell draws none, but has its start dot)
+  const linesShown = arrowsShown && drawing!.shapes.some((s) => s.kind !== 'none' && s.link < upTo);
 
   // what a screen reader hears: the selected cell and what is in it, read
   // out as the selection moves (the arrow keys move it; digits enter)
@@ -1337,7 +1340,7 @@ export function Grid() {
             the digits, with every digit cut out of them (the mask holds the
             same digits, thickened, in black), so a digit an arrow crosses
             stays whole and is never struck through */}
-        {arrowsShown && (
+        {linesShown && (
           <>
             <mask id={maskId} maskUnits="userSpaceOnUse" x={0} y={0} width={SIZE * 9 + M * 2} height={SIZE * 9 + M * 2}>
               <rect width={SIZE * 9 + M * 2} height={SIZE * 9 + M * 2} fill="#fff" />
