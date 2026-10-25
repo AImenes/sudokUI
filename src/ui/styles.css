@@ -16,12 +16,25 @@
   --peer-bg: rgba(91, 143, 224, 0.08);
   --same-bg: rgba(230, 199, 76, 0.18);
   --error-bg: #e05563;
-  --hint-primary: #3f7fd4;
-  --hint-secondary: #d9a13c;
-  --hint-fin: #9b74d8;
-  --hint-elim: #e05563;
-  --hint-place: #52ab58;
-  --hint-chain: #d9a13c;
+  /* a hint's marks and arrows (docs/hint-drawing.md, Colours and sizes;
+     src/content/hintPalette.ts holds the same values, tested equal): a role
+     is a fill with a near-black digit, its ink the edge, which on a dark
+     board equals the fill; arrows are the one neutral ink */
+  --hint-primary: #498de5;
+  --hint-primary-ink: #498de5;
+  --hint-secondary: #f8b93f;
+  --hint-secondary-ink: #f8b93f;
+  --hint-fin: #dec4fe;
+  --hint-fin-ink: #dec4fe;
+  --hint-elim: #fe9696;
+  --hint-place: #35a458;
+  --hint-place-ink: #35a458;
+  --hint-false: #7fbbff;
+  --hint-arrow: #f2f4f9;
+  --hint-on-fill: #10131c;
+  --hint-in-ring: #eef1f8;
+  --hint-ring-tint: 0.16;
+  --hint-band-alpha: 0.1;
   /* --accent doubles as a text colour and as a button fill, and no single
      colour is readable in both roles: fills and their lettering, accent
      text and error text each get their own token (all 4.5:1 or better) */
@@ -48,6 +61,21 @@
   --sel-border: #3467c0;
   --peer-bg: rgba(52, 103, 192, 0.07);
   --same-bg: rgba(212, 168, 32, 0.22);
+  --hint-primary: #498de5;
+  --hint-primary-ink: #175bb7;
+  --hint-secondary: #f8b93f;
+  --hint-secondary-ink: #805500;
+  --hint-fin: #dec4fe;
+  --hint-fin-ink: #7646a5;
+  --hint-elim: #bc072a;
+  --hint-place: #57c274;
+  --hint-place-ink: #006c2f;
+  --hint-false: #175bb7;
+  --hint-arrow: #151a24;
+  --hint-on-fill: #10131c;
+  --hint-in-ring: #1b2233;
+  --hint-ring-tint: 0.1;
+  --hint-band-alpha: 0.07;
   --accent-fill: #3467c0;
   --on-accent: #ffffff;
   --accent-text: #3467c0;
@@ -385,7 +413,7 @@ button {
 
 .practice-badge {
   font-size: 13px;
-  color: var(--hint-secondary);
+  color: var(--hint-secondary-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -487,6 +515,157 @@ button {
 .board text {
   pointer-events: none;
   font-family: var(--font);
+}
+
+/* the digits, black and thickened, in the mask that cuts them out of a
+   hint's arrows (Grid.tsx; docs/hint-drawing.md G11): a digit an arrow
+   crosses stays whole, the line stopping just short of it */
+.board .knockout text,
+.board .knockout tspan {
+  fill: #000 !important;
+}
+.board .knockout text {
+  stroke: #000;
+  stroke-width: max(0.12em, 4px);
+  stroke-linejoin: round;
+}
+.board .knockout rect {
+  display: none;
+}
+
+/* a placement's outer ring on a small board: the second drawing, thicker
+   and moved out with its thickness, so the gap to the disc stays (G3) */
+.board .hint-place-small {
+  display: none;
+}
+
+/* a hint's lines on a small board (docs/hint-drawing.md G14a): measured
+   by the board's own width, not the window's, so a phone on its side or a
+   small window counts too. A board of about 360 CSS px holds 908 units, so
+   the desktop widths (a 3-unit arrow, a 2.25-unit removal bar) would be a
+   pixel or less; these keep every line at about 1.5 CSS px or more, and a
+   board under about 330 px gets a step more. The start dots and the walk's
+   numbers grow too, as far as the geometry leaves room for
+   (src/content/hintGeometry.ts SIZES.dotLarge, badgeLarge). CSS wins over
+   the drawing's own attributes, and a length here is in the board's units.
+   A browser without container queries goes by the window instead */
+.grid-wrap {
+  container-type: inline-size;
+}
+@supports not (container-type: inline-size) {
+  /* a phone's board is the window less the layout's 10 px each side, so a
+     board under 330 px is a window under about 350; held on its side, the
+     board is the window's height less 72 px (the landscape layout below) */
+  @media (max-width: 600px), (max-width: 1000px) and (max-height: 520px) and (orientation: landscape) {
+    .board .chain-shaft {
+      stroke-width: 4.5px;
+    }
+    .board .chain-shaft.weak {
+      stroke-dasharray: 11px 8px;
+    }
+    .board .chain-halo {
+      stroke-width: 6.5px;
+    }
+    .board .chain-tie {
+      stroke-width: 3px;
+    }
+    .board .chain-tie-halo {
+      stroke-width: 6px;
+    }
+    .board .hint-bar {
+      stroke-width: 3.75px;
+    }
+    .board .hint-ring {
+      stroke-width: 4px;
+    }
+    .board .hint-node {
+      stroke-width: 3.5px;
+    }
+    .board .hint-place-wide {
+      display: none;
+    }
+    .board .hint-place-small {
+      display: inline;
+    }
+    .board .chain-start {
+      transform: scale(1.4);
+    }
+    .board .walk-badge-body {
+      transform: scale(1.6);
+    }
+  }
+  @media (max-width: 350px), (max-width: 1000px) and (max-height: 401px) and (orientation: landscape) {
+    .board .chain-shaft {
+      stroke-width: 5px;
+    }
+    .board .chain-halo {
+      stroke-width: 7px;
+    }
+    .board .hint-bar {
+      stroke-width: 4.5px;
+    }
+    .board .hint-ring {
+      stroke-width: 4.5px;
+    }
+    .board .hint-node {
+      stroke-width: 4px;
+    }
+  }
+}
+@container (max-width: 600px) {
+  .board .chain-shaft {
+    stroke-width: 4.5px;
+  }
+  .board .chain-shaft.weak {
+    stroke-dasharray: 11px 8px;
+  }
+  .board .chain-halo {
+    stroke-width: 6.5px;
+  }
+  .board .chain-tie {
+    stroke-width: 3px;
+  }
+  .board .chain-tie-halo {
+    stroke-width: 6px;
+  }
+  .board .hint-bar {
+    stroke-width: 3.75px;
+  }
+  .board .hint-ring {
+    stroke-width: 4px;
+  }
+  .board .hint-node {
+    stroke-width: 3.5px;
+  }
+  .board .hint-place-wide {
+    display: none;
+  }
+  .board .hint-place-small {
+    display: inline;
+  }
+  .board .chain-start {
+    transform: scale(1.4);
+  }
+  .board .walk-badge-body {
+    transform: scale(1.6);
+  }
+}
+@container (max-width: 330px) {
+  .board .chain-shaft {
+    stroke-width: 5px;
+  }
+  .board .chain-halo {
+    stroke-width: 7px;
+  }
+  .board .hint-bar {
+    stroke-width: 4.5px;
+  }
+  .board .hint-ring {
+    stroke-width: 4.5px;
+  }
+  .board .hint-node {
+    stroke-width: 4px;
+  }
 }
 
 /* pause: a calm frosted card floating over the blank board */
@@ -941,11 +1120,79 @@ button {
 
 .hint-legend i {
   display: inline-block;
+  box-sizing: border-box;
   width: 10px;
   height: 10px;
   border-radius: 50%;
   margin-right: 5px;
   vertical-align: -1px;
+}
+
+/* a legend's swatch is drawn like its mark on the board (docs/hint-drawing.md
+   G23): a disc with an edge for a role, a disc with an outer ring for a
+   placement, a barred ring for a removal; a role drawn only on solved
+   digits, the digit's rounded outline; a role drawn only as a house band,
+   a small band, its outline dashed for a cover */
+.hint-legend .swatch-primary {
+  --sw: var(--hint-primary);
+  --sw-ink: var(--hint-primary-ink);
+}
+
+.hint-legend .swatch-secondary {
+  --sw: var(--hint-secondary);
+  --sw-ink: var(--hint-secondary-ink);
+}
+
+.hint-legend .swatch-fin {
+  --sw: var(--hint-fin);
+  --sw-ink: var(--hint-fin-ink);
+}
+
+.hint-legend .swatch-primary,
+.hint-legend .swatch-secondary,
+.hint-legend .swatch-fin {
+  background: var(--sw);
+  border: 1px solid var(--sw-ink);
+}
+
+.hint-legend .swatch-place {
+  background: var(--hint-place);
+  border: 1px solid var(--hint-place-ink);
+  box-shadow:
+    0 0 0 1.5px var(--panel),
+    0 0 0 3px var(--hint-place-ink);
+  margin: 0 8px 0 3px;
+}
+
+.hint-legend .swatch-elim {
+  background: linear-gradient(45deg, transparent 40%, var(--hint-elim) 40%, var(--hint-elim) 60%, transparent 60%);
+  border: 1.5px solid var(--hint-elim);
+}
+
+.hint-legend .on-value {
+  background: transparent;
+  border-width: 1.5px;
+  border-radius: 3px;
+}
+
+.hint-legend .on-band {
+  position: relative;
+  width: 16px;
+  background: transparent;
+  border-width: 1.5px;
+  border-radius: 2px;
+}
+
+.hint-legend .on-band::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--sw);
+  opacity: 0.3;
+}
+
+.hint-legend .swatch-secondary.on-band {
+  border-style: dashed;
 }
 
 .hint-actions {
@@ -2078,8 +2325,10 @@ kbd {
   font-size: 12.5px;
 }
 
+/* its swatches are drawn inline like the diagram's marks (boardSvg.ts swatchStyle) */
 .learn-legend i {
   display: inline-block;
+  box-sizing: border-box;
   width: 10px;
   height: 10px;
   border-radius: 50%;

@@ -404,7 +404,7 @@ const ui: Dictionary = {
   "your move": "te toca",
   "Previous": "Anterior",
   "Next": "Siguiente",
-  "your chain: solid for a strong link, dashed for a weak one": "tu cadena: línea continua para un enlace fuerte, discontinua para uno débil",
+  "your chain: solid into a candidate it makes true, dashed into one it makes false": "tu cadena: línea continua hacia un candidato que hace verdadero, discontinua hacia uno que hace falso",
   "removed by it": "lo que elimina",
   "Apply: remove {n}": "Aplicar: eliminar {n}",
   "Mark every candidate linked to the last one": "Marca todos los candidatos enlazados con el último",

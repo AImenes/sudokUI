@@ -8,8 +8,8 @@ export interface CellDigit {
 /**
  * One arrow of a chain visualisation. `from` and `to` are candidate sets —
  * a single candidate for ordinary nodes, several for group/ALS nodes (the
- * arrow anchors at their centroid). Strong links draw solid, weak dashed,
- * following HoDoKu's convention.
+ * arrow is joined at the member nearest the other end; docs/hint-drawing.md
+ * G10). Strong links draw solid, weak dashed, following HoDoKu's convention.
  */
 export interface ChainLink {
   from: CellDigit[];
@@ -90,5 +90,16 @@ export interface Step {
   chainCells?: number[];
   /** candidate-anchored arrows; when present they replace `chainCells` */
   links?: ChainLink[];
+  /**
+   * How the truth of the chain's nodes is read (docs/hint-drawing.md,
+   * "Truth: where it comes from"); absent for a pattern, which claims none.
+   * 'derived': an AIC-form chain, whose links alternate as used, so a
+   * strong link leaves a false node for a true one and a weak link a true
+   * node for a false one (src/engine/truth.ts). Never inferred from `tech`:
+   * the chain trainer reuses chain techniques' names, and says 'derived'
+   * itself, drawing each link as the kind it is used as (strong at the even
+   * links, weak at the odd ones), whatever the pair's own kind.
+   */
+  truth?: 'derived';
   description: string;
 }

@@ -412,7 +412,10 @@ test.describe('the chain trainer', () => {
     await tap(0, 5);
     await expect(panel).toContainText('Strong link');
     await expect(panel).toContainText('holds only 4 and 5');
-    expect(await page.locator('svg.board .chain-arrows g path').count()).toBe(2);
+    // a link inside one cell draws no arrow: its two marks say it
+    // (docs/hint-drawing.md G12), and the start dot shows where it begins
+    expect(await page.locator('svg.board .chain-arrows g path').count()).toBe(0);
+    await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
     await page.keyboard.press('Backspace');
     await expect(panel).toContainText('1 candidate');
     await page.keyboard.press('Escape');

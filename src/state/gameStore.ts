@@ -1103,6 +1103,23 @@ export const useGame = create<GameStore>()(
           }
         }
         const materialized = s.autoCandidates && useSettings.getState().autoOffMaterialize;
+        // a hint shown was found and drawn for the candidates the board
+        // showed before; the board now shows others. The chain trainer's
+        // drawing is the player's own chain: it stays while every node is
+        // still a candidate (switching auto off changes none of them),
+        // drawn anew over the candidates as they now are, and starts over
+        // if one has gone
+        const g = engineGrid(cells);
+        const chainHolds = !!s.chain && s.chain.nodes.every((n) => !g.values[n.cell] && (g.cands[n.cell] & bit(n.digit)) !== 0);
+        // (drawn by the trainer's own rule, as chainTap draws it)
+        const drawn = !!s.chain && (s.chain.links.length > 0 || (s.chainSuggest && s.chain.nodes.length > 0));
+        const shown = !s.chain
+          ? { hint: null, hintStage: 'hidden' as const }
+          : chainHolds && drawn
+            ? { hint: chainStep(g, s.chain, { suggest: s.chainSuggest, goal: s.chainGoal ?? undefined }), hintStage: s.hintStage === 'walk' ? ('walk' as const) : ('full' as const) }
+            : chainHolds
+              ? { hint: null, hintStage: 'hidden' as const }
+              : { chain: EMPTY_CHAIN, chainNote: t(CHAIN_INTRO), hint: null, hintStage: 'hidden' as const };
         set({
           autoCandidates: !s.autoCandidates,
           cells,
@@ -1114,6 +1131,7 @@ export const useGame = create<GameStore>()(
           // marks the machine just wrote ARE the remaining candidates — the
           // contract question answers itself
           ...(materialized ? { markContract: 'exhaustive' as MarkContract } : {}),
+          ...shown,
           notice
         });
       },

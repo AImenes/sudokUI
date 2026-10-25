@@ -129,12 +129,27 @@ describe('worked examples', () => {
   it('draw as well-formed SVG, one marker per highlighted candidate', () => {
     for (const tech of techs) {
       const ex = EXAMPLES[tech]!;
-      const svg = boardSvg(ex, `${TECHS[tech].name} example`);
-      expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
+      const whole = boardSvg(ex, `${TECHS[tech].name} example`);
+      expect(whole.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
+      // the digits cut out of the arrows, drawn again in the mask: once, when there are lines
+      const mask = whole.match(/<mask [\s\S]*?<\/mask>/)?.[0] ?? '';
+      const svg = whole.replace(/<mask [\s\S]*?<\/mask>/, '');
+      const lines = (svg.match(/<path d="[^"]+" fill="none"/g) ?? []).length;
+      expect((whole.match(/<mask /g) ?? []).length, tech).toBe(lines ? 1 : 0);
+      // and every head painted back, white, after the digits, so no head is cut
+      const heads = [...svg.matchAll(/<polygon points="([^"]+)" fill="#151a24"\/>/g)].map((m) => m[1]);
+      const back = [...mask.matchAll(/<polygon points="([^"]+)" fill="#ffffff"/g)].map((m) => m[1]);
+      expect(back, tech).toEqual(heads);
+      if (heads.length) expect(mask.indexOf('<polygon'), tech).toBeGreaterThan(mask.indexOf('</g>'));
       expect(svg.trim().endsWith('</svg>')).toBe(true);
       expect(svg).not.toMatch(/NaN|undefined/);
-      // one marker per highlighted candidate of an empty cell (a solved
-      // cell shows its colour on the digit), plus the dot where a chain starts
+      // one mark per highlighted candidate of an empty cell (a solved cell
+      // shows its colour on the digit; docs/hint-drawing.md G1-G5): a disc
+      // for a role, a disc and an outer ring for a placement, a tinted ring
+      // for a removal (a colouring's removal fills its ring with the colour
+      // it carried), and a bar over each removed digit
+      const key = (cd: { cell: number; digit: number }) => `${cd.cell}:${cd.digit}`;
+      const empty = (cd: { cell: number }) => ex.values[cd.cell] === '0';
       const marked = new Set(
         [
           ...(ex.step.primary ?? []),
@@ -144,14 +159,43 @@ describe('worked examples', () => {
           ...ex.step.placements,
           ...(ex.step.links ?? []).flatMap((l) => [...l.from, ...l.to])
         ]
-          .filter((cd) => ex.values[cd.cell] === '0')
-          .map((cd) => `${cd.cell}:${cd.digit}`)
+          .filter(empty)
+          .map(key)
       );
-      const links = ex.step.links?.length ?? 0;
-      const arrows = (ex.step.links ?? []).filter((l) => !l.undirected).length;
-      expect((svg.match(/<circle /g) ?? []).length, tech).toBe(marked.size + (arrows ? 1 : 0));
-      // every link is drawn twice: a halo under the arrow
-      expect((svg.match(/<path d="[^"]+" fill="none"/g) ?? []).length, tech).toBe(2 * links);
+      const removed = new Set(ex.step.eliminations.filter(empty).map(key));
+      const placed = new Set(ex.step.placements.filter(empty).map(key));
+      const named = new Set([...(ex.step.primary ?? []), ...(ex.step.secondary ?? []), ...(ex.step.fins ?? [])].map(key));
+      const colouring = ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'].includes(tech);
+      // a removal keeps a named colour inside its ring, one filled ring, in a
+      // colouring or on a chain node (Nishio's assumption)
+      const nodes = new Set((ex.step.links ?? []).flatMap((l) => [...l.from, ...l.to]).map(key));
+      const circlesOf = (k: string) => (removed.has(k) ? (named.has(k) && (colouring || nodes.has(k)) ? 1 : 2) : placed.has(k) ? 2 : 1);
+      // the arrows: none for a link whose ends share a cell and differ in
+      // digit (a switch inside a cell, or a set's change of digit: its
+      // marks say it), and a dot beside the first node of each branch that
+      // infers something (a cluster of ties has no reading order; a chain
+      // goes on through a node it reached, or through another digit of a
+      // set it reached)
+      const links = ex.step.links ?? [];
+      const share = (a: { cell: number }[], b: { cell: number }[]) => a.some((x) => b.some((y) => y.cell === x.cell));
+      const digits = (node: { digit: number }[]) => [...new Set(node.map((cd) => cd.digit))].sort().join(',');
+      const silent = (l: (typeof links)[number]) => share(l.from, l.to) && digits(l.from) !== digits(l.to);
+      const drawn = links.filter((l) => !silent(l));
+      let starts = 0;
+      let counted = false;
+      links.forEach((l, i) => {
+        const continues = i > 0 && share(links[i - 1].to, l.from);
+        if (!continues) counted = false;
+        if (l.undirected || counted) return;
+        starts++;
+        counted = true;
+      });
+      const circles = [...marked].reduce((n, k) => n + circlesOf(k), 0) + starts;
+      expect((svg.match(/<circle /g) ?? []).length, tech).toBe(circles);
+      // the grid's 20 lines, and one bar over each removed candidate
+      expect((svg.match(/<line /g) ?? []).length, tech).toBe(20 + removed.size);
+      // every drawn link twice: a halo under the line
+      expect((svg.match(/<path d="[^"]+" fill="none"/g) ?? []).length, tech).toBe(2 * drawn.length);
       const givens = ex.puzzle.replace(/[^1-9]/g, '').length;
       expect((svg.match(/class="giv"/g) ?? []).length, tech).toBe(givens);
     }

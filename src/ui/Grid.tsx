@@ -1,15 +1,24 @@
-// The SVG board. Renders per cell, back to front: background → user colours →
-// peer/same-digit tints → hint tint → selection → error tint, then the cell
-// content (big digit, corner marks at digit-bound 3×3 positions, centre-mark
-// line, or the auto-candidate 3×3 view), then hint candidate circles, chain
-// arrows and grid lines. Pointer events implement drag multi-select.
+// The SVG board. Renders back to front (docs/hint-drawing.md G11): per cell
+// the background → user colours → peer/same-digit tints → selection →
+// error tint; then a hint's house bands, its marks and its solved-digit
+// outlines; the grid lines; a hint's arrows and ties (halos first), with
+// every digit cut out of them; the cell content (the big digit, corner
+// marks at digit-bound 3×3 positions, the centre-mark line, or the
+// auto-candidate 3×3 view); the bars over removed candidates; and last the
+// start dots and the walk's numbers. Pointer events implement drag
+// multi-select.
 import React, { useEffect, useRef } from 'react';
 import { useGame, engineGrid, CellState } from '../state/gameStore';
 import { useSettings } from '../state/settings';
 import { bivaluePairs } from '../state/bivalue';
 import { bit, digitsOf, PEERS, UNITS } from '../engine/board';
-import { ChainLink, CellDigit } from '../engine/steps';
-import { walkFrames, Part } from '../engine/hintFrames';
+import { CellDigit } from '../engine/steps';
+import { walkFrames } from '../engine/hintFrames';
+import { arrowShapes, startMarkers, badgePoints, pointsOf, SIZES } from '../content/hintGeometry';
+import type { ArrowShape, Point } from '../content/hintGeometry';
+import { SIZE, M, candX, candY, boardLayout, digitShown } from './boardLayout';
+import { MARK } from '../content/hintPalette';
+import { frameMarks, markedCandidates as markedOf, placedKeys } from '../content/hintMarks';
 import { useT, msg, translator } from '../content/i18n';
 import type { Translator } from '../content/i18n';
 import { touchIntent, cellsBetween, INTENT_MS, SLOP_PX } from './touchIntent';
@@ -18,8 +27,6 @@ import type { TouchIntent, ScrollRoom } from './touchIntent';
 /** the tip that names multi-select has been shown once this session */
 let dragTipShown = false;
 
-const SIZE = 100;
-const M = 4; // outer margin
 const PALETTE = [
   '#e05563',
   '#e8934a',
@@ -32,178 +39,106 @@ const PALETTE = [
   '#9aa3b5'
 ];
 
-/** candidate position inside a cell (3x3 layout, digit 1 top-left) */
-const candX = (d: number) => 22 + ((d - 1) % 3) * 28;
-const candY = (d: number) => 30 + Math.floor((d - 1) / 3) * 28;
+/** a hint's arrows, start dots and walk numbers, worked out once for the whole hint */
+interface Drawing {
+  shapes: ArrowShape[];
+  dots: (Point & { link: number })[];
+  badges: Map<number, Point>;
+}
 
 /**
- * HoDoKu-style chain arrows: each link is an arrow rooted at the candidate
- * glyph it argues from and pointing at the one it argues to (group/ALS nodes
- * anchor at their centroid). Strong links draw solid, weak links dashed.
- * Arrows are trimmed to the hint-circle edge and bow away from any other
- * chain node their straight path would cross, so they never cover a
- * candidate they are not about.
+ * A hint's arrows (docs/hint-drawing.md G7-G14), straight from mark to
+ * mark in the one neutral ink, solid into a true node and dashed into a
+ * false one, bent only round the hint's own marks
+ * (src/content/hintGeometry.ts), worked out once for the whole hint (a
+ * `Drawing`) and drawn up to the walk's frame. Drawn in two layers: the lines over the
+ * grid lines and the marks but under the digits, every halo before every
+ * line, with the digits cut out of them (`mask`), so a digit an arrow
+ * crosses stays whole; and the start dots and the walk's numbers over
+ * everything, each in a group a small board enlarges (styles.css). A link
+ * inside one cell draws nothing, its two marks say it.
  */
 function ChainArrows({
-  links,
-  cellCands,
-  numbered = false
+  layer,
+  drawing,
+  upTo,
+  frameOf,
+  mask
 }: {
-  links: ChainLink[];
-  /** digits currently displayed in a cell, for routing in-cell arcs */
-  cellCands: (cell: number) => number[];
-  /** badge each link with its place in the reading order (the walk) */
-  numbered?: boolean;
+  layer: 'lines' | 'labels';
+  drawing: Drawing;
+  /** how many links are drawn, from the first: all of them, or those the walk's frame has reached */
+  upTo: number;
+  /** the walk's frame that brings in a link, when walking: each arrow wears its number */
+  frameOf?: (link: number) => number;
+  /** the mask that cuts the digits out of the lines */
+  mask?: string;
 }) {
-  const R = 17; // hint circle radius + breathing room
-
-  const anchor = (node: CellDigit[]) => {
-    let x = 0;
-    let y = 0;
-    for (const cd of node) {
-      x += M + (cd.cell % 9) * SIZE + candX(cd.digit);
-      y += M + Math.floor(cd.cell / 9) * SIZE + candY(cd.digit) - 7;
-    }
-    return { x: x / node.length, y: y / node.length };
-  };
-
-  // every node anchor is an obstacle no other arrow may pass through
-  const anchors = links.flatMap((l) => [anchor(l.from), anchor(l.to)]);
-  // reading starts at the first inference (ties have no direction)
-  const firstArrow = links.findIndex((l) => !l.undirected);
-  let arrowNo = 0;
-
-  return (
-    <g className="chain-arrows">
-      <defs>
-        <marker
-          id="chain-arrowhead"
-          viewBox="0 0 10 10"
-          refX="8"
-          refY="5"
-          markerWidth="5.5"
-          markerHeight="5.5"
-          orient="auto-start-reverse"
-        >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--hint-chain)" />
-        </marker>
-        <marker
-          id="chain-arrowhead-sm"
-          viewBox="0 0 10 10"
-          refX="8"
-          refY="5"
-          markerWidth="3.4"
-          markerHeight="3.4"
-          orient="auto-start-reverse"
-        >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--hint-chain)" />
-        </marker>
-      </defs>
-      {links.map((l, i) => {
-        const a = anchor(l.from);
-        const b = anchor(l.to);
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const len = Math.hypot(dx, dy) || 1;
-        const ux = dx / len;
-        const uy = dy / len;
-        // short links get a smaller head + thinner shaft so the arrow does
-        // not swallow the candidates; links between two candidates of ONE
-        // cell additionally arc outward (away from the cell centre) to gain
-        // enough length for the dash pattern to read
-        const inCell =
-          l.from.length === 1 && l.to.length === 1 && l.from[0].cell === l.to[0].cell;
-        const short = len < 70;
-        const trim = short ? 8 : Math.min(R, Math.max(4, (len - 16) / 2));
-        const p0 = { x: a.x + ux * trim, y: a.y + uy * trim };
-        const p1 = { x: b.x - ux * (trim + 4), y: b.y - uy * (trim + 4) };
-
-        let bow = 0;
-        if (inCell) {
-          // arc to whichever side of the segment has the most free space:
-          // clear of the cell's other candidate glyphs and inside the cell
-          const cell = l.from[0].cell;
-          const x0 = M + (cell % 9) * SIZE;
-          const y0 = M + Math.floor(cell / 9) * SIZE;
-          const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-          const glyphs = cellCands(cell)
-            .filter((d) => d !== l.from[0].digit && d !== l.to[0].digit)
-            .map((d) => ({ x: x0 + candX(d), y: y0 + candY(d) - 7 }));
-          const room = (s: number) => {
-            const p = { x: mid.x - uy * s, y: mid.y + ux * s };
-            let r = glyphs.length
-              ? Math.min(...glyphs.map((g) => Math.hypot(g.x - p.x, g.y - p.y)))
-              : 60;
-            if (p.x < x0 + 8 || p.x > x0 + SIZE - 8 || p.y < y0 + 8 || p.y > y0 + SIZE - 8)
-              r -= 100; // spilling outside the cell is worse than any glyph
-            return r;
-          };
-          bow = room(14) >= room(-14) ? 14 : -14;
-        } else {
-          // bow away from the nearest node the straight segment would graze
-          let nearest = Infinity;
-          for (const o of anchors) {
-            if (Math.hypot(o.x - a.x, o.y - a.y) < 1 || Math.hypot(o.x - b.x, o.y - b.y) < 1) continue;
-            const t = ((o.x - a.x) * dx + (o.y - a.y) * dy) / (len * len);
-            if (t <= 0.02 || t >= 0.98) continue;
-            const dist = Math.hypot(o.x - (a.x + t * dx), o.y - (a.y + t * dy));
-            if (dist < 34 && dist < nearest) {
-              nearest = dist;
-              const cross = dx * (o.y - a.y) - dy * (o.x - a.x);
-              bow = -(Math.sign(cross) || 1) * 40;
-            }
-          }
-        }
-        const f = (n: number) => n.toFixed(1);
-        if (l.undirected) {
-          // a tie: a quiet straight line between two candidates, no
-          // direction and no routing; it may cross anything
-          const d = `M ${f(p0.x)} ${f(p0.y)} L ${f(p1.x)} ${f(p1.y)}`;
-          return (
-            <g key={i}>
-              <path d={d} fill="none" stroke="var(--cell-bg)" strokeWidth={5} opacity={0.5} strokeLinecap="round" />
-              <path d={d} fill="none" stroke="var(--hint-chain)" strokeWidth={2} strokeLinecap="round" opacity={0.5} />
+  const shapes = drawing.shapes.filter((s) => s.link < upTo);
+  const w = SIZES.stroke * SIZE;
+  const arrows = shapes.filter((s): s is Extract<ArrowShape, { kind: 'arrow' }> => s.kind === 'arrow');
+  const ties = shapes.filter((s): s is Extract<ArrowShape, { kind: 'tie' }> => s.kind === 'tie');
+  if (layer === 'labels') {
+    return (
+      <g className="chain-labels">
+        {/* the first node of each branch wears a dot: reading starts here */}
+        {drawing.dots
+          .filter((p) => p.link < upTo)
+          .map((p) => (
+            <g key={`s${p.link}`} transform={`translate(${p.x} ${p.y})`}>
+              <circle className="chain-start" r={SIZES.dot * SIZE} fill="var(--hint-arrow)" stroke="var(--cell-bg)" strokeWidth={2} />
             </g>
-          );
-        }
-        // an arrow swings out near its start and arrives straight along the
-        // line to its target, so the head points where the eye expects
-        const k = Math.min(len * 0.35, 60);
-        const swing = inCell ? bow : bow * 1.5;
-        const c1 = { x: p0.x + ux * k - uy * swing, y: p0.y + uy * k + ux * swing };
-        const c2 = { x: p1.x - ux * k, y: p1.y - uy * k };
-        const d = `M ${f(p0.x)} ${f(p0.y)} C ${f(c1.x)} ${f(c1.y)} ${f(c2.x)} ${f(c2.y)} ${f(p1.x)} ${f(p1.y)}`;
-        // the curve's midpoint, where a number badge sits
-        const bx = (p0.x + 3 * c1.x + 3 * c2.x + p1.x) / 8;
-        const by = (p0.y + 3 * c1.y + 3 * c2.y + p1.y) / 8;
-        const no = ++arrowNo;
-        return (
-          <g key={i}>
-            {/* a halo in the board colour keeps the arrow legible over pencil marks */}
-            <path d={d} fill="none" stroke="var(--cell-bg)" strokeWidth={(short ? 3.2 : 4.5) + 5} opacity={0.7} strokeLinecap="round" />
-            <path
-              d={d}
-              fill="none"
-              stroke="var(--hint-chain)"
-              strokeWidth={short ? 3.2 : 4.5}
-              strokeDasharray={l.strong ? undefined : short ? '6 5' : '11 8'}
-              strokeLinecap="round"
-              opacity={l.strong ? 0.92 : 0.8}
-              markerEnd={short ? 'url(#chain-arrowhead-sm)' : 'url(#chain-arrowhead)'}
-            />
-            {/* the chain's first node wears a dot: this is where reading starts */}
-            {i === firstArrow && <circle cx={p0.x} cy={p0.y} r={5.5} fill="var(--hint-chain)" />}
-            {numbered && (
-              <g>
-                <circle cx={bx} cy={by} r={10.5} fill="var(--hint-chain)" stroke="var(--cell-bg)" strokeWidth={2} />
-                <text x={bx} y={by + 4.5} textAnchor="middle" fontSize={13.5} fontWeight={700} fill="#ffffff">
-                  {no}
-                </text>
+          ))}
+        {frameOf &&
+          arrows.map((s) => {
+            const p = drawing.badges.get(s.link) ?? s.mid;
+            return (
+              <g key={`b${s.link}`} className="walk-badge" transform={`translate(${p.x} ${p.y})`}>
+                <g className="walk-badge-body">
+                  <circle r={SIZES.badge * SIZE} fill="var(--hint-arrow)" stroke="var(--cell-bg)" strokeWidth={2} />
+                  <text y={4.5} textAnchor="middle" fontSize={13} fontWeight={700} fill="var(--cell-bg)">
+                    {frameOf(s.link)}
+                  </text>
+                </g>
               </g>
+            );
+          })}
+      </g>
+    );
+  }
+  return (
+    <g className="chain-arrows" mask={mask ? `url(#${mask})` : undefined}>
+      {ties.map((s) => (
+        <g key={`t${s.link}`}>
+          <path className="chain-tie-halo" d={s.d} fill="none" stroke="var(--cell-bg)" strokeWidth={5} opacity={0.5} strokeLinecap="round" />
+          <path className="chain-tie" d={s.d} fill="none" stroke="var(--hint-arrow)" strokeWidth={2} strokeLinecap="round" opacity={0.5} />
+        </g>
+      ))}
+      {/* a thin halo in the board colour parts each arrow from the grid lines and the marks it crosses */}
+      <g className="chain-halos">
+        {arrows.map((s) => (
+          <g key={`h${s.link}`}>
+            <path className="chain-halo" d={s.d} fill="none" stroke="var(--cell-bg)" strokeWidth={w + SIZES.halo * SIZE} opacity={0.75} strokeLinecap="round" />
+            {s.head.length > 0 && (
+              <polygon points={pointsOf(s.head)} fill="var(--cell-bg)" stroke="var(--cell-bg)" strokeWidth={SIZES.halo * SIZE} strokeLinejoin="round" opacity={0.75} />
             )}
           </g>
-        );
-      })}
+        ))}
+      </g>
+      {arrows.map((s) => (
+        <g key={`a${s.link}`}>
+          <path
+            className={s.strong ? 'chain-shaft' : 'chain-shaft weak'}
+            d={s.d}
+            fill="none"
+            stroke="var(--hint-arrow)"
+            strokeWidth={w}
+            strokeDasharray={s.strong ? undefined : '8 6'}
+            strokeLinecap={s.strong ? 'round' : 'butt'}
+          />
+          {s.head.length > 0 && <polygon points={pointsOf(s.head)} fill="var(--hint-arrow)" />}
+        </g>
+      ))}
     </g>
   );
 }
@@ -231,10 +166,87 @@ const TIPS = [
   msg('Hint reads your centre marks, so your eliminations carry over')
 ];
 
-/** Text colour for a candidate sitting on a hint circle: dark on the amber
- *  secondary circles, white on the saturated blue/red/purple ones. Keeps the
- *  digit readable regardless of theme. */
-const hintTextFill = (kind: string) => (kind === 'secondary' ? '#1b2233' : '#ffffff');
+/** Text colour for a candidate a hint marks: near-black on every filled
+ *  mark, whatever the theme; the theme's ink inside a removal's ring, unless
+ *  the ring is filled with the colour the candidate carried (colouring) */
+const hintTextFill = (kind: string) => (kind === 'elim' || kind === 'node' ? 'var(--hint-in-ring)' : 'var(--hint-on-fill)');
+
+/** the fill and the edge of each kind of hint mark (src/content/hintPalette.ts) */
+const MARK_FILL: Record<string, { fill: string; ink: string }> = {
+  primary: { fill: 'var(--hint-primary)', ink: 'var(--hint-primary-ink)' },
+  secondary: { fill: 'var(--hint-secondary)', ink: 'var(--hint-secondary-ink)' },
+  fin: { fill: 'var(--hint-fin)', ink: 'var(--hint-fin-ink)' },
+  place: { fill: 'var(--hint-place)', ink: 'var(--hint-place-ink)' },
+  elim: { fill: 'var(--hint-elim)', ink: 'var(--hint-elim)' }
+};
+
+/**
+ * One hint mark on a candidate (docs/hint-drawing.md G1-G5): a filled disc
+ * with an edge in its ink for a role; a disc with an outer ring for a
+ * placement; a ring for a removal, tinted inside, or filled with the colour
+ * a colouring gave it (the bar over its digit is drawn later, on top)
+ */
+function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; inside?: string }) {
+  const s = SIZE;
+  // the keyline: a thin ring in the board's colour round the whole mark
+  const keyOf = (outer: number) => (
+    <circle cx={x} cy={y} r={(outer + MARK.keyline / 2) * s} fill="none" stroke="var(--cell-bg)" strokeWidth={MARK.keyline * s} />
+  );
+  const keyline = keyOf(MARK.disc);
+  if (kind === 'node') {
+    // a chain node no colour claims (a colouring's witness target): a plain
+    // ring in the arrow's ink round its digit, for the arrow to end on
+    return (
+      <g>
+        {keyline}
+        <circle className="hint-node" cx={x} cy={y} r={MARK.ring * s} fill="none" stroke="var(--hint-arrow)" strokeWidth={MARK.ringStroke * s} />
+      </g>
+    );
+  }
+  if (kind === 'elim' || kind === 'elimOn') {
+    return inside ? (
+      <g>
+        {keyline}
+        <circle className="hint-ring" cx={x} cy={y} r={MARK.ring * s} fill={MARK_FILL[inside].fill} stroke="var(--hint-elim)" strokeWidth={MARK.ringStroke * s} />
+      </g>
+    ) : (
+      <g>
+        {keyline}
+        <circle cx={x} cy={y} r={MARK.ring * s} fill="var(--hint-elim)" style={{ fillOpacity: 'var(--hint-ring-tint)' }} />
+        <circle className="hint-ring" cx={x} cy={y} r={MARK.ring * s} fill="none" stroke="var(--hint-elim)" strokeWidth={MARK.ringStroke * s} />
+      </g>
+    );
+  }
+  if (kind === 'place' || kind === 'placeOn') {
+    // the disc in the colour the step names for it, when it is a chain
+    // node (G5), and the placement's outer ring; a small board shows the
+    // second ring, thicker and moved out with its thickness so the gap to
+    // the disc stays (styles.css; G3, G14a)
+    const { fill, ink } = MARK_FILL[kind === 'placeOn' && inside ? inside : 'place'];
+    const ring = MARK_FILL.place.ink;
+    return (
+      <g>
+        {[
+          ['hint-place-wide', MARK.placeRing, MARK.placeRingStroke],
+          ['hint-place-small', MARK.placeRingSmall, MARK.placeRingSmallStroke]
+        ].map(([cls, r, w]) => (
+          <g key={cls as string} className={cls as string}>
+            {keyOf((r as number) + (w as number) / 2)}
+            <circle cx={x} cy={y} r={(r as number) * s} fill="none" stroke={ring} strokeWidth={(w as number) * s} />
+          </g>
+        ))}
+        <circle cx={x} cy={y} r={(MARK.disc - MARK.edge / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.edge * s} />
+      </g>
+    );
+  }
+  const { fill, ink } = MARK_FILL[kind];
+  return (
+    <g>
+      {keyline}
+      <circle cx={x} cy={y} r={(MARK.disc - MARK.edge / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.edge * s} />
+    </g>
+  );
+}
 
 /** Perimeter slots for corner marks when a cell ALSO holds centre marks —
  *  the classic SudokuPad arrangement, keeping the middle free for the
@@ -271,11 +283,13 @@ function renderMarks(
   hlDigit = 0,
   frame = false,
   /** the cell is ringed as a bivalue cell: its two digits a touch heavier */
-  pair = false
+  pair = false,
+  /** the hint marks the cell in its full view: its digits stay on the 3×3 grid through every frame of the walk */
+  promote = false
 ): React.ReactNode {
   const cornerDs = digitsOf(cell.corner);
   const centerDs = digitsOf(cell.center);
-  if (!cornerDs.length && !centerDs.length) return null;
+  if (!cornerDs.length && !centerDs.length && !marks?.size) return null;
 
   // same-digit highlight (hint circles win): the held/selected digit lights
   // up wherever the player has pencilled it
@@ -320,9 +334,10 @@ function renderMarks(
       )
     );
 
-  // hint promotion: union of both layers on the 3×3 grid
-  if (marks && marks.size > 0) {
-    const union = [...new Set([...cornerDs, ...centerDs])].sort((a, b) => a - b);
+  // hint promotion: union of both layers on the 3×3 grid, and every digit
+  // the hint marks, pencilled or not: a mark with no digit says nothing
+  if ((marks && marks.size > 0) || promote) {
+    const union = [...new Set([...cornerDs, ...centerDs, ...(marks?.keys() ?? [])])].sort((a, b) => a - b);
     return <>{union.map((d) => gridText(d, cell.corner ? (cell.corner & bit(d)) !== 0 : false))}</>;
   }
 
@@ -482,11 +497,9 @@ export function Grid() {
 
   const walking = !!hint && hintStage === 'walk';
   const showHint = hint && (hintStage === 'full' || walking);
-  // the walk shows the drawing one frame at a time
-  const frame = walking && hint ? walkFrames(hint)[walkIndex] : null;
-  const showPart = (part: Part) => !frame || frame.show.has(part);
-  const visibleLinks: ChainLink[] =
-    showHint && hint.links ? (frame ? hint.links.slice(0, frame.links) : hint.links) : [];
+  // the walk shows the drawing one frame at a time (the panel reads the same frame)
+  const frames = walking && hint ? walkFrames(hint) : [];
+  const frame = frames.length ? frames[Math.min(walkIndex, frames.length - 1)] : null;
   // a fresh tip each time the game pauses
   const pauseTip = React.useMemo(
     () => TIPS[Math.floor(Math.random() * TIPS.length)],
@@ -513,13 +526,15 @@ export function Grid() {
   const selectedValues = armedDigit
     ? new Set([armedDigit])
     : new Set(selection.map((i) => cells[i].value).filter((v) => v > 0));
-  const trackDigits = highlightSameDigit || armedDigit !== null;
+  // while a hint draws, the peer and same-digit tints step aside, as the
+  // bivalue rings do: the gold same-digit tint would read as a hint's band
+  const trackDigits = !showHint && (highlightSameDigit || armedDigit !== null);
   // the digit being tracked (one distinct value selected — a click on a
   // placed digit, or the hold/double-click select-all gesture): its pencil
   // occurrences light up too, wherever the player has actually marked them
   const hlDigit = trackDigits && selectedValues.size === 1 ? [...selectedValues][0] : 0;
   const peerSet = new Set<number>();
-  if (highlightPeers && selection.length === 1) {
+  if (highlightPeers && selection.length === 1 && !showHint) {
     const i = selection[0];
     const r = Math.floor(i / 9);
     const c = i % 9;
@@ -532,65 +547,50 @@ export function Grid() {
     for (let rr = 0; rr < 3; rr++) for (let cc = 0; cc < 3; cc++) peerSet.add((br + rr) * 9 + bc + cc);
   }
 
-  // hint candidate markers: cell -> digit -> kind; a solved cell listed in
-  // a colour shows it on its digit instead (valueMarks) and never gets a
-  // candidate circle
-  const hintMarks = new Map<number, Map<number, string>>();
-  // a coloured candidate that is removed shows red with a ring in its
-  // colour, so a colour that is wholly removed is still there to be read
-  const hintRings = new Map<number, Map<number, string>>();
-  const hintCells = new Map<number, string>();
-  const valueMarks = new Map<number, string>();
-  const bands = showHint && showPart('units') ? (hint.units ?? []) : [];
-  if (showHint) {
-    const ring = (cell: number, digit: number, kind: string) => {
-      if (!hintRings.has(cell)) hintRings.set(cell, new Map());
-      hintRings.get(cell)!.set(digit, kind);
-    };
-    const mark = (cell: number, digit: number, kind: string, cellToo = true) => {
-      if (cells[cell].value) {
-        if (!valueMarks.has(cell) || kind === 'elim') valueMarks.set(cell, kind);
-      } else {
-        if (!hintMarks.has(cell)) hintMarks.set(cell, new Map());
-        const m = hintMarks.get(cell)!;
-        const prev = m.get(digit);
-        if (!prev) m.set(digit, kind);
-        else if (kind === 'elim' && prev !== 'elim') {
-          m.set(digit, 'elim');
-          if (prev !== 'place') ring(cell, digit, prev);
-        } else if (prev === 'elim' && kind !== 'elim' && kind !== 'place') ring(cell, digit, kind);
-      }
-      // a cell keeps the colour of what it holds; red tints only a cell
-      // with nothing else to say
-      if (cellToo && !hintCells.has(cell)) hintCells.set(cell, kind);
-    };
-    const has = (list: CellDigit[] | undefined, cd: CellDigit) =>
-      !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
-    // the class a chain node belongs to: colouring techniques list their
-    // nodes under the colour they carry
-    const classOf = (cd: CellDigit) =>
-      has(hint.fins, cd) ? 'fin' : has(hint.secondary, cd) ? 'secondary' : 'primary';
-    if (frame && hint.links?.length) {
-      // walking a chain: only the nodes of the links drawn so far
-      for (const link of visibleLinks) for (const cd of [...link.from, ...link.to]) mark(cd.cell, cd.digit, classOf(cd));
-    } else {
-      if (showPart('primary')) for (const cd of hint.primary ?? []) mark(cd.cell, cd.digit, 'primary');
-      if (showPart('secondary')) for (const cd of hint.secondary ?? []) mark(cd.cell, cd.digit, 'secondary');
-      // every chain-node candidate gets a circle so arrows root on one
-      for (const link of visibleLinks) for (const cd of [...link.from, ...link.to]) mark(cd.cell, cd.digit, classOf(cd));
-      if (showPart('fins')) for (const cd of hint.fins ?? []) mark(cd.cell, cd.digit, 'fin');
-    }
-    if (showPart('conclusion')) {
-      if (frame) {
-        // the last frame of a walk: the whole pattern, then the conclusion
-        for (const cd of hint.primary ?? []) mark(cd.cell, cd.digit, 'primary');
-        for (const cd of hint.secondary ?? []) mark(cd.cell, cd.digit, 'secondary');
-        for (const cd of hint.fins ?? []) mark(cd.cell, cd.digit, 'fin');
-      }
-      for (const cd of hint.eliminations) mark(cd.cell, cd.digit, 'elim');
-      for (const cd of hint.placements) hintCells.set(cd.cell, 'place');
-    }
-  }
+  // a hint's marks (src/content/hintMarks.ts, docs/hint-drawing.md G1-G5):
+  // a candidate's mark, the colour inside a colouring's removal, a solved
+  // cell's colour on its digit. A hint never tints a cell.
+  const drawn = showHint ? frameMarks(hint, frame, (c) => cells[c].value > 0) : null;
+  const bands = drawn?.bands ?? [];
+  const hintMarks = drawn?.cands ?? new Map<number, Map<number, string>>();
+  const hintRings = drawn?.inside ?? new Map<number, Map<number, string>>();
+  const valueMarks = drawn?.values ?? new Map<number, string>();
+  // the walk's frame that brings in each link, for the arrows' numbers
+  const frameOfLink = React.useMemo(() => {
+    if (!walking || !hint) return [] as number[];
+    const frames = walkFrames(hint);
+    return (hint.links ?? []).map((_, i) => frames.findIndex((fr) => fr.links > i) + 1);
+  }, [walking, hint]);
+  // the cells the hint marks in its full view: their digits stay at their
+  // places on the 3×3 through every frame, where the geometry expects them
+  const promoted = React.useMemo(
+    () => (showHint ? new Set(frameMarks(hint, null, (c) => cells[c].value > 0).cands.keys()) : new Set<number>()),
+    [showHint, hint, cells]
+  );
+  // the arrows, start dots and walk numbers, worked out once for the whole
+  // hint, from the full view's marks and every link, so an arrow the reader
+  // has followed never moves or changes as the walk goes on; a frame draws
+  // the first of them. An arrow bends round the hint's marks and nothing
+  // else; a placement's mark reaches out to its outer ring; a head, a dot
+  // and a number keep off the digits the board shows (a cell a hint marks
+  // shows its digits at their places in the 3×3)
+  const drawing = React.useMemo((): Drawing | null => {
+    if (!showHint || !hint.links?.length) return null;
+    const solved = (c: number) => cells[c].value > 0;
+    const full = frameMarks(hint, null, solved);
+    const marks = markedOf(full);
+    const placed = placedKeys(full);
+    const shown = (cd: CellDigit) =>
+      digitShown(cells[cd.cell], cd.digit, canonical ? canonical.cands[cd.cell] : null, full.cands.get(cd.cell));
+    const layout = boardLayout(placed, shown, solved);
+    const shapes = arrowShapes(hint.links, layout, marks);
+    const dots = startMarkers(hint.links, layout, marks, shapes);
+    return { shapes, dots, badges: badgePoints(shapes, layout, marks, dots) };
+  }, [showHint, hint, cells, canonical]);
+  const upTo = frame ? frame.links : (hint?.links?.length ?? 0);
+  // the mask that cuts the digits out of a hint's arrows, named for this board
+  const maskId = `knockout${React.useId().replace(/:/g, '')}`;
+
 
   // the board's place on the page, read once when a pointer lands and
   // kept for the drag, so no move asks the browser for a layout; a scroll
@@ -1072,13 +1072,103 @@ export function Grid() {
     if (cell !== null && cells[cell].value) selectDigit(cells[cell].value);
   };
 
-  const hintFill: Record<string, string> = {
-    primary: 'var(--hint-primary)',
-    secondary: 'var(--hint-secondary)',
-    fin: 'var(--hint-fin)',
-    elim: 'var(--hint-elim)',
-    place: 'var(--hint-place)'
-  };
+  // a hint's colour on a solved digit or a house band is the role's ink,
+  // which on a dark board is its fill
+  const hintInk = (kind: string) => MARK_FILL[kind]?.ink ?? 'var(--hint-primary-ink)';
+  const hintFill = (kind: string) => MARK_FILL[kind]?.fill ?? 'var(--hint-primary)';
+
+  // the digits (hidden while paused): drawn on the board, and in the mask
+  // that cuts them out of a hint's arrows
+  const content =
+    !paused || won
+      ? cells.map((cell, i) => {
+          const conflict = conflicts.has(i);
+          const x = M + (i % 9) * SIZE;
+          const y = M + Math.floor(i / 9) * SIZE;
+          const marks = hintMarks.get(i);
+          // with auto candidates on, the engine's candidates, and every
+          // digit a hint marks besides (a mark with no digit says nothing)
+          const candDisplay =
+            autoCandidates && !cell.value
+              ? canonical!.cands[i] | [...(marks?.keys() ?? [])].reduce((m, d) => m | bit(d), 0)
+              : 0;
+          return (
+            <g key={i}>
+              {cell.value > 0 ? (
+                <text
+                  x={x + SIZE / 2}
+                  y={y + SIZE / 2 + 21}
+                  textAnchor="middle"
+                  fontSize={58}
+                  fontWeight={cell.given ? 700 : 500}
+                  fill={
+                    valueMarks.has(i)
+                      ? hintInk(valueMarks.get(i)!)
+                      : conflict
+                        ? 'var(--error-bg)'
+                        : cell.given
+                          ? 'var(--given)'
+                          : 'var(--entered)'
+                  }
+                  // an opt-in slight colour per digit, mixed into the theme's
+                  // own digit colour so every theme keeps its character; a
+                  // browser without color-mix ignores this and keeps `fill`
+                  style={
+                    digitTints && !conflict && !valueMarks.has(i)
+                      ? {
+                          fill: `color-mix(in srgb, var(${
+                            cell.given ? '--given' : '--entered'
+                          }) ${100 - tintStrength}%, var(--tint-${cell.value}))`
+                        }
+                      : undefined
+                  }
+                >
+                  {cell.value}
+                </text>
+              ) : candDisplay ? (
+                digitsOf(candDisplay).map((d) => (
+                  <React.Fragment key={d}>
+                    {d === hlDigit && frameHighlights && !marks?.has(d) && (
+                      <rect
+                        x={x + candX(d) - 11}
+                        y={y + candY(d) - 19}
+                        width={22}
+                        height={25}
+                        rx={5}
+                        fill="none"
+                        stroke="var(--accent)"
+                        strokeWidth={1.6}
+                      />
+                    )}
+                    <text
+                      x={x + candX(d)}
+                      y={y + candY(d)}
+                      textAnchor="middle"
+                      fontSize={23}
+                      fontWeight={marks?.has(d) ? 700 : d === hlDigit ? 700 : pairs.has(i) ? 600 : 400}
+                      fill={
+                        marks?.has(d)
+                          ? hintTextFill(marks.get(d)!)
+                          : d === hlDigit
+                            ? 'var(--accent)'
+                            : 'var(--cand)'
+                      }
+                    >
+                      {d}
+                    </text>
+                  </React.Fragment>
+                ))
+              ) : (
+                renderMarks(cell, x, y, marks, hlDigit, frameHighlights, pairs.has(i), promoted.has(i))
+              )}
+            </g>
+          );
+        })
+      : null; /* pause card is drawn as an HTML overlay below */
+  const arrowsShown = !!drawing && upTo > 0 && (!paused || won);
+  // the lines and the mask that cuts the digits out of them, only when a
+  // line is drawn (a switch inside one cell draws none, but has its start dot)
+  const linesShown = arrowsShown && drawing!.shapes.some((s) => s.kind !== 'none' && s.link < upTo);
 
   // what a screen reader hears: the selected cell and what is in it, read
   // out as the selection moves (the arrow keys move it; digits enter)
@@ -1131,16 +1221,6 @@ export function Grid() {
               {sameDigit && (
                 <rect x={x} y={y} width={SIZE} height={SIZE} fill="var(--same-bg)" />
               )}
-              {hintCells.has(i) && (
-                <rect
-                  x={x}
-                  y={y}
-                  width={SIZE}
-                  height={SIZE}
-                  fill={hintFill[hintCells.get(i)!]}
-                  opacity={0.28}
-                />
-              )}
               {isSel && (
                 <rect
                   x={x + 3}
@@ -1186,160 +1266,61 @@ export function Grid() {
           );
         })}
 
-        {/* unit bands: the houses a pattern lives in, under its marks */}
+        {/* house bands (G15): the houses a pattern lives in, under its marks,
+            carried by a full-strength outline over a barely-there fill */}
         {bands.map(({ unit, role }, k) => {
           const r = unitRect(unit);
           return (
             <g key={`band-${k}`} className="hint-band">
-              <rect x={r.x} y={r.y} width={r.w} height={r.h} fill={hintFill[role]} opacity={0.14} />
+              <rect x={r.x} y={r.y} width={r.w} height={r.h} fill={hintFill(role)} style={{ fillOpacity: 'var(--hint-band-alpha)' }} />
               <rect
-                x={r.x + 2}
-                y={r.y + 2}
-                width={r.w - 4}
-                height={r.h - 4}
+                x={r.x + 3.5}
+                y={r.y + 3.5}
+                width={r.w - 7}
+                height={r.h - 7}
                 fill="none"
-                stroke={hintFill[role]}
+                stroke={hintInk(role)}
                 strokeWidth={3}
-                opacity={0.55}
-                rx={4}
+                strokeDasharray={role === 'secondary' ? MARK.coverDash.map((d) => d * SIZE).join(' ') : undefined}
+                rx={8}
               />
             </g>
           );
         })}
 
-        {/* content (hidden while paused) */}
-        {!paused || won ? (
-          cells.map((cell, i) => {
-            const conflict = conflicts.has(i);
-            const x = M + (i % 9) * SIZE;
-            const y = M + Math.floor(i / 9) * SIZE;
-            const marks = hintMarks.get(i);
-            const candDisplay = autoCandidates && !cell.value ? canonical!.cands[i] : 0;
-            return (
-              <g key={i}>
-                {/* hint candidate circles */}
-                {marks &&
-                  !cell.value &&
-                  [...marks.entries()].map(([d, kind]) => {
-                    const ringKind = hintRings.get(i)?.get(d);
-                    return (
-                      <circle
-                        key={d}
-                        cx={x + candX(d)}
-                        cy={y + candY(d) - 7}
-                        r={ringKind ? 13.5 : 15}
-                        fill={hintFill[kind]}
-                        stroke={ringKind ? hintFill[ringKind] : undefined}
-                        strokeWidth={ringKind ? 3.5 : undefined}
-                        opacity={0.85}
-                      />
-                    );
-                  })}
-                {cell.value > 0 ? (
-                  <text
-                    x={x + SIZE / 2}
-                    y={y + SIZE / 2 + 21}
-                    textAnchor="middle"
-                    fontSize={58}
-                    fontWeight={cell.given ? 700 : 500}
-                    fill={
-                      valueMarks.has(i)
-                        ? hintFill[valueMarks.get(i)!]
-                        : conflict
-                          ? 'var(--error-bg)'
-                          : cell.given
-                            ? 'var(--given)'
-                            : 'var(--entered)'
-                    }
-                    // an opt-in slight colour per digit, mixed into the theme's
-                    // own digit colour so every theme keeps its character; a
-                    // browser without color-mix ignores this and keeps `fill`
-                    style={
-                      digitTints && !conflict && !valueMarks.has(i)
-                        ? {
-                            fill: `color-mix(in srgb, var(${
-                              cell.given ? '--given' : '--entered'
-                            }) ${100 - tintStrength}%, var(--tint-${cell.value}))`
-                          }
-                        : undefined
-                    }
-                  >
-                    {cell.value}
-                  </text>
-                ) : candDisplay ? (
-                  digitsOf(candDisplay).map((d) => (
-                    <React.Fragment key={d}>
-                      {d === hlDigit && frameHighlights && !marks?.has(d) && (
-                        <rect
-                          x={x + candX(d) - 11}
-                          y={y + candY(d) - 19}
-                          width={22}
-                          height={25}
-                          rx={5}
-                          fill="none"
-                          stroke="var(--accent)"
-                          strokeWidth={1.6}
-                        />
-                      )}
-                      <text
-                        x={x + candX(d)}
-                        y={y + candY(d)}
-                        textAnchor="middle"
-                        fontSize={23}
-                        fontWeight={marks?.has(d) ? 700 : d === hlDigit ? 700 : pairs.has(i) ? 600 : 400}
-                        fill={
-                          marks?.has(d)
-                            ? hintTextFill(marks.get(d)!)
-                            : d === hlDigit
-                              ? 'var(--accent)'
-                              : 'var(--cand)'
-                        }
-                      >
-                        {d}
-                      </text>
-                    </React.Fragment>
-                  ))
-                ) : (
-                  renderMarks(cell, x, y, marks, hlDigit, frameHighlights, pairs.has(i))
-                )}
-              </g>
-            );
-          })
-        ) : null /* pause card is drawn as an HTML overlay below */}
-
-        {/* chain arrows (candidate-anchored), with the legacy centre-to-centre
-            polyline as fallback for steps that only carry chainCells */}
-        {showHint && visibleLinks.length > 0 && (!paused || won) && (
-          <ChainArrows
-            links={visibleLinks}
-            numbered={walking}
-            cellCands={(c) =>
-              cells[c].value
-                ? []
-                : autoCandidates && canonical
-                  ? digitsOf(canonical.cands[c])
-                  : digitsOf(cells[c].corner | cells[c].center)
-            }
-          />
-        )}
-        {showHint &&
-          !hint.links &&
-          hint.chainCells &&
-          hint.chainCells.length > 1 &&
-          (!paused || won) && (
-            <polyline
-              points={hint.chainCells
-                .map(
-                  (c) => `${M + (c % 9) * SIZE + SIZE / 2},${M + Math.floor(c / 9) * SIZE + SIZE / 2}`
-                )
-                .join(' ')}
-              fill="none"
-              stroke="var(--hint-chain)"
-              strokeWidth={5}
-              strokeDasharray="12 8"
-              opacity={0.7}
-            />
+        {/* a hint's marks, under the grid lines, the arrows and the digits */}
+        {(!paused || won) &&
+          [...hintMarks].flatMap(([i, m]) =>
+            cells[i].value
+              ? []
+              : [...m.entries()].map(([d, kind]) => (
+                  <HintMark
+                    key={`m-${i}-${d}`}
+                    x={M + (i % 9) * SIZE + candX(d)}
+                    y={M + Math.floor(i / 9) * SIZE + candY(d) - 7}
+                    kind={kind}
+                    inside={hintRings.get(i)?.get(d)}
+                  />
+                ))
           )}
+        {/* a solved cell the hint names (G1): its digit in the role's ink,
+            and a rounded square round it, so it is told by shape as well
+            as colour (a role's ink can sit close to the entered digits') */}
+        {(!paused || won) &&
+          [...valueMarks].map(([i, kind]) => (
+            <rect
+              key={`v-${i}`}
+              className="hint-value"
+              x={M + (i % 9) * SIZE + 9}
+              y={M + Math.floor(i / 9) * SIZE + 9}
+              width={SIZE - 18}
+              height={SIZE - 18}
+              rx={14}
+              fill="none"
+              stroke={hintInk(kind)}
+              strokeWidth={3}
+            />
+          ))}
 
         {/* grid lines */}
         {Array.from({ length: 10 }, (_, k) => (
@@ -1364,6 +1345,61 @@ export function Grid() {
             />
           </React.Fragment>
         ))}
+
+        {/* a hint's arrows (G11): over the grid lines and the marks, under
+            the digits, with every digit cut out of them (the mask holds the
+            same digits, thickened, in black), so a digit an arrow crosses
+            stays whole and is never struck through */}
+        {linesShown && (
+          <>
+            <mask id={maskId} maskUnits="userSpaceOnUse" x={0} y={0} width={SIZE * 9 + M * 2} height={SIZE * 9 + M * 2}>
+              <rect width={SIZE * 9 + M * 2} height={SIZE * 9 + M * 2} fill="#fff" />
+              <g className="knockout">{content}</g>
+              {/* a head is never cut: where no approach keeps it off a
+                  digit, the digit is drawn over it */}
+              {drawing!.shapes.map((s) =>
+                s.kind === 'arrow' && s.link < upTo && s.head.length ? (
+                  <polygon key={s.link} points={pointsOf(s.head)} fill="#fff" stroke="#fff" strokeWidth={SIZES.halo * SIZE * 2} strokeLinejoin="round" />
+                ) : null
+              )}
+            </mask>
+            <ChainArrows layer="lines" drawing={drawing!} upTo={upTo} mask={maskId} />
+          </>
+        )}
+
+        {/* content (hidden while paused) */}
+        {content}
+
+        {/* the bar over a removed candidate's digit (G3): drawn above the
+            digit, the one sign every reader knows for "not this" */}
+        {(!paused || won) &&
+          [...hintMarks].flatMap(([i, m]) =>
+            [...m]
+              .filter(([, kind]) => kind === 'elim' || kind === 'elimOn')
+              .map(([d]) => {
+                const cx = M + (i % 9) * SIZE + candX(d);
+                const cy = M + Math.floor(i / 9) * SIZE + candY(d) - 7;
+                const b = MARK.bar * SIZE;
+                return (
+                  <line
+                    key={`bar-${i}-${d}`}
+                    className="hint-bar"
+                    x1={cx - b}
+                    y1={cy - b}
+                    x2={cx + b}
+                    y2={cy + b}
+                    stroke="var(--hint-elim)"
+                    strokeWidth={MARK.barStroke * SIZE}
+                  />
+                );
+              })
+          )}
+
+        {/* the start dots and the walk's numbers, over everything */}
+        {arrowsShown && (
+          <ChainArrows layer="labels" drawing={drawing!} upTo={upTo} frameOf={walking ? (link) => frameOfLink[link] : undefined} />
+        )}
+
       </svg>
       <div id="board-status" className="sr-only" aria-live="polite" aria-atomic="true">
         {announced}

@@ -404,7 +404,7 @@ const ui: Dictionary = {
   "your move": "din tur",
   "Previous": "Forrige",
   "Next": "Neste",
-  "your chain: solid for a strong link, dashed for a weak one": "kjeden din: heltrukken strek for en sterk lenke, stiplet for en svak",
+  "your chain: solid into a candidate it makes true, dashed into one it makes false": "kjeden din: heltrukken strek inn i en kandidat den gjør sann, stiplet inn i en den gjør usann",
   "removed by it": "fjernet av den",
   "Apply: remove {n}": "Utfør: fjern {n}",
   "Mark every candidate linked to the last one": "Marker alle kandidater som er lenket til den siste",

@@ -206,6 +206,7 @@ const engine: EngineTable = {
   ": the loop holds whichever way round it is read.": ": sløyfen holder uansett hvilken vei den leses.",
   "If the {0} in {1} is false, the {2} in {3} is true (strong link).": "Hvis {0}-tallet i {1} er usant, er {2}-tallet i {3} sant (sterk lenke).",
   "If the {0} in {1} is true, the {2} in {3} is false (weak link).": "Hvis {0}-tallet i {1} er sant, er {2}-tallet i {3} usant (svak lenke).",
+  "If the {0} in {1} is true, the {2} in {3} is false (a strong link, used here as a weak one).": "Hvis {0}-tallet i {1} er sant, er {2}-tallet i {3} usant (en sterk lenke, brukt her som en svak).",
   "{0} in {1}": "{0} i {1}",
   " Every weak link in the loop is a strong link too, so what else could sit in its place is false: {0}.": " Hver svak lenke i sløyfen er også en sterk lenke, så alt annet som kunne stått på plassen dens, er usant: {0}.",
   " The loop holds, but nothing else sits on its weak links: it removes nothing.": " Sløyfen holder, men ingenting annet står på de svake lenkene dens: den fjerner ingenting.",

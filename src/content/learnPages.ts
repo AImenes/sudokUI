@@ -26,7 +26,7 @@ import { linkGlossary } from './glossaryLinks';
 import { LANDING_PAGES, LandingPage, RATING_URL } from './landing';
 import { PRIVACY, PRIVACY_URL } from './privacy';
 import { EXAMPLES } from './examples';
-import { boardSvg, legendOf, BOARD_SIZE } from './boardSvg';
+import { boardSvg, legendOf, swatchCss, BOARD_SIZE } from './boardSvg';
 import { FREQUENCY, byWorth } from './frequency';
 import { solveTimeTables } from './solveTimes';
 import { ogCard } from './home';
@@ -213,7 +213,7 @@ figure{margin:18px 0}
 figure img{display:block;width:100%;max-width:520px;height:auto;border-radius:8px}
 figcaption{color:var(--muted);font-size:15px;margin-top:8px}
 .key{display:inline-block;margin-right:14px;white-space:nowrap}
-.key i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.key i{display:inline-block;box-sizing:border-box;width:11px;height:11px;border-radius:50%;margin:0 6px 0 2px;vertical-align:-1px}
 h3{font-size:18px;line-height:1.35;margin:26px 0 6px}
 .kin{color:var(--muted);font-size:15px;margin:-4px 0 6px}
 .techs .kin{font-size:14px;margin:0}
@@ -371,10 +371,10 @@ function workedExample(lt: LearnText, tech: Tech): string {
   if (!example) return '';
   const { text, keys } = inEngineLanguage(lt.lang, () => {
     const step = exampleStep(tech, example);
-    return { text: describe(step), keys: legendOf(step) };
+    return { text: describe(step), keys: legendOf(step, example.values) };
   });
   const legend = keys
-    .map((l) => `<span class="key"><i style="background:${l.colour}"></i>${esc(l.label)}</span>`)
+    .map((l) => `<span class="key"><i style="${swatchCss(l)}"></i>${esc(l.label)}</span>`)
     .join(' ');
   return `      <h2>${esc(lt.s('Worked example'))}</h2>
       <figure>

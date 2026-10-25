@@ -163,6 +163,7 @@ export function findXChain(g: Grid, maxLen = 9): Step | null {
             if (elims.length) {
               return {
                 tech: 'X_CHAIN',
+                truth: 'derived',
                 labels: { primary: tr`the chain on ${d}` },
                 placements: [],
                 eliminations: elims,
@@ -211,6 +212,7 @@ export function findXYChain(g: Grid, maxLen = 10): Step | null {
             if (elims.length) {
               return {
                 tech: 'XY_CHAIN',
+                truth: 'derived',
                 labels: { primary: tr`the chain of bivalue cells` },
                 placements: [],
                 eliminations: elims,

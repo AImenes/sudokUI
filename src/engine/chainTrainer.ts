@@ -218,14 +218,20 @@ export function chainStep(g: Grid, chain: Chain, opts: Drawing = {}): Step {
   const eliminations = conclusions(g, chain);
   const next = opts.suggest ? nextLinks(g, chain) : { strong: [], weak: [] };
   const suggested = [...next.strong, ...next.weak];
+  // each link is drawn as the kind it is USED as, strong at the even links
+  // and weak at the odd ones (docs/hint-drawing.md G8): solid into a true
+  // node, dashed into a false one. A pair that is strong but used as a weak
+  // link is dashed, and its sentence says so
   const drawn: ChainLink[] = links.map((kind, i) => ({
     from: [nodes[i]],
     to: [nodes[i + 1]],
-    strong: kind === 'strong',
+    strong: i % 2 === 0,
     text:
       i % 2 === 0
         ? tr`If the ${nodes[i].digit} in ${cellName(nodes[i].cell)} is false, the ${nodes[i + 1].digit} in ${cellName(nodes[i + 1].cell)} is true (strong link).`
-        : tr`If the ${nodes[i].digit} in ${cellName(nodes[i].cell)} is true, the ${nodes[i + 1].digit} in ${cellName(nodes[i + 1].cell)} is false (weak link).`
+        : kind === 'strong'
+          ? tr`If the ${nodes[i].digit} in ${cellName(nodes[i].cell)} is true, the ${nodes[i + 1].digit} in ${cellName(nodes[i + 1].cell)} is false (a strong link, used here as a weak one).`
+          : tr`If the ${nodes[i].digit} in ${cellName(nodes[i].cell)} is true, the ${nodes[i + 1].digit} in ${cellName(nodes[i + 1].cell)} is false (weak link).`
   }));
   const allSameDigit = nodes.every((n) => n.digit === nodes[0].digit);
   const ends = links.length && links.length % 2 === 1;
@@ -242,7 +248,9 @@ export function chainStep(g: Grid, chain: Chain, opts: Drawing = {}): Step {
       : eliminations.length
         ? tr` One of the two ends is true, so every candidate that sees both is false: ${removed()}.`
         : tr` One of the two ends is true, but no candidate sees both yet: keep going, or start elsewhere.`;
-  const goal = (opts.goal ?? []).filter((c) => !eliminations.some((e) => same(e, c)));
+  // the goal still to reach: a candidate the chain has not yet removed and
+  // the player has not already removed or solved some other way
+  const goal = (opts.goal ?? []).filter((c) => isCand(g, c) && !eliminations.some((e) => same(e, c)));
   return {
     tech: chain.closed ? (allSameDigit ? 'X_CYCLES' : 'NICE_LOOP') : allSameDigit ? 'X_CHAIN' : 'AIC',
     placements: [],
@@ -256,6 +264,7 @@ export function chainStep(g: Grid, chain: Chain, opts: Drawing = {}): Step {
       fins: tr`the goal: a candidate your chain should remove`
     },
     links: drawn,
+    truth: 'derived',
     description: `${statement(chain)}${verdict}`.trim()
   };
 }

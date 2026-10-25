@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseGrid, gridFromValues, bit } from '../src/engine/board';
 import { classifyLink, extend, conclusions, chainStep, statement, nextLinks, EMPTY_CHAIN, Chain } from '../src/engine/chainTrainer';
+import { deriveTruth } from '../src/engine/truth';
 import { EXAMPLES } from '../src/content/examples';
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
@@ -48,6 +49,11 @@ describe('links', () => {
       const drawn = chainStep(g, chain);
       expect(drawn.links).toHaveLength(chain.links.length);
       expect(drawn.description).toContain('One of the two ends is true');
+      // drawn as used, so every node's truth reads off the links: the start
+      // false, strong links into true nodes, weak ones into false nodes
+      // (docs/hint-drawing.md G8), whatever each pair's real kind
+      expect(drawn.links!.map((l) => l.strong)).toEqual(chain.links.map((_, i) => i % 2 === 0));
+      expect(deriveTruth(drawn)!.problems, tech).toEqual([]);
       expect(statement(chain)).toMatch(/^If the \d in r\dc\d is false, then/);
     }
   });
@@ -104,5 +110,12 @@ describe('links', () => {
     expect(drawn.secondary).toContainEqual(nodes[2]);
     expect(drawn.fins).toEqual(step.eliminations);
     expect(drawn.labels?.fins).toMatch(/goal/);
+    // a goal candidate the player removed some other way is no longer drawn
+    const gone = step.eliminations[0];
+    const g2 = structuredClone(g);
+    g2.cands[gone.cell] &= ~bit(gone.digit);
+    const rest = chainStep(g2, chain, { goal: step.eliminations }).fins ?? [];
+    expect(rest).not.toContainEqual(gone);
+    expect(rest).toHaveLength(step.eliminations.length - 1);
   });
 });
