@@ -96,6 +96,8 @@ const f = (n: number) => n.toFixed(1);
  * (docs/hint-drawing.md G14a)
  */
 const LINE = 1.5;
+/** the removal bar, thinner than a ring by design, a little more: about 1.5 CSS px on a phone's 350 px diagram */
+const BAR = 1.85;
 
 /**
  * The example as an SVG document. `title` becomes the image's accessible
@@ -150,7 +152,7 @@ export function boardSvg(example: Example, title: string): string {
     if (value) {
       const kind = drawn.values.get(cell);
       let fill = '';
-      if (kind) {
+      if (kind && kind !== 'node') {
         const ink = kind === 'elim' || kind === 'elimOn' ? P.elim : fillOf(P, kind === 'placeOn' ? 'place' : kind).ink;
         // a style, not an attribute, so the class's own fill cannot win
         fill = ` style="fill:${ink}"`;
@@ -172,6 +174,12 @@ export function boardSvg(example: Example, title: string): string {
         texts.push(`<text x="${x}" y="${ty}" class="cd">${digit}</text>`);
         continue;
       }
+      if (kind === 'node') {
+        // a chain node no colour claims: a plain ring in the arrow's ink round its digit
+        parts.push(`<circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="none" stroke="${P.arrow}" stroke-width="${f(MARK.edge * s * LINE)}"/>`);
+        texts.push(`<text x="${x}" y="${ty}" class="rm">${digit}</text>`);
+        continue;
+      }
       if (kind === 'elim' || kind === 'elimOn') {
         const colour = drawn.inside.get(cell)?.get(digit);
         const b = MARK.bar * s;
@@ -182,7 +190,7 @@ export function boardSvg(example: Example, title: string): string {
         );
         texts.push(`<text x="${x}" y="${ty}" class="${colour ? 'mk' : 'rm'}">${digit}</text>`);
         bars.push(
-          `<line x1="${f(candX(cd) - b)}" y1="${f(candY(cd) - b)}" x2="${f(candX(cd) + b)}" y2="${f(candY(cd) + b)}" stroke="${P.elim}" stroke-width="${f(MARK.barStroke * s * LINE)}"/>`
+          `<line x1="${f(candX(cd) - b)}" y1="${f(candY(cd) - b)}" x2="${f(candX(cd) + b)}" y2="${f(candY(cd) + b)}" stroke="${P.elim}" stroke-width="${f(MARK.barStroke * s * BAR)}"/>`
         );
         continue;
       }

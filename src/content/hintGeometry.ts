@@ -11,9 +11,10 @@
 //   its target, with a head at the target only (G9);
 // - it bends only when another mark of the same hint lies on its line, into
 //   one gentle arc to the side that clears those marks, checked along the
-//   whole curve (G10; HoDoKu always bends left by a fixed amount and never
-//   checks); unrelated candidates and digits are crossed straight, readable
-//   through the halo the board draws;
+//   whole curve, or, when marks beside both ends box it in, a curve with a
+//   bend off each end (G10; HoDoKu always bends left by a fixed amount and
+//   never checks); unrelated candidates and digits are crossed straight,
+//   readable through the halo the board draws, and cut out of the line;
 // - two links between the same two nodes are drawn side by side, not on top
 //   of each other;
 // - a group node is joined at its member nearest the other end (a centroid
@@ -338,12 +339,11 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       return run;
     };
 
-    // a candidate drawing, straight or one arc, scored by how clear it keeps
-    // of the hint's other marks and the other arrows' ends, along its whole
-    // length and its head (G9, G10)
     // a candidate drawing: straight (no control point), one arc (one), or,
     // where marks box in both ends, an arc that leaves and arrives steeply,
-    // each end on its own (two)
+    // each end on its own (two); scored by how clear it keeps of the hint's
+    // other marks and the other arrows' ends, along its whole length and its
+    // head (G9, G10)
     const shape = (controls: Point[]) => {
       const first = controls[0];
       const last = controls[controls.length - 1];
@@ -401,7 +401,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
         if (ok(best)) break;
       }
     }
-    if (!ok(best)) {
+    if (best.room < need) {
       // marks beside both ends on the line: one arc cannot leave steeply and
       // arrive steeply too, so two control points, one off each end, on one
       // side, leaning in, square or out; the smallest that does
@@ -590,6 +590,9 @@ export function badgePoints(
     const along = shaft.map((_, k) => (k ? len(sub(shaft[k], shaft[k - 1])) : 0)).reduce<number[]>((acc, x, k) => [...acc, (acc[k - 1] ?? 0) + x], []);
     const total = along[along.length - 1];
     const dashes = (k: number) => s.strong || Math.max(along[k] - r, total - along[k] - r - SIZES.headLength * c) >= 0.3 * c;
+    // the places on the shaft that would hide its dashes, kept for when
+    // nothing else is clear: a number on its own arrow beats one on another
+    const crowded = order.filter((k) => !dashes(k)).map((k) => ({ p: shaft[k], on: true }));
     const spots = [
       ...order.filter(dashes).map((k) => ({ p: shaft[k], on: true })),
       ...order.flatMap((k) => [beside(k, 1), beside(k, -1)].map((q) => ({ p: q, on: false })))
@@ -607,7 +610,7 @@ export function badgePoints(
         ...marks.map((m) => len(sub(q.p, m.p)) - m.r - r),
         ...dots.map((x) => len(sub(q.p, x)) - SIZES.dotLarge * c - r),
         ...arrows.map((a) => (a.head.length ? toPath(q.p, [], a.head) - r : Infinity)),
-        ...(q.on ? [] : otherShafts.map((sh) => toPath(q.p, sh) - r - (SIZES.stroke * c) / 2)),
+        ...(q.on ? [] : otherShafts.map((sh) => toPath(q.p, sh) - r - SIZES.stroke * c)),
         q.p.x - layout.bounds.x0 - r,
         layout.bounds.x1 - q.p.x - r,
         q.p.y - layout.bounds.y0 - r,
@@ -647,12 +650,14 @@ export function badgePoints(
         break;
       }
     }
+    if (!found) found = crowded.find((x) => hard(x) >= 0 && soft(x, small, 'none') >= 0)?.p ?? null;
     if (!found) {
       const score = (q: { p: Point; on: boolean }) => {
         const h = hard(q);
         return h >= 0 ? 1e6 + soft(q, small, 'none') : h;
       };
-      found = spots.reduce((x, y) => (score(y) > score(x) ? y : x), spots[0]).p;
+      const all = [...spots, ...crowded];
+      found = all.reduce((x, y) => (score(y) > score(x) ? y : x), all[0]).p;
     }
     const at = found ?? s.mid;
     placed.push(at);

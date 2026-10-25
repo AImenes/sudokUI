@@ -126,6 +126,47 @@ describe('the walk', () => {
   });
 });
 
+describe('a colouring', () => {
+  const ROLE = { primary: 'primary', secondary: 'secondary', fin: 'fins' } as const;
+  /** every candidate a frame (or the full view) draws in a role colour is in that role's list */
+  function colouredAsNamed(s: Step, solved: (c: number) => boolean, label: string) {
+    for (const frame of [null, ...walkFrames(s)]) {
+      const m = frameMarks(s, frame, solved);
+      for (const [cell, ds] of m.cands)
+        for (const [digit, kind] of ds) {
+          if (kind !== 'primary' && kind !== 'secondary' && kind !== 'fin') continue;
+          const list = s[ROLE[kind]] ?? [];
+          expect(list.some((cd) => cd.cell === cell && cd.digit === digit), `${label}: ${digit} in cell ${cell} drawn ${kind}`).toBe(true);
+        }
+    }
+  }
+
+  it('colours only what the step puts in a colour, in the full view and every frame of the walk', () => {
+    for (const tech of ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'] as Tech[]) {
+      const ex = EXAMPLES[tech]!;
+      colouredAsNamed(ex.step, (c) => ex.values[c] !== '0', tech);
+    }
+  });
+
+  it('draws Medusa\'s uncoloured target as a plain node, never as a colour the step proves false', async () => {
+    // rule 6: if blue were true, r4c4 would lose both its candidates (7, 9)
+    const { parseGrid } = await import('../src/engine/board');
+    const { findNextStep, applyStep } = await import('../src/engine/humanSolver');
+    const g = parseGrid('040000700010090400600200003200005036000300500003810270100000000006057010000000004')!;
+    let s = findNextStep(g)!;
+    for (let k = 0; k < 40 && s.tech !== 'MEDUSA_3D'; k++) {
+      applyStep(g, s);
+      s = findNextStep(g)!;
+    }
+    expect(s.tech).toBe('MEDUSA_3D');
+    const solved = (c: number) => g.values[c] > 0;
+    colouredAsNamed(s, solved, 'Medusa');
+    const r4c4 = 3 * 9 + 3;
+    const m = frameMarks(s, null, solved);
+    for (const d of [7, 9]) expect(m.cands.get(r4c4)?.get(d), `${d} of r4c4`).toBe('node');
+  });
+});
+
 describe('the legend', () => {
   it('names only the kinds drawn, and a role wholly removed lends its words to the removal', () => {
     const s = step({ primary: [A, B], secondary: [C], eliminations: [A, B], labels: { primary: 'the corners', secondary: 'the base' } });

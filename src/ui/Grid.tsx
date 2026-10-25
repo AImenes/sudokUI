@@ -169,7 +169,7 @@ const TIPS = [
 /** Text colour for a candidate a hint marks: near-black on every filled
  *  mark, whatever the theme; the theme's ink inside a removal's ring, unless
  *  the ring is filled with the colour the candidate carried (colouring) */
-const hintTextFill = (kind: string) => (kind === 'elim' ? 'var(--hint-in-ring)' : 'var(--hint-on-fill)');
+const hintTextFill = (kind: string) => (kind === 'elim' || kind === 'node' ? 'var(--hint-in-ring)' : 'var(--hint-on-fill)');
 
 /** the fill and the edge of each kind of hint mark (src/content/hintPalette.ts) */
 const MARK_FILL: Record<string, { fill: string; ink: string }> = {
@@ -193,6 +193,16 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
     <circle cx={x} cy={y} r={(outer + MARK.keyline / 2) * s} fill="none" stroke="var(--cell-bg)" strokeWidth={MARK.keyline * s} />
   );
   const keyline = keyOf(MARK.disc);
+  if (kind === 'node') {
+    // a chain node no colour claims (a colouring's witness target): a plain
+    // ring in the arrow's ink round its digit, for the arrow to end on
+    return (
+      <g>
+        {keyline}
+        <circle cx={x} cy={y} r={MARK.ring * s} fill="none" stroke="var(--hint-arrow)" strokeWidth={MARK.edge * s} />
+      </g>
+    );
+  }
   if (kind === 'elim' || kind === 'elimOn') {
     return inside ? (
       <g>

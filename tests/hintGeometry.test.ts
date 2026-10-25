@@ -530,6 +530,19 @@ describe('what the fifth review of phase 1 found', () => {
     expect(dist(p, sw.layout.centre(named('7r1c5')))).toBeLessThan(dist(p, sw.layout.centre(named('4r1c5'))));
   });
 
+  it('never puts the walk number of a short weak arrow on the parallel arrow beside it', () => {
+    // r9c1 and r9c2 both {5, 7}: 7r9c1=5r9c1-5r9c2=7r9c2-7r9c1, two short
+    // weak arrows 28 units apart along the board's bottom edge
+    const loop = chainOf(['7r9c1', '5r9c1', '5r9c2', '7r9c2', '7r9c1']);
+    const arrows = loop.shapes.flatMap((s) => (s.kind === 'arrow' ? [s] : []));
+    expect(arrows).toHaveLength(2);
+    const at = badgePoints(loop.shapes, loop.layout, loop.marks, startMarkers(loop.links, loop.layout, loop.marks, loop.shapes));
+    for (const s of arrows) {
+      const p = at.get(s.link)!;
+      for (const o of arrows) if (o !== s) expect(toArrow(p, s), `number ${s.link + 1}`).toBeLessThanOrEqual(toArrow(p, o) + 0.5);
+    }
+  });
+
   it('leaves a short weak arrow a dash, a gap and a dash in sight beside its walk number', () => {
     let weak = 0;
     for (const [tech, ex] of Object.entries(EXAMPLES)) {

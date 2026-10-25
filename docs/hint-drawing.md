@@ -231,7 +231,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
   colour is proven false (a wrap), its candidates become false rings and
   the other colour true discs. Remote Pair is a colouring of two digits
   and is drawn as one: parity, not a single "start false" chain, because
-  its eliminations use both parities.
+  its eliminations use both parities. A candidate the step puts in no
+  colour is drawn in none, in the full view and every walk frame: a
+  removal as a removal from the frame that reaches it, anything else (3D
+  Medusa's cell that would be left empty) as a plain ring in the arrow's
+  ink round its digit, which the legend does not name. Since phase 1.
 - **G20. Patterns** (singles, intersections, subsets, fish, wings,
   uniqueness, Sue de Coq, Fireworks, Exocet, APE, Pattern Overlay,
   Tridagon, Extended Rectangle, Chute Remote Pair, BUG+1): role colours
@@ -495,7 +499,16 @@ the values above are its final ones.
   own rule when auto candidates switch; the halo sizes here match the
   code. Left for phase 7, low: walk numbers on an empty place in about
   0.3% of arrows, and on a digit at a phone's size in about 1%, where no
-  spot on or beside a short shaft is clear. Round 6 next. To photograph the app's own board with
+  spot on or beside a short shaft is clear (b7e0e59). Round 6's are
+  fixed: a short weak arrow's number never lands on the parallel arrow
+  beside it (its own crowded shaft comes before another arrow); a
+  colouring colours only what the step puts in a colour (G19), so 3D
+  Medusa's empty-cell rule no longer paints the target cell's candidates
+  blue in a step that proves blue false; the two-bend curve only where
+  marks box an arrow in; the Learn removal bar at 1.5 CSS px on a phone.
+  Also left for later, low: an arrow's tail is not steered off its start
+  cell's other digits (phase 7), and the chain trainer's legend does not
+  name its gold suggestions and purple goal (phase 6). Round 7 next. To photograph the app's own board with
   an example's hint, a scratch Playwright run on port 4174 opens each
   example's position link (kept in the git-ignored `.vite/`).
 - [ ] Phase 2: truth. 2a done (commit 16556da): `truth: 'derived'` on

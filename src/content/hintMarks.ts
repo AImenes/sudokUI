@@ -8,7 +8,10 @@
 // a removal; a candidate the step lists in more than one role takes the
 // first of pattern, acts-through, exception. A chain node takes the colour
 // the step names for it, in that same order, the pattern's when it names
-// none, so a walk's frames colour it as the full view does. A solved cell the step names shows the
+// none, so a walk's frames colour it as the full view does. In a colouring
+// a colour is a parity, so a node the step puts in no colour takes none: a
+// removal is a removal from the frame that reaches it, anything else a
+// plain ring round its digit ('node'), which the legend does not name. A solved cell the step names shows the
 // colour on its digit. A removal or a placement keeps, inside its ring,
 // the colour the step names for it where that colour is a colouring's
 // parity or the candidate is one of the chain's own nodes (G5: Nishio's
@@ -19,7 +22,7 @@ import type { CellDigit, ChainLink, Step, UnitBand } from '../engine/steps';
 import type { Frame, Part } from '../engine/hintFrames';
 
 export type Role = 'primary' | 'secondary' | 'fin';
-export type CandMark = Role | 'place' | 'placeOn' | 'elim' | 'elimOn';
+export type CandMark = Role | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node';
 
 /** a placement, with or without a named colour inside its ring */
 export const isPlaced = (kind: CandMark | undefined) => kind === 'place' || kind === 'placeOn';
@@ -65,7 +68,8 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const links = opts.links ?? step.links ?? [];
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
-      if (!values.has(cd.cell) || kind === 'elim') values.set(cd.cell, kind);
+      // a solved digit shows a colour the step names, and nothing for a plain node
+      if (kind !== 'node' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
       return;
     }
     if (!cands.has(cd.cell)) cands.set(cd.cell, new Map());
@@ -73,7 +77,10 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
     const prev = m.get(cd.digit);
     if (!prev || kind === 'elim' || (kind === 'place' && prev !== 'elim')) m.set(cd.digit, kind);
   };
-  const node = (cd: CellDigit) => mark(cd, namedRole(step, cd) ?? 'primary');
+  const colouring = COLOURING.has(step.tech);
+  const removed = (cd: CellDigit) => step.eliminations.some((e) => e.cell === cd.cell && e.digit === cd.digit);
+  const node = (cd: CellDigit) =>
+    mark(cd, namedRole(step, cd) ?? (!colouring ? 'primary' : removed(cd) ? 'elim' : 'node'));
   if (opts.walking && step.links?.length) {
     // walking a chain: only the nodes of the links drawn so far
     for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
@@ -93,7 +100,6 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
     }
     for (const cd of step.eliminations) mark(cd, 'elim');
     for (const cd of step.placements) mark(cd, 'place');
-    const colouring = COLOURING.has(step.tech);
     const nodes = new Set((step.links ?? []).flatMap((l) => [...l.from, ...l.to]).map((cd) => `${cd.cell}:${cd.digit}`));
     for (const [list, kind] of [
       [step.eliminations, 'elimOn'],
@@ -150,7 +156,8 @@ export function legendKinds(
   marks: HintMarks
 ): { shown: Set<CandMark>; onValue: Set<CandMark>; onBand: Set<CandMark>; intoRemove: Role[]; intoPlace: Role[] } {
   const shown = new Set<CandMark>();
-  for (const m of marks.cands.values()) for (const k of m.values()) shown.add(k === 'elimOn' ? 'elim' : k === 'placeOn' ? 'place' : k);
+  for (const m of marks.cands.values())
+    for (const k of m.values()) if (k !== 'node') shown.add(k === 'elimOn' ? 'elim' : k === 'placeOn' ? 'place' : k);
   for (const k of marks.inside.values()) for (const r of k.values()) shown.add(r);
   const onValue = new Set<CandMark>();
   for (const k of marks.values.values()) {
