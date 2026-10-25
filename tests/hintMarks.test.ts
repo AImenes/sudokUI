@@ -7,7 +7,10 @@
  */
 import { describe, it, expect } from 'vitest';
 import type { CellDigit, Step } from '../src/engine/steps';
-import { hintMarks, legendKinds, frameMarks } from '../src/content/hintMarks';
+import { hintMarks, legendKinds, frameMarks, premiseOf } from '../src/content/hintMarks';
+import { deriveTruth } from '../src/engine/truth';
+import { alternatingLinks } from '../src/engine/steps';
+import type { ChainLink } from '../src/engine/steps';
 import { walkFrames } from '../src/engine/hintFrames';
 import { boardSvg, legendOf } from '../src/content/boardSvg';
 import { LIGHT } from '../src/content/hintPalette';
@@ -125,6 +128,80 @@ describe('the walk', () => {
     expect([last.shown.has('place'), last.intoPlace]).toEqual([true, ['primary']]);
   });
 });
+
+describe("a chain's truth (phase 2b)", () => {
+  const at = (r: number, c: number, d: number): CellDigit => ({ cell: (r - 1) * 9 + c - 1, digit: d });
+  const kindAt = (m: ReturnType<typeof hintMarks>, cd: CellDigit) => m.cands.get(cd.cell)?.get(cd.digit);
+
+  it('draws every node of every derived example as true or false, as its chain makes it', () => {
+    let nodes = 0;
+    for (const [tech, ex] of Object.entries(EXAMPLES)) {
+      const s = ex!.step;
+      const d = deriveTruth(s);
+      if (!d) continue;
+      expect(d.problems, tech).toEqual([]);
+      const m = frameMarks(s, null, (c) => ex!.values[c] !== '0');
+      const removedOrPlaced = (cd: CellDigit) => [...s.eliminations, ...s.placements].some((x) => x.cell === cd.cell && x.digit === cd.digit);
+      for (const [key, truth] of d.candidates) {
+        const [cell, digit] = key.split(':').map(Number);
+        if (ex!.values[cell] !== '0' || removedOrPlaced({ cell, digit })) continue;
+        nodes++;
+        const kind = kindAt(m, { cell, digit });
+        // a true group's members keep the pattern's disc: "one of these", not all
+        expect(kind, `${tech}: ${digit} in cell ${cell}`).toBe(truth === 'groupTrue' ? namedRoleOrPrimary(s, { cell, digit }) : truth);
+      }
+      // and the legend says under which premise
+      const k = legendKinds(s, m);
+      expect(k.shown.has('true') && k.shown.has('false'), tech).toBe(true);
+    }
+    expect(nodes).toBeGreaterThan(60);
+  });
+
+  it("shows a discontinuous loop's start as its premise through the walk, and as proven at the end", () => {
+    // 7r1c1=7r1c5-7r3c5=7r3c1-7r3c9=7r1c1: assumed false, proven true, placed
+    const ring = [[at(1, 1, 7)], [at(1, 5, 7)], [at(3, 5, 7)], [at(3, 1, 7)], [at(3, 9, 7)]];
+    const links = alternatingLinks(ring, 'strong');
+    const s = step({ tech: 'NICE_LOOP', truth: 'derived', links, primary: ring.flat(), placements: [at(1, 1, 7)] });
+    expect(premiseOf(s)).toBe(false);
+    const frames = walkFrames(s);
+    const start = at(1, 1, 7);
+    // the premise while the loop is open, proven once its closing link is drawn, placed at the conclusion
+    const open = frames.filter((fr) => fr.links < links.length);
+    const shut = frames.filter((fr) => fr.links === links.length && !fr.show.has('conclusion'));
+    expect(open.length).toBeGreaterThan(1);
+    for (const fr of open) expect(kindAt(frameMarks(s, fr, () => false), start)).toBe('false');
+    for (const fr of shut) expect(kindAt(frameMarks(s, fr, () => false), start)).toBe('true');
+    expect(kindAt(frameMarks(s, frames[frames.length - 1], () => false), start)).toBe('place');
+    expect(kindAt(frameMarks(s, null, () => false), start)).toBe('place');
+    // the rest of the loop under the premise: 7r1c5 true, 7r3c5 false, ...
+    const full = frameMarks(s, null, () => false);
+    expect([at(1, 5, 7), at(3, 5, 7), at(3, 1, 7), at(3, 9, 7)].map((cd) => kindAt(full, cd))).toEqual(['true', 'false', 'true', 'false']);
+  });
+
+  it('words the legend by the premise: an inverted loop assumes its start true', () => {
+    const a = [at(2, 2, 4), at(2, 3, 4)];
+    const links: ChainLink[] = [
+      { from: a, to: [at(2, 8, 4)], strong: false },
+      { from: [at(2, 8, 4)], to: [at(6, 8, 4)], strong: true },
+      { from: [at(6, 8, 4)], to: [at(6, 3, 4)], strong: false },
+      { from: [at(6, 3, 4)], to: [at(4, 3, 4)], strong: true },
+      { from: [at(4, 3, 4)], to: a, strong: false }
+    ];
+    const s = step({ tech: 'GROUPED_X_CYCLES', truth: 'derived', links, primary: [...a, at(2, 8, 4), at(6, 8, 4), at(6, 3, 4), at(4, 3, 4)], eliminations: [at(9, 9, 4)] });
+    expect(premiseOf(s)).toBe(true);
+    const labels = legendOf(s).map((l) => l.label);
+    expect(labels).toContain('true, if the first candidate (by the dot) is true');
+    expect(labels).toContain('false, if the first candidate (by the dot) is true');
+    // a step whose truth is not derived claims none
+    expect(premiseOf(step({ primary: [A] }))).toBeNull();
+  });
+});
+
+/** the role a step names for a candidate, the pattern's when none */
+function namedRoleOrPrimary(s: Step, cd: CellDigit) {
+  const has = (l?: CellDigit[]) => !!l?.some((x) => x.cell === cd.cell && x.digit === cd.digit);
+  return has(s.primary) ? 'primary' : has(s.secondary) ? 'secondary' : has(s.fins) ? 'fin' : 'primary';
+}
 
 describe('a colouring', () => {
   const ROLE = { primary: 'primary', secondary: 'secondary', fin: 'fins' } as const;

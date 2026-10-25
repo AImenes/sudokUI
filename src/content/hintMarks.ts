@@ -11,7 +11,17 @@
 // none, so a walk's frames colour it as the full view does. In a colouring
 // a colour is a parity, so a node the step puts in no colour takes none: a
 // removal is a removal from the frame that reaches it, anything else a
-// plain ring round its digit ('node'), which the legend does not name. A solved cell the step names shows the
+// plain ring round its digit ('node'), which the legend does not name.
+//
+// A chain whose truth is derived (src/engine/truth.ts) draws each node as
+// what the chain makes it (G2, G18): a filled disc in the true colour, or
+// a ring in the false colour, from its first node's premise; that truth
+// wins over the roles. A discontinuous loop's start shows its premise
+// until the walk reaches the link that closes the loop, and its proven
+// value after. A true group means one of its members is true, not all, so
+// its members keep the pattern's disc (until phase 4 draws sets as hulls).
+// A removed or placed node is the removal or the placement, its truth
+// plain from the mark. A solved cell the step names shows the
 // colour on its digit. A removal or a placement keeps, inside its ring,
 // the colour the step names for it where that colour is a colouring's
 // parity or the candidate is one of the chain's own nodes (G5: Nishio's
@@ -20,9 +30,10 @@
 // read; a colour only the chain default gave it is never shown.
 import type { CellDigit, ChainLink, Step, UnitBand } from '../engine/steps';
 import type { Frame, Part } from '../engine/hintFrames';
+import { deriveTruth } from '../engine/truth';
 
 export type Role = 'primary' | 'secondary' | 'fin';
-export type CandMark = Role | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node';
+export type CandMark = Role | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node' | 'true' | 'false';
 
 /** a placement, with or without a named colour inside its ring */
 export const isPlaced = (kind: CandMark | undefined) => kind === 'place' || kind === 'placeOn';
@@ -54,6 +65,17 @@ export const COLOURING = new Set(['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'])
 
 const has = (list: CellDigit[] | undefined, cd: CellDigit) => !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
 
+/**
+ * What a derived chain assumes of its first node: false when it opens with
+ * a strong link, true when it opens with a weak one; null for a step whose
+ * truth is not derived, or whose derivation finds a fault
+ */
+export function premiseOf(step: Step): boolean | null {
+  const d = deriveTruth(step);
+  if (!d || d.problems.length || !d.nodes.length) return null;
+  return d.closure ? d.closure.assumed : d.nodes[0].truth;
+}
+
 /** the colour the step names for a candidate, if any: the first of the lists the full view marks in order */
 export function namedRole(step: Step, cd: CellDigit): Role | null {
   return has(step.primary, cd) ? 'primary' : has(step.secondary, cd) ? 'secondary' : has(step.fins, cd) ? 'fin' : null;
@@ -69,7 +91,7 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
       // a solved digit shows a colour the step names, and nothing for a plain node
-      if (kind !== 'node' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
+      if (kind !== 'node' && kind !== 'true' && kind !== 'false' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
       return;
     }
     if (!cands.has(cd.cell)) cands.set(cd.cell, new Map());
@@ -79,16 +101,30 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   };
   const colouring = COLOURING.has(step.tech);
   const removed = (cd: CellDigit) => step.eliminations.some((e) => e.cell === cd.cell && e.digit === cd.digit);
+  // a derived chain's truth, node by node; a loop's start keeps its premise
+  // until the link that closes the loop is drawn
+  const derived = deriveTruth(step);
+  const truth = derived && !derived.problems.length ? derived : null;
+  const closed = links.length >= (step.links ?? []).length;
+  const truthOf = (cd: CellDigit): 'true' | 'false' | null => {
+    if (!truth) return null;
+    const isStart = truth.closure?.node.some((o) => o.cell === cd.cell && o.digit === cd.digit);
+    if (truth.closure && isStart && !closed) return truth.closure.assumed ? 'true' : 'false';
+    const t = truth.candidates.get(`${cd.cell}:${cd.digit}`);
+    return t === 'true' ? 'true' : t === 'false' ? 'false' : null;
+  };
   const node = (cd: CellDigit) =>
-    mark(cd, namedRole(step, cd) ?? (!colouring ? 'primary' : removed(cd) ? 'elim' : 'node'));
+    mark(cd, truthOf(cd) ?? namedRole(step, cd) ?? (!colouring ? 'primary' : removed(cd) ? 'elim' : 'node'));
   if (opts.walking && step.links?.length) {
     // walking a chain: only the nodes of the links drawn so far
     for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
   } else {
+    // a chain's truth comes before the roles, which mark only what it leaves
+    if (truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
     if (show('primary')) for (const cd of step.primary ?? []) mark(cd, 'primary');
     if (show('secondary')) for (const cd of step.secondary ?? []) mark(cd, 'secondary');
     // every chain node gets a mark, so arrows root on one
-    for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
+    if (!truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
     if (show('fins')) for (const cd of step.fins ?? []) mark(cd, 'fin');
   }
   if (show('conclusion')) {
@@ -109,6 +145,8 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
         const colour = namedRole(step, cd);
         if (!colour || opts.solved(cd.cell)) continue;
         if (!colouring && !nodes.has(`${cd.cell}:${cd.digit}`)) continue;
+        // a derived chain's removed or placed node: the mark says its truth
+        if (truth) continue;
         // a removal wins over a placement of the same candidate
         if (kind === 'placeOn' && cands.get(cd.cell)?.get(cd.digit) !== 'place') continue;
         cands.get(cd.cell)!.set(cd.digit, kind);

@@ -11,7 +11,7 @@ import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 import { stepText } from '../content/eureka';
-import { frameMarks, legendKinds } from '../content/hintMarks';
+import { frameMarks, legendKinds, premiseOf } from '../content/hintMarks';
 import type { Role } from '../content/hintMarks';
 import { copyText } from './send';
 import { useT, rich, Translator } from '../content/i18n';
@@ -95,9 +95,14 @@ export function ChainPanel() {
         {n > 1 && (
           <ul className="hint-legend">
             <li>
-              <i className="swatch-primary" />
-              {t('your chain: solid into a candidate it makes true, dashed into one it makes false')}
+              <i className="swatch-true" />
+              {t('true, if the first candidate (by the dot) is false')}
             </li>
+            <li>
+              <i className="swatch-false" />
+              {t('false, if the first candidate (by the dot) is false')}
+            </li>
+            <li>{t('your chain: solid into a candidate it makes true, dashed into one it makes false')}</li>
             {elims.length > 0 && (
               <li>
                 <i className="swatch-elim" />
@@ -201,6 +206,8 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
     roles
       .map((r) => (r === 'primary' ? hint.labels?.primary : r === 'secondary' ? hint.labels?.secondary : hint.labels?.fins))
       .filter((s): s is string => !!s);
+  // what a derived chain's truths are under: its first node's premise
+  const premise = premiseOf(hint);
   // a swatch is drawn like the role's mark: a disc, the solved digit's
   // outline, or a house band
   const swatch = (role: Role) =>
@@ -281,6 +288,18 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                 <li>
                   <i className="swatch-elim" />
                   {[t('remove'), ...lent(legend.intoRemove)].join(': ')}
+                </li>
+              )}
+              {legend.shown.has('true') && (
+                <li>
+                  <i className="swatch-true" />
+                  {premise ? t('true, if the first candidate (by the dot) is true') : t('true, if the first candidate (by the dot) is false')}
+                </li>
+              )}
+              {legend.shown.has('false') && (
+                <li>
+                  <i className="swatch-false" />
+                  {premise ? t('false, if the first candidate (by the dot) is true') : t('false, if the first candidate (by the dot) is false')}
                 </li>
               )}
               {legend.shown.has('primary') && (

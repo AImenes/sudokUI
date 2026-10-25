@@ -539,14 +539,18 @@ the values above are its final ones.
 - [ ] Phase 2: truth. 2a done (commit 16556da): `truth: 'derived'` on
   every AIC-form finder, `src/engine/truth.ts` with its self-check, the
   examples refreshed, tests/truth.test.ts (518 chain steps of a solve batch,
-  all clean). Next, 2b: the chain trainer's `chainStep`
-  (src/engine/chainTrainer.ts) draws the kind each link is USED as
-  (position parity, i % 2 === 0 strong) and says `truth: 'derived'`, with
-  its walk sentence naming a pair used weakly; then both renderers draw
-  true discs and false rings from `deriveTruth` (groupTrue members keep the
-  pattern disc until phase 4's hulls), arrows dashed iff the target is
-  false, and the legend's words. Start 2b after the phase 1 review's
-  findings are fixed (workflow run wf_aae14104-777).
+  all clean); the chain trainer draws each link as the kind it is used as
+  and says `truth: 'derived'`. 2b built, in review: a derived chain draws
+  each node as the chain makes it (`src/content/hintMarks.ts`), a true
+  node a filled disc in the true colour and a false one a ring in the false
+  colour, faintly tinted, before the roles; a true group's members keep
+  the pattern's disc until phase 4; a discontinuous loop's start shows its
+  premise until the walk draws the link that closes the loop, its proven
+  value after; a removed or placed node is its removal or placement. The
+  legend names both, worded by the premise ("true, if the first candidate
+  (by the dot) is false"; an inverted loop's "... is true"), in the app,
+  the chain trainer and the Learn diagrams, in all three languages.
+  Arrows were already dashed exactly into false nodes (G8).
 - [ ] Phase 3: colouring
 - [ ] Phase 4: sets
 - [ ] Phase 5: forcing

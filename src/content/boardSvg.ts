@@ -10,7 +10,7 @@ import { tr } from '../engine/text';
 import { arrowShapes, startMarkers, pointsOf, SIZES } from './hintGeometry';
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
-import { hintMarks, markedCandidates, legendKinds, placedKeys, COLOURING } from './hintMarks';
+import { hintMarks, markedCandidates, legendKinds, placedKeys, premiseOf, COLOURING } from './hintMarks';
 import type { Role } from './hintMarks';
 
 export interface Example {
@@ -152,7 +152,7 @@ export function boardSvg(example: Example, title: string): string {
     if (value) {
       const kind = drawn.values.get(cell);
       let fill = '';
-      if (kind && kind !== 'node') {
+      if (kind && kind !== 'node' && kind !== 'true' && kind !== 'false') {
         const ink = kind === 'elim' || kind === 'elimOn' ? P.elim : fillOf(P, kind === 'placeOn' ? 'place' : kind).ink;
         // a style, not an attribute, so the class's own fill cannot win
         fill = ` style="fill:${ink}"`;
@@ -172,6 +172,12 @@ export function boardSvg(example: Example, title: string): string {
       const ty = f(candY(cd) + 4.4);
       if (!kind) {
         texts.push(`<text x="${x}" y="${ty}" class="cd">${digit}</text>`);
+        continue;
+      }
+      if (kind === 'false') {
+        // a chain node the chain makes false: a ring in the false colour, faintly tinted inside
+        parts.push(`<circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="${P.false}" fill-opacity="${P.ringTint}" stroke="${P.false}" stroke-width="${f(MARK.ringStroke * s * LINE)}"/>`);
+        texts.push(`<text x="${x}" y="${ty}" class="rm">${digit}</text>`);
         continue;
       }
       if (kind === 'node') {
@@ -196,7 +202,7 @@ export function boardSvg(example: Example, title: string): string {
       }
       // a placed chain node keeps the colour the step names for it inside the placement's ring (G5)
       const inside = kind === 'placeOn' ? drawn.inside.get(cell)?.get(digit) : undefined;
-      const { fill, ink } = fillOf(P, inside ?? (kind === 'placeOn' ? 'place' : kind));
+      const { fill, ink } = fillOf(P, inside ?? (kind === 'placeOn' || kind === 'true' ? 'place' : kind));
       parts.push(
         `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - MARK.edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(MARK.edge * s)}"/>`
       );
@@ -287,7 +293,7 @@ ${parts.join('\n')}
 
 /** a legend entry: the kind of mark (its swatch is drawn like the mark, src/ui/styles.css .swatch-*) and its words */
 export interface LegendEntry {
-  kind: 'place' | 'elim' | 'primary' | 'secondary' | 'fin';
+  kind: 'place' | 'elim' | 'true' | 'false' | 'primary' | 'secondary' | 'fin';
   label: string;
   /** the mark's fill and edge on the diagram, for a swatch drawn inline */
   colour: string;
@@ -314,6 +320,14 @@ export function legendOf(step: Step, values?: string): LegendEntry[] {
   if (shown.has('place')) out.push({ kind: 'place', label: [tr`place`, ...lent(intoPlace)].join(': '), colour: P.place, ink: P.placeInk });
   if (shown.has('elim')) out.push({ kind: 'elim', label: [tr`remove`, ...lent(intoRemove)].join(': '), colour: '#ffffff', ink: P.elim });
   if (COLOURING.has(step.tech)) return out;
+  // a derived chain's truth, worded by its first node's premise
+  const premise = premiseOf(step);
+  if (shown.has('true')) {
+    out.push({ kind: 'true', label: premise ? tr`true, if the first candidate (by the dot) is true` : tr`true, if the first candidate (by the dot) is false`, colour: P.place, ink: P.placeInk });
+  }
+  if (shown.has('false')) {
+    out.push({ kind: 'false', label: premise ? tr`false, if the first candidate (by the dot) is true` : tr`false, if the first candidate (by the dot) is false`, colour: '#ffffff', ink: P.false });
+  }
   const role = (kind: Role, label: string, colour: string, ink: string) =>
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });
   if (shown.has('primary')) role('primary', step.labels?.primary ?? tr`the pattern`, P.primary, P.primaryInk);
@@ -342,6 +356,7 @@ export function swatchStyle(l: LegendEntry): { background: string; border: strin
       width: '16px'
     };
   }
+  if (l.kind === 'false') return { background: '#ffffff', border: `2px solid ${l.ink}`, boxShadow: chip };
   if (l.kind === 'elim') {
     return {
       background: `linear-gradient(45deg,transparent 40%,${l.ink} 40%,${l.ink} 60%,transparent 60%),#ffffff`,

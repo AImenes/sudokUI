@@ -1148,6 +1148,17 @@ button {
   --sw-ink: var(--hint-fin-ink);
 }
 
+/* a chain's truth: a true disc, a false ring faintly tinted inside (G2) */
+.hint-legend .swatch-true {
+  background: var(--hint-place);
+  border: 1px solid var(--hint-place-ink);
+}
+
+.hint-legend .swatch-false {
+  background: transparent;
+  border: 2px solid var(--hint-false);
+}
+
 .hint-legend .swatch-primary,
 .hint-legend .swatch-secondary,
 .hint-legend .swatch-fin {
