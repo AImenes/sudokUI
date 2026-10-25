@@ -578,6 +578,9 @@ button {
     .board .hint-ring {
       stroke-width: 4px;
     }
+    .board .hint-node {
+      stroke-width: 3.5px;
+    }
     .board .hint-place-wide {
       display: none;
     }
@@ -604,6 +607,9 @@ button {
     .board .hint-ring {
       stroke-width: 4.5px;
     }
+    .board .hint-node {
+      stroke-width: 4px;
+    }
   }
 }
 @container (max-width: 600px) {
@@ -627,6 +633,9 @@ button {
   }
   .board .hint-ring {
     stroke-width: 4px;
+  }
+  .board .hint-node {
+    stroke-width: 3.5px;
   }
   .board .hint-place-wide {
     display: none;
@@ -653,6 +662,9 @@ button {
   }
   .board .hint-ring {
     stroke-width: 4.5px;
+  }
+  .board .hint-node {
+    stroke-width: 4px;
   }
 }
 

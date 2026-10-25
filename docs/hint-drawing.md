@@ -169,7 +169,8 @@ Every rule is numbered so a commit, a test or a review can cite it.
   the clock, else wherever has most room (a cell line's real width
   counts, so a dot boxed in may touch a thin cell line, never a box line
   when it can help it). A cluster of undirected ties has no reading
-  order and no marker. The walk numbers each arrow by the frame that adds
+  order and no marker, and a witness arrow that leaves a node a tie
+  reached starts a branch of its own, with its dot beside that node. The walk numbers each arrow by the frame that adds
   it, so the number on the board is the one the panel shows; a number
   sits on its arrow's shaft, as near the middle as keeps it clear of the
   numbers placed before it, the marks, the start dots and every head; on
@@ -508,7 +509,15 @@ the values above are its final ones.
   marks box an arrow in; the Learn removal bar at 1.5 CSS px on a phone.
   Also left for later, low: an arrow's tail is not steered off its start
   cell's other digits (phase 7), and the chain trainer's legend does not
-  name its gold suggestions and purple goal (phase 6). Round 7 next. To photograph the app's own board with
+  name its gold suggestions and purple goal (phase 6) (43b6219). Round
+  7's are fixed: a colouring's witness keeps its own start dot where the
+  last tie of the cluster ends on its start (the dot had gone to a
+  cluster candidate, a regression against main); the plain node ring
+  thickens on a small board. Also left for later, low: where an arc
+  keeps clear of the marks but lands its head on a digit, the two-bend
+  curve is not tried (the digit is drawn over the head, G11; phase 7);
+  Remote Pair's "chain of 35 pairs" runs its two digits together, as on
+  main (phase 6's words). Round 8 next. To photograph the app's own board with
   an example's hint, a scratch Playwright run on port 4174 opens each
   example's position link (kept in the git-ignored `.vite/`).
 - [ ] Phase 2: truth. 2a done (commit 16556da): `truth: 'derived'` on

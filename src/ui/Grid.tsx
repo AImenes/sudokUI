@@ -199,7 +199,7 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
     return (
       <g>
         {keyline}
-        <circle cx={x} cy={y} r={MARK.ring * s} fill="none" stroke="var(--hint-arrow)" strokeWidth={MARK.edge * s} />
+        <circle className="hint-node" cx={x} cy={y} r={MARK.ring * s} fill="none" stroke="var(--hint-arrow)" strokeWidth={MARK.ringStroke * s} />
       </g>
     );
   }

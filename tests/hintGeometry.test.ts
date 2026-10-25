@@ -572,6 +572,50 @@ describe('what the fifth review of phase 1 found', () => {
   });
 });
 
+describe('what the seventh review of phase 1 found', () => {
+  it('gives a colouring\'s witness its own start dot, even where the last tie ends on its start', () => {
+    // ties 1r1c1~1r1c5, 1r1c5~1r5c5 (the cluster), then the witness
+    // 1r5c5 - 1r5c9, which leaves the node the last tie reached
+    const a = cd(1, 1, 1);
+    const b = cd(1, 5, 1);
+    const c = cd(5, 5, 1);
+    const d = cd(5, 9, 1);
+    const links = [link(a, b, true, true), link(b, c, true, true), link(c, d, false)];
+    const dots = startMarkers(links, layout, [a, b, c, d]);
+    expect(dots.map((p) => p.link)).toEqual([2]);
+    expect(dots[0].at).toEqual(c);
+  });
+
+  it('never puts a start dot on a node only ties reach, in a Simple Colors hint the solver gives', () => {
+    const g = parseGrid('..8.......2...9.411...3...9.4...3..7.3.245.6.8..9...5.9...5...445.8...7.......5..')!;
+    let step = findNextStep(g)!;
+    for (let k = 0; k < 60 && step.tech !== 'SIMPLE_COLORS'; k++) {
+      applyStep(g, step);
+      step = findNextStep(g)!;
+    }
+    expect(step.tech).toBe('SIMPLE_COLORS');
+    const solved = (cell: number) => g.values[cell] > 0;
+    const marks = hintMarks(step, { solved });
+    const marked = markedCandidates(marks);
+    const l = boardLayout(placedKeys(marks), undefined, solved);
+    const dots = startMarkers(step.links!, l, marked);
+    expect(dots.length).toBeGreaterThan(0);
+    for (const p of dots) {
+      // every dot belongs to a witness arrow, beside the node it leaves
+      const w = step.links![p.link];
+      expect(w.undirected, `dot ${p.link + 1}`).toBeFalsy();
+      expect(w.from.some((x) => x.cell === p.at.cell && x.digit === p.at.digit)).toBe(true);
+    }
+    // and every witness has one
+    const witnesses = step.links!.map((w, i) => (w.undirected ? -1 : i)).filter((i) => i >= 0);
+    for (const i of witnesses) {
+      const prev = step.links![i - 1];
+      const goesOn = prev && !prev.undirected && prev.to.some((x) => step.links![i].from.some((y) => y.cell === x.cell));
+      if (!goesOn) expect(dots.some((p) => p.link === i), `the witness, link ${i + 1}`).toBe(true);
+    }
+  });
+});
+
 describe('a tie', () => {
   it('is a quiet straight line with no head, never bent', () => {
     const a = cd(1, 1, 5);

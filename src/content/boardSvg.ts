@@ -176,7 +176,7 @@ export function boardSvg(example: Example, title: string): string {
       }
       if (kind === 'node') {
         // a chain node no colour claims: a plain ring in the arrow's ink round its digit
-        parts.push(`<circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="none" stroke="${P.arrow}" stroke-width="${f(MARK.edge * s * LINE)}"/>`);
+        parts.push(`<circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="none" stroke="${P.arrow}" stroke-width="${f(MARK.ringStroke * s * LINE)}"/>`);
         texts.push(`<text x="${x}" y="${ty}" class="rm">${digit}</text>`);
         continue;
       }

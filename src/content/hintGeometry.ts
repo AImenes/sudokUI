@@ -156,10 +156,15 @@ export function insideOneCell(link: ChainLink): boolean {
 /**
  * A link goes on from the one before: it leaves the node the other reached,
  * or, in a chain of sets, another digit of the set it reached (the set's
- * own link, which is not drawn)
+ * own link, which is not drawn). A tie neither goes on nor is gone on
+ * from: a colouring's cluster has no reading order, and a witness arrow
+ * that leaves a node a tie reached starts a branch of its own
  */
 const goesOn = (links: ChainLink[], i: number) =>
-  i > 0 && (sameNode(links[i - 1].to, links[i].from) || shareACell(links[i - 1].to, links[i].from));
+  i > 0 &&
+  !links[i - 1].undirected &&
+  !links[i].undirected &&
+  (sameNode(links[i - 1].to, links[i].from) || shareACell(links[i - 1].to, links[i].from));
 
 /** the shortest distance from a point to the segment a-b, and where along it (0..1) */
 function toSegment(p: Point, a: Point, b: Point): { dist: number; t: number } {
