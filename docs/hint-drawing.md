@@ -457,7 +457,7 @@ the values above are its final ones.
 
 ## Status
 
-- [ ] Phase 1: the board foundation. Built and green (tsc, unit and
+- [x] Phase 1: the board foundation. Built and green (tsc, unit and
   browser tests): `src/content/hintGeometry.ts`, `src/content/hintPalette.ts`
   and `src/content/hintMarks.ts` with their tests, both renderers on
   them, the CSS tokens, `scripts/hint-gallery.ts` for looking at all 65
@@ -517,7 +517,23 @@ the values above are its final ones.
   keeps clear of the marks but lands its head on a digit, the two-bend
   curve is not tried (the digit is drawn over the head, G11; phase 7);
   Remote Pair's "chain of 35 pairs" runs its two digits together, as on
-  main (phase 6's words). Round 8 next. To photograph the app's own board with
+  main (phase 6's words) (b229d6e). Round 8 confirmed nothing of high or
+  medium severity and nothing false, which is the owner's rule for
+  merging: phase 1 merged then, with a render test for the app board's
+  digit cut-out and a store test for the trainer's chain starting over.
+
+  Left for phase 7, all low (round 8 and before): in a start cell boxed in
+  on every side the start dot can sit nearer the switch partner than node
+  0 (2 dots in 14,374 chain steps); in a loop boxed in at both ends a head
+  can overlap a removal ring (3 of 67,815 arrows); the removal bar merges
+  with the removed digit on a phone (a halo round the bar, or a larger
+  digit); the cut-out leaves dash specks between close digits (end each
+  dashed shaft on a full dash); an arrow's tail is not steered off its
+  start cell's other digits; the two-bend curve is not tried where only a
+  head would land on a digit; walk numbers on an empty place in about
+  0.3% of arrows. For phase 6: the chain trainer's legend does not name
+  its suggestions and goal; Remote Pair's "chain of 35 pairs"; a sentence
+  when the trainer's chain starts over. To photograph the app's own board with
   an example's hint, a scratch Playwright run on port 4174 opens each
   example's position link (kept in the git-ignored `.vite/`).
 - [ ] Phase 2: truth. 2a done (commit 16556da): `truth: 'derived'` on

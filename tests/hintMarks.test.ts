@@ -286,6 +286,31 @@ describe('the store', () => {
     useGame.getState().endChain();
   });
 
+  it("starts the trainer's chain over when switching auto candidates on removes one of its candidates", async () => {
+    const { useGame, engineGrid } = await import('../src/state/gameStore');
+    const { useSettings } = await import('../src/state/settings');
+    useSettings.setState({ autoOffMaterialize: false });
+    useGame.getState().startGame('..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..', 196, 'Easy');
+    useGame.getState().startChain();
+    const g = engineGrid(useGame.getState().cells);
+    const cell = [...g.values].findIndex((v, i) => v === 0 && [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => g.cands[i] & (1 << (d - 1))).length === 2);
+    const [d1, d2] = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => g.cands[cell] & (1 << (d - 1)));
+    useGame.getState().chainTap(cell, d1);
+    useGame.getState().chainTap(cell, d2);
+    useGame.getState().toggleAutoCandidates(); // off
+    // the player's centre marks for the cell now hold only d1: switching auto
+    // back on adopts that, and d2 is no longer a candidate
+    const cells = useGame.getState().cells.map((c, i) => (i === cell ? { ...c, center: 1 << (d1 - 1), corner: 0 } : c));
+    useGame.setState({ cells });
+    useGame.getState().toggleAutoCandidates(); // on
+    expect(useGame.getState().autoCandidates).toBe(true);
+    expect(engineGrid(useGame.getState().cells).cands[cell] & (1 << (d2 - 1))).toBe(0);
+    expect(useGame.getState().chain?.nodes).toHaveLength(0);
+    expect(useGame.getState().hint).toBeNull();
+    expect(useGame.getState().hintStage).toBe('hidden');
+    useGame.getState().endChain();
+  });
+
   it('takes a hint away when auto candidates are switched, since the board then shows other candidates', async () => {
     const { useGame } = await import('../src/state/gameStore');
     useGame.getState().startGame('..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..', 196, 'Easy');
