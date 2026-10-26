@@ -609,12 +609,61 @@ describe('what the seventh review of phase 1 found', () => {
 });
 
 describe('a tie', () => {
-  it('is a quiet straight line with no head, never bent', () => {
+  const bent = (s: ArrowShape) => /[QC]/.test((s as { d: string }).d);
+
+  it('is a quiet line with no head, straight over a mark its frame does not draw', () => {
     const a = cd(1, 1, 5);
     const b = cd(1, 9, 5);
     const between = cd(1, 5, 5);
+    // the 5 of r1c5 marked by the hint (a removal, say), but no candidate of the cluster
     const [s] = arrowShapes([link(a, b, true, true)], layout, [a, b, between]);
     expect(s.kind).toBe('tie');
     expect(s.kind === 'tie' && s.d).toMatch(/ L /);
+  });
+
+  it('bends round another candidate of its cluster on its line, or of a cluster drawn before it, as an arrow does (G10)', () => {
+    const a = cd(1, 1, 5);
+    const b = cd(1, 9, 5);
+    const between = cd(1, 5, 5);
+    // one cluster: a~b, b~5r5c9, 5r5c9~5r5c5, 5r5c5~between
+    const one = [link(a, b, true, true), link(b, cd(5, 9, 5), true, true), link(cd(5, 9, 5), cd(5, 5, 5), true, true), link(cd(5, 5, 5), between, true, true)];
+    const marks = [a, b, between, cd(5, 9, 5), cd(5, 5, 5)];
+    const [s] = arrowShapes(one, layout, marks);
+    expect(s.kind).toBe('tie');
+    expect(bent(s)).toBe(true);
+    // clear of the 5 of r1c5 all along, and from end to end
+    const line = samples((s as { d: string }).d);
+    for (const p of line) expect(dist(p, layout.centre(between))).toBeGreaterThan(layout.r + SIZES.gap * 100);
+    expect(dist(line[0], layout.centre(a))).toBeCloseTo(layout.r + SIZES.gap * 100, 0);
+    expect(dist(line[line.length - 1], layout.centre(b))).toBeCloseTo(layout.r + SIZES.gap * 100, 0);
+    // two clusters (Multi Colors): the first cluster's frame does not draw the second's candidates, the second's draws both
+    const first = [link(a, b, true, true), link(between, cd(5, 5, 5), true, true)];
+    expect(bent(arrowShapes(first, layout, marks)[0])).toBe(false);
+    const second = [link(between, cd(5, 5, 5), true, true), link(a, b, true, true)];
+    expect(bent(arrowShapes(second, layout, marks)[1])).toBe(true);
+  });
+});
+
+describe('a weak tie', () => {
+  it('keeps clear of the end of another weak tie, as an arrow keeps clear of another arrow\'s end', () => {
+    // 5r1c5 to 5r5c5 down column 5, ending just above r5c5's 5; 2r5c1 to 2r5c9 along row 5's top places, past that end
+    const down = link(cd(1, 5, 5), cd(5, 5, 5), false, true);
+    const across = link(cd(5, 1, 2), cd(5, 9, 2), false, true);
+    const marks = [cd(1, 5, 5), cd(5, 5, 5), cd(5, 1, 2), cd(5, 9, 2)];
+    const [d, a] = arrowShapes([down, across], layout, marks).map(arrow);
+    expect(d.d).toMatch(/ L /);
+    expect(a.d).toMatch(/ Q /);
+    // where the first ends, as the arrows reckon an end: just outside its mark, half a head further
+    const end = { x: layout.centre(cd(5, 5, 5)).x, y: layout.centre(cd(5, 5, 5)).y - (SIZES.r + SIZES.gap + SIZES.headLength / 2) * 100 };
+    expect(toArrow(end, a)).toBeGreaterThanOrEqual(((SIZES.headWidth / 2 + SIZES.clearance) * 100) - 0.5);
+  });
+
+  it('runs straight along a tie, which is never drawn with it, where a weak arrow would bend off it', () => {
+    // the tie 5r3c1~5r3c9 and the weak tie 4r3c2-4r3c8, on one line along row 3's middle places
+    const tie = link(cd(3, 1, 5), cd(3, 9, 5), true, true);
+    const marks = [cd(3, 1, 5), cd(3, 9, 5), cd(3, 2, 4), cd(3, 8, 4)];
+    const weak = (undirected: boolean) => link(cd(3, 2, 4), cd(3, 8, 4), false, undirected);
+    expect(arrow(arrowShapes([tie, weak(true)], layout, marks)[1]).d).toMatch(/ L /);
+    expect(arrow(arrowShapes([tie, weak(false)], layout, marks)[1]).d).toMatch(/ [QC] /);
   });
 });

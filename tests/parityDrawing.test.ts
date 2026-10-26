@@ -470,6 +470,43 @@ describe('the geometry', () => {
     expect(bent(shapes[5])).toBe(false);
   });
 
+  /** the small board's widths, from the stylesheet: the brackets' stroke and halo, and a ring's stroke at its widest */
+  function smallBoard() {
+    const css = new TextDecoder().decode(readFileSync('src/ui/styles.css'));
+    const px = (re: RegExp) => [...css.matchAll(re)].map((m) => Number(m[1]));
+    const strokes = px(/\.board \.chain-bracket \{\s*stroke-width: ([\d.]+)px;/g);
+    const halos = px(/\.board \.chain-bracket-halo \{\s*stroke-width: ([\d.]+)px;/g);
+    const rings = px(/\.board \.hint-(?:ring|node) \{\s*stroke-width: ([\d.]+)px;/g);
+    expect([strokes.length, halos.length]).toEqual([2, 2]);
+    expect(rings.length).toBeGreaterThan(0);
+    return { stroke: Math.max(...strokes), halo: Math.max(...halos), ring: Math.max(...rings) };
+  }
+  /** a bracket's arms, tips and corners included, sampled */
+  function armsOf(s: Extract<ArrowShape, { kind: 'cell' }>): Point[] {
+    const n = s.d.match(/-?\d+(\.\d+)?/g)!.map(Number);
+    const out: Point[] = [];
+    for (let k = 0; k < n.length; k += 6)
+      for (const [p, q] of [
+        [0, 2],
+        [2, 4]
+      ])
+        for (let i = 0; i <= 20; i++) out.push({ x: n[k + p] + ((n[k + q] - n[k + p]) * i) / 20, y: n[k + p + 1] + ((n[k + q + 1] - n[k + p + 1]) * i) / 20 });
+    return out;
+  }
+  /**
+   * the least room a bracket's halo leaves, at a small board's widths, to
+   * the marks at the places given: a disc and its keyline, or a removal's
+   * ring at its widest stroke, whichever reaches further
+   */
+  function bracketRoom(s: Extract<ArrowShape, { kind: 'cell' }>, layout: ReturnType<typeof boardLayout>, places: CellDigit[]): number {
+    const { halo, ring } = smallBoard();
+    const c = layout.cell;
+    const outer = Math.max(MARK.disc + MARK.keyline, MARK.ring + ring / 2 / c) * c;
+    let least = Infinity;
+    for (const pt of armsOf(s)) for (const x of places) least = Math.min(least, Math.hypot(pt.x - layout.centre(x).x, pt.y - layout.centre(x).y) - outer - halo / 2);
+    return least;
+  }
+
   it('draws a weak tie inside one cell as corner brackets, clear of the candidates and the box lines on a small board', () => {
     const layout = boardLayout();
     const [s] = arrowShapes([{ from: [at(5, 5, 1)], to: [at(5, 5, 3)], strong: false, undirected: true }], layout, [at(5, 5, 1), at(5, 5, 3)]);
@@ -484,33 +521,29 @@ describe('the geometry', () => {
       { x: x0 + c - SIZES.bracketInset * c, y: y0 + c - SIZES.bracketInset * c },
       { x: x0 + SIZES.bracketInset * c, y: y0 + c - SIZES.bracketInset * c }
     ]);
-    // the small board's stroke, from the stylesheet
-    const css = new TextDecoder().decode(readFileSync('src/ui/styles.css'));
-    const strokes = [...css.matchAll(/\.board \.chain-bracket \{\s*stroke-width: ([\d.]+)px;/g)].map((m) => Number(m[1]));
-    expect(strokes.length).toBe(2);
-    const half = Math.max(...strokes, SIZES.stroke * c) / 2;
-    // every arm, tips included, sampled: 0.5 unit or more off the box lines (6 units wide), and off
-    // every candidate's keyline, so 1.5 units or more off its mark (the bottom row's are nearest the
-    // tips, 0.3 off the keyline: the candidates sit 21 units from a cell's bottom, 23 from its top)
-    const segs: [Point, Point][] = [];
-    const n = s.d.match(/-?\d+(\.\d+)?/g)!.map(Number);
-    for (let k = 0; k < n.length; k += 6) segs.push([{ x: n[k], y: n[k + 1] }, { x: n[k + 2], y: n[k + 3] }], [{ x: n[k + 2], y: n[k + 3] }, { x: n[k + 4], y: n[k + 5] }]);
-    const keyline = (MARK.disc + MARK.keyline) * c;
-    let least = Infinity;
-    for (const [p, q] of segs) {
-      for (let i = 0; i <= 20; i++) {
-        const pt = { x: p.x + ((q.x - p.x) * i) / 20, y: p.y + ((q.y - p.y) * i) / 20 };
-        for (let d = 1; d <= 9; d++) {
-          const m = layout.centre(at(5, 5, d));
-          least = Math.min(least, Math.hypot(pt.x - m.x, pt.y - m.y) - keyline - half);
-        }
-        const edge = Math.min(pt.x - x0, x0 + c - pt.x, pt.y - y0, y0 + c - pt.y);
-        expect(edge - 3 - half).toBeGreaterThanOrEqual(0.5 - 1e-9);
-      }
+    const { stroke } = smallBoard();
+    const half = Math.max(stroke, SIZES.stroke * c) / 2;
+    // every arm, tips included, sampled: 0.5 unit or more off the box lines (6 units wide)
+    for (const pt of armsOf(s)) {
+      const edge = Math.min(pt.x - x0, x0 + c - pt.x, pt.y - y0, y0 + c - pt.y);
+      expect(edge - 3 - half).toBeGreaterThanOrEqual(0.5 - 1e-9);
     }
-    expect(least).toBeGreaterThan(0.25);
+    // and its halo, at a small board's width, 0.5 unit or more off every place's mark, keyline and all,
+    // or a removal's ring at its widest: the candidates sit 21 units from a cell's bottom, 23 from its
+    // top, so the bottom corners' arms are shorter than the top ones'
+    expect(bracketRoom(s, layout, [1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => at(5, 5, d)))).toBeGreaterThanOrEqual(0.5);
+    const arm = (k: number) => Math.abs(armsOf(s)[k * 42].y - armsOf(s)[k * 42 + 20].y);
+    expect(arm(0)).toBeCloseTo(SIZES.bracketArm * c, 5);
+    expect(arm(3)).toBeLessThan(SIZES.bracketArm * c);
     // a tie inside one cell stays nothing
     expect(arrowShapes([{ from: [at(5, 5, 1)], to: [at(5, 5, 3)], strong: true, undirected: true }], layout, [])[0].kind).toBe('none');
+  });
+
+  it("keeps 3D Medusa rule 5's brackets in r3c9 clear of its removal ring in the bottom row, on a phone", () => {
+    const { shapes, layout } = geometryOf(fixture('medusa5'));
+    const brackets = shapes.find((s): s is Extract<ArrowShape, { kind: 'cell' }> => s.kind === 'cell')!;
+    expect(brackets.cell).toBe(at(3, 9, 7).cell);
+    expect(bracketRoom(brackets, layout, [at(3, 9, 7), at(3, 9, 5)])).toBeGreaterThanOrEqual(0.5);
   });
 
   it('puts a walk number on each weak tie, and on a clear corner of the brackets', () => {
