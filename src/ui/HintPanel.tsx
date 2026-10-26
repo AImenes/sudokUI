@@ -38,11 +38,6 @@ function useTechWhat(): (tech: Tech) => string {
 }
 
 /**
- * "Needed in 34% of puzzles that sudokUI generates.", or null for a
- * technique the solver never uses: one whole sentence per kind, so each
- * language words it its own way (the English is frequencyLabel's)
- */
-/**
  * The legend's words for a chain's true discs, false rings and true
  * groups, under the premise of its first node, the one with the small start
  * dot, a group worded as a group (true: one of its candidates; false:
@@ -80,6 +75,11 @@ function truthWords(t: Translator, p: Premise): TruthWords {
       };
 }
 
+/**
+ * "Needed in 34% of puzzles that sudokUI generates.", or null for a
+ * technique the solver never uses: one whole sentence per kind, so each
+ * language words it its own way (the English is frequencyLabel's)
+ */
 function neededIn(t: Translator, tech: Tech): string | null {
   const p = frequencyParts(tech);
   if (!p) return null;
