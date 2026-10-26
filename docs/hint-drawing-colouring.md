@@ -35,7 +35,8 @@ things HoDoKu never shows:
 
 1. One frame per cluster: its shades and its ties, thin quiet lines
    along the shortest tree that joins it, straight unless one would cross
-   another mark of its frame, when it bends round it as an arrow does. "Each line joins the only
+   another mark of its frame or another candidate of its digit, when it
+   bends round it as an arrow does, apart from the ties it meets. "Each line joins the only
    two 4s of a house: exactly one of them is true, so they take opposite
    shades." Inside a cell with only two candidates a tie draws nothing: a
    dark and a light disc side by side say it. The ties leave the board

@@ -704,3 +704,56 @@ describe('what the second review of phase 3 found', () => {
     expect(Math.min(...chain.map(off))).toBeLessThan((MARK.keylineSmall + SIZES.badgeLarge + SIZES.badgeGap) * 100);
   });
 });
+
+describe('a tie, where it meets another tie or passes a candidate of its digit', () => {
+  const bent = (s: ArrowShape) => /[QC]/.test((s as { d: string }).d);
+  /** the app board's layout, showing the candidates given and no other */
+  const showing = (shown: CellDigit[]) => boardLayout(undefined, (x) => shown.some((o) => o.cell === x.cell && o.digit === x.digit));
+  /** the way a line leaves its end nearer `at`, in degrees off the way `to` lies from `at` */
+  const leaving = (line: Point[], at: Point, to: Point) => {
+    const from = dist(line[0], at) <= dist(line[line.length - 1], at) ? line : [...line].reverse();
+    const [u, v] = [
+      { x: from[2].x - from[0].x, y: from[2].y - from[0].y },
+      { x: to.x - at.x, y: to.y - at.y }
+    ];
+    return (Math.acos((u.x * v.x + u.y * v.y) / (Math.hypot(u.x, u.y) * Math.hypot(v.x, v.y))) * 180) / Math.PI;
+  };
+
+  it('bends round a candidate of its digit the board shows, which it would seem to join, whether the hint marks it or not', () => {
+    const a = cd(1, 1, 5);
+    const b = cd(1, 9, 5);
+    const between = cd(1, 5, 5);
+    const tie = [link(a, b, true, true)];
+    // shown and not marked, or marked by the hint (a removal its frame does not draw): round it, clear all along
+    for (const marks of [
+      [a, b],
+      [a, b, between]
+    ]) {
+      const [s] = arrowShapes(tie, showing([a, b, between]), marks);
+      expect(s.kind).toBe('tie');
+      expect(bent(s)).toBe(true);
+      for (const p of samples((s as { d: string }).d)) expect(dist(p, layout.centre(between))).toBeGreaterThan(layout.r + SIZES.gap * 100);
+    }
+    // another digit on its line is crossed, as an arrow crosses one; and a candidate the board does not show is no candidate
+    expect(bent(arrowShapes(tie, showing([a, b, cd(1, 5, 4)]), [a, b])[0])).toBe(false);
+    expect(bent(arrowShapes(tie, showing([a, b]), [a, b])[0])).toBe(false);
+  });
+
+  it('leaves an end it shares with another tie at a clear angle off that tie', () => {
+    // 5r5c5 (in a cluster drawn before) lies on 5r5c1-5r5c9, which bends round it; 5r5c9-5r4c7 leaves 5r5c9
+    // up and to the left, 27 degrees off the row, where the smallest arc towards the board's middle would
+    // leave too, 20 degrees from it: the arc bends down instead
+    const before = link(cd(5, 5, 5), cd(6, 5, 5), true, true);
+    const up = link(cd(5, 9, 5), cd(4, 7, 5), true, true);
+    const across = link(cd(5, 1, 5), cd(5, 9, 5), true, true);
+    const marks = [cd(5, 5, 5), cd(6, 5, 5), cd(5, 9, 5), cd(4, 7, 5), cd(5, 1, 5)];
+    const [, u, s] = arrowShapes([before, up, across], layout, marks);
+    expect((u as { d: string }).d).toMatch(/ L /);
+    expect(bent(s)).toBe(true);
+    const line = samples((s as { d: string }).d);
+    const at = layout.centre(cd(5, 9, 5));
+    expect(leaving(line, at, layout.centre(cd(4, 7, 5)))).toBeGreaterThanOrEqual(30);
+    // still clear of 5r5c5 all along
+    for (const p of line) expect(dist(p, layout.centre(cd(5, 5, 5)))).toBeGreaterThan(layout.r + SIZES.gap * 100);
+  });
+});

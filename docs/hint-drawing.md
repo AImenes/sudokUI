@@ -179,8 +179,16 @@ Every rule is numbered so a commit, a test or a review can cite it.
 - **G13. Ties stay quiet.** An undirected tie (a conjugate pair or a
   bivalue cell in colouring: exactly one of its ends is true) is a thin
   line in the arrow colour at reduced opacity, no head, straight unless it
-  would pass within a mark and a gap of another mark its frame draws,
-  when it bends round it with G10's router (no head, no dot), drawn
+  would pass within a mark and a gap of another mark its frame draws, or
+  of another candidate of its digit the board shows (marked or not: a
+  Remote Pair's tie joins two cells that see each other, and its own
+  removal can lie on the line), when it bends round them with G10's
+  router (no head, no dot), leaving a candidate it shares with another
+  tie at least 30 degrees off that tie and crossing it nowhere further
+  on, wherever the marks leave room (an S, leaving to one side of its
+  line and arriving from the other, when ties stand beside both ends), so
+  the two never read as one line joining their far ends (two candidates
+  of one shade), drawn
   only in its cluster's walk frame (G19), along the shortest drawn tree
   that joins the cluster (Kruskal on the drawn length, 3 cells more for
   each other mark of the hint within 0.13 of a cell of the line, reading
