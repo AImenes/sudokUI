@@ -77,3 +77,58 @@ describe('the app board cuts the digits out of a hint\'s arrows', () => {
     expect(css).toMatch(/\.board \.knockout text \{\s*stroke: #000;\s*stroke-width: max\(0\.12em, 4px\);/);
   });
 });
+
+const { frameMarks } = await import('../src/content/hintMarks');
+const { HintPanel, ChainPanel } = await import('../src/ui/HintPanel');
+const { extend, chainStep, EMPTY_CHAIN } = await import('../src/engine/chainTrainer');
+const { gridFromValues } = await import('../src/engine/board');
+
+describe("the app board and its panels draw a chain's truth (phase 2b)", () => {
+  const kinds = (tech: Tech) => {
+    const ex = EXAMPLES[tech]!;
+    return [...frameMarks(ex.step, null, (c) => ex.values[c] !== '0').cands.values()].flatMap((m) => [...m.values()]);
+  };
+
+  it('a ring in the false colour for each false node, a disc in the true colour for each true one, and none outside a derived chain', () => {
+    for (const tech of ['AIC', 'XY_CHAIN', 'W_WING', 'AIC_GROUPED'] as Tech[]) {
+      const html = board(tech);
+      const k = kinds(tech);
+      const n = (kind: string) => k.filter((x) => x === kind).length;
+      expect(n('false'), tech).toBeGreaterThan(0);
+      expect(n('true'), tech).toBeGreaterThan(0);
+      expect((html.match(/stroke="var\(--hint-false\)"/g) ?? []).length, tech).toBe(n('false'));
+      expect(n('place') + n('placeOn'), tech).toBe(0);
+      expect((html.match(/<circle[^>]*fill="var\(--hint-place\)"/g) ?? []).length, tech).toBe(n('true'));
+    }
+    for (const tech of ['X_WING', 'SIMPLE_COLORS', 'NISHIO_FORCING_CHAIN'] as Tech[]) expect(board(tech), tech).not.toContain('var(--hint-false)');
+  });
+
+  it("the hint panel's legend names them by the premise, and the trainer's only what its board draws", () => {
+    board('AIC');
+    useGame.setState({ info: { puzzle: EXAMPLES.AIC!.puzzle, score: 1000, level: 'hard' } as any });
+    Object.assign(useGame.getInitialState() as unknown as Record<string, unknown>, useGame.getState());
+    const panel = renderToStaticMarkup(React.createElement(HintPanel, { onLearn: () => {} }));
+    expect(panel).toContain('<i class="swatch-true"></i>true, if the first candidate (by the small dot) is false');
+    expect(panel).toContain('<i class="swatch-false"></i>false, if the first candidate (by the small dot) is false');
+    // the trainer, two candidates into the X-Chain: a strong link, its start false and its end true
+    const ex = EXAMPLES.X_CHAIN!;
+    const g = gridFromValues(ex.values.split('').map(Number));
+    for (let i = 0; i < 81; i++) if (!g.values[i]) g.cands[i] = ex.cands[i];
+    const links = ex.step.links!;
+    const nodes = [links[0].from[0], ...links.map((l) => l.to[0])];
+    const trainer = (count: number) => {
+      let chain = EMPTY_CHAIN;
+      for (const node of nodes.slice(0, count)) chain = extend(g, chain, node).chain;
+      board('X_CHAIN', chainStep(g, chain));
+      useGame.setState({ chain, chainNote: '', chainGoal: null, chainSuggest: false });
+      Object.assign(useGame.getInitialState() as unknown as Record<string, unknown>, useGame.getState());
+      return renderToStaticMarkup(React.createElement(ChainPanel));
+    };
+    const two = trainer(2);
+    expect(two).toContain('false, if the first candidate (by the small dot) is false');
+    expect(two).toContain('true, if the first candidate (by the small dot) is false');
+    // with every node, the same, and nothing about a premise it has not shown impossible
+    expect(trainer(nodes.length)).not.toContain('that premise is impossible');
+    useGame.setState({ chain: null });
+  });
+});
