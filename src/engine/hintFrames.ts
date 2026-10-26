@@ -51,9 +51,20 @@ export function linkText(link: ChainLink): string {
   const from = nodeCells(link.from);
   const to = nodeCells(link.to);
   if (fd === td) {
-    return link.strong
-      ? tr`Strong link on ${fd}: if ${from} is not ${fd}, ${to} must be ${fd} (nowhere else for it).`
-      : tr`Weak link on ${fd}: if ${from} is ${fd}, ${to} cannot be ${fd} (they see each other).`;
+    // a group of cells holds the digit in at most one of them (they share
+    // a house): "one of" them is true, or "none of" them
+    const fromGroup = fromCells.length > 1;
+    const toGroup = toCells.length > 1;
+    if (link.strong) {
+      if (fromGroup && toGroup) return tr`Strong link on ${fd}: if none of ${from} is ${fd}, one of ${to} must be ${fd} (nowhere else for it).`;
+      if (fromGroup) return tr`Strong link on ${fd}: if none of ${from} is ${fd}, ${to} must be ${fd} (nowhere else for it).`;
+      if (toGroup) return tr`Strong link on ${fd}: if ${from} is not ${fd}, one of ${to} must be ${fd} (nowhere else for it).`;
+      return tr`Strong link on ${fd}: if ${from} is not ${fd}, ${to} must be ${fd} (nowhere else for it).`;
+    }
+    if (fromGroup && toGroup) return tr`Weak link on ${fd}: if one of ${from} is ${fd}, none of ${to} can be ${fd} (they see each other).`;
+    if (fromGroup) return tr`Weak link on ${fd}: if one of ${from} is ${fd}, ${to} cannot be ${fd} (they see each other).`;
+    if (toGroup) return tr`Weak link on ${fd}: if ${from} is ${fd}, none of ${to} can be ${fd} (they see each other).`;
+    return tr`Weak link on ${fd}: if ${from} is ${fd}, ${to} cannot be ${fd} (they see each other).`;
   }
   return link.strong
     ? tr`Strong link: if ${from} is not ${fd}, ${to} must be ${td}.`

@@ -36,19 +36,35 @@ function useTechWhat(): (tech: Tech) => string {
  * language words it its own way (the English is frequencyLabel's)
  */
 /**
- * The legend's words for a chain's true discs and false rings: under the
- * premise of its first node, the one with the small start dot, and for a
- * group as a group (true: one of its candidates; false: none)
+ * The legend's words for a chain's true discs, false rings and true
+ * groups: under the premise of its first node, the one with the small start
+ * dot, and for a group as a group (true: one of its candidates; false: none)
  */
-function truthWords(t: Translator, p: Premise): [string, string] {
+function truthWords(t: Translator, p: Premise): [string, string, string] {
   if (p.group) {
     return p.assumed
-      ? [t('true, if one candidate of the first group (by the small dot) is true'), t('false, if one candidate of the first group (by the small dot) is true')]
-      : [t('true, if no candidate of the first group (by the small dot) is true'), t('false, if no candidate of the first group (by the small dot) is true')];
+      ? [
+          t('true, if one candidate of the first group (by the small dot) is true'),
+          t('false, if one candidate of the first group (by the small dot) is true'),
+          t('one candidate of each group is true, if one candidate of the first group (by the small dot) is true')
+        ]
+      : [
+          t('true, if no candidate of the first group (by the small dot) is true'),
+          t('false, if no candidate of the first group (by the small dot) is true'),
+          t('one candidate of each group is true, if no candidate of the first group (by the small dot) is true')
+        ];
   }
   return p.assumed
-    ? [t('true, if the first candidate (by the small dot) is true'), t('false, if the first candidate (by the small dot) is true')]
-    : [t('true, if the first candidate (by the small dot) is false'), t('false, if the first candidate (by the small dot) is false')];
+    ? [
+        t('true, if the first candidate (by the small dot) is true'),
+        t('false, if the first candidate (by the small dot) is true'),
+        t('one candidate of each group is true, if the first candidate (by the small dot) is true')
+      ]
+    : [
+        t('true, if the first candidate (by the small dot) is false'),
+        t('false, if the first candidate (by the small dot) is false'),
+        t('one candidate of each group is true, if the first candidate (by the small dot) is false')
+      ];
 }
 
 function neededIn(t: Translator, tech: Tech): string | null {
@@ -316,6 +332,12 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                 <li>
                   <i className="swatch-false" />
                   {truthWords(t, premise)[1]}
+                </li>
+              )}
+              {premise && legend.shown.has('oneTrue') && (
+                <li>
+                  <i className="swatch-primary" />
+                  {truthWords(t, premise)[2]}
                 </li>
               )}
               {legend.shown.has('primary') && (

@@ -19,7 +19,8 @@
 // wins over the roles. A discontinuous loop's start shows its premise
 // until the walk reaches the link that closes the loop, and its proven
 // value after. A true group means one of its members is true, not all, so
-// its members keep the pattern's disc (until phase 4 draws sets as hulls).
+// its members are 'oneTrue', drawn as the pattern's disc until phase 4 draws
+// sets as hulls, with legend words of their own.
 // A removed or placed node is the removal or the placement, its truth
 // plain from the mark. A solved cell the step names shows the
 // colour on its digit. A removal or a placement keeps, inside its ring,
@@ -33,7 +34,7 @@ import type { Frame, Part } from '../engine/hintFrames';
 import { deriveTruth } from '../engine/truth';
 
 export type Role = 'primary' | 'secondary' | 'fin';
-export type CandMark = Role | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node' | 'true' | 'false';
+export type CandMark = Role | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node' | 'true' | 'false' | 'oneTrue';
 
 /** a placement, with or without a named colour inside its ring */
 export const isPlaced = (kind: CandMark | undefined) => kind === 'place' || kind === 'placeOn';
@@ -98,7 +99,7 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
       // a solved digit shows a colour the step names, and nothing for a plain node
-      if (kind !== 'node' && kind !== 'true' && kind !== 'false' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
+      if (kind !== 'node' && kind !== 'true' && kind !== 'false' && kind !== 'oneTrue' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
       return;
     }
     if (!cands.has(cd.cell)) cands.set(cd.cell, new Map());
@@ -113,16 +114,16 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const derived = deriveTruth(step);
   const truth = derived && !derived.problems.length ? derived : null;
   const closed = links.length >= (step.links ?? []).length;
-  const truthOf = (cd: CellDigit): 'true' | 'false' | null => {
+  const truthOf = (cd: CellDigit): 'true' | 'false' | 'oneTrue' | null => {
     if (!truth) return null;
     const isStart = truth.closure?.node.some((o) => o.cell === cd.cell && o.digit === cd.digit);
     if (truth.closure && isStart && !closed) {
-      // a group assumed true means one of its members, not all: the pattern's disc
-      if (truth.closure.assumed) return truth.closure.node.length > 1 ? null : 'true';
+      // a group assumed true means one of its members, not all
+      if (truth.closure.assumed) return truth.closure.node.length > 1 ? 'oneTrue' : 'true';
       return 'false';
     }
     const t = truth.candidates.get(`${cd.cell}:${cd.digit}`);
-    return t === 'true' ? 'true' : t === 'false' ? 'false' : null;
+    return t === 'true' ? 'true' : t === 'false' ? 'false' : t === 'groupTrue' ? 'oneTrue' : null;
   };
   const node = (cd: CellDigit) =>
     mark(cd, truthOf(cd) ?? namedRole(step, cd) ?? (!colouring ? 'primary' : removed(cd) ? 'elim' : 'node'));

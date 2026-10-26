@@ -152,7 +152,7 @@ export function boardSvg(example: Example, title: string): string {
     if (value) {
       const kind = drawn.values.get(cell);
       let fill = '';
-      if (kind && kind !== 'node' && kind !== 'true' && kind !== 'false') {
+      if (kind && kind !== 'node' && kind !== 'true' && kind !== 'false' && kind !== 'oneTrue') {
         const ink = kind === 'elim' || kind === 'elimOn' ? P.elim : fillOf(P, kind === 'placeOn' ? 'place' : kind).ink;
         // a style, not an attribute, so the class's own fill cannot win
         fill = ` style="fill:${ink}"`;
@@ -202,7 +202,7 @@ export function boardSvg(example: Example, title: string): string {
       }
       // a placed chain node keeps the colour the step names for it inside the placement's ring (G5)
       const inside = kind === 'placeOn' ? drawn.inside.get(cell)?.get(digit) : undefined;
-      const { fill, ink } = fillOf(P, inside ?? (kind === 'placeOn' || kind === 'true' ? 'place' : kind));
+      const { fill, ink } = fillOf(P, inside ?? (kind === 'placeOn' || kind === 'true' ? 'place' : kind === 'oneTrue' ? 'primary' : kind));
       parts.push(
         `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - MARK.edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(MARK.edge * s)}"/>`
       );
@@ -292,24 +292,40 @@ ${parts.join('\n')}
 }
 
 /**
- * The legend's words for a chain's true discs and false rings: under the
- * premise of its first node, the one with the small start dot, and for a
- * group as a group (true: one of its candidates; false: none)
+ * The legend's words for a chain's true discs, false rings and true
+ * groups: under the premise of its first node, the one with the small start
+ * dot, and for a group as a group (true: one of its candidates; false: none)
  */
-function truthWords(p: Premise): [string, string] {
+function truthWords(p: Premise): [string, string, string] {
   if (p.group) {
     return p.assumed
-      ? [tr`true, if one candidate of the first group (by the small dot) is true`, tr`false, if one candidate of the first group (by the small dot) is true`]
-      : [tr`true, if no candidate of the first group (by the small dot) is true`, tr`false, if no candidate of the first group (by the small dot) is true`];
+      ? [
+          tr`true, if one candidate of the first group (by the small dot) is true`,
+          tr`false, if one candidate of the first group (by the small dot) is true`,
+          tr`one candidate of each group is true, if one candidate of the first group (by the small dot) is true`
+        ]
+      : [
+          tr`true, if no candidate of the first group (by the small dot) is true`,
+          tr`false, if no candidate of the first group (by the small dot) is true`,
+          tr`one candidate of each group is true, if no candidate of the first group (by the small dot) is true`
+        ];
   }
   return p.assumed
-    ? [tr`true, if the first candidate (by the small dot) is true`, tr`false, if the first candidate (by the small dot) is true`]
-    : [tr`true, if the first candidate (by the small dot) is false`, tr`false, if the first candidate (by the small dot) is false`];
+    ? [
+        tr`true, if the first candidate (by the small dot) is true`,
+        tr`false, if the first candidate (by the small dot) is true`,
+        tr`one candidate of each group is true, if the first candidate (by the small dot) is true`
+      ]
+    : [
+        tr`true, if the first candidate (by the small dot) is false`,
+        tr`false, if the first candidate (by the small dot) is false`,
+        tr`one candidate of each group is true, if the first candidate (by the small dot) is false`
+      ];
 }
 
 /** a legend entry: the kind of mark (its swatch is drawn like the mark, src/ui/styles.css .swatch-*) and its words */
 export interface LegendEntry {
-  kind: 'place' | 'elim' | 'true' | 'false' | 'primary' | 'secondary' | 'fin';
+  kind: 'place' | 'elim' | 'true' | 'false' | 'oneTrue' | 'primary' | 'secondary' | 'fin';
   label: string;
   /** the mark's fill and edge on the diagram, for a swatch drawn inline */
   colour: string;
@@ -338,10 +354,11 @@ export function legendOf(step: Step, values?: string): LegendEntry[] {
   if (COLOURING.has(step.tech)) return out;
   // a derived chain's truth, worded by its first node's premise
   const premise = premiseOf(step);
-  if (premise && (shown.has('true') || shown.has('false'))) {
-    const [isTrue, isFalse] = truthWords(premise);
+  if (premise) {
+    const [isTrue, isFalse, oneTrue] = truthWords(premise);
     if (shown.has('true')) out.push({ kind: 'true', label: isTrue, colour: P.place, ink: P.placeInk });
     if (shown.has('false')) out.push({ kind: 'false', label: isFalse, colour: '#ffffff', ink: P.false });
+    if (shown.has('oneTrue')) out.push({ kind: 'oneTrue', label: oneTrue, colour: P.primary, ink: P.primaryInk });
   }
   const role = (kind: Role, label: string, colour: string, ink: string) =>
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });

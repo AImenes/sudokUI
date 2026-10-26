@@ -60,8 +60,8 @@ function alsLinkTexts(links: ChainLink[], path: GNode[], alses: Als[]): ChainLin
       ...l,
       text:
         b.cells.length === 1
-          ? tr`In the set ${cells} (${digits}), one digit short of locked: if none of its cells is ${a.digit}, it locks on its other digits, so ${to} must be ${b.digit}.`
-          : tr`In the set ${cells} (${digits}), one digit short of locked: if none of its cells is ${a.digit}, it locks on its other digits, so one of ${to} must be ${b.digit}.`
+          ? tr`In the almost locked set ${cells} (${digits}, one digit more than cells): if none of its cells is ${a.digit}, it locks on its other digits, so ${to} must be ${b.digit}.`
+          : tr`In the almost locked set ${cells} (${digits}, one digit more than cells): if none of its cells is ${a.digit}, it locks on its other digits, so one of ${to} must be ${b.digit}.`
     };
   });
 }

@@ -147,8 +147,8 @@ describe("a chain's truth (phase 2b)", () => {
         if (ex!.values[cell] !== '0' || removedOrPlaced({ cell, digit })) continue;
         nodes++;
         const kind = kindAt(m, { cell, digit });
-        // a true group's members keep the pattern's disc: "one of these", not all
-        expect(kind, `${tech}: ${digit} in cell ${cell}`).toBe(truth === 'groupTrue' ? namedRoleOrPrimary(s, { cell, digit }) : truth);
+        // a true group's members are "one of these", not all: their own mark
+        expect(kind, `${tech}: ${digit} in cell ${cell}`).toBe(truth === 'groupTrue' ? 'oneTrue' : truth);
       }
       // and the legend says under which premise
       const k = legendKinds(s, m);
@@ -211,13 +211,26 @@ describe("a chain's truth (phase 2b)", () => {
     // a false group is none of its candidates: each a false ring
     for (const m of g) expect(kindAt(frameMarks(s, null, () => false), m)).toBe('false');
   });
+
+  it("names a true group's candidates as one of each group, never by the whole step's label", () => {
+    // 3r1c1 = 3r1c56 - 3r2c4 = 3r8c4 => r8c1 <> 3: the group r1c5,r1c6 is true
+    const grp = [at(1, 5, 3), at(1, 6, 3)];
+    const links = alternatingLinks([[at(1, 1, 3)], grp, [at(2, 4, 3)], [at(8, 4, 3)]]);
+    const s = step({ tech: 'AIC_GROUPED', truth: 'derived', links, primary: [at(1, 1, 3), ...grp, at(2, 4, 3), at(8, 4, 3)], eliminations: [at(8, 1, 3)], labels: { primary: 'the chain, with grouped nodes' } });
+    expect(deriveTruth(s)!.candidates.get(`${grp[0].cell}:3`)).toBe('groupTrue');
+    for (const fr of [null, ...walkFrames(s)]) {
+      const m = frameMarks(s, fr, () => false);
+      for (const cd of grp) if (kindAt(m, cd)) expect(kindAt(m, cd)).toBe('oneTrue');
+      expect(legendKinds(s, m).shown.has('primary')).toBe(false);
+    }
+    const labels = legendOf(s).map((l) => l.label);
+    expect(labels).toContain('one candidate of each group is true, if the first candidate (by the small dot) is false');
+    expect(labels).not.toContain('the chain, with grouped nodes');
+    // drawn as the pattern's disc until phase 4's hulls, its legend swatch too
+    expect(legendOf(s).find((l) => l.kind === 'oneTrue')!.colour).toBe(LIGHT.primary);
+  });
 });
 
-/** the role a step names for a candidate, the pattern's when none */
-function namedRoleOrPrimary(s: Step, cd: CellDigit) {
-  const has = (l?: CellDigit[]) => !!l?.some((x) => x.cell === cd.cell && x.digit === cd.digit);
-  return has(s.primary) ? 'primary' : has(s.secondary) ? 'secondary' : has(s.fins) ? 'fin' : 'primary';
-}
 
 describe('a colouring', () => {
   const ROLE = { primary: 'primary', secondary: 'secondary', fin: 'fins' } as const;

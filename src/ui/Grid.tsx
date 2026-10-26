@@ -178,6 +178,8 @@ const MARK_FILL: Record<string, { fill: string; ink: string }> = {
   fin: { fill: 'var(--hint-fin)', ink: 'var(--hint-fin-ink)' },
   place: { fill: 'var(--hint-place)', ink: 'var(--hint-place-ink)' },
   true: { fill: 'var(--hint-place)', ink: 'var(--hint-place-ink)' },
+  // a true group's members: one of them is true; the pattern's disc until phase 4's hulls
+  oneTrue: { fill: 'var(--hint-primary)', ink: 'var(--hint-primary-ink)' },
   elim: { fill: 'var(--hint-elim)', ink: 'var(--hint-elim)' }
 };
 

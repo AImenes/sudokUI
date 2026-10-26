@@ -85,7 +85,8 @@ Every rule is numbered so a commit, a test or a review can cite it.
   node of a chain whose truth is drawn (phase 2b) is the removal or the
   placement alone: the mark says its truth (removed is false, placed is
   true), so no truth ring or disc is drawn with it; the walk's frames
-  before the conclusion show it as a truth mark. Any other removed chain
+  before the conclusion show it as a truth mark (a true group's
+  candidates as the pattern's disc, until phase 4). Any other removed chain
   node keeps the colour the step names for it inside the removal ring, as
   Nishio's removed assumption does, so the legend's words for that colour
   still find it. A placed chain node the step names keeps that colour in
@@ -443,8 +444,9 @@ not used beside truth marks (in the dark theme pattern and true are only
 ΔE 4.1 apart under tritan vision, and both are discs). Gold discs are not
 put beside true discs either (light protan ΔE 8.3). Two exceptions stand
 until their phases: a true group's members keep the pattern's disc
-(a true group is "one of these", so none of them is a true disc) until
-phase 4 draws groups as hulls, and the chain trainer's gold suggestions
+(a true group is "one of these", so none of them is a true disc), named
+in the legend as one candidate of each group true, until phase 4 draws
+groups as hulls, and the chain trainer's gold suggestions
 sit beside its true discs until phase 6 gives them a mark and a legend
 entry of their own.
 
