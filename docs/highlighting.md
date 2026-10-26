@@ -37,9 +37,12 @@ needs:
   dot on the first node, where reading starts. An arrow swings out near
   its start, to keep off the digits that lie straight between its ends,
   and arrives straight along the line to its target, so the head points
-  where the eye expects. A tie (`undirected`) is a quiet straight line
-  without an arrowhead, never routed: a conjugate pair, or the two
-  candidates of a bivalue cell, exactly one of them true. Every link can
+  where the eye expects. A tie (`undirected`, strong) is a quiet line
+  without an arrowhead or a dot: a conjugate pair, or the two candidates
+  of a bivalue cell, exactly one of them true. It is straight unless it
+  would pass over another mark its frame draws, when it bends round it
+  as an arrow does. A weak tie (`undirected`, not strong, a colouring
+  only) is a dashed line with no head, bent like an arrow. Every link can
   carry its own sentence (`text`); the colouring witnesses do.
 - **Red over a colour.** A coloured candidate that the step removes is
   drawn red with a ring in its colour, so a colour that is removed
@@ -82,7 +85,8 @@ needs:
   draw their parity (docs/hint-drawing-colouring.md): a cluster's two
   colours are dark and light purple, Multi Colors' second cluster dark
   and light orange, and dark is the colour the argument tries first. A
-  cluster's ties are quiet straight lines along its shortest tree, drawn
+  cluster's ties are quiet lines along its shortest tree (bent round
+  another mark of the frame where a straight one would cross it), drawn
   only in that cluster's frame of the walk. The argument is one to three
   dashed lines with no head (a witness, a clash, a bridge), or corner
   brackets round one cell, each with its sentence ("If dark purple is
