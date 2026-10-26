@@ -18,7 +18,7 @@ const cards = (Object.keys(EXAMPLES) as Tech[])
     const ex = EXAMPLES[tech]!;
     const svg = boardSvg(ex, `${TECHS[tech].name} example`);
     return `<figure id="${tech}"><figcaption>${TECHS[tech].name} <small>${tech}</small></figcaption>${svg}<div class="legend">${legendOf(ex.step, ex.values)
-      .map((l) => `<span><i style="${swatchCss(l)}"></i>${l.label.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</span>`)
+      .map((l) => `<span>${l.kind === 'note' ? '' : `<i style="${swatchCss(l)}"></i>`}${l.label.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</span>`)
       .join(" ")}</div><p>${ex.step.description
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')}</p></figure>`;

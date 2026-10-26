@@ -32,6 +32,7 @@
 import type { CellDigit, ChainLink, Step, UnitBand } from '../engine/steps';
 import type { Frame, Part } from '../engine/hintFrames';
 import { deriveTruth } from '../engine/truth';
+import { sees } from '../engine/board';
 
 export type Role = 'primary' | 'secondary' | 'fin';
 export type CandMark = Role | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node' | 'true' | 'false' | 'oneTrue';
@@ -48,6 +49,12 @@ export interface HintMarks {
   values: Map<number, CandMark>;
   /** the houses shaded as bands */
   bands: UnitBand[];
+  /**
+   * the drawing shows a derived chain's premise refuted: a loop drawn back
+   * to its start, or two of its true candidates in one cell, or of one
+   * digit in one house (the chain then proves its start the other way)
+   */
+  refuted: boolean;
 }
 
 export interface MarkOptions {
@@ -167,7 +174,11 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
       }
     }
   }
-  return { cands, inside, values, bands };
+  // two true candidates that cannot both be: the premise is impossible
+  const trues = [...cands].flatMap(([cell, m]) => [...m].filter(([, k]) => k === 'true').map(([digit]) => ({ cell, digit })));
+  const clash = trues.some((a, i) => trues.slice(i + 1).some((b) => a.cell === b.cell || (a.digit === b.digit && sees(a.cell, b.cell))));
+  const refuted = !!truth && ((!!truth.closure && closed) || clash);
+  return { cands, inside, values, bands, refuted };
 }
 
 /**
@@ -204,7 +215,7 @@ export const markedCandidates = (marks: HintMarks): CellDigit[] =>
 export function legendKinds(
   step: Step,
   marks: HintMarks
-): { shown: Set<CandMark>; onValue: Set<CandMark>; onBand: Set<CandMark>; intoRemove: Role[]; intoPlace: Role[] } {
+): { shown: Set<CandMark>; onValue: Set<CandMark>; onBand: Set<CandMark>; intoRemove: Role[]; intoPlace: Role[]; refuted: boolean } {
   const shown = new Set<CandMark>();
   for (const m of marks.cands.values())
     for (const k of m.values()) if (k !== 'node') shown.add(k === 'elimOn' ? 'elim' : k === 'placeOn' ? 'place' : k);
@@ -226,5 +237,5 @@ export function legendKinds(
     if (list.every((cd) => kindOf(cd) === 'elim' || kindOf(cd) === 'elimOn')) intoRemove.push(role);
     else if (list.every((cd) => isPlaced(kindOf(cd)))) intoPlace.push(role);
   }
-  return { shown, onValue, onBand, intoRemove, intoPlace };
+  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted };
 }

@@ -9,6 +9,7 @@
 import { cellName, cellNames } from './board';
 import { CellDigit, ChainLink, Step } from './steps';
 import { tr } from './text';
+import { deriveTruth } from './truth';
 
 export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'conclusion';
 
@@ -99,10 +100,32 @@ export function describe(step: Step): string {
   return `${step.description} ${conclusionText(step)}`;
 }
 
+/**
+ * What the link that closes a discontinuous loop shows: the chain came
+ * back to its start the other way, so the assumption it began with is
+ * impossible (docs/hint-drawing.md G18); empty for any other chain
+ */
+export function closureText(step: Step): string {
+  const d = deriveTruth(step);
+  if (!d?.closure || d.problems.length) return '';
+  const node = d.closure.node;
+  const cells = nodeCells(node);
+  const digit = nodeDigits(node);
+  if (uniq(node.map((cd) => cd.cell)).length > 1) {
+    return d.closure.assumed
+      ? tr`So assuming one of ${cells} is ${digit} rules them all out: that is impossible, so none of them is ${digit}.`
+      : tr`So assuming none of ${cells} is ${digit} makes one of them ${digit}: that is impossible, so one of them is ${digit}.`;
+  }
+  return d.closure.assumed
+    ? tr`So assuming ${cells} is ${digit} rules it out: that is impossible, so ${cells} is not ${digit}.`
+    : tr`So assuming ${cells} is not ${digit} makes it ${digit}: that is impossible, so ${cells} is ${digit}.`;
+}
+
 export function walkFrames(step: Step): Frame[] {
   const frames: Frame[] = [];
   const base = new Set<Part>(['units']);
   if (step.links && step.links.length > 0) {
+    const closing = closureText(step);
     // a run of ties is one idea: the cluster, coloured; every inference
     // after it is a frame of its own
     let i = 0;
@@ -118,7 +141,9 @@ export function walkFrames(step: Step): Frame[] {
         frames.push({ text, links: j, show: new Set(base) });
         i = j;
       } else {
-        frames.push({ text: linkText(link), links: i + 1, show: new Set(base) });
+        // the link that closes a discontinuous loop says what it proves
+        const text = closing && i === step.links.length - 1 ? `${linkText(link)} ${closing}` : linkText(link);
+        frames.push({ text, links: i + 1, show: new Set(base) });
         i++;
       }
     }

@@ -13,6 +13,13 @@ import { walkFrames, describe } from '../engine/hintFrames';
 import { stepText } from '../content/eureka';
 import { frameMarks, legendKinds, premiseOf } from '../content/hintMarks';
 import type { Premise, Role } from '../content/hintMarks';
+
+interface TruthWords {
+  isTrue: string;
+  isFalse: string;
+  oneTrue: string;
+  refuted: string;
+}
 import { copyText } from './send';
 import { useT, rich, Translator } from '../content/i18n';
 import { useLearnLocale } from './useLearnLocale';
@@ -37,34 +44,40 @@ function useTechWhat(): (tech: Tech) => string {
  */
 /**
  * The legend's words for a chain's true discs, false rings and true
- * groups: under the premise of its first node, the one with the small start
- * dot, and for a group as a group (true: one of its candidates; false: none)
+ * groups, under the premise of its first node, the one with the small start
+ * dot, a group worded as a group (true: one of its candidates; false:
+ * none); and the line that says so when the drawing shows that premise
+ * impossible
  */
-function truthWords(t: Translator, p: Premise): [string, string, string] {
+function truthWords(t: Translator, p: Premise): TruthWords {
   if (p.group) {
     return p.assumed
-      ? [
-          t('true, if one candidate of the first group (by the small dot) is true'),
-          t('false, if one candidate of the first group (by the small dot) is true'),
-          t('one candidate of each group is true, if one candidate of the first group (by the small dot) is true')
-        ]
-      : [
-          t('true, if no candidate of the first group (by the small dot) is true'),
-          t('false, if no candidate of the first group (by the small dot) is true'),
-          t('one candidate of each group is true, if no candidate of the first group (by the small dot) is true')
-        ];
+      ? {
+          isTrue: t('true, if one candidate of the first group (by the small dot) is true'),
+          isFalse: t('false, if one candidate of the first group (by the small dot) is true'),
+          oneTrue: t('one candidate of each group is true, if one candidate of the first group (by the small dot) is true'),
+          refuted: t('the chain shows that premise is impossible: no candidate of the first group (by the small dot) is true')
+        }
+      : {
+          isTrue: t('true, if no candidate of the first group (by the small dot) is true'),
+          isFalse: t('false, if no candidate of the first group (by the small dot) is true'),
+          oneTrue: t('one candidate of each group is true, if no candidate of the first group (by the small dot) is true'),
+          refuted: t('the chain shows that premise is impossible: one candidate of the first group (by the small dot) is true')
+        };
   }
   return p.assumed
-    ? [
-        t('true, if the first candidate (by the small dot) is true'),
-        t('false, if the first candidate (by the small dot) is true'),
-        t('one candidate of each group is true, if the first candidate (by the small dot) is true')
-      ]
-    : [
-        t('true, if the first candidate (by the small dot) is false'),
-        t('false, if the first candidate (by the small dot) is false'),
-        t('one candidate of each group is true, if the first candidate (by the small dot) is false')
-      ];
+    ? {
+        isTrue: t('true, if the first candidate (by the small dot) is true'),
+        isFalse: t('false, if the first candidate (by the small dot) is true'),
+        oneTrue: t('one candidate of each group is true, if the first candidate (by the small dot) is true'),
+        refuted: t('the chain shows that premise is impossible: the first candidate (by the small dot) is false')
+      }
+    : {
+        isTrue: t('true, if the first candidate (by the small dot) is false'),
+        isFalse: t('false, if the first candidate (by the small dot) is false'),
+        oneTrue: t('one candidate of each group is true, if the first candidate (by the small dot) is false'),
+        refuted: t('the chain shows that premise is impossible: the first candidate (by the small dot) is true')
+      };
 }
 
 function neededIn(t: Translator, tech: Tech): string | null {
@@ -91,6 +104,7 @@ export function ChainPanel() {
   const walkIndex = useGame((s) => s.walkIndex);
   const walkHint = useGame((s) => s.walkHint);
   const revealHint = useGame((s) => s.revealHint);
+  const cells = useGame((s) => s.cells);
   const t = useT();
   if (!chain) return null;
   const elims = hint?.eliminations ?? [];
@@ -98,6 +112,8 @@ export function ChainPanel() {
   const frames = hint ? walkFrames(hint) : [];
   const walking = stage === 'walk' && frames.length > 0;
   const frame = walking ? frames[Math.min(walkIndex, frames.length - 1)] : null;
+  // a chain whose own truths clash: its premise is impossible, and the legend says so
+  const refuted = !!hint && legendKinds(hint, frameMarks(hint, frame, (c) => cells[c].value > 0)).refuted;
   return (
     <div className="hint-panel" role="region" aria-label={t('Build a chain')} aria-live="polite">
       <div className="hint-head">
@@ -128,13 +144,14 @@ export function ChainPanel() {
           <ul className="hint-legend">
             <li>
               <i className="swatch-true" />
-              {truthWords(t, { assumed: false, group: false })[0]}
+              {truthWords(t, { assumed: false, group: false }).isTrue}
             </li>
             <li>
               <i className="swatch-false" />
-              {truthWords(t, { assumed: false, group: false })[1]}
+              {truthWords(t, { assumed: false, group: false }).isFalse}
             </li>
             <li>{t('your chain: solid into a candidate it makes true, dashed into one it makes false')}</li>
+            {refuted && <li>{truthWords(t, { assumed: false, group: false }).refuted}</li>}
             {elims.length > 0 && (
               <li>
                 <i className="swatch-elim" />
@@ -325,21 +342,22 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
               {premise && legend.shown.has('true') && (
                 <li>
                   <i className="swatch-true" />
-                  {truthWords(t, premise)[0]}
+                  {truthWords(t, premise).isTrue}
                 </li>
               )}
               {premise && legend.shown.has('false') && (
                 <li>
                   <i className="swatch-false" />
-                  {truthWords(t, premise)[1]}
+                  {truthWords(t, premise).isFalse}
                 </li>
               )}
               {premise && legend.shown.has('oneTrue') && (
                 <li>
                   <i className="swatch-primary" />
-                  {truthWords(t, premise)[2]}
+                  {truthWords(t, premise).oneTrue}
                 </li>
               )}
+              {premise && legend.refuted && <li>{truthWords(t, premise).refuted}</li>}
               {legend.shown.has('primary') && (
                 <li>
                   <i className={swatch('primary')} />

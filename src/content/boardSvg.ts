@@ -13,6 +13,13 @@ import { LIGHT, MARK, fillOf } from './hintPalette';
 import { hintMarks, markedCandidates, legendKinds, placedKeys, premiseOf, COLOURING } from './hintMarks';
 import type { Premise, Role } from './hintMarks';
 
+interface TruthWords {
+  isTrue: string;
+  isFalse: string;
+  oneTrue: string;
+  refuted: string;
+}
+
 export interface Example {
   puzzle: string;
   /** index of the step in the puzzle's solve path */
@@ -293,39 +300,46 @@ ${parts.join('\n')}
 
 /**
  * The legend's words for a chain's true discs, false rings and true
- * groups: under the premise of its first node, the one with the small start
- * dot, and for a group as a group (true: one of its candidates; false: none)
+ * groups, under the premise of its first node, the one with the small start
+ * dot, a group worded as a group (true: one of its candidates; false:
+ * none); and the line that says so when the drawing shows that premise
+ * impossible
  */
-function truthWords(p: Premise): [string, string, string] {
+function truthWords(p: Premise): TruthWords {
   if (p.group) {
     return p.assumed
-      ? [
-          tr`true, if one candidate of the first group (by the small dot) is true`,
-          tr`false, if one candidate of the first group (by the small dot) is true`,
-          tr`one candidate of each group is true, if one candidate of the first group (by the small dot) is true`
-        ]
-      : [
-          tr`true, if no candidate of the first group (by the small dot) is true`,
-          tr`false, if no candidate of the first group (by the small dot) is true`,
-          tr`one candidate of each group is true, if no candidate of the first group (by the small dot) is true`
-        ];
+      ? {
+          isTrue: tr`true, if one candidate of the first group (by the small dot) is true`,
+          isFalse: tr`false, if one candidate of the first group (by the small dot) is true`,
+          oneTrue: tr`one candidate of each group is true, if one candidate of the first group (by the small dot) is true`,
+          refuted: tr`the chain shows that premise is impossible: no candidate of the first group (by the small dot) is true`
+        }
+      : {
+          isTrue: tr`true, if no candidate of the first group (by the small dot) is true`,
+          isFalse: tr`false, if no candidate of the first group (by the small dot) is true`,
+          oneTrue: tr`one candidate of each group is true, if no candidate of the first group (by the small dot) is true`,
+          refuted: tr`the chain shows that premise is impossible: one candidate of the first group (by the small dot) is true`
+        };
   }
   return p.assumed
-    ? [
-        tr`true, if the first candidate (by the small dot) is true`,
-        tr`false, if the first candidate (by the small dot) is true`,
-        tr`one candidate of each group is true, if the first candidate (by the small dot) is true`
-      ]
-    : [
-        tr`true, if the first candidate (by the small dot) is false`,
-        tr`false, if the first candidate (by the small dot) is false`,
-        tr`one candidate of each group is true, if the first candidate (by the small dot) is false`
-      ];
+    ? {
+        isTrue: tr`true, if the first candidate (by the small dot) is true`,
+        isFalse: tr`false, if the first candidate (by the small dot) is true`,
+        oneTrue: tr`one candidate of each group is true, if the first candidate (by the small dot) is true`,
+        refuted: tr`the chain shows that premise is impossible: the first candidate (by the small dot) is false`
+      }
+    : {
+        isTrue: tr`true, if the first candidate (by the small dot) is false`,
+        isFalse: tr`false, if the first candidate (by the small dot) is false`,
+        oneTrue: tr`one candidate of each group is true, if the first candidate (by the small dot) is false`,
+        refuted: tr`the chain shows that premise is impossible: the first candidate (by the small dot) is true`
+      };
 }
 
 /** a legend entry: the kind of mark (its swatch is drawn like the mark, src/ui/styles.css .swatch-*) and its words */
 export interface LegendEntry {
-  kind: 'place' | 'elim' | 'true' | 'false' | 'oneTrue' | 'primary' | 'secondary' | 'fin';
+  /** 'note' is a line of words with no swatch */
+  kind: 'place' | 'elim' | 'true' | 'false' | 'oneTrue' | 'primary' | 'secondary' | 'fin' | 'note';
   label: string;
   /** the mark's fill and edge on the diagram, for a swatch drawn inline */
   colour: string;
@@ -345,7 +359,7 @@ export interface LegendEntry {
  */
 export function legendOf(step: Step, values?: string): LegendEntry[] {
   const drawn = hintMarks(step, { solved: (cell) => !!values && Number(values[cell]) > 0 });
-  const { shown, onValue, onBand, intoRemove, intoPlace } = legendKinds(step, drawn);
+  const { shown, onValue, onBand, intoRemove, intoPlace, refuted } = legendKinds(step, drawn);
   const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
@@ -355,10 +369,12 @@ export function legendOf(step: Step, values?: string): LegendEntry[] {
   // a derived chain's truth, worded by its first node's premise
   const premise = premiseOf(step);
   if (premise) {
-    const [isTrue, isFalse, oneTrue] = truthWords(premise);
-    if (shown.has('true')) out.push({ kind: 'true', label: isTrue, colour: P.place, ink: P.placeInk });
-    if (shown.has('false')) out.push({ kind: 'false', label: isFalse, colour: '#ffffff', ink: P.false });
-    if (shown.has('oneTrue')) out.push({ kind: 'oneTrue', label: oneTrue, colour: P.primary, ink: P.primaryInk });
+    const w = truthWords(premise);
+    if (shown.has('true')) out.push({ kind: 'true', label: w.isTrue, colour: P.place, ink: P.placeInk });
+    if (shown.has('false')) out.push({ kind: 'false', label: w.isFalse, colour: '#ffffff', ink: P.false });
+    if (shown.has('oneTrue')) out.push({ kind: 'oneTrue', label: w.oneTrue, colour: P.primary, ink: P.primaryInk });
+    // a line of words, no swatch: the premise the marks are drawn under is shown impossible
+    if (refuted) out.push({ kind: 'note', label: w.refuted, colour: '', ink: '' });
   }
   const role = (kind: Role, label: string, colour: string, ink: string) =>
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });

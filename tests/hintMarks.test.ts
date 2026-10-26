@@ -176,6 +176,30 @@ describe("a chain's truth (phase 2b)", () => {
     // the rest of the loop under the premise: 7r1c5 true, 7r3c5 false, ...
     const full = frameMarks(s, null, () => false);
     expect([at(1, 5, 7), at(3, 5, 7), at(3, 1, 7), at(3, 9, 7)].map((cd) => kindAt(full, cd))).toEqual(['true', 'false', 'true', 'false']);
+    // so the board shows the start placed beside its partner true in row 1:
+    // the legend says the premise is impossible once the loop is closed, and
+    // the closing frame says why
+    for (const fr of open) expect(legendKinds(s, frameMarks(s, fr, () => false)).refuted, 'frame ' + fr.links).toBe(false);
+    for (const fr of [...shut, frames[frames.length - 1]]) expect(legendKinds(s, frameMarks(s, fr, () => false)).refuted).toBe(true);
+    expect(legendOf(s).map((l) => l.label)).toContain('the chain shows that premise is impossible: the first candidate (by the small dot) is true');
+    expect(frames[links.length - 1].text).toContain('So assuming r1c1 is not 7 makes it 7: that is impossible, so r1c1 is 7.');
+    expect(frames.slice(0, links.length - 1).every((fr) => !fr.text.includes('impossible'))).toBe(true);
+  });
+
+  it('says so when an open chain draws two true candidates that cannot both be: its premise is impossible', () => {
+    // 7r4c1 = 7r4c4 - 7r9c4 = 7r9c6 - 7r5c6 = 7r6c6 ... under "7r4c1 false",
+    // 7r4c4 and 7r6c6 are both true in box 5
+    const nodes = [[at(4, 1, 7)], [at(4, 4, 7)], [at(9, 4, 7)], [at(9, 6, 7)], [at(5, 6, 7)], [at(6, 6, 7)]];
+    const s = step({ tech: 'X_CHAIN', truth: 'derived', links: alternatingLinks(nodes), primary: nodes.flat(), eliminations: [at(6, 1, 7)] });
+    const full = frameMarks(s, null, () => false);
+    expect([kindAt(full, at(4, 4, 7)), kindAt(full, at(6, 6, 7))]).toEqual(['true', 'true']);
+    expect(legendKinds(s, full).refuted).toBe(true);
+    expect(legendOf(s).find((l) => l.kind === 'note')!.label).toBe('the chain shows that premise is impossible: the first candidate (by the small dot) is true');
+    // the frames before the second true 7 is drawn say nothing of it
+    const frames = walkFrames(s);
+    expect(legendKinds(s, frameMarks(s, frames[2], () => false)).refuted).toBe(false);
+    // and a chain whose truths agree has no such line
+    expect(legendOf(step({ tech: 'X_CHAIN', truth: 'derived', links: alternatingLinks(nodes.slice(0, 4)), primary: nodes.slice(0, 4).flat(), eliminations: [at(4, 6, 7)] })).some((l) => l.kind === 'note')).toBe(false);
   });
 
   it('words the legend by the premise: an inverted loop assumes its start true', () => {
