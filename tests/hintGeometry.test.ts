@@ -11,6 +11,7 @@ import { arrowShapes, startMarkers, badgePoints, insideOneCell, Layout, Point, S
 import type { CellDigit, ChainLink } from '../src/engine/steps';
 import { alternatingLinks } from '../src/engine/steps';
 import { boardLayout, digitShown } from '../src/ui/boardLayout';
+import { MARK } from '../src/content/hintPalette';
 import { hintMarks, markedCandidates, placedKeys } from '../src/content/hintMarks';
 import { EXAMPLES } from '../src/content/examples';
 import { parseGrid } from '../src/engine/board';
@@ -665,5 +666,41 @@ describe('a weak tie', () => {
     const weak = (undirected: boolean) => link(cd(3, 2, 4), cd(3, 8, 4), false, undirected);
     expect(arrow(arrowShapes([tie, weak(true)], layout, marks)[1]).d).toMatch(/ L /);
     expect(arrow(arrowShapes([tie, weak(false)], layout, marks)[1]).d).toMatch(/ [QC] /);
+  });
+});
+
+describe('what the second review of phase 3 found', () => {
+  // 3D Medusa rule 6's weak tie 7r4c5-7r4c4, past the 8 of r4c4 on its
+  // line, and 8r5c6-8r4c4 into that 8, the 1 of r5c5 beside it
+  const marks = [cd(4, 5, 7), cd(4, 4, 7), cd(4, 4, 8), cd(5, 6, 8), cd(5, 5, 1)];
+  const witnesses = (undirected: boolean) => [link(cd(4, 5, 7), cd(4, 4, 7), false, undirected), link(cd(5, 6, 8), cd(4, 4, 8), false, undirected)];
+
+  it("ends a weak tie clearly nearer its own candidate than another mark of its cell: past the 8 of r4c4 into its 7, it comes in steeply, off the 8", () => {
+    // alone, and with the other weak tie into the 8
+    for (const links of [witnesses(true).slice(0, 1), witnesses(true)]) {
+      const s = arrow(arrowShapes(links, layout, marks)[0]);
+      expect(s.d).toMatch(/ [QC] /);
+      const line = samples(s.d);
+      const end = line[line.length - 1];
+      expect(dist(end, layout.centre(cd(4, 4, 7)))).toBeCloseTo((SIZES.r + SIZES.gap) * 100, 0);
+      // it ended 16.0 units from the 7 and 19.2 from the 8, in the gap between their rings
+      expect(dist(end, layout.centre(cd(4, 4, 8)))).toBeGreaterThanOrEqual((SIZES.r + SIZES.gap + SIZES.clearance) * 100 - 0.15);
+      // and is nowhere nearer the 8 than there
+      for (const p of line) expect(dist(p, layout.centre(cd(4, 4, 8)))).toBeGreaterThanOrEqual((SIZES.r + SIZES.gap + SIZES.clearance) * 100 - 0.15);
+    }
+    // a weak tie whose ends are clear of the marks beside them stays straight: down column 5 from the 4 of r1c5, its 5 beside it
+    const [down] = arrowShapes([link(cd(1, 5, 4), cd(5, 5, 4), false, true)], layout, [cd(1, 5, 4), cd(5, 5, 4), cd(1, 5, 5)]);
+    expect(arrow(down).d).toMatch(/^M [\d.]+ [\d.]+ L [\d.]+ [\d.]+$/);
+  });
+
+  it("keeps a colouring's walk number a gap off the marks, where a chain's keeps only off them: the 1 of r5c5 beside the weak tie into the 8 of r4c4", () => {
+    const off = (p: Point) => Math.min(...marks.map((m) => dist(p, layout.centre(m)) - layout.r));
+    const coloured = badgePoints(arrowShapes(witnesses(true), layout, marks), layout, marks);
+    // it sat 29.4 units from the 1's centre: on a phone, 0.4 units off its ring
+    for (const p of coloured.values()) expect(off(p)).toBeGreaterThanOrEqual((MARK.keylineSmall + SIZES.badgeLarge + SIZES.badgeGap) * 100 - 1e-9);
+    // a chain's weak arrows, the same links with heads: their numbers as before, off the marks only
+    const chain = [...badgePoints(arrowShapes(witnesses(false), layout, marks), layout, marks).values()];
+    for (const p of chain) expect(off(p)).toBeGreaterThanOrEqual(SIZES.badgeLarge * 100 - 1e-9);
+    expect(Math.min(...chain.map(off))).toBeLessThan((MARK.keylineSmall + SIZES.badgeLarge + SIZES.badgeGap) * 100);
   });
 });

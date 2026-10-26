@@ -542,13 +542,21 @@ describe('the drawing of a colouring the finders give', () => {
     expect(toLine(q[q.length - 1], p)).toBeGreaterThanOrEqual(((SIZES.headWidth / 2 + SIZES.clearance) * SIZE) - 0.5);
   });
 
-  it('keeps the walk numbers of a colouring a badge and a gap apart: sees both in one cell, numbers 3 and 4 on the box line', () => {
+  it('keeps the walk numbers of a colouring a badge and a gap apart, and a gap off the marks: sees both in one cell, numbers 3 and 4 on the box line; Medusa rule 6, number 3 off the 1 of r5c5', () => {
     for (const { name, drawing } of everyColouring()) {
       const at = [...drawing.badges.values()];
       for (let i = 0; i < at.length; i++)
         for (let j = i + 1; j < at.length; j++)
           expect(Math.hypot(at[i].x - at[j].x, at[i].y - at[j].y), name).toBeGreaterThanOrEqual((2 * SIZES.badgeLarge + SIZES.badgeGap) * SIZE - 1e-9);
+      for (const p of at) expect(offTheMarks(p, drawing), `${name}: a number at ${p.x.toFixed(1)},${p.y.toFixed(1)}`).toBeGreaterThanOrEqual(-1e-9);
     }
+    // rule 6: the number of 8r5c6-8r4c4 sat against the 1 of r5c5, 0.4 units apart on a phone
+    const six = FIXTURES.find((x) => x.name === 'Medusa rule 6')!;
+    const sixStep = stepAt(six);
+    const sixDrawing = drawingAt(six);
+    const third = sixDrawing.badges.get(sixStep.links!.findIndex((l) => named(l) === '8r5c6-8r4c4'))!;
+    const one = sixDrawing.layout.centre({ cell: 40, digit: 1 });
+    expect(Math.hypot(third.x - one.x, third.y - one.y)).toBeGreaterThanOrEqual((SIZES.r + MARK.keylineSmall + SIZES.badgeLarge + SIZES.badgeGap) * SIZE);
     const f = FIXTURES.find((x) => x.name === 'sees both, one cell')!;
     const s = stepAt(f);
     const { badges } = drawingOf(s, positionAt(f.puzzle, f.at).grid.values, positionAt(f.puzzle, f.at).grid.cands);
@@ -979,5 +987,86 @@ describe("over the practice pools' solve paths", () => {
     // those bend round it (src/content/hintGeometry.ts), as drawn in their cluster's frame
     expect(remotePairs.steps).toBe(15);
     expect(drawnOver.slice(0, 10)).toEqual([]);
+  });
+});
+
+/** how far a walk number at `p` keeps off a drawing's marks beyond their radius, a mark's keyline at its widest, a number's radius at a phone's size and a gap (none below 0: all clear) */
+function offTheMarks(p: Point, drawing: ReturnType<typeof drawingOf>): number {
+  const { layout, marks } = drawing;
+  return Math.min(...marks.map((m) => Math.hypot(layout.centre(m).x - p.x, layout.centre(m).y - p.y) - (layout.radiusOf?.(m) ?? layout.r) - (MARK.keylineSmall + SIZES.badgeLarge + SIZES.badgeGap) * SIZE));
+}
+
+/**
+ * Each end of each weak tie of a drawing, as drawn: the candidate it joins,
+ * how far it is from that candidate, and how far from the nearest other
+ * mark of that candidate's cell (Infinity: none)
+ */
+function weakTieEnds(s: Step, drawing: ReturnType<typeof drawingOf>): { name: string; own: number; other: number }[] {
+  const { layout, marks, shapes } = drawing;
+  return shapes.flatMap((sh, i) => {
+    if (sh.kind !== 'arrow' || !sh.undirected) return [];
+    const l = s.links![i];
+    const line = lineOf(sh);
+    return ([
+      [l.from[0], line[0]],
+      [l.to[0], line[line.length - 1]]
+    ] as [CellDigit, Point][]).map(([x, p]) => {
+      const at = (m: CellDigit) => Math.hypot(layout.centre(m).x - p.x, layout.centre(m).y - p.y);
+      const others = marks.filter((m) => m.cell === x.cell && m.digit !== x.digit);
+      return { name: `${named(l)} at ${nameOf(x)}`, own: at(x), other: Math.min(...others.map(at)) };
+    });
+  });
+}
+
+describe("a colouring's weak ties and walk numbers, against the other marks", () => {
+  // the colouring hints on the practice pools' solve paths: the step the
+  // solver gives, where it gives one, and its drawing
+  const onPath: { name: string; step: Step; drawing: ReturnType<typeof drawingOf> }[] = [];
+  beforeAll(() => {
+    const puzzles = [...new Set(Object.values(practice as Record<string, { puzzle: string }[]>).flat().map((p) => p.puzzle))];
+    for (const puzzle of puzzles) {
+      const g = parseGrid(puzzle)!;
+      for (let k = 0; k < 400 && !isSolved(g); k++) {
+        const step = findNextStep(g);
+        if (!step) break;
+        if (isParity(step)) onPath.push({ name: `${puzzle} @${k}`, step, drawing: drawingOf(step, g.values, g.cands) });
+        applyStep(g, step);
+      }
+    }
+  }, 600_000);
+
+  it("ends each weak tie clearly nearer its own candidate than any other mark of its cell: Medusa rule 6's into the 7 of r4c4 comes in steeply, off the 8; rule 5's from the 5 of r3c1 leaves off the 8 below it", () => {
+    expect(onPath.length).toBe(114);
+    let checked = 0;
+    for (const { name, step, drawing } of [...everyColouring(), ...onPath]) {
+      for (const end of weakTieEnds(step, drawing)) {
+        // just outside its own mark, and a clearance further from any other of its cell
+        expect(end.own, `${name}: ${end.name}`).toBeCloseTo((SIZES.r + SIZES.gap) * SIZE, 0);
+        if (end.other === Infinity) continue;
+        checked++;
+        expect(end.other - end.own, `${name}: ${end.name}`).toBeGreaterThanOrEqual(SIZES.clearance * SIZE - 0.15);
+      }
+    }
+    expect(checked).toBeGreaterThan(100);
+    // rule 6: 7r4c5-7r4c4 ended in the gap between the 7 and the 8 of r4c4, 16.0 and 19.2 units from them
+    const six = FIXTURES.find((x) => x.name === 'Medusa rule 6')!;
+    const into = weakTieEnds(stepAt(six), drawingAt(six)).find((e) => e.name === '7r4c5-7r4c4 at 7r4c4')!;
+    expect(into.other).toBeGreaterThanOrEqual((SIZES.r + SIZES.gap + SIZES.clearance) * SIZE - 0.15);
+    // rule 5, on a practice path: 5r3c1-5r4c1 left the 5 of r3c1 16.0 units from it and 19.2 from the 8 below
+    const five = onPath.find((x) => x.name === '.....78.5..1..839..4.1.......2.....7..9.6.2..3.....5.......9.5..674..9..9.52..... @20')!;
+    expect(five.step.colouring!.rule).toBe('medusa5');
+    const from = weakTieEnds(five.step, five.drawing).find((e) => e.name === '5r3c1-5r4c1 at 5r3c1')!;
+    expect(from.other).toBeGreaterThanOrEqual((SIZES.r + SIZES.gap + SIZES.clearance) * SIZE - 0.15);
+  });
+
+  it('keeps every walk number of a colouring a gap off the marks, on the solve paths too', () => {
+    let checked = 0;
+    for (const { name, drawing } of onPath) {
+      for (const p of drawing.badges.values()) {
+        checked++;
+        expect(offTheMarks(p, drawing), `${name}: a number at ${p.x.toFixed(1)},${p.y.toFixed(1)}`).toBeGreaterThanOrEqual(-1e-9);
+      }
+    }
+    expect(checked).toBeGreaterThan(150);
   });
 });

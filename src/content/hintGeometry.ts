@@ -35,6 +35,7 @@
 // - a bend of either keeps off the grid lines, box lines first, where its
 //   line would merge with theirs.
 import type { CellDigit, ChainLink } from '../engine/steps';
+import { MARK } from './hintPalette';
 
 export interface Point {
   x: number;
@@ -394,6 +395,14 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     }
     return out;
   };
+  // a weak tie has no head to say which candidate of a cell it ends at, so
+  // each of its ends keeps further from the other marks of its cell than
+  // from its own, by the clearance, as a head keeps off the digits round its
+  // target (G10): an end in the gap between two rings would seem to go into
+  // the other. How much room an end at `p` by its candidate `cd` leaves
+  // (none to keep: all clear)
+  const endRoom = (cd: CellDigit, p: Point) =>
+    Math.min(...marks.filter((m) => m.cd.cell === cd.cell && key(m.cd) !== key(cd)).map((m) => len(sub(p, m.p)) - m.r - gap - need));
 
   // a colouring's clusters, as its ties join them, and the first tie of
   // each: a tie is drawn in its cluster's frame, with the candidates of its
@@ -578,8 +587,9 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
             : add(tail, mul(sub(tip, tail), s));
       const shaft = Array.from({ length: 21 }, (_, k) => at(k / 20));
       const trace = [...shaft, ...head];
-      // the head's room from the digits round its target (none: all clear)
-      const headRoom = head.length ? Math.min(...round.map((o) => toPath(o.p, [], head) - o.r)) : Infinity;
+      // the head's room from the digits round its target, a weak tie's ends'
+      // from the other marks of their cells (none: all clear)
+      const headRoom = head.length ? Math.min(...round.map((o) => toPath(o.p, [], head) - o.r)) : weakTie(l) ? Math.min(endRoom(fromCd, tail), endRoom(toCd, tip)) : Infinity;
       const lined = l.undirected && controls.length ? alongGridLines(at, layout) : 0;
       return { tail, tip, dir, head, trace, shaft, controls, mid: at(0.5), room: clearanceOf(shaft, others, layout, margin, head), run: runOf(shaft), headRoom, lined };
     };
@@ -754,8 +764,9 @@ export function startMarkers(
  * (a pencilled digit, a solved one) at the size a wide board draws it;
  * beside the shaft when nothing on it is clear; the clearest place when
  * nothing is. Corner brackets take theirs on the first clear corner, by
- * the same rules. A colouring's numbers keep a gap from each other too, and
- * are placed without its ties, which are never drawn with them
+ * the same rules. A colouring's numbers keep a gap from each other and from
+ * the marks too, and are placed without its ties, which are never drawn
+ * with them
  */
 export function badgePoints(
   shapes: ArrowShape[],
@@ -834,15 +845,17 @@ export function badgePoints(
       ...shapes.flatMap((x) => ((x.kind === 'tie' && !colouring) || (x.kind === 'cell' && x !== s) ? [x.trace] : []))
     ];
     // a colouring's number keeps a gap from the others too, so two never
-    // touch on a phone and read as one
+    // touch on a phone and read as one; and from the marks, their keyline
+    // at its widest included, so it never sits against a candidate's ring
     const apart = 2 * r + (colouring ? SIZES.badgeGap * c : 0);
+    const offMarks = r + (colouring ? (MARK.keylineSmall + SIZES.badgeGap) * c : 0);
     // what a number must keep clear of: the numbers placed, the marks, the
     // dots, every head, the board's edge; and, beside its shaft, every other
     // arrow, so it is never nearer another arrow than its own
     const hard = (q: { p: Point; on: boolean }) =>
       Math.min(
         ...placed.map((x) => len(sub(q.p, x)) - apart),
-        ...marks.map((m) => len(sub(q.p, m.p)) - m.r - r),
+        ...marks.map((m) => len(sub(q.p, m.p)) - m.r - offMarks),
         ...dots.map((x) => len(sub(q.p, x)) - SIZES.dotLarge * c - r),
         ...arrows.map((a) => (a.head.length ? toPath(q.p, [], a.head) - r : Infinity)),
         ...(q.on ? [] : otherShafts.map((sh) => toPath(q.p, sh) - r - SIZES.stroke * c)),
