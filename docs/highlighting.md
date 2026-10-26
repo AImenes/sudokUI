@@ -43,7 +43,9 @@ needs:
   carry its own sentence (`text`); the colouring witnesses do.
 - **Red over a colour.** A coloured candidate that the step removes is
   drawn red with a ring in its colour, so a colour that is removed
-  entirely (a Medusa or colouring wrap) is still there to be read. A cell
+  entirely is still there to be read. A colouring is the exception: a
+  shade inside a removal would hide it, so the legend names the colour
+  it removes instead ("remove: dark purple, proven false"). A cell
   keeps the tint of the colour it holds; red tints only a cell with
   nothing else to say.
 - **The walk.** Every hint with more than one idea can be walked: "Walk
@@ -76,14 +78,17 @@ needs:
   shades the three houses that hold the digit three times.
 - **Chains and loops.** Arrows, solid and dashed, from the first node to
   the last; the walk reads each link as the inference it is.
-- **Colouring.** The cluster's conjugate ties are quiet straight lines,
-  blue and gold candidates, and the only arrows are the witnesses the
-  explanation names: the blue and the gold candidate the removed one
-  sees, the two same-coloured candidates that clash, the bridge in Multi
-  Colours. Each witness carries its sentence ("If blue is true, the 6 in
-  r3c3 is placed, and the 6 in r3c7 goes."). The walk shows the cluster
-  in one frame and the witnesses one by one. When a whole colour is
-  removed, its candidates are red with a ring in that colour.
+- **Colouring.** Simple Colors, Multi Colors, 3D Medusa and Remote Pair
+  draw their parity (docs/hint-drawing-colouring.md): a cluster's two
+  colours are dark and light purple, Multi Colors' second cluster dark
+  and light orange, and dark is the colour the argument tries first. A
+  cluster's ties are quiet straight lines along its shortest tree, drawn
+  only in that cluster's frame of the walk. The argument is one to three
+  dashed lines with no head (a witness, a clash, a bridge), or corner
+  brackets round one cell, each with its sentence ("If dark purple is
+  true, the 6 in r3c3 is true, and the 6 in r3c7 goes."), drawn from its
+  frame on and in the full view. A colour the step proves false is
+  drawn as the removals it is, and its partner as green true discs.
 - **ALS.** Each set in its colour; the restricted common digits are drawn
   as links between the sets; a Death Blossom links each stem candidate to
   its petal; an ALS-XY-Wing links its hinge to both sets.

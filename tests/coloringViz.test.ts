@@ -3,15 +3,20 @@ import { Grid, emptyGrid, cloneGrid, isSolved, gridToString, bit } from '../src/
 import { solve } from '../src/engine/bruteForce';
 import { generatePuzzle } from '../src/engine/generator';
 import { findNextStep, applyStep } from '../src/engine/humanSolver';
-import { Step } from '../src/engine/steps';
+import { Step, isTie } from '../src/engine/steps';
+import { checkParity } from '../src/engine/truth';
 import { findSimpleColors, findMultiColors } from '../src/engine/techniques/coloring';
 import { findMedusa3d } from '../src/engine/techniques/medusa';
+import { findRemotePair } from '../src/engine/techniques/chains';
 
 /**
- * The colouring family (Simple Colors, Multi Colors, 3D Medusa) explains
- * itself with the on-screen hues: blue/gold parities, red eliminations,
- * purple bridge colours. These tests pin that vocabulary and the link trees
- * so the prose can never drift from what the board shows.
+ * The colouring family (Simple Colors, Multi Colors, 3D Medusa, Remote
+ * Pair) says its parity (docs/hint-drawing-colouring.md): each cluster's two
+ * colours are dark and light purple, Multi Colors' second cluster dark and
+ * light orange, joined by ties along its shortest drawn tree, and the
+ * argument is weak ties, each with its sentence. These tests pin that model
+ * and its words on small boards built by hand, and hunt the family on
+ * generated puzzles, so the prose can never drift from what the board shows.
  */
 
 /** every link endpoint must be a live candidate of the current grid */
@@ -39,66 +44,75 @@ function chainGrid(): Grid {
   return g;
 }
 
+const at = (cell: number, digit = 7) => ({ cell, digit });
+
 describe('coloring visual explanations', () => {
-  it('Simple Colors trap: names the blue and gold witnesses, links the chain', () => {
-    const step = findSimpleColors(chainGrid());
+  it('Simple Colors trap: dark is the first 7 in reading order, the witnesses one of each shade', () => {
+    const g = chainGrid();
+    const step = findSimpleColors(g);
     expect(step).not.toBeNull();
     expect(step!.tech).toBe('SIMPLE_COLORS');
-    expect(step!.eliminations).toEqual([{ cell: 4, digit: 7 }]);
-    // the trapped 7 must see one chain end of each colour, never the same twice
-    const m = step!.description.match(/The 7 in r1c5 sees a blue 7 in (r1c[28]) and a gold 7 in (r1c[28])/);
-    expect(m, step!.description).not.toBeNull();
-    expect(m![1]).not.toBe(m![2]);
-    // the chain of 4 cells is drawn as its 3 conjugate ties, all strong and
-    // undirected; the two witnesses the trapped 7 sees are the only arrows
-    const ties = step!.links!.filter((l) => l.undirected);
-    const arrows = step!.links!.filter((l) => !l.undirected);
+    expect(step!.truth).toBe('parity');
+    expect(step!.eliminations).toEqual([at(4)]);
+    // r1c2 is first: dark with r5c8, its partner across the cluster; light r1c8 and r5c2
+    expect(step!.colouring).toEqual({ rule: 'trap', clusters: [{ dark: [at(1), at(43)], light: [at(7), at(37)] }] });
+    expect(step!.description).toContain('The 7 in r1c5 sees a dark purple 7 in r1c2 and a light purple 7 in r1c8, so it is false either way.');
+    // the chain of 4 cells is its 3 ties, strong and undirected, the first
+    // with the cluster's sentence; then the two weak ties into the removal
+    const ties = step!.links!.filter(isTie);
+    const weak = step!.links!.filter((l) => !isTie(l));
     expect(ties).toHaveLength(3);
-    expect(ties.every((l) => l.strong)).toBe(true);
+    expect(ties.map((l) => !!l.text)).toEqual([true, false, false]);
     const chain = new Set([1, 7, 37, 43]);
     for (const l of ties) {
       expect(chain.has(l.from[0].cell)).toBe(true);
       expect(chain.has(l.to[0].cell)).toBe(true);
     }
-    expect(arrows).toHaveLength(2);
-    expect(arrows.every((l) => !l.strong && l.to[0].cell === 4 && l.to[0].digit === 7)).toBe(true);
-    expect(new Set(arrows.map((l) => l.from[0].cell))).toEqual(new Set([1, 7]));
+    expect(weak.map((l) => [l.from, l.to, l.strong, l.undirected])).toEqual([
+      [[at(1)], [at(4)], false, true],
+      [[at(7)], [at(4)], false, true]
+    ]);
+    expect(weak.map((l) => l.text)).toEqual([
+      'If dark purple is true, the 7 in r1c2 is true, and the 7 in r1c5 goes.',
+      'If light purple is true, the 7 in r1c8 is true, and the 7 in r1c5 goes. Either way it is false.'
+    ]);
+    expect(checkParity(step!, g.cands)).toEqual([]);
   });
 
-  it('3D Medusa rule 4: bivalue hop joins the cluster, witnesses named', () => {
+  it('3D Medusa rule 4: the bivalue cell joins the cluster with a tie that draws nothing, the witnesses as the trap\'s', () => {
     const g = chainGrid();
     g.cands[37] = bit(7) | bit(9); // r5c2 becomes bivalue {7,9}: an in-cell link
     const step = findMedusa3d(g);
     expect(step).not.toBeNull();
     expect(step!.tech).toBe('MEDUSA_3D');
-    expect(step!.eliminations).toEqual([{ cell: 4, digit: 7 }]);
-    const m = step!.description.match(/The 7 in r1c5 sees a blue 7 in (r1c[28]) and a gold 7 in (r1c[28])/);
-    expect(m, step!.description).not.toBeNull();
-    expect(m![1]).not.toBe(m![2]);
-    // 5 nodes (four 7s + the 9), so 4 spanning-tree ties, all strong and
-    // undirected, plus the two witness arrows into the trapped 7
-    expect((step!.primary ?? []).length + (step!.secondary ?? []).length).toBe(5);
-    const ties = step!.links!.filter((l) => l.undirected);
-    const arrows = step!.links!.filter((l) => !l.undirected);
+    expect(step!.colouring!.rule).toBe('medusa4');
+    expect(step!.eliminations).toEqual([at(4)]);
+    expect(step!.description).toContain('The 7 in r1c5 sees a dark purple 7 in r1c2 and a light purple 7 in r1c8, so it is false either way.');
+    // 5 candidates (four 7s and the 9), so 4 ties of the tree, one of them inside r5c2
+    const [cluster] = step!.colouring!.clusters;
+    expect(cluster.dark.length + cluster.light.length).toBe(5);
+    expect(cluster.dark).toContainEqual(at(37, 9));
+    const ties = step!.links!.filter(isTie);
+    const weak = step!.links!.filter((l) => !isTie(l));
     expect(ties).toHaveLength(4);
-    expect(ties.every((l) => l.strong)).toBe(true);
     const inCell = ties.filter((l) => l.from[0].cell === l.to[0].cell);
     expect(inCell).toHaveLength(1);
     expect(inCell[0].from[0].cell).toBe(37);
-    expect(arrows).toHaveLength(2);
-    expect(arrows.every((l) => !l.strong && l.to[0].cell === 4 && l.to[0].digit === 7)).toBe(true);
+    expect(weak).toHaveLength(2);
+    expect(weak.every((l) => !l.strong && l.undirected && l.to[0].cell === 4 && l.to[0].digit === 7)).toBe(true);
     expectLinksReal(g, step!, step!.description);
+    expect(checkParity(step!, g.cands)).toEqual([]);
   });
 
-  it('hunts the colouring family on real puzzles: sound, linked, hue-named', { timeout: 300_000 }, () => {
-    const found: Record<string, number> = { SIMPLE_COLORS: 0, MULTI_COLORS: 0, MEDUSA_3D: 0 };
+  it('hunts the colouring family on real puzzles: sound, a parity checkParity clears, in the shades\' words', { timeout: 300_000 }, () => {
+    const found: Record<string, number> = { SIMPLE_COLORS: 0, MULTI_COLORS: 0, MEDUSA_3D: 0, REMOTE_PAIR: 0 };
     const probes: [string, (g: Grid) => Step | null][] = [
       ['SIMPLE_COLORS', findSimpleColors],
       ['MULTI_COLORS', findMultiColors],
-      ['MEDUSA_3D', findMedusa3d]
+      ['MEDUSA_3D', findMedusa3d],
+      ['REMOTE_PAIR', findRemotePair]
     ];
-    const done = () =>
-      found.SIMPLE_COLORS >= 3 && found.MEDUSA_3D >= 2 && found.MULTI_COLORS >= 1;
+    const done = () => found.SIMPLE_COLORS >= 3 && found.MEDUSA_3D >= 2 && found.MULTI_COLORS >= 1 && found.REMOTE_PAIR >= 1;
 
     for (let i = 0; i < 150 && !done(); i++) {
       const puzzle = generatePuzzle(i % 2 ? 'rotational' : 'none');
@@ -115,11 +129,20 @@ describe('coloring visual explanations', () => {
             expect(solution.values[cell], context).not.toBe(digit);
           }
           expectLinksReal(g, hit, context);
-          expect(hit.links!.length, context).toBeGreaterThan(0);
-          // the prose must speak in the board's hues
-          expect(hit.description, context).toMatch(/blue|gold|red/);
+          expect(hit.truth, context).toBe('parity');
+          expect(checkParity(hit, g.cands), context).toEqual([]);
+          // each cluster is one way true: every dark candidate, or every light one
+          for (const cl of hit.colouring!.clusters) {
+            const dark = new Set(cl.dark.map((x) => solution.values[x.cell] === x.digit));
+            const light = new Set(cl.light.map((x) => solution.values[x.cell] === x.digit));
+            expect([dark.size, light.size], context).toEqual([1, 1]);
+            expect([...dark][0], context).not.toBe([...light][0]);
+          }
+          // the prose speaks in the board's shades, and in no old colour
+          expect(hit.description, context).toMatch(/dark purple/);
+          expect(hit.description, context).not.toMatch(/\b(blue|gold|red|violet|circled)\b/);
           if (name === 'MULTI_COLORS') {
-            expect(hit.description, context).toContain('purple');
+            expect(hit.description, context).toMatch(/orange/);
             expect(hit.links!.some((l) => !l.strong), context).toBe(true);
           }
         }

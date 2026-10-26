@@ -586,7 +586,7 @@ describe('what the seventh review of phase 1 found', () => {
     expect(dots[0].at).toEqual(c);
   });
 
-  it('never puts a start dot on a node only ties reach, in a Simple Colors hint the solver gives', () => {
+  it('never puts a start dot on a node only ties reach, in a Simple Colors hint the solver gives: a colouring draws none', () => {
     const g = parseGrid('..8.......2...9.411...3...9.4...3..7.3.245.6.8..9...5.9...5...445.8...7.......5..')!;
     let step = findNextStep(g)!;
     for (let k = 0; k < 60 && step.tech !== 'SIMPLE_COLORS'; k++) {
@@ -599,20 +599,12 @@ describe('what the seventh review of phase 1 found', () => {
     const marked = markedCandidates(marks);
     const l = boardLayout(placedKeys(marks), undefined, solved);
     const dots = startMarkers(step.links!, l, marked);
-    expect(dots.length).toBeGreaterThan(0);
-    for (const p of dots) {
-      // every dot belongs to a witness arrow, beside the node it leaves
-      const w = step.links![p.link];
-      expect(w.undirected, `dot ${p.link + 1}`).toBeFalsy();
-      expect(w.from.some((x) => x.cell === p.at.cell && x.digit === p.at.digit)).toBe(true);
-    }
-    // and every witness has one
-    const witnesses = step.links!.map((w, i) => (w.undirected ? -1 : i)).filter((i) => i >= 0);
-    for (const i of witnesses) {
-      const prev = step.links![i - 1];
-      const goesOn = prev && !prev.undirected && prev.to.some((x) => step.links![i].from.some((y) => y.cell === x.cell));
-      if (!goesOn) expect(dots.some((p) => p.link === i), `the witness, link ${i + 1}`).toBe(true);
-    }
+    // its witnesses are weak ties (docs/hint-drawing-colouring.md): they
+    // claim no direction, so no link of it has a start
+    expect(step.truth).toBe('parity');
+    expect(step.links!.filter((w) => !w.strong).length).toBe(2);
+    expect(step.links!.every((w) => w.undirected)).toBe(true);
+    expect(dots).toEqual([]);
   });
 });
 

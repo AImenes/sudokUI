@@ -5,9 +5,9 @@
  * legend (src/content/hintMarks.ts), the geometry of weak ties and corner
  * brackets (src/content/hintGeometry.ts), and the two boards and their
  * legends (src/ui/Grid.tsx, src/ui/HintPanel.tsx, src/content/boardSvg.ts).
- * No finder writes `truth: 'parity'` yet, so the colourings are the
- * hand-built ones of tests/parityFixtures.ts, one per shape of argument, on
- * real positions; every other drawing is held as it was by
+ * The colourings are the hand-built ones of tests/parityFixtures.ts, one
+ * per shape of argument, on real positions, which tests/colouring.test.ts
+ * holds the finders to; every other drawing is held as it was by
  * tests/drawingSnapshot.test.ts.
  */
 import { describe, it, expect } from 'vitest';
@@ -63,7 +63,9 @@ describe('the step model and its self-check', () => {
       expect(f.step.primary ?? f.step.secondary ?? f.step.fins ?? f.step.labels, f.name).toBeUndefined();
     }
     expect(isParity({ ...fixture('trap').step, colouring: undefined })).toBe(false);
-    expect(isParity(EXAMPLES.SIMPLE_COLORS!.step)).toBe(false);
+    // the finders say it too (tests/colouring.test.ts), and nothing else does
+    expect(isParity(EXAMPLES.SIMPLE_COLORS!.step)).toBe(true);
+    expect(isParity(EXAMPLES.AIC!.step)).toBe(false);
   });
 
   it('every fixture passes checkParity against its board, and its colours are what the solution says', () => {
@@ -196,6 +198,7 @@ describe('the walk', () => {
 
   it('leaves every other walk as it was: no frame lists its own links, and each draws the links it has reached', () => {
     for (const ex of Object.values(EXAMPLES)) {
+      if (isParity(ex!.step)) continue;
       for (const fr of walkFrames(ex!.step)) {
         expect(fr.drawn, ex!.step.tech).toBeUndefined();
         expect([...drawnLinks(ex!.step, fr)], ex!.step.tech).toEqual(Array.from({ length: fr.links }, (_, i) => i));

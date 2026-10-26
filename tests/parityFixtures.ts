@@ -10,8 +10,10 @@
  * candidate by candidate: its two colours per cluster, dark the colour the
  * argument tries first; its ties, cluster by cluster, the first of each
  * with the cluster frame's sentence; its argument as weak ties, each with
- * its sentence. No finder writes `truth: 'parity'` yet, so these hold the
- * drawing to the design until the finders do. Not a test file itself.
+ * its sentence. They hold the drawing to the design, and the finders to
+ * these (tests/colouring.test.ts): at each position the finder colours the
+ * same candidates the same way, with the same argument; only its ties may
+ * be another tree as short. Not a test file itself.
  */
 import { parseGrid } from '../src/engine/board';
 import type { Grid } from '../src/engine/board';
@@ -161,7 +163,7 @@ export const PARITY_FIXTURES: ParityFixture[] = [
         tie('9r2c6', '9r7c6'),
         tie('9r2c6', '9r1c5'),
         weak('9r2c1', '9r5c1', 'The dark orange 9 in r2c1 sees the dark purple 9 in r5c1 (the dashed line): if dark orange were true, dark purple would be false, and light purple true.'),
-        weak('9r1c5', '9r6c5', 'The dark orange 9 in r1c5 also sees the light purple 9 in r6c5: dark orange would make both purple colours false, and one of them must be true.')
+        weak('9r1c5', '9r6c5', 'The dark orange 9 in r1c5 also sees the light purple 9 in r6c5: dark orange would make both purple shades false, and one of them must be true.')
       ],
       '9r2c1 9r7c6 9r1c5',
       1

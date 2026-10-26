@@ -56,6 +56,11 @@ describe('the app board cuts the digits out of a hint\'s arrows', () => {
       const heads = [...outside.matchAll(/<polygon points="([^"]+)" fill="var\(--hint-arrow\)"/g)].map((m) => m[1]);
       const back = [...whole.matchAll(/<polygon points="([^"]+)" fill="#fff"/g)].map((m) => m[1]);
       expect(back, tech).toEqual(heads);
+      // a colouring's full view draws its weak ties, dashed lines with no head
+      if (tech === 'SIMPLE_COLORS') {
+        expect(heads.length, tech).toBe(0);
+        continue;
+      }
       expect(heads.length, tech).toBeGreaterThan(0);
       expect(whole.indexOf('<polygon'), tech).toBeGreaterThan(whole.indexOf('class="knockout"'));
     }

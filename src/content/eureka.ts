@@ -13,6 +13,7 @@
 //   X-Wing: 7 r38 c38 => r2c3<>7
 //   Naked Pair: 2,5 in r9c27 => r9c6<>5
 //   ALS-XZ: A=r8c2,r9c1 {159}, B=r7c8,r8c9 {159}, X=1, Z=5 => r7c1<>5
+//   Simple Colors Trap: 4 (r1c5,r6c4,r8c6) / (r1c6,r5c5,r8c8) => r6c8<>4
 //
 // Cells are rXcY, a set of them r45c18 when it is rows by columns, else
 // by row, by column and singly. Nothing here is translated: the notation
@@ -20,7 +21,8 @@
 // community (and HoDoKu) uses.
 import { rowOf, colOf, sees, cellName } from '../engine/board';
 import { TECHS } from '../engine/ratings';
-import type { Step, CellDigit, ChainLink } from '../engine/steps';
+import type { Step, CellDigit, ChainLink, ColourRule } from '../engine/steps';
+import { isParity } from '../engine/steps';
 
 const uniq = <T>(xs: T[]) => [...new Set(xs)];
 const asc = (a: number, b: number) => a - b;
@@ -105,6 +107,7 @@ function writeNode(node: Node): string {
  * restricted commons are drawn as links too, but read as patterns.
  */
 export function eurekaOf(step: Step): string | null {
+  if (isParity(step)) return null;
   const links = step.links;
   if (!links?.length || links.some((l) => l.undirected)) return null;
   const link = (l: ChainLink, i: number) => l.strong === (i % 2 === 0);
@@ -186,13 +189,60 @@ function alsSets(step: Step): { cells: number[]; digits: number[] }[] | null {
   }));
 }
 
+/** a colouring's rule as HoDoKu names it; 3D Medusa and Remote Pair, which HoDoKu does not colour, by their own names */
+const COLOURING_NAMES: Record<ColourRule, string> = {
+  trap: 'Simple Colors Trap',
+  wrap: 'Simple Colors Wrap',
+  bridge: 'Multi Colors 1',
+  seesBoth: 'Multi Colors 2',
+  medusa1: '3D Medusa',
+  medusa2: '3D Medusa',
+  medusa3: '3D Medusa',
+  medusa4: '3D Medusa',
+  medusa5: '3D Medusa',
+  medusa6: '3D Medusa',
+  remotePair: 'Remote Pair'
+};
+
+/**
+ * A colouring as HoDoKu writes one (its SolutionStep): the rule's name,
+ * then each cluster's two colours, dark first, in brackets and parted by
+ * " / ", the clusters by ", ", purple first. One digit (Simple and Multi
+ * Colors) goes first and the colours are cells; 3D Medusa's colours are
+ * candidates, 1r7c3, by digit and then cell; a Remote Pair's are its cells
+ * by the colour of their lower digit, after the pair's two digits
+ */
+function colouringLine(step: Step): string {
+  const { rule, clusters } = step.colouring!;
+  const name = COLOURING_NAMES[rule];
+  const done = conclusions(step);
+  const cells = (cds: readonly CellDigit[]) => cellsOf(cds).map(cellName).join(',');
+  if (rule === 'remotePair') {
+    const [{ dark, light }] = clusters;
+    const [lo, hi] = digitsIn([...dark, ...light]);
+    return `${name}: ${lo}/${hi} (${cells(dark.filter((cd) => cd.digit === lo))}) / (${cells(light.filter((cd) => cd.digit === lo))}) => ${done}`;
+  }
+  if (rule.startsWith('medusa')) {
+    const items = (cds: readonly CellDigit[]) =>
+      [...cds]
+        .sort((a, b) => a.digit - b.digit || a.cell - b.cell)
+        .map((cd) => `${cd.digit}${cellName(cd.cell)}`)
+        .join(',');
+    return `${name}: ${clusters.map((cl) => `(${items(cl.dark)}) / (${items(cl.light)})`).join(', ')} => ${done}`;
+  }
+  const digit = digitsIn(clusters.flatMap((cl) => [...cl.dark, ...cl.light])).join('/');
+  return `${name}: ${digit} ${clusters.map((cl) => `(${cells(cl.dark)}) / (${cells(cl.light)})`).join(', ')} => ${done}`;
+}
+
 /**
  * The HoDoKu line of a step that is not a chain: the technique's name,
  * what defines it, => what it does. Fish name their digit, base and cover
  * houses and fins; singles their house; sets their digits and cells, one
- * colour after another; ALS patterns their sets with the digits in braces.
+ * colour after another; ALS patterns their sets with the digits in braces;
+ * a colouring its clusters' two colours, dark first.
  */
 export function hodokuLine(step: Step): string {
+  if (isParity(step)) return colouringLine(step);
   const info = TECHS[step.tech];
   const name = info.name;
   const done = conclusions(step);

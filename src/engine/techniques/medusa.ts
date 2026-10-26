@@ -1,6 +1,7 @@
 import { Grid, UNITS, bit, digitsOf, popcount, sees, cellName } from '../board';
-import { Step, CellDigit, ChainLink } from '../steps';
-import { tr, unitName } from '../text';
+import { Step, CellDigit, ChainLink, ColourRule } from '../steps';
+import { tr, unitName, listAnd } from '../text';
+import { spanningTies, tieLinks, weakTie, nearest, firstParity, shades } from './colourTree';
 
 /** node id for (cell, digit) */
 const nid = (cell: number, digit: number) => cell * 9 + digit - 1;
@@ -8,30 +9,34 @@ const nCell = (id: number) => Math.floor(id / 9);
 const nDigit = (id: number) => (id % 9) + 1;
 const cd = (id: number): CellDigit => ({ cell: nCell(id), digit: nDigit(id) });
 
-// The on-screen hue of each parity: colour 0 renders blue, colour 1 gold.
-// A sentence that names a colour is written once per colour, so every
-// language can agree its words with it.
+// A colouring says its parity (docs/hint-drawing-colouring.md): the
+// cluster's two colours are the two shades of purple, and dark is the
+// colour the argument tries first. A sentence names each shade whole,
+// never as a hole, so every language can write it its own way.
 
 interface Cluster {
   nodes: number[];
-  color: Map<number, number>; // node id -> 0 | 1
-  /** BFS spanning tree (parent -> child): why each node has its colour */
-  edges: [number, number][];
+  /** node id -> the colour the search gave it, 0 or 1: which is dark is the step's to say */
+  color: Map<number, number>;
+  /** its strong relations (conjugate pairs, bivalue cells), which its ties are drawn from */
+  relations: [number, number][];
 }
 
 /**
  * Build 3D Medusa clusters: nodes are candidates (cell,digit); strong links
  * are conjugate pairs (two positions of a digit in a unit) and bivalue cells
- * (two digits in a cell). Each connected component is 2-colored; the BFS
- * spanning tree is kept so the colouring can be drawn as links.
+ * (two digits in a cell). Each connected component is 2-colored, and
+ * keeps its strong relations, so its ties can be drawn.
  */
 function buildClusters(g: Grid): Cluster[] {
   const adj = new Map<number, Set<number>>();
+  const relations: [number, number][] = [];
   const link = (a: number, b: number) => {
     if (!adj.has(a)) adj.set(a, new Set());
     if (!adj.has(b)) adj.set(b, new Set());
     adj.get(a)!.add(b);
     adj.get(b)!.add(a);
+    relations.push([a, b]);
   };
   for (const unit of UNITS) {
     for (let d = 1; d <= 9; d++) {
@@ -51,7 +56,6 @@ function buildClusters(g: Grid): Cluster[] {
     if (visited.has(start)) continue;
     const color = new Map<number, number>();
     const nodes: number[] = [];
-    const edges: [number, number][] = [];
     const queue = [start];
     color.set(start, 0);
     visited.add(start);
@@ -62,12 +66,11 @@ function buildClusters(g: Grid): Cluster[] {
         if (!color.has(next)) {
           color.set(next, 1 - color.get(cur)!);
           visited.add(next);
-          edges.push([cur, next]);
           queue.push(next);
         }
       }
     }
-    if (nodes.length >= 4) clusters.push({ nodes, color, edges });
+    if (nodes.length >= 4) clusters.push({ nodes, color, relations: relations.filter(([a]) => color.has(a)) });
   }
   return clusters;
 }
@@ -76,8 +79,10 @@ function buildClusters(g: Grid): Cluster[] {
 export function findMedusa3d(g: Grid): Step | null {
   for (const cl of clusters(g)) {
     const colored = (col: number) => cl.nodes.filter((n) => cl.color.get(n) === col);
+    const colourOf = (x: CellDigit) => cl.color.get(nid(x.cell, x.digit))!;
 
-    // Rules 1 & 2: a colour contradicts itself -> remove that whole colour
+    // Rules 1 & 2: a colour contradicts itself -> remove that whole colour,
+    // which is dark
     for (const col of [0, 1]) {
       const nodes = colored(col);
       // rule 1: same colour twice in one cell
@@ -90,19 +95,18 @@ export function findMedusa3d(g: Grid): Step | null {
       for (const [cell, ds] of byCell) {
         if (ds.length >= 2) {
           const name = cellName(cell);
+          const [d1, d2] = [...ds].sort((a, b) => a - b);
           return medusaStep(
             cl,
+            'medusa1',
+            col,
             nodes.map(cd),
-            col === 0
-              ? tr`Blue colours both ${ds[0]} and ${ds[1]} in ${name}, so blue is false: all its candidates are removed (circled red) and every gold candidate is true`
-              : tr`Gold colours both ${ds[0]} and ${ds[1]} in ${name}, so gold is false: all its candidates are removed (circled red) and every blue candidate is true`,
+            tr`Dark purple colours both the ${d1} and the ${d2} in ${name}, so dark purple is false: every dark purple candidate is removed, and every light purple one is true`,
             [
-              witness(
-                { cell, digit: ds[0] },
-                { cell, digit: ds[1] },
-                col === 0
-                  ? tr`Blue colours both the ${ds[0]} and the ${ds[1]} in ${name}. A cell holds one digit, so blue cannot be true.`
-                  : tr`Gold colours both the ${ds[0]} and the ${ds[1]} in ${name}. A cell holds one digit, so gold cannot be true.`
+              weakTie(
+                [{ cell, digit: d1 }],
+                [{ cell, digit: d2 }],
+                tr`Dark purple colours both the ${d1} and the ${d2} in ${name} (the corner marks). A cell holds one digit, so dark purple cannot be true.`
               )
             ]
           );
@@ -118,17 +122,15 @@ export function findMedusa3d(g: Grid): Step | null {
             const b = cellName(twice[1]);
             return medusaStep(
               cl,
+              'medusa2',
+              col,
               nodes.map(cd),
-              col === 0
-                ? tr`Blue puts ${d} twice in ${unit} (${a} and ${b}), so blue is false: all its candidates are removed (circled red) and every gold candidate is true`
-                : tr`Gold puts ${d} twice in ${unit} (${a} and ${b}), so gold is false: all its candidates are removed (circled red) and every blue candidate is true`,
+              tr`Dark purple puts ${d} twice in ${unit} (${a} and ${b}), so dark purple is false: every dark purple candidate is removed, and every light purple one is true`,
               [
-                witness(
-                  { cell: twice[0], digit: d },
-                  { cell: twice[1], digit: d },
-                  col === 0
-                    ? tr`Blue puts ${d} in both ${a} and ${b} of ${unit}. A digit appears once per house, so blue cannot be true.`
-                    : tr`Gold puts ${d} in both ${a} and ${b} of ${unit}. A digit appears once per house, so gold cannot be true.`
+                weakTie(
+                  [{ cell: twice[0], digit: d }],
+                  [{ cell: twice[1], digit: d }],
+                  tr`Dark purple puts ${d} in both ${a} and ${b} of ${unit} (the dashed line). A digit appears once per house, so dark purple cannot be true.`
                 )
               ]
             );
@@ -137,10 +139,13 @@ export function findMedusa3d(g: Grid): Step | null {
       }
     }
 
+    // where the argument proves no colour, dark is the colour of the
+    // cluster's first candidate in reading order
+    const first = firstParity(cl.nodes.map(cd), colourOf);
+
     // Rule 3: cell holding both colours -> uncoloured candidates there go
     const elims3: CellDigit[] = [];
-    let why3 = '';
-    const witnesses3: ChainLink[] = [];
+    let cell3: { c: number; dark: number; light: number; removed: number[] } | null = null;
     for (let c = 0; c < 81; c++) {
       if (g.values[c] !== 0) continue;
       const colorDigit: (number | undefined)[] = [undefined, undefined];
@@ -153,39 +158,44 @@ export function findMedusa3d(g: Grid): Step | null {
       for (const d of digitsOf(g.cands[c])) {
         if (!cl.color.has(nid(c, d))) elims3.push({ cell: c, digit: d });
       }
-      if (elims3.length > before && !why3) {
-        why3 = tr`${cellName(c)} holds both a blue ${colorDigit[0]} and a gold ${colorDigit[1]}; one of those two is true, so the cell's other candidates are removed`;
-        const first = elims3[before];
-        witnesses3.push(
-          witness(
-            { cell: c, digit: colorDigit[0] },
-            first,
-            tr`If blue is true, ${cellName(c)} is ${colorDigit[0]}, and its ${first.digit} goes.`
-          ),
-          witness(
-            { cell: c, digit: colorDigit[1] },
-            first,
-            tr`If gold is true, ${cellName(c)} is ${colorDigit[1]}, and its ${first.digit} goes. Either way the ${first.digit} is false.`
-          )
-        );
+      if (elims3.length > before && !cell3) {
+        cell3 = { c, dark: colorDigit[first]!, light: colorDigit[1 - first]!, removed: elims3.slice(before).map((e) => e.digit) };
       }
     }
-    if (elims3.length) {
+    if (cell3) {
       const cellsHit = new Set(elims3.map((e) => e.cell)).size;
+      const name = cellName(cell3.c);
+      const { dark, light, removed } = cell3;
       // rule 1 found no cell with two candidates of one colour, so each cell
-      // hit keeps exactly one blue and one gold candidate: narrowed, not solved
+      // hit keeps exactly one dark and one light candidate: narrowed, not solved
       return medusaStep(
         cl,
+        'medusa3',
+        first,
         elims3,
-        why3 + (cellsHit > 1 ? tr` (${cellsHit} cells are narrowed to their blue and gold candidates this way)` : ''),
-        witnesses3
+        tr`${name} holds a dark purple ${dark} and a light purple ${light}; one of them is true, so the cell's other candidates are removed` +
+          (cellsHit > 1 ? tr` (${cellsHit} cells are narrowed to their two shades this way)` : ''),
+        [
+          weakTie(
+            [
+              { cell: cell3.c, digit: dark },
+              { cell: cell3.c, digit: light }
+            ],
+            removed.map((digit) => ({ cell: cell3!.c, digit })),
+            removed.length === 1
+              ? tr`${name} holds a dark purple ${dark} and a light purple ${light} (the corner marks); one of them is true, so its ${removed[0]} is false.`
+              : tr`${name} holds a dark purple ${dark} and a light purple ${light} (the corner marks); one of them is true, so its ${listAnd(removed)} are false.`
+          )
+        ]
       );
     }
 
-    // Rules 4 & 5: uncoloured candidate eliminated by what it sees
+    // Rules 4 & 5: uncoloured candidate eliminated by what it sees; the
+    // first removal is the one witnessed, and its rule says which colour is
+    // dark: the first in reading order for rule 4, the colour it sees
+    // outside its cell for rule 5
     const elims45: CellDigit[] = [];
-    let why45 = '';
-    const witnesses45: ChainLink[] = [];
+    let witnessed: { rule: 'medusa4' | 'medusa5'; dark: number; c: number; d: number; x: number; y: number; own: number } | null = null;
     for (let c = 0; c < 81; c++) {
       if (g.values[c] !== 0) continue;
       // one representative coloured digit of each colour in this cell (rule 5)
@@ -196,75 +206,72 @@ export function findMedusa3d(g: Grid): Step | null {
       }
       for (const d of digitsOf(g.cands[c])) {
         if (cl.color.has(nid(c, d))) continue;
-        const seen: (number | undefined)[] = [undefined, undefined];
+        const seen: CellDigit[][] = [[], []];
         for (const n of cl.nodes) {
-          if (nDigit(n) === d && sees(c, nCell(n))) seen[cl.color.get(n)!] ??= nCell(n);
+          if (nDigit(n) === d && sees(c, nCell(n))) seen[cl.color.get(n)!].push(cd(n));
         }
+        const target = { cell: c, digit: d };
         // rule 4: sees both colours of its own digit
-        if (seen[0] !== undefined && seen[1] !== undefined) {
-          elims45.push({ cell: c, digit: d });
-          if (!why45) {
-            why45 = tr`The ${d} in ${cellName(c)} sees a blue ${d} in ${cellName(seen[0])} and a gold ${d} in ${cellName(seen[1])}, so it is false either way`;
-            witnesses45.push(
-              witness(
-                { cell: seen[0], digit: d },
-                { cell: c, digit: d },
-                tr`If blue is true, the ${d} in ${cellName(seen[0])} is placed, and the ${d} in ${cellName(c)} goes.`
-              ),
-              witness(
-                { cell: seen[1], digit: d },
-                { cell: c, digit: d },
-                tr`If gold is true, the ${d} in ${cellName(seen[1])} is placed, and the ${d} in ${cellName(c)} goes. Either way it is false.`
-              )
-            );
-          }
+        if (seen[0].length && seen[1].length) {
+          elims45.push(target);
+          witnessed ??= { rule: 'medusa4', dark: first, c, d, x: nearest(target, seen[first]).cell, y: nearest(target, seen[1 - first]).cell, own: 0 };
           continue;
         }
         // rule 5: sees colour A of its own digit + opposite colour in its cell
         for (const A of [0, 1]) {
-          if (seen[A] !== undefined && colorDigit[1 - A] !== undefined) {
-            elims45.push({ cell: c, digit: d });
-            if (!why45) {
-              const here = cellName(c);
-              const there = cellName(seen[A]!);
-              const own = colorDigit[1 - A];
-              why45 =
-                A === 0
-                  ? tr`The ${d} in ${here} sees a blue ${d} in ${there} while its own cell holds a gold ${own}, so whichever colour is true removes it`
-                  : tr`The ${d} in ${here} sees a gold ${d} in ${there} while its own cell holds a blue ${own}, so whichever colour is true removes it`;
-              witnesses45.push(
-                witness(
-                  { cell: seen[A]!, digit: d },
-                  { cell: c, digit: d },
-                  A === 0
-                    ? tr`If blue is true, the ${d} in ${there} is placed, and the ${d} in ${here} goes.`
-                    : tr`If gold is true, the ${d} in ${there} is placed, and the ${d} in ${here} goes.`
-                ),
-                witness(
-                  { cell: c, digit: colorDigit[1 - A]! },
-                  { cell: c, digit: d },
-                  A === 0
-                    ? tr`If gold is true, ${here} is ${own}, and its ${d} goes. Either way the ${d} is false.`
-                    : tr`If blue is true, ${here} is ${own}, and its ${d} goes. Either way the ${d} is false.`
-                )
-              );
-            }
+          if (seen[A].length && colorDigit[1 - A] !== undefined) {
+            elims45.push(target);
+            witnessed ??= { rule: 'medusa5', dark: A, c, d, x: nearest(target, seen[A]).cell, y: c, own: colorDigit[1 - A]! };
             break;
           }
         }
       }
     }
-    if (elims45.length) {
+    if (witnessed) {
+      const { rule, dark, c, d, x, y, own } = witnessed;
+      const n = elims45.length - 1;
+      const tail = n <= 0 ? '' : n === 1 ? tr`; 1 more candidate falls to the two shades` : tr`; ${n} more candidates fall to the two shades`;
+      const here = cellName(c);
+      const there = cellName(x);
+      const target = { cell: c, digit: d };
+      const darkWitness = weakTie([{ cell: x, digit: d }], [target], tr`If dark purple is true, the ${d} in ${there} is true, and the ${d} in ${here} goes.`);
+      if (rule === 'medusa4') {
+        const other = cellName(y);
+        return medusaStep(
+          cl,
+          rule,
+          dark,
+          elims45,
+          tr`The ${d} in ${here} sees a dark purple ${d} in ${there} and a light purple ${d} in ${other}, so it is false either way` + tail,
+          [
+            darkWitness,
+            weakTie(
+              [{ cell: y, digit: d }],
+              [target],
+              tr`If light purple is true, the ${d} in ${other} is true, and the ${d} in ${here} goes. Either way it is false` + tail + '.'
+            )
+          ]
+        );
+      }
       return medusaStep(
         cl,
+        rule,
+        dark,
         elims45,
-        why45 + (elims45.length > 1 ? tr`; ${elims45.length} candidates fall this way` : ''),
-        witnesses45
+        tr`The ${d} in ${here} sees a dark purple ${d} in ${there} while its own cell holds a light purple ${own}, so whichever shade is true removes it` + tail,
+        [
+          darkWitness,
+          weakTie(
+            [{ cell: c, digit: own }],
+            [target],
+            tr`If light purple is true, ${here} is ${own} (the corner marks), and its ${d} goes. Either way the ${d} is false` + tail + '.'
+          )
+        ]
       );
     }
 
     // Rule 6: an uncoloured cell where every candidate sees colour A ->
-    // colour A would empty the cell, so colour A is false
+    // colour A would empty the cell, so colour A is false, and dark
     for (const A of [0, 1]) {
       for (let c = 0; c < 81; c++) {
         if (g.values[c] !== 0) continue;
@@ -275,30 +282,26 @@ export function findMedusa3d(g: Grid): Step | null {
           cl.nodes.some((n) => nDigit(n) === d && cl.color.get(n) === A && sees(c, nCell(n)))
         );
         if (emptied) {
-          // one colour-A candidate per digit, the one that would remove it
+          // per digit, the nearest dark candidate that would remove it
           const target = cellName(c);
           const witnesses6 = ds.map((d, k) => {
-            const n = cl.nodes.find((x) => nDigit(x) === d && cl.color.get(x) === A && sees(c, nCell(x)))!;
-            const last = k === ds.length - 1;
-            const from = cellName(nCell(n));
-            let text: string;
-            if (A === 0) {
-              text = last
-                ? tr`If blue is true, the ${d} in ${from} is placed, and ${target} loses its ${d}. ${target} would then be empty, so blue is false.`
-                : tr`If blue is true, the ${d} in ${from} is placed, and ${target} loses its ${d}.`;
-            } else {
-              text = last
-                ? tr`If gold is true, the ${d} in ${from} is placed, and ${target} loses its ${d}. ${target} would then be empty, so gold is false.`
-                : tr`If gold is true, the ${d} in ${from} is placed, and ${target} loses its ${d}.`;
-            }
-            return witness(cd(n), { cell: c, digit: d }, text);
+            const there = { cell: c, digit: d };
+            const n = nearest(there, cl.nodes.filter((x) => nDigit(x) === d && cl.color.get(x) === A && sees(c, nCell(x))).map(cd));
+            const from = cellName(n.cell);
+            return weakTie(
+              [n],
+              [there],
+              k === ds.length - 1
+                ? tr`If dark purple is true, the ${d} in ${from} is true, and ${target} loses its ${d}. ${target} would then be empty, so dark purple cannot be true.`
+                : tr`If dark purple is true, the ${d} in ${from} is true, and ${target} loses its ${d}.`
+            );
           });
           return medusaStep(
             cl,
+            'medusa6',
+            A,
             colored(A).map(cd),
-            A === 0
-              ? tr`If blue were true, ${target} would lose every one of its candidates (${ds.join(', ')}), so blue is false: all its candidates are removed (circled red) and every gold candidate is true`
-              : tr`If gold were true, ${target} would lose every one of its candidates (${ds.join(', ')}), so gold is false: all its candidates are removed (circled red) and every blue candidate is true`,
+            tr`If dark purple were true, ${target} would lose every one of its candidates (${ds.join(', ')}), so dark purple is false: every dark purple candidate is removed, and every light purple one is true`,
             witnesses6
           );
         }
@@ -310,32 +313,31 @@ export function findMedusa3d(g: Grid): Step | null {
 
 const clusters = buildClusters;
 
-/** a weak link from a witness to the candidate it helps rule out, with
- *  the sentence the walk reads for it */
-const witness = (from: CellDigit, to: CellDigit, text: string): ChainLink => ({ from: [from], to: [to], strong: false, text });
+/** the rules that prove the dark colour false */
+const PROVING = new Set<ColourRule>(['medusa1', 'medusa2', 'medusa6']);
 
-function medusaStep(cl: Cluster, eliminations: CellDigit[], reason: string, witnesses: ChainLink[] = []): Step {
-  // the cluster's ties, then the witnesses the explanation names
-  const links: ChainLink[] = [
-    ...cl.edges.map(([a, b]) => ({
-      from: [cd(a)],
-      to: [cd(b)],
-      strong: true,
-      undirected: true
-    })),
-    ...witnesses
-  ];
+/**
+ * A 3D Medusa step: the cluster in its two shades, dark the colour given,
+ * with its ties along its shortest drawn tree, then the argument
+ */
+function medusaStep(cl: Cluster, rule: ColourRule, dark: number, eliminations: CellDigit[], reason: string, argument: ChainLink[]): Step {
+  const cands = cl.nodes.map(cd);
+  const cluster = shades(cands, (x) => cl.color.get(nid(x.cell, x.digit))!, dark);
+  const relations = cl.relations.map(([a, b]): [CellDigit, CellDigit] => [cd(a), cd(b)]);
+  const ties = spanningTies(cands, relations, [...cands, ...eliminations]);
   return {
     tech: 'MEDUSA_3D',
     placements: [],
     eliminations,
-    primary: cl.nodes.filter((n) => cl.color.get(n) === 0).map(cd),
-    secondary: cl.nodes.filter((n) => cl.color.get(n) === 1).map(cd),
-    labels: {
-      primary: tr`blue: one colour, all its candidates true or all false together`,
-      secondary: tr`gold: the other colour, true exactly when blue is false`
-    },
-    links,
-    description: tr`3D Medusa: candidates joined by conjugate pairs and bivalue cells (the solid links) are coloured blue and gold, and either every blue candidate is true or every gold one is. ${reason}.`
+    links: [
+      ...tieLinks(
+        ties,
+        tr`Each line joins the only two places for a digit in a row, column or box; a cell with only two candidates joins those two, side by side (no line inside a cell). Joined candidates take opposite shades: either every dark purple candidate is true, or every light purple one is.`
+      ),
+      ...argument
+    ],
+    truth: 'parity',
+    colouring: { rule, clusters: [cluster], ...(PROVING.has(rule) ? { darkFalse: 0 as const } : {}) },
+    description: tr`3D Medusa: where a row, column or box has only two places for a digit, or a cell has only two candidates, the two take opposite shades of purple, so either every dark purple candidate is true or every light purple one is. ${reason}.`
   };
 }

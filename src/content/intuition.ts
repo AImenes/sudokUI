@@ -240,7 +240,7 @@ export const INTUITION: IntuitionPart[] = [
           "Simple Colors pictures one cluster of strong links at once, so it finds every X-Chain built only from that cluster's links. Multi Colors joins two clusters, and 3D Medusa colours across all the digits at once."
         ],
         eli12:
-          'Pick one spot where a 7 could go and paint it blue. Whenever a row, column or box has only two spots for 7 and one is painted, give the other the opposite colour, so blue and gold take turns. Keep going until nothing more can be painted. Now either every blue spot is a 7 and no gold one is, or the other way round. Any other spot that can see a blue and a gold is not a 7 either way.',
+          'Pick one spot where a 7 could go and paint it dark purple. Whenever a row, column or box has only two spots for 7 and one is painted, paint the other the opposite shade, so dark and light purple take turns. Keep going until nothing more can be painted. Now either every dark purple spot is a 7 and no light purple one is, or the other way round. Any other spot that sees both shades is not a 7 either way.',
         techs: ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D']
       },
       {

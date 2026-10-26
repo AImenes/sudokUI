@@ -113,10 +113,13 @@ function exampleFrom(puzzle: string, tech: Tech, credit?: string, rating = rateP
   };
 }
 
-/** lower is clearer: a small pattern, few links, a well-filled board */
+/** lower is clearer: a small pattern (a colouring's every coloured candidate), few links, a well-filled board */
 function clutter(e: Example): number {
   const marks =
-    (e.step.primary?.length ?? 0) + (e.step.secondary?.length ?? 0) + (e.step.fins?.length ?? 0);
+    (e.step.primary?.length ?? 0) +
+    (e.step.secondary?.length ?? 0) +
+    (e.step.fins?.length ?? 0) +
+    (e.step.colouring?.clusters ?? []).reduce((n, cl) => n + cl.dark.length + cl.light.length, 0);
   const links = e.step.links?.length ?? 0;
   const empty = e.values.split('').filter((v) => v === '0').length;
   return marks * 4 + links * 6 + empty + e.step.description.length / 40;

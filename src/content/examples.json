@@ -2339,9 +2339,6 @@
   ],
   "step": {
    "tech": "REMOTE_PAIR",
-   "labels": {
-    "primary": "the chain of 35 pairs"
-   },
    "placements": [],
    "eliminations": [
     {
@@ -2349,49 +2346,240 @@
      "digit": 3
     }
    ],
-   "primary": [
+   "links": [
     {
-     "cell": 11,
-     "digit": 3
+     "from": [
+      {
+       "cell": 11,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 11,
+       "digit": 5
+      }
+     ],
+     "strong": true,
+     "undirected": true,
+     "text": "The cells r2c3, r2c5, r3c4, r5c5 and r6c4 hold only 3 and 5. Each line joins two of them that see each other: they cannot hold the same digit, so their 3s take opposite shades, and so do their 5s."
     },
     {
-     "cell": 11,
-     "digit": 5
+     "from": [
+      {
+       "cell": 11,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 13,
+       "digit": 3
+      }
+     ],
+     "strong": true,
+     "undirected": true
     },
     {
-     "cell": 13,
-     "digit": 3
+     "from": [
+      {
+       "cell": 13,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 13,
+       "digit": 5
+      }
+     ],
+     "strong": true,
+     "undirected": true
     },
     {
-     "cell": 13,
-     "digit": 5
+     "from": [
+      {
+       "cell": 13,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 21,
+       "digit": 3
+      }
+     ],
+     "strong": true,
+     "undirected": true
     },
     {
-     "cell": 21,
-     "digit": 3
+     "from": [
+      {
+       "cell": 13,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 40,
+       "digit": 3
+      }
+     ],
+     "strong": true,
+     "undirected": true
     },
     {
-     "cell": 21,
-     "digit": 5
+     "from": [
+      {
+       "cell": 21,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 21,
+       "digit": 5
+      }
+     ],
+     "strong": true,
+     "undirected": true
     },
     {
-     "cell": 40,
-     "digit": 3
+     "from": [
+      {
+       "cell": 21,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 48,
+       "digit": 3
+      }
+     ],
+     "strong": true,
+     "undirected": true
     },
     {
-     "cell": 40,
-     "digit": 5
+     "from": [
+      {
+       "cell": 40,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 40,
+       "digit": 5
+      }
+     ],
+     "strong": true,
+     "undirected": true
     },
     {
-     "cell": 48,
-     "digit": 3
+     "from": [
+      {
+       "cell": 48,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 48,
+       "digit": 5
+      }
+     ],
+     "strong": true,
+     "undirected": true
     },
     {
-     "cell": 48,
-     "digit": 5
+     "from": [
+      {
+       "cell": 11,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 47,
+       "digit": 3
+      }
+     ],
+     "strong": false,
+     "undirected": true,
+     "text": "If dark purple is true, the 3 in r2c3 is true, and the 3 in r6c3 goes."
+    },
+    {
+     "from": [
+      {
+       "cell": 48,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 47,
+       "digit": 3
+      }
+     ],
+     "strong": false,
+     "undirected": true,
+     "text": "If light purple is true, the 3 in r6c4 is true, and the 3 in r6c3 goes. Either way it is false."
     }
    ],
-   "description": "Remote Pair: the cells r2c3, r2c5, r3c4, r5c5, r6c4 form a chain of 35 pairs; cells seeing both \"colors\" of the chain lose 3 and 5."
+   "truth": "parity",
+   "colouring": {
+    "rule": "remotePair",
+    "clusters": [
+     {
+      "dark": [
+       {
+        "cell": 11,
+        "digit": 3
+       },
+       {
+        "cell": 13,
+        "digit": 5
+       },
+       {
+        "cell": 21,
+        "digit": 3
+       },
+       {
+        "cell": 40,
+        "digit": 3
+       },
+       {
+        "cell": 48,
+        "digit": 5
+       }
+      ],
+      "light": [
+       {
+        "cell": 11,
+        "digit": 5
+       },
+       {
+        "cell": 13,
+        "digit": 3
+       },
+       {
+        "cell": 21,
+        "digit": 5
+       },
+       {
+        "cell": 40,
+        "digit": 5
+       },
+       {
+        "cell": 48,
+        "digit": 3
+       }
+      ]
+     }
+    ]
+   },
+   "description": "Remote Pair: the cells r2c3, r2c5, r3c4, r5c5 and r6c4 hold only 3 and 5. Two of them that see each other cannot hold the same digit, so their 3s take opposite shades of purple, and so do their 5s: either every dark purple candidate is true, or every light purple one is. The 3 in r6c3 sees a dark purple 3 in r2c3 and a light purple 3 in r6c4, so it is false either way."
   }
  },
  "CHUTE_REMOTE_PAIR": {
@@ -6498,38 +6686,6 @@
      "digit": 4
     }
    ],
-   "primary": [
-    {
-     "cell": 4,
-     "digit": 4
-    },
-    {
-     "cell": 68,
-     "digit": 4
-    },
-    {
-     "cell": 48,
-     "digit": 4
-    }
-   ],
-   "secondary": [
-    {
-     "cell": 5,
-     "digit": 4
-    },
-    {
-     "cell": 40,
-     "digit": 4
-    },
-    {
-     "cell": 70,
-     "digit": 4
-    }
-   ],
-   "labels": {
-    "primary": "blue: one colour of the conjugate pairs on 4, all true or all false together",
-    "secondary": "gold: the other colour, true exactly when blue is false"
-   },
    "links": [
     {
      "from": [
@@ -6545,7 +6701,8 @@
       }
      ],
      "strong": true,
-     "undirected": true
+     "undirected": true,
+     "text": "Each line joins the only two 4s of a house: exactly one of them is true, so they take opposite shades. Either every dark purple 4 is true, or every light purple one is."
     },
     {
      "from": [
@@ -6625,7 +6782,8 @@
       }
      ],
      "strong": false,
-     "text": "If blue is true, the 4 in r6c4 is placed, and the 4 in r6c8 goes."
+     "undirected": true,
+     "text": "If dark purple is true, the 4 in r6c4 is true, and the 4 in r6c8 goes."
     },
     {
      "from": [
@@ -6641,191 +6799,178 @@
       }
      ],
      "strong": false,
-     "text": "If gold is true, the 4 in r8c8 is placed, and the 4 in r6c8 goes. Either way it is false."
+     "undirected": true,
+     "text": "If light purple is true, the 4 in r8c8 is true, and the 4 in r6c8 goes. Either way it is false."
     }
    ],
-   "description": "Simple Colors on 4: its conjugate pairs (the solid links) are coloured blue and gold, and either every blue 4 is true or every gold one is. The 4 in r6c8 sees a blue 4 in r6c4 and a gold 4 in r8c8, so it is false either way."
+   "truth": "parity",
+   "colouring": {
+    "rule": "trap",
+    "clusters": [
+     {
+      "dark": [
+       {
+        "cell": 4,
+        "digit": 4
+       },
+       {
+        "cell": 48,
+        "digit": 4
+       },
+       {
+        "cell": 68,
+        "digit": 4
+       }
+      ],
+      "light": [
+       {
+        "cell": 5,
+        "digit": 4
+       },
+       {
+        "cell": 40,
+        "digit": 4
+       },
+       {
+        "cell": 70,
+        "digit": 4
+       }
+      ]
+     }
+    ]
+   },
+   "description": "Simple Colors on 4: where a row, column or box has only two 4s, they take opposite shades of purple, so either every dark purple 4 is true or every light purple one is. The 4 in r6c8 sees a dark purple 4 in r6c4 and a light purple 4 in r8c8, so it is false either way."
   }
  },
  "MULTI_COLORS": {
-  "puzzle": "..91..826....5...1..2......3.....48...8..9...62.....93..43......3...16...1.9.2...",
-  "stepIndex": 28,
-  "values": "009103826003250901102090000391020480008039162620010093904360210230081609016902000",
+  "puzzle": ".5.8.4.......73.1.......9.89.....4...7.9.2.35..1...27..........7...8...4.8..597..",
+  "stepIndex": 25,
+  "values": "150894307000073510007000948920000480070902035001008279010000800700080004080059700",
   "cands": [
-   88,
-   88,
    0,
    0,
-   72,
-   0,
-   0,
-   0,
-   0,
-   200,
-   232,
-   0,
-   0,
-   0,
-   232,
-   0,
-   72,
-   0,
-   0,
-   232,
-   0,
-   224,
-   0,
-   224,
-   84,
-   92,
-   88,
-   0,
-   0,
-   0,
-   112,
-   0,
-   112,
-   0,
-   0,
-   80,
-   88,
-   88,
-   0,
-   80,
+   34,
    0,
    0,
    0,
    0,
-   0,
-   0,
-   0,
-   80,
-   136,
+   34,
    0,
    136,
+   264,
+   392,
+   34,
+   0,
+   0,
+   0,
+   0,
+   34,
+   38,
+   36,
+   0,
+   49,
+   35,
+   49,
+   0,
+   0,
+   0,
+   0,
+   0,
+   52,
+   117,
+   37,
    80,
    0,
    0,
+   33,
+   168,
    0,
-   208,
+   160,
    0,
+   41,
    0,
-   0,
-   80,
-   0,
-   0,
-   208,
-   0,
-   0,
-   80,
-   88,
+   33,
    0,
    0,
+   60,
+   44,
    0,
-   88,
-   0,
-   208,
-   0,
-   0,
-   0,
-   72,
-   0,
-   84,
    28,
-   216
+   44,
+   0,
+   0,
+   0,
+   0,
+   62,
+   0,
+   316,
+   108,
+   46,
+   96,
+   0,
+   272,
+   36,
+   0,
+   260,
+   278,
+   6,
+   0,
+   33,
+   33,
+   272,
+   0,
+   44,
+   0,
+   44,
+   13,
+   0,
+   0,
+   0,
+   34,
+   39
   ],
   "step": {
    "tech": "MULTI_COLORS",
    "placements": [],
    "eliminations": [
     {
-     "cell": 55,
-     "digit": 5
-    }
-   ],
-   "primary": [
-    {
-     "cell": 51,
-     "digit": 5
+     "cell": 23,
+     "digit": 6
     },
     {
-     "cell": 65,
-     "digit": 5
+     "cell": 57,
+     "digit": 6
     }
    ],
-   "secondary": [
-    {
-     "cell": 59,
-     "digit": 5
-    }
-   ],
-   "fins": [
-    {
-     "cell": 47,
-     "digit": 5
-    },
-    {
-     "cell": 35,
-     "digit": 5
-    },
-    {
-     "cell": 32,
-     "digit": 5
-    },
-    {
-     "cell": 66,
-     "digit": 5
-    }
-   ],
-   "labels": {
-    "primary": "blue: a colour of the first cluster",
-    "secondary": "gold: a colour of the second cluster",
-    "fins": "purple: the two colours that see each other across the bridge; at most one is true"
-   },
    "links": [
     {
      "from": [
       {
-       "cell": 47,
-       "digit": 5
-      }
-     ],
-     "to": [
-      {
-       "cell": 51,
-       "digit": 5
-      }
-     ],
-     "strong": true,
-     "undirected": true
-    },
-    {
-     "from": [
-      {
-       "cell": 47,
-       "digit": 5
-      }
-     ],
-     "to": [
-      {
-       "cell": 65,
-       "digit": 5
-      }
-     ],
-     "strong": true,
-     "undirected": true
-    },
-    {
-     "from": [
-      {
-       "cell": 51,
-       "digit": 5
-      }
-     ],
-     "to": [
-      {
        "cell": 35,
-       "digit": 5
+       "digit": 6
+      }
+     ],
+     "to": [
+      {
+       "cell": 42,
+       "digit": 6
+      }
+     ],
+     "strong": true,
+     "undirected": true,
+     "text": "Each line joins the only two 6s of a house: exactly one of them is true, so they take opposite shades. Either every dark purple 6 is true, or every light purple one is."
+    },
+    {
+     "from": [
+      {
+       "cell": 42,
+       "digit": 6
+      }
+     ],
+     "to": [
+      {
+       "cell": 69,
+       "digit": 6
       }
      ],
      "strong": true,
@@ -6834,14 +6979,14 @@
     {
      "from": [
       {
-       "cell": 32,
-       "digit": 5
+       "cell": 69,
+       "digit": 6
       }
      ],
      "to": [
       {
-       "cell": 59,
-       "digit": 5
+       "cell": 68,
+       "digit": 6
       }
      ],
      "strong": true,
@@ -6850,14 +6995,31 @@
     {
      "from": [
       {
-       "cell": 59,
-       "digit": 5
+       "cell": 2,
+       "digit": 6
       }
      ],
      "to": [
       {
-       "cell": 66,
-       "digit": 5
+       "cell": 7,
+       "digit": 6
+      }
+     ],
+     "strong": true,
+     "undirected": true,
+     "text": "Another cluster of 6s, shaded the same way in orange: either every dark orange 6 is true, or every light orange one is."
+    },
+    {
+     "from": [
+      {
+       "cell": 7,
+       "digit": 6
+      }
+     ],
+     "to": [
+      {
+       "cell": 17,
+       "digit": 6
       }
      ],
      "strong": true,
@@ -6866,52 +7028,142 @@
     {
      "from": [
       {
-       "cell": 35,
-       "digit": 5
+       "cell": 7,
+       "digit": 6
       }
      ],
      "to": [
       {
-       "cell": 32,
-       "digit": 5
+       "cell": 79,
+       "digit": 6
       }
      ],
-     "strong": false
+     "strong": true,
+     "undirected": true
     },
     {
      "from": [
       {
-       "cell": 65,
-       "digit": 5
+       "cell": 17,
+       "digit": 6
       }
      ],
      "to": [
       {
-       "cell": 55,
-       "digit": 5
+       "cell": 12,
+       "digit": 6
+      }
+     ],
+     "strong": true,
+     "undirected": true
+    },
+    {
+     "from": [
+      {
+       "cell": 79,
+       "digit": 6
+      }
+     ],
+     "to": [
+      {
+       "cell": 69,
+       "digit": 6
       }
      ],
      "strong": false,
-     "text": "If blue is true, the 5 in r8c3 is placed, and the 5 in r7c2 goes."
+     "undirected": true,
+     "text": "The dark orange 6 in r9c8 and the dark purple 6 in r8c7 see each other (the dashed line), so they cannot both be true: light orange or light purple is true."
     },
     {
      "from": [
       {
-       "cell": 59,
-       "digit": 5
+       "cell": 68,
+       "digit": 6
       }
      ],
      "to": [
       {
-       "cell": 55,
-       "digit": 5
+       "cell": 23,
+       "digit": 6
       }
      ],
      "strong": false,
-     "text": "If gold is true, the 5 in r7c6 is placed, and the 5 in r7c2 goes. Either way it is false."
+     "undirected": true,
+     "text": "If light purple is true, the 6 in r8c6 is true, and the 6 in r3c6 goes."
+    },
+    {
+     "from": [
+      {
+       "cell": 12,
+       "digit": 6
+      }
+     ],
+     "to": [
+      {
+       "cell": 23,
+       "digit": 6
+      }
+     ],
+     "strong": false,
+     "undirected": true,
+     "text": "If light orange is true, the 6 in r2c4 is true, and the 6 in r3c6 goes. One of them is true, so it is false either way; 1 more 6 falls the same way."
     }
    ],
-   "description": "Multi Colors on 5: two conjugate-pair clusters of 5. The purple 5s in r4c9 and r4c6 see each other (the dashed link), so they cannot both be true, and at least one of blue and gold is entirely true. The 5 in r7c2 sees the blue 5 in r8c3 and the gold 5 in r7c6, so it is false either way."
+   "truth": "parity",
+   "colouring": {
+    "rule": "bridge",
+    "clusters": [
+     {
+      "dark": [
+       {
+        "cell": 35,
+        "digit": 6
+       },
+       {
+        "cell": 69,
+        "digit": 6
+       }
+      ],
+      "light": [
+       {
+        "cell": 42,
+        "digit": 6
+       },
+       {
+        "cell": 68,
+        "digit": 6
+       }
+      ]
+     },
+     {
+      "dark": [
+       {
+        "cell": 2,
+        "digit": 6
+       },
+       {
+        "cell": 17,
+        "digit": 6
+       },
+       {
+        "cell": 79,
+        "digit": 6
+       }
+      ],
+      "light": [
+       {
+        "cell": 7,
+        "digit": 6
+       },
+       {
+        "cell": 12,
+        "digit": 6
+       }
+      ]
+     }
+    ]
+   },
+   "description": "Multi Colors on 6: two clusters of 6s are shaded, one purple and one orange; in each, where a row, column or box has only two 6s, they take opposite shades. The dark orange 6 in r9c8 and the dark purple 6 in r8c7 see each other, so they cannot both be true: light orange or light purple is true. The 6 in r3c6 sees a light purple 6 in r8c6 and a light orange 6 in r2c4, so it is false either way; 1 more 6 falls the same way."
   }
  },
  "MEDUSA_3D": {
@@ -7010,86 +7262,23 @@
      "digit": 1
     }
    ],
-   "primary": [
-    {
-     "cell": 0,
-     "digit": 8
-    },
-    {
-     "cell": 56,
-     "digit": 8
-    },
-    {
-     "cell": 54,
-     "digit": 1
-    }
-   ],
-   "secondary": [
-    {
-     "cell": 2,
-     "digit": 8
-    },
-    {
-     "cell": 0,
-     "digit": 1
-    },
-    {
-     "cell": 56,
-     "digit": 1
-    }
-   ],
-   "labels": {
-    "primary": "blue: one colour, all its candidates true or all false together",
-    "secondary": "gold: the other colour, true exactly when blue is false"
-   },
    "links": [
     {
      "from": [
       {
        "cell": 0,
-       "digit": 8
-      }
-     ],
-     "to": [
-      {
-       "cell": 2,
-       "digit": 8
-      }
-     ],
-     "strong": true,
-     "undirected": true
-    },
-    {
-     "from": [
-      {
-       "cell": 0,
-       "digit": 8
-      }
-     ],
-     "to": [
-      {
-       "cell": 0,
        "digit": 1
       }
      ],
-     "strong": true,
-     "undirected": true
-    },
-    {
-     "from": [
-      {
-       "cell": 2,
-       "digit": 8
-      }
-     ],
      "to": [
       {
-       "cell": 56,
+       "cell": 0,
        "digit": 8
       }
      ],
      "strong": true,
-     "undirected": true
+     "undirected": true,
+     "text": "Each line joins the only two places for a digit in a row, column or box; a cell with only two candidates joins those two, side by side (no line inside a cell). Joined candidates take opposite shades: either every dark purple candidate is true, or every light purple one is."
     },
     {
      "from": [
@@ -7110,6 +7299,38 @@
     {
      "from": [
       {
+       "cell": 0,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 2,
+       "digit": 8
+      }
+     ],
+     "strong": true,
+     "undirected": true
+    },
+    {
+     "from": [
+      {
+       "cell": 2,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 56,
+       "digit": 8
+      }
+     ],
+     "strong": true,
+     "undirected": true
+    },
+    {
+     "from": [
+      {
        "cell": 56,
        "digit": 8
       }
@@ -7126,22 +7347,6 @@
     {
      "from": [
       {
-       "cell": 54,
-       "digit": 1
-      }
-     ],
-     "to": [
-      {
-       "cell": 55,
-       "digit": 1
-      }
-     ],
-     "strong": false,
-     "text": "If blue is true, the 1 in r7c1 is placed, and the 1 in r7c2 goes."
-    },
-    {
-     "from": [
-      {
        "cell": 56,
        "digit": 1
       }
@@ -7153,10 +7358,64 @@
       }
      ],
      "strong": false,
-     "text": "If gold is true, the 1 in r7c3 is placed, and the 1 in r7c2 goes. Either way it is false."
+     "undirected": true,
+     "text": "If dark purple is true, the 1 in r7c3 is true, and the 1 in r7c2 goes."
+    },
+    {
+     "from": [
+      {
+       "cell": 54,
+       "digit": 1
+      }
+     ],
+     "to": [
+      {
+       "cell": 55,
+       "digit": 1
+      }
+     ],
+     "strong": false,
+     "undirected": true,
+     "text": "If light purple is true, the 1 in r7c1 is true, and the 1 in r7c2 goes. Either way it is false."
     }
    ],
-   "description": "3D Medusa: candidates joined by conjugate pairs and bivalue cells (the solid links) are coloured blue and gold, and either every blue candidate is true or every gold one is. The 1 in r7c2 sees a blue 1 in r7c1 and a gold 1 in r7c3, so it is false either way."
+   "truth": "parity",
+   "colouring": {
+    "rule": "medusa4",
+    "clusters": [
+     {
+      "dark": [
+       {
+        "cell": 0,
+        "digit": 1
+       },
+       {
+        "cell": 2,
+        "digit": 8
+       },
+       {
+        "cell": 56,
+        "digit": 1
+       }
+      ],
+      "light": [
+       {
+        "cell": 0,
+        "digit": 8
+       },
+       {
+        "cell": 54,
+        "digit": 1
+       },
+       {
+        "cell": 56,
+        "digit": 8
+       }
+      ]
+     }
+    ]
+   },
+   "description": "3D Medusa: where a row, column or box has only two places for a digit, or a cell has only two candidates, the two take opposite shades of purple, so either every dark purple candidate is true or every light purple one is. The 1 in r7c2 sees a dark purple 1 in r7c3 and a light purple 1 in r7c1, so it is false either way."
   }
  },
  "X_CHAIN": {
