@@ -109,7 +109,11 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const truthOf = (cd: CellDigit): 'true' | 'false' | null => {
     if (!truth) return null;
     const isStart = truth.closure?.node.some((o) => o.cell === cd.cell && o.digit === cd.digit);
-    if (truth.closure && isStart && !closed) return truth.closure.assumed ? 'true' : 'false';
+    if (truth.closure && isStart && !closed) {
+      // a group assumed true means one of its members, not all: the pattern's disc
+      if (truth.closure.assumed) return truth.closure.node.length > 1 ? null : 'true';
+      return 'false';
+    }
     const t = truth.candidates.get(`${cd.cell}:${cd.digit}`);
     return t === 'true' ? 'true' : t === 'false' ? 'false' : null;
   };

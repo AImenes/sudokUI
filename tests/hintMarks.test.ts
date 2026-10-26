@@ -192,6 +192,8 @@ describe("a chain's truth (phase 2b)", () => {
     const labels = legendOf(s).map((l) => l.label);
     expect(labels).toContain('true, if the first candidate (by the dot) is true');
     expect(labels).toContain('false, if the first candidate (by the dot) is true');
+    // and no walk frame draws a member of its start group true: one of them, not all
+    for (const fr of walkFrames(s)) for (const m of a) expect(frameMarks(s, fr, () => false).cands.get(m.cell)?.get(m.digit), 'frame ' + fr.links).not.toBe('true');
     // a step whose truth is not derived claims none
     expect(premiseOf(step({ primary: [A] }))).toBeNull();
   });

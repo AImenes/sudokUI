@@ -551,6 +551,9 @@ the values above are its final ones.
   (by the dot) is false"; an inverted loop's "... is true"), in the app,
   the chain trainer and the Learn diagrams, in all three languages.
   Arrows were already dashed exactly into false nodes (G8).
+  Review round 1 found one high defect (an inverted grouped loop drew its
+  whole start group true in the walk), fixed; what is left before 2b can
+  merge, and how the work is run, is in `docs/hint-drawing-handoff.md`.
 - [ ] Phase 3: colouring
 - [ ] Phase 4: sets
 - [ ] Phase 5: forcing
