@@ -392,7 +392,7 @@ export function parityLegend(step: Step, marks: HintMarks): ParityEntry[] {
   const out: ParityEntry[] = kinds.clusters.map((k) => ({ kind: 'pair', label: pairWords(k, digit), cluster: k }));
   if (kinds.lines.has('tie')) out.push({ kind: 'tie', label: tr`line: exactly one of its two ends is true` });
   if (kinds.lines.has('weakTie')) out.push({ kind: 'weakTie', label: tr`dashed line: its two ends see each other, so at most one is true` });
-  if (kinds.lines.has('corners')) out.push({ kind: 'corners', label: tr`corners: two candidates of one cell, at most one true` });
+  if (kinds.lines.has('corners')) out.push({ kind: 'corners', label: tr`corner brackets: two candidates of one cell, at most one true` });
   const orange = darkFalse === 1;
   const { proven } = kinds;
   if (proven.removed) out.push({ kind: 'elim', label: orange ? tr`remove: dark orange, proven false` : tr`remove: dark purple, proven false` });

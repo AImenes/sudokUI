@@ -121,6 +121,18 @@ describe('the step model and its self-check', () => {
     expect(issues({ ...trap, links: trap.links!.filter((_, i) => i !== 2) })).toContain('unspanned');
     // a tie after the argument
     expect(issues({ ...trap, links: [...trap.links!.slice(1), trap.links![0]] })).toContain('order');
+    // cluster 1's ties before cluster 0's: each of cluster 0's ties comes too late
+    const bridge = fixture('bridge');
+    const [purple] = bridge.step.colouring!.clusters;
+    const ofPurple = (l: ChainLink) => isTie(l) && has([...purple.dark, ...purple.light], l.from[0]);
+    const links = bridge.step.links!;
+    const swapped = [...links.filter((l) => isTie(l) && !ofPurple(l)), ...links.filter(ofPurple), ...links.filter((l) => !isTie(l))];
+    expect(checkParity(bridge.step, positionOf(bridge).grid.cands)).toEqual([]);
+    expect(checkParity({ ...bridge.step, links: swapped }, positionOf(bridge).grid.cands)).toEqual([
+      { link: 5, issue: 'order', at: '6r8c6' },
+      { link: 6, issue: 'order', at: '6r8c7' },
+      { link: 7, issue: 'order', at: '6r5c7' }
+    ]);
     // the proven colour, not all removed; a coloured candidate removed outside it
     expect(issues({ ...wrap, eliminations: wrap.eliminations.slice(1) })).toEqual(['notRemoved']);
     expect(issues({ ...wrap, eliminations: [...wrap.eliminations, cd('7r4c9')] })).toEqual(['removedOutside']);
@@ -316,7 +328,7 @@ describe('the legend', () => {
     const m1 = fixture('medusa1');
     expect(words(m1, walkFrames(m1.step)[1]).map((e) => e.label)).toEqual([
       'dark purple, light purple: either every dark purple candidate is true, or every light purple one is',
-      'corners: two candidates of one cell, at most one true'
+      'corner brackets: two candidates of one cell, at most one true'
     ]);
     expect(words(fixture('medusa6'), null).map((e) => e.label)).toContain('a cell dark purple would empty');
   });
@@ -643,7 +655,7 @@ describe('the app board', () => {
     expect(both).not.toContain('swatch-shades-1');
     expect(render(fixture('seesBoth'), 1).panel).toContain('swatch-shades-1');
     expect(render(fixture('wrap'), 2).panel).toContain('<i class="swatch-false"></i>false: dark purple, proven');
-    expect(render(fixture('medusa1'), 1).panel).toContain('<i class="swatch-corners"></i>corners: two candidates of one cell, at most one true');
+    expect(render(fixture('medusa1'), 1).panel).toContain('<i class="swatch-corners"></i>corner brackets: two candidates of one cell, at most one true');
     expect(render(fixture('medusa6')).panel).toContain('<i class="swatch-node"></i>a cell dark purple would empty');
     // no role words, from an older colouring's legend
     expect(panel).not.toMatch(/swatch-(primary|secondary|fin)/);

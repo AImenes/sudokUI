@@ -72,7 +72,7 @@ function clusterTies(cl: Cluster, d: number, marks: CellDigit[], text: string): 
 /** the removals after the first, which the walk draws only at its conclusion */
 function more(n: number, d: number): string {
   if (n <= 0) return '';
-  return n === 1 ? tr`; 1 more ${d} falls the same way` : tr`; ${n} more ${d}s fall the same way`;
+  return n === 1 ? tr`; one more ${d} falls the same way` : tr`; ${n} more ${d}s fall the same way`;
 }
 
 function simpleColorsStep(
@@ -335,7 +335,7 @@ export function findMultiColors(g: Grid): Step | null {
                   weakTie(
                     [at(d)(first.x)],
                     [at(d)(first.c)],
-                    tr`If light orange is true, the ${d} in ${x} is true, and the ${d} in ${target} goes. One of them is true, so it is false either way` + tail + '.'
+                    tr`If light orange is true, the ${d} in ${x} is true, and the ${d} in ${target} goes. Light orange or light purple is true, so it is false either way` + tail + '.'
                   )
                 ],
                 `${intro} ${tr`The dark orange ${d} in ${A} and the dark purple ${d} in ${B} see each other, so they cannot both be true: light orange or light purple is true.`} ${

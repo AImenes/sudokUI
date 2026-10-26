@@ -112,7 +112,7 @@ function remotePairStep(component: number[], color: Map<number, number>, [lo, hi
   const x = nearest(target, seen.filter(isDark));
   const y = nearest(target, seen.filter((o) => !isDark(o)));
   const n = elims.length - 1;
-  const tail = n <= 0 ? '' : n === 1 ? tr`; 1 more candidate falls the same way` : tr`; ${n} more candidates fall the same way`;
+  const tail = n <= 0 ? '' : n === 1 ? tr`; one more candidate falls the same way` : tr`; ${n} more candidates fall the same way`;
   const d = target.digit;
   const here = cellName(target.cell);
   const there = cellName(x.cell);

@@ -106,7 +106,7 @@ export function findMedusa3d(g: Grid): Step | null {
               weakTie(
                 [{ cell, digit: d1 }],
                 [{ cell, digit: d2 }],
-                tr`Dark purple colours both the ${d1} and the ${d2} in ${name} (the corner marks). A cell holds one digit, so dark purple cannot be true.`
+                tr`Dark purple colours both the ${d1} and the ${d2} in ${name} (the corner brackets). A cell holds one digit, so dark purple cannot be true.`
               )
             ]
           );
@@ -183,8 +183,8 @@ export function findMedusa3d(g: Grid): Step | null {
             ],
             removed.map((digit) => ({ cell: cell3!.c, digit })),
             removed.length === 1
-              ? tr`${name} holds a dark purple ${dark} and a light purple ${light} (the corner marks); one of them is true, so its ${removed[0]} is false.`
-              : tr`${name} holds a dark purple ${dark} and a light purple ${light} (the corner marks); one of them is true, so its ${listAnd(removed)} are false.`
+              ? tr`${name} holds a dark purple ${dark} and a light purple ${light} (the corner brackets); one of them is true, so its ${removed[0]} is false.`
+              : tr`${name} holds a dark purple ${dark} and a light purple ${light} (the corner brackets); one of them is true, so its ${listAnd(removed)} are false.`
           )
         ]
       );
@@ -230,7 +230,7 @@ export function findMedusa3d(g: Grid): Step | null {
     if (witnessed) {
       const { rule, dark, c, d, x, y, own } = witnessed;
       const n = elims45.length - 1;
-      const tail = n <= 0 ? '' : n === 1 ? tr`; 1 more candidate falls to the two shades` : tr`; ${n} more candidates fall to the two shades`;
+      const tail = n <= 0 ? '' : n === 1 ? tr`; one more candidate falls to the two shades` : tr`; ${n} more candidates fall to the two shades`;
       const here = cellName(c);
       const there = cellName(x);
       const target = { cell: c, digit: d };
@@ -264,7 +264,7 @@ export function findMedusa3d(g: Grid): Step | null {
           weakTie(
             [{ cell: c, digit: own }],
             [target],
-            tr`If light purple is true, ${here} is ${own} (the corner marks), and its ${d} goes. Either way the ${d} is false` + tail + '.'
+            tr`If light purple is true, ${here} is ${own} (the corner brackets), and its ${d} goes. Either way the ${d} is false` + tail + '.'
           )
         ]
       );

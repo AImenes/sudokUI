@@ -53,11 +53,11 @@ things HoDoKu never shows:
 cluster a pair swatch ("dark purple, light purple: either every dark
 purple 4 is true, or every light purple one is"); "line: exactly one of its
 two ends is true" in a cluster frame; "dashed line: its two ends see each
-other, so at most one is true"; "corners: two candidates of one cell, at
-most one true"; "remove", or after a proof "remove: dark purple, proven
-false"; "true: light purple, proven (this step only removes)"; in the proof
-frame "false: dark purple, proven"; Medusa rule 6's emptied cell. The
-Learn diagram is the full view with its legend.
+other, so at most one is true"; "corner brackets: two candidates of one
+cell, at most one true"; "remove", or after a proof "remove: dark purple,
+proven false"; "true: light purple, proven (this step only removes)"; in
+the proof frame "false: dark purple, proven"; Medusa rule 6's emptied
+cell. The Learn diagram is the full view with its legend.
 
 ## Decisions
 

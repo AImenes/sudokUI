@@ -7106,7 +7106,7 @@
      ],
      "strong": false,
      "undirected": true,
-     "text": "If light orange is true, the 6 in r2c4 is true, and the 6 in r3c6 goes. One of them is true, so it is false either way; 1 more 6 falls the same way."
+     "text": "If light orange is true, the 6 in r2c4 is true, and the 6 in r3c6 goes. Light orange or light purple is true, so it is false either way; one more 6 falls the same way."
     }
    ],
    "truth": "parity",
@@ -7163,7 +7163,7 @@
      }
     ]
    },
-   "description": "Multi Colors on 6: two clusters of 6s are shaded, one purple and one orange; in each, where a row, column or box has only two 6s, they take opposite shades. The dark orange 6 in r9c8 and the dark purple 6 in r8c7 see each other, so they cannot both be true: light orange or light purple is true. The 6 in r3c6 sees a light purple 6 in r8c6 and a light orange 6 in r2c4, so it is false either way; 1 more 6 falls the same way."
+   "description": "Multi Colors on 6: two clusters of 6s are shaded, one purple and one orange; in each, where a row, column or box has only two 6s, they take opposite shades. The dark orange 6 in r9c8 and the dark purple 6 in r8c7 see each other, so they cannot both be true: light orange or light purple is true. The 6 in r3c6 sees a light purple 6 in r8c6 and a light orange 6 in r2c4, so it is false either way; one more 6 falls the same way."
   }
  },
  "MEDUSA_3D": {

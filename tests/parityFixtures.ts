@@ -138,7 +138,7 @@ export const PARITY_FIXTURES: ParityFixture[] = [
         tie('6r2c9', '6r2c4'),
         weak('6r9c8', '6r8c7', 'The dark orange 6 in r9c8 and the dark purple 6 in r8c7 see each other (the dashed line), so they cannot both be true: light orange or light purple is true.'),
         weak('6r8c6', '6r3c6', 'If light purple is true, the 6 in r8c6 is true, and the 6 in r3c6 goes.'),
-        weak('6r2c4', '6r3c6', 'If light orange is true, the 6 in r2c4 is true, and the 6 in r3c6 goes. One of them is true, so it is false either way; 1 more 6 falls the same way.')
+        weak('6r2c4', '6r3c6', 'If light orange is true, the 6 in r2c4 is true, and the 6 in r3c6 goes. Light orange or light purple is true, so it is false either way; one more 6 falls the same way.')
       ],
       '6r3c6 6r7c4'
     )
@@ -192,7 +192,7 @@ export const PARITY_FIXTURES: ParityFixture[] = [
         tie('3r8c1', '3r7c2'),
         tie('3r8c1', '4r8c1'),
         tie('3r7c2', '3r7c6'),
-        weak('1r7c6', '3r7c6', 'Dark purple colours both the 1 and the 3 in r7c6 (the corner marks). A cell holds one digit, so dark purple cannot be true.')
+        weak('1r7c6', '3r7c6', 'Dark purple colours both the 1 and the 3 in r7c6 (the corner brackets). A cell holds one digit, so dark purple cannot be true.')
       ],
       '1r3c4 1r7c6 9r3c6 3r3c5 3r4c4 3r8c1 3r6c2 3r7c6',
       0
@@ -225,7 +225,7 @@ export const PARITY_FIXTURES: ParityFixture[] = [
         tie('5r3c9', '5r7c9'),
         tie('8r6c3', '8r5c3'),
         tie('8r5c3', '1r5c3'),
-        weak('9r7c9 5r7c9', '6r7c9', 'r7c9 holds a dark purple 9 and a light purple 5 (the corner marks); one of them is true, so its 6 is false.')
+        weak('9r7c9 5r7c9', '6r7c9', 'r7c9 holds a dark purple 9 and a light purple 5 (the corner brackets); one of them is true, so its 6 is false.')
       ],
       '6r7c9'
     )
@@ -246,7 +246,7 @@ export const PARITY_FIXTURES: ParityFixture[] = [
         tie('7r8c7', '7r8c6'),
         tie('7r8c7', '7r1c7'),
         weak('7r1c7', '7r3c9', 'If dark purple is true, the 7 in r1c7 is true, and the 7 in r3c9 goes.'),
-        weak('5r3c9', '7r3c9', 'If light purple is true, r3c9 is 5 (the corner marks), and its 7 goes. Either way the 7 is false.')
+        weak('5r3c9', '7r3c9', 'If light purple is true, r3c9 is 5 (the corner brackets), and its 7 goes. Either way the 7 is false.')
       ],
       '7r3c9'
     )

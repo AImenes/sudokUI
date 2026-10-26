@@ -16,7 +16,8 @@
  * the practice pools' solve paths: the finders remove exactly what they
  * removed before they said their parity (tests/fixtures/colouringRemovals.json,
  * a hash per puzzle of every removal, taken before the change), every
- * colouring passes checkParity, a proven colour's partner is a single each
+ * colouring passes checkParity and is one the chain trainer can take as
+ * its goal (Build it yourself), a proven colour's partner is a single each
  * once the proven colour is removed, orange never shares a frame with a
  * true disc, and 3D Medusa's ties are no longer than the design measured.
  */
@@ -39,6 +40,7 @@ import { candidateCentre, spanningTies, tieWeight, nearest, readingOrder, shades
 import { findSimpleColors, findMultiColors } from '../src/engine/techniques/coloring';
 import { findMedusa3d } from '../src/engine/techniques/medusa';
 import { findRemotePair } from '../src/engine/techniques/chains';
+import { buildable } from '../src/engine/chainTrainer';
 import { boardLayout, M, SIZE } from '../src/ui/boardLayout';
 import { setEngineText, missedTemplates } from '../src/engine/text';
 import engineNb from '../src/content/locales/engine.nb';
@@ -359,7 +361,7 @@ describe('the words of a colouring the finders give', () => {
       }
       // a frame of the walk names what it draws: its line, or its corners
       for (const fr of walkFrames(s)) {
-        if (fr.text.includes('(the corner marks)')) expect(argument(s).some((l) => l.from[0].cell === l.to[0].cell && fr.text === l.text), f.name).toBe(true);
+        if (fr.text.includes('(the corner brackets)')) expect(argument(s).some((l) => l.from[0].cell === l.to[0].cell && fr.text === l.text), f.name).toBe(true);
       }
     }
   });
@@ -402,6 +404,103 @@ describe('the words of a colouring the finders give', () => {
         }
       }
       expect(missedTemplates().filter((k) => !before.has(k))).toEqual([]);
+    } finally {
+      setEngineText('en', null);
+    }
+  });
+});
+
+describe('the words of a colouring the finders give, where they could mislead', () => {
+  /** positions whose colouring removes more than its first removal: one more, or several */
+  const TAILS: [Tech, string, number][] = [
+    ['SIMPLE_COLORS', '3.......5.9......2..49..637..1632...95.1.7.28...8591..635..12..1......9.7.......1', 0],
+    ['SIMPLE_COLORS', '....4..6...963..5.68..5......5462.7...2...1...9.7156......2..14.3..785...5..9....', 0],
+    ['MULTI_COLORS', '.5.8.4.......73.1.......9.89.....4...7.9.2.35..1...27..........7...8...4.8..597..', 25],
+    ['MULTI_COLORS', '.4.7..953.........9.386.1.46..34...8.........7...21..61.8.943.2.........497..3.6.', 24],
+    ['MEDUSA_3D', '3.......5.9......2..49..637..1632...95.1.7.28...8591..635..12..1......9.7.......1', 0],
+    ['MEDUSA_3D', '1..52.97.5.39.8.1.................53..2.1.6..45.................4.3.62.7.95.72..8', 22],
+    ['MEDUSA_3D', '238.6...5.5..4.8......2..9.8.6.34..7.........3..27.5.4.1..5......5.8..4.6...9.351', 21],
+    ['REMOTE_PAIR', '.1....6...4.1..89...3.4.....69815..3...4.2...4..69718.....7.9...75..1.4...6....7.', 30],
+    ['REMOTE_PAIR', '....89..4.....571.......2.51..8....99871.24533....4..28.2.......794.....6..91....', 24]
+  ];
+  const LANGS = [
+    ['en', null],
+    ['nb', engineNb],
+    ['es', engineEs]
+  ] as const;
+  /** each removal after the first: one written as a word, several as a number with a word before the digit */
+  const tail = {
+    en: /; (one more (\d|candidate) falls|\d+ more (\ds|candidates) fall) /,
+    nb: /; (ett \d-tall til|én kandidat til|\d+ andre \d-tall|\d+ kandidater til) faller bort /,
+    es: /; (otro (\d|candidato) se elimina|\d+ candidatos (\d )?más se eliminan) /
+  };
+
+  it('write the removals after the first with no two numbers side by side, in every language', () => {
+    try {
+      for (const [lang, table] of LANGS) {
+        setEngineText(lang, table);
+        const counts = new Set<string>();
+        for (const [tech, puzzle, at] of TAILS) {
+          const s = findStep(tech, positionAt(puzzle, at).grid)!;
+          const more = s.eliminations.length - 1;
+          counts.add(`${tech} ${more === 1 ? 'one' : 'several'}`);
+          const words = [s.description, ...s.links!.map((l) => l.text ?? '')].join(' ');
+          const where = `${lang} ${tech} ${puzzle} @${at}: ${words}`;
+          expect(words, where).toMatch(tail[lang]);
+          // never "1 6 más", "2 8-tall til": a reader takes them for 16 and 28
+          expect(words, where).not.toMatch(/(?<![\p{L}\d])\d+[ -]+\d/u);
+        }
+        // one more and several more, of each finder
+        expect([...counts].sort(), lang).toEqual(['MEDUSA_3D', 'MULTI_COLORS', 'REMOTE_PAIR', 'SIMPLE_COLORS'].flatMap((t) => [`${t} one`, `${t} several`]));
+      }
+    } finally {
+      setEngineText('en', null);
+    }
+  });
+
+  it("call the corner brackets so, never by the pencil marks' name, in the walk and the legend, in every language", () => {
+    const brackets = { en: '(the corner brackets)', nb: '(hjørneklammene)', es: '(los corchetes de las esquinas)' };
+    const legend = { en: 'corner brackets: ', nb: 'hjørneklammer: ', es: 'corchetes de las esquinas: ' };
+    // the app's names for corner pencil marks, and the legend's old word
+    const pencil = { en: /corner marks?|corners:/, nb: /hjørnemerk|hjørnenotat|hjørner:/, es: /marcas de las esquinas|notas de esquina|(^|\| )esquinas:/ };
+    try {
+      for (const [lang, table] of LANGS) {
+        setEngineText(lang, table);
+        let named = 0;
+        for (const f of FIXTURES) {
+          const s = stepAt(f);
+          for (const frame of views(s)) {
+            const text = wordsIn(s, frame, solvedAt(f));
+            const where = `${lang} ${f.name}: ${text}`;
+            expect(text, where).not.toMatch(pencil[lang]);
+            // a frame that draws corner brackets names them, and its legend too
+            const inCell = frame && argument(s).some((l) => l.text === frame.text && l.from.every((x) => x.cell === l.to[0].cell));
+            if (inCell) {
+              named++;
+              expect(frame.text, where).toContain(brackets[lang]);
+              expect(text, where).toContain(`| ${legend[lang]}`);
+            }
+          }
+        }
+        expect(named, lang).toBe(3); // Medusa rules 1, 3 and 5
+      }
+    } finally {
+      setEngineText('en', null);
+    }
+  });
+
+  it('name the two colours a Multi Colors bridge rests on where it concludes, so "one of them" is never read as the two candidates just named', () => {
+    const bridge = FIXTURES.find((f) => f.rule === 'bridge')!;
+    const said = {
+      en: 'If light orange is true, the 6 in r2c4 is true, and the 6 in r3c6 goes. Light orange or light purple is true, so it is false either way; one more 6 falls the same way.',
+      nb: 'Hvis lyseoransje er sann, er 6-tallet i r2c4 sant, og 6-tallet i r3c6 faller bort. Lyseoransje eller lyselilla er sann, så 6-tallet i r3c6 er usant uansett; ett 6-tall til faller bort på samme måte.',
+      es: 'Si el naranja claro es verdadero, el 6 de r2c4 es verdadero y se elimina el 6 de r3c6. El naranja claro o el morado claro es verdadero, así que el 6 de r3c6 es falso en cualquier caso; otro 6 se elimina de la misma forma.'
+    };
+    try {
+      for (const [lang, table] of LANGS) {
+        setEngineText(lang, table);
+        expect(argument(stepAt(bridge)).at(-1)!.text, lang).toBe(said[lang]);
+      }
     } finally {
       setEngineText('en', null);
     }
@@ -539,6 +638,7 @@ describe("over the practice pools' solve paths", () => {
   const notSingle: string[] = [];
   const orangeBesideTrue: string[] = [];
   const oldWords: string[] = [];
+  const unbuildable: string[] = [];
   const medusa = { lines: 0, length: 0, overAMark: 0 };
 
   beforeAll(() => {
@@ -554,6 +654,7 @@ describe("over the practice pools' solve paths", () => {
           const where = `${puzzle} @${k} ${tech}`;
           lines.push(`${k}:${tech} ${s.eliminations.map(nameOf).join(' ')}`);
           for (const p of checkParity(s, g.cands)) problems.push(`${where}: ${p.issue} ${p.at}`);
+          if (!buildable(s)) unbuildable.push(where);
           const { clusters, darkFalse } = s.colouring!;
           for (const cl of clusters) {
             const dark = new Set(cl.dark.map((x) => solution[x.cell] === x.digit));
@@ -613,6 +714,10 @@ describe("over the practice pools' solve paths", () => {
     expect(problems.slice(0, 10)).toEqual([]);
     expect(wrong.slice(0, 10)).toEqual([]);
     expect(oldWords.slice(0, 5)).toEqual([]);
+  });
+
+  it('can each be built in the chain trainer, as on main: practice offers Build it yourself, whatever the argument\'s weak ties join', () => {
+    expect(unbuildable.slice(0, 10)).toEqual([]);
   });
 
   it('leave every candidate of a proven colour\'s partner a single, once the proven colour is removed', () => {

@@ -268,3 +268,17 @@ export function chainStep(g: Grid, chain: Chain, opts: Drawing = {}): Step {
     description: `${statement(chain)}${verdict}`.trim()
   };
 }
+
+/**
+ * Whether the trainer can take a step's removal as its goal ("Build it
+ * yourself" on the practice bar): the step is a chain of single
+ * candidates, so the player can build it one tap at a time. A colouring's
+ * weak ties say how its drawing argues, not what the chain is: its chain
+ * is its clusters' ties, and a weak tie may join more than one candidate
+ * (3D Medusa rule 3 joins a cell's two shades at once to what they remove),
+ * so weak ties are left out.
+ */
+export function buildable(step: Step | null | undefined): boolean {
+  const chain = (step?.links ?? []).filter((l) => !(l.undirected && !l.strong));
+  return chain.length > 0 && chain.every((l) => l.from.length === 1 && l.to.length === 1);
+}
