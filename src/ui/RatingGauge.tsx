@@ -74,20 +74,35 @@ export function useRatingFit(ref: React.RefObject<HTMLElement>, deps: unknown[])
     const fits = () =>
       el.scrollWidth <= el.clientWidth &&
       Array.from(el.querySelectorAll<HTMLElement>('.practice-badge')).every((b) => b.scrollWidth <= b.clientWidth);
+    // the gauge goes first, then the words; then, where even the level and
+    // the number are short of room (a wide system font: DejaVu Sans, which
+    // a Linux desktop without the app's faces falls back to, needs 3 px more
+    // at 580 px than the bar has), the brand's name beside its mark steps
+    // aside, as it does on a phone
+    const bar = el.closest<HTMLElement>('.topbar');
+    const step = (f: number) => {
+      el.dataset.fit = String(Math.min(f, 2));
+      if (!bar) return;
+      if (f > 2) bar.dataset.brand = 'mark';
+      else delete bar.dataset.brand;
+    };
     const fit = () => {
       let f = 0;
-      for (; f < 2; f++) {
-        el.dataset.fit = String(f);
+      for (; f < 3; f++) {
+        step(f);
         if (fits()) break;
       }
-      el.dataset.fit = String(f);
+      step(f);
     };
     fit();
     if (typeof ResizeObserver === 'undefined') return;
     const watch = new ResizeObserver(fit);
     watch.observe(el);
     for (const child of Array.from(el.children)) watch.observe(child);
-    return () => watch.disconnect();
+    return () => {
+      watch.disconnect();
+      if (bar) delete bar.dataset.brand;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }

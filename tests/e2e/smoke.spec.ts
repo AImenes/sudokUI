@@ -2162,6 +2162,10 @@ test.describe('the HoDoKu rating in the top bar', () => {
   const twoFrames = (page: Page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   const shown = (page: Page, sel: string) => page.locator(sel).evaluate((e) => e.getBoundingClientRect().width > 0);
 
+  // GitHub's runner draws these in DejaVu Sans, wider than the Inter a
+  // developer's machine may have: run them with
+  // FONTCONFIG_FILE=$PWD/tests/e2e/ci-fonts.conf to see the bar as CI does
+
   /** every width from a phone to a wide laptop: the bar fits, the level and the rating always show */
   async function sweep(page: Page, label: string) {
     for (let width = 320; width <= 1440; width += 20) {
