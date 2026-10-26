@@ -188,19 +188,37 @@ Every rule is numbered so a commit, a test or a review can cite it.
   on, wherever the marks leave room (an S, leaving to one side of its
   line and arriving from the other, when ties stand beside both ends), so
   the two never read as one line joining their far ends (two candidates
-  of one shade), drawn
-  only in its cluster's walk frame (G19), along the shortest drawn tree
-  that joins the cluster (Kruskal on the drawn length, 3 cells more for
-  each other mark of the hint within 0.13 of a cell of the line; of ties
-  that weigh the same, first a straight line, then one with the fewest
-  ties at its ends within 60 degrees of it, then reading order), and
-  never in the full view. A **weak tie** (a
+  of one shade); missing those 30 degrees by under 10, with no crossing,
+  is better than running along a box line or beside another tie. A bend
+  off each end (a two-bend or an S) is tried only for the marks, a fork
+  or a run along another tie, never just to leave a grid line, and it
+  loses to the arc when it runs within a quarter of a cell beside another
+  tie of its frame for more than 0.3 of a cell (the two read as a double
+  line though their halos never touch); no bend crosses another tie
+  twice. Ties and weak ties keep 0.08 of a cell off the board's edge,
+  their halo and half the border, where the line would merge with the
+  border. A tie is drawn only in its cluster's walk frame (G19), along
+  the shortest drawn tree that joins the cluster (Kruskal on the drawn
+  length, 3 cells more for each other mark of the hint within 0.13 of a
+  cell of the line; of ties that weigh the same, first a straight line,
+  then one with the fewest ties at its ends within 60 degrees of it, then
+  reading order), and never in the full view. A **weak tie** (a
   colouring's witness, clash or bridge: its two ends see each other or
   share a cell, so at most one is true) is a dashed line with no head and
   no start dot, bent like an arrow (G10), with its halo and the digits cut
-  out (G11), and numbered in the walk. It claims no truth, so it stays
-  true whatever its ends turn out to be: it is drawn from its frame on, in
-  the full view and in the Learn diagram.
+  out (G11), and numbered in the walk. With no head to say which
+  candidate of a cell it ends at, each end keeps a mark's radius, a gap
+  and the clearance further from the other marks of its cell than from
+  its own; boxed in there by those marks, it comes into its candidate
+  from a free side, a control point off each end along a way that keeps
+  the end clear. Two weak ties into one candidate cross nowhere further
+  than a quarter of a cell from it, wherever the marks leave room, where
+  they would swap sides just before it: the earlier is drawn again
+  knowing the later, turning from its line no more than it must, or else
+  the later knowing the earlier, and neither gives up its end's room or
+  its clearance of the marks for it. A weak tie claims no truth, so it
+  stays true whatever its ends turn out to be: it is drawn from its frame
+  on, in the full view and in the Learn diagram.
 - **G14. A start marker.** The first node of each branch carries a small
   start marker beside its mark (not at the tail of the first drawn arrow:
   after a switch inside the start cell, that tail is the second node),

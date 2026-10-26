@@ -757,3 +757,46 @@ describe('a tie, where it meets another tie or passes a candidate of its digit',
     for (const p of line) expect(dist(p, layout.centre(cd(5, 5, 5)))).toBeGreaterThan(layout.r + SIZES.gap * 100);
   });
 });
+
+describe('what the third review of phase 3 found', () => {
+  /** the app board's layout, showing the candidates given and no other */
+  const showing = (shown: CellDigit[]) => boardLayout(undefined, (x) => shown.some((o) => o.cell === x.cell && o.digit === x.digit));
+  /** whether two lines cross further than `free` from `at` */
+  const crossBeyond = (p: Point[], q: Point[], at: Point, free: number) => {
+    const side = (a: Point, b: Point, c: Point) => Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+    for (let i = 1; i < p.length; i++)
+      for (let j = 1; j < q.length; j++)
+        if (dist(p[i - 1], at) >= free && dist(p[i], at) >= free && side(p[i - 1], p[i], q[j - 1]) * side(p[i - 1], p[i], q[j]) < 0 && side(q[j - 1], q[j], p[i - 1]) * side(q[j - 1], q[j], p[i]) < 0) return true;
+    return false;
+  };
+
+  it("draws two weak ties into one candidate without crossing before it: the earlier, drawn again knowing the later, keeps its end clearly its own candidate's", () => {
+    // 3D Medusa rule 4's witnesses into the 7 of r3c8: from 7r2c7, its 8 beside it, and from 7r3c7,
+    // its 8 on the line; the second bends over that 8 and came into the 7 across the first
+    const marks = [cd(2, 7, 7), cd(2, 7, 8), cd(3, 7, 7), cd(3, 7, 8), cd(3, 8, 7), cd(3, 8, 8)];
+    const links = [link(cd(2, 7, 7), cd(3, 8, 7), false, true), link(cd(3, 7, 7), cd(3, 8, 7), false, true)];
+    const l = showing(marks);
+    const [p, q] = arrowShapes(links, l, marks).map((s) => samples(arrow(s).d));
+    // they crossed at 35 degrees, half a cell before the 7: M 629.6 198.6 Q 644.9 264.1 710.4 279.4 and M 633.2 268.7 Q 648.0 239.0 712.1 275.1
+    expect(crossBeyond(p, q, l.centre(cd(3, 8, 7)), 0.25 * 100)).toBe(false);
+    // and the first still leaves the 7 of r2c7 clear of its 8, by the clearance
+    expect(dist(p[0], l.centre(cd(2, 7, 8))) - dist(p[0], l.centre(cd(2, 7, 7)))).toBeGreaterThanOrEqual(SIZES.clearance * 100 - 0.15);
+    expect(q[0].y).toBeLessThan(l.centre(cd(3, 7, 7)).y);
+    // turning from its line no more than it must: it stays in its box, where a wide arc went round the 7 of r3c7 below
+    for (const pt of p) expect([pt.x > l.bounds.x0 + 600, pt.y < l.bounds.y0 + 300]).toEqual([true, true]);
+  });
+
+  it("comes into an end boxed in by the marks of its cell from a free side, clear of every mark: under the 6 of r9c7 into the 6 of r9c8, off the 3 above it", () => {
+    // a daily's 3D Medusa rule 2: the clash 6r9c3-6r9c8 along row 9, the 6 and 3 of r9c7 on its line, the 3 of
+    // r9c8 above its end, the 9 of r9c5 below the row and the 9 of r8c6 above
+    const marks = [cd(9, 3, 6), cd(9, 8, 6), cd(9, 8, 3), cd(9, 7, 6), cd(9, 7, 3), cd(9, 5, 1), cd(9, 5, 9), cd(8, 6, 9), cd(8, 6, 5), cd(9, 3, 1)];
+    const l = showing(marks);
+    const [s] = arrowShapes([link(cd(9, 3, 6), cd(9, 8, 6), false, true)], l, marks);
+    const line = samples(arrow(s).d);
+    const end = line[line.length - 1];
+    // it ended 13.9 units from the 3's centre, on its disc, and 16.0 from the 6's
+    expect(dist(end, l.centre(cd(9, 8, 3))) - dist(end, l.centre(cd(9, 8, 6)))).toBeGreaterThanOrEqual(SIZES.clearance * 100 - 0.15);
+    expect(end.y).toBeGreaterThan(l.centre(cd(9, 8, 6)).y);
+    for (const m of marks.slice(2)) for (const p of line) expect(dist(p, l.centre(m))).toBeGreaterThanOrEqual((SIZES.r + SIZES.clearance) * 100 - 0.5);
+  });
+});

@@ -1022,6 +1022,8 @@ describe("over the practice pools' solve paths", () => {
           if (!s) continue;
           found.hits++;
           const where = `${puzzle} @${k} ${tech}`;
+          // every colouring a finder gives, once, for the drawing's checks at the end of this file
+          finderColouring(where, s, g);
           lines.push(`${k}:${tech} ${s.eliminations.map(nameOf).join(' ')}`);
           for (const p of checkParity(s, g.cands)) problems.push(`${where}: ${p.issue} ${p.at}`);
           if (!buildable(s)) unbuildable.push(where);
@@ -1753,5 +1755,262 @@ describe('the shortest drawn tree, of ties that weigh the same', () => {
     // on the paths, 192 ties whose straight line passes another mark, against 196 by reading order alone
     expect(over.now).toBeLessThan(over.before);
     expect(crossing.slice(0, 10)).toEqual([]);
+  });
+});
+
+/**
+ * Every colouring a finder gives along the practice pools' solve paths,
+ * once each (a finder gives the same one at many positions), at the first
+ * position it gives it: filled as the block that walks those paths runs
+ * the finders, or by finderColourings when a block below runs on its own
+ */
+const offPath: { name: string; step: Step; values: number[]; cands: number[] }[] = [];
+const offPathSeen = new Set<string>();
+function finderColouring(name: string, step: Step, g: Grid) {
+  const seen = `${step.tech}|${JSON.stringify(step.links)}|${step.eliminations.map(nameOf).join(' ')}`;
+  if (offPathSeen.has(seen)) return;
+  offPathSeen.add(seen);
+  offPath.push({ name, step, values: Array.from(g.values), cands: Array.from(g.cands) });
+}
+/** the colourings the finders give on the solve paths, walking the paths here if the block that does has not */
+function finderColourings() {
+  if (!offPath.length) {
+    const puzzles = [...new Set(Object.values(practice as Record<string, { puzzle: string }[]>).flat().map((p) => p.puzzle))];
+    for (const puzzle of puzzles) {
+      const g = parseGrid(puzzle)!;
+      for (let k = 0; k < 400 && !isSolved(g); k++) {
+        for (const find of [findSimpleColors, findMultiColors, findMedusa3d, findRemotePair]) {
+          const s = find(g);
+          if (s) finderColouring(`${puzzle} @${k} ${s.tech}`, s, g);
+        }
+        const step = findNextStep(g);
+        if (!step) break;
+        applyStep(g, step);
+      }
+    }
+  }
+  return offPath;
+}
+
+/** whether two lines come within `gap` of each other, by the boxes round them */
+function within(p: Point[], q: Point[], gap: number): boolean {
+  const box = (ps: Point[]) => ps.reduce((b, x) => ({ x0: Math.min(b.x0, x.x), y0: Math.min(b.y0, x.y), x1: Math.max(b.x1, x.x), y1: Math.max(b.y1, x.y) }), { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity });
+  const [a, b] = [box(p), box(q)];
+  return a.x0 <= b.x1 + gap && b.x0 <= a.x1 + gap && a.y0 <= b.y1 + gap && b.y0 <= a.y1 + gap;
+}
+/** how many times two lines cross */
+function crossings(p: Point[], q: Point[]): number {
+  if (!within(p, q, 0)) return 0;
+  const side = (a: Point, b: Point, c: Point) => Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+  let n = 0;
+  for (let i = 1; i < p.length; i++)
+    for (let j = 1; j < q.length; j++) if (side(p[i - 1], p[i], q[j - 1]) * side(p[i - 1], p[i], q[j]) < 0 && side(q[j - 1], q[j], p[i - 1]) * side(q[j - 1], q[j], p[i]) < 0) n++;
+  return n;
+}
+/** whether two lines cross further than `free` from `at` */
+function crossBeyond(p: Point[], q: Point[], at: Point, free: number): boolean {
+  if (!within(p, q, 0)) return false;
+  const side = (a: Point, b: Point, c: Point) => Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+  const off = (x: Point) => Math.hypot(x.x - at.x, x.y - at.y) >= free;
+  for (let i = 1; i < p.length; i++)
+    for (let j = 1; j < q.length; j++)
+      if (off(p[i - 1]) && off(p[i]) && side(p[i - 1], p[i], q[j - 1]) * side(p[i - 1], p[i], q[j]) < 0 && side(q[j - 1], q[j], p[i - 1]) * side(q[j - 1], q[j], p[i]) < 0) return true;
+  return false;
+}
+/**
+ * How far a line runs beside another: its longest stretch between 0.07 and
+ * 0.25 of a cell from it, further than 0.3 of a cell from either's ends,
+ * where the two read as a double line though their halos never touch
+ */
+function besideRun(p: Point[], q: Point[]): number {
+  if (!within(p, q, 0.25 * SIZE)) return 0;
+  const ends = [p[0], p[p.length - 1], q[0], q[q.length - 1]];
+  let [run, most] = [0, 0];
+  for (let k = 1; k < p.length; k++) {
+    const m = { x: (p[k - 1].x + p[k].x) / 2, y: (p[k - 1].y + p[k].y) / 2 };
+    const d = toLine(m, q);
+    if (ends.every((e) => Math.hypot(e.x - m.x, e.y - m.y) >= 0.3 * SIZE) && d < 0.25 * SIZE && d > 0.07 * SIZE) run += Math.hypot(p[k].x - p[k - 1].x, p[k].y - p[k - 1].y);
+    else [run, most] = [0, Math.max(most, run)];
+  }
+  return Math.max(most, run);
+}
+/** the least room between a line and the board's edge */
+const offTheEdge = (line: Point[]) => Math.min(...line.map((p) => Math.min(p.x - M, p.y - M, M + 9 * SIZE - p.x, M + 9 * SIZE - p.y)));
+
+/**
+ * What a drawing does wrong, as the third review of phase 3 measured it:
+ * a tie or a weak tie within 0.08 of a cell of the board's edge, where its
+ * halo meets the border; two ties of a frame that cross twice; a tie bent
+ * off each end that runs beside another for more than a cell; two weak
+ * ties into one candidate that cross further than a quarter of a cell
+ * from it; a weak tie's end not clearly nearer its own candidate than any
+ * other mark of its cell
+ */
+function wrongIn(name: string, s: Step, drawing: Pick<ReturnType<typeof drawingOf>, 'layout' | 'marks' | 'shapes'>) {
+  const out = { edge: [] as string[], twice: [] as string[], beside: [] as string[], crossed: [] as string[], ends: [] as string[] };
+  const { layout, shapes } = drawing;
+  const lines = shapes.map((sh) => (sh.kind === 'tie' || sh.kind === 'arrow' ? pathPoints(sh.d) : []));
+  // the lines met with each other, at a quarter of the points: fast enough for every colouring of the paths
+  const coarse = lines.map((line) => line.filter((_, k) => k % 4 === 0));
+  shapes.forEach((sh, i) => {
+    if ((sh.kind === 'tie' || sh.kind === 'arrow') && offTheEdge(lines[i]) < SIZES.gridLine * SIZE) out.edge.push(`${name}: ${named(s.links![i])} ${sh.d}`);
+  });
+  walkFrames(s).forEach((fr, f) => {
+    const drawn = [...drawnLinks(s, fr)].filter((i) => shapes[i].kind === 'tie');
+    for (let x = 0; x < drawn.length; x++)
+      for (let y = x + 1; y < drawn.length; y++) {
+        const [i, j] = [drawn[x], drawn[y]];
+        const [p, q] = [coarse[i], coarse[j]];
+        const both = `${name}, frame ${f + 1}: ${named(s.links![i])} and ${named(s.links![j])}`;
+        if (crossings(p, q) >= 2) out.twice.push(both);
+        for (const [k, a, b] of [
+          [i, p, q],
+          [j, q, p]
+        ] as const) {
+          const run = / C /.test((shapes[k] as { d: string }).d) ? besideRun(a, b) : 0;
+          if (run > SIZE) out.beside.push(`${both}, ${(run / SIZE).toFixed(2)} of a cell`);
+        }
+      }
+  });
+  const weak = shapes.flatMap((sh, i) => (sh.kind === 'arrow' && sh.undirected ? [i] : []));
+  for (let x = 0; x < weak.length; x++)
+    for (let y = x + 1; y < weak.length; y++) {
+      const [li, lj] = [s.links![weak[x]], s.links![weak[y]]];
+      // two into one candidate, from two others: two between the same two are drawn side by side
+      const shared = [li.from[0], li.to[0]].find((c) => has([lj.from[0], lj.to[0]], c));
+      const far = shared && (has([shared], lj.from[0]) ? lj.to[0] : lj.from[0]);
+      if (shared && !has([li.from[0], li.to[0]], far!) && crossBeyond(coarse[weak[x]], coarse[weak[y]], layout.centre(shared), 0.25 * SIZE))
+        out.crossed.push(`${name}: ${named(li)} and ${named(lj)}`);
+    }
+  for (const end of weakTieEnds(s, drawing as ReturnType<typeof drawingOf>)) if (end.other - end.own < SIZES.clearance * SIZE - 0.15) out.ends.push(`${name}: ${end.name}`);
+  return out;
+}
+/** a step's lines on the app board, as drawingOf lays them out, without the start dots and walk numbers */
+function linesOf(s: Step, values: ArrayLike<number>, cands: ArrayLike<number>) {
+  const solved = (cell: number) => values[cell] > 0;
+  const full = frameMarks(s, null, solved);
+  const marks = markedCandidates(full);
+  const shown = (x: CellDigit) => digitShown({ value: values[x.cell], corner: 0, center: 0 }, x.digit, cands[x.cell], full.cands.get(x.cell));
+  const layout = boardLayout(placedKeys(full), shown, solved);
+  return { layout, marks, shapes: arrowShapes(s.links!, layout, marks) };
+}
+
+describe('what the third review of phase 3 found', () => {
+  /** a link's line in a drawing, by its name */
+  const lineNamed = (s: Step, shapes: ArrowShape[], name: string) => {
+    const i = s.links!.findIndex((l) => named(l) === name);
+    expect(i, name).toBeGreaterThanOrEqual(0);
+    return lineOf(shapes[i]);
+  };
+  const at = (r: number, c: number, digit: number): CellDigit => ({ cell: (r - 1) * 9 + c - 1, digit });
+
+  it("runs no tie bent off each end beside another tie, nor across one twice, nor bends it off each end only to leave a grid line: 3D Medusa rule 2's 1r2c5-1r6c5 by the column's 2s, rule 1's 7r2c8-7r9c8 by 5r4c7-5r8c7, one arc each", () => {
+    for (const [puzzle, steps, rule, name, other] of [
+      ['18.4.5.6....7.62......83........2.54..85.....45....9....3...6426.....7.9.41......', 22, 'medusa2', '1r2c5-1r6c5', '2r1c5-2r9c5'],
+      ['..97....6.4..561......143...82....9.....2.....1....26...748......627..3.4....59..', 29, 'medusa1', '7r2c8-7r9c8', '5r4c7-5r8c7']
+    ] as const) {
+      const g = positionAt(puzzle, steps).grid;
+      const s = findNextStep(g)!;
+      expect([s.tech, s.colouring!.rule]).toEqual(['MEDUSA_3D', rule]);
+      const drawing = linesOf(s, g.values, g.cands);
+      const [p, q] = [name, other].map((n) => lineNamed(s, drawing.shapes, n));
+      // they were 'M 441.1 132.3 C 486.0 148.0 486.0 506.0 441.1 521.7', across the column's
+      // tie at both ends and 0.17-0.21 of a cell beside it for 3.1 cells between; and 'M 710.9 188.3
+      // C 666.0 204.0 666.0 862.0 710.9 877.7', 0.23 of a cell beside 5r4c7-5r8c7 for 2.3 cells,
+      // where an arc ran along a cell line instead
+      const d = (drawing.shapes[s.links!.findIndex((l) => named(l) === name)] as { d: string }).d;
+      expect(d, name).toMatch(/^M [\d.]+ [\d.]+ Q [\d.]+ [\d.]+ [\d.]+ [\d.]+$/);
+      expect(crossings(p, q), name).toBeLessThanOrEqual(1);
+      expect(besideRun(p, q), name).toBeLessThan(SIZE);
+      expect(wrongIn(name, s, drawing)).toEqual({ edge: [], twice: [], beside: [], crossed: [], ends: [] });
+    }
+  });
+
+  it("runs no tie bent off each end beside another tie, nor any bend twice across one, where the finders give it off the solver's path: 3D Medusa's 3r4c1-3r4c9 by the tie along row 5, 4r4c3-4r8c3 round 5r9c3-5r4c3", () => {
+    for (const [puzzle, steps, name, other] of [
+      ['5..2...1823..4.5..7..5..3.......9.8.1...6...4.6.4.......3..5..2..1.7..3567...2..1', 22, '3r4c1-3r4c9', '5r5c2-5r5c8'],
+      ['1..5.8.........12..3..2....6.....9.8...4.5...8..3....7......6.39.......5.6.8.1.4.', 42, '4r4c3-4r8c3', '5r9c3-5r4c3']
+    ] as const) {
+      const g = positionAt(puzzle, steps).grid;
+      const s = findStep('MEDUSA_3D', g)!;
+      const drawing = linesOf(s, g.values, g.cands);
+      const [p, q] = [name, other].map((n) => lineNamed(s, drawing.shapes, n));
+      // the first ran 3.8 cells along the tie below it, bent off each end; the second crossed the
+      // tie beside it at both ends, an arc round it
+      expect(crossings(p, q), name).toBeLessThanOrEqual(1);
+      expect(besideRun(p, q), name).toBeLessThan(SIZE);
+    }
+  });
+
+  it("keeps a tie's bend off the board's edge, where its halo would meet the border and the two merge: 3D Medusa's 2r1c1-2r1c9 and 2r1c1-2r1c6 along the top", () => {
+    for (const [puzzle, steps, name] of [
+      ['...7.8...3.........59.3.6..1..8..9......5..2...7....14.....52...62.....9.....486.', 27, '2r1c1-2r1c9'],
+      ['..8.......79.....8...57..1.1.........9..3.6......561.7.....4.8...46......65.2...3', 39, '2r1c1-2r1c6']
+    ] as const) {
+      const g = positionAt(puzzle, steps).grid;
+      const s = findStep('MEDUSA_3D', g)!;
+      const { shapes } = linesOf(s, g.values, g.cands);
+      // they ran 1.7 cells and 1.1 cells at y 7-12, against the border drawn 6 wide at y 4
+      expect(offTheEdge(lineNamed(s, shapes, name)), name).toBeGreaterThanOrEqual(SIZES.gridLine * SIZE);
+    }
+  });
+
+  it("takes a slight miss of a clear angle where a tie meets another before a run along a box line: 3D Medusa's 1r7c2-1r7c8 bends under its row, off 1r7c8-1r9c8 but not along the line between rows 6 and 7", () => {
+    const g = positionAt('...2...8......6.938....97...9...7..21.4...9.76..9...5...27....693.1......6...4...', 48).grid;
+    const s = findStep('MEDUSA_3D', g)!;
+    const { shapes, layout } = linesOf(s, g.values, g.cands);
+    // it was M 141.6 623.5 Q 666.0 507.0 718.8 612.7, 3 cells along the box line above row 7
+    const [p, q] = ['1r7c2-1r7c8', '1r7c8-1r9c8'].map((n) => lineNamed(s, shapes, n));
+    expect(alongBoxLines(p)).toBeLessThanOrEqual(0.1 * SIZE);
+    const m = meeting(p, q, layout.centre(at(7, 8, 1)));
+    expect(m.angle).toBeGreaterThanOrEqual(20);
+    expect([m.together, m.alongside]).toEqual([0, 0]);
+  });
+
+  it("brings two weak ties into one candidate without crossing before it, each end still clearly its own candidate's: 3D Medusa rule 4's into the 7 of r3c8, past the 8 of r2c7, and into the 9 of r1c6", () => {
+    for (const [puzzle, steps, first, second, into] of [
+      ['.......9.....15.2315..2...45.....1.9..2.4.6..8.7.....56...3..1778.29.....3.......', 6, '7r2c7-7r3c8', '7r3c7-7r3c8', at(3, 8, 7)],
+      ['..716...453...26..1.6.7....39...4.....2...4.....3...25....3.5.1..12...637...819..', 20, '9r2c4-9r1c6', '9r3c4-9r1c6', at(1, 6, 9)]
+    ] as const) {
+      const g = positionAt(puzzle, steps).grid;
+      const s = findStep('MEDUSA_3D', g)!;
+      expect(s.colouring!.rule).toBe('medusa4');
+      const drawing = linesOf(s, g.values, g.cands);
+      const [p, q] = [first, second].map((n) => lineNamed(s, drawing.shapes, n));
+      // they crossed at 35 and 27 degrees, half a cell and a quarter before it
+      expect(crossBeyond(p, q, drawing.layout.centre(into), 0.25 * SIZE), first).toBe(false);
+      for (const end of weakTieEnds(s, drawing as ReturnType<typeof drawingOf>).filter((e) => [first, second].some((n) => e.name.startsWith(n))))
+        expect(end.other - end.own, end.name).toBeGreaterThanOrEqual(SIZES.clearance * SIZE - 0.15);
+    }
+  });
+
+  it("comes into a weak tie's end boxed in by the marks of its cell from a free side: a daily's 6r9c3-6r9c8, under 6r9c7 into the 6 of r9c8, off the 3 above it", () => {
+    for (const steps of [25, 26, 28]) {
+      const g = positionAt('4.......6.62.41..........97..348......4.7.8......237..39..........63.12.5.......4', steps).grid;
+      const s = findStep('MEDUSA_3D', g)!;
+      expect(s.colouring!.rule).toBe('medusa2');
+      const drawing = linesOf(s, g.values, g.cands);
+      // it ended 13.9 units from the 3's centre, on its disc, and 16.0 from the 6's
+      const end = weakTieEnds(s, drawing as ReturnType<typeof drawingOf>).find((e) => e.name === '6r9c3-6r9c8 at 6r9c8')!;
+      expect(end.other - end.own, `@${steps}`).toBeGreaterThanOrEqual(SIZES.clearance * SIZE - 0.15);
+      // and the line keeps clear of every other mark
+      const line = lineNamed(s, drawing.shapes, '6r9c3-6r9c8');
+      for (const m of drawing.marks) if (!has([at(9, 3, 6), at(9, 8, 6)], m)) expect(toLine(drawing.layout.centre(m), line), nameOf(m)).toBeGreaterThanOrEqual((SIZES.r + SIZES.clearance) * SIZE - 0.01);
+    }
+  });
+
+  it("does none of it, or seldom where it is boxed in, over every colouring the finders give along the practice pools' solve paths, the solver's or not: at most 8 pairs of ties crossing twice, 20 ties bent off each end beside another and 6 pairs of weak ties crossing before their candidate (50, 52 and 242 before), no line at the board's edge (25) and no weak tie's end nearer another mark of its cell (9)", () => {
+    const found = { edge: [] as string[], twice: [] as string[], beside: [] as string[], crossed: [] as string[], ends: [] as string[] };
+    const all = finderColourings();
+    expect(all.length).toBeGreaterThan(11000);
+    for (const { name, step, values, cands } of all) {
+      const out = wrongIn(name, step, linesOf(step, values, cands));
+      for (const k of Object.keys(found) as (keyof typeof found)[]) found[k].push(...out[k]);
+    }
+    expect(found.edge.slice(0, 5)).toEqual([]);
+    expect(found.ends.slice(0, 5)).toEqual([]);
+    expect(found.twice.length, found.twice.slice(0, 10).join('\n')).toBeLessThanOrEqual(8);
+    expect(found.beside.length, found.beside.slice(0, 10).join('\n')).toBeLessThanOrEqual(20);
+    expect(found.crossed.length, found.crossed.slice(0, 10).join('\n')).toBeLessThanOrEqual(6);
   });
 });
