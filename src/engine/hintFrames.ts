@@ -3,23 +3,55 @@
  * for each. For a chain the ideas are its links, in order, then the
  * conclusion. For a pattern they are its colours, in the order the
  * explanation introduces them (the legend labels supply the words), then
- * the conclusion. A step whose walk has a single frame has nothing to
- * walk through, and the panel offers no walk for it.
+ * the conclusion. For a colouring (docs/hint-drawing-colouring.md) they
+ * are each cluster with its ties, then each link of the argument, then,
+ * where a colour is proven, the proof, then the conclusion. A step whose
+ * walk has a single frame has nothing to walk through, and the panel
+ * offers no walk for it.
  */
 import { cellName, cellNames } from './board';
-import { CellDigit, ChainLink, Step } from './steps';
+import { CellDigit, ChainLink, Step, isParity, isTie } from './steps';
 import { tr } from './text';
 import { deriveTruth } from './truth';
 
-export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'conclusion';
+/**
+ * A part of the drawing a frame shows: a pattern's bands and roles; a
+ * colouring's clusters in their shades, and its proof (the colour proven
+ * false as false rings, its partner as true discs); the conclusion.
+ */
+export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'cluster0' | 'cluster1' | 'proof' | 'conclusion';
 
 export interface Frame {
   /** the sentence for this frame */
   text: string;
-  /** how many links are drawn, from the first */
+  /**
+   * how many links the walk has reached, from the first: a line wears the
+   * number of the frame that reaches it, and a loop is closed once its last
+   * link is reached
+   */
   links: number;
+  /**
+   * the links this frame draws, where that is not every link reached (a
+   * colouring: a cluster's ties only in its own frame); absent, every link
+   * reached is drawn
+   */
+  drawn?: number[];
   /** which parts of the drawing are shown */
   show: Set<Part>;
+}
+
+/**
+ * The links a frame draws, or the full view when there is no frame: every
+ * link reached, or the frame's own list. A colouring's full view draws its
+ * argument (its weak ties: the reason, 1-3 lines) and none of its ties,
+ * which are drawn only in their cluster's frame. Every board, legend and
+ * mark goes through this, so a line is drawn where the frame says.
+ */
+export function drawnLinks(step: Step, frame: Frame | null): Set<number> {
+  const links = step.links ?? [];
+  if (frame) return new Set(frame.drawn ?? links.map((_, i) => i).slice(0, frame.links));
+  if (isParity(step)) return new Set(links.flatMap((l, i) => (isTie(l) ? [] : [i])));
+  return new Set(links.map((_, i) => i));
 }
 
 const uniq = <T>(xs: T[]) => [...new Set(xs)];
@@ -121,7 +153,92 @@ export function closureText(step: Step): string {
     : tr`So assuming ${cells} is not ${digit} makes it ${digit}: that is impossible, so ${cells} is ${digit}.`;
 }
 
+/** the one digit a colouring's clusters are all of (Simple and Multi Colors), or null (3D Medusa, Remote Pair) */
+export function colouringDigit(step: Step): number | null {
+  const digits = new Set((step.colouring?.clusters ?? []).flatMap((cl) => [...cl.dark, ...cl.light].map((cd) => cd.digit)));
+  return digits.size === 1 ? [...digits][0] : null;
+}
+
+/**
+ * What the proof frame says: the colour proven false (dark, by the rule
+ * that makes the argument try it first) and its partner true, which once
+ * the false colour is removed is a single each (every true candidate is
+ * tied to a removed one, in its cell or its house)
+ */
+function proofText(step: Step): string {
+  const d = colouringDigit(step);
+  if (step.colouring?.darkFalse === 1) {
+    return d
+      ? tr`So dark orange is false and light orange is true: once dark orange is removed, every light orange ${d} is a single.`
+      : tr`So dark orange is false and light orange is true: once dark orange is removed, every light orange candidate is a single.`;
+  }
+  return d
+    ? tr`So dark purple is false and light purple is true: once dark purple is removed, every light purple ${d} is a single.`
+    : tr`So dark purple is false and light purple is true: once dark purple is removed, every light purple candidate is a single.`;
+}
+
+/** what the conclusion adds where a colour is proven: its partner's candidates are true, though the step only removes */
+function provenText(step: Step): string {
+  const d = colouringDigit(step);
+  if (step.colouring?.darkFalse === 1) {
+    return d
+      ? tr`Every light orange ${d} is true; this step only removes, and each is then a single.`
+      : tr`Every light orange candidate is true; this step only removes, and each is then a single.`;
+  }
+  return d
+    ? tr`Every light purple ${d} is true; this step only removes, and each is then a single.`
+    : tr`Every light purple candidate is true; this step only removes, and each is then a single.`;
+}
+
+/**
+ * A colouring's walk (docs/hint-drawing-colouring.md): one frame per
+ * cluster, its shades and its ties, the ties drawn in that frame only, its
+ * sentence from its first tie; one frame per link of the argument, each
+ * weak tie drawn from its frame on; where a colour is proven, the proof
+ * frame, that colour as false rings and its partner as true discs; and the
+ * conclusion, which is the full view
+ */
+function parityFrames(step: Step): Frame[] {
+  const links = step.links ?? [];
+  const { clusters, darkFalse } = step.colouring!;
+  // a tie's cluster: the one its first end is coloured in
+  const clusterOf = (l: ChainLink) =>
+    clusters.findIndex((cl) => [...cl.dark, ...cl.light].some((cd) => cd.cell === l.from[0]?.cell && cd.digit === l.from[0]?.digit));
+  const frames: Frame[] = [];
+  const shown = new Set<Part>(['units']);
+  let reached = 0;
+  clusters.forEach((_, k) => {
+    shown.add(k === 0 ? 'cluster0' : 'cluster1');
+    const ties = links.flatMap((l, i) => (isTie(l) && clusterOf(l) === k ? [i] : []));
+    reached = Math.max(reached, ...ties.map((i) => i + 1));
+    const text =
+      ties.map((i) => links[i].text).find((x) => !!x) ??
+      tr`The cluster: each line joins two candidates of which exactly one is true (a conjugate pair, or the two candidates of a bivalue cell), so the two ends take opposite colours, and the colours spread along the lines.`;
+    frames.push({ text, links: reached, drawn: ties, show: new Set(shown) });
+  });
+  const argument: number[] = [];
+  links.forEach((l, i) => {
+    if (isTie(l)) return;
+    argument.push(i);
+    frames.push({ text: linkText(l), links: i + 1, drawn: [...argument], show: new Set(shown) });
+  });
+  if (darkFalse !== undefined) {
+    shown.add('proof');
+    frames.push({ text: proofText(step), links: links.length, drawn: [...argument], show: new Set(shown) });
+  }
+  shown.add('conclusion');
+  const conclusion = conclusionText(step);
+  frames.push({
+    text: darkFalse !== undefined ? `${conclusion} ${provenText(step)}` : conclusion,
+    links: links.length,
+    drawn: [...argument],
+    show: new Set(shown)
+  });
+  return frames;
+}
+
 export function walkFrames(step: Step): Frame[] {
+  if (isParity(step)) return parityFrames(step);
   const frames: Frame[] = [];
   const base = new Set<Part>(['units']);
   if (step.links && step.links.length > 0) {

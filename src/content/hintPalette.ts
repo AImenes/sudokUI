@@ -159,6 +159,13 @@ export const MARK = {
   /** a filled disc, and the edge drawn on its rim (invisible where ink = fill) */
   disc: 0.13,
   edge: 0.02,
+  /**
+   * a colouring shade's rim on a small board and in the Learn diagrams,
+   * drawn inwards: on a light board it is what parts a light shade from the
+   * player's own cell colour of the same hue (docs/hint-drawing-colouring.md,
+   * decision 7)
+   */
+  edgeSmall: 0.04,
   /** a ring: its stroke's centre line and width (outer edge at the disc's radius) */
   ring: 0.115,
   ringStroke: 0.03,

@@ -24,20 +24,51 @@
 // its members are 'oneTrue', drawn as the pattern's disc until phase 4 draws
 // sets as hulls, with legend words of their own.
 // A removed or placed node is the removal or the placement, its truth
-// plain from the mark. A solved cell the step names shows the
-// colour on its digit. A removal or a placement keeps, inside its ring,
-// the colour the step names for it where that colour is a colouring's
-// parity or the candidate is one of the chain's own nodes (G5: Nishio's
+// plain from the mark.
+// A colouring whose truth is its parity (docs/hint-drawing-colouring.md)
+// draws each cluster's candidates in two shades of its hue, dark and light,
+// in the frames that show the cluster; where the step proves a colour
+// false, the proof frame draws it as false rings and its partner as true
+// discs, and the conclusion and the full view draw it as the removals it
+// is, with nothing inside, beside the true discs; a candidate in no colour
+// at an end of a weak tie is a removal, or a plain ring (3D Medusa's cell a
+// colour would empty). Removed wins, then placed, then true or false, then
+// a shade.
+// A solved cell the step names shows the colour on its digit. A removal or
+// a placement keeps, inside its ring, the colour the step names for it
+// where that colour is an older colouring's parity or the candidate is one
+// of the chain's own nodes (G5: Nishio's
 // assumption, removed, and Digit Forcing's, placed, are still the
 // assumption), so a colour wholly removed or placed is still there to be
 // read; a colour only the chain default gave it is never shown.
 import type { CellDigit, ChainLink, Step, UnitBand } from '../engine/steps';
+import { isParity, isTie } from '../engine/steps';
 import type { Frame, Part } from '../engine/hintFrames';
+import { drawnLinks, colouringDigit } from '../engine/hintFrames';
 import { deriveTruth } from '../engine/truth';
 import { sees } from '../engine/board';
+import { tr } from '../engine/text';
+import { insideOneCell } from './hintGeometry';
+import type { Shade } from './hintPalette';
 
+export { isParity };
+export type { Shade };
 export type Role = 'primary' | 'secondary' | 'fin';
-export type CandMark = Role | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node' | 'true' | 'false' | 'oneTrue';
+export type CandMark = Role | Shade | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node' | 'true' | 'false' | 'oneTrue';
+
+/**
+ * A line a colouring draws, for its legend: a tie ('tie', a straight line),
+ * a weak tie between two cells ('weakTie', a dashed line) or inside one
+ * ('corners', brackets round the cell)
+ */
+export type LineKind = 'tie' | 'weakTie' | 'corners';
+
+/** a cluster's two shades: 0 purple, 1 orange */
+export const shadeOf = (cluster: number, dark: boolean): Shade =>
+  cluster === 0 ? (dark ? 'purpleDark' : 'purpleLight') : dark ? 'orangeDark' : 'orangeLight';
+const SHADES = new Set<CandMark>(['purpleDark', 'purpleLight', 'orangeDark', 'orangeLight']);
+/** a colouring's shade, as a mark */
+export const isShade = (kind: CandMark | string | undefined): kind is Shade => SHADES.has(kind as CandMark);
 
 /** a placement, with or without a named colour inside its ring */
 export const isPlaced = (kind: CandMark | undefined) => kind === 'place' || kind === 'placeOn';
@@ -57,6 +88,8 @@ export interface HintMarks {
    * digit in one house (the chain then proves its start the other way)
    */
   refuted: boolean;
+  /** the kinds of line a colouring draws, for its legend; none for any other step */
+  lines: Set<LineKind>;
 }
 
 export interface MarkOptions {
@@ -70,7 +103,11 @@ export interface MarkOptions {
   walking?: boolean;
 }
 
-/** the techniques whose colours are parities a removal still carries */
+/**
+ * the techniques whose colours are parities a removal still carries, as
+ * drawn before a colouring said its parity (`truth: 'parity'`, drawn by
+ * parityMarks below), for a colouring step that does not
+ */
 export const COLOURING = new Set(['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D']);
 
 const has = (list: CellDigit[] | undefined, cd: CellDigit) => !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
@@ -98,7 +135,59 @@ export function namedRole(step: Step, cd: CellDigit): Role | null {
   return has(step.primary, cd) ? 'primary' : has(step.secondary, cd) ? 'secondary' : has(step.fins, cd) ? 'fin' : null;
 }
 
+/**
+ * A colouring's marks (docs/hint-drawing-colouring.md): one mark per
+ * candidate, by rank, removed over placed over true or false over a shade
+ * over a plain ring. Each cluster a frame shows is in its shades. The
+ * colour proven false is false rings in the proof frame and removals at the
+ * conclusion and in the full view, its partner true discs in both. An end
+ * of a drawn weak tie that no colour claims is a removal from the frame
+ * that draws it, or a plain ring (3D Medusa's cell a colour would empty).
+ * A removal holds nothing inside its ring: a shade there would hide it.
+ */
+function parityMarks(step: Step, opts: MarkOptions): HintMarks {
+  const { clusters, darkFalse } = step.colouring!;
+  const cands = new Map<number, Map<number, CandMark>>();
+  const show = opts.show ?? (() => true);
+  const links = opts.links ?? [];
+  const rank = (kind: CandMark) =>
+    kind === 'elim' ? 5 : kind === 'place' ? 4 : kind === 'true' || kind === 'false' ? 3 : isShade(kind) ? 2 : 1;
+  const mark = (cd: CellDigit, kind: CandMark) => {
+    if (opts.solved(cd.cell)) return;
+    if (!cands.has(cd.cell)) cands.set(cd.cell, new Map());
+    const m = cands.get(cd.cell)!;
+    const prev = m.get(cd.digit);
+    if (!prev || rank(kind) > rank(prev)) m.set(cd.digit, kind);
+  };
+  const concluded = show('conclusion');
+  clusters.forEach((cl, k) => {
+    if (!show(k === 0 ? 'cluster0' : 'cluster1')) return;
+    for (const cd of cl.dark) mark(cd, shadeOf(k, true));
+    for (const cd of cl.light) mark(cd, shadeOf(k, false));
+  });
+  const proven = darkFalse !== undefined ? clusters[darkFalse] : undefined;
+  if (proven && (concluded || show('proof'))) {
+    for (const cd of proven.dark) mark(cd, concluded ? 'elim' : 'false');
+    for (const cd of proven.light) mark(cd, 'true');
+  }
+  const coloured = (cd: CellDigit) => clusters.some((cl) => has(cl.dark, cd) || has(cl.light, cd));
+  const removed = (cd: CellDigit) => has(step.eliminations, cd);
+  const lines = new Set<LineKind>();
+  for (const l of links) {
+    // a tie inside one cell draws nothing: two shades side by side say it
+    if (!isTie(l)) lines.add(insideOneCell(l) ? 'corners' : 'weakTie');
+    else if (!insideOneCell(l)) lines.add('tie');
+    for (const cd of [...l.from, ...l.to]) if (!coloured(cd)) mark(cd, removed(cd) ? 'elim' : 'node');
+  }
+  if (concluded) {
+    for (const cd of step.eliminations) mark(cd, 'elim');
+    for (const cd of step.placements) mark(cd, 'place');
+  }
+  return { cands, inside: new Map(), values: new Map(), bands: show('units') ? (step.units ?? []) : [], refuted: false, lines };
+}
+
 export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
+  if (isParity(step)) return parityMarks(step, opts);
   const cands = new Map<number, Map<number, CandMark>>();
   const inside = new Map<number, Map<number, Role>>();
   const values = new Map<number, CandMark>();
@@ -185,7 +274,7 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const trues = [...cands].flatMap(([cell, m]) => [...m].filter(([, k]) => k === 'true').map(([digit]) => ({ cell, digit })));
   const clash = trues.some((a, i) => trues.slice(i + 1).some((b) => a.cell === b.cell || (a.digit === b.digit && sees(a.cell, b.cell))));
   const refuted = !!truth && ((!!truth.closure && closed) || clash);
-  return { cands, inside, values, bands, refuted };
+  return { cands, inside, values, bands, refuted, lines: new Set() };
 }
 
 /**
@@ -194,9 +283,10 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
  * the frame shows (G23)
  */
 export function frameMarks(step: Step, frame: Frame | null, solved: (cell: number) => boolean): HintMarks {
+  const drawn = drawnLinks(step, frame);
   return hintMarks(step, {
     solved,
-    links: frame ? (step.links ?? []).slice(0, frame.links) : step.links,
+    links: (step.links ?? []).filter((_, i) => drawn.has(i)),
     show: frame ? (part) => frame.show.has(part) : undefined,
     walking: !!frame
   });
@@ -222,10 +312,29 @@ export const markedCandidates = (marks: HintMarks): CellDigit[] =>
 export function legendKinds(
   step: Step,
   marks: HintMarks
-): { shown: Set<CandMark>; onValue: Set<CandMark>; onBand: Set<CandMark>; intoRemove: Role[]; intoPlace: Role[]; refuted: boolean } {
+): {
+  shown: Set<CandMark>;
+  onValue: Set<CandMark>;
+  onBand: Set<CandMark>;
+  intoRemove: Role[];
+  intoPlace: Role[];
+  refuted: boolean;
+  /** a colouring's clusters drawn in their shades, in order */
+  clusters: number[];
+  /** the kinds of line a colouring draws */
+  lines: Set<LineKind>;
+  /**
+   * what a colouring draws of the colour it proves false: as false rings
+   * (the proof frame), as removals (the conclusion, the full view), and
+   * its partner as true discs; and whether any removal is of another kind
+   */
+  proven: { false: boolean; removed: boolean; true: boolean; otherRemoved: boolean };
+} {
   const shown = new Set<CandMark>();
+  // a plain ring is named only in a colouring, where it is the cell a colour would empty
+  const parity = isParity(step);
   for (const m of marks.cands.values())
-    for (const k of m.values()) if (k !== 'node') shown.add(k === 'elimOn' ? 'elim' : k === 'placeOn' ? 'place' : k);
+    for (const k of m.values()) if (k !== 'node' || parity) shown.add(k === 'elimOn' ? 'elim' : k === 'placeOn' ? 'place' : k);
   for (const k of marks.inside.values()) for (const r of k.values()) shown.add(r);
   const onValue = new Set<CandMark>();
   for (const k of marks.values.values()) {
@@ -244,5 +353,70 @@ export function legendKinds(
     if (list.every((cd) => kindOf(cd) === 'elim' || kindOf(cd) === 'elimOn')) intoRemove.push(role);
     else if (list.every((cd) => isPlaced(kindOf(cd)))) intoPlace.push(role);
   }
-  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted };
+  const clusters = [0, 1].filter((k) => shown.has(shadeOf(k, true)) || shown.has(shadeOf(k, false)));
+  const darkFalse = parity ? step.colouring!.darkFalse : undefined;
+  const provenDark = darkFalse !== undefined ? step.colouring!.clusters[darkFalse].dark : [];
+  const kindOf = (cd: CellDigit) => marks.cands.get(cd.cell)?.get(cd.digit);
+  const removals = [...marks.cands].flatMap(([cell, m]) => [...m].filter(([, k]) => k === 'elim').map(([digit]) => ({ cell, digit })));
+  const proven = {
+    false: provenDark.some((cd) => kindOf(cd) === 'false'),
+    removed: removals.some((cd) => has(provenDark, cd)),
+    true: darkFalse !== undefined && step.colouring!.clusters[darkFalse].light.some((cd) => kindOf(cd) === 'true'),
+    otherRemoved: removals.some((cd) => !has(provenDark, cd))
+  };
+  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted, clusters, lines: marks.lines, proven };
+}
+
+/** an entry of a colouring's legend: what its swatch draws, and its words */
+export interface ParityEntry {
+  /**
+   * a cluster's two shades side by side ('pair'), a tie's line, a weak
+   * tie's dashed line, the corner brackets, a removal, a true disc, a false
+   * ring, the plain ring of the cell a colour would empty ('node')
+   */
+  kind: 'pair' | LineKind | 'elim' | 'true' | 'false' | 'node';
+  label: string;
+  /** a pair's cluster: 0 purple, 1 orange */
+  cluster?: number;
+}
+
+/** a cluster's pair of shades, worded by digit (Simple and Multi Colors) or by candidate (3D Medusa, Remote Pair) */
+function pairWords(cluster: number, digit: number | null): string {
+  if (cluster === 1) {
+    return digit
+      ? tr`dark orange, light orange: either every dark orange ${digit} is true, or every light orange one is`
+      : tr`dark orange, light orange: either every dark orange candidate is true, or every light orange one is`;
+  }
+  return digit
+    ? tr`dark purple, light purple: either every dark purple ${digit} is true, or every light purple one is`
+    : tr`dark purple, light purple: either every dark purple candidate is true, or every light purple one is`;
+}
+
+/**
+ * What a colouring's legend names, in order (docs/hint-drawing-colouring.md,
+ * "The legend"), for the marks a frame draws, or the full view's: each
+ * cluster drawn in its shades, as a pair; the lines; the removals, those of
+ * the colour proven false named so, since no shade is left to say it; the
+ * proven colours; and 3D Medusa's cell a colour would empty. One list for
+ * the app's legend and the Learn diagrams', so the two cannot disagree
+ */
+export function parityLegend(step: Step, marks: HintMarks): ParityEntry[] {
+  if (!isParity(step)) return [];
+  const { darkFalse, rule } = step.colouring!;
+  const kinds = legendKinds(step, marks);
+  const digit = colouringDigit(step);
+  const out: ParityEntry[] = kinds.clusters.map((k) => ({ kind: 'pair', label: pairWords(k, digit), cluster: k }));
+  if (kinds.lines.has('tie')) out.push({ kind: 'tie', label: tr`line: exactly one of its two ends is true` });
+  if (kinds.lines.has('weakTie')) out.push({ kind: 'weakTie', label: tr`dashed line: its two ends see each other, so at most one is true` });
+  if (kinds.lines.has('corners')) out.push({ kind: 'corners', label: tr`corners: two candidates of one cell, at most one true` });
+  const orange = darkFalse === 1;
+  const { proven } = kinds;
+  if (proven.removed) out.push({ kind: 'elim', label: orange ? tr`remove: dark orange, proven false` : tr`remove: dark purple, proven false` });
+  if (proven.otherRemoved) out.push({ kind: 'elim', label: tr`remove` });
+  if (proven.true) {
+    out.push({ kind: 'true', label: orange ? tr`true: light orange, proven (this step only removes)` : tr`true: light purple, proven (this step only removes)` });
+  }
+  if (proven.false) out.push({ kind: 'false', label: orange ? tr`false: dark orange, proven` : tr`false: dark purple, proven` });
+  if (kinds.shown.has('node') && rule === 'medusa6') out.push({ kind: 'node', label: tr`a cell dark purple would empty` });
+  return out;
 }

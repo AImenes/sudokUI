@@ -11,8 +11,8 @@ import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 import { stepText } from '../content/eureka';
-import { frameMarks, legendKinds, premiseOf } from '../content/hintMarks';
-import type { Premise, Role } from '../content/hintMarks';
+import { frameMarks, legendKinds, premiseOf, parityLegend, isParity } from '../content/hintMarks';
+import type { Premise, Role, ParityEntry } from '../content/hintMarks';
 
 interface TruthWords {
   isTrue: string;
@@ -74,6 +74,14 @@ function truthWords(t: Translator, p: Premise): TruthWords {
         refuted: t('the chain shows that premise is impossible: the first candidate (by the small dot) is true')
       };
 }
+
+/** a colouring legend entry's swatch, drawn like its mark (styles.css) */
+const paritySwatch = (e: ParityEntry): string =>
+  e.kind === 'pair'
+    ? `swatch-shades-${e.cluster}`
+    : e.kind === 'weakTie'
+      ? 'swatch-weak-tie'
+      : `swatch-${e.kind}`;
 
 /**
  * "Needed in 34% of puzzles that sudokUI generates.", or null for a
@@ -256,7 +264,11 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
   // the legend names what the board draws in the frame shown, and nothing
   // it does not (G23): a role whose every candidate became a removal or a
   // placement lends its words to that entry
-  const legend = legendKinds(hint, frameMarks(hint, frame, (c) => cells[c].value > 0));
+  const marks = frameMarks(hint, frame, (c) => cells[c].value > 0);
+  const legend = legendKinds(hint, marks);
+  // a colouring names its shades, its lines and its proven colours
+  // (docs/hint-drawing-colouring.md), in the words the Learn legend uses
+  const parity = isParity(hint) ? parityLegend(hint, marks) : null;
   const lent = (roles: Role[]) =>
     roles
       .map((r) => (r === 'primary' ? hint.labels?.primary : r === 'secondary' ? hint.labels?.secondary : hint.labels?.fins))
@@ -331,7 +343,16 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
           {!frame && showKey && /r\dc\d/.test(hint.description) && (
             <p className="hint-key">{t('r2c3 means row 2, column 3, counted from the top left.')}</p>
           )}
-          {(
+          {parity ? (
+            <ul className="hint-legend">
+              {parity.map((e) => (
+                <li key={`${e.kind}${e.cluster ?? ''}:${e.label}`}>
+                  <i className={paritySwatch(e)} />
+                  {e.label}
+                </li>
+              ))}
+            </ul>
+          ) : (
             <ul className="hint-legend">
               {legend.shown.has('place') && (
                 <li>

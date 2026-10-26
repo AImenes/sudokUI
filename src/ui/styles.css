@@ -560,8 +560,12 @@ button {
 }
 
 /* a placement's outer ring on a small board: the second drawing, thicker
-   and moved out with its thickness, so the gap to the disc stays (G3) */
-.board .hint-place-small {
+   and moved out with its thickness, so the gap to the disc stays (G3); a
+   colouring shade's rim likewise, thicker and inwards, which on a light
+   board parts a light shade from the player's own cell colour
+   (docs/hint-drawing-colouring.md, decision 7) */
+.board .hint-place-small,
+.board .hint-shade-small {
   display: none;
 }
 
@@ -607,11 +611,19 @@ button {
     .board .hint-node {
       stroke-width: 3.5px;
     }
-    .board .hint-place-wide {
+    .board .hint-place-wide,
+    .board .hint-shade-wide {
       display: none;
     }
-    .board .hint-place-small {
+    .board .hint-place-small,
+    .board .hint-shade-small {
       display: inline;
+    }
+    .board .chain-bracket {
+      stroke-width: 4px;
+    }
+    .board .chain-bracket-halo {
+      stroke-width: 6px;
     }
     .board .chain-start {
       transform: scale(1.4);
@@ -663,11 +675,21 @@ button {
   .board .hint-node {
     stroke-width: 3.5px;
   }
-  .board .hint-place-wide {
+  .board .hint-place-wide,
+  .board .hint-shade-wide {
     display: none;
   }
-  .board .hint-place-small {
+  .board .hint-place-small,
+  .board .hint-shade-small {
     display: inline;
+  }
+  /* corner brackets keep clear of the box lines and the corner candidates
+     at this width (docs/hint-drawing-colouring.md, decision 9) */
+  .board .chain-bracket {
+    stroke-width: 4px;
+  }
+  .board .chain-bracket-halo {
+    stroke-width: 6px;
   }
   .board .chain-start {
     transform: scale(1.4);
@@ -1230,6 +1252,66 @@ button {
 
 .hint-legend .swatch-secondary.on-band {
   border-style: dashed;
+}
+
+/* a colouring's legend (docs/hint-drawing-colouring.md, "The legend"): a
+   cluster's two shades side by side, dark then light, rimmed as on the
+   board; a tie's straight line, a weak tie's dashed one, the corner
+   brackets, and the plain ring of the cell a colour would empty */
+.hint-legend .swatch-shades-0,
+.hint-legend .swatch-shades-1 {
+  width: 22px;
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 5px 50%, var(--sh) 3.6px, var(--sh-ink) 3.7px 4.7px, transparent 5px),
+    radial-gradient(circle at 17px 50%, var(--sh-light) 3.6px, var(--sh-light-ink) 3.7px 4.7px, transparent 5px);
+}
+
+.hint-legend .swatch-shades-0 {
+  --sh: var(--hint-purple);
+  --sh-ink: var(--hint-purple-ink);
+  --sh-light: var(--hint-purple-light);
+  --sh-light-ink: var(--hint-purple-light-ink);
+}
+
+.hint-legend .swatch-shades-1 {
+  --sh: var(--hint-orange);
+  --sh-ink: var(--hint-orange-ink);
+  --sh-light: var(--hint-orange-light);
+  --sh-light-ink: var(--hint-orange-light-ink);
+}
+
+.hint-legend .swatch-tie,
+.hint-legend .swatch-weak-tie {
+  width: 18px;
+  border-radius: 0;
+}
+
+.hint-legend .swatch-tie {
+  background: linear-gradient(transparent 40%, var(--hint-arrow) 40% 60%, transparent 60%);
+  opacity: 0.5;
+}
+
+.hint-legend .swatch-weak-tie {
+  background: repeating-linear-gradient(90deg, var(--hint-arrow) 0 4px, transparent 4px 7px) center / 100% 2px no-repeat;
+}
+
+.hint-legend .swatch-corners {
+  border-radius: 0;
+  background:
+    linear-gradient(var(--hint-arrow), var(--hint-arrow)) top left / 4px 1.5px no-repeat,
+    linear-gradient(var(--hint-arrow), var(--hint-arrow)) top left / 1.5px 4px no-repeat,
+    linear-gradient(var(--hint-arrow), var(--hint-arrow)) top right / 4px 1.5px no-repeat,
+    linear-gradient(var(--hint-arrow), var(--hint-arrow)) top right / 1.5px 4px no-repeat,
+    linear-gradient(var(--hint-arrow), var(--hint-arrow)) bottom left / 4px 1.5px no-repeat,
+    linear-gradient(var(--hint-arrow), var(--hint-arrow)) bottom left / 1.5px 4px no-repeat,
+    linear-gradient(var(--hint-arrow), var(--hint-arrow)) bottom right / 4px 1.5px no-repeat,
+    linear-gradient(var(--hint-arrow), var(--hint-arrow)) bottom right / 1.5px 4px no-repeat;
+}
+
+.hint-legend .swatch-node {
+  background: transparent;
+  border: 1.5px solid var(--hint-arrow);
 }
 
 .hint-actions {

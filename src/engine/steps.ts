@@ -18,13 +18,25 @@ export interface ChainLink {
   /** the sentence the walk reads for this link, when the generic one would not do */
   text?: string;
   /**
-   * a tie rather than an inference: the two ends are a conjugate pair or
-   * the two candidates of a bivalue cell, exactly one of them true, so
-   * they take opposite colours. Drawn as a quiet line without an arrowhead;
-   * the walk shows all of a step's ties in one frame.
+   * no direction, so no arrowhead and no start dot.
+   * - Strong: a tie, exactly one of the two ends true (a conjugate pair,
+   *   the two candidates of a bivalue cell, the same digit of two Remote
+   *   Pair cells that see each other), so they take opposite colours: a
+   *   quiet straight line, nothing inside one cell. A colouring
+   *   (`truth: 'parity'`) draws a cluster's ties only in that cluster's
+   *   walk frame; an older colouring shows all its ties in one frame.
+   * - Weak (a colouring only): a weak tie, the two ends see each other or
+   *   share a cell, so at most one of them is true (a witness, a clash, a
+   *   bridge). It claims no truth, so it stays true whatever its ends turn
+   *   out to be: a dashed line with no head, bent like an arrow, or, inside
+   *   one cell, corner brackets round the cell; drawn from its walk frame on
+   *   and in the full view (docs/hint-drawing-colouring.md).
    */
   undirected?: boolean;
 }
+
+/** a link drawn as a tie: exactly one of its two ends is true, and it says nothing more */
+export const isTie = (link: ChainLink): boolean => !!link.undirected && link.strong;
 
 /**
  * Links for a chain given as a node sequence with strict alternation,
@@ -59,6 +71,60 @@ export interface UnitBand {
   unit: number;
   role: 'primary' | 'secondary';
 }
+
+/**
+ * The rule a colouring applies (docs/hint-drawing-colouring.md, Per rule);
+ * the Copy step line uses HoDoKu's names for them:
+ * - 'trap', 'wrap': Simple Colors Trap and Wrap;
+ * - 'bridge': two colours of two clusters see each other, so one of the
+ *   other two colours is true (HoDoKu's Multi Colors 1);
+ * - 'seesBoth': a colour sees both colours of the other cluster, so it is
+ *   false (HoDoKu's Multi Colors 2);
+ * - 'medusa1' to 'medusa6': 3D Medusa's six rules (a colour twice in a
+ *   cell; twice in a house; a cell holding both colours; a candidate seeing
+ *   both colours; seeing one colour while its cell holds the other; a cell
+ *   one colour would empty);
+ * - 'remotePair': one cluster over the two digits of a Remote Pair.
+ */
+export type ColourRule =
+  | 'trap'
+  | 'wrap'
+  | 'bridge'
+  | 'seesBoth'
+  | 'medusa1'
+  | 'medusa2'
+  | 'medusa3'
+  | 'medusa4'
+  | 'medusa5'
+  | 'medusa6'
+  | 'remotePair';
+
+/**
+ * A cluster of candidates in two colours, drawn as two shades of one hue:
+ * either every dark candidate is true and every light one false, or the
+ * other way round. Dark is the colour the argument tries first.
+ */
+export interface ColourCluster {
+  dark: CellDigit[];
+  light: CellDigit[];
+}
+
+/**
+ * A colouring (`truth: 'parity'`). Its links come in walk order: cluster
+ * 0's ties, the first of them carrying the cluster frame's sentence in
+ * `text`; cluster 1's ties, likewise; then the argument's weak ties, each
+ * with its sentence.
+ */
+export interface Colouring {
+  rule: ColourRule;
+  /** 0 drawn purple; 1 orange (Multi Colors only) */
+  clusters: ColourCluster[];
+  /** the cluster whose dark colour the step proves false, and so its light colour true */
+  darkFalse?: 0 | 1;
+}
+
+/** a colouring step: its truth is its clusters' parity */
+export const isParity = (step: Step): boolean => step.truth === 'parity' && !!step.colouring;
 
 /**
  * One solving step: what to do, plus everything needed to visualise it.
@@ -99,7 +165,11 @@ export interface Step {
    * the chain trainer reuses chain techniques' names, and says 'derived'
    * itself, drawing each link as the kind it is used as (strong at the even
    * links, weak at the odd ones), whatever the pair's own kind.
+   * 'parity': a colouring, whose candidates take two colours of which
+   * exactly one is true, told in `colouring`.
    */
-  truth?: 'derived';
+  truth?: 'derived' | 'parity';
+  /** with truth 'parity' only; such a step names no primary, secondary, fins or labels */
+  colouring?: Colouring;
   description: string;
 }
