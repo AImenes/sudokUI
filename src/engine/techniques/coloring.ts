@@ -217,8 +217,15 @@ function multiColorsStep(
   };
 }
 
-/** Multi Colors: interactions between two clusters of the same digit. */
+/**
+ * Multi Colors: interactions between two clusters of the same digit. A
+ * colour that sees both colours of another cluster proves itself false,
+ * the stronger and clearer step, so it comes before any bridge, on every
+ * digit: the first bridge is given only where no digit has such a colour
+ * (docs/hint-drawing-colouring.md, decision 13).
+ */
 export function findMultiColors(g: Grid): Step | null {
+  let bridge: Step | null = null;
   for (let d = 1; d <= 9; d++) {
     const mask = bit(d);
     const cls = clusters(g, d);
@@ -298,6 +305,9 @@ export function findMultiColors(g: Grid): Step | null {
                 true
               );
             }
+            // the first bridge waits while the search looks on for a colour
+            // seeing both; any later bridge is not needed
+            if (bridge) continue;
             // the bridge (HoDoKu's Multi Colors 1): dark orange and dark
             // purple cannot both be true, so light orange or light purple
             // is; a candidate seeing both light colours is false
@@ -318,7 +328,7 @@ export function findMultiColors(g: Grid): Step | null {
               const target = cellName(first.c);
               const x = cellName(first.x);
               const y = cellName(first.y);
-              return multiColorsStep(
+              bridge = multiColorsStep(
                 d,
                 c2,
                 c1,
@@ -349,5 +359,5 @@ export function findMultiColors(g: Grid): Step | null {
       }
     }
   }
-  return null;
+  return bridge;
 }

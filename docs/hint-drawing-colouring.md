@@ -80,7 +80,7 @@ cell. The Learn diagram is the full view with its legend.
 | 10 | Remote Pair | one purple cluster over its two digits, the whole component (what the finder proves); every cell one dark and one light candidate; ties on the lower digit along the shortest tree; trap witnesses; never "conjugate", "chain of 35 pairs" or '"colors"' | it is a two-digit colouring; drawn as a chain from one end, 23 of 37 path steps' removals rested on the other parity |
 | 11 | Learn diagram | the full view (with its 1-3 dashed lines) and its legend | equal to the app's full view (G22, G25) |
 | 12 | Copy step | HoDoKu's form: `Simple Colors Trap: 4 (r1c5,r6c4,r8c6) / (r1c6,r5c5,r8c8) => r6c8<>4`; Multi Colors 1 (bridge) and 2 (sees both), clusters joined by ", "; 3D Medusa with candidate items; Remote Pair cells by colour; no Eureka line for a colouring | the community's notation |
-| 13 | Multi Colors hides "sees both" behind a bridge (24% of available bridges, and the stored example) | swap the stored example now; fix the search order in its own reviewed change after phase 3 | the fix changes solve paths |
+| 13 | Multi Colors hid "sees both" behind a bridge (26% of the bridges it gave over the practice paths, and the stored example) | done, after phase 3 in its own change (the stored example was swapped in phase 3): a colour seeing both colours of another cluster, on any digit, comes before any bridge, and the first bridge is given only where no digit has one; the step is drawn and worded as before | it is the stronger, clearer step (a colour proven false, its partner each a single), and whether a hint is a bridge no longer hangs on the digits' labels, which the worker shuffles when it serves a saved puzzle. HoDoKu puts a cluster pair's sees-both (its Multi Colors 2) before that pair's bridges (Multi Colors 1) but scans digit by digit, and that order would have found 20 of the 191 hidden on the practice paths (132 sat on another pair of the digit's clusters, 39 on a later digit); both score 200, so a step's kind moves a rating only through the steps after it, and our paths already part from HoDoKu's (cluster order; one bridge's removals, not the union of a pair's four). Measured: no stored solve path, rating, level, practice puzzle or example changed (the solver takes Multi Colors 15 times on the stored puzzles' paths, 13 practice, a seed and the example, never where a sees-both hid); off the paths 191 bridges on 53 practice puzzles and 445 on 87 dailies became a sees-both (tests/fixtures/colouringRemovals.json retaken: those 191 lines only); 9 of 480 served isomorphs of the saved Multi Colors puzzles changed path, each 10 points lower, the same level, Multi Colors still clean; of 34,304 generated puzzles 39 took Multi Colors and none changed |
 | 14 | Place the proven-true colour? | no | it would change solve paths and ratings |
 | 15 | Frame model | `Frame.links` keeps "links reached" (walk numbers, a loop's closure); a colouring frame adds `drawn?: number[]`; every consumer goes through one `drawnLinks(step, frame)`; geometry is computed once from all links (G14) | chain walks are untouched |
 
@@ -109,7 +109,8 @@ links, each with its `text`. `src/engine/truth.ts` gains `checkParity`
 real strong relation; a cluster its ties do not span; a proven-false
 candidate not removed; a removed coloured candidate outside the proven-false
 colour). The finders' removals, the techniques and the ratings do not
-change.
+change; decision 13, a later change, only lets Multi Colors find a colour
+seeing both before a bridge.
 
 ## Per rule
 
@@ -190,10 +191,12 @@ and a test holds it.
 A fixture, made on main before any change, of every non-colouring drawing
 (frames, marks, legends, shapes, dots, badges) that must stay identical;
 `checkParity` and the solution over the practice pools' paths and sampled
-positions; the corpus claim that every light candidate is a single once its
-dark colour is removed; frame counts, drawn links and marks per frame for
-every fixture; no orange shade beside a true disc; the words of every
-sentence and legend naming only the hues the frame draws, in en, nb and es;
-the palette numbers above; the tie tree's totals; the notation; the
-renderers and the browser walk test. Then review rounds as in the handoff,
-on screenshots of every fixture in all four themes and on a phone.
+positions; the corpus claim that every light candidate is a single once
+its dark colour is removed; that Multi Colors gives a bridge only where no
+digit has a colour seeing both (decision 13); frame counts, drawn links
+and marks per frame for every fixture; no orange shade beside a true disc;
+the words of every sentence and legend naming only the hues the frame
+draws, in en, nb and es; the palette numbers above; the tie tree's totals;
+the notation; the renderers and the browser walk test. Then review rounds
+as in the handoff, on screenshots of every fixture in all four themes and
+on a phone.
