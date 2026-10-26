@@ -19,7 +19,14 @@
 // these": its members are 'groupTrue', never 'true', so a drawing does not
 // teach that all of them are placed. A FALSE group means none of them, and
 // its members are 'false'.
+//
+// A colouring (Step.truth === 'parity') reads its truth from its clusters
+// instead: each cluster's two colours, exactly one of them wholly true.
+// checkParity, at the end, holds a colouring to that, and to its links'
+// walk order, as the derivation holds a chain.
 import type { CellDigit, ChainLink, Step } from './steps';
+import { isParity, isTie } from './steps';
+import { UNITS, bit, popcount, sees } from './board';
 
 export type CandidateTruth = 'true' | 'false' | 'groupTrue';
 
@@ -121,4 +128,116 @@ export function deriveLinks(links: ChainLink[]): Derivation {
     }
   }
   return { nodes, candidates, ends, closure, problems };
+}
+
+/**
+ * Something wrong with a colouring (Step.truth === 'parity',
+ * docs/hint-drawing-colouring.md, Data), which is a bug in its finder:
+ * - 'twoColours': a candidate in two colours, or in two clusters;
+ * - 'sameShade': a tie whose ends are not the two colours of one cluster;
+ * - 'notStrong': a tie that is no strong relation (two candidates of one
+ *   cell, or one digit in two cells that see each other; with the board's
+ *   candidates, a cell holding only those two, a house holding the digit
+ *   only there, or two cells holding the same two digits only);
+ * - 'notWeak': a weak tie two of whose candidates neither share a cell nor
+ *   are one digit in cells that see each other;
+ * - 'unspanned': a cluster its ties do not join into one;
+ * - 'order': a link out of walk order (cluster 0's ties, then cluster 1's,
+ *   then the argument);
+ * - 'notRemoved': a candidate of the colour proven false that the step
+ *   does not remove;
+ * - 'removedOutside': a coloured candidate the step removes outside the
+ *   colour proven false.
+ */
+export interface ParityProblem {
+  /** the link, counted from 1, or 0 for a candidate */
+  link: number;
+  issue: 'twoColours' | 'sameShade' | 'notStrong' | 'notWeak' | 'unspanned' | 'order' | 'notRemoved' | 'removedOutside';
+  /** the candidate or the link's first end, as 4r1c6; a cluster as its index */
+  at: string;
+}
+
+/**
+ * What is wrong with a colouring; empty for every finder's colouring, and
+ * for any step that is not one. `cands`, the position's candidates (0 for a
+ * solved cell), lets each tie be checked against the board's houses.
+ */
+export function checkParity(step: Step, cands?: ArrayLike<number>): ParityProblem[] {
+  if (!isParity(step)) return [];
+  const { clusters, darkFalse } = step.colouring!;
+  const links = step.links ?? [];
+  const problems: ParityProblem[] = [];
+  // each candidate's cluster and colour
+  const colour = new Map<string, { k: number; dark: boolean }>();
+  clusters.forEach((cl, k) => {
+    for (const [list, dark] of [
+      [cl.dark, true],
+      [cl.light, false]
+    ] as const) {
+      for (const cd of list) {
+        if (colour.has(keyOf(cd))) problems.push({ link: 0, issue: 'twoColours', at: label([cd]) });
+        else colour.set(keyOf(cd), { k, dark });
+      }
+    }
+  });
+
+  // a strong relation: exactly one of the two is true
+  const strong = (a: CellDigit, b: CellDigit) => {
+    if (a.cell === b.cell) return a.digit !== b.digit && (!cands || popcount(cands[a.cell]) === 2);
+    if (a.digit !== b.digit || !sees(a.cell, b.cell)) return false;
+    if (!cands) return true;
+    const conjugate = UNITS.some(
+      (u) => u.includes(a.cell) && u.includes(b.cell) && u.filter((c) => cands[c] & bit(a.digit)).length === 2
+    );
+    const remotePair = cands[a.cell] === cands[b.cell] && popcount(cands[a.cell]) === 2;
+    return conjugate || remotePair;
+  };
+  // a weak relation: at most one of the two is true
+  const weak = (a: CellDigit, b: CellDigit) => (a.cell === b.cell ? a.digit !== b.digit : a.digit === b.digit && sees(a.cell, b.cell));
+
+  // the ties of each cluster, which must join it into one
+  const joined = clusters.map((cl) => {
+    const parent = new Map([...cl.dark, ...cl.light].map((cd) => [keyOf(cd), keyOf(cd)]));
+    return parent;
+  });
+  const root = (parent: Map<string, string>, x: string): string => {
+    while (parent.get(x) !== x) x = parent.get(x)!;
+    return x;
+  };
+  // walk order: the cluster whose ties come now, or the argument (-1 before any)
+  let stage = -1;
+  let argued = false;
+  links.forEach((l, i) => {
+    if (isTie(l)) {
+      const [a, b] = [l.from[0], l.to[0]];
+      const ca = colour.get(keyOf(a));
+      const cb = colour.get(keyOf(b));
+      if (l.from.length !== 1 || l.to.length !== 1 || !ca || !cb || ca.k !== cb.k || ca.dark === cb.dark) {
+        problems.push({ link: i + 1, issue: 'sameShade', at: label(l.from) });
+        return;
+      }
+      if (!strong(a, b)) problems.push({ link: i + 1, issue: 'notStrong', at: label(l.from) });
+      if (argued || ca.k < stage) problems.push({ link: i + 1, issue: 'order', at: label(l.from) });
+      stage = Math.max(stage, ca.k);
+      const parent = joined[ca.k];
+      parent.set(root(parent, keyOf(a)), root(parent, keyOf(b)));
+      return;
+    }
+    argued = true;
+    if (!l.from.every((a) => l.to.every((b) => weak(a, b)))) problems.push({ link: i + 1, issue: 'notWeak', at: label(l.from) });
+  });
+  joined.forEach((parent, k) => {
+    if (new Set([...parent.keys()].map((x) => root(parent, x))).size > 1) problems.push({ link: 0, issue: 'unspanned', at: String(k) });
+  });
+
+  // the colour proven false is removed, and nothing else coloured is
+  const removed = new Set(step.eliminations.map(keyOf));
+  if (darkFalse !== undefined) {
+    for (const cd of clusters[darkFalse]?.dark ?? []) if (!removed.has(keyOf(cd))) problems.push({ link: 0, issue: 'notRemoved', at: label([cd]) });
+  }
+  for (const cd of step.eliminations) {
+    const c = colour.get(keyOf(cd));
+    if (c && !(c.k === darkFalse && c.dark)) problems.push({ link: 0, issue: 'removedOutside', at: label([cd]) });
+  }
+  return problems;
 }

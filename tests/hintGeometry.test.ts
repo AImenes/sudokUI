@@ -11,6 +11,7 @@ import { arrowShapes, startMarkers, badgePoints, insideOneCell, Layout, Point, S
 import type { CellDigit, ChainLink } from '../src/engine/steps';
 import { alternatingLinks } from '../src/engine/steps';
 import { boardLayout, digitShown } from '../src/ui/boardLayout';
+import { MARK } from '../src/content/hintPalette';
 import { hintMarks, markedCandidates, placedKeys } from '../src/content/hintMarks';
 import { EXAMPLES } from '../src/content/examples';
 import { parseGrid } from '../src/engine/board';
@@ -586,7 +587,7 @@ describe('what the seventh review of phase 1 found', () => {
     expect(dots[0].at).toEqual(c);
   });
 
-  it('never puts a start dot on a node only ties reach, in a Simple Colors hint the solver gives', () => {
+  it('never puts a start dot on a node only ties reach, in a Simple Colors hint the solver gives: a colouring draws none', () => {
     const g = parseGrid('..8.......2...9.411...3...9.4...3..7.3.245.6.8..9...5.9...5...445.8...7.......5..')!;
     let step = findNextStep(g)!;
     for (let k = 0; k < 60 && step.tech !== 'SIMPLE_COLORS'; k++) {
@@ -599,30 +600,160 @@ describe('what the seventh review of phase 1 found', () => {
     const marked = markedCandidates(marks);
     const l = boardLayout(placedKeys(marks), undefined, solved);
     const dots = startMarkers(step.links!, l, marked);
-    expect(dots.length).toBeGreaterThan(0);
-    for (const p of dots) {
-      // every dot belongs to a witness arrow, beside the node it leaves
-      const w = step.links![p.link];
-      expect(w.undirected, `dot ${p.link + 1}`).toBeFalsy();
-      expect(w.from.some((x) => x.cell === p.at.cell && x.digit === p.at.digit)).toBe(true);
-    }
-    // and every witness has one
-    const witnesses = step.links!.map((w, i) => (w.undirected ? -1 : i)).filter((i) => i >= 0);
-    for (const i of witnesses) {
-      const prev = step.links![i - 1];
-      const goesOn = prev && !prev.undirected && prev.to.some((x) => step.links![i].from.some((y) => y.cell === x.cell));
-      if (!goesOn) expect(dots.some((p) => p.link === i), `the witness, link ${i + 1}`).toBe(true);
-    }
+    // its witnesses are weak ties (docs/hint-drawing-colouring.md): they
+    // claim no direction, so no link of it has a start
+    expect(step.truth).toBe('parity');
+    expect(step.links!.filter((w) => !w.strong).length).toBe(2);
+    expect(step.links!.every((w) => w.undirected)).toBe(true);
+    expect(dots).toEqual([]);
   });
 });
 
 describe('a tie', () => {
-  it('is a quiet straight line with no head, never bent', () => {
+  const bent = (s: ArrowShape) => /[QC]/.test((s as { d: string }).d);
+
+  it('is a quiet line with no head, straight over a mark its frame does not draw', () => {
     const a = cd(1, 1, 5);
     const b = cd(1, 9, 5);
     const between = cd(1, 5, 5);
+    // the 5 of r1c5 marked by the hint (a removal, say), but no candidate of the cluster
     const [s] = arrowShapes([link(a, b, true, true)], layout, [a, b, between]);
     expect(s.kind).toBe('tie');
     expect(s.kind === 'tie' && s.d).toMatch(/ L /);
+  });
+
+  it('bends round another candidate of its cluster on its line, or of a cluster drawn before it, as an arrow does (G10)', () => {
+    const a = cd(1, 1, 5);
+    const b = cd(1, 9, 5);
+    const between = cd(1, 5, 5);
+    // one cluster: a~b, b~5r5c9, 5r5c9~5r5c5, 5r5c5~between
+    const one = [link(a, b, true, true), link(b, cd(5, 9, 5), true, true), link(cd(5, 9, 5), cd(5, 5, 5), true, true), link(cd(5, 5, 5), between, true, true)];
+    const marks = [a, b, between, cd(5, 9, 5), cd(5, 5, 5)];
+    const [s] = arrowShapes(one, layout, marks);
+    expect(s.kind).toBe('tie');
+    expect(bent(s)).toBe(true);
+    // clear of the 5 of r1c5 all along, and from end to end
+    const line = samples((s as { d: string }).d);
+    for (const p of line) expect(dist(p, layout.centre(between))).toBeGreaterThan(layout.r + SIZES.gap * 100);
+    expect(dist(line[0], layout.centre(a))).toBeCloseTo(layout.r + SIZES.gap * 100, 0);
+    expect(dist(line[line.length - 1], layout.centre(b))).toBeCloseTo(layout.r + SIZES.gap * 100, 0);
+    // two clusters (Multi Colors): the first cluster's frame does not draw the second's candidates, the second's draws both
+    const first = [link(a, b, true, true), link(between, cd(5, 5, 5), true, true)];
+    expect(bent(arrowShapes(first, layout, marks)[0])).toBe(false);
+    const second = [link(between, cd(5, 5, 5), true, true), link(a, b, true, true)];
+    expect(bent(arrowShapes(second, layout, marks)[1])).toBe(true);
+  });
+});
+
+describe('a weak tie', () => {
+  it('keeps clear of the end of another weak tie, as an arrow keeps clear of another arrow\'s end', () => {
+    // 5r1c5 to 5r5c5 down column 5, ending just above r5c5's 5; 2r5c1 to 2r5c9 along row 5's top places, past that end
+    const down = link(cd(1, 5, 5), cd(5, 5, 5), false, true);
+    const across = link(cd(5, 1, 2), cd(5, 9, 2), false, true);
+    const marks = [cd(1, 5, 5), cd(5, 5, 5), cd(5, 1, 2), cd(5, 9, 2)];
+    const [d, a] = arrowShapes([down, across], layout, marks).map(arrow);
+    expect(d.d).toMatch(/ L /);
+    expect(a.d).toMatch(/ Q /);
+    // where the first ends, as the arrows reckon an end: just outside its mark, half a head further
+    const end = { x: layout.centre(cd(5, 5, 5)).x, y: layout.centre(cd(5, 5, 5)).y - (SIZES.r + SIZES.gap + SIZES.headLength / 2) * 100 };
+    expect(toArrow(end, a)).toBeGreaterThanOrEqual(((SIZES.headWidth / 2 + SIZES.clearance) * 100) - 0.5);
+  });
+
+  it('runs straight along a tie, which is never drawn with it, where a weak arrow would bend off it', () => {
+    // the tie 5r3c1~5r3c9 and the weak tie 4r3c2-4r3c8, on one line along row 3's middle places
+    const tie = link(cd(3, 1, 5), cd(3, 9, 5), true, true);
+    const marks = [cd(3, 1, 5), cd(3, 9, 5), cd(3, 2, 4), cd(3, 8, 4)];
+    const weak = (undirected: boolean) => link(cd(3, 2, 4), cd(3, 8, 4), false, undirected);
+    expect(arrow(arrowShapes([tie, weak(true)], layout, marks)[1]).d).toMatch(/ L /);
+    expect(arrow(arrowShapes([tie, weak(false)], layout, marks)[1]).d).toMatch(/ [QC] /);
+  });
+});
+
+describe('what the second review of phase 3 found', () => {
+  // 3D Medusa rule 6's weak tie 7r4c5-7r4c4, past the 8 of r4c4 on its
+  // line, and 8r5c6-8r4c4 into that 8, the 1 of r5c5 beside it
+  const marks = [cd(4, 5, 7), cd(4, 4, 7), cd(4, 4, 8), cd(5, 6, 8), cd(5, 5, 1)];
+  const witnesses = (undirected: boolean) => [link(cd(4, 5, 7), cd(4, 4, 7), false, undirected), link(cd(5, 6, 8), cd(4, 4, 8), false, undirected)];
+
+  it("ends a weak tie clearly nearer its own candidate than another mark of its cell: past the 8 of r4c4 into its 7, it comes in steeply, off the 8", () => {
+    // alone, and with the other weak tie into the 8
+    for (const links of [witnesses(true).slice(0, 1), witnesses(true)]) {
+      const s = arrow(arrowShapes(links, layout, marks)[0]);
+      expect(s.d).toMatch(/ [QC] /);
+      const line = samples(s.d);
+      const end = line[line.length - 1];
+      expect(dist(end, layout.centre(cd(4, 4, 7)))).toBeCloseTo((SIZES.r + SIZES.gap) * 100, 0);
+      // it ended 16.0 units from the 7 and 19.2 from the 8, in the gap between their rings
+      expect(dist(end, layout.centre(cd(4, 4, 8)))).toBeGreaterThanOrEqual((SIZES.r + SIZES.gap + SIZES.clearance) * 100 - 0.15);
+      // and is nowhere nearer the 8 than there
+      for (const p of line) expect(dist(p, layout.centre(cd(4, 4, 8)))).toBeGreaterThanOrEqual((SIZES.r + SIZES.gap + SIZES.clearance) * 100 - 0.15);
+    }
+    // a weak tie whose ends are clear of the marks beside them stays straight: down column 5 from the 4 of r1c5, its 5 beside it
+    const [down] = arrowShapes([link(cd(1, 5, 4), cd(5, 5, 4), false, true)], layout, [cd(1, 5, 4), cd(5, 5, 4), cd(1, 5, 5)]);
+    expect(arrow(down).d).toMatch(/^M [\d.]+ [\d.]+ L [\d.]+ [\d.]+$/);
+  });
+
+  it("keeps a colouring's walk number a gap off the marks, where a chain's keeps only off them: the 1 of r5c5 beside the weak tie into the 8 of r4c4", () => {
+    const off = (p: Point) => Math.min(...marks.map((m) => dist(p, layout.centre(m)) - layout.r));
+    const coloured = badgePoints(arrowShapes(witnesses(true), layout, marks), layout, marks);
+    // it sat 29.4 units from the 1's centre: on a phone, 0.4 units off its ring
+    for (const p of coloured.values()) expect(off(p)).toBeGreaterThanOrEqual((MARK.keylineSmall + SIZES.badgeLarge + SIZES.badgeGap) * 100 - 1e-9);
+    // a chain's weak arrows, the same links with heads: their numbers as before, off the marks only
+    const chain = [...badgePoints(arrowShapes(witnesses(false), layout, marks), layout, marks).values()];
+    for (const p of chain) expect(off(p)).toBeGreaterThanOrEqual(SIZES.badgeLarge * 100 - 1e-9);
+    expect(Math.min(...chain.map(off))).toBeLessThan((MARK.keylineSmall + SIZES.badgeLarge + SIZES.badgeGap) * 100);
+  });
+});
+
+describe('a tie, where it meets another tie or passes a candidate of its digit', () => {
+  const bent = (s: ArrowShape) => /[QC]/.test((s as { d: string }).d);
+  /** the app board's layout, showing the candidates given and no other */
+  const showing = (shown: CellDigit[]) => boardLayout(undefined, (x) => shown.some((o) => o.cell === x.cell && o.digit === x.digit));
+  /** the way a line leaves its end nearer `at`, in degrees off the way `to` lies from `at` */
+  const leaving = (line: Point[], at: Point, to: Point) => {
+    const from = dist(line[0], at) <= dist(line[line.length - 1], at) ? line : [...line].reverse();
+    const [u, v] = [
+      { x: from[2].x - from[0].x, y: from[2].y - from[0].y },
+      { x: to.x - at.x, y: to.y - at.y }
+    ];
+    return (Math.acos((u.x * v.x + u.y * v.y) / (Math.hypot(u.x, u.y) * Math.hypot(v.x, v.y))) * 180) / Math.PI;
+  };
+
+  it('bends round a candidate of its digit the board shows, which it would seem to join, whether the hint marks it or not', () => {
+    const a = cd(1, 1, 5);
+    const b = cd(1, 9, 5);
+    const between = cd(1, 5, 5);
+    const tie = [link(a, b, true, true)];
+    // shown and not marked, or marked by the hint (a removal its frame does not draw): round it, clear all along
+    for (const marks of [
+      [a, b],
+      [a, b, between]
+    ]) {
+      const [s] = arrowShapes(tie, showing([a, b, between]), marks);
+      expect(s.kind).toBe('tie');
+      expect(bent(s)).toBe(true);
+      for (const p of samples((s as { d: string }).d)) expect(dist(p, layout.centre(between))).toBeGreaterThan(layout.r + SIZES.gap * 100);
+    }
+    // another digit on its line is crossed, as an arrow crosses one; and a candidate the board does not show is no candidate
+    expect(bent(arrowShapes(tie, showing([a, b, cd(1, 5, 4)]), [a, b])[0])).toBe(false);
+    expect(bent(arrowShapes(tie, showing([a, b]), [a, b])[0])).toBe(false);
+  });
+
+  it('leaves an end it shares with another tie at a clear angle off that tie', () => {
+    // 5r5c5 (in a cluster drawn before) lies on 5r5c1-5r5c9, which bends round it; 5r5c9-5r4c7 leaves 5r5c9
+    // up and to the left, 27 degrees off the row, where the smallest arc towards the board's middle would
+    // leave too, 20 degrees from it: the arc bends down instead
+    const before = link(cd(5, 5, 5), cd(6, 5, 5), true, true);
+    const up = link(cd(5, 9, 5), cd(4, 7, 5), true, true);
+    const across = link(cd(5, 1, 5), cd(5, 9, 5), true, true);
+    const marks = [cd(5, 5, 5), cd(6, 5, 5), cd(5, 9, 5), cd(4, 7, 5), cd(5, 1, 5)];
+    const [, u, s] = arrowShapes([before, up, across], layout, marks);
+    expect((u as { d: string }).d).toMatch(/ L /);
+    expect(bent(s)).toBe(true);
+    const line = samples((s as { d: string }).d);
+    const at = layout.centre(cd(5, 9, 5));
+    expect(leaving(line, at, layout.centre(cd(4, 7, 5)))).toBeGreaterThanOrEqual(30);
+    // still clear of 5r5c5 all along
+    for (const p of line) expect(dist(p, layout.centre(cd(5, 5, 5)))).toBeGreaterThan(layout.r + SIZES.gap * 100);
   });
 });

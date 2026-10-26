@@ -22,7 +22,23 @@
 // - the first node of each branch carries the start marker (G14), beside
 //   its mark: after a switch inside the start cell, the first drawn arrow
 //   leaves from the second node, not the first.
+// A colouring (docs/hint-drawing-colouring.md) draws its ties and its weak
+// ties in different frames, so each is laid out without the other:
+// - a tie is a quiet line, straight unless another mark its cluster's frame
+//   draws, or another candidate of its digit the board shows, lies on it;
+//   then it bends round it as an arrow would, with no head, so it never
+//   seems to join that candidate, and leaves an end it shares with another
+//   tie at a clear angle off that tie, crossing it nowhere further on, so
+//   the two never read as one line;
+// - a weak tie is an arrow with no head and no start marker, bent like
+//   one, which also keeps off the other candidates of its digit the board
+//   shows, so it never seems to join a third, and off the end of another
+//   weak tie into its cell, so two of them come in apart; inside one cell
+//   it is four corner brackets round the cell;
+// - a bend of either keeps off the grid lines, box lines first, where its
+//   line would merge with theirs.
 import type { CellDigit, ChainLink } from '../engine/steps';
+import { MARK } from './hintPalette';
 
 export interface Point {
   x: number;
@@ -55,14 +71,18 @@ export interface Layout {
 export type ArrowShape =
   /** a link inside one cell, or between two digits of one set: no arrow (G12) */
   | { kind: 'none'; link: number }
-  /** a conjugate pair or a bivalue cell in a colouring: a quiet straight line, from end to end */
+  /**
+   * a conjugate pair or a bivalue cell in a colouring: a quiet line from end
+   * to end, straight unless another mark of its frame, or another candidate
+   * of its digit, lies on it (`trace`: points along it)
+   */
   | { kind: 'tie'; link: number; d: string; trace: Point[] }
   | {
       kind: 'arrow';
       link: number;
       /** the shaft, ending where the head begins */
       d: string;
-      /** the head, a filled triangle whose tip is just outside the target */
+      /** the head, a filled triangle whose tip is just outside the target; none for a weak tie */
       head: Point[];
       strong: boolean;
       /** where the shaft starts */
@@ -71,6 +91,23 @@ export type ArrowShape =
       mid: Point;
       /** points along the shaft and the head, for what must keep clear of it */
       trace: Point[];
+      /** a colouring's weak tie: no head, no start marker, its two ends alike */
+      undirected?: true;
+    }
+  /**
+   * a colouring's weak tie inside one cell: four corner brackets round the
+   * cell, in the arrows' ink, the walk's number on a clear corner
+   */
+  | {
+      kind: 'cell';
+      link: number;
+      cell: number;
+      /** the four L-shapes */
+      d: string;
+      /** points along them, for what must keep clear of them */
+      trace: Point[];
+      /** each bracket's corner, upper left first and round the clock: where the walk's number may go */
+      corners: Point[];
     };
 
 /** the sizes, as fractions of a cell (docs/hint-drawing.md, Colours and sizes) */
@@ -97,7 +134,26 @@ export const SIZES = {
   dotLarge: 0.063,
   /** a walk number's badge radius, and the most a small board enlarges it */
   badge: 0.1,
-  badgeLarge: 0.16
+  badgeLarge: 0.16,
+  /** corner brackets: each corner's inset from the cell's edge, and its arms' length at most */
+  bracketInset: 0.055,
+  bracketArm: 0.1,
+  /**
+   * how far a bracket's arm keeps from the middle of each candidate's place
+   * in its cell: on a small board, the bracket's halo (half width 0.03)
+   * off a mark's disc (0.13), and its stroke (0.02) off a shade's keyline
+   * (0.15), with a little more; the bottom row of places sits nearer the
+   * cell's edge than the top row, so the bottom corners' arms are shorter
+   */
+  bracketClear: 0.18,
+  /**
+   * the room a colouring's walk number keeps from another beyond their two
+   * radii at the largest size a number is drawn: their outlines in the
+   * board's colour (0.016 each) and a gap between them that shows (0.05)
+   */
+  badgeGap: 0.08,
+  /** how near a grid line a weak tie's or a tie's bend may run along it */
+  gridLine: 0.08
 };
 
 const sub = (a: Point, b: Point): Point => ({ x: a.x - b.x, y: a.y - b.y });
@@ -153,6 +209,50 @@ export function insideOneCell(link: ChainLink): boolean {
   return shareACell(link.from, link.to) && digitsOf(link.from) !== digitsOf(link.to);
 }
 
+/** a colouring's weak tie: at most one of its two ends is true, and it claims nothing more */
+const weakTie = (link: ChainLink) => !!link.undirected && !link.strong;
+/** a colouring's tie: exactly one of its two ends is true */
+const clusterTie = (link: ChainLink) => !!link.undirected && link.strong;
+
+/**
+ * Four corner brackets round a cell (docs/hint-drawing-colouring.md,
+ * decision 9): a weak tie between two candidates of one cell, where a line
+ * would be too short to see. Each is an L inset from the cell's corner,
+ * its arms along the cell's sides, clear of the box lines, and clear of
+ * every candidate's place in the cell at a small board's stroke and halo:
+ * as long as that leaves them, up to their full length
+ */
+function bracketsOf(link: ChainLink, i: number, layout: Layout): ArrowShape {
+  const cell = link.from.find((cd) => link.to.some((o) => o.cell === cd.cell))!.cell;
+  const c = layout.cell;
+  const x0 = layout.bounds.x0 + (cell % 9) * c;
+  const y0 = layout.bounds.y0 + Math.floor(cell / 9) * c;
+  const inset = SIZES.bracketInset * c;
+  const clear = SIZES.bracketClear * c;
+  const places = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => layout.centre({ cell, digit }));
+  const corners = [
+    { x: x0 + inset, y: y0 + inset },
+    { x: x0 + c - inset, y: y0 + inset },
+    { x: x0 + c - inset, y: y0 + c - inset },
+    { x: x0 + inset, y: y0 + c - inset }
+  ];
+  // each corner's two arms run along the cell's sides, inwards, the two of
+  // a corner as long as each other, shortened a step at a time until both
+  // keep clear of every place
+  const ls = corners.map((p) => {
+    const sx = p.x < x0 + c / 2 ? 1 : -1;
+    const sy = p.y < y0 + c / 2 ? 1 : -1;
+    const clearOf = (arm: number) =>
+      [{ x: p.x, y: p.y + sy * arm }, { x: p.x + sx * arm, y: p.y }].every((tip) => places.every((m) => toSegment(m, p, tip).dist >= clear));
+    let arm = SIZES.bracketArm * c;
+    while (arm > 0.04 * c && !clearOf(arm)) arm -= 0.005 * c;
+    return [{ x: p.x, y: p.y + sy * arm }, p, { x: p.x + sx * arm, y: p.y }];
+  });
+  const d = ls.map(([a, p, b]) => `M ${f(a.x)} ${f(a.y)} L ${f(p.x)} ${f(p.y)} L ${f(b.x)} ${f(b.y)}`).join(' ');
+  const trace = ls.flatMap(([a, p, b]) => [a, mul(add(a, p), 0.5), p, mul(add(p, b), 0.5), b]);
+  return { kind: 'cell', link: i, cell, d, trace, corners };
+}
+
 /**
  * A link goes on from the one before: it leaves the node the other reached,
  * or, in a chain of sets, another digit of the set it reached (the set's
@@ -172,6 +272,18 @@ function toSegment(p: Point, a: Point, b: Point): { dist: number; t: number } {
   const l2 = ab.x * ab.x + ab.y * ab.y || 1;
   const t = Math.max(0, Math.min(1, ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / l2));
   return { dist: len(sub(p, add(a, mul(ab, t)))), t };
+}
+
+/**
+ * toSegment's distance, to the last bit, with no point made on the way: a
+ * tie's bend search measures many shapes against many marks and lines
+ */
+function distToSegment(p: Point, a: Point, b: Point): number {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const l2 = abx * abx + aby * aby || 1;
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * abx + (p.y - a.y) * aby) / l2));
+  return Math.hypot(p.x - (a.x + abx * t), p.y - (a.y + aby * t));
 }
 
 /** a point of the quadratic curve a-c-b */
@@ -198,9 +310,9 @@ interface Obstacle {
 /** the shortest distance from a point to a polyline and, when given, a filled triangle */
 function toPath(p: Point, path: Point[], head: Point[] = []): number {
   let least = path.length === 1 ? len(sub(p, path[0])) : Infinity;
-  for (let k = 0; k + 1 < path.length; k++) least = Math.min(least, toSegment(p, path[k], path[k + 1]).dist);
+  for (let k = 0; k + 1 < path.length; k++) least = Math.min(least, distToSegment(p, path[k], path[k + 1]));
   if (head.length === 3) {
-    for (let k = 0; k < 3; k++) least = Math.min(least, toSegment(p, head[k], head[(k + 1) % 3]).dist);
+    for (let k = 0; k < 3; k++) least = Math.min(least, distToSegment(p, head[k], head[(k + 1) % 3]));
     // inside the triangle: on the same side of all three edges
     const side = (a: Point, b: Point) => Math.sign((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x));
     const s = [side(head[0], head[1]), side(head[1], head[2]), side(head[2], head[0])];
@@ -233,10 +345,70 @@ function headAt(tip: Point, dir: Point, layout: Layout): Point[] {
 }
 
 /**
+ * How far a line runs along a grid line: the stretches within
+ * SIZES.gridLine of one and nearly parallel to it, a box line's in full and
+ * a cell line's at half, so a bend keeps off the box lines first. `at`
+ * gives the line's points, from 0 to 1
+ */
+function alongGridLines(at: (s: number) => Point, layout: Layout): number {
+  const c = layout.cell;
+  const near = SIZES.gridLine * c;
+  const { x0, y0 } = layout.bounds;
+  const n = 60;
+  let run = 0;
+  let prev = at(0);
+  for (let k = 1; k <= n; k++) {
+    const p = at(k / n);
+    const m = mul(add(prev, p), 0.5);
+    const [dx, dy] = [Math.abs(p.x - prev.x), Math.abs(p.y - prev.y)];
+    // a stretch within about 11 degrees of upright lies along a column's
+    // line, one within as much of level along a row's
+    const [off, steep] = dy > 5 * dx ? [m.x - x0, true] : dx > 5 * dy ? [m.y - y0, true] : [0, false];
+    const line = Math.round(off / c);
+    if (steep && Math.abs(off - line * c) < near) run += (line % 3 === 0 ? 1 : 0.5) * Math.hypot(dx, dy);
+    prev = p;
+  }
+  return run;
+}
+
+/**
+ * Where two ties leave the candidate they share, the least angle a bend
+ * keeps off the other's line: from about 0.2 of a cell from the
+ * candidate's centre on, the two are then further apart than their halos
+ * (two straight ties leave one candidate at 26.6 degrees at the least,
+ * across a box)
+ */
+const FORK_ANGLE = Math.PI / 6;
+/** how far from the candidate's centre two ties that leave it may meet, a fraction of a cell: its mark, a gap and a little more */
+const FORK_FREE = 0.2;
+/**
+ * a bend that crosses a tie it shares an end with, beyond FORK_FREE,
+ * counts as missing FORK_ANGLE by this much (in radians, about 11
+ * degrees): a loop is worse than a narrow fork and better than a fused one
+ */
+const FORK_CROSSED = 0.2;
+
+/** the smallest box round a polyline's points */
+function boxOf(ps: Point[]): { x0: number; y0: number; x1: number; y1: number } {
+  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const p of ps) {
+    x0 = Math.min(x0, p.x);
+    y0 = Math.min(y0, p.y);
+    x1 = Math.max(x1, p.x);
+    y1 = Math.max(y1, p.y);
+  }
+  return { x0, y0, x1, y1 };
+}
+
+/**
  * The arrows of a hint. `obstacles` are every mark the hint draws (its
  * nodes, removals, placements and pattern candidates); an arrow is never
  * bent for a candidate the hint does not mark. The arrows also keep their
- * arcs and heads clear of each other's ends.
+ * arcs and heads clear of each other's ends. A colouring's tie keeps off
+ * only the marks of the frame that draws it, its cluster's and those of
+ * the clusters before it: the candidates the ties join, cluster by cluster
+ * in the order their ties come (docs/hint-drawing-colouring.md); and the
+ * candidates of its digit the board shows
  */
 export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellDigit[]): ArrowShape[] {
   const c = layout.cell;
@@ -254,6 +426,78 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     [1, 2, 3, 4, 5, 6, 7, 8, 9]
       .filter((d) => d !== cd.digit && !marked.has(`${cd.cell}:${d}`) && (layout.shown?.({ cell: cd.cell, digit: d }) ?? false))
       .map((d) => ({ p: layout.centre({ cell: cd.cell, digit: d }), r: glyphOf(layout, cd.cell) }));
+  // the candidates of a weak tie's digit the board shows and the hint does
+  // not mark, to be kept off as if marked, along the whole line drawn
+  const sameDigit = (l: ChainLink, own: Set<string>): Obstacle[] => {
+    const digits = new Set([...l.from, ...l.to].map((cd) => cd.digit));
+    if (digits.size !== 1 || !layout.shown) return [];
+    const digit = [...digits][0];
+    const out: Obstacle[] = [];
+    for (let cell = 0; cell < 81; cell++) {
+      const cd = { cell, digit };
+      if (own.has(key(cd)) || marked.has(key(cd)) || !layout.shown(cd)) continue;
+      out.push({ p: layout.centre(cd), r: layout.r });
+    }
+    return out;
+  };
+  // a weak tie has no head to say which candidate of a cell it ends at, so
+  // each of its ends keeps further from the other marks of its cell than
+  // from its own, by the clearance, as a head keeps off the digits round its
+  // target (G10): an end in the gap between two rings would seem to go into
+  // the other. How much room an end at `p` by its candidate `cd` leaves
+  // (none to keep: all clear)
+  const endRoom = (cd: CellDigit, p: Point) =>
+    Math.min(...marks.filter((m) => m.cd.cell === cd.cell && key(m.cd) !== key(cd)).map((m) => len(sub(p, m.p)) - m.r - gap - need));
+
+  // a colouring's clusters, as its ties join them, and the first tie of
+  // each: a tie is drawn in its cluster's frame, with the candidates of its
+  // cluster and of the clusters whose ties come before
+  const root = new Map<string, string>();
+  const rootOf = (k: string): string => {
+    while (root.get(k) !== k) k = root.get(k)!;
+    return k;
+  };
+  const tied = new Map<string, CellDigit>();
+  for (const l of links) {
+    if (!clusterTie(l)) continue;
+    for (const cd of [...l.from, ...l.to]) {
+      if (!root.has(key(cd))) root.set(key(cd), key(cd));
+      tied.set(key(cd), cd);
+      const [ra, rb] = [rootOf(key(cd)), rootOf(key(l.from[0]))];
+      if (ra !== rb) root.set(ra, rb);
+    }
+  }
+  const firstTie = new Map<string, number>();
+  links.forEach((l, i) => {
+    if (clusterTie(l) && !firstTie.has(rootOf(key(l.from[0])))) firstTie.set(rootOf(key(l.from[0])), i);
+  });
+  const clusterOf = (l: ChainLink) => firstTie.get(rootOf(key(l.from[0])))!;
+  /** the candidates the frame of tie `l` draws, worked out once a frame */
+  const frames = new Map<number, CellDigit[]>();
+  const frameOf = (l: ChainLink) => {
+    const k = clusterOf(l);
+    if (!frames.has(k)) frames.set(k, [...tied].filter(([t]) => firstTie.get(rootOf(t))! <= k).map(([, cd]) => cd));
+    return frames.get(k)!;
+  };
+  // what a tie keeps off: the other marks its frame draws, and the other
+  // candidates of its digit the board shows, which a line of that digit
+  // would seem to join as well, whether the hint marks them or not (a
+  // removal is a candidate of the digit, though the cluster's frame does
+  // not mark it); a Remote Pair's ties join cells that see each other, so
+  // another of the digit can lie on the line, and a bend can pass one
+  const showing = new Map<number, CellDigit[]>();
+  const tieObstacles = (l: ChainLink, own: Set<string>): Obstacle[] => {
+    const frame = frameOf(l).filter((cd) => !own.has(key(cd)));
+    const out: Obstacle[] = frame.map((cd) => ({ p: layout.centre(cd), r: radius(layout, cd) }));
+    const digits = new Set([...l.from, ...l.to].map((cd) => cd.digit));
+    const shown = layout.shown;
+    if (digits.size !== 1 || !shown) return out;
+    const digit = [...digits][0];
+    if (!showing.has(digit)) showing.set(digit, Array.from({ length: 81 }, (_, cell) => ({ cell, digit })).filter((cd) => shown(cd)));
+    const drawn = new Set(frame.map(key));
+    for (const cd of showing.get(digit)!) if (!own.has(key(cd)) && !drawn.has(key(cd))) out.push({ p: layout.centre(cd), r: layout.r });
+    return out;
+  };
 
   // links between the same two nodes, in either direction, are spread apart
   const pairKey = (l: ChainLink) => {
@@ -277,7 +521,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
   // the other arrows' ends, straight, just outside their marks: an arc or a
   // head keeps clear of them too
   const arrowEnds = links.flatMap((l, i): (Obstacle & { link: number })[] => {
-    if (insideOneCell(l) || l.undirected) return [];
+    if (insideOneCell(l) || (l.undirected && !weakTie(l))) return [];
     const { fromCd, toCd, a, b } = ends[i];
     const u = unit(sub(b, a));
     const w = (SIZES.headWidth * c) / 2;
@@ -296,9 +540,35 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     const { fromCd, toCd, a, b } = ends[j];
     return len(sub(b, a)) <= radius(layout, fromCd) + radius(layout, toCd) + 2 * gap ? null : [a, b];
   };
+  // where the other weak ties end at another candidate of a cell this one
+  // joins, as drawn once chosen, straight until then, just outside their
+  // marks: a weak tie keeps a mark's radius and a gap off them, so two
+  // weak ties into one cell come in apart and never cross under its marks
+  const besideEnds = (i: number): Obstacle[] => {
+    const mine = [ends[i].fromCd, ends[i].toCd];
+    return links.flatMap((o, j): Obstacle[] => {
+      if (j === i || !weakTie(o) || insideOneCell(o) || pairKey(o) === pairKey(links[i])) return [];
+      const line = lineOf(j);
+      if (!line) return [];
+      const { fromCd, toCd, a, b } = ends[j];
+      const u = unit(sub(b, a));
+      const at: [CellDigit, Point][] = chosen[j]
+        ? [
+            [fromCd, line[0]],
+            [toCd, line[line.length - 1]]
+          ]
+        : [
+            [fromCd, add(a, mul(u, radius(layout, fromCd) + gap))],
+            [toCd, sub(b, mul(u, radius(layout, toCd) + gap))]
+          ];
+      return at
+        .filter(([cd]) => mine.some((m) => m.cell === cd.cell) && !mine.some((m) => key(m) === key(cd)))
+        .map(([cd, p]) => ({ p, r: radius(layout, cd) + gap }));
+    });
+  };
 
   return links.map((l, i): ArrowShape => {
-    if (insideOneCell(l)) return { kind: 'none', link: i };
+    if (insideOneCell(l)) return weakTie(l) ? bracketsOf(l, i, layout) : { kind: 'none', link: i };
     const { fromCd, toCd, a, b } = ends[i];
     const ra = radius(layout, fromCd) + gap;
     const rb = radius(layout, toCd) + gap;
@@ -314,27 +584,49 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     const shift = mul(perp(along), spread);
 
     const own = new Set([...l.from, ...l.to].map(key));
-    const round = digitsRound(toCd);
-    const others: Obstacle[] = [
-      ...marks.filter((m) => !own.has(key(m.cd))),
-      // other arrows' ends, but not those that meet this one at its own
-      // marks, where arrows into and out of one node always gather
-      ...arrowEnds.filter((e) => e.link !== i && len(sub(e.p, a)) > ra + headLength + 1 && len(sub(e.p, b)) > rb + headLength + 1)
-    ];
-
-    if (l.undirected) {
+    const tie = clusterTie(l);
+    // a tie: straight from end to end, unless another mark its frame draws,
+    // or another candidate of its digit the board shows, lies within its
+    // radius and a gap of the line, which it would seem to join; then it
+    // bends round those, and nothing else, as an arrow does (G10), with no
+    // head
+    const seen: Obstacle[] = tie ? tieObstacles(l, own) : [];
+    if (tie) {
       const p0 = add(add(a, mul(u, ra)), shift);
       const p1 = add(sub(b, mul(u, rb)), shift);
-      chosen[i] = [p0, p1];
-      return { kind: 'tie', link: i, d: `M ${f(p0.x)} ${f(p0.y)} L ${f(p1.x)} ${f(p1.y)}`, trace: [p0, p1] };
+      if (seen.every((o) => toSegment(o.p, p0, p1).dist >= o.r + gap)) {
+        chosen[i] = [p0, p1];
+        return { kind: 'tie', link: i, d: `M ${f(p0.x)} ${f(p0.y)} L ${f(p1.x)} ${f(p1.y)}`, trace: [p0, p1] };
+      }
     }
+    const round = tie ? [] : digitsRound(toCd);
+    const others: Obstacle[] = tie
+      ? seen
+      : [
+          ...marks.filter((m) => !own.has(key(m.cd))),
+          // other arrows' ends, but not those that meet this one at its own
+          // marks, where arrows into and out of one node always gather
+          ...arrowEnds.filter((e) => e.link !== i && len(sub(e.p, a)) > ra + headLength + 1 && len(sub(e.p, b)) > rb + headLength + 1),
+          // a weak tie also keeps off the other candidates of its digit the
+          // board shows, so it never seems to run through a third one (a
+          // wrap's house always has another place for its digit), and off
+          // the ends of the other weak ties into its cells
+          ...(weakTie(l) ? [...sameDigit(l, own), ...besideEnds(i)] : [])
+        ];
+
     // the other links' lines, but those joining the same two nodes, which are
-    // drawn side by side on purpose
-    const lines = links.flatMap((_, j) => (j === i || group.includes(j) ? [] : [lineOf(j)].filter((x): x is Point[] => !!x)));
+    // drawn side by side on purpose, and those never drawn with this one: a
+    // tie is drawn with its own cluster's ties only, a weak tie never with a tie
+    const lines = links.flatMap((o, j) => {
+      if (j === i || group.includes(j)) return [];
+      if (tie ? !clusterTie(o) || clusterOf(o) !== clusterOf(l) : weakTie(l) && clusterTie(o)) return [];
+      return [lineOf(j)].filter((x): x is Point[] => !!x);
+    });
+    const lineBoxes = tie ? lines.map((line) => boxOf(line)) : [];
     const near = (SIZES.stroke + SIZES.halo) * c + 1;
     // how far a shaft runs along another line, away from its own ends, where
     // arrows into and out of a node always gather
-    const runOf = (shaft: Point[]) => {
+    const runOf = (shaft: Point[], lines: Point[][]) => {
       let run = 0;
       for (let k = 0; k + 1 < shaft.length; k++) {
         const m = mul(add(shaft[k], shaft[k + 1]), 0.5);
@@ -343,19 +635,62 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       }
       return run;
     };
+    // a tie's bend: the other ties of its frame that end at one of its own
+    // two candidates, at which end, the way each leaves it and its line. Two
+    // lines that leave one candidate the same way look like one line that
+    // joins their far ends, two candidates of one shade, so a bend leaves
+    // its ends at a clear angle to them; and it does not cross one of them
+    // further on, where the two would close a loop and each seem to go on
+    // along the other
+    const forks = tie
+      ? links.flatMap((o, j) => {
+          if (j === i || !clusterTie(o) || clusterOf(o) !== clusterOf(l)) return [];
+          const line = lineOf(j);
+          if (!line) return [];
+          return [ends[i].fromCd, ends[i].toCd].flatMap((cd, end) => {
+            const at = layout.centre(cd);
+            if (key(ends[j].fromCd) === key(cd)) return [{ end, at, line, lb: boxOf(line), dir: unit(sub(line[1], line[0])) }];
+            if (key(ends[j].toCd) === key(cd)) return [{ end, at, line, lb: boxOf(line), dir: unit(sub(line[line.length - 2], line[line.length - 1])) }];
+            return [];
+          });
+        })
+      : [];
+    // the least angle between the way a shaft leaves an end and the way a
+    // tie it shares that end with leaves it, and whether it crosses such a
+    // tie beyond that end's mark
+    const forkOf = (shaft: Point[], box: ReturnType<typeof boxOf>) => {
+      const n = shaft.length;
+      const out = [unit(sub(shaft[1], shaft[0])), unit(sub(shaft[n - 2], shaft[n - 1]))];
+      let angle = Math.PI;
+      let crossed = false;
+      const side = (p: Point, q: Point, r: Point) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+      for (const { end, at, line, dir, lb } of forks) {
+        angle = Math.min(angle, Math.acos(Math.max(-1, Math.min(1, out[end].x * dir.x + out[end].y * dir.y))));
+        // two lines whose boxes do not meet do not cross
+        if (lb.x0 > box.x1 || box.x0 > lb.x1 || lb.y0 > box.y1 || box.y0 > lb.y1) continue;
+        for (let k = 1; k < n && !crossed; k++) {
+          if (len(sub(shaft[k - 1], at)) < FORK_FREE * c || len(sub(shaft[k], at)) < FORK_FREE * c) continue;
+          for (let m = 1; m < line.length && !crossed; m++)
+            crossed =
+              side(shaft[k - 1], shaft[k], line[m - 1]) * side(shaft[k - 1], shaft[k], line[m]) < 0 && side(line[m - 1], line[m], shaft[k - 1]) * side(line[m - 1], line[m], shaft[k]) < 0;
+        }
+      }
+      return { angle, crossed };
+    };
 
     // a candidate drawing: straight (no control point), one arc (one), or,
     // where marks box in both ends, an arc that leaves and arrives steeply,
     // each end on its own (two); scored by how clear it keeps of the hint's
     // other marks and the other arrows' ends, along its whole length and its
-    // head (G9, G10)
+    // head (G9, G10), and a colouring's line by how little it runs along a
+    // grid line, where its dashes would merge with the line
     const shape = (controls: Point[]) => {
       const first = controls[0];
       const last = controls[controls.length - 1];
       const tail = first ? add(a, mul(unit(sub(first, a)), ra)) : add(add(a, mul(u, ra)), shift);
       const tip = last ? add(b, mul(unit(sub(last, b)), rb)) : add(sub(b, mul(u, rb)), shift);
       const dir = unit(sub(tip, last ?? tail));
-      const hasHead = len(sub(tip, tail)) > headLength * 1.4;
+      const hasHead = !l.undirected && len(sub(tip, tail)) > headLength * 1.4;
       const head = hasHead ? headAt(tip, dir, layout) : [];
       const at = (s: number) =>
         controls.length === 2
@@ -364,22 +699,81 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
             ? quad(tail, controls[0], tip, s)
             : add(tail, mul(sub(tip, tail), s));
       const shaft = Array.from({ length: 21 }, (_, k) => at(k / 20));
-      const trace = [...shaft, ...head];
-      // the head's room from the digits round its target (none: all clear)
-      const headRoom = head.length ? Math.min(...round.map((o) => toPath(o.p, [], head) - o.r)) : Infinity;
-      return { tail, tip, dir, head, trace, shaft, controls, mid: at(0.5), room: clearanceOf(shaft, others, layout, margin, head), run: runOf(shaft), headRoom };
+      // the head's room from the digits round its target, a weak tie's ends'
+      // from the other marks of their cells (none: all clear)
+      const headRoom = head.length ? Math.min(...round.map((o) => toPath(o.p, [], head) - o.r)) : weakTie(l) ? Math.min(endRoom(fromCd, tail), endRoom(toCd, tip)) : Infinity;
+      if (!tie) {
+        const trace = [...shaft, ...head];
+        const lined = l.undirected && controls.length ? alongGridLines(at, layout) : 0;
+        return { tail, tip, dir, head, trace, shaft, controls, mid: at(0.5), room: clearanceOf(shaft, others, layout, margin, head), run: runOf(shaft, lines), headRoom, lined, fork: 0 };
+      }
+      // a tie tries many bends among many marks and lines, and only those
+      // near a bend can tell it from another: its room is never told apart
+      // beyond `need` (better, ok), and a mark or a line farther than that
+      // from its box leaves the room and the run as they are; the run and
+      // the grid lines are worked out only when a choice comes to them
+      const box = boxOf(shaft);
+      const reach = (o: Obstacle) => {
+        const dx = Math.max(box.x0 - o.p.x, 0, o.p.x - box.x1);
+        const dy = Math.max(box.y0 - o.p.y, 0, o.p.y - box.y1);
+        return dx * dx + dy * dy <= (o.r + need + 1) * (o.r + need + 1);
+      };
+      const room = Math.min(clearanceOf(shaft, others.filter(reach), layout, margin), need);
+      let fork: number | undefined;
+      let run: number | undefined;
+      let lined: number | undefined;
+      return {
+        tail,
+        tip,
+        dir,
+        head,
+        trace: shaft,
+        shaft,
+        controls,
+        mid: at(0.5),
+        room,
+        get run() {
+          return (run ??= runOf(
+            shaft,
+            lines.filter((_, k) => {
+              const lb = lineBoxes[k];
+              return Math.max(lb.x0 - box.x1, box.x0 - lb.x1, lb.y0 - box.y1, box.y0 - lb.y1) <= near + 1;
+            })
+          ));
+        },
+        headRoom,
+        get lined() {
+          return (lined ??= controls.length ? alongGridLines(at, layout) : 0);
+        },
+        // how far it misses a clear angle off a tie it shares an end with, as
+        // a length a cell from the end, and FORK_CROSSED more where it
+        // crosses one
+        get fork() {
+          if (fork === undefined) {
+            const { angle, crossed } = forkOf(shaft, box);
+            fork = Math.max(0, FORK_ANGLE - angle) * c + (crossed ? FORK_CROSSED * c : 0);
+          }
+          return fork;
+        }
+      };
     };
     type Shape = ReturnType<typeof shape>;
-    // a drawing that keeps clear of the marks, runs along no other arrow and
-    // lands its head off the target cell's other digits; failing that, in
-    // that order: a head on a digit is painted back over the cut (G11), an
-    // arrow lost in another is not
-    const ok = (s: Shape) => s.room >= need && s.run <= 0.3 * c && s.headRoom >= 0;
+    // a drawing that keeps clear of the marks, runs along no other arrow,
+    // nor along a grid line, and lands its head off the target cell's other
+    // digits; failing that, in that order: a head on a digit is painted
+    // back over the cut (G11), an arrow lost in another is not. A tie's
+    // bend also leaves its ends apart from the ties it shares them with,
+    // which comes after the marks and before the other lines
+    const lining = 0.1 * c;
+    const ok = (s: Shape) => s.room >= need && s.fork === 0 && s.run <= 0.3 * c && s.lined <= lining && s.headRoom >= 0;
     const better = (x: Shape, y: Shape) => {
       const [rx, ry] = [Math.min(x.room, need), Math.min(y.room, need)];
       if (Math.abs(rx - ry) > 0.01) return rx > ry;
+      if (Math.abs(x.fork - y.fork) > 1) return x.fork < y.fork;
       const [ux, uy] = [Math.max(x.run, 0.3 * c), Math.max(y.run, 0.3 * c)];
       if (Math.abs(ux - uy) > 1) return ux < uy;
+      const [gx, gy] = [Math.max(x.lined, lining), Math.max(y.lined, lining)];
+      if (Math.abs(gx - gy) > 1) return gx < gy;
       return Math.min(x.headRoom, 0) > Math.min(y.headRoom, 0) + 0.01;
     };
 
@@ -406,15 +800,35 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
         if (ok(best)) break;
       }
     }
-    if (best.room < need) {
+    if (tie ? !ok(best) : best.room < need) {
       // marks beside both ends on the line: one arc cannot leave steeply and
       // arrive steeply too, so two control points, one off each end, on one
-      // side, leaning in, square or out; the smallest that does
+      // side, leaning in, square or out; the smallest that does. A tie
+      // tries them too when no arc leaves its ends apart from the other
+      // ties there, or keeps off their lines
       for (const k of [0.4, 0.6, 0.8, 1.1, 1.5, 2]) {
         for (const lean of [0, 0.35, -0.35]) {
           const [p, q] = [1, -1].map((side) => {
             const off = mul(perp(u), side * k * c);
             return shape([add(add(add(a, off), mul(u, lean * k * c)), shift), add(add(sub(b, mul(u, lean * k * c)), off), shift)]);
+          });
+          const pick = pickOf(p, q);
+          if (better(pick, best)) best = pick;
+          if (ok(best)) break;
+        }
+        if (ok(best)) break;
+      }
+    }
+    if (tie && !ok(best)) {
+      // a tie whose ends each have ties beside its line, on either side: it
+      // leaves one end to one side and comes into the other from the other,
+      // apart from them both, a control point off each end on either side;
+      // the smallest that does
+      for (const k of [0.4, 0.6, 0.8, 1.1, 1.5]) {
+        for (const lean of [0, 0.35, -0.35]) {
+          const [p, q] = [1, -1].map((side) => {
+            const off = mul(perp(u), side * k * c);
+            return shape([add(add(add(a, off), mul(u, lean * k * c)), shift), add(sub(sub(b, mul(u, lean * k * c)), off), shift)]);
           });
           const pick = pickOf(p, q);
           if (better(pick, best)) best = pick;
@@ -435,7 +849,8 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
         : controls.length === 1
           ? `M ${pt(tail)} Q ${pt(controls[0])} ${pt(end)}`
           : `M ${pt(tail)} L ${pt(end)}`;
-    return { kind: 'arrow', link: i, d, head, strong: l.strong, tail, mid, trace };
+    if (tie) return { kind: 'tie', link: i, d, trace: best.shaft };
+    return { kind: 'arrow', link: i, d, head, strong: l.strong, tail, mid, trace, ...(weakTie(l) ? { undirected: true as const } : {}) };
   });
 }
 
@@ -535,7 +950,10 @@ export function startMarkers(
  * the largest size a number is drawn, and off the digits the board shows
  * (a pencilled digit, a solved one) at the size a wide board draws it;
  * beside the shaft when nothing on it is clear; the clearest place when
- * nothing is
+ * nothing is. Corner brackets take theirs on the first clear corner, by
+ * the same rules. A colouring's numbers keep a gap from each other and from
+ * the marks too, and are placed without its ties, which are never drawn
+ * with them
  */
 export function badgePoints(
   shapes: ArrowShape[],
@@ -577,8 +995,11 @@ export function badgePoints(
   };
   const placed: Point[] = [];
   const out = new Map<number, Point>();
-  for (const s of arrows) {
-    const { shaft } = partsOf(s);
+  const numbered = shapes.filter((s): s is Extract<ArrowShape, { kind: 'arrow' | 'cell' }> => s.kind === 'arrow' || s.kind === 'cell');
+  for (const s of numbered) {
+    // a bracket's own lines, which its number keeps beside rather than on
+    const bracket = s.kind === 'cell' ? s.trace : null;
+    const { shaft } = s.kind === 'arrow' ? partsOf(s) : { shaft: s.corners };
     const middle = (shaft.length - 1) / 2;
     // from the middle outwards, never into the last fifth at either end;
     // then the same places beside the shaft, either side
@@ -594,25 +1015,34 @@ export function badgePoints(
     // shows it is dashed (G8); a short one takes its number beside it
     const along = shaft.map((_, k) => (k ? len(sub(shaft[k], shaft[k - 1])) : 0)).reduce<number[]>((acc, x, k) => [...acc, (acc[k - 1] ?? 0) + x], []);
     const total = along[along.length - 1];
-    const dashes = (k: number) => s.strong || Math.max(along[k] - r, total - along[k] - r - SIZES.headLength * c) >= 0.3 * c;
+    const dashes = (k: number) => s.kind === 'cell' || s.strong || Math.max(along[k] - r, total - along[k] - r - SIZES.headLength * c) >= 0.3 * c;
     // the places on the shaft that would hide its dashes, kept for when
     // nothing else is clear: a number on its own arrow beats one on another
-    const crowded = order.filter((k) => !dashes(k)).map((k) => ({ p: shaft[k], on: true }));
-    const spots = [
-      ...order.filter(dashes).map((k) => ({ p: shaft[k], on: true })),
-      ...order.flatMap((k) => [beside(k, 1), beside(k, -1)].map((q) => ({ p: q, on: false })))
-    ];
+    const crowded = bracket ? [] : order.filter((k) => !dashes(k)).map((k) => ({ p: shaft[k], on: true }));
+    const spots = bracket
+      ? shaft.map((p) => ({ p, on: true }))
+      : [
+          ...order.filter(dashes).map((k) => ({ p: shaft[k], on: true })),
+          ...order.flatMap((k) => [beside(k, 1), beside(k, -1)].map((q) => ({ p: q, on: false })))
+        ];
+    // a colouring's weak tie or brackets: never drawn with a tie
+    const colouring = s.kind === 'cell' || !!s.undirected;
     const otherShafts = [
       ...arrows.filter((a) => a !== s).map((a) => partsOf(a).shaft),
-      ...shapes.flatMap((x) => (x.kind === 'tie' ? [x.trace] : []))
+      ...shapes.flatMap((x) => ((x.kind === 'tie' && !colouring) || (x.kind === 'cell' && x !== s) ? [x.trace] : []))
     ];
+    // a colouring's number keeps a gap from the others too, so two never
+    // touch on a phone and read as one; and from the marks, their keyline
+    // at its widest included, so it never sits against a candidate's ring
+    const apart = 2 * r + (colouring ? SIZES.badgeGap * c : 0);
+    const offMarks = r + (colouring ? (MARK.keylineSmall + SIZES.badgeGap) * c : 0);
     // what a number must keep clear of: the numbers placed, the marks, the
     // dots, every head, the board's edge; and, beside its shaft, every other
     // arrow, so it is never nearer another arrow than its own
     const hard = (q: { p: Point; on: boolean }) =>
       Math.min(
-        ...placed.map((x) => len(sub(q.p, x)) - 2 * r),
-        ...marks.map((m) => len(sub(q.p, m.p)) - m.r - r),
+        ...placed.map((x) => len(sub(q.p, x)) - apart),
+        ...marks.map((m) => len(sub(q.p, m.p)) - m.r - offMarks),
         ...dots.map((x) => len(sub(q.p, x)) - SIZES.dotLarge * c - r),
         ...arrows.map((a) => (a.head.length ? toPath(q.p, [], a.head) - r : Infinity)),
         ...(q.on ? [] : otherShafts.map((sh) => toPath(q.p, sh) - r - SIZES.stroke * c)),
@@ -664,7 +1094,7 @@ export function badgePoints(
       const all = [...spots, ...crowded];
       found = all.reduce((x, y) => (score(y) > score(x) ? y : x), all[0]).p;
     }
-    const at = found ?? s.mid;
+    const at = found ?? (s.kind === 'arrow' ? s.mid : s.corners[0]);
     placed.push(at);
     out.set(s.link, at);
   }

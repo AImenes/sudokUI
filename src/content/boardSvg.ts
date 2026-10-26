@@ -10,9 +10,10 @@ import { tr } from '../engine/text';
 import { arrowShapes, startMarkers, pointsOf, SIZES } from './hintGeometry';
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
-import { hintMarks, frameMarks, markedCandidates, legendKinds, placedKeys, premiseOf, COLOURING } from './hintMarks';
+import { frameMarks, markedCandidates, legendKinds, placedKeys, premiseOf, isParity, isShade, parityLegend } from './hintMarks';
 import type { Premise, Role } from './hintMarks';
 import type { Frame } from '../engine/hintFrames';
+import { drawnLinks } from '../engine/hintFrames';
 
 interface TruthWords {
   isTrue: string;
@@ -115,8 +116,8 @@ export function boardSvg(example: Example, title: string): string {
   const { step } = example;
   const given = example.puzzle.split('').map((ch) => ch >= '1' && ch <= '9');
   const solved = (cell: number) => Number(example.values[cell]) > 0;
-  // what is marked where, as the app's board marks it (src/content/hintMarks.ts)
-  const drawn = hintMarks(step, { solved });
+  // what is marked where, as the app's board marks it in full (src/content/hintMarks.ts)
+  const drawn = frameMarks(step, null, solved);
   const s = S;
   const parts: string[] = [];
 
@@ -211,8 +212,12 @@ export function boardSvg(example: Example, title: string): string {
       // a placed chain node keeps the colour the step names for it inside the placement's ring (G5)
       const inside = kind === 'placeOn' ? drawn.inside.get(cell)?.get(digit) : undefined;
       const { fill, ink } = fillOf(P, inside ?? (kind === 'placeOn' || kind === 'true' ? 'place' : kind === 'oneTrue' ? 'primary' : kind));
+      // a colouring's shade takes the app's thin rim, so its light shade
+      // keeps its fill and the diagram's small discs do not mix it into
+      // the dark one
+      const edge = isShade(kind) ? MARK.shadeEdge : MARK.edge;
       parts.push(
-        `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - MARK.edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(MARK.edge * s)}"/>`
+        `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(edge * s)}"/>`
       );
       if (kind === 'place' || kind === 'placeOn') {
         // the ring a small board draws (G3, G14a): thick, and moved out so the gap to the disc stays
@@ -248,7 +253,10 @@ export function boardSvg(example: Example, title: string): string {
     solved,
     radiusOf: (cd) => (placed.has(`${cd.cell}:${cd.digit}`) ? (MARK.placeRingSmall + MARK.placeRingSmallStroke / 2) * S : LAYOUT.r)
   };
-  const shapes = arrowShapes(step.links ?? [], layout, marked);
+  // worked out from every link, as the app's board does, and drawn as its
+  // full view draws them: a colouring's argument, without its ties
+  const shown = drawnLinks(step, null);
+  const shapes = arrowShapes(step.links ?? [], layout, marked).filter((sh) => shown.has(sh.link));
   const w = SIZES.stroke * s * LINE;
   // the mask's name, unique to this diagram where several share a page
   const mask = `knockout-${hash(`${example.puzzle}:${example.stepIndex}:${title}`)}`;
@@ -274,6 +282,11 @@ export function boardSvg(example: Example, title: string): string {
     parts.push(`<path d="${sh.d}" fill="none" stroke="#ffffff" stroke-width="${f(w + SIZES.halo * s)}" stroke-linecap="round" opacity="0.75"/>`);
     if (sh.head.length) parts.push(`<polygon points="${pointsOf(sh.head)}" fill="#ffffff" stroke="#ffffff" stroke-width="${f(SIZES.halo * s)}" stroke-linejoin="round" opacity="0.75"/>`);
   }
+  // a colouring's weak tie inside one cell: corner brackets round it, haloed like an arrow
+  const brackets = shapes.filter((sh): sh is Extract<ArrowShape, { kind: 'cell' }> => sh.kind === 'cell');
+  for (const sh of brackets) {
+    parts.push(`<path d="${sh.d}" fill="none" stroke="#ffffff" stroke-width="${f(w + SIZES.halo * s)}" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>`);
+  }
   for (const sh of arrows) {
     parts.push(
       `<path d="${sh.d}" fill="none" stroke="${P.arrow}" stroke-width="${f(w)}" stroke-linecap="${sh.strong ? 'round' : 'butt'}"${
@@ -281,6 +294,9 @@ export function boardSvg(example: Example, title: string): string {
       }/>`
     );
     if (sh.head.length) parts.push(`<polygon points="${pointsOf(sh.head)}" fill="${P.arrow}"/>`);
+  }
+  for (const sh of brackets) {
+    parts.push(`<path d="${sh.d}" fill="none" stroke="${P.arrow}" stroke-width="${f(w)}" stroke-linecap="round" stroke-linejoin="round"/>`);
   }
   if (shapes.some((sh) => sh.kind !== 'none')) parts.push('</g>');
   // the digits, then the bars over the removed ones, then the start dots,
@@ -339,12 +355,19 @@ function truthWords(p: Premise): TruthWords {
 
 /** a legend entry: the kind of mark (its swatch is drawn like the mark, src/ui/styles.css .swatch-*) and its words */
 export interface LegendEntry {
-  /** 'note' is a line of words with no swatch */
-  kind: 'place' | 'elim' | 'true' | 'false' | 'oneTrue' | 'primary' | 'secondary' | 'fin' | 'note';
+  /**
+   * 'note' is a line of words with no swatch; a colouring's are a
+   * cluster's two shades ('pair'), its lines ('tie', 'weakTie', 'corners')
+   * and the plain ring of the cell a colour would empty ('node')
+   */
+  kind: 'place' | 'elim' | 'true' | 'false' | 'oneTrue' | 'primary' | 'secondary' | 'fin' | 'note' | 'pair' | 'tie' | 'weakTie' | 'corners' | 'node';
   label: string;
-  /** the mark's fill and edge on the diagram, for a swatch drawn inline */
+  /** the mark's fill and edge on the diagram, for a swatch drawn inline (a pair's dark shade) */
   colour: string;
   ink: string;
+  /** a pair's light shade and its rim */
+  light?: string;
+  lightInk?: string;
   /** drawn only on solved digits, as their rounded outline */
   onValue?: boolean;
   /** drawn only as a house band */
@@ -354,19 +377,31 @@ export interface LegendEntry {
 /**
  * What the legend under a diagram names (or under a walk frame, given one): the kinds the diagram draws, and
  * nothing it does not (G22). A role whose every candidate was drawn as a
- * removal or a placement lends its words to that entry. The colouring
- * techniques name their own colours in the explanation (blue and gold are
- * the two parities there), so only the removals and placements are listed.
+ * removal or a placement lends its words to that entry. A colouring names
+ * its shades, lines and proven colours as the app's legend does
+ * (src/content/hintMarks.ts parityLegend).
  */
 export function legendOf(step: Step, values?: string, frame: Frame | null = null): LegendEntry[] {
   const drawn = frameMarks(step, frame, (cell) => !!values && Number(values[cell]) > 0);
+  if (isParity(step)) {
+    return parityLegend(step, drawn).map((e): LegendEntry => {
+      if (e.kind === 'pair') {
+        const dark = fillOf(P, e.cluster === 1 ? 'orangeDark' : 'purpleDark');
+        const light = fillOf(P, e.cluster === 1 ? 'orangeLight' : 'purpleLight');
+        return { kind: 'pair', label: e.label, colour: dark.fill, ink: dark.ink, light: light.fill, lightInk: light.ink };
+      }
+      if (e.kind === 'true') return { kind: 'true', label: e.label, colour: P.place, ink: P.placeInk };
+      if (e.kind === 'false') return { kind: 'false', label: e.label, colour: '#ffffff', ink: P.false };
+      if (e.kind === 'elim') return { kind: 'elim', label: e.label, colour: '#ffffff', ink: P.elim };
+      return { kind: e.kind, label: e.label, colour: '#ffffff', ink: P.arrow };
+    });
+  }
   const { shown, onValue, onBand, intoRemove, intoPlace, refuted } = legendKinds(step, drawn);
   const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
   if (shown.has('place')) out.push({ kind: 'place', label: [tr`place`, ...lent(intoPlace)].join(': '), colour: P.place, ink: P.placeInk });
   if (shown.has('elim')) out.push({ kind: 'elim', label: [tr`remove`, ...lent(intoRemove)].join(': '), colour: '#ffffff', ink: P.elim });
-  if (COLOURING.has(step.tech)) return out;
   // a derived chain's truth, worded by its first node's premise
   const premise = premiseOf(step);
   if (premise) {
@@ -405,6 +440,46 @@ export function swatchStyle(l: LegendEntry): { background: string; border: strin
       width: '16px'
     };
   }
+  // a colouring's: a cluster's two shades side by side, rimmed as on the
+  // diagram (a rim about a thirteenth of the disc's radius,
+  // MARK.shadeEdge; tests/shadeRender.test.ts); a tie's line, faint as
+  // drawn; a weak tie's dashes; the corner brackets; the plain ring of the
+  // cell a colour would empty
+  if (l.kind === 'pair') {
+    const disc = (x: number, fill: string, ink: string) => `radial-gradient(circle at ${x}px 50%,${fill} 4.35px,${ink} 4.45px 4.6px,transparent 4.9px)`;
+    return {
+      background: `${disc(5.5, l.colour, l.ink)},${disc(16.5, l.light ?? l.colour, l.lightInk ?? l.ink)},#ffffff`,
+      border: 'none',
+      boxShadow: chip,
+      borderRadius: '5px',
+      width: '22px'
+    };
+  }
+  if (l.kind === 'tie') {
+    return { background: `linear-gradient(#ffffff 40%,${l.ink}80 40% 60%,#ffffff 60%)`, border: 'none', boxShadow: chip, borderRadius: '0', width: '18px' };
+  }
+  if (l.kind === 'weakTie') {
+    return {
+      background: `linear-gradient(#ffffff 40%,transparent 40% 60%,#ffffff 60%),repeating-linear-gradient(90deg,${l.ink} 0 4px,#ffffff 4px 7px)`,
+      border: 'none',
+      boxShadow: chip,
+      borderRadius: '0',
+      width: '18px'
+    };
+  }
+  if (l.kind === 'corners') {
+    const arm = (at: string, w: string, h: string) => `linear-gradient(${l.ink},${l.ink}) ${at}/${w} ${h} no-repeat`;
+    return {
+      background: [
+        ...['top left', 'top right', 'bottom left', 'bottom right'].flatMap((at) => [arm(at, '4px', '1.5px'), arm(at, '1.5px', '4px')]),
+        '#ffffff'
+      ].join(','),
+      border: 'none',
+      boxShadow: chip,
+      borderRadius: '0'
+    };
+  }
+  if (l.kind === 'node') return { background: '#ffffff', border: `1.5px solid ${l.ink}`, boxShadow: chip };
   if (l.kind === 'false') return { background: '#ffffff', border: `2px solid ${l.ink}`, boxShadow: chip };
   if (l.kind === 'elim') {
     return {

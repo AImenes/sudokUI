@@ -47,15 +47,15 @@ describe('the marks', () => {
     expect(m.cands.get(B.cell)?.get(B.digit)).toBe('primary');
   });
 
-  it('keep a colouring’s colour inside the ring of what it removes, and only a colour the step names', () => {
-    const s = step({ tech: 'SIMPLE_COLORS', primary: [A], secondary: [B], eliminations: [A, C] });
-    const m = hintMarks(s, none);
-    expect(m.cands.get(A.cell)?.get(A.digit)).toBe('elimOn');
-    expect(m.inside.get(A.cell)?.get(A.digit)).toBe('primary');
-    expect(m.cands.get(C.cell)?.get(C.digit)).toBe('elim');
-    expect(m.inside.get(C.cell)).toBeUndefined();
-    // the same removal outside a colouring is a plain ring
-    expect(hintMarks({ ...s, tech: 'X_CHAIN' }, none).inside.size).toBe(0);
+  it('keep no colour inside the ring of a removal that is no chain node, whatever the technique (G5)', () => {
+    // a colouring's parity once stayed inside its removals; a colouring now
+    // says its parity (truth 'parity'), and no technique's name does it
+    for (const tech of ['X_CHAIN', 'SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'] as Tech[]) {
+      const m = hintMarks(step({ tech, primary: [A], secondary: [B], eliminations: [A, C] }), none);
+      expect(m.cands.get(A.cell)?.get(A.digit), tech).toBe('elim');
+      expect(m.cands.get(C.cell)?.get(C.digit), tech).toBe('elim');
+      expect(m.inside.size, tech).toBe(0);
+    }
   });
 
   it('keep the colour a step names for a placed chain node, as Digit Forcing places its own assumption', () => {
@@ -265,29 +265,43 @@ describe("a chain's truth (phase 2b)", () => {
 
 
 describe('a colouring', () => {
-  const ROLE = { primary: 'primary', secondary: 'secondary', fin: 'fins' } as const;
-  /** every candidate a frame (or the full view) draws in a role colour is in that role's list */
-  function colouredAsNamed(s: Step, solved: (c: number) => boolean, label: string) {
+  /**
+   * every candidate a frame (or the full view) draws is in a shade of its
+   * own cluster's colour, or what the step makes of it: a removal, a true
+   * disc or a false ring, or the plain ring of a weak tie's end; never a
+   * role's colour (docs/hint-drawing-colouring.md)
+   */
+  function shadedAsColoured(s: Step, solved: (c: number) => boolean, label: string) {
+    const { clusters } = s.colouring!;
+    const shadeOf = (cell: number, digit: number) => {
+      for (const [k, cl] of clusters.entries()) {
+        const hue = k === 0 ? 'purple' : 'orange';
+        if (cl.dark.some((cd) => cd.cell === cell && cd.digit === digit)) return `${hue}Dark`;
+        if (cl.light.some((cd) => cd.cell === cell && cd.digit === digit)) return `${hue}Light`;
+      }
+      return null;
+    };
     for (const frame of [null, ...walkFrames(s)]) {
       const m = frameMarks(s, frame, solved);
       for (const [cell, ds] of m.cands)
         for (const [digit, kind] of ds) {
-          if (kind !== 'primary' && kind !== 'secondary' && kind !== 'fin') continue;
-          const list = s[ROLE[kind]] ?? [];
-          expect(list.some((cd) => cd.cell === cell && cd.digit === digit), `${label}: ${digit} in cell ${cell} drawn ${kind}`).toBe(true);
+          expect(['primary', 'secondary', 'fin', 'elimOn', 'placeOn', 'oneTrue'], `${label}: ${digit} in cell ${cell}`).not.toContain(kind);
+          if (/Dark|Light/.test(kind)) expect(kind, `${label}: ${digit} in cell ${cell}`).toBe(shadeOf(cell, digit));
         }
+      expect(m.inside.size, label).toBe(0);
     }
   }
 
-  it('colours only what the step puts in a colour, in the full view and every frame of the walk', () => {
-    for (const tech of ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'] as Tech[]) {
+  it('colours only what the step puts in a colour, in its shade, in the full view and every frame of the walk', () => {
+    for (const tech of ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D', 'REMOTE_PAIR'] as Tech[]) {
       const ex = EXAMPLES[tech]!;
-      colouredAsNamed(ex.step, (c) => ex.values[c] !== '0', tech);
+      expect(ex.step.truth, tech).toBe('parity');
+      shadedAsColoured(ex.step, (c) => ex.values[c] !== '0', tech);
     }
   });
 
   it('draws Medusa\'s uncoloured target as a plain node, never as a colour the step proves false', async () => {
-    // rule 6: if blue were true, r4c4 would lose both its candidates (7, 9)
+    // rule 6: if dark purple were true, r4c4 would lose both its candidates (7, 9)
     const { parseGrid } = await import('../src/engine/board');
     const { findNextStep, applyStep } = await import('../src/engine/humanSolver');
     const g = parseGrid('040000700010090400600200003200005036000300500003810270100000000006057010000000004')!;
@@ -297,8 +311,9 @@ describe('a colouring', () => {
       s = findNextStep(g)!;
     }
     expect(s.tech).toBe('MEDUSA_3D');
+    expect(s.colouring?.rule).toBe('medusa6');
     const solved = (c: number) => g.values[c] > 0;
-    colouredAsNamed(s, solved, 'Medusa');
+    shadedAsColoured(s, solved, 'Medusa');
     const r4c4 = 3 * 9 + 3;
     const m = frameMarks(s, null, solved);
     for (const d of [7, 9]) expect(m.cands.get(r4c4)?.get(d), `${d} of r4c4`).toBe('node');
@@ -340,9 +355,13 @@ describe('the legend', () => {
     expect([k.onValue.has('secondary'), k.onBand.has('secondary')]).toEqual([true, false]);
   });
 
-  it('for a colouring names only the conclusion: the explanation names its colours', () => {
-    const s = step({ tech: 'SIMPLE_COLORS', primary: [A], secondary: [B], eliminations: [C] });
-    expect(legendOf(s).map((l) => l.kind)).toEqual(['elim']);
+  it('names what is drawn whatever the technique: no technique’s name hides a colour from it', () => {
+    // a colouring once named only its removals, its parities left to the
+    // explanation; a colouring now names its shades (parityLegend)
+    for (const tech of ['X_WING', 'SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'] as Tech[]) {
+      const s = step({ tech, primary: [A], secondary: [B], eliminations: [C] });
+      expect(legendOf(s).map((l) => l.kind), tech).toEqual(['elim', 'primary', 'secondary']);
+    }
   });
 });
 

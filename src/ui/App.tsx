@@ -33,6 +33,7 @@ import { SettingsDialog, InfoDialog } from './SettingsInfo';
 import { ReportDialog } from './ReportDialog';
 import type { ReportKind } from './report';
 import type { Step } from '../engine/steps';
+import { buildable } from '../engine/chainTrainer';
 import { ProgressDialog } from './Progress';
 import { Modal } from './Dialogs';
 import type { LearnTarget } from './Learn';
@@ -838,8 +839,8 @@ export default function App() {
               <div className="practice-actions">
                 {!practiceFound &&
                   !chain &&
-                  practiceTarget?.links?.length &&
-                  practiceTarget.links.every((l) => l.from.length === 1 && l.to.length === 1) && (
+                  practiceTarget &&
+                  buildable(practiceTarget) && (
                     <button
                       className="ghost"
                       onClick={() => startChain(practiceTarget.eliminations)}

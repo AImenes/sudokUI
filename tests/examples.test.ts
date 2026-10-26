@@ -17,6 +17,7 @@ import { solve } from '../src/engine/bruteForce';
 import { ratePuzzle, applyStep, findStep } from '../src/engine/humanSolver';
 import { TECHS, Tech } from '../src/engine/ratings';
 import type { Step } from '../src/engine/steps';
+import { isParity, isTie } from '../src/engine/steps';
 import { setEngineText, engineLang } from '../src/engine/text';
 import { cleanTechniques } from '../src/engine/generator';
 import { EXAMPLES } from '../src/content/examples';
@@ -146,18 +147,24 @@ describe('worked examples', () => {
       // one mark per highlighted candidate of an empty cell (a solved cell
       // shows its colour on the digit; docs/hint-drawing.md G1-G5): a disc
       // for a role, a disc and an outer ring for a placement, a tinted ring
-      // for a removal (a colouring's removal fills its ring with the colour
-      // it carried), and a bar over each removed digit
+      // for a removal (a chain node's removal fills its ring with the colour
+      // it carried), and a bar over each removed digit; a colouring's every
+      // coloured candidate, a disc in its shade or a true disc, or the
+      // removal its colour is proven to be, and the ends of its weak ties
       const key = (cd: { cell: number; digit: number }) => `${cd.cell}:${cd.digit}`;
       const empty = (cd: { cell: number }) => ex.values[cd.cell] === '0';
+      const parity = isParity(ex.step);
+      // the links the full view draws: a colouring's weak ties, not its ties
+      const links = (ex.step.links ?? []).filter((l) => !parity || !isTie(l));
       const marked = new Set(
         [
           ...(ex.step.primary ?? []),
           ...(ex.step.secondary ?? []),
           ...(ex.step.fins ?? []),
+          ...(ex.step.colouring?.clusters ?? []).flatMap((cl) => [...cl.dark, ...cl.light]),
           ...ex.step.eliminations,
           ...ex.step.placements,
-          ...(ex.step.links ?? []).flatMap((l) => [...l.from, ...l.to])
+          ...links.flatMap((l) => [...l.from, ...l.to])
         ]
           .filter(empty)
           .map(key)
@@ -165,21 +172,20 @@ describe('worked examples', () => {
       const removed = new Set(ex.step.eliminations.filter(empty).map(key));
       const placed = new Set(ex.step.placements.filter(empty).map(key));
       const named = new Set([...(ex.step.primary ?? []), ...(ex.step.secondary ?? []), ...(ex.step.fins ?? [])].map(key));
-      const colouring = ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'].includes(tech);
-      // a removal keeps a named colour inside its ring, one filled ring, in a
-      // colouring or on a chain node (Nishio's assumption)
+      // a removal keeps a named colour inside its ring, one filled ring, on
+      // a chain node (Nishio's assumption)
       const nodes = new Set((ex.step.links ?? []).flatMap((l) => [...l.from, ...l.to]).map(key));
-      const circlesOf = (k: string) => (removed.has(k) ? (named.has(k) && (colouring || nodes.has(k)) ? 1 : 2) : placed.has(k) ? 2 : 1);
+      const circlesOf = (k: string) => (removed.has(k) ? (named.has(k) && nodes.has(k) ? 1 : 2) : placed.has(k) ? 2 : 1);
       // the arrows: none for a link whose ends share a cell and differ in
       // digit (a switch inside a cell, or a set's change of digit: its
-      // marks say it), and a dot beside the first node of each branch that
-      // infers something (a cluster of ties has no reading order; a chain
-      // goes on through a node it reached, or through another digit of a
-      // set it reached)
-      const links = ex.step.links ?? [];
+      // marks say it), but a colouring's weak tie there is corner brackets;
+      // and a dot beside the first node of each branch that infers
+      // something (a cluster of ties has no reading order, and a weak tie
+      // no direction; a chain goes on through a node it reached, or through
+      // another digit of a set it reached)
       const share = (a: { cell: number }[], b: { cell: number }[]) => a.some((x) => b.some((y) => y.cell === x.cell));
       const digits = (node: { digit: number }[]) => [...new Set(node.map((cd) => cd.digit))].sort().join(',');
-      const silent = (l: (typeof links)[number]) => share(l.from, l.to) && digits(l.from) !== digits(l.to);
+      const silent = (l: (typeof links)[number]) => !parity && share(l.from, l.to) && digits(l.from) !== digits(l.to);
       const drawn = links.filter((l) => !silent(l));
       let starts = 0;
       let counted = false;

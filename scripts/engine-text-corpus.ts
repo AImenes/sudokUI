@@ -23,7 +23,8 @@ import { ALL_TECHS, TECHS, Tech } from '../src/engine/ratings';
 import { generatePuzzle } from '../src/engine/generator';
 import { describe, walkFrames } from '../src/engine/hintFrames';
 import { EMPTY_CHAIN, Chain, extend, nextLinks, statement, conclusions, chainStep } from '../src/engine/chainTrainer';
-import { Step } from '../src/engine/steps';
+import { Step, isParity } from '../src/engine/steps';
+import { frameMarks, parityLegend } from '../src/content/hintMarks';
 import { EXAMPLES } from '../src/content/examples';
 import practice from '../src/content/practicePuzzles.json';
 import seeds from '../src/content/seeds.json';
@@ -51,6 +52,11 @@ function stepTexts(step: Step, out: string[], tag: string) {
   for (const link of step.links ?? []) if (link.text) out.push(`${tag} K: ${link.text}`);
   out.push(`${tag} X: ${describe(step)}`);
   for (const f of walkFrames(step)) out.push(`${tag} W: ${f.text}`);
+  // a colouring's legend words, in every view: its shades, its lines, the colour it proves
+  if (isParity(step)) {
+    const labels = new Set([null, ...walkFrames(step)].flatMap((f) => parityLegend(step, frameMarks(step, f, () => false)).map((e) => e.label)));
+    for (const label of labels) out.push(`${tag} G: ${label}`);
+  }
 }
 
 function chainTexts(g: Grid, rnd: () => number, out: string[], tag: string) {

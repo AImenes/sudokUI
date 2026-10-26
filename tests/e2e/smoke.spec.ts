@@ -538,20 +538,76 @@ test.describe('the walk', () => {
     const use = page.getByRole('button', { name: 'Use Hint' });
     if (await use.count()) await use.click();
     await page.getByRole('button', { name: 'Show me' }).click();
-    const all = await page.locator('svg.board .chain-arrows path').count();
+    // a colouring (docs/hint-drawing-colouring.md): the full view draws its
+    // argument, dashed lines with no head and no start dot, and no tie
+    const shafts = page.locator('svg.board .chain-arrows .chain-shaft');
+    const ties = page.locator('svg.board .chain-arrows .chain-tie');
+    const heads = page.locator('svg.board .chain-arrows polygon');
+    const all = await shafts.count();
+    expect(all).toBeGreaterThanOrEqual(1);
+    expect(all).toBeLessThanOrEqual(3);
+    await expect(page.locator('svg.board .chain-arrows .chain-shaft.weak-tie')).toHaveCount(all);
+    await expect(heads).toHaveCount(0);
+    await expect(ties).toHaveCount(0);
+    await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
+    await expect(page.locator('svg.board .walk-badge')).toHaveCount(0);
     await page.getByRole('button', { name: 'Walk through it' }).click();
     await expect(page.locator('.hint-walk-count')).toContainText('1 of');
     const first = await page.locator('.hint-walk-text').innerText();
     expect(first.length).toBeGreaterThan(10);
-    const shown = await page.locator('svg.board .chain-arrows path').count();
-    expect(shown).toBeLessThan(all);
+    // the cluster's frame: its ties, and no line of the argument yet
+    expect(await ties.count()).toBeGreaterThan(0);
+    await expect(shafts).toHaveCount(0);
     await page.keyboard.press('ArrowRight');
     await expect(page.locator('.hint-walk-count')).toContainText('2 of');
+    // the argument's first line, wearing its frame's number, and the ties gone
+    await expect(shafts).toHaveCount(1);
+    await expect(ties).toHaveCount(0);
+    await expect(heads).toHaveCount(0);
+    await expect(page.locator('svg.board .walk-badge')).toHaveText(['2']);
     await page.keyboard.press('ArrowLeft');
     await expect(page.locator('.hint-walk-count')).toContainText('1 of');
     await page.getByRole('button', { name: 'Show all' }).click();
     await expect(page.locator('.hint-walk-count')).toHaveCount(0);
-    expect(await page.locator('svg.board .chain-arrows path').count()).toBe(all);
+    await expect(shafts).toHaveCount(all);
+  });
+
+  test('walks a directed chain: each frame adds its arrow and its number, and Show all keeps every arrow', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudokui-welcomed', '1');
+    });
+    await page.goto('/#practice=X_CHAIN');
+    await expect(page.locator('.practice-bar')).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: /Hint/ }).first().click();
+    const use = page.getByRole('button', { name: 'Use Hint' });
+    if (await use.count()) await use.click();
+    await page.getByRole('button', { name: 'Show me' }).click();
+    const shafts = page.locator('svg.board .chain-arrows .chain-shaft');
+    // a head is drawn in the arrow's ink, over a halo of its own
+    const heads = page.locator('svg.board .chain-arrows polygon[fill="var(--hint-arrow)"]');
+    const badges = page.locator('svg.board .walk-badge');
+    // the full view: every arrow, a head on all but the shortest, one start
+    // dot, and no walk numbers
+    const all = await shafts.count();
+    expect(all).toBeGreaterThan(1);
+    const allHeads = await heads.count();
+    expect(allHeads).toBeGreaterThan(0);
+    await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
+    await expect(badges).toHaveCount(0);
+    await page.getByRole('button', { name: 'Walk through it' }).click();
+    // frame by frame, one more arrow and its number; the dot stays
+    for (let k = 1; k <= all; k++) {
+      await expect(page.locator('.hint-walk-count')).toContainText(`${k} of`);
+      await expect(shafts).toHaveCount(k);
+      await expect(badges).toHaveText(Array.from({ length: k }, (_, i) => String(i + 1)));
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
+      expect(await heads.count()).toBeLessThanOrEqual(k);
+      await page.keyboard.press('ArrowRight');
+    }
+    await page.getByRole('button', { name: 'Show all' }).click();
+    await expect(shafts).toHaveCount(all);
+    await expect(heads).toHaveCount(allHeads);
+    await expect(badges).toHaveCount(0);
   });
 });
 

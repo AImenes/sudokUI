@@ -77,11 +77,16 @@ Every rule is numbered so a commit, a test or a review can cite it.
   truth > a role. A candidate a step lists in more than one role takes the
   first of pattern, acts-through, exception, in the full view and in every
   walk frame alike. A candidate that is removed
-  keeps no ring of a colour it never had (today four techniques draw a
-  removal ringed blue that was never blue: Simple Colors' trap target,
-  Multi Colors rule 1 and 2, Medusa rules 3-5, Digit Forcing's removal;
-  Aligned Pair Exclusion, Exocet and Pattern Overlay ring their removals
-  blue because the removals sit in the pattern list). A removed or placed
+  keeps no ring of a colour it never had (before phase 1 four techniques
+  drew a removal ringed blue that was never blue: Simple Colors' trap
+  target, Multi Colors rule 1 and 2, Medusa rules 3-5, Digit Forcing's
+  removal; Aligned Pair Exclusion, Exocet and Pattern Overlay ringed their
+  removals blue because the removals sit in the pattern list). A
+  colouring's removal holds nothing inside its ring, not even the shade it
+  was in (on a dark board a removal ring on a shade's fill is 1.16:1); the
+  legend names the shade instead ("remove: dark purple, proven false").
+  The colouring exception, by which a colouring's removal kept its
+  parity's colour inside the ring, was retired in phase 3. A removed or placed
   node of a chain whose truth is drawn (phase 2b) is the removal or the
   placement alone: the mark says its truth (removed is false, placed is
   true), so no truth ring or disc is drawn with it; the walk's frames
@@ -161,10 +166,39 @@ Every rule is numbered so a commit, a test or a review can cite it.
   the set spans other cells too) draws no arrow: the false ring and the
   true disc side by side say it. The walk still gives it a frame and a
   sentence. The next arrow starts at the candidate the chain leaves the
-  cell by. (Colouring's in-cell ties in 3D Medusa wait for phase 3.)
+  cell by. A colouring's tie inside one cell (a bivalue cell in 3D Medusa
+  or a Remote Pair) draws nothing either: a dark and a light disc side by
+  side say it. A colouring's weak tie inside one cell (3D Medusa's witness
+  or clash between two candidates of a cell) is drawn as **corner
+  brackets** round the cell, so no frame is blank: four L-shapes in the
+  arrow ink, inset 0.055 of a cell, arms 0.10 (shorter at the bottom
+  corners, which sit nearer the bottom row of candidates, so every arm
+  keeps 0.18 of a cell from each candidate's place), the arrow's stroke
+  and halo (thicker on a phone), the walk number on the first clear
+  corner.
 - **G13. Ties stay quiet.** An undirected tie (a conjugate pair or a
-  bivalue cell in colouring) is a thin straight line in the arrow colour
-  at reduced opacity, no head, drawn only where the hint needs it (G19).
+  bivalue cell in colouring: exactly one of its ends is true) is a thin
+  line in the arrow colour at reduced opacity, no head, straight unless it
+  would pass within a mark and a gap of another mark its frame draws, or
+  of another candidate of its digit the board shows (marked or not: a
+  Remote Pair's tie joins two cells that see each other, and its own
+  removal can lie on the line), when it bends round them with G10's
+  router (no head, no dot), leaving a candidate it shares with another
+  tie at least 30 degrees off that tie and crossing it nowhere further
+  on, wherever the marks leave room (an S, leaving to one side of its
+  line and arriving from the other, when ties stand beside both ends), so
+  the two never read as one line joining their far ends (two candidates
+  of one shade), drawn
+  only in its cluster's walk frame (G19), along the shortest drawn tree
+  that joins the cluster (Kruskal on the drawn length, 3 cells more for
+  each other mark of the hint within 0.13 of a cell of the line, reading
+  order breaking ties), and never in the full view. A **weak tie** (a
+  colouring's witness, clash or bridge: its two ends see each other or
+  share a cell, so at most one is true) is a dashed line with no head and
+  no start dot, bent like an arrow (G10), with its halo and the digits cut
+  out (G11), and numbered in the walk. It claims no truth, so it stays
+  true whatever its ends turn out to be: it is drawn from its frame on, in
+  the full view and in the Learn diagram.
 - **G14. A start marker.** The first node of each branch carries a small
   start marker beside its mark (not at the tail of the first drawn arrow:
   after a switch inside the start cell, that tail is the second node),
@@ -172,9 +206,8 @@ Every rule is numbered so a commit, a test or a review can cite it.
   arrows and the other marks: upper left when that is clear, then round
   the clock, else wherever has most room (a cell line's real width
   counts, so a dot boxed in may touch a thin cell line, never a box line
-  when it can help it). A cluster of undirected ties has no reading
-  order and no marker, and a witness arrow that leaves a node a tie
-  reached starts a branch of its own, with its dot beside that node. The walk numbers each arrow by the frame that adds
+  when it can help it). A colouring's ties and weak ties have no reading
+  order and no marker. The walk numbers each arrow by the frame that adds
   it, so the number on the board is the one the panel shows; a number
   sits on its arrow's shaft, as near the middle as keeps it clear of the
   numbers placed before it, the marks, the start dots and every head; on
@@ -239,19 +272,30 @@ Every rule is numbered so a commit, a test or a review can cite it.
   drawing's). A group node is worded as one: "one of r5c7, r6c7 must be
   2", never all of them.
 - **G19. Colouring** (Simple Colors, Multi Colors, 3D Medusa, Remote
-  Pair): **hue per cluster, shade per parity** (HoDoKu's Multi Colors:
-  dark and light orange for one cluster, dark and light purple for the
-  next). No arrows in the full view. The witnesses (two same-coloured
-  candidates that see each other, the candidate that sees both colours)
-  are drawn as arrows only in the walk frame that names them. When a
-  colour is proven false (a wrap), its candidates become false rings and
-  the other colour true discs. Remote Pair is a colouring of two digits
-  and is drawn as one: parity, not a single "start false" chain, because
-  its eliminations use both parities. A candidate the step puts in no
-  colour is drawn in none, in the full view and every walk frame: a
-  removal as a removal from the frame that reaches it, anything else (3D
-  Medusa's cell that would be left empty) as a plain ring in the arrow's
-  ink round its digit, which the legend does not name. Since phase 1.
+  Pair): **hue per cluster, shade per parity**, designed in full in
+  [hint-drawing-colouring.md](hint-drawing-colouring.md). In short: each
+  coloured candidate is a filled disc in dark or light purple (the first
+  cluster) or, for Multi Colors' second cluster, dark or light orange,
+  dark being the colour the argument tries first. The full view is
+  HoDoKu's colouring plus the reason: the shades, the removals and the 1-3
+  dashed weak ties (G13) the argument rests on; no ties, no arrows, no
+  start dots, no walk numbers. The walk draws one frame per cluster with
+  its ties, then one per weak tie of the argument (a witness, a clash, a
+  bridge), each kept from its frame on; where the step proves a colour
+  false (Simple Colors' wrap, Multi Colors where a colour sees both
+  colours of the other cluster, 3D Medusa rules 1, 2 and 6), a proof
+  frame draws that colour as false rings and its partner as true discs,
+  and the conclusion and the full view draw it as the removals it is,
+  beside the true discs (nothing is placed: the step only removes, and
+  each is then a single). A step that proves no colour draws nothing true
+  or false. Remote Pair is one purple cluster over its two digits, each
+  cell a dark and a light candidate, its ties on the lower digit. A
+  candidate the step puts in no colour is drawn in none: a removal as a
+  removal from the frame that reaches it, 3D Medusa's cell a colour would
+  empty as a plain ring in the arrow's ink round its digit, which the
+  legend names ("a cell dark purple would empty"). Hypotheses are never
+  drawn: the words say "if dark purple is true, the 4 in r6c4 is true",
+  never "placed". Since phase 3.
 - **G20. Patterns** (singles, intersections, subsets, fish, wings,
   uniqueness, Sue de Coq, Fireworks, Exocet, APE, Pattern Overlay,
   Tridagon, Extended Rectangle, Chute Remote Pair, BUG+1): role colours
@@ -270,14 +314,18 @@ Every rule is numbered so a commit, a test or a review can cite it.
   board, the legend under it, the notation line and the walk frames are
   all generated from the step's links and roles, and tests hold them
   equal: every node in the notation is drawn, every role drawn is in the
-  legend, every link is in exactly one walk frame.
+  legend, every link is introduced by exactly one walk frame (a chain's
+  link then stays drawn; a colouring's weak tie stays drawn from that
+  frame on, and its ties are drawn in their cluster's frame only).
 - **G23. The legend speaks in shapes.** It shows a swatch for each mark
   the hint uses, drawn like the mark: true disc, false ring, removed
   (a barred ring), placed (a disc with an outer ring), each role (a disc;
   the rounded outline where the role is drawn only on solved digits; a
   small band, dashed for a cover, where it is drawn only as a house band),
-  solid and dashed arrow, tie, start marker. It names only what the board
-  draws: a role every candidate of which became a removal or a placement
+  solid and dashed arrow, tie, start marker; a colouring's pair of shades
+  per cluster, its dashed weak tie and its corner brackets. It names only
+  what the board draws: a role every candidate of which became a removal
+  or a placement
   lends its words to that entry ("remove: the cell that would complete
   the rectangle"). During a walk it names what the frame shows. The marks
   and the legend both come from one call in `src/content/hintMarks.ts`
@@ -324,9 +372,11 @@ used). A step says how its truth is read, in a new field
   candidate can be true in one branch and false in another (the stored
   Digit Forcing example assumes 8 in r1c1 both ways), so one map cannot
   hold it.
-- **parity** (colouring and Remote Pair): a cluster index and a parity
-  per candidate, and the parity proven false where one is (Simple Colors'
-  wrap, Multi Colors rule 1, Medusa rules 1, 2 and 6).
+- **parity** (colouring and Remote Pair): each cluster's dark and light
+  candidates, and the cluster whose dark colour is proven false where one
+  is (Simple Colors' wrap, Multi Colors where a colour sees both colours
+  of the other cluster, HoDoKu's Multi Colors 2, Medusa rules 1, 2 and
+  6); `src/engine/truth.ts` `checkParity` holds it to its rules.
 
 What each finder must add (checked by replaying the rule on the 21 stored
 examples with links):
@@ -374,10 +424,12 @@ data changes later.
    conflicts with both end nodes (the start is false and the end true
    under the derivation, by design); the legend's words follow (G8: solid
    means "therefore true", which is the strong link only in AIC form).
-3. **Colouring** (G19): `clusters` on the four colouring techniques, hue
-   per cluster and shade per parity, witnesses only in their walk frames.
-   Accept: coloringViz tests updated; the prose's colour words match the
-   drawn hues.
+3. **Colouring** (G19, [hint-drawing-colouring.md](hint-drawing-colouring.md)):
+   `colouring` on the four colouring techniques, hue per cluster and shade
+   per parity, ties only in their cluster's frame, the argument's weak
+   ties from their walk frame on and in the full view, a proof frame
+   where a colour is proven. Accept: coloringViz tests updated; the
+   prose's colour words match the drawn hues.
 4. **Sets** (G16): group hulls, ALS hulls and tints, ALS finders emit
    their internal links and ALS index, Death Blossom branches. Accept:
    derivation covers the ALS family; eurekaOf renders ALS in braces.
@@ -435,13 +487,33 @@ dark ones. Arrows are the only achromatic mark.
 | `--hint-pattern` (fill / ink) | #498de5 / #175bb7 | #498de5 | disc |
 | `--hint-secondary` (acts-through) | #f8b93f / #805500 | #f8b93f | disc |
 | `--hint-fin` (exception) | #dec4fe / #7646a5 | #dec4fe | disc |
+| `--hint-purple` (dark purple; fill / light edge) | #c361f1 / #c361f1 | #c361f1, edge = fill | disc r 13, digit #10131c at 5.57:1; a colouring's first cluster (G19) |
+| `--hint-purple-light` (light purple) | #ccb9e7 / #c361f1 | #ccb9e7, edge = fill | disc r 13, digit at 10.30:1 |
+| `--hint-orange` (dark orange) | #ed6907 / #ed6907 | #ed6907, edge = fill | disc r 13, digit at 5.85:1; Multi Colors' second cluster only |
+| `--hint-orange-light` (light orange) | #fcd2b1 / #ed6907 | #fcd2b1, edge = fill | disc r 13, digit at 13.24:1 |
 | `--hint-als-1..5` (fill / light edge) | #ffd3b8/#9b5212, #dfe2fe/#5353ad, #a2b63c/#5b6704, #ec84b8/#9e366f, #a9926b/#745e39 | same fills, no edge | rounded square 24×24, rx 6 |
 | `--hint-arrow` (arrows, ties, start dot, walk badges) | #151a24 | #f2f4f9 | stroke 3; weak dash "8 6" with butt caps; head 14 long × 11 wide; tail and tip 3 units outside the marks' rims |
 | halo | `--cell-bg`, arrow width + 2 (`SIZES.halo`), opacity 0.75, the head outlined 2 wide | same | drawn after the grid lines, with the arrow; on a small board 6.5 round a 4.5 shaft |
 | band | role fill at alpha 0.07 | 0.10 | outline inset 3.5, stroke 3, rx 8, role ink at full opacity |
 | `--hint-on-fill` / `--hint-in-ring` (digits) | #10131c / #1b2233 | #10131c / #eef1f8 | weight 700 |
 
-Tie: arrow ink, width 2, opacity 0.5, halo 5 at 0.5 (on a small board 3 and 6). Start dot: r 4.5 in
+Shades: the light themes rim both shades of a cluster in its dark shade,
+1 unit drawn inwards, on every board and in Learn, so a light shade keeps
+its own fill over 85% of the disc; the dark themes draw no edge. On a
+phone or in a diagram a disc is about ten CSS pixels across and the eye
+mixes its rim into its fill, so a rim in the dark shade pulls the light
+one towards it: mixed by area (the digit left out), as the app draws them
+at both sizes, as Learn draws them and as the legends' swatches draw them
+(a rim about a thirteenth of the radius), a cluster's two shades stay 15
+or more apart in worst-model CIEDE2000, purple 15.2 and orange 20.6 in
+the light themes, the fills' own 17.6 and 22.7 in the dark ones
+(tests/shadeRender.test.ts; a 4-unit rim had brought purple to 9). The
+keyline, not the rim, parts a shade from the player's own cell colours (a
+light shade is 2.6 and 4.0 from the player's purple and orange cells on
+white): 2 units for a shade on a small board, as wide as two marks side
+by side in a cell allow. Weak tie: the weak arrow's dash and halo, no
+head. Corner brackets: inset 5.5, arms 10 (7 at the bottom corners), the
+arrow's stroke (4 on a small board). Tie: arrow ink, width 2, opacity 0.5, halo 5 at 0.5 (on a small board 3 and 6). Start dot: r 4.5 in
 arrow ink with a 2-unit board-coloured stroke (6.3 on a small board and
 in Learn). Walk badge: r 10, arrow ink, numeral 13 in `--cell-bg` (1.6
 times on a small board). Digits are cut out of the arrows with a
@@ -453,7 +525,11 @@ only as a ring; green is always true or placed; red is always removed. In
 a chain step every node takes its truth mark, and pattern-blue discs are
 not used beside truth marks (in the dark theme pattern and true are only
 ΔE 4.1 apart under tritan vision, and both are discs). Gold discs are not
-put beside true discs either (light protan ΔE 8.3). Two exceptions stand
+put beside true discs either (light protan ΔE 8.3), nor orange shades
+(ΔE 10.7): in Multi Colors orange is removals and true discs once a
+colour is proven, and a test holds it. Purple and orange are a
+colouring's alone; the exception's light purple (`--hint-fin`) is never
+drawn beside them. Two exceptions stand
 until their phases: a true group's members keep the pattern's disc
 (a true group is "one of these", so none of them is a true disc), named
 in the legend as one candidate of each group true, until phase 4 draws
@@ -465,8 +541,11 @@ entry of their own.
 bar. Placed vs true: the outer ring (same colour by design). A set member:
 the square. Strong vs weak: solid vs dashed. Every other pair is told
 apart by colour alone under all three simulations in the light themes;
-in the dark ones true/false (ΔE 11.9 tritan), secondary/removed (5.9) and
-fin/false (5.3) lean on shape.
+in the dark ones true/false (ΔE 11.9 tritan), secondary/removed (5.9),
+fin/false (5.3), dark orange/removed (11.8) and light orange/removed (8.5)
+lean on shape. The shades' own numbers (within purple 17.6, within orange
+22.7, across the clusters 14.6 and up) are in
+[hint-drawing-colouring.md](hint-drawing-colouring.md), Colours.
 
 While a hint draws, the player's peer and same-digit tints step aside
 (the amber same-digit tint reads like a gold band), as the bivalue rings
@@ -608,7 +687,52 @@ the values above are its final ones.
   read as a 3, so it went: keep the digit whole, e.g. outline the digit
   in the board's colour over a bar drawn under it, or stop the bar short
   of the digit's box).
-- [ ] Phase 3: colouring
+- [x] Phase 3: colouring. Merged and live after three review rounds
+  (round 1 on 1db1969, round 2 on 95d53a3, a targeted round 3 on
+  e9df0f6), as [hint-drawing-colouring.md](hint-drawing-colouring.md)
+  designs it: the design (e47f3ab); a fixture of every drawing that is
+  not a colouring, made before any change, which every later commit
+  passes unchanged (`tests/drawingSnapshot.test.ts`, 1debe13); the
+  palette, dark and light purple and orange (7a68a55); the drawing
+  machinery for `truth: 'parity'` (`checkParity`, `Frame.drawn` and
+  `drawnLinks`, the shades, weak ties and corner brackets on both boards
+  and in both legends, f1b9d5e); the four finders saying their parity in
+  the shades' words in three languages, the shortest drawn tree of ties,
+  HoDoKu's colouring notation and the swapped Multi Colors example, with
+  every removal they make on the practice paths unchanged (b6c2dce); then
+  the browser walk test, the older-colouring code retired, a colouring's
+  removals named in reading order, and this spec (1db1969).
+
+  Round 1 (three medium) made the light shade keep light on a phone with
+  a thin rim (46fa4e6), bent a tie round another mark of its frame
+  instead of through it (72cead8), and gave every colouring "Build it
+  yourself" (0dd1756), with its lows: weak ties off box lines and off
+  candidates of their digit, brackets clear of a phone's marks, walk
+  numbers a gap apart, clearer words. Round 2 (one regression in words,
+  one fork) named every removal of a colouring in the full view
+  (b11851b), bent a tie apart from another that shares its end and off
+  every candidate of its digit, and made the tie search about six times
+  faster (e9df0f6), with its lows: the colours' nouns neuter in nb, rule
+  3's bracket legend, the trainer's goal note without a colour, a weak
+  tie's ends nearer their own candidate and walk numbers off the marks
+  (84c6b60). Round 3 found nothing high, medium, false or regressed.
+
+  Left for later, low: round 3's eight, taken in a follow-up right after
+  the merge (the stored Remote Pair's tree could draw without its one
+  crossing; a two-bend or S tie can run beside another tie, or along the
+  board's edge; two weak ties into one removal can cross before it; a
+  boxed-in weak tie off the solve paths can end on another candidate of
+  its cell; rule 4 says its rule-5 removals "fall the same way";
+  docs/highlighting.md's old colour roles; the review gallery's raw
+  description). Also: the Multi Colors search order hides a colour
+  seeing both behind a bridge (24% of the bridges on offer; decision 13,
+  its own reviewed change, since it changes solve paths); off the solve
+  paths, in corner or edge cells boxed in by marks, a few ties that keep
+  outside the marks but under a mark and a gap, or meet at under 20
+  degrees (29 of 89,415 pairs); a walk number on a bracket's corner can
+  touch another line at a phone's size where no corner is clear (G14's
+  trade-off; phase 7); a big chain hint's layout on the main thread,
+  which main already pays (phase 7).
 - [ ] Phase 4: sets
 - [ ] Phase 5: forcing
 - [ ] Phase 6: words

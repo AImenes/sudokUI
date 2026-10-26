@@ -110,7 +110,7 @@ describe('the HoDoKu line', () => {
     expect(stepText(step('XY_WING'))).toBe('XY-Wing: 7/9 in r7c7 / 6 in r7c6,r8c9 => r7c8<>6, r8c6<>6');
     expect(stepText(step('UNIQUENESS_1'))).toBe('Unique Rectangle Type 1: 5/8 in r4c1,r5c18 => r4c8<>5, r4c8<>8');
     expect(stepText(step('UNIQUENESS_4'))).toBe('Unique Rectangle Type 4: 4/6 in r28c79 => r2c9<>4, r8c9<>4');
-    expect(stepText(step('SIMPLE_COLORS'))).toBe('Simple Colors: 4 in r1c5,r6c4,r8c6 / r1c6,r5c5,r8c8 => r6c8<>4');
+    expect(stepText(step('SIMPLE_COLORS'))).toBe('Simple Colors Trap: 4 (r1c5,r6c4,r8c6) / (r1c6,r5c5,r8c8) => r6c8<>4');
     expect(stepText(step('DIGIT_FORCING_CHAIN'))).toBe('Digit Forcing Chain: 8 in r1c1 => r1c1<>3, r1c1<>6');
   });
 
@@ -118,7 +118,8 @@ describe('the HoDoKu line', () => {
     for (const tech of Object.keys(EXAMPLES) as Tech[]) {
       const s = step(tech);
       const line = stepText(s);
-      expect(line.startsWith(`${TECHS[tech].name}: `), tech).toBe(true);
+      // a colouring by HoDoKu's name for its rule: Simple Colors Trap, Multi Colors 1
+      expect(line.startsWith(`${TECHS[tech].name}${s.truth === 'parity' && /Colors/.test(TECHS[tech].name) ? ' ' : ': '}`), tech).toBe(true);
       expect(line, tech).not.toMatch(/undefined|NaN|\n|\|/);
       expect(line.endsWith(conclusions(s)), tech).toBe(true);
       for (const cd of [...s.placements, ...s.eliminations]) expect(line, tech).toContain(cellName(cd.cell));
