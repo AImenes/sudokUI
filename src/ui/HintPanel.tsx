@@ -158,7 +158,7 @@ export function ChainPanel() {
             )}
             <li>{t('your chain: solid into a candidate it makes true, dashed into one it makes false')}</li>
             {legend?.refuted && <li>{words.refuted}</li>}
-            {elims.length > 0 && (
+            {legend?.shown.has('elim') && (
               <li>
                 <i className="swatch-elim" />
                 {t('removed by it')}

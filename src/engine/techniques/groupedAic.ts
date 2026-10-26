@@ -49,7 +49,9 @@ interface GNode {
 function alsLinkTexts(links: ChainLink[], path: GNode[], alses: Als[]): ChainLink[] {
   return links.map((l, i) => {
     const [a, b] = [path[i], path[i + 1]];
-    if (a.als === undefined || a.als !== b.als) return l;
+    // only the strong link between two of the set's digits: a weak one
+    // inside a cell reads as any other
+    if (!l.strong || a.als === undefined || a.als !== b.als) return l;
     const set = alses[a.als];
     // a set of one cell is a bivalue cell, which the plain sentence fits
     if (set.cells.length === 1) return l;

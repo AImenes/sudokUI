@@ -557,7 +557,7 @@ the values above are its final ones.
   when the trainer's chain starts over. To photograph the app's own board with
   an example's hint, a scratch Playwright run on port 4174 opens each
   example's position link (kept in the git-ignored `.vite/`).
-- [ ] Phase 2: truth. 2a (commit 16556da): `truth: 'derived'` on every
+- [x] Phase 2: truth. 2a (commit 16556da): `truth: 'derived'` on every
   AIC-form finder, `src/engine/truth.ts` with its self-check, the examples
   refreshed, tests/truth.test.ts; the chain trainer draws each link as the
   kind it is used as and says `truth: 'derived'`. 2b: a derived chain
@@ -586,8 +586,15 @@ the values above are its final ones.
   group's walk sentence said all its cells "must be" the digit; a true
   group took the whole loop's label; a placing loop's full view drew its
   start placed beside its partner true; fixed in 528a2af-a819369) and
-  lows; round 3, on a819369, is the confirmation round before the
-  merge.
+  lows; round 3, on a819369, found one high in round 2's own fix (a
+  halo under the removal bar painted out the middle of the removed digit,
+  an 8 read as a 3), reverted to main's bar in 8b4f50f, and lows (tests
+  for the app board's truth marks and both legends; the trainer's legend
+  names a removal only in the frame that draws it; the ALS sentence only
+  on a strong link), fixed; its logic lens checked 28,613 derived steps,
+  15,702 trainer chains and 201,813 grouped and ALS chains against each
+  puzzle's solution, and its regression lens 113,114 steps against main,
+  with nothing else found. Merged then.
 
   Left for later, low: the ALS-XZ label's "one digit short of locked"
   (phase 6's words, main's wording); an open chain whose truths clash

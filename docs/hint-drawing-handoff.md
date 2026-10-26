@@ -9,8 +9,9 @@ Updated 2026-10-26.
 
 - **Phase 1 (the board foundation)** merged and live: merge commit
   `a858042` on `main`, after eight review rounds.
-- **Phase 2 (truth)** built, in its confirmation review (round 3 of
-  phase 2b, on `a819369`), to merge to `main` when it passes the rule. A derived
+- **Phase 2 (truth)** merged and live after three review rounds of
+  phase 2b (round 3, the confirmation, on `a819369`; its one high, in a
+  round-2 fix, reverted to main's removal bar). A derived
   chain draws each node as the chain makes it from its first node's
   premise: true a green filled disc, false a blue ring; a true group's
   candidates are their own mark (`oneTrue`, the pattern's disc until phase

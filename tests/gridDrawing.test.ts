@@ -128,7 +128,13 @@ describe("the app board and its panels draw a chain's truth (phase 2b)", () => {
     expect(two).toContain('false, if the first candidate (by the small dot) is false');
     expect(two).toContain('true, if the first candidate (by the small dot) is false');
     // with every node, the same, and nothing about a premise it has not shown impossible
-    expect(trainer(nodes.length)).not.toContain('that premise is impossible');
+    const all = trainer(nodes.length);
+    expect(all).not.toContain('that premise is impossible');
+    expect(all).toContain('removed by it');
+    // a walk frame before the conclusion draws no removal, and its legend names none
+    useGame.setState({ hintStage: 'walk', walkIndex: 0 });
+    Object.assign(useGame.getInitialState() as unknown as Record<string, unknown>, useGame.getState());
+    expect(renderToStaticMarkup(React.createElement(ChainPanel))).not.toContain('removed by it');
     useGame.setState({ chain: null });
   });
 });
