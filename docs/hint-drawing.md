@@ -171,11 +171,16 @@ Every rule is numbered so a commit, a test or a review can cite it.
   side say it. A colouring's weak tie inside one cell (3D Medusa's witness
   or clash between two candidates of a cell) is drawn as **corner
   brackets** round the cell, so no frame is blank: four L-shapes in the
-  arrow ink, inset 0.055 of a cell, arms 0.10, the arrow's stroke and halo
-  (thicker on a phone), the walk number on the first clear corner.
+  arrow ink, inset 0.055 of a cell, arms 0.10 (shorter at the bottom
+  corners, which sit nearer the bottom row of candidates, so every arm
+  keeps 0.18 of a cell from each candidate's place), the arrow's stroke
+  and halo (thicker on a phone), the walk number on the first clear
+  corner.
 - **G13. Ties stay quiet.** An undirected tie (a conjugate pair or a
   bivalue cell in colouring: exactly one of its ends is true) is a thin
-  straight line in the arrow colour at reduced opacity, no head, drawn
+  line in the arrow colour at reduced opacity, no head, straight unless it
+  would pass within a mark and a gap of another mark its frame draws,
+  when it bends round it with G10's router (no head, no dot), drawn
   only in its cluster's walk frame (G19), along the shortest drawn tree
   that joins the cluster (Kruskal on the drawn length, 3 cells more for
   each other mark of the hint within 0.13 of a cell of the line, reading
@@ -499,8 +504,8 @@ keyline, not the rim, parts a shade from the player's own cell colours (a
 light shade is 2.6 and 4.0 from the player's purple and orange cells on
 white): 2 units for a shade on a small board, as wide as two marks side
 by side in a cell allow. Weak tie: the weak arrow's dash and halo, no
-head. Corner brackets: inset 5.5, arms 10, the arrow's stroke (4 on a
-small board). Tie: arrow ink, width 2, opacity 0.5, halo 5 at 0.5 (on a small board 3 and 6). Start dot: r 4.5 in
+head. Corner brackets: inset 5.5, arms 10 (7 at the bottom corners), the
+arrow's stroke (4 on a small board). Tie: arrow ink, width 2, opacity 0.5, halo 5 at 0.5 (on a small board 3 and 6). Start dot: r 4.5 in
 arrow ink with a 2-unit board-coloured stroke (6.3 on a small board and
 in Learn). Walk badge: r 10, arrow ink, numeral 13 in `--cell-bg` (1.6
 times on a small board). Digits are cut out of the arrows with a

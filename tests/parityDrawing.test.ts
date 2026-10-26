@@ -494,16 +494,23 @@ describe('the geometry', () => {
     return out;
   }
   /**
-   * the least room a bracket's halo leaves, at a small board's widths, to
-   * the marks at the places given: a disc and its keyline, or a removal's
-   * ring at its widest stroke, whichever reaches further
+   * the least room a bracket leaves, at a small board's widths, to the marks
+   * at the places given: its halo, in the board's colour, off a mark's
+   * colour (a disc, or a removal's ring at its widest stroke), and its
+   * stroke off a mark's keyline (a shade's, wider on a small board), where
+   * the halo would change nothing
    */
   function bracketRoom(s: Extract<ArrowShape, { kind: 'cell' }>, layout: ReturnType<typeof boardLayout>, places: CellDigit[]): number {
-    const { halo, ring } = smallBoard();
+    const { stroke, halo, ring } = smallBoard();
     const c = layout.cell;
-    const outer = Math.max(MARK.disc + MARK.keyline, MARK.ring + ring / 2 / c) * c;
+    const fill = Math.max(MARK.disc, MARK.ring + ring / 2 / c) * c;
+    const key = (MARK.disc + Math.max(MARK.keyline, MARK.keylineSmall)) * c;
     let least = Infinity;
-    for (const pt of armsOf(s)) for (const x of places) least = Math.min(least, Math.hypot(pt.x - layout.centre(x).x, pt.y - layout.centre(x).y) - outer - halo / 2);
+    for (const pt of armsOf(s))
+      for (const x of places) {
+        const d = Math.hypot(pt.x - layout.centre(x).x, pt.y - layout.centre(x).y);
+        least = Math.min(least, d - fill - halo / 2, d - key - stroke / 2);
+      }
     return least;
   }
 
@@ -528,9 +535,9 @@ describe('the geometry', () => {
       const edge = Math.min(pt.x - x0, x0 + c - pt.x, pt.y - y0, y0 + c - pt.y);
       expect(edge - 3 - half).toBeGreaterThanOrEqual(0.5 - 1e-9);
     }
-    // and its halo, at a small board's width, 0.5 unit or more off every place's mark, keyline and all,
-    // or a removal's ring at its widest: the candidates sit 21 units from a cell's bottom, 23 from its
-    // top, so the bottom corners' arms are shorter than the top ones'
+    // and at a small board's widths, its halo 0.5 unit or more off every place's disc, or a removal's
+    // ring at its widest, and its stroke off every shade's keyline: the candidates sit 21 units from a
+    // cell's bottom, 23 from its top, so the bottom corners' arms are shorter than the top ones'
     expect(bracketRoom(s, layout, [1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => at(5, 5, d)))).toBeGreaterThanOrEqual(0.5);
     const arm = (k: number) => Math.abs(armsOf(s)[k * 42].y - armsOf(s)[k * 42 + 20].y);
     expect(arm(0)).toBeCloseTo(SIZES.bracketArm * c, 5);

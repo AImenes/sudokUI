@@ -136,10 +136,10 @@ export const SIZES = {
   bracketArm: 0.1,
   /**
    * how far a bracket's arm keeps from the middle of each candidate's place
-   * in its cell: a mark's rim and keyline (0.145), the half width of the
-   * bracket's halo on a small board (0.03) and a little more; the bottom
-   * row of places sits nearer the cell's edge than the top row, so the
-   * bottom corners' arms are shorter
+   * in its cell: on a small board, the bracket's halo (half width 0.03)
+   * off a mark's disc (0.13), and its stroke (0.02) off a shade's keyline
+   * (0.15), with a little more; the bottom row of places sits nearer the
+   * cell's edge than the top row, so the bottom corners' arms are shorter
    */
   bracketClear: 0.18,
   /**
