@@ -31,6 +31,17 @@
   --hint-place-ink: #35a458;
   --hint-false: #7fbbff;
   --hint-arrow: #f2f4f9;
+  /* a colouring's shades, a dark and a light one per cluster
+     (docs/hint-drawing-colouring.md, Colours): the same fills in every
+     theme, and here the edge equals the fill */
+  --hint-purple: #c361f1;
+  --hint-purple-ink: #c361f1;
+  --hint-purple-light: #ccb9e7;
+  --hint-purple-light-ink: #ccb9e7;
+  --hint-orange: #ed6907;
+  --hint-orange-ink: #ed6907;
+  --hint-orange-light: #fcd2b1;
+  --hint-orange-light-ink: #fcd2b1;
   --hint-on-fill: #10131c;
   --hint-in-ring: #eef1f8;
   --hint-ring-tint: 0.16;
@@ -72,6 +83,15 @@
   --hint-place-ink: #006c2f;
   --hint-false: #175bb7;
   --hint-arrow: #151a24;
+  /* on a light board both shades of a cluster are rimmed in its dark shade */
+  --hint-purple: #c361f1;
+  --hint-purple-ink: #c361f1;
+  --hint-purple-light: #ccb9e7;
+  --hint-purple-light-ink: #c361f1;
+  --hint-orange: #ed6907;
+  --hint-orange-ink: #ed6907;
+  --hint-orange-light: #fcd2b1;
+  --hint-orange-light-ink: #ed6907;
   --hint-on-fill: #10131c;
   --hint-in-ring: #1b2233;
   --hint-ring-tint: 0.1;
