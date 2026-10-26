@@ -191,8 +191,10 @@ Every rule is numbered so a commit, a test or a review can cite it.
   of one shade), drawn
   only in its cluster's walk frame (G19), along the shortest drawn tree
   that joins the cluster (Kruskal on the drawn length, 3 cells more for
-  each other mark of the hint within 0.13 of a cell of the line, reading
-  order breaking ties), and never in the full view. A **weak tie** (a
+  each other mark of the hint within 0.13 of a cell of the line; of ties
+  that weigh the same, first a straight line, then one with the fewest
+  ties at its ends within 60 degrees of it, then reading order), and
+  never in the full view. A **weak tie** (a
   colouring's witness, clash or bridge: its two ends see each other or
   share a cell, so at most one is true) is a dashed line with no head and
   no start dot, bent like an arrow (G10), with its halo and the digits cut

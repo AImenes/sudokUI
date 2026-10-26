@@ -2405,55 +2405,7 @@
      ],
      "to": [
       {
-       "cell": 21,
-       "digit": 3
-      }
-     ],
-     "strong": true,
-     "undirected": true
-    },
-    {
-     "from": [
-      {
-       "cell": 13,
-       "digit": 3
-      }
-     ],
-     "to": [
-      {
        "cell": 40,
-       "digit": 3
-      }
-     ],
-     "strong": true,
-     "undirected": true
-    },
-    {
-     "from": [
-      {
-       "cell": 21,
-       "digit": 3
-      }
-     ],
-     "to": [
-      {
-       "cell": 21,
-       "digit": 5
-      }
-     ],
-     "strong": true,
-     "undirected": true
-    },
-    {
-     "from": [
-      {
-       "cell": 21,
-       "digit": 3
-      }
-     ],
-     "to": [
-      {
-       "cell": 48,
        "digit": 3
       }
      ],
@@ -2479,6 +2431,38 @@
     {
      "from": [
       {
+       "cell": 40,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 48,
+       "digit": 3
+      }
+     ],
+     "strong": true,
+     "undirected": true
+    },
+    {
+     "from": [
+      {
+       "cell": 48,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 21,
+       "digit": 3
+      }
+     ],
+     "strong": true,
+     "undirected": true
+    },
+    {
+     "from": [
+      {
        "cell": 48,
        "digit": 3
       }
@@ -2486,6 +2470,22 @@
      "to": [
       {
        "cell": 48,
+       "digit": 5
+      }
+     ],
+     "strong": true,
+     "undirected": true
+    },
+    {
+     "from": [
+      {
+       "cell": 21,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 21,
        "digit": 5
       }
      ],

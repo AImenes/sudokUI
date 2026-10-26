@@ -476,12 +476,12 @@ describe('the drawing of a colouring the finders give', () => {
       });
     }
     expect(bent).toBeGreaterThan(10);
-    // the stored Remote Pair: 3r2c5-3r3c4 goes round the 5 of r2c5, which it ran through
+    // the stored Remote Pair: 3r5c5-3r6c4 goes round the 5 of r5c5, which its straight line runs through
     const rp = drawingAt(FIXTURES.find((f) => f.name === 'Remote Pair (stored)')!);
     const s = stepAt(FIXTURES.find((f) => f.name === 'Remote Pair (stored)')!);
-    const i = s.links!.findIndex((l) => named(l) === '3r2c5-3r3c4');
+    const i = s.links!.findIndex((l) => named(l) === '3r5c5-3r6c4');
     expect(rp.shapes[i].kind === 'tie' && rp.shapes[i].d).toMatch(/ Q /);
-    expect(toLine(rp.layout.centre({ cell: 13, digit: 5 }), lineOf(rp.shapes[i]))).toBeGreaterThanOrEqual((MARK.disc + SIZES.gap) * SIZE);
+    expect(toLine(rp.layout.centre({ cell: 40, digit: 5 }), lineOf(rp.shapes[i]))).toBeGreaterThanOrEqual((MARK.disc + SIZES.gap) * SIZE);
   });
 
   it('draws each weak tie clear of every candidate of its digit the board shows and the hint does not mark, along its whole bend', () => {
@@ -1394,15 +1394,15 @@ describe('the ties of a colouring, where two meet and where one passes a candida
     }
   });
 
-  it("bend round a candidate of their digit they do not join: 3D Medusa's 1r1c5-1r8c5 off 1r4c6, a Remote Pair's 2r2c9-2r8c9 off its own removal 2r5c9", () => {
-    const medusa = positionAt('...8.5.3.....69....98..4.....3....5.4...3.6...7.9..2...4....71...92..58.........9', 47).grid;
+  it("bend round a candidate of their digit they do not join: 3D Medusa's 4r1c8-4r1c2 off 4r2c3 and 4r2c5, a Remote Pair's 2r2c9-2r8c9 off its own removal 2r5c9", () => {
+    const medusa = positionAt('..3.8..........3.1.....7..9.2.5.3...9.8.6.......7...5....1....6...4...7.71...9..2', 37).grid;
     const pair = positionAt('238.6...5.5..4.8......2..9.8.6.34..7.........3..27.5.4.1..5......5.8..4.6...9.351', 24).grid;
     const cases: [Step, Grid, string, CellDigit[]][] = [
-      [findNextStep(medusa)!, medusa, '1r1c5-1r8c5', [at(4, 6, 1)]],
+      [findNextStep(medusa)!, medusa, '4r1c8-4r1c2', [at(2, 3, 4), at(2, 5, 4)]],
       [findStep('REMOTE_PAIR', pair)!, pair, '2r2c9-2r8c9', [at(5, 9, 2), at(7, 9, 2)]],
       [findStep('REMOTE_PAIR', pair)!, pair, '2r8c7-2r5c7', [at(7, 7, 2)]]
     ];
-    expect([cases[0][0].tech, cases[0][0].colouring!.rule]).toEqual(['MEDUSA_3D', 'medusa3']);
+    expect([cases[0][0].tech, cases[0][0].colouring!.rule]).toEqual(['MEDUSA_3D', 'medusa2']);
     expect(has(cases[1][0].eliminations, at(5, 9, 2))).toBe(true);
     for (const [s, g, name, passed] of cases) {
       const drawing = drawingOf(s, g.values, g.cands);
@@ -1592,5 +1592,166 @@ describe("a 3D Medusa's removals after its first, where they fall another way; t
     // as src/ui/Learn.tsx and src/content/learnPages.ts write it
     for (const tech of Object.keys(EXAMPLES) as Tech[]) expect(shown(tech), tech).toBe(escaped(describeStep(exampleStep(tech, EXAMPLES[tech]!))));
     expect(shown('MULTI_COLORS')).toMatch(/; one more 6 falls the same way\. So 6 is removed from r3c6, r7c4\.$/);
+  });
+});
+
+/**
+ * A colouring's strong relations, cluster by cluster, rebuilt from the
+ * position as its finder builds them: for a Remote Pair each cell's own two
+ * candidates and the lower digits of two cells that see each other; else
+ * the conjugate pairs of the cluster's candidates, and for 3D Medusa its
+ * bivalue cells
+ */
+function strongRelations(s: Step, values: ArrayLike<number>, cands: ArrayLike<number>): { nodes: CellDigit[]; relations: [CellDigit, CellDigit][] }[] {
+  return s.colouring!.clusters.map((cl) => {
+    const nodes = [...cl.dark, ...cl.light];
+    const relations: [CellDigit, CellDigit][] = [];
+    if (s.tech === 'REMOTE_PAIR') {
+      const cells = [...new Set(nodes.map((x) => x.cell))].sort((a, b) => a - b);
+      const [lo, hi] = [Math.min(...nodes.map((x) => x.digit)), Math.max(...nodes.map((x) => x.digit))];
+      cells.forEach((a, i) => {
+        relations.push([{ cell: a, digit: lo }, { cell: a, digit: hi }]);
+        for (const b of cells.slice(i + 1)) if (UNITS.some((u) => u.includes(a) && u.includes(b))) relations.push([{ cell: a, digit: lo }, { cell: b, digit: lo }]);
+      });
+      return { nodes, relations };
+    }
+    for (const unit of UNITS)
+      for (let digit = 1; digit <= 9; digit++) {
+        const cells = unit.filter((c) => values[c] === 0 && cands[c] & bit(digit));
+        if (cells.length === 2 && cells.every((cell) => has(nodes, { cell, digit }))) relations.push([{ cell: cells[0], digit }, { cell: cells[1], digit }]);
+      }
+    if (s.tech === 'MEDUSA_3D')
+      for (let cell = 0; cell < 81; cell++) {
+        const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => values[cell] === 0 && cands[cell] & bit(d));
+        if (digits.length === 2 && digits.every((digit) => has(nodes, { cell, digit }))) relations.push([{ cell, digit: digits[0] }, { cell, digit: digits[1] }]);
+      }
+    return { nodes, relations };
+  });
+}
+
+/** the tree reading order alone takes, as the tie-break was before: Kruskal, of two ties that weigh the same the first in reading order */
+function byReadingOrder(nodes: readonly CellDigit[], relations: readonly [CellDigit, CellDigit][], marks: readonly CellDigit[]): [CellDigit, CellDigit][] {
+  const parent = new Map(nodes.map((x) => [nameOf(x), nameOf(x)]));
+  const root = (x: string): string => (parent.get(x) === x ? x : root(parent.get(x)!));
+  const edges = relations
+    .map(([a, b]) => (readingOrder(a, b) <= 0 ? [a, b] : [b, a]))
+    .map(([a, b]) => ({ a, b, w: tieWeight(a, b, marks) }))
+    .sort((p, q) => p.w - q.w || readingOrder(p.a, q.a) || readingOrder(p.b, q.b));
+  const out: [CellDigit, CellDigit][] = [];
+  for (const { a, b } of edges) {
+    const [ra, rb] = [root(nameOf(a)), root(nameOf(b))];
+    if (ra === rb) continue;
+    parent.set(ra, rb);
+    out.push([a, b]);
+  }
+  return out;
+}
+
+describe('the shortest drawn tree, of ties that weigh the same', () => {
+  // the practice paths' colourings, then the rule fixtures and stored examples, each with its drawing
+  let all: { name: string; onPath: boolean; step: Step; values: ArrayLike<number>; cands: ArrayLike<number>; drawing: ReturnType<typeof drawingOf> }[] = [];
+  beforeAll(() => {
+    all = [
+      ...colouringsOnPath().map((c) => ({ ...c, onPath: true, drawing: drawingOf(c.step, c.values, c.cands) })),
+      ...everyColouring().map((c) => ({ ...c, onPath: false }))
+    ];
+  }, 600_000);
+  const at = (r: number, c: number, digit: number): CellDigit => ({ cell: (r - 1) * 9 + c - 1, digit });
+  const pair = ([a, b]: [CellDigit, CellDigit]) => `${nameOf(a)}-${nameOf(b)}`;
+  const unordered = ([a, b]: [CellDigit, CellDigit]) => [nameOf(a), nameOf(b)].sort().join('-');
+  /** a tree's weight, and how many of its ties' straight lines pass over another mark */
+  const weight = (tree: [CellDigit, CellDigit][], marks: CellDigit[]) => tree.reduce((n, [a, b]) => n + tieWeight(a, b, marks), 0);
+  const overAMark = (tree: [CellDigit, CellDigit][], marks: CellDigit[]) => tree.filter(([a, b]) => tieWeight(a, b, marks) > drawnDistance(a, b) + 1e-9).length;
+  /** each pair of ties a frame draws that share an end and cross */
+  const crossingAtTheirEnd = (name: string, s: Step, drawing: ReturnType<typeof drawingOf>) =>
+    walkFrames(s).flatMap((fr, f) => {
+      const drawn = [...drawnLinks(s, fr)].filter((i) => drawing.shapes[i].kind === 'tie').map((i) => ({ l: s.links![i], line: lineOf(drawing.shapes[i]) }));
+      return drawn.flatMap((p, i) =>
+        drawn
+          .slice(i + 1)
+          .filter((q) => [p.l.from[0], p.l.to[0]].some((x) => has([q.l.from[0], q.l.to[0]], x)) && cross(p.line, q.line))
+          .map((q) => `${name}, frame ${f + 1}: ${named(p.l)} crosses ${named(q.l)}`)
+      );
+    });
+
+  it('takes a straight line before one over another mark that weighs the same, and the tree is as short', () => {
+    // a rectangle of 4s, r1c1 and r1c4 over r7c1 and r7c4, with a mark between r1c1 and r1c4: that line weighs 3 + 3,
+    // as much as a column's 6, and reading order alone would take it first
+    const [a, b, d, e] = [at(1, 1, 4), at(1, 4, 4), at(7, 1, 4), at(7, 4, 4)];
+    const marks = [a, b, d, e, at(1, 2, 4)];
+    const relations: [CellDigit, CellDigit][] = [
+      [a, b],
+      [b, e],
+      [d, e],
+      [a, d]
+    ];
+    expect(tieWeight(a, b, marks)).toBe(tieWeight(a, d, marks));
+    expect(byReadingOrder([a, b, d, e], relations, marks).map(pair)).toEqual(['4r7c1-4r7c4', '4r1c1-4r1c4', '4r1c1-4r7c1']);
+    const tree = spanningTies([a, b, d, e], relations, marks);
+    expect(tree.map(pair)).toEqual(['4r1c1-4r7c1', '4r7c1-4r7c4', '4r7c4-4r1c4']);
+    expect(overAMark(tree, marks)).toBe(0);
+    expect(weight(tree, marks)).toBeCloseTo(weight(byReadingOrder([a, b, d, e], relations, marks), marks), 9);
+  });
+
+  it("then a line clear of the ties the tree draws at its ends: the stored Remote Pair joins r5c5 and r6c4, not r2c5 and r3c4, which would leave r2c5 between its two ties", () => {
+    // r2c3, r2c5, r3c4, r5c5 and r6c4 hold only 3 and 5; the 3s of two cells that see each other are tied
+    const cells = [at(2, 3, 3), at(2, 5, 3), at(3, 4, 3), at(5, 5, 3), at(6, 4, 3)];
+    const nodes = cells.flatMap((x) => [x, { cell: x.cell, digit: 5 }]);
+    const relations: [CellDigit, CellDigit][] = [
+      ...cells.map((x): [CellDigit, CellDigit] => [x, { cell: x.cell, digit: 5 }]),
+      [at(2, 3, 3), at(2, 5, 3)],
+      [at(2, 5, 3), at(3, 4, 3)],
+      [at(2, 5, 3), at(5, 5, 3)],
+      [at(3, 4, 3), at(6, 4, 3)],
+      [at(5, 5, 3), at(6, 4, 3)]
+    ];
+    const marks = [...nodes, at(6, 3, 3)];
+    // each of the two diagonals runs through the 5 of its upper cell: the square root of 2, and 3 more
+    expect(tieWeight(at(2, 5, 3), at(3, 4, 3), marks)).toBe(tieWeight(at(5, 5, 3), at(6, 4, 3), marks));
+    expect(tieWeight(at(5, 5, 3), at(6, 4, 3), marks)).toBeCloseTo(Math.SQRT2 + 3, 9);
+    // by the time they are weighed, r2c5 draws a tie to its left and one down, each 45 degrees off the diagonal to r3c4;
+    // r5c5 draws only the one up, and r6c4 the one up to r3c4, 45 degrees off
+    expect(byReadingOrder(nodes, relations, marks).map(pair)).toContain('3r2c5-3r3c4');
+    const tree = spanningTies(nodes, relations, marks);
+    expect(tree.filter(([x, y]) => x.cell !== y.cell).map(pair)).toEqual(['3r2c3-3r2c5', '3r2c5-3r5c5', '3r5c5-3r6c4', '3r6c4-3r3c4']);
+    expect(weight(tree, marks)).toBeCloseTo(weight(byReadingOrder(nodes, relations, marks), marks), 9);
+    // as found at its position and as stored, and drawn: no tie of the cluster's frame crosses one that shares its end
+    const f = FIXTURES.find((x) => x.name === 'Remote Pair (stored)')!;
+    const ex = EXAMPLES.REMOTE_PAIR!;
+    expect([ex.puzzle, ex.stepIndex]).toEqual([f.puzzle, f.at]);
+    for (const [where, s, drawing] of [
+      ['found', stepAt(f), drawingAt(f)],
+      ['stored', ex.step, drawingOf(ex.step, Array.from(ex.values, Number), ex.cands)]
+    ] as const) {
+      expect(ties(s).map((l) => named(l)), where).toContain('3r5c5-3r6c4');
+      expect(ties(s).map((l) => unordered([l.from[0], l.to[0]])), where).not.toContain('3r2c5-3r3c4');
+      expect(crossingAtTheirEnd(where, s, drawing)).toEqual([]);
+    }
+  });
+
+  it("is never longer than reading order alone makes it, passes fewer marks, and crosses no tie at its end: the practice paths' colourings, the rule fixtures and the stored examples", () => {
+    const longer: string[] = [];
+    const crossing: string[] = [];
+    const over = { now: 0, before: 0 };
+    for (const { name, onPath, step, values, cands, drawing } of all) {
+      const marks = [...coloured(step), ...step.eliminations];
+      const clusters = strongRelations(step, values, cands);
+      // the relations rebuilt are the finder's: they give its own tree
+      expect(clusters.flatMap(({ nodes, relations }) => spanningTies(nodes, relations, marks)).map(unordered).sort(), name).toEqual(ties(step).map((l) => unordered([l.from[0], l.to[0]])).sort());
+      for (const { nodes, relations } of clusters) {
+        const [tree, before] = [spanningTies(nodes, relations, marks), byReadingOrder(nodes, relations, marks)];
+        if (weight(tree, marks) > weight(before, marks) + 1e-9) longer.push(`${name}: ${weight(tree, marks)} against ${weight(before, marks)}`);
+        if (onPath) {
+          over.now += overAMark(tree, marks);
+          over.before += overAMark(before, marks);
+        }
+      }
+      crossing.push(...crossingAtTheirEnd(name, step, drawing));
+    }
+    expect(all.filter((c) => c.onPath).length).toBe(114);
+    expect(longer).toEqual([]);
+    // on the paths, 192 ties whose straight line passes another mark, against 196 by reading order alone
+    expect(over.now).toBeLessThan(over.before);
+    expect(crossing.slice(0, 10)).toEqual([]);
   });
 });

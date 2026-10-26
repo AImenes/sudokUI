@@ -46,6 +46,14 @@ export function drawnDistance(a: CellDigit, b: CellDigit): number {
   return rounded(Math.hypot(pa.x - pb.x, pa.y - pb.y));
 }
 
+/** how many other marks of the hint a tie's straight line would pass over: their centres within a mark's radius of it (none inside one cell, where it draws no line) */
+function marksOver(a: CellDigit, b: CellDigit, marks: readonly CellDigit[]): number {
+  if (a.cell === b.cell) return 0;
+  const pa = candidateCentre(a);
+  const pb = candidateCentre(b);
+  return marks.filter((m) => !same(m, a) && !same(m, b) && toSegment(candidateCentre(m), pa, pb) < MARK_RADIUS).length;
+}
+
 /**
  * What a tie costs to draw: nothing inside one cell, where it draws no
  * line; else its length, and 3 more for each other mark of the hint whose
@@ -56,24 +64,36 @@ export function tieWeight(a: CellDigit, b: CellDigit, marks: readonly CellDigit[
   if (a.cell === b.cell) return 0;
   const pa = candidateCentre(a);
   const pb = candidateCentre(b);
-  let over = 0;
-  for (const m of marks) {
-    if (same(m, a) || same(m, b)) continue;
-    if (toSegment(candidateCentre(m), pa, pb) < MARK_RADIUS) over++;
-  }
-  return rounded(Math.hypot(pa.x - pb.x, pa.y - pb.y) + OVER_A_MARK * over);
+  return rounded(Math.hypot(pa.x - pb.x, pa.y - pb.y) + OVER_A_MARK * marksOver(a, b, marks));
 }
+
+/** the way the board draws a line from one candidate towards another, as a unit vector */
+function wayTo(from: CellDigit, to: CellDigit): { x: number; y: number } {
+  const p = candidateCentre(from);
+  const q = candidateCentre(to);
+  const l = Math.hypot(q.x - p.x, q.y - p.y);
+  return { x: (q.x - p.x) / l, y: (q.y - p.y) / l };
+}
+
+/** a line the tree draws from a tie's end within 60 degrees of the tie's own way crowds it: bent round a mark, the tie could run along it or cross it */
+const CROWDED = Math.cos(Math.PI / 3);
 
 /**
  * The ties a cluster draws: the shortest drawn spanning tree of its strong
  * relations (Kruskal), every tie weighed by tieWeight, so a cell's own two
  * candidates are joined first and a line over another mark is taken only
- * where nothing shorter joins; of two ties that weigh the same, the first
- * in reading order. `relations` are the cluster's strong relations (its
- * conjugate pairs, its bivalue cells, a Remote Pair's cells that see each
- * other), `marks` every candidate the hint marks. The ties come in walk
- * order: breadth first from the cluster's first candidate in reading
- * order, each from the end nearer it, a candidate's ties in reading order.
+ * where nothing shorter joins. Of the ties that weigh the same, which any
+ * order keeps as short, the tree takes them as it would draw them best:
+ * first one whose straight line passes no other mark, so it draws
+ * straight; then one whose line leaves its ends clear of the ties the tree
+ * already draws there, the fewest of them within 60 degrees of it (a line
+ * bent round a mark leaves its end well off its straight way, and would
+ * run along such a tie or cross it); then the first in reading order.
+ * `relations` are the cluster's strong relations (its conjugate pairs, its
+ * bivalue cells, a Remote Pair's cells that see each other), `marks` every
+ * candidate the hint marks. The ties come in walk order: breadth first
+ * from the cluster's first candidate in reading order, each from the end
+ * nearer it, a candidate's ties in reading order.
  */
 export function spanningTies(
   nodes: readonly CellDigit[],
@@ -82,8 +102,9 @@ export function spanningTies(
 ): [CellDigit, CellDigit][] {
   const edges = relations
     .map(([a, b]) => (readingOrder(a, b) <= 0 ? [a, b] : [b, a]) as [CellDigit, CellDigit])
-    .map(([a, b]) => ({ a, b, w: tieWeight(a, b, marks) }))
+    .map(([a, b]) => ({ a, b, w: tieWeight(a, b, marks), over: marksOver(a, b, marks) > 0 }))
     .sort((p, q) => p.w - q.w || readingOrder(p.a, q.a) || readingOrder(p.b, q.b));
+  type Edge = (typeof edges)[number];
   const parent = new Map(nodes.map((x) => [key(x), key(x)]));
   const root = (x: number): number => {
     while (parent.get(x) !== x) x = parent.get(x)!;
@@ -91,14 +112,41 @@ export function spanningTies(
   };
   const tree = new Map<number, CellDigit[]>();
   const join = (a: CellDigit, b: CellDigit) => tree.set(key(a), [...(tree.get(key(a)) ?? []), b]);
-  for (const { a, b } of edges) {
-    if (!parent.has(key(a)) || !parent.has(key(b))) continue;
-    const ra = root(key(a));
-    const rb = root(key(b));
-    if (ra === rb) continue;
-    parent.set(ra, rb);
-    join(a, b);
-    join(b, a);
+  /** whether a tie still joins two parts of the tree */
+  const joins = ({ a, b }: Edge) => parent.has(key(a)) && parent.has(key(b)) && root(key(a)) !== root(key(b));
+  /** how many lines the tree draws from a tie's ends within 60 degrees of its own */
+  const crowding = ({ a, b }: Edge): number => {
+    if (a.cell === b.cell) return 0;
+    let n = 0;
+    for (const [end, other] of [
+      [a, b],
+      [b, a]
+    ]) {
+      const u = wayTo(end, other);
+      for (const next of tree.get(key(end)) ?? []) {
+        if (next.cell === end.cell) continue;
+        const v = wayTo(end, next);
+        if (u.x * v.x + u.y * v.y > CROWDED + 1e-9) n++;
+      }
+    }
+    return n;
+  };
+  // Kruskal, a weight at a time: of the ties that weigh the same, the best drawn next
+  for (let i = 0, j = 0; i < edges.length; i = j) {
+    while (j < edges.length && edges[j].w === edges[i].w) j++;
+    let open = edges.slice(i, j).filter(joins);
+    while (open.length) {
+      let best = open[0];
+      let score = [Number(best.over), crowding(best)];
+      for (const e of open.slice(1)) {
+        const s = [Number(e.over), crowding(e)];
+        if (s[0] < score[0] || (s[0] === score[0] && s[1] < score[1])) [best, score] = [e, s];
+      }
+      parent.set(root(key(best.a)), root(key(best.b)));
+      join(best.a, best.b);
+      join(best.b, best.a);
+      open = open.filter((e) => e !== best && joins(e));
+    }
   }
   // walk order: breadth first from the first candidate
   const sorted = [...nodes].sort(readingOrder);

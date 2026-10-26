@@ -67,7 +67,7 @@ cell. The Learn diagram is the full view with its legend.
 
 | # | Question | Decision | Why |
 | --- | --- | --- | --- |
-| 1 | Ties in the full view? | No: only in their cluster's walk frame, along the shortest drawn spanning tree; nothing inside one cell | HoDoKu draws none; Medusa's BFS trees draw up to 46 lines, 418 of 1,431 over another mark; the shortest tree (Kruskal on drawn length + 3 per hint mark within 0.13 cell, reading-order tie-break) cuts that to 177 |
+| 1 | Ties in the full view? | No: only in their cluster's walk frame, along the shortest drawn spanning tree; nothing inside one cell | HoDoKu draws none; Medusa's BFS trees draw up to 46 lines, 418 of 1,431 over another mark; the shortest tree (Kruskal on drawn length + 3 per hint mark within 0.13 cell; of equal weights, a straight line first, then the fewest ties at its ends within 60 degrees, then reading order) cuts that to 173 (177 with reading order alone) |
 | 2 | Witness, clash, bridge lines | A weak tie: dashed, headless, no start dot, bent like an arrow (G10), halo, digits cut out (G11), numbered in the walk; drawn from its frame on, and in the full view and Learn (1-3 lines) | the reason on the board, faster than HoDoKu; a directed head would claim an inference, and some would point into a candidate that is true in the solution (checked) |
 | 3 | A symmetric clash | the same weak tie; inside one cell, corner brackets | "not both true" has no direction |
 | 4 | A proven-false colour | proof frame: false rings; conclusion and full view: plain removals, no shade inside (G5's colouring exception retired: a dark-theme removal ring on a shade fill is 1.16:1) | G19 as written, phase 2's order; the shade's name lives on in the legend |
