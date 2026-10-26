@@ -561,8 +561,8 @@ button {
 
 /* a placement's outer ring on a small board: the second drawing, thicker
    and moved out with its thickness, so the gap to the disc stays (G3); a
-   colouring shade's rim likewise, thicker and inwards, which on a light
-   board parts a light shade from the player's own cell colour
+   colouring shade's keyline likewise, wider, which on a small board parts
+   a light shade from the player's own cell colour of the same hue
    (docs/hint-drawing-colouring.md, decision 7) */
 .board .hint-place-small,
 .board .hint-shade-small {
@@ -1256,15 +1256,17 @@ button {
 
 /* a colouring's legend (docs/hint-drawing-colouring.md, "The legend"): a
    cluster's two shades side by side, dark then light, rimmed as on the
-   board; a tie's straight line, a weak tie's dashed one, the corner
-   brackets, and the plain ring of the cell a colour would empty */
+   board (a rim about a thirteenth of the disc's radius, MARK.shadeEdge;
+   tests/shadeRender.test.ts); a tie's straight line, a weak tie's dashed
+   one, the corner brackets, and the plain ring of the cell a colour would
+   empty */
 .hint-legend .swatch-shades-0,
 .hint-legend .swatch-shades-1 {
   width: 22px;
   border-radius: 0;
   background:
-    radial-gradient(circle at 5px 50%, var(--sh) 3.6px, var(--sh-ink) 3.7px 4.7px, transparent 5px),
-    radial-gradient(circle at 17px 50%, var(--sh-light) 3.6px, var(--sh-light-ink) 3.7px 4.7px, transparent 5px);
+    radial-gradient(circle at 5px 50%, var(--sh) 4.45px, var(--sh-ink) 4.55px 4.7px, transparent 5px),
+    radial-gradient(circle at 17px 50%, var(--sh-light) 4.45px, var(--sh-light-ink) 4.55px 4.7px, transparent 5px);
 }
 
 .hint-legend .swatch-shades-0 {

@@ -397,8 +397,8 @@ describe('the legend', () => {
     ]);
     // two discs side by side, the light one rimmed in the dark shade
     const style = swatchStyle(pair[0]);
-    expect(style.background).toContain(`${LIGHT.purple} 3.4px`);
-    expect(style.background).toContain(`${LIGHT.purpleLight} 3.4px,${LIGHT.purpleLightInk}`);
+    expect(style.background).toContain(`${LIGHT.purple} 4.35px`);
+    expect(style.background).toContain(`${LIGHT.purpleLight} 4.35px,${LIGHT.purpleLightInk}`);
     expect(style.width).toBe('22px');
     for (const e of legendOf(fixture('medusa5').step, exampleOf(fixture('medusa5')).values)) expect(swatchStyle(e).background, e.kind).toBeTruthy();
   });
@@ -561,9 +561,10 @@ describe('the app board', () => {
     expect(board).not.toContain('walk-badge');
     // the digits are cut out of the lines
     expect(board).toMatch(/class="chain-arrows" mask="url\(#/);
-    // three dark and three light purple discs, each drawn wide and small, and one removal
-    expect(count(board, /class="hint-shade-wide"[^>]*fill="var\(--hint-purple\)"/g)).toBe(3);
-    expect(count(board, /class="hint-shade-small"[^>]*fill="var\(--hint-purple-light\)"/g)).toBe(3);
+    // three dark and three light purple discs, each keylined wide and small, and one removal
+    expect(count(board, /class="hint-shade"[^>]*fill="var\(--hint-purple\)"/g)).toBe(3);
+    expect(count(board, /class="hint-shade"[^>]*fill="var\(--hint-purple-light\)"/g)).toBe(3);
+    expect(count(board, /class="hint-shade-small"/g)).toBe(6);
     expect(count(board, /class="hint-bar"/g)).toBe(1);
     expect(board).not.toContain('var(--hint-false)');
     expect(board).not.toContain('var(--hint-primary)');
@@ -604,18 +605,26 @@ describe('the app board', () => {
   it("draws Multi Colors' proven orange as removals and true discs, never as a shade beside them", () => {
     const { board } = render(fixture('seesBoth'));
     expect(count(board, /<circle[^>]*fill="var\(--hint-place\)"/g)).toBe(1);
-    expect(count(board, /class="hint-shade-wide"[^>]*fill="var\(--hint-purple/g)).toBe(5);
+    expect(count(board, /class="hint-shade"[^>]*fill="var\(--hint-purple/g)).toBe(5);
     expect(board).not.toContain('var(--hint-orange');
-    expect(count(render(fixture('seesBoth'), 1).board, /class="hint-shade-wide"[^>]*fill="var\(--hint-orange/g)).toBe(4);
+    expect(count(render(fixture('seesBoth'), 1).board, /class="hint-shade"[^>]*fill="var\(--hint-orange/g)).toBe(4);
   });
 
-  it('rims a shade thicker on a small board, as the placement ring is drawn there, inwards', () => {
+  it('rims a shade thin on every board, and on a small board draws its keyline wider, as the placement ring is drawn there', () => {
     const { board } = render(fixture('trap'));
-    const wide = /class="hint-shade-wide" cx="[^"]+" cy="[^"]+" r="([\d.]+)"[^>]*stroke-width="([\d.]+)"/.exec(board)!;
-    const small = /class="hint-shade-small" cx="[^"]+" cy="[^"]+" r="([\d.]+)"[^>]*stroke-width="([\d.]+)"/.exec(board)!;
-    expect(Number(small[2])).toBeGreaterThan(Number(wide[2]));
-    // the same outer edge: the thicker rim grows inwards
-    expect(Number(small[1]) + Number(small[2]) / 2).toBeCloseTo(Number(wide[1]) + Number(wide[2]) / 2, 5);
+    // one disc, the mark's size, its thin rim inwards (tests/shadeRender.test.ts holds what that rim leaves of the light fill)
+    const disc = /class="hint-shade" cx="[^"]+" cy="[^"]+" r="([\d.]+)"[^>]*stroke-width="([\d.]+)"/.exec(board)!;
+    expect(Number(disc[2])).toBeCloseTo(MARK.shadeEdge * 100, 5);
+    expect(Number(disc[1]) + Number(disc[2]) / 2).toBeCloseTo(MARK.disc * 100, 5);
+    // the keyline from the disc's edge out, wider on a small board, and no wider than leaves two
+    // marks side by side in a cell (28 units apart) meeting keyline to disc
+    const keyline = /class="([\w-]+)" cx="[^"]+" cy="[^"]+" r="([\d.]+)" fill="none" stroke="var\(--cell-bg\)" stroke-width="([\d.]+)"/g;
+    const keys = Object.fromEntries([...board.matchAll(keyline)].map((m) => [m[1], [Number(m[2]), Number(m[3])]]));
+    const [wide, small] = [keys['hint-shade-wide'], keys['hint-shade-small']];
+    expect(wide[1]).toBeCloseTo(MARK.keyline * 100, 5);
+    expect(small[1]).toBeGreaterThan(wide[1]);
+    for (const [r, w] of [wide, small]) expect(r - w / 2).toBeCloseTo(MARK.disc * 100, 5);
+    expect(small[0] + small[1] / 2).toBeLessThanOrEqual(28 - MARK.disc * 100 + 1e-9);
     const css = new TextDecoder().decode(readFileSync('src/ui/styles.css'));
     expect(css).toMatch(/\.board \.hint-place-small,\s*\.board \.hint-shade-small \{\s*display: none;/);
     expect(count(css, /\.board \.hint-place-wide,\s*\.board \.hint-shade-wide \{\s*display: none;/g)).toBe(2);
@@ -651,8 +660,8 @@ describe('the Learn diagram', () => {
     expect(count(svg, /<polygon points="[^"]+" fill="#151a24"/g)).toBe(0);
     expect(svg).not.toMatch(/stroke="#151a24"[^>]*opacity="0.5"/);
     expect(count(svg, new RegExp(`<circle[^>]*r="${(SIZES.dotLarge * 60).toFixed(1)}"`, 'g'))).toBe(0);
-    // the shades, rimmed as a small board rims them
-    expect(count(svg, new RegExp(`fill="${LIGHT.purple}" stroke="${LIGHT.purpleInk}" stroke-width="${(MARK.edgeSmall * 60).toFixed(1)}"`, 'g'))).toBe(3);
+    // the shades, rimmed as the app's board rims them
+    expect(count(svg, new RegExp(`fill="${LIGHT.purple}" stroke="${LIGHT.purpleInk}" stroke-width="${(MARK.shadeEdge * 60).toFixed(1)}"`, 'g'))).toBe(3);
     expect(count(svg, new RegExp(`fill="${LIGHT.purpleLight}" stroke="${LIGHT.purpleLightInk}"`, 'g'))).toBe(3);
     // brackets for a weak tie inside a cell
     const m1 = boardSvg(exampleOf(fixture('medusa1')) as any, 'medusa1');

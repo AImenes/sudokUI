@@ -485,8 +485,20 @@ dark ones. Arrows are the only achromatic mark.
 | `--hint-on-fill` / `--hint-in-ring` (digits) | #10131c / #1b2233 | #10131c / #eef1f8 | weight 700 |
 
 Shades: the light themes rim both shades of a cluster in its dark shade,
-2 units, and on a small board and in Learn 4 units drawn inwards; the
-dark themes draw no edge. Weak tie: the weak arrow's dash and halo, no
+1 unit drawn inwards, on every board and in Learn, so a light shade keeps
+its own fill over 85% of the disc; the dark themes draw no edge. On a
+phone or in a diagram a disc is about ten CSS pixels across and the eye
+mixes its rim into its fill, so a rim in the dark shade pulls the light
+one towards it: mixed by area (the digit left out), as the app draws them
+at both sizes, as Learn draws them and as the legends' swatches draw them
+(a rim about a thirteenth of the radius), a cluster's two shades stay 15
+or more apart in worst-model CIEDE2000, purple 15.2 and orange 20.6 in
+the light themes, the fills' own 17.6 and 22.7 in the dark ones
+(tests/shadeRender.test.ts; a 4-unit rim had brought purple to 9). The
+keyline, not the rim, parts a shade from the player's own cell colours (a
+light shade is 2.6 and 4.0 from the player's purple and orange cells on
+white): 2 units for a shade on a small board, as wide as two marks side
+by side in a cell allow. Weak tie: the weak arrow's dash and halo, no
 head. Corner brackets: inset 5.5, arms 10, the arrow's stroke (4 on a
 small board). Tie: arrow ink, width 2, opacity 0.5, halo 5 at 0.5 (on a small board 3 and 6). Start dot: r 4.5 in
 arrow ink with a 2-unit board-coloured stroke (6.3 on a small board and

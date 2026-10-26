@@ -11,9 +11,11 @@
 // an ink: on light boards the ink is a deep edge that lifts a pale fill off
 // the white; on dark boards it equals the fill, so the edge disappears.
 // A colouring's shades (docs/hint-drawing-colouring.md, Colours) keep that
-// rule, with one difference: on light boards both shades of a cluster take
+// rule, with two differences: on light boards both shades of a cluster take
 // its dark shade as their edge, so the light one reads as a disc of the
-// same hue.
+// same hue; and that edge is thin (MARK.shadeEdge): on a phone the eye
+// mixes a rim into its disc, and a wide one pulls the light shade to the
+// dark.
 
 export interface HintPalette {
   /** the pattern: blue */
@@ -160,12 +162,15 @@ export const MARK = {
   disc: 0.13,
   edge: 0.02,
   /**
-   * a colouring shade's rim on a small board and in the Learn diagrams,
-   * drawn inwards: on a light board it is what parts a light shade from the
-   * player's own cell colour of the same hue (docs/hint-drawing-colouring.md,
-   * decision 7)
+   * a colouring shade's rim, drawn inwards, the same on every board and in
+   * the Learn diagrams (docs/hint-drawing-colouring.md, decision 7): thin,
+   * so a light shade keeps its own fill over 85% of its disc, and the two
+   * shades of a cluster, as drawn, stay apart as their fills do (on a
+   * phone the eye mixes a rim into its disc; tests/shadeRender.test.ts).
+   * The keyline, not the rim, parts a shade from the player's own cell
+   * colours
    */
-  edgeSmall: 0.04,
+  shadeEdge: 0.01,
   /** a ring: its stroke's centre line and width (outer edge at the disc's radius) */
   ring: 0.115,
   ringStroke: 0.03,
@@ -179,6 +184,14 @@ export const MARK = {
   placeRingSmallStroke: 0.045,
   /** a thin ring in the board's colour round every mark, so it stays distinct over the player's own cell colours */
   keyline: 0.015,
+  /**
+   * a colouring shade's keyline on a small board, where it alone parts a
+   * light shade from the player's cell colour of the same hue: as wide as
+   * the candidates' pitch allows: two marks side by side in a cell are
+   * 28 units apart, so one's keyline (13 + 2) reaches the other's disc
+   * (28 - 13) and no further
+   */
+  keylineSmall: 0.02,
   /** the dash of an acts-through (cover) band's outline, so base and cover differ by shape too */
   coverDash: [0.1, 0.06]
 };

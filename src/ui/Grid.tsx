@@ -228,8 +228,8 @@ const MARK_FILL: Record<string, { fill: string; ink: string }> = {
 function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; inside?: string }) {
   const s = SIZE;
   // the keyline: a thin ring in the board's colour round the whole mark
-  const keyOf = (outer: number) => (
-    <circle cx={x} cy={y} r={(outer + MARK.keyline / 2) * s} fill="none" stroke="var(--cell-bg)" strokeWidth={MARK.keyline * s} />
+  const keyOf = (outer: number, width = MARK.keyline, className?: string) => (
+    <circle className={className} cx={x} cy={y} r={(outer + width / 2) * s} fill="none" stroke="var(--cell-bg)" strokeWidth={width * s} />
   );
   const keyline = keyOf(MARK.disc);
   if (kind === 'false') {
@@ -299,15 +299,17 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
   }
   const { fill, ink } = MARK_FILL[kind];
   if (isShade(kind)) {
-    // a colouring's shade: on a light board its rim, in the cluster's dark
-    // shade, is what lifts a light shade off the cell, so a small board
-    // draws it thicker, inwards (styles.css, as the placement's ring); on a
-    // dark board the rim is the fill
+    // a colouring's shade: on a light board a thin rim in the cluster's
+    // dark shade, the same on every board, so the light shade keeps its
+    // fill and a phone does not mix it into the dark one (on a dark board
+    // the rim is the fill); the keyline parts it from the player's own cell
+    // colours, and a small board draws it wider (styles.css, as the
+    // placement's ring)
     return (
       <g>
-        {keyline}
-        <circle className="hint-shade-wide" cx={x} cy={y} r={(MARK.disc - MARK.edge / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.edge * s} />
-        <circle className="hint-shade-small" cx={x} cy={y} r={(MARK.disc - MARK.edgeSmall / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.edgeSmall * s} />
+        {keyOf(MARK.disc, MARK.keyline, 'hint-shade-wide')}
+        {keyOf(MARK.disc, MARK.keylineSmall, 'hint-shade-small')}
+        <circle className="hint-shade" cx={x} cy={y} r={(MARK.disc - MARK.shadeEdge / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.shadeEdge * s} />
       </g>
     );
   }

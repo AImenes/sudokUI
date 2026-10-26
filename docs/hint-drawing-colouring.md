@@ -69,7 +69,7 @@ Learn diagram is the full view with its legend.
 | 4 | A proven-false colour | proof frame: false rings; conclusion and full view: plain removals, no shade inside (G5's colouring exception retired: a dark-theme removal ring on a shade fill is 1.16:1) | G19 as written, phase 2's order; the shade's name lives on in the legend |
 | 5 | The proven-true colour | green true discs, no outer ring; placements stay [] | it is proven; "each is then a single" holds (corpus test) |
 | 6 | Which parity is dark | the colour the argument tests first: the colour proven false; both colours a bridge joins; the colour Medusa rule 5's removal sees across a house; otherwise the colour of the cluster's first candidate in reading order, and witness frames take dark first | a shade means the same thing every time, and one template per sentence |
-| 7 | Palette and words | purple #c361f1 / #ccb9e7 (cluster 0: every single-cluster hint; in Multi Colors the cluster left in shades), orange #ed6907 / #fcd2b1 (cluster 1, Multi Colors only); light themes rim both shades in the dark shade, thicker on a small board; dark themes edge = fill. en dark/light purple, dark/light orange; nb mørkelilla, lyselilla, mørkeoransje, lyseoransje; es morado oscuro, morado claro, naranja oscuro, naranja claro | see Colours below; the nb and es words do not inflect |
+| 7 | Palette and words | purple #c361f1 / #ccb9e7 (cluster 0: every single-cluster hint; in Multi Colors the cluster left in shades), orange #ed6907 / #fcd2b1 (cluster 1, Multi Colors only); light themes rim both shades in the dark shade, thin (1 unit, inwards) on every board and in Learn, so the eye's mix of rim and fill keeps the shades 15 or more apart; a shade's keyline, 2 units on a small board, parts it from the player's cell colours; dark themes edge = fill. en dark/light purple, dark/light orange; nb mørkelilla, lyselilla, mørkeoransje, lyseoransje; es morado oscuro, morado claro, naranja oscuro, naranja claro | see Colours below; the nb and es words do not inflect |
 | 8 | Hypotheses | never drawn; a witness sentence says "If dark purple is true, the 4 in r6c4 is true, and the 4 in r6c8 goes." ("is true", never "is placed") | nothing on the board is conditional |
 | 9 | Medusa inside one cell | ties draw nothing; a witness or clash inside one cell draws corner brackets (four L-shapes in the arrow ink, inset 0.055 cell, arms 0.10, arrow stroke, halo, thicker on a phone, walk number on a clear corner); rule 3's two in-cell witnesses become one link and one frame | 59 of 118 Medusa witness frames drew nothing |
 | 10 | Remote Pair | one purple cluster over its two digits, the whole component (what the finder proves); every cell one dark and one light candidate; ties on the lower digit along the shortest tree; trap witnesses; never "conjugate", "chain of 35 pairs" or '"colors"' | it is a two-digit colouring; drawn as a chain from one end, 23 of 37 path steps' removals rested on the other parity |
@@ -149,7 +149,11 @@ at step 25), Medusa rule 4 and Remote Pair.
 
 ## Colours
 
-The same fills in LIGHT and DARK; the rims as in decision 7.
+The same fills in LIGHT and DARK; the rims as in decision 7. The numbers
+below are the fills'; drawn, a light-theme light shade is its fill mixed
+with a 1-unit rim of the dark shade, which leaves dark and light purple
+15.2 apart (worst model) and orange 20.6 (docs/hint-drawing.md, Colours
+and sizes; tests/shadeRender.test.ts).
 
 | Token | Fill | Digit #10131c on it | On white / dark cell |
 | --- | --- | --- | --- |

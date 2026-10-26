@@ -212,9 +212,10 @@ export function boardSvg(example: Example, title: string): string {
       // a placed chain node keeps the colour the step names for it inside the placement's ring (G5)
       const inside = kind === 'placeOn' ? drawn.inside.get(cell)?.get(digit) : undefined;
       const { fill, ink } = fillOf(P, inside ?? (kind === 'placeOn' || kind === 'true' ? 'place' : kind === 'oneTrue' ? 'primary' : kind));
-      // a colouring's shade takes the rim a small board draws, thicker and
-      // inwards, which lifts a light shade off the board
-      const edge = isShade(kind) ? MARK.edgeSmall : MARK.edge;
+      // a colouring's shade takes the app's thin rim, so its light shade
+      // keeps its fill and the diagram's small discs do not mix it into
+      // the dark one
+      const edge = isShade(kind) ? MARK.shadeEdge : MARK.edge;
       parts.push(
         `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(edge * s)}"/>`
       );
@@ -440,10 +441,12 @@ export function swatchStyle(l: LegendEntry): { background: string; border: strin
     };
   }
   // a colouring's: a cluster's two shades side by side, rimmed as on the
-  // diagram; a tie's line, faint as drawn; a weak tie's dashes; the corner
-  // brackets; the plain ring of the cell a colour would empty
+  // diagram (a rim about a thirteenth of the disc's radius,
+  // MARK.shadeEdge; tests/shadeRender.test.ts); a tie's line, faint as
+  // drawn; a weak tie's dashes; the corner brackets; the plain ring of the
+  // cell a colour would empty
   if (l.kind === 'pair') {
-    const disc = (x: number, fill: string, ink: string) => `radial-gradient(circle at ${x}px 50%,${fill} 3.4px,${ink} 3.5px 4.6px,transparent 4.9px)`;
+    const disc = (x: number, fill: string, ink: string) => `radial-gradient(circle at ${x}px 50%,${fill} 4.35px,${ink} 4.45px 4.6px,transparent 4.9px)`;
     return {
       background: `${disc(5.5, l.colour, l.ink)},${disc(16.5, l.light ?? l.colour, l.lightInk ?? l.ink)},#ffffff`,
       border: 'none',
