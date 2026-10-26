@@ -283,6 +283,12 @@ button {
   letter-spacing: 0.5px;
 }
 
+/* a bar short of room for the level and the number, even without the
+   gauge and the words (useRatingFit), keeps only the brand's mark */
+.topbar[data-brand='mark'] .brand h1 {
+  display: none;
+}
+
 .brand-ui {
   background: linear-gradient(135deg, #5b8fe0, #9b74d8);
   -webkit-background-clip: text;
