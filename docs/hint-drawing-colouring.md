@@ -55,7 +55,9 @@ cluster a pair swatch ("dark purple, light purple: either every dark
 purple 4 is true, or every light purple one is"); "line: exactly one of its
 two ends is true" in a cluster frame; "dashed line: its two ends see each
 other, so at most one is true"; "corner brackets: two candidates of one
-cell, at most one true"; "remove", or after a proof "remove: dark purple,
+cell, at most one true" (Medusa rules 1 and 5), or for rule 3's "corner
+brackets: a cell holding both shades; one is true, so its other
+candidates go"; "remove", or after a proof "remove: dark purple,
 proven false"; "true: light purple, proven (this step only removes)"; in
 the proof frame "false: dark purple, proven"; Medusa rule 6's emptied
 cell. The Learn diagram is the full view with its legend.
@@ -70,7 +72,7 @@ cell. The Learn diagram is the full view with its legend.
 | 4 | A proven-false colour | proof frame: false rings; conclusion and full view: plain removals, no shade inside (G5's colouring exception retired: a dark-theme removal ring on a shade fill is 1.16:1) | G19 as written, phase 2's order; the shade's name lives on in the legend |
 | 5 | The proven-true colour | green true discs, no outer ring; placements stay [] | it is proven; "each is then a single" holds (corpus test) |
 | 6 | Which parity is dark | the colour the argument tests first: the colour proven false; both colours a bridge joins; the colour Medusa rule 5's removal sees across a house; otherwise the colour of the cluster's first candidate in reading order, and witness frames take dark first | a shade means the same thing every time, and one template per sentence |
-| 7 | Palette and words | purple #c361f1 / #ccb9e7 (cluster 0: every single-cluster hint; in Multi Colors the cluster left in shades), orange #ed6907 / #fcd2b1 (cluster 1, Multi Colors only); light themes rim both shades in the dark shade, thin (1 unit, inwards) on every board and in Learn, so the eye's mix of rim and fill keeps the shades 15 or more apart; a shade's keyline, 2 units on a small board, parts it from the player's cell colours; dark themes edge = fill. en dark/light purple, dark/light orange; nb mørkelilla, lyselilla, mørkeoransje, lyseoransje; es morado oscuro, morado claro, naranja oscuro, naranja claro | see Colours below; the nb and es words do not inflect |
+| 7 | Palette and words | purple #c361f1 / #ccb9e7 (cluster 0: every single-cluster hint; in Multi Colors the cluster left in shades), orange #ed6907 / #fcd2b1 (cluster 1, Multi Colors only); light themes rim both shades in the dark shade, thin (1 unit, inwards) on every board and in Learn, so the eye's mix of rim and fill keeps the shades 15 or more apart; a shade's keyline, 2 units on a small board, parts it from the player's cell colours; dark themes edge = fill. en dark/light purple, dark/light orange; nb mørkelilla, lyselilla, mørkeoransje, lyseoransje; es morado oscuro, morado claro, naranja oscuro, naranja claro | see Colours below; the nb and es words do not inflect, and a colour named as a noun is neuter in nb ("mørkelilla er sant", as "blått er sant" was) and masculine in es ("el morado oscuro es verdadero") |
 | 8 | Hypotheses | never drawn; a witness sentence says "If dark purple is true, the 4 in r6c4 is true, and the 4 in r6c8 goes." ("is true", never "is placed") | nothing on the board is conditional |
 | 9 | Medusa inside one cell | ties draw nothing; a witness or clash inside one cell draws corner brackets (four L-shapes in the arrow ink, inset 0.055 cell, arms 0.10 and shorter at the bottom corners, arrow stroke, halo, thicker on a phone, walk number on a clear corner); rule 3's two in-cell witnesses become one link and one frame | 59 of 118 Medusa witness frames drew nothing |
 | 10 | Remote Pair | one purple cluster over its two digits, the whole component (what the finder proves); every cell one dark and one light candidate; ties on the lower digit along the shortest tree; trap witnesses; never "conjugate", "chain of 35 pairs" or '"colors"' | it is a two-digit colouring; drawn as a chain from one end, 23 of 37 path steps' removals rested on the other parity |
@@ -116,8 +118,11 @@ at step 25), Medusa rule 4 and Remote Pair.
 
 - **Simple Colors trap**: one cluster; the full view draws the shades, the
   removals, and the two dashed lines of the first removal; extra removals
-  are worded ("; 3 more 4s fall the same way"). Frames: cluster, dark
-  witness, light witness ("Either way it is false."), conclusion.
+  are worded ("; 3 more 4s fall the same way"), and the explanation the
+  full view shows then names them all: a colouring that removes more than
+  one candidate is followed by its conclusion, as a cell its sentence
+  names may lose a second candidate. Frames: cluster, dark witness, light
+  witness ("Either way it is false."), conclusion.
 - **Simple Colors wrap**: dark = the colour that appears twice in a house;
   frames: cluster, the clash ("Dark purple puts 6 in both r4c5 and r4c7 of
   row 4. A digit appears once per house, so dark purple cannot be true."),
@@ -136,10 +141,12 @@ at step 25), Medusa rule 4 and Remote Pair.
 - **3D Medusa rules 1 and 2**: dark = the colour twice in a cell (brackets)
   or a house (dashed line); proof; conclusion.
 - **Rule 3**: a cell holding both colours loses its uncoloured candidates:
-  one bracket frame for the first such cell; others worded.
+  one bracket frame for the first such cell; others worded; a single
+  removal named ("so its 6 is removed").
 - **Rule 4**: as the trap.
 - **Rule 5**: dark = the colour seen outside the cell (a dashed line), light
-  = the colour in its own cell (brackets).
+  = the colour in its own cell (brackets); extra removals "fall the same
+  way", as the trap's, since its sentence already says "whichever shade".
 - **Rule 6**: dark = the colour that would empty a cell; one dashed line
   per candidate of that cell, which is drawn as plain rings and named in
   the legend ("a cell dark purple would empty"); proof; conclusion.

@@ -167,14 +167,18 @@ export function findMedusa3d(g: Grid): Step | null {
       const name = cellName(cell3.c);
       const { dark, light, removed } = cell3;
       // rule 1 found no cell with two candidates of one colour, so each cell
-      // hit keeps exactly one dark and one light candidate: narrowed, not solved
+      // hit keeps exactly one dark and one light candidate: narrowed, not
+      // solved. A single removal is named; more are named by the conclusion
+      // (hintFrames.ts describe)
       return medusaStep(
         cl,
         'medusa3',
         first,
         elims3,
-        tr`${name} holds a dark purple ${dark} and a light purple ${light}; one of them is true, so the cell's other candidates are removed` +
-          (cellsHit > 1 ? tr` (${cellsHit} cells are narrowed to their two shades this way)` : ''),
+        elims3.length === 1
+          ? tr`${name} holds a dark purple ${dark} and a light purple ${light}; one of them is true, so its ${removed[0]} is removed`
+          : tr`${name} holds a dark purple ${dark} and a light purple ${light}; one of them is true, so the cell's other candidates are removed` +
+              (cellsHit > 1 ? tr` (${cellsHit} cells are narrowed to their two shades this way)` : ''),
         [
           weakTie(
             [
@@ -230,7 +234,8 @@ export function findMedusa3d(g: Grid): Step | null {
     if (witnessed) {
       const { rule, dark, c, d, x, y, own } = witnessed;
       const n = elims45.length - 1;
-      const tail = n <= 0 ? '' : n === 1 ? tr`; one more candidate falls to the two shades` : tr`; ${n} more candidates fall to the two shades`;
+      // as the trap's and Remote Pair's: rule 5's own sentence already says "whichever shade"
+      const tail = n <= 0 ? '' : n === 1 ? tr`; one more candidate falls the same way` : tr`; ${n} more candidates fall the same way`;
       const here = cellName(c);
       const there = cellName(x);
       const target = { cell: c, digit: d };

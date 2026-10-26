@@ -623,7 +623,7 @@ const ui: Dictionary = {
   "Back to the last correct position (Ctrl+Z restores your entries)": "De vuelta a la última posición correcta (Ctrl+Z recupera lo que habías escrito)",
   "Tap a candidate to start. Then tap the next: a strong link first (the other candidate of a bivalue cell, or the digit's only other place in a house), then a weak one (two candidates that cannot both be true), and so on.": "Toca un candidato para empezar. Después toca el siguiente: primero un enlace fuerte (el otro candidato de una casilla bivalor, o el único otro sitio del número en una unidad), luego uno débil (dos candidatos que no pueden ser verdaderos a la vez), y así sucesivamente.",
   "{digit} from {cell}": "el {digit} de {cell}",
-  "Goal: remove {list} (circled purple).": "Objetivo: eliminar {list} (con un círculo morado).",
+  "Goal: remove {list} (marked on the board as you build).": "Objetivo: eliminar {list} (el tablero marca el objetivo mientras construyes).",
   "{message} That reaches the goal: you built it yourself.": "{message} Con esto alcanzas el objetivo: la has construido por tu cuenta.",
   "You built the {name} yourself 🎯": "Has construido {name} por tu cuenta 🎯",
   "Last candidate taken off the chain.": "Se ha quitado el último candidato de la cadena.",

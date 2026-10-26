@@ -696,6 +696,10 @@ describe('the app board', () => {
     expect(render(fixture('seesBoth'), 1).panel).toContain('swatch-shades-1');
     expect(render(fixture('wrap'), 2).panel).toContain('<i class="swatch-false"></i>false: dark purple, proven');
     expect(render(fixture('medusa1'), 1).panel).toContain('<i class="swatch-corners"></i>corner brackets: two candidates of one cell, at most one true');
+    // rule 3's brackets hold a cell's two shades and what they remove; rule 5's, two candidates as rule 1's
+    expect(render(fixture('medusa3')).panel).toContain('<i class="swatch-corners"></i>corner brackets: a cell holding both shades; one is true, so its other candidates go');
+    expect(render(fixture('medusa3'), 1).panel).toContain('<i class="swatch-corners"></i>corner brackets: a cell holding both shades; one is true, so its other candidates go');
+    expect(render(fixture('medusa5')).panel).toContain('<i class="swatch-corners"></i>corner brackets: two candidates of one cell, at most one true');
     expect(render(fixture('medusa6')).panel).toContain('<i class="swatch-node"></i>a cell dark purple would empty');
     // no role words, from an older colouring's legend
     expect(panel).not.toMatch(/swatch-(primary|secondary|fin)/);
@@ -705,6 +709,13 @@ describe('the app board', () => {
 });
 
 describe('the Learn diagram', () => {
+  it("names what its corner brackets hold as the app's legend does: in rule 3 a cell holding both shades, in rules 1 and 5 two candidates", () => {
+    const corners = (name: string) => legendOf(fixture(name).step, exampleOf(fixture(name)).values).filter((e) => e.kind === 'corners').map((e) => e.label);
+    expect(corners('medusa3')).toEqual(['corner brackets: a cell holding both shades; one is true, so its other candidates go']);
+    expect(corners('medusa1')).toEqual(['corner brackets: two candidates of one cell, at most one true']);
+    expect(corners('medusa5')).toEqual(['corner brackets: two candidates of one cell, at most one true']);
+  });
+
   it("is the full view: shades, removals, the weak ties as dashed lines with no head, no tie and no start dot", () => {
     const svg = boardSvg(exampleOf(fixture('trap')) as any, 'trap');
     // two dashed lines, no head, no faint tie

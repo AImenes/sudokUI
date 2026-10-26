@@ -11,7 +11,8 @@
  * first; it colours as the hand-built colourings of tests/parityFixtures.ts
  * do, with the same argument; its walk has the frames the design counts,
  * each drawing the links and the marks it should; its words name only the
- * hues the view draws, in English, Norwegian and Spanish; its line in
+ * hues the view draws, in English, Norwegian and Spanish, and every
+ * removal named in the explanation the full view shows; its line in
  * HoDoKu's notation; and its drawing on the app board, with the stored
  * examples': each tie clear of the other marks of its frame, each weak tie
  * clear of the other candidates of its digit, of the box lines and of the
@@ -21,7 +22,9 @@
  * removed before they said their parity (tests/fixtures/colouringRemovals.json,
  * a hash per puzzle of every removal, taken before the change), every
  * colouring passes checkParity and is one the chain trainer can take as
- * its goal (Build it yourself), a proven colour's partner is a single each
+ * its goal (Build it yourself) and names every removal in its
+ * explanation (the solver's own in Norwegian and Spanish too), a proven
+ * colour's partner is a single each
  * once the proven colour is removed, orange never shares a frame with a
  * true disc, 3D Medusa's ties are no longer than the design measured, and
  * no tie of 3D Medusa or Remote Pair is drawn over another mark.
@@ -29,7 +32,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import practice from '../src/content/practicePuzzles.json';
-import { parseGrid, isSolved, cloneGrid, bit, UNITS, popcount } from '../src/engine/board';
+import { parseGrid, isSolved, cloneGrid, bit, UNITS, popcount, cellName } from '../src/engine/board';
 import type { Grid } from '../src/engine/board';
 import { solve } from '../src/engine/bruteForce';
 import { findNextStep, applyStep, findStep } from '../src/engine/humanSolver';
@@ -37,13 +40,14 @@ import type { Tech } from '../src/engine/ratings';
 import type { CellDigit, ChainLink, ColourRule, Step } from '../src/engine/steps';
 import { isParity, isTie } from '../src/engine/steps';
 import { checkParity } from '../src/engine/truth';
-import { walkFrames, drawnLinks, describe as describeStep } from '../src/engine/hintFrames';
+import { walkFrames, drawnLinks, describe as describeStep, conclusionText } from '../src/engine/hintFrames';
 import type { Frame } from '../src/engine/hintFrames';
 import { frameMarks, parityLegend, markedCandidates, placedKeys } from '../src/content/hintMarks';
 import { arrowShapes, startMarkers, badgePoints, SIZES } from '../src/content/hintGeometry';
 import type { ArrowShape, Point } from '../src/content/hintGeometry';
 import { MARK } from '../src/content/hintPalette';
 import { EXAMPLES } from '../src/content/examples';
+import { exampleStep } from '../src/content/learnLocale';
 import { stepText, eurekaOf } from '../src/content/eureka';
 import { candidateCentre, spanningTies, tieWeight, nearest, readingOrder, shades, firstParity, drawnDistance } from '../src/engine/techniques/colourTree';
 import { findSimpleColors, findMultiColors } from '../src/engine/techniques/coloring';
@@ -86,6 +90,13 @@ const FIXTURES: Fixture[] = [
   { name: 'Remote Pair, branching', tech: 'REMOTE_PAIR', rule: 'remotePair', puzzle: '59..8..2.3...75..4..8.......32..4.7...........4.3..95.......4..8..54...2.7..3..68', at: 35, frames: 4 }
 ];
 
+/** the engine's languages, and their tables */
+const LANGS = [
+  ['en', null],
+  ['nb', engineNb],
+  ['es', engineEs]
+] as const;
+
 const positions = new Map<string, { grid: Grid; solution: Uint8Array }>();
 /** the position after `at` of the solver's steps, and the solution */
 function positionAt(puzzle: string, at: number): { grid: Grid; solution: Uint8Array } {
@@ -109,6 +120,19 @@ const ties = (s: Step) => (s.links ?? []).filter(isTie);
 const argument = (s: Step) => (s.links ?? []).filter((l) => !isTie(l));
 /** the views of a step: the full view, then every frame of its walk */
 const views = (s: Step): (Frame | null)[] => [null, ...walkFrames(s)];
+/**
+ * The removals the full view's explanation (describe()) leaves unnamed, in
+ * the language set: a colouring that removes more than one candidate must
+ * end in the conclusion, which names them all; one that removes one must
+ * name it, its digit in a sentence that names its cell
+ */
+function unnamedIn(s: Step): string[] {
+  const text = describeStep(s);
+  if (s.eliminations.length > 1) return text.endsWith(` ${conclusionText(s)}`) ? [] : s.eliminations.map(nameOf);
+  const sentences = text.split(/(?<=\.) /);
+  const names = (x: CellDigit) => sentences.some((t) => t.includes(cellName(x.cell)) && new RegExp(`(?<![\\w.])${x.digit}(?!\\d)`).test(t));
+  return s.eliminations.filter((x) => !names(x)).map(nameOf);
+}
 /** every candidate's mark in a view, as "4r1c5": kind */
 const kindsIn = (s: Step, frame: Frame | null, solved: (cell: number) => boolean): Record<string, string> =>
   Object.fromEntries([...frameMarks(s, frame, solved).cands].flatMap(([cell, ds]) => [...ds].map(([digit, k]) => [nameOf({ cell, digit }), k])));
@@ -606,8 +630,15 @@ describe('the words of a colouring the finders give', () => {
     }
   });
 
-  it('are in Norwegian and Spanish, every sentence translated, in the hues drawn and never the old colours', () => {
+  it('are in Norwegian and Spanish, every sentence translated, in the hues drawn and never the old colours, a colour named as a noun neuter in Norwegian and masculine in Spanish', () => {
     const before = new Set(missedTemplates());
+    // "Hvis mørkelilla er sant", as main's "Hvis blått er sant": never the common
+    // gender of a noun left out ("sann"), where the colour itself is true or false,
+    // or what a legend's label calls so; "el morado oscuro es verdadero"
+    const agreement = {
+      nb: /(?<!\p{L})(?:mørke|lyse)(?:lilla|oransje)(?: eller (?:mørke|lyse)(?:lilla|oransje))?(?: (?:er|var|være|kan ikke være))? u?sann(?!\p{L})|bevist u?sann(?!\p{L})|(?:^|\| )u?sann: /iu,
+      es: /(?<!\p{L})(?:la|una) (?:morad|naranja)|(?:morado|naranja) (?:oscuro|claro),? (?:(?:es|sea|fuera|sería|demostrado) )?(?:verdadera|falsa)(?!\p{L})/iu
+    };
     const old = {
       nb: /(?<!\p{L})(blå|blått|gul|gult|gule|rød|rødt|fiolett\p{L}*|ringet)(?!\p{L})/u,
       es: /(?<!\p{L})(azul\p{L}*|dorad\p{L}*|roj\p{L}*|violeta|círculo)(?!\p{L})/u
@@ -629,8 +660,11 @@ describe('the words of a colouring the finders give', () => {
               if (hue.test(text)) expect(drawsCluster(s, frame, solvedAt(f), k), where).toBe(true);
             });
             expect(text, where).not.toMatch(/\b(dark|light|purple|orange|either|true|false)\b/);
+            expect(text, where).not.toMatch(agreement[lang]);
           }
         }
+        // and every sentence that names a shade, whether a fixture shows it or not
+        for (const [key, said] of Object.entries(table)) if (/\b(dark|light) (purple|orange)\b/.test(key)) expect(said, `${lang}: ${key}`).not.toMatch(agreement[lang]);
       }
       expect(missedTemplates().filter((k) => !before.has(k))).toEqual([]);
     } finally {
@@ -652,11 +686,6 @@ describe('the words of a colouring the finders give, where they could mislead', 
     ['REMOTE_PAIR', '.1....6...4.1..89...3.4.....69815..3...4.2...4..69718.....7.9...75..1.4...6....7.', 30],
     ['REMOTE_PAIR', '....89..4.....571.......2.51..8....99871.24533....4..28.2.......794.....6..91....', 24]
   ];
-  const LANGS = [
-    ['en', null],
-    ['nb', engineNb],
-    ['es', engineEs]
-  ] as const;
   /** each removal after the first: one written as a word, several as a number with a word before the digit */
   const tail = {
     en: /; (one more (\d|candidate) falls|\d+ more (\ds|candidates) fall) /,
@@ -718,11 +747,75 @@ describe('the words of a colouring the finders give, where they could mislead', 
     }
   });
 
+  it('say what the corner brackets hold, rule by rule, in every language: in rule 3 a cell holding both shades, whose other candidates go; in rules 1 and 5 two candidates, at most one true', () => {
+    const said = {
+      en: {
+        cell: 'corner brackets: a cell holding both shades; one is true, so its other candidates go',
+        two: 'corner brackets: two candidates of one cell, at most one true'
+      },
+      nb: {
+        cell: 'hjørneklammer: en rute med begge nyansene; én av dem er sann, så de andre kandidatene i ruten faller bort',
+        two: 'hjørneklammer: to kandidater i samme rute, høyst én av dem sann'
+      },
+      es: {
+        cell: 'corchetes de las esquinas: una casilla con los dos tonos; uno es verdadero, así que se eliminan sus demás candidatos',
+        two: 'corchetes de las esquinas: dos candidatos de una misma casilla, como mucho uno verdadero'
+      }
+    };
+    try {
+      for (const [lang, table] of LANGS) {
+        setEngineText(lang, table);
+        const shown = new Set<string>();
+        for (const f of FIXTURES) {
+          const s = stepAt(f);
+          for (const frame of views(s)) {
+            const corners = parityLegend(s, frameMarks(s, frame, solvedAt(f))).filter((e) => e.kind === 'corners');
+            for (const e of corners) {
+              expect(e.label, `${lang} ${f.name}: ${frame?.text ?? 'full view'}`).toBe(f.rule === 'medusa3' ? said[lang].cell : said[lang].two);
+              shown.add(f.rule);
+            }
+          }
+        }
+        expect([...shown].sort(), lang).toEqual(['medusa1', 'medusa3', 'medusa5']);
+      }
+    } finally {
+      setEngineText('en', null);
+    }
+  });
+
+  it("say that the removals after a 3D Medusa's first fall the same way, as a trap's and a Remote Pair's do, so rule 5 says whichever shade once", () => {
+    const sameWay = {
+      en: /; (one more candidate falls|\d+ more candidates fall) the same way\.$/,
+      nb: /; (én kandidat til faller|\d+ kandidater til faller) bort på samme måte\.$/,
+      es: /; (otro candidato se elimina|\d+ candidatos más se eliminan) de la misma forma\.$/
+    };
+    // the words for "whichever shade is true", which rule 5's own sentence says
+    const whichever = { en: /whichever|two shades/g, nb: /uansett/g, es: /sea cual sea/g };
+    try {
+      for (const [lang, table] of LANGS) {
+        setEngineText(lang, table);
+        const rules = new Set<string>();
+        for (const [tech, puzzle, at] of TAILS.filter(([t]) => t === 'MEDUSA_3D')) {
+          const s = findStep(tech, positionAt(puzzle, at).grid)!;
+          rules.add(s.colouring!.rule);
+          const last = argument(s).at(-1)!.text!;
+          const where = `${lang} ${puzzle} @${at}: ${s.description} | ${last}`;
+          expect(s.description, where).toMatch(sameWay[lang]);
+          expect(last, where).toMatch(sameWay[lang]);
+          expect(s.description.match(whichever[lang])?.length ?? 0, where).toBeLessThanOrEqual(1);
+        }
+        expect([...rules].sort(), lang).toEqual(['medusa4', 'medusa5']);
+      }
+    } finally {
+      setEngineText('en', null);
+    }
+  });
+
   it('name the two colours a Multi Colors bridge rests on where it concludes, so "one of them" is never read as the two candidates just named', () => {
     const bridge = FIXTURES.find((f) => f.rule === 'bridge')!;
     const said = {
       en: 'If light orange is true, the 6 in r2c4 is true, and the 6 in r3c6 goes. Light orange or light purple is true, so it is false either way; one more 6 falls the same way.',
-      nb: 'Hvis lyseoransje er sann, er 6-tallet i r2c4 sant, og 6-tallet i r3c6 faller bort. Lyseoransje eller lyselilla er sann, så 6-tallet i r3c6 er usant uansett; ett 6-tall til faller bort på samme måte.',
+      nb: 'Hvis lyseoransje er sant, er 6-tallet i r2c4 sant, og 6-tallet i r3c6 faller bort. Lyseoransje eller lyselilla er sant, så 6-tallet i r3c6 er usant uansett; ett 6-tall til faller bort på samme måte.',
       es: 'Si el naranja claro es verdadero, el 6 de r2c4 es verdadero y se elimina el 6 de r3c6. El naranja claro o el morado claro es verdadero, así que el 6 de r3c6 es falso en cualquier caso; otro 6 se elimina de la misma forma.'
     };
     try {
@@ -737,6 +830,46 @@ describe('the words of a colouring the finders give, where they could mislead', 
 });
 
 describe('the removals of a colouring the finders give', () => {
+  /**
+   * positions where the finder's sentence names a cell that loses a second
+   * candidate it does not name (review round 2, finding F): Remote Pair's,
+   * as the solver gives it and off its path; 3D Medusa rules 5 and 4, the
+   * second removal in a witness's cell and in the removal's own; rule 3
+   * narrowing one cell by two
+   */
+  const SECOND: [Tech, string, number, string][] = [
+    ['REMOTE_PAIR', '37.......2.....5.9..168..4..6..3.8524...1......5.......4...8...6.8..21.....7..4..', 28, 'So 3 is removed from r7c3; 9 is removed from r7c3.'],
+    ['REMOTE_PAIR', '238.6...5.5..4.8......2..9.8.6.34..7.........3..27.5.4.1..5......5.8..4.6...9.351', 37, 'So 2 is removed from r5c9; 6 is removed from r5c9.'],
+    ['MEDUSA_3D', '..3.8..........3.1.....7..9.2.5.3...9.8.6.......7...5....1....6...4...7.71...9..2', 18, 'So 1 is removed from r4c1; 4 is removed from r1c1.'],
+    ['MEDUSA_3D', '.5...31..318.....2..2...64....127......4.6......398....75...9..2.....385..15...7.', 12, 'So 4 is removed from r1c5; 6 is removed from r1c5.'],
+    ['MEDUSA_3D', '..457...1.3796.....82.1.....2..5....76.....32....9..6.....3.42.....8519.4...268..', 10, 'So 1 is removed from r5c3; 8 is removed from r5c3.']
+  ];
+
+  it('are each named in the explanation the full view shows, in every language: at the fixtures, the stored examples, and where a named cell loses a second candidate', () => {
+    try {
+      for (const [lang, table] of LANGS) {
+        setEngineText(lang, table);
+        for (const [tech, puzzle, at, conclusion] of SECOND) {
+          const s = findStep(tech, positionAt(puzzle, at).grid)!;
+          const where = `${lang} ${tech} ${puzzle} @${at}: ${describeStep(s)}`;
+          if (lang === 'en') expect(describeStep(s).endsWith(`. ${conclusion}`), where).toBe(true);
+          expect(unnamedIn(s), where).toEqual([]);
+        }
+        for (const f of FIXTURES) expect(unnamedIn(stepAt(f)), `${lang} ${f.name}: ${describeStep(stepAt(f))}`).toEqual([]);
+        let stored = 0;
+        for (const [tech, ex] of Object.entries(EXAMPLES)) {
+          if (!isParity(ex!.step)) continue;
+          const s = exampleStep(tech as Tech, ex!);
+          expect(unnamedIn(s), `${lang} ${tech} (stored): ${describeStep(s)}`).toEqual([]);
+          stored++;
+        }
+        expect(stored).toBe(4);
+      }
+    } finally {
+      setEngineText('en', null);
+    }
+  });
+
   it('are named in reading order, in the walk\'s conclusion and the explanation, though the finder lists them as its cluster grew', () => {
     const wrap = stepAt(FIXTURES.find((f) => f.name === 'wrap')!);
     // the finder's own order, kept so its removals stay what they were
@@ -870,6 +1003,10 @@ describe("over the practice pools' solve paths", () => {
   const unbuildable: string[] = [];
   const medusa = { lines: 0, length: 0, overAMark: 0 };
   const remotePairs = { steps: 0 };
+  // the removals an explanation leaves unnamed: every finder's colouring in
+  // English, and the solver's own in Norwegian and Spanish too
+  const unnamed: string[] = [];
+  const solverColourings = { steps: 0 };
   // the ties the solver's Medusa and Remote Pair steps draw within a mark's
   // radius and a gap of another mark their frame draws
   const drawnOver: string[] = [];
@@ -888,6 +1025,7 @@ describe("over the practice pools' solve paths", () => {
           lines.push(`${k}:${tech} ${s.eliminations.map(nameOf).join(' ')}`);
           for (const p of checkParity(s, g.cands)) problems.push(`${where}: ${p.issue} ${p.at}`);
           if (!buildable(s)) unbuildable.push(where);
+          if (unnamedIn(s).length) unnamed.push(`${where}: ${unnamedIn(s).join(' ')} in ${describeStep(s)}`);
           const { clusters, darkFalse } = s.colouring!;
           for (const cl of clusters) {
             const dark = new Set(cl.dark.map((x) => solution[x.cell] === x.digit));
@@ -918,6 +1056,18 @@ describe("over the practice pools' solve paths", () => {
         }
         const step = findNextStep(g);
         if (!step) break;
+        if (isParity(step)) {
+          solverColourings.steps++;
+          try {
+            for (const [lang, table] of LANGS.slice(1)) {
+              setEngineText(lang, table);
+              const said = findStep(step.tech, g)!;
+              if (unnamedIn(said).length) unnamed.push(`${puzzle} @${k} ${step.tech} ${lang}: ${unnamedIn(said).join(' ')} in ${describeStep(said)}`);
+            }
+          } finally {
+            setEngineText('en', null);
+          }
+        }
         if (step.tech === 'MEDUSA_3D') {
           // the ties the solver's Medusa draws: their lines, how long, how many over another mark
           found.medusaSteps++;
@@ -963,6 +1113,11 @@ describe("over the practice pools' solve paths", () => {
     expect(problems.slice(0, 10)).toEqual([]);
     expect(wrong.slice(0, 10)).toEqual([]);
     expect(oldWords.slice(0, 5)).toEqual([]);
+  });
+
+  it('name every removal in the explanation the full view shows: every finder\'s colouring in English, the solver\'s own in Norwegian and Spanish too', () => {
+    expect(solverColourings.steps).toBe(114);
+    expect(unnamed.slice(0, 10)).toEqual([]);
   });
 
   it('can each be built in the chain trainer, as on main: practice offers Build it yourself, whatever the argument\'s weak ties join', () => {

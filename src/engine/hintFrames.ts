@@ -126,11 +126,15 @@ export function conclusionText(step: Step): string {
 /**
  * The explanation as shown: the finder's sentence, followed by the
  * conclusion in cell names when the sentence does not already name every
- * cell it places in or removes from.
+ * cell it places in or removes from. A colouring's sentence argues for one
+ * removal, or for a colour, and counts or sums up the rest, so a cell it
+ * names may lose a candidate it does not name: its conclusion follows
+ * whenever it removes more than one candidate.
  */
 export function describe(step: Step): string {
   const cells = [...step.placements, ...step.eliminations].map((cd) => cellName(cd.cell));
-  const named = cells.every((name) => step.description.includes(name));
+  const counted = isParity(step) && step.eliminations.length > 1;
+  const named = !counted && cells.every((name) => step.description.includes(name));
   if (named || !cells.length) return step.description;
   return `${step.description} ${conclusionText(step)}`;
 }

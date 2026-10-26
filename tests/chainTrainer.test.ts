@@ -187,3 +187,36 @@ describe('what the trainer can take as its goal (Build it yourself)', () => {
     expect(buildable(null)).toBe(false);
   });
 });
+
+describe("the trainer's goal note (Build it yourself)", () => {
+  it('names the goal by what the board shows, never by a colour, which now means a colouring\'s parity, in every language', async () => {
+    const { useGame } = await import('../src/state/gameStore');
+    const { useSettings } = await import('../src/state/settings');
+    const { useLocales } = await import('../src/content/i18n');
+    const nb = (await import('../src/content/locales/app.nb')).default;
+    const es = (await import('../src/content/locales/app.es')).default;
+    useLocales.setState({ loaded: { nb, es } });
+    const before = useSettings.getState().lang;
+    const said = {
+      en: 'Goal: remove 4 from r1c1, 7 from r1c2 (marked on the board as you build). Tap a candidate to start.',
+      nb: 'Mål: fjern 4 fra r1c1, 7 fra r1c2 (merket på brettet mens du bygger). ',
+      es: 'Objetivo: eliminar el 4 de r1c1, el 7 de r1c2 (el tablero marca el objetivo mientras construyes). '
+    };
+    try {
+      for (const lang of ['en', 'nb', 'es'] as const) {
+        useSettings.getState().set({ lang });
+        useGame.getState().startGame(EASY, 196, 'Easy');
+        useGame.getState().startChain([
+          { cell: 0, digit: 4 },
+          { cell: 1, digit: 7 }
+        ]);
+        const note = useGame.getState().chainNote;
+        expect(note.startsWith(said[lang]), `${lang}: ${note}`).toBe(true);
+        expect(note, lang).not.toMatch(/purple|circled|lilla|ringet|morad|círculo/);
+        useGame.getState().endChain();
+      }
+    } finally {
+      useSettings.getState().set({ lang: before });
+    }
+  });
+});

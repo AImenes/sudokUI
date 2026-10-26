@@ -623,7 +623,7 @@ const ui: Dictionary = {
   "Back to the last correct position (Ctrl+Z restores your entries)": "Tilbake til siste riktige stilling (Ctrl+Z henter tilbake det du skrev inn)",
   "Tap a candidate to start. Then tap the next: a strong link first (the other candidate of a bivalue cell, or the digit's only other place in a house), then a weak one (two candidates that cannot both be true), and so on.": "Trykk på en kandidat for å begynne. Trykk så på den neste: først en sterk lenke (den andre kandidaten i en toverdirute, eller tallets eneste andre plass i en enhet), så en svak (to kandidater som ikke begge kan være sanne), og så videre.",
   "{digit} from {cell}": "{digit} fra {cell}",
-  "Goal: remove {list} (circled purple).": "Mål: fjern {list} (ringet inn i lilla).",
+  "Goal: remove {list} (marked on the board as you build).": "Mål: fjern {list} (merket på brettet mens du bygger).",
   "{message} That reaches the goal: you built it yourself.": "{message} Dermed er målet nådd: du bygde den selv.",
   "You built the {name} yourself 🎯": "Du bygde {name} selv 🎯",
   "Last candidate taken off the chain.": "Den siste kandidaten er tatt ut av kjeden.",
