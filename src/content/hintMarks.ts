@@ -18,7 +18,9 @@
 // a ring in the false colour, from its first node's premise; that truth
 // wins over the roles. A discontinuous loop's start shows its premise
 // until the walk reaches the link that closes the loop, and its proven
-// value after. A true group means one of its members is true, not all, so
+// value at that link; its truths hold only under the premise the loop
+// refutes, so its full view and conclusion draw it as main did, the
+// pattern beside the placement or removal. A true group means one of its members is true, not all, so
 // its members are 'oneTrue', drawn as the pattern's disc until phase 4 draws
 // sets as hulls, with legend words of their own.
 // A removed or placed node is the removal or the placement, its truth
@@ -117,9 +119,14 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const colouring = COLOURING.has(step.tech);
   const removed = (cd: CellDigit) => step.eliminations.some((e) => e.cell === cd.cell && e.digit === cd.digit);
   // a derived chain's truth, node by node; a loop's start keeps its premise
-  // until the link that closes the loop is drawn
+  // until the link that closes the loop is drawn. A discontinuous loop's
+  // truths hold only under the premise it refutes, so they are drawn in the
+  // walk up to that link, and the full view and the conclusion draw the
+  // proof as a pattern beside the start's placement or removal, as a
+  // forcing chain's full view does (G18, G21)
   const derived = deriveTruth(step);
-  const truth = derived && !derived.problems.length ? derived : null;
+  const proofOnly = !!derived?.closure && (!opts.walking || show('conclusion'));
+  const truth = derived && !derived.problems.length && !proofOnly ? derived : null;
   const closed = links.length >= (step.links ?? []).length;
   const truthOf = (cd: CellDigit): 'true' | 'false' | 'oneTrue' | null => {
     if (!truth) return null;

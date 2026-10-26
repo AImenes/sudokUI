@@ -112,8 +112,10 @@ export function ChainPanel() {
   const frames = hint ? walkFrames(hint) : [];
   const walking = stage === 'walk' && frames.length > 0;
   const frame = walking ? frames[Math.min(walkIndex, frames.length - 1)] : null;
-  // a chain whose own truths clash: its premise is impossible, and the legend says so
-  const refuted = !!hint && legendKinds(hint, frameMarks(hint, frame, (c) => cells[c].value > 0)).refuted;
+  // the legend names what the board draws (G23), and a chain whose own
+  // truths clash shows its premise impossible, and the legend says so
+  const legend = hint ? legendKinds(hint, frameMarks(hint, frame, (c) => cells[c].value > 0)) : null;
+  const words = truthWords(t, { assumed: false, group: false });
   return (
     <div className="hint-panel" role="region" aria-label={t('Build a chain')} aria-live="polite">
       <div className="hint-head">
@@ -142,16 +144,20 @@ export function ChainPanel() {
         )}
         {n > 1 && (
           <ul className="hint-legend">
-            <li>
-              <i className="swatch-true" />
-              {truthWords(t, { assumed: false, group: false }).isTrue}
-            </li>
-            <li>
-              <i className="swatch-false" />
-              {truthWords(t, { assumed: false, group: false }).isFalse}
-            </li>
+            {legend?.shown.has('true') && (
+              <li>
+                <i className="swatch-true" />
+                {words.isTrue}
+              </li>
+            )}
+            {legend?.shown.has('false') && (
+              <li>
+                <i className="swatch-false" />
+                {words.isFalse}
+              </li>
+            )}
             <li>{t('your chain: solid into a candidate it makes true, dashed into one it makes false')}</li>
-            {refuted && <li>{truthWords(t, { assumed: false, group: false }).refuted}</li>}
+            {legend?.refuted && <li>{words.refuted}</li>}
             {elims.length > 0 && (
               <li>
                 <i className="swatch-elim" />

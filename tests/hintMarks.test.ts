@@ -171,18 +171,25 @@ describe("a chain's truth (phase 2b)", () => {
     expect(open.length).toBeGreaterThan(1);
     for (const fr of open) expect(kindAt(frameMarks(s, fr, () => false), start)).toBe('false');
     for (const fr of shut) expect(kindAt(frameMarks(s, fr, () => false), start)).toBe('true');
-    expect(kindAt(frameMarks(s, frames[frames.length - 1], () => false), start)).toBe('place');
-    expect(kindAt(frameMarks(s, null, () => false), start)).toBe('place');
-    // the rest of the loop under the premise: 7r1c5 true, 7r3c5 false, ...
-    const full = frameMarks(s, null, () => false);
-    expect([at(1, 5, 7), at(3, 5, 7), at(3, 1, 7), at(3, 9, 7)].map((cd) => kindAt(full, cd))).toEqual(['true', 'false', 'true', 'false']);
-    // so the board shows the start placed beside its partner true in row 1:
-    // the legend says the premise is impossible once the loop is closed, and
-    // the closing frame says why
+    // placed, keeping the pattern's colour inside the placement's ring (G5)
+    expect(kindAt(frameMarks(s, frames[frames.length - 1], () => false), start)).toBe('placeOn');
+    expect(kindAt(frameMarks(s, null, () => false), start)).toBe('placeOn');
+    // the rest of the loop under the premise, in the walk: 7r1c5 true, 7r3c5 false, ...
+    const rest = [at(1, 5, 7), at(3, 5, 7), at(3, 1, 7), at(3, 9, 7)];
+    expect(rest.map((cd) => kindAt(frameMarks(s, shut[0], () => false), cd))).toEqual(['true', 'false', 'true', 'false']);
+    // the closing frame shows the start true beside its partner true in
+    // row 1: the premise is impossible, and the frame and its legend say so
     for (const fr of open) expect(legendKinds(s, frameMarks(s, fr, () => false)).refuted, 'frame ' + fr.links).toBe(false);
-    for (const fr of [...shut, frames[frames.length - 1]]) expect(legendKinds(s, frameMarks(s, fr, () => false)).refuted).toBe(true);
-    expect(legendOf(s).map((l) => l.label)).toContain('the chain shows that premise is impossible: the first candidate (by the small dot) is true');
+    for (const fr of shut) expect(legendKinds(s, frameMarks(s, fr, () => false)).refuted).toBe(true);
+    expect(legendOf(s, undefined, shut[0]).map((l) => l.label)).toContain('the chain shows that premise is impossible: the first candidate (by the small dot) is true');
     expect(frames[links.length - 1].text).toContain('So assuming r1c1 is not 7 makes it 7: that is impossible, so r1c1 is 7.');
+    // those truths hold only under a premise the loop refutes: the full view
+    // and the conclusion draw no truth beside the placement, but the pattern
+    for (const m of [frameMarks(s, null, () => false), frameMarks(s, frames[frames.length - 1], () => false)]) {
+      expect(rest.map((cd) => kindAt(m, cd))).toEqual(['primary', 'primary', 'primary', 'primary']);
+      expect(legendKinds(s, m).refuted).toBe(false);
+    }
+    expect(legendOf(s).map((l) => l.kind)).toEqual(['place', 'primary']);
     expect(frames.slice(0, links.length - 1).every((fr) => !fr.text.includes('impossible'))).toBe(true);
   });
 
@@ -213,8 +220,9 @@ describe("a chain's truth (phase 2b)", () => {
     ];
     const s = step({ tech: 'GROUPED_X_CYCLES', truth: 'derived', links, primary: [...a, at(2, 8, 4), at(6, 8, 4), at(6, 3, 4), at(4, 3, 4)], eliminations: [at(9, 9, 4)] });
     expect(premiseOf(s)).toEqual({ assumed: true, group: true });
-    // its start is a group: one of its candidates assumed true, not all
-    const labels = legendOf(s).map((l) => l.label);
+    // its start is a group: one of its candidates assumed true, not all (in
+    // the walk: the full view of a loop that refutes its premise draws none)
+    const labels = walkFrames(s).flatMap((fr) => legendOf(s, undefined, fr).map((l) => l.label));
     expect(labels).toContain('true, if one candidate of the first group (by the small dot) is true');
     expect(labels).toContain('false, if one candidate of the first group (by the small dot) is true');
     // and no walk frame draws a member of its start group true: one of them, not all

@@ -224,9 +224,20 @@ Every rule is numbered so a commit, a test or a review can cite it.
 - **G18. Chains** (X-Chain, XY-Chain, AIC, grouped and ALS AICs, Nice
   Loops, X-Cycles, Skyscraper, 2-String Kite, Turbot Fish, W-Wing):
   truth discs and rings (G2), solid and dashed arrows (G8), no in-cell
-  arrows (G12). A discontinuous loop's start node is proven the opposite of
-  its premise: the full view shows the proven value and its conclusion;
-  the walk's first frame shows the premise.
+  arrows (G12). A discontinuous loop proves its start the opposite of its
+  premise, so its nodes' truths hold only under a premise it refutes: the
+  walk draws them frame by frame, the start as its premise, up to the link
+  that closes the loop, whose frame shows the start's proven value, says
+  the premise is impossible ("So assuming r6c1 is not 6 makes it 6: that
+  is impossible, so r6c1 is 6.") and adds that line to the legend; the
+  full view and the conclusion frame draw its proof as main did, the
+  start's placement or removal beside the other nodes in the pattern's
+  colour, as a forcing chain's full view does (G21). An open chain whose
+  truths put two true candidates in one cell, or one digit twice in a
+  house, also proves its premise impossible; its legend says so (the
+  stronger conclusion this proves is the finder's to take, not the
+  drawing's). A group node is worded as one: "one of r5c7, r6c7 must be
+  2", never all of them.
 - **G19. Colouring** (Simple Colors, Multi Colors, 3D Medusa, Remote
   Pair): **hue per cluster, shade per parity** (HoDoKu's Multi Colors:
   dark and light orange for one cluster, dark and light purple for the
@@ -417,9 +428,9 @@ dark ones. Arrows are the only achromatic mark.
 
 | Token | LIGHT | DARK | Shape |
 | --- | --- | --- | --- |
-| `--hint-true` (fill / ink) | #57c274 / #006c2f | #35a458 | disc r 13; light themes add a 2-unit edge in the ink |
+| true (`--hint-place` / `--hint-place-ink`, shared with placed) | #57c274 / #006c2f | #35a458 | disc r 13; light themes add a 2-unit edge in the ink; a placement adds the outer ring |
 | `--hint-false` | #175bb7 | #7fbbff (HoDoKu's own off-blue) | ring r 11.5, stroke 3, inside tinted 0.10 / 0.16 |
-| `--hint-removed` | #bc072a | #fe9696 | the false ring in red plus a 45° bar (upper left to lower right, rim to rim, stroke 2.25, over the digit: the ISO "no" bar) |
+| `--hint-removed` | #bc072a | #fe9696 | the false ring in red plus a 45° bar (upper left to lower right, rim to rim, stroke 2.25, over the digit: the ISO "no" bar), on a halo in the board's colour 1.25 wider each side and 0.7 of its length, so the bar never merges with the digit (on a phone 6.25 and 7 under 330) |
 | placed | true fill + ring in true ink | same | disc plus a concentric ring r 16.5, stroke 2.5 (on a small board and in Learn r 17.5, stroke 4.5) |
 | `--hint-pattern` (fill / ink) | #498de5 / #175bb7 | #498de5 | disc |
 | `--hint-secondary` (acts-through) | #f8b93f / #805500 | #f8b93f | disc |

@@ -10,8 +10,9 @@ import { tr } from '../engine/text';
 import { arrowShapes, startMarkers, pointsOf, SIZES } from './hintGeometry';
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
-import { hintMarks, markedCandidates, legendKinds, placedKeys, premiseOf, COLOURING } from './hintMarks';
+import { hintMarks, frameMarks, markedCandidates, legendKinds, placedKeys, premiseOf, COLOURING } from './hintMarks';
 import type { Premise, Role } from './hintMarks';
+import type { Frame } from '../engine/hintFrames';
 
 interface TruthWords {
   isTrue: string;
@@ -202,7 +203,10 @@ export function boardSvg(example: Example, title: string): string {
             : `<circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="${P.elim}" fill-opacity="${P.ringTint}"/><circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="none" stroke="${P.elim}" stroke-width="${f(MARK.ringStroke * s * LINE)}"/>`
         );
         texts.push(`<text x="${x}" y="${ty}" class="${colour ? 'mk' : 'rm'}">${digit}</text>`);
+        // a halo in the board's white under the bar, so it stays apart from the digit
+        const h = b * MARK.barHaloLength;
         bars.push(
+          `<line x1="${f(candX(cd) - h)}" y1="${f(candY(cd) - h)}" x2="${f(candX(cd) + h)}" y2="${f(candY(cd) + h)}" stroke="#ffffff" stroke-width="${f((MARK.barStroke * BAR + 2 * MARK.barHalo) * s)}"/>`,
           `<line x1="${f(candX(cd) - b)}" y1="${f(candY(cd) - b)}" x2="${f(candX(cd) + b)}" y2="${f(candY(cd) + b)}" stroke="${P.elim}" stroke-width="${f(MARK.barStroke * s * BAR)}"/>`
         );
         continue;
@@ -351,14 +355,14 @@ export interface LegendEntry {
 }
 
 /**
- * What the legend under a diagram names: the kinds the diagram draws, and
+ * What the legend under a diagram names (or under a walk frame, given one): the kinds the diagram draws, and
  * nothing it does not (G22). A role whose every candidate was drawn as a
  * removal or a placement lends its words to that entry. The colouring
  * techniques name their own colours in the explanation (blue and gold are
  * the two parities there), so only the removals and placements are listed.
  */
-export function legendOf(step: Step, values?: string): LegendEntry[] {
-  const drawn = hintMarks(step, { solved: (cell) => !!values && Number(values[cell]) > 0 });
+export function legendOf(step: Step, values?: string, frame: Frame | null = null): LegendEntry[] {
+  const drawn = frameMarks(step, frame, (cell) => !!values && Number(values[cell]) > 0);
   const { shown, onValue, onBand, intoRemove, intoPlace, refuted } = legendKinds(step, drawn);
   const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);

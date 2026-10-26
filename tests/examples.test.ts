@@ -192,8 +192,10 @@ describe('worked examples', () => {
       });
       const circles = [...marked].reduce((n, k) => n + circlesOf(k), 0) + starts;
       expect((svg.match(/<circle /g) ?? []).length, tech).toBe(circles);
-      // the grid's 20 lines, and one bar over each removed candidate
-      expect((svg.match(/<line /g) ?? []).length, tech).toBe(20 + removed.size);
+      // the grid's 20 lines, and one bar over each removed candidate, on a
+      // halo in the board's white that keeps it apart from the digit
+      expect((svg.match(/<line /g) ?? []).length, tech).toBe(20 + 2 * removed.size);
+      expect((svg.match(/<line [^>]*stroke="#ffffff"/g) ?? []).length, tech).toBe(removed.size);
       // every drawn link twice: a halo under the line
       expect((svg.match(/<path d="[^"]+" fill="none"/g) ?? []).length, tech).toBe(2 * drawn.length);
       const givens = ex.puzzle.replace(/[^1-9]/g, '').length;

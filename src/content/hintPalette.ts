@@ -115,6 +115,14 @@ export const MARK = {
   /** the removal bar, rim to rim at 45 degrees, over the digit */
   bar: 0.0919,
   barStroke: 0.0225,
+  /**
+   * a halo in the board's colour under the bar, wider by this on each side
+   * and short of the ring, so the bar never merges with the digit it
+   * crosses (on a phone it read as part of an 8), the one shape that tells
+   * a removal from a false node
+   */
+  barHalo: 0.0125,
+  barHaloLength: 0.7,
   /** a placement's outer ring; on a small board, thicker and moved out with it so the gap to the disc stays (G3, G14a) */
   placeRing: 0.165,
   placeRingStroke: 0.025,
