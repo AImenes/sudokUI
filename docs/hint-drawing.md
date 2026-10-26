@@ -737,20 +737,23 @@ the values above are its final ones.
   tie's ends nearer their own candidate and walk numbers off the marks
   (84c6b60). Round 3 found nothing high, medium, false or regressed.
 
-  Left for later, low: round 3's eight, taken in a follow-up right after
-  the merge (the stored Remote Pair's tree could draw without its one
-  crossing; a two-bend or S tie can run beside another tie, or along the
-  board's edge; two weak ties into one removal can cross before it; a
-  boxed-in weak tie off the solve paths can end on another candidate of
-  its cell; rule 4 says its rule-5 removals "fall the same way";
-  docs/highlighting.md's old colour roles; the review gallery's raw
-  description). Also: the Multi Colors search order hides a colour
+  Round 3's eight lows were fixed in a follow-up after the merge: rule
+  4 says its other removals "fall the same way" only where they do, the
+  developer docs speak of shades, the review gallery shows what Learn
+  shows (408f188); of ties that weigh the same the tree takes the one it
+  draws best, so the stored Remote Pair draws without a crossing
+  (94d00cf); ties keep off the board's edge and run beside no other tie,
+  two weak ties into one candidate no longer cross before it, and a
+  boxed-in weak tie comes in from a free side (2404ed1).
+
+  Left for later, low: the Multi Colors search order hides a colour
   seeing both behind a bridge (24% of the bridges on offer; decision 13,
   its own reviewed change, since it changes solve paths); off the solve
-  paths, in corner or edge cells boxed in by marks, a few ties that keep
-  outside the marks but under a mark and a gap, or meet at under 20
-  degrees (29 of 89,415 pairs); a walk number on a bracket's corner can
-  touch another line at a phone's size where no corner is clear (G14's
+  paths, in corner or edge cells boxed in by marks, a few ties keep
+  outside the marks but under a mark and a gap, meet at under 20
+  degrees, cross a tie they share an end with, or run beside another
+  (the tests bound each); a walk number on a bracket's corner can touch
+  another line at a phone's size where no corner is clear (G14's
   trade-off; phase 7); a big chain hint's layout on the main thread,
   which main already pays (phase 7).
 - [ ] Phase 4: sets
