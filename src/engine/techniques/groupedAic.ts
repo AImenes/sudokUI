@@ -1,6 +1,7 @@
 import { Grid, UNITS, bit, digitsOf, sees, rowOf, colOf, cellName, cellNames } from '../board';
-import { Step, CellDigit, alternatingLinks } from '../steps';
+import { Step, CellDigit, ChainLink, alternatingLinks } from '../steps';
 import { collectAls } from './als';
+import type { Als } from './als';
 import { tr } from '../text';
 
 /**
@@ -38,6 +39,31 @@ interface GNode {
   digit: number;
   /** index of the ALS this node belongs to, for ALS-augmented chains */
   als?: number;
+}
+
+/**
+ * A link between two digits of one almost locked set says so: the set is
+ * not one cell with only those two digits, so the walk's sentence for a
+ * bivalue cell would be false (and the set may have more cells)
+ */
+function alsLinkTexts(links: ChainLink[], path: GNode[], alses: Als[]): ChainLink[] {
+  return links.map((l, i) => {
+    const [a, b] = [path[i], path[i + 1]];
+    if (a.als === undefined || a.als !== b.als) return l;
+    const set = alses[a.als];
+    // a set of one cell is a bivalue cell, which the plain sentence fits
+    if (set.cells.length === 1) return l;
+    const cells = cellNames(set.cells);
+    const digits = digitsOf(set.mask).join('');
+    const to = cellNames(b.cells);
+    return {
+      ...l,
+      text:
+        b.cells.length === 1
+          ? tr`In the set ${cells} (${digits}), one digit short of locked: if none of its cells is ${a.digit}, it locks on its other digits, so ${to} must be ${b.digit}.`
+          : tr`In the set ${cells} (${digits}), one digit short of locked: if none of its cells is ${a.digit}, it locks on its other digits, so one of ${to} must be ${b.digit}.`
+    };
+  });
 }
 
 /** node path -> candidate sets for arrow drawing */
@@ -84,8 +110,8 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
   // ALS digit-nodes (chain mode only): one node per digit of each ALS,
   // internally strong-linked pairwise
   const alsPairs: [number, number][] = [];
+  const alses = mode === 'chain' ? collectAls(g, 3, 90) : [];
   if (mode === 'chain') {
-    const alses = collectAls(g, 3, 90);
     for (let a = 0; a < alses.length; a++) {
       const ids: number[] = [];
       for (const d of digitsOf(alses[a].mask)) {
@@ -220,7 +246,7 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
             primary: path.flatMap((n) =>
               nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))
             ),
-            links: alternatingLinks(nodeCds(nodes, path)),
+            links: alsLinkTexts(alternatingLinks(nodeCds(nodes, path)), path.map((n) => nodes[n]), alses),
             description: alsInPath
               ? tr`AIC with ALS: ${chain}; at least one end is true, so candidates conflicting with both ends are removed.`
               : tr`Grouped AIC: ${chain}; at least one end is true, so candidates conflicting with both ends are removed.`

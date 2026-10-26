@@ -162,7 +162,7 @@ describe("a chain's truth (phase 2b)", () => {
     const ring = [[at(1, 1, 7)], [at(1, 5, 7)], [at(3, 5, 7)], [at(3, 1, 7)], [at(3, 9, 7)]];
     const links = alternatingLinks(ring, 'strong');
     const s = step({ tech: 'NICE_LOOP', truth: 'derived', links, primary: ring.flat(), placements: [at(1, 1, 7)] });
-    expect(premiseOf(s)).toBe(false);
+    expect(premiseOf(s)).toEqual({ assumed: false, group: false });
     const frames = walkFrames(s);
     const start = at(1, 1, 7);
     // the premise while the loop is open, proven once its closing link is drawn, placed at the conclusion
@@ -188,14 +188,28 @@ describe("a chain's truth (phase 2b)", () => {
       { from: [at(4, 3, 4)], to: a, strong: false }
     ];
     const s = step({ tech: 'GROUPED_X_CYCLES', truth: 'derived', links, primary: [...a, at(2, 8, 4), at(6, 8, 4), at(6, 3, 4), at(4, 3, 4)], eliminations: [at(9, 9, 4)] });
-    expect(premiseOf(s)).toBe(true);
+    expect(premiseOf(s)).toEqual({ assumed: true, group: true });
+    // its start is a group: one of its candidates assumed true, not all
     const labels = legendOf(s).map((l) => l.label);
-    expect(labels).toContain('true, if the first candidate (by the dot) is true');
-    expect(labels).toContain('false, if the first candidate (by the dot) is true');
+    expect(labels).toContain('true, if one candidate of the first group (by the small dot) is true');
+    expect(labels).toContain('false, if one candidate of the first group (by the small dot) is true');
     // and no walk frame draws a member of its start group true: one of them, not all
     for (const fr of walkFrames(s)) for (const m of a) expect(frameMarks(s, fr, () => false).cands.get(m.cell)?.get(m.digit), 'frame ' + fr.links).not.toBe('true');
     // a step whose truth is not derived claims none
     expect(premiseOf(step({ primary: [A] }))).toBeNull();
+  });
+
+  it('words a chain that opens at a group by the group: none of its candidates assumed true', () => {
+    // (8)r5c7,r6c7 = r9c7 - r9c1 = r5c1 => r5c8, r5c9 <> 8
+    const g = [at(5, 7, 8), at(6, 7, 8)];
+    const links = alternatingLinks([g, [at(9, 7, 8)], [at(9, 1, 8)], [at(5, 1, 8)]]);
+    const s = step({ tech: 'AIC_GROUPED', truth: 'derived', links, primary: [...g, at(9, 7, 8), at(9, 1, 8), at(5, 1, 8)], eliminations: [at(5, 8, 8), at(5, 9, 8)] });
+    expect(premiseOf(s)).toEqual({ assumed: false, group: true });
+    const labels = legendOf(s).map((l) => l.label);
+    expect(labels).toContain('true, if no candidate of the first group (by the small dot) is true');
+    expect(labels).toContain('false, if no candidate of the first group (by the small dot) is true');
+    // a false group is none of its candidates: each a false ring
+    for (const m of g) expect(kindAt(frameMarks(s, null, () => false), m)).toBe('false');
   });
 });
 

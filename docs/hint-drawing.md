@@ -81,13 +81,16 @@ Every rule is numbered so a commit, a test or a review can cite it.
   removal ringed blue that was never blue: Simple Colors' trap target,
   Multi Colors rule 1 and 2, Medusa rules 3-5, Digit Forcing's removal;
   Aligned Pair Exclusion, Exocet and Pattern Overlay ring their removals
-  blue because the removals sit in the pattern list). A removed node that
-  WAS a chain node keeps its truth ring under the removal mark, because
-  the walk names it; until truth is drawn (phase 2b), it keeps the colour
-  the step names for it inside the removal ring, as Nishio's removed
-  assumption does, so the legend's words for that colour still find it. A
-  placed chain node the step names keeps that colour in its disc inside
-  the placement's outer ring, as Digit Forcing's placed assumption does.
+  blue because the removals sit in the pattern list). A removed or placed
+  node of a chain whose truth is drawn (phase 2b) is the removal or the
+  placement alone: the mark says its truth (removed is false, placed is
+  true), so no truth ring or disc is drawn with it; the walk's frames
+  before the conclusion show it as a truth mark. Any other removed chain
+  node keeps the colour the step names for it inside the removal ring, as
+  Nishio's removed assumption does, so the legend's words for that colour
+  still find it. A placed chain node the step names keeps that colour in
+  its disc inside the placement's outer ring, as Digit Forcing's placed
+  assumption does.
 - **G6. Digits on discs.** A digit on a filled disc is near-black in every
   theme; a digit inside a ring is the theme's strongest ink (the givens'
   colour), in bold. Unmarked candidates stay as they are: nothing is dimmed
@@ -438,7 +441,12 @@ only as a ring; green is always true or placed; red is always removed. In
 a chain step every node takes its truth mark, and pattern-blue discs are
 not used beside truth marks (in the dark theme pattern and true are only
 ΔE 4.1 apart under tritan vision, and both are discs). Gold discs are not
-put beside true discs either (light protan ΔE 8.3).
+put beside true discs either (light protan ΔE 8.3). Two exceptions stand
+until their phases: a true group's members keep the pattern's disc
+(a true group is "one of these", so none of them is a true disc) until
+phase 4 draws groups as hulls, and the chain trainer's gold suggestions
+sit beside its true discs until phase 6 gives them a mark and a legend
+entry of their own.
 
 **Where shape carries it.** True vs false: disc vs ring. Removed: the
 bar. Placed vs true: the outer ring (same colour by design). A set member:

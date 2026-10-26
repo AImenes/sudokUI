@@ -12,7 +12,7 @@ import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 import { stepText } from '../content/eureka';
 import { frameMarks, legendKinds, premiseOf } from '../content/hintMarks';
-import type { Role } from '../content/hintMarks';
+import type { Premise, Role } from '../content/hintMarks';
 import { copyText } from './send';
 import { useT, rich, Translator } from '../content/i18n';
 import { useLearnLocale } from './useLearnLocale';
@@ -35,6 +35,22 @@ function useTechWhat(): (tech: Tech) => string {
  * technique the solver never uses: one whole sentence per kind, so each
  * language words it its own way (the English is frequencyLabel's)
  */
+/**
+ * The legend's words for a chain's true discs and false rings: under the
+ * premise of its first node, the one with the small start dot, and for a
+ * group as a group (true: one of its candidates; false: none)
+ */
+function truthWords(t: Translator, p: Premise): [string, string] {
+  if (p.group) {
+    return p.assumed
+      ? [t('true, if one candidate of the first group (by the small dot) is true'), t('false, if one candidate of the first group (by the small dot) is true')]
+      : [t('true, if no candidate of the first group (by the small dot) is true'), t('false, if no candidate of the first group (by the small dot) is true')];
+  }
+  return p.assumed
+    ? [t('true, if the first candidate (by the small dot) is true'), t('false, if the first candidate (by the small dot) is true')]
+    : [t('true, if the first candidate (by the small dot) is false'), t('false, if the first candidate (by the small dot) is false')];
+}
+
 function neededIn(t: Translator, tech: Tech): string | null {
   const p = frequencyParts(tech);
   if (!p) return null;
@@ -96,11 +112,11 @@ export function ChainPanel() {
           <ul className="hint-legend">
             <li>
               <i className="swatch-true" />
-              {t('true, if the first candidate (by the dot) is false')}
+              {truthWords(t, { assumed: false, group: false })[0]}
             </li>
             <li>
               <i className="swatch-false" />
-              {t('false, if the first candidate (by the dot) is false')}
+              {truthWords(t, { assumed: false, group: false })[1]}
             </li>
             <li>{t('your chain: solid into a candidate it makes true, dashed into one it makes false')}</li>
             {elims.length > 0 && (
@@ -290,16 +306,16 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                   {[t('remove'), ...lent(legend.intoRemove)].join(': ')}
                 </li>
               )}
-              {legend.shown.has('true') && (
+              {premise && legend.shown.has('true') && (
                 <li>
                   <i className="swatch-true" />
-                  {premise ? t('true, if the first candidate (by the dot) is true') : t('true, if the first candidate (by the dot) is false')}
+                  {truthWords(t, premise)[0]}
                 </li>
               )}
-              {legend.shown.has('false') && (
+              {premise && legend.shown.has('false') && (
                 <li>
                   <i className="swatch-false" />
-                  {premise ? t('false, if the first candidate (by the dot) is true') : t('false, if the first candidate (by the dot) is false')}
+                  {truthWords(t, premise)[1]}
                 </li>
               )}
               {legend.shown.has('primary') && (

@@ -11,7 +11,7 @@ import { arrowShapes, startMarkers, pointsOf, SIZES } from './hintGeometry';
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
 import { hintMarks, markedCandidates, legendKinds, placedKeys, premiseOf, COLOURING } from './hintMarks';
-import type { Role } from './hintMarks';
+import type { Premise, Role } from './hintMarks';
 
 export interface Example {
   puzzle: string;
@@ -291,6 +291,22 @@ ${parts.join('\n')}
 `;
 }
 
+/**
+ * The legend's words for a chain's true discs and false rings: under the
+ * premise of its first node, the one with the small start dot, and for a
+ * group as a group (true: one of its candidates; false: none)
+ */
+function truthWords(p: Premise): [string, string] {
+  if (p.group) {
+    return p.assumed
+      ? [tr`true, if one candidate of the first group (by the small dot) is true`, tr`false, if one candidate of the first group (by the small dot) is true`]
+      : [tr`true, if no candidate of the first group (by the small dot) is true`, tr`false, if no candidate of the first group (by the small dot) is true`];
+  }
+  return p.assumed
+    ? [tr`true, if the first candidate (by the small dot) is true`, tr`false, if the first candidate (by the small dot) is true`]
+    : [tr`true, if the first candidate (by the small dot) is false`, tr`false, if the first candidate (by the small dot) is false`];
+}
+
 /** a legend entry: the kind of mark (its swatch is drawn like the mark, src/ui/styles.css .swatch-*) and its words */
 export interface LegendEntry {
   kind: 'place' | 'elim' | 'true' | 'false' | 'primary' | 'secondary' | 'fin';
@@ -322,11 +338,10 @@ export function legendOf(step: Step, values?: string): LegendEntry[] {
   if (COLOURING.has(step.tech)) return out;
   // a derived chain's truth, worded by its first node's premise
   const premise = premiseOf(step);
-  if (shown.has('true')) {
-    out.push({ kind: 'true', label: premise ? tr`true, if the first candidate (by the dot) is true` : tr`true, if the first candidate (by the dot) is false`, colour: P.place, ink: P.placeInk });
-  }
-  if (shown.has('false')) {
-    out.push({ kind: 'false', label: premise ? tr`false, if the first candidate (by the dot) is true` : tr`false, if the first candidate (by the dot) is false`, colour: '#ffffff', ink: P.false });
+  if (premise && (shown.has('true') || shown.has('false'))) {
+    const [isTrue, isFalse] = truthWords(premise);
+    if (shown.has('true')) out.push({ kind: 'true', label: isTrue, colour: P.place, ink: P.placeInk });
+    if (shown.has('false')) out.push({ kind: 'false', label: isFalse, colour: '#ffffff', ink: P.false });
   }
   const role = (kind: Role, label: string, colour: string, ink: string) =>
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });

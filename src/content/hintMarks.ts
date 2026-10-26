@@ -65,15 +65,22 @@ export const COLOURING = new Set(['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'])
 
 const has = (list: CellDigit[] | undefined, cd: CellDigit) => !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
 
+/** what a derived chain assumes of its first node, and whether that node is a group (true: one of its candidates; false: none) */
+export interface Premise {
+  assumed: boolean;
+  group: boolean;
+}
+
 /**
  * What a derived chain assumes of its first node: false when it opens with
  * a strong link, true when it opens with a weak one; null for a step whose
  * truth is not derived, or whose derivation finds a fault
  */
-export function premiseOf(step: Step): boolean | null {
+export function premiseOf(step: Step): Premise | null {
   const d = deriveTruth(step);
   if (!d || d.problems.length || !d.nodes.length) return null;
-  return d.closure ? d.closure.assumed : d.nodes[0].truth;
+  const first = d.closure ? d.closure.node : d.nodes[0].node;
+  return { assumed: d.closure ? d.closure.assumed : d.nodes[0].truth, group: first.length > 1 };
 }
 
 /** the colour the step names for a candidate, if any: the first of the lists the full view marks in order */

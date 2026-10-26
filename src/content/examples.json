@@ -9464,7 +9464,8 @@
        "digit": 9
       }
      ],
-     "strong": true
+     "strong": true,
+     "text": "In the set r7c8, r8c8 (489), one digit short of locked: if none of its cells is 8, it locks on its other digits, so one of r7c8, r8c8 must be 9."
     },
     {
      "from": [
