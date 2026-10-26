@@ -557,24 +557,45 @@ the values above are its final ones.
   when the trainer's chain starts over. To photograph the app's own board with
   an example's hint, a scratch Playwright run on port 4174 opens each
   example's position link (kept in the git-ignored `.vite/`).
-- [ ] Phase 2: truth. 2a done (commit 16556da): `truth: 'derived'` on
-  every AIC-form finder, `src/engine/truth.ts` with its self-check, the
-  examples refreshed, tests/truth.test.ts (518 chain steps of a solve batch,
-  all clean); the chain trainer draws each link as the kind it is used as
-  and says `truth: 'derived'`. 2b built, in review: a derived chain draws
-  each node as the chain makes it (`src/content/hintMarks.ts`), a true
-  node a filled disc in the true colour and a false one a ring in the false
-  colour, faintly tinted, before the roles; a true group's members keep
-  the pattern's disc until phase 4; a discontinuous loop's start shows its
-  premise until the walk draws the link that closes the loop, its proven
-  value after; a removed or placed node is its removal or placement. The
-  legend names both, worded by the premise ("true, if the first candidate
-  (by the dot) is false"; an inverted loop's "... is true"), in the app,
-  the chain trainer and the Learn diagrams, in all three languages.
-  Arrows were already dashed exactly into false nodes (G8).
-  Review round 1 found one high defect (an inverted grouped loop drew its
-  whole start group true in the walk), fixed; what is left before 2b can
-  merge, and how the work is run, is in `docs/hint-drawing-handoff.md`.
+- [ ] Phase 2: truth. 2a (commit 16556da): `truth: 'derived'` on every
+  AIC-form finder, `src/engine/truth.ts` with its self-check, the examples
+  refreshed, tests/truth.test.ts; the chain trainer draws each link as the
+  kind it is used as and says `truth: 'derived'`. 2b: a derived chain
+  draws each node as the chain makes it (`src/content/hintMarks.ts`), a
+  true node a filled disc in the true colour and a false one a ring in the
+  false colour, faintly tinted, before the roles; a true group's
+  candidates are their own mark, `oneTrue`, drawn as the pattern's disc
+  until phase 4; a removed or placed node is its removal or placement. The
+  legend names them by the first node's premise ("true, if the first
+  candidate (by the small dot) is false"; a group start "... if no
+  candidate of the first group (by the small dot) is true"; an inverted
+  loop's "... is true"; a true group "one candidate of each group is true,
+  if ..."), in the app, the chain trainer and the Learn diagrams, in all
+  three languages. A discontinuous loop draws its truths in the walk up to
+  the link that closes it, which says the premise is impossible, and its
+  proof as main did in the full view and the conclusion (G18); any frame
+  that shows its premise impossible (also an open chain whose truths
+  clash) says so in the legend. The walk words a group as one ("one of
+  r5c7, r6c7 must be 2") and an ALS's link as the set's. The removal bar
+  sits on a halo (brought forward from phase 7). Arrows were already
+  dashed exactly into false nodes (G8). Every link of every derived step
+  in the batch and the examples is checked against the board's houses
+  (tests/truth.test.ts). Three review rounds: round 1 found a high (an
+  inverted grouped loop drew its whole start group true in the walk, fixed
+  in e7c17ea) and a medium (a W-Wing could join a weak link between cells
+  that do not see each other, fixed in cf3e83f); round 2 four mediums (a
+  group's walk sentence said all its cells "must be" the digit; a true
+  group took the whole loop's label; a placing loop's full view drew its
+  start placed beside its partner true; fixed in 528a2af-a819369) and
+  lows; round 3, on a819369, is the confirmation round before the
+  merge.
+
+  Left for later, low: the ALS-XZ label's "one digit short of locked"
+  (phase 6's words, main's wording); an open chain whose truths clash
+  proves a stronger conclusion than its finder reports (the legend says
+  the premise is impossible; taking the placement is the finder's, not
+  the drawing's); the chain trainer's legend does not name its gold
+  suggestions and purple goal (phase 6).
 - [ ] Phase 3: colouring
 - [ ] Phase 4: sets
 - [ ] Phase 5: forcing
