@@ -687,32 +687,52 @@ the values above are its final ones.
   read as a 3, so it went: keep the digit whole, e.g. outline the digit
   in the board's colour over a bar drawn under it, or stop the bar short
   of the digit's box).
-- [x] Phase 3: colouring. Built, in review (branch
-  `claude/adoring-curie-nlizdj`), as
-  [hint-drawing-colouring.md](hint-drawing-colouring.md) designs it: the
-  design (e47f3ab); a fixture of every drawing that is not a colouring,
-  made before any change, which every later commit passes unchanged
-  (`tests/drawingSnapshot.test.ts`, 1debe13); the palette, dark and light
-  purple and orange (7a68a55); the drawing machinery for `truth: 'parity'`
-  (`checkParity`, `Frame.drawn` and `drawnLinks`, the shades, weak ties
-  and corner brackets on both boards and in both legends, f1b9d5e); the
-  four finders saying their parity in the shades' words in three
-  languages, the shortest drawn tree of ties, HoDoKu's colouring notation
-  and the swapped Multi Colors example, with every removal they make on
-  the practice paths unchanged (b6c2dce); then the browser walk test, the
-  older-colouring code retired (the `COLOURING` set in `hintMarks.ts`, the
-  Learn legend's early return for it, the walk's run of ties), a
-  colouring's removals named in reading order, and this spec. Looked at
-  on every stored colouring example and every rule fixture of
-  `tests/colouring.test.ts`, in all four themes, desktop and phone, every
-  walk frame and the panel, and the Learn gallery.
+- [x] Phase 3: colouring. Merged and live after three review rounds
+  (round 1 on 1db1969, round 2 on 95d53a3, a targeted round 3 on
+  e9df0f6), as [hint-drawing-colouring.md](hint-drawing-colouring.md)
+  designs it: the design (e47f3ab); a fixture of every drawing that is
+  not a colouring, made before any change, which every later commit
+  passes unchanged (`tests/drawingSnapshot.test.ts`, 1debe13); the
+  palette, dark and light purple and orange (7a68a55); the drawing
+  machinery for `truth: 'parity'` (`checkParity`, `Frame.drawn` and
+  `drawnLinks`, the shades, weak ties and corner brackets on both boards
+  and in both legends, f1b9d5e); the four finders saying their parity in
+  the shades' words in three languages, the shortest drawn tree of ties,
+  HoDoKu's colouring notation and the swapped Multi Colors example, with
+  every removal they make on the practice paths unchanged (b6c2dce); then
+  the browser walk test, the older-colouring code retired, a colouring's
+  removals named in reading order, and this spec (1db1969).
 
-  Left for later, low: the Multi Colors search order hides a colour
+  Round 1 (three medium) made the light shade keep light on a phone with
+  a thin rim (46fa4e6), bent a tie round another mark of its frame
+  instead of through it (72cead8), and gave every colouring "Build it
+  yourself" (0dd1756), with its lows: weak ties off box lines and off
+  candidates of their digit, brackets clear of a phone's marks, walk
+  numbers a gap apart, clearer words. Round 2 (one regression in words,
+  one fork) named every removal of a colouring in the full view
+  (b11851b), bent a tie apart from another that shares its end and off
+  every candidate of its digit, and made the tie search about six times
+  faster (e9df0f6), with its lows: the colours' nouns neuter in nb, rule
+  3's bracket legend, the trainer's goal note without a colour, a weak
+  tie's ends nearer their own candidate and walk numbers off the marks
+  (84c6b60). Round 3 found nothing high, medium, false or regressed.
+
+  Left for later, low: round 3's eight, taken in a follow-up right after
+  the merge (the stored Remote Pair's tree could draw without its one
+  crossing; a two-bend or S tie can run beside another tie, or along the
+  board's edge; two weak ties into one removal can cross before it; a
+  boxed-in weak tie off the solve paths can end on another candidate of
+  its cell; rule 4 says its rule-5 removals "fall the same way";
+  docs/highlighting.md's old colour roles; the review gallery's raw
+  description). Also: the Multi Colors search order hides a colour
   seeing both behind a bridge (24% of the bridges on offer; decision 13,
-  its own reviewed change after phase 3, since it changes solve paths);
-  a walk number on a bracket's corner can touch another line at a
-  phone's size where no corner is clear at that size (3D Medusa rule 5,
-  G14's trade-off; phase 7).
+  its own reviewed change, since it changes solve paths); off the solve
+  paths, in corner or edge cells boxed in by marks, a few ties that keep
+  outside the marks but under a mark and a gap, or meet at under 20
+  degrees (29 of 89,415 pairs); a walk number on a bracket's corner can
+  touch another line at a phone's size where no corner is clear (G14's
+  trade-off; phase 7); a big chain hint's layout on the main thread,
+  which main already pays (phase 7).
 - [ ] Phase 4: sets
 - [ ] Phase 5: forcing
 - [ ] Phase 6: words
