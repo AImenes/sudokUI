@@ -575,9 +575,6 @@ button {
     .board .hint-bar {
       stroke-width: 3.75px;
     }
-    .board .hint-bar-halo {
-      stroke-width: 6.25px;
-    }
     .board .hint-ring {
       stroke-width: 4px;
     }
@@ -607,9 +604,6 @@ button {
     .board .hint-bar {
       stroke-width: 4.5px;
     }
-    .board .hint-bar-halo {
-      stroke-width: 7px;
-    }
     .board .hint-ring {
       stroke-width: 4.5px;
     }
@@ -636,9 +630,6 @@ button {
   }
   .board .hint-bar {
     stroke-width: 3.75px;
-  }
-  .board .hint-bar-halo {
-    stroke-width: 6.25px;
   }
   .board .hint-ring {
     stroke-width: 4px;
@@ -668,9 +659,6 @@ button {
   }
   .board .hint-bar {
     stroke-width: 4.5px;
-  }
-  .board .hint-bar-halo {
-    stroke-width: 7px;
   }
   .board .hint-ring {
     stroke-width: 4.5px;

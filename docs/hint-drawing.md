@@ -430,7 +430,7 @@ dark ones. Arrows are the only achromatic mark.
 | --- | --- | --- | --- |
 | true (`--hint-place` / `--hint-place-ink`, shared with placed) | #57c274 / #006c2f | #35a458 | disc r 13; light themes add a 2-unit edge in the ink; a placement adds the outer ring |
 | `--hint-false` | #175bb7 | #7fbbff (HoDoKu's own off-blue) | ring r 11.5, stroke 3, inside tinted 0.10 / 0.16 |
-| `--hint-removed` | #bc072a | #fe9696 | the false ring in red plus a 45° bar (upper left to lower right, rim to rim, stroke 2.25, over the digit: the ISO "no" bar), on a halo in the board's colour 1.25 wider each side and 0.7 of its length, so the bar never merges with the digit (on a phone 6.25 and 7 under 330) |
+| `--hint-removed` | #bc072a | #fe9696 | the false ring in red plus a 45° bar (upper left to lower right, rim to rim, stroke 2.25, over the digit: the ISO "no" bar) |
 | placed | true fill + ring in true ink | same | disc plus a concentric ring r 16.5, stroke 2.5 (on a small board and in Learn r 17.5, stroke 4.5) |
 | `--hint-pattern` (fill / ink) | #498de5 / #175bb7 | #498de5 | disc |
 | `--hint-secondary` (acts-through) | #f8b93f / #805500 | #f8b93f | disc |
@@ -576,8 +576,7 @@ the values above are its final ones.
   proof as main did in the full view and the conclusion (G18); any frame
   that shows its premise impossible (also an open chain whose truths
   clash) says so in the legend. The walk words a group as one ("one of
-  r5c7, r6c7 must be 2") and an ALS's link as the set's. The removal bar
-  sits on a halo (brought forward from phase 7). Arrows were already
+  r5c7, r6c7 must be 2") and an ALS's link as the set's. Arrows were already
   dashed exactly into false nodes (G8). Every link of every derived step
   in the batch and the examples is checked against the board's houses
   (tests/truth.test.ts). Three review rounds: round 1 found a high (an
@@ -595,7 +594,13 @@ the values above are its final ones.
   proves a stronger conclusion than its finder reports (the legend says
   the premise is impossible; taking the placement is the finder's, not
   the drawing's); the chain trainer's legend does not name its gold
-  suggestions and purple goal (phase 6).
+  suggestions and purple goal (phase 6); with false rings beside
+  removals, the bar is what tells removed from false without colour, and
+  on a phone it merges with the digit (phase 7's item; a halo under the
+  bar was tried in round 2 and round 3 found it erased the digit, an 8
+  read as a 3, so it went: keep the digit whole, e.g. outline the digit
+  in the board's colour over a bar drawn under it, or stop the bar short
+  of the digit's box).
 - [ ] Phase 3: colouring
 - [ ] Phase 4: sets
 - [ ] Phase 5: forcing

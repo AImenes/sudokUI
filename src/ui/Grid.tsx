@@ -1402,21 +1402,17 @@ export function Grid() {
                 const cx = M + (i % 9) * SIZE + candX(d);
                 const cy = M + Math.floor(i / 9) * SIZE + candY(d) - 7;
                 const b = MARK.bar * SIZE;
-                const h = b * MARK.barHaloLength;
                 return (
-                  <g key={`bar-${i}-${d}`}>
-                    {/* a halo in the board's colour, so the bar stays apart from the digit */}
-                    <line
-                      className="hint-bar-halo"
-                      x1={cx - h}
-                      y1={cy - h}
-                      x2={cx + h}
-                      y2={cy + h}
-                      stroke="var(--cell-bg)"
-                      strokeWidth={(MARK.barStroke + 2 * MARK.barHalo) * SIZE}
-                    />
-                    <line className="hint-bar" x1={cx - b} y1={cy - b} x2={cx + b} y2={cy + b} stroke="var(--hint-elim)" strokeWidth={MARK.barStroke * SIZE} />
-                  </g>
+                  <line
+                    key={`bar-${i}-${d}`}
+                    className="hint-bar"
+                    x1={cx - b}
+                    y1={cy - b}
+                    x2={cx + b}
+                    y2={cy + b}
+                    stroke="var(--hint-elim)"
+                    strokeWidth={MARK.barStroke * SIZE}
+                  />
                 );
               })
           )}

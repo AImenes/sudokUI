@@ -203,10 +203,7 @@ export function boardSvg(example: Example, title: string): string {
             : `<circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="${P.elim}" fill-opacity="${P.ringTint}"/><circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="none" stroke="${P.elim}" stroke-width="${f(MARK.ringStroke * s * LINE)}"/>`
         );
         texts.push(`<text x="${x}" y="${ty}" class="${colour ? 'mk' : 'rm'}">${digit}</text>`);
-        // a halo in the board's white under the bar, so it stays apart from the digit
-        const h = b * MARK.barHaloLength;
         bars.push(
-          `<line x1="${f(candX(cd) - h)}" y1="${f(candY(cd) - h)}" x2="${f(candX(cd) + h)}" y2="${f(candY(cd) + h)}" stroke="#ffffff" stroke-width="${f((MARK.barStroke * BAR + 2 * MARK.barHalo) * s)}"/>`,
           `<line x1="${f(candX(cd) - b)}" y1="${f(candY(cd) - b)}" x2="${f(candX(cd) + b)}" y2="${f(candY(cd) + b)}" stroke="${P.elim}" stroke-width="${f(MARK.barStroke * s * BAR)}"/>`
         );
         continue;
