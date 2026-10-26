@@ -114,6 +114,9 @@ export function conclusionText(step: Step): string {
   }
   const byDigit = new Map<number, number[]>();
   for (const { cell, digit } of step.eliminations) (byDigit.get(digit) ?? byDigit.set(digit, []).get(digit)!).push(cell);
+  // a colouring's removals come in the order its cluster grew, up to a
+  // dozen cells of one digit: they are named in reading order
+  if (isParity(step)) for (const cells of byDigit.values()) cells.sort((a, b) => a - b);
   for (const [digit, cells] of [...byDigit].sort((a, b) => a[0] - b[0])) {
     parts.push(parts.length ? tr`${digit} is removed from ${cellNames(cells)}` : tr`So ${digit} is removed from ${cellNames(cells)}`);
   }
@@ -243,27 +246,12 @@ export function walkFrames(step: Step): Frame[] {
   const base = new Set<Part>(['units']);
   if (step.links && step.links.length > 0) {
     const closing = closureText(step);
-    // a run of ties is one idea: the cluster, coloured; every inference
-    // after it is a frame of its own
-    let i = 0;
-    while (i < step.links.length) {
-      const link = step.links[i];
-      if (link.undirected) {
-        let j = i;
-        while (j < step.links.length && step.links[j].undirected) j++;
-        const text =
-          j - i === 1
-            ? tr`${nodeCells(link.from)} and ${nodeCells(link.to)}: exactly one of them is true, so they take opposite colours.`
-            : tr`The cluster: each line joins two candidates of which exactly one is true (a conjugate pair, or the two candidates of a bivalue cell), so the two ends take opposite colours, and the colours spread along the lines.`;
-        frames.push({ text, links: j, show: new Set(base) });
-        i = j;
-      } else {
-        // the link that closes a discontinuous loop says what it proves
-        const text = closing && i === step.links.length - 1 ? `${linkText(link)} ${closing}` : linkText(link);
-        frames.push({ text, links: i + 1, show: new Set(base) });
-        i++;
-      }
-    }
+    // every inference is a frame of its own; the link that closes a
+    // discontinuous loop says what it proves
+    step.links.forEach((link, i) => {
+      const text = closing && i === step.links!.length - 1 ? `${linkText(link)} ${closing}` : linkText(link);
+      frames.push({ text, links: i + 1, show: new Set(base) });
+    });
     frames.push({
       text: conclusionText(step),
       links: step.links.length,

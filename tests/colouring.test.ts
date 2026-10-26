@@ -31,7 +31,7 @@ import type { Tech } from '../src/engine/ratings';
 import type { CellDigit, ChainLink, ColourRule, Step } from '../src/engine/steps';
 import { isParity, isTie } from '../src/engine/steps';
 import { checkParity } from '../src/engine/truth';
-import { walkFrames, drawnLinks } from '../src/engine/hintFrames';
+import { walkFrames, drawnLinks, describe as describeStep } from '../src/engine/hintFrames';
 import type { Frame } from '../src/engine/hintFrames';
 import { frameMarks, parityLegend } from '../src/content/hintMarks';
 import { stepText, eurekaOf } from '../src/content/eureka';
@@ -364,6 +364,17 @@ describe('the words of a colouring the finders give', () => {
     }
   });
 
+  it('say in the first cluster frame why two joined candidates take opposite shades', () => {
+    for (const f of FIXTURES) {
+      const first = walkFrames(stepAt(f))[0].text;
+      expect(first, f.name).toMatch(
+        f.rule === 'remotePair'
+          ? /cannot hold the same digit, so their \ds take opposite shades/
+          : /exactly one of (them|two joined candidates) is true, so they take opposite shades/i
+      );
+    }
+  });
+
   it('are in Norwegian and Spanish, every sentence translated, in the hues drawn and never the old colours', () => {
     const before = new Set(missedTemplates());
     const old = {
@@ -397,16 +408,34 @@ describe('the words of a colouring the finders give', () => {
   });
 });
 
+describe('the removals of a colouring the finders give', () => {
+  it('are named in reading order, in the walk\'s conclusion and the explanation, though the finder lists them as its cluster grew', () => {
+    const wrap = stepAt(FIXTURES.find((f) => f.name === 'wrap')!);
+    // the finder's own order, kept so its removals stay what they were
+    expect(wrap.eliminations.map(nameOf).join(' ')).toBe('6r1c7 6r4c5 6r3c4 6r2c3 6r7c9 6r5c2 6r8c8 6r7c6 6r6c6 6r4c7');
+    const named = 'So 6 is removed from r1c7, r2c3, r3c4, r4c5, r4c7, r5c2, r6c6, r7c6, r7c9, r8c8.';
+    expect(walkFrames(wrap).at(-1)!.text.startsWith(named)).toBe(true);
+    expect(describeStep(wrap)).toContain(named);
+    for (const f of FIXTURES) {
+      const s = stepAt(f);
+      for (const m of walkFrames(s).at(-1)!.text.matchAll(/removed from ((?:r\dc\d(?:, )?)+)/g)) {
+        const cells = m[1].split(', ');
+        expect(cells, f.name).toEqual([...cells].sort());
+      }
+    }
+  });
+});
+
 describe('the notation', () => {
   /** the Copy step line at a fixture */
   const line = (name: string) => stepText(stepAt(FIXTURES.find((f) => f.name === name)!));
 
-  it("is HoDoKu's: the rule's name, each cluster's dark cells then its light ones, purple first; 3D Medusa's candidates; a Remote Pair's cells by the colour of the lower digit", () => {
+  it("is HoDoKu's: the rule's name, each cluster's dark cells then its light ones, purple first; 3D Medusa's candidates; a Remote Pair's cells by the colour of the lower digit; the removals in reading order", () => {
     expect(line('trap (stored)')).toBe('Simple Colors Trap: 4 (r1c5,r6c4,r8c6) / (r1c6,r5c5,r8c8) => r6c8<>4');
     expect(line('wrap, off the path')).toBe('Simple Colors Wrap: 7 (r4c7,r6c9) / (r4c9,r6c4,r9c7) => r4c7<>7, r6c9<>7');
     expect(line('bridge (stored)')).toBe('Multi Colors 1: 6 (r4c9,r8c7) / (r5c7,r8c6), (r1c3,r2c9,r9c8) / (r1c8,r2c4) => r3c6<>6, r7c4<>6');
     expect(line('sees both, two cells')).toBe(
-      'Multi Colors 2: 9 (r5c1,r6c7) / (r5c9,r6c5,r9c7), (r1c5,r2c1,r7c6) / (r2c6) => r2c1<>9, r7c6<>9, r1c5<>9'
+      'Multi Colors 2: 9 (r5c1,r6c7) / (r5c9,r6c5,r9c7), (r1c5,r2c1,r7c6) / (r2c6) => r1c5<>9, r2c1<>9, r7c6<>9'
     );
     expect(line('Medusa rule 4 (stored)')).toBe('3D Medusa: (1r1c1,1r7c3,8r1c3) / (1r7c1,8r1c1,8r7c3) => r7c2<>1');
     expect(line('Remote Pair (stored)')).toBe('Remote Pair: 3/5 (r2c3,r3c4,r5c5) / (r2c5,r6c4) => r6c3<>3');

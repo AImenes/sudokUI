@@ -22,9 +22,8 @@ export interface ChainLink {
    * - Strong: a tie, exactly one of the two ends true (a conjugate pair,
    *   the two candidates of a bivalue cell, the same digit of two Remote
    *   Pair cells that see each other), so they take opposite colours: a
-   *   quiet straight line, nothing inside one cell. A colouring
-   *   (`truth: 'parity'`) draws a cluster's ties only in that cluster's
-   *   walk frame; an older colouring shows all its ties in one frame.
+   *   quiet straight line, nothing inside one cell, drawn only in its
+   *   cluster's walk frame (a colouring, `truth: 'parity'`).
    * - Weak (a colouring only): a weak tie, the two ends see each other or
    *   share a cell, so at most one of them is true (a witness, a clash, a
    *   bridge). It claims no truth, so it stays true whatever its ends turn

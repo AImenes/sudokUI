@@ -210,12 +210,14 @@ const COLOURING_NAMES: Record<ColourRule, string> = {
  * " / ", the clusters by ", ", purple first. One digit (Simple and Multi
  * Colors) goes first and the colours are cells; 3D Medusa's colours are
  * candidates, 1r7c3, by digit and then cell; a Remote Pair's are its cells
- * by the colour of their lower digit, after the pair's two digits
+ * by the colour of their lower digit, after the pair's two digits. The
+ * removals follow in reading order
  */
 function colouringLine(step: Step): string {
   const { rule, clusters } = step.colouring!;
   const name = COLOURING_NAMES[rule];
-  const done = conclusions(step);
+  // its removals in reading order, as its colours are
+  const done = conclusions({ ...step, eliminations: [...step.eliminations].sort((a, b) => a.cell - b.cell || a.digit - b.digit) });
   const cells = (cds: readonly CellDigit[]) => cellsOf(cds).map(cellName).join(',');
   if (rule === 'remotePair') {
     const [{ dark, light }] = clusters;

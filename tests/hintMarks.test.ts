@@ -47,15 +47,15 @@ describe('the marks', () => {
     expect(m.cands.get(B.cell)?.get(B.digit)).toBe('primary');
   });
 
-  it('keep a colouring’s colour inside the ring of what it removes, and only a colour the step names', () => {
-    const s = step({ tech: 'SIMPLE_COLORS', primary: [A], secondary: [B], eliminations: [A, C] });
-    const m = hintMarks(s, none);
-    expect(m.cands.get(A.cell)?.get(A.digit)).toBe('elimOn');
-    expect(m.inside.get(A.cell)?.get(A.digit)).toBe('primary');
-    expect(m.cands.get(C.cell)?.get(C.digit)).toBe('elim');
-    expect(m.inside.get(C.cell)).toBeUndefined();
-    // the same removal outside a colouring is a plain ring
-    expect(hintMarks({ ...s, tech: 'X_CHAIN' }, none).inside.size).toBe(0);
+  it('keep no colour inside the ring of a removal that is no chain node, whatever the technique (G5)', () => {
+    // a colouring's parity once stayed inside its removals; a colouring now
+    // says its parity (truth 'parity'), and no technique's name does it
+    for (const tech of ['X_CHAIN', 'SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'] as Tech[]) {
+      const m = hintMarks(step({ tech, primary: [A], secondary: [B], eliminations: [A, C] }), none);
+      expect(m.cands.get(A.cell)?.get(A.digit), tech).toBe('elim');
+      expect(m.cands.get(C.cell)?.get(C.digit), tech).toBe('elim');
+      expect(m.inside.size, tech).toBe(0);
+    }
   });
 
   it('keep the colour a step names for a placed chain node, as Digit Forcing places its own assumption', () => {
@@ -355,9 +355,13 @@ describe('the legend', () => {
     expect([k.onValue.has('secondary'), k.onBand.has('secondary')]).toEqual([true, false]);
   });
 
-  it('for a colouring names only the conclusion: the explanation names its colours', () => {
-    const s = step({ tech: 'SIMPLE_COLORS', primary: [A], secondary: [B], eliminations: [C] });
-    expect(legendOf(s).map((l) => l.kind)).toEqual(['elim']);
+  it('names what is drawn whatever the technique: no technique’s name hides a colour from it', () => {
+    // a colouring once named only its removals, its parities left to the
+    // explanation; a colouring now names its shades (parityLegend)
+    for (const tech of ['X_WING', 'SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'] as Tech[]) {
+      const s = step({ tech, primary: [A], secondary: [B], eliminations: [C] });
+      expect(legendOf(s).map((l) => l.kind), tech).toEqual(['elim', 'primary', 'secondary']);
+    }
   });
 });
 

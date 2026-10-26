@@ -10,7 +10,7 @@ import { tr } from '../engine/text';
 import { arrowShapes, startMarkers, pointsOf, SIZES } from './hintGeometry';
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
-import { frameMarks, markedCandidates, legendKinds, placedKeys, premiseOf, COLOURING, isParity, isShade, parityLegend } from './hintMarks';
+import { frameMarks, markedCandidates, legendKinds, placedKeys, premiseOf, isParity, isShade, parityLegend } from './hintMarks';
 import type { Premise, Role } from './hintMarks';
 import type { Frame } from '../engine/hintFrames';
 import { drawnLinks } from '../engine/hintFrames';
@@ -376,11 +376,9 @@ export interface LegendEntry {
 /**
  * What the legend under a diagram names (or under a walk frame, given one): the kinds the diagram draws, and
  * nothing it does not (G22). A role whose every candidate was drawn as a
- * removal or a placement lends its words to that entry. A colouring whose
- * truth is its parity names its shades, lines and proven colours as the
- * app's legend does (src/content/hintMarks.ts parityLegend); an older
- * colouring names its own colours in the explanation (blue and gold are the
- * two parities there), so only its removals and placements are listed.
+ * removal or a placement lends its words to that entry. A colouring names
+ * its shades, lines and proven colours as the app's legend does
+ * (src/content/hintMarks.ts parityLegend).
  */
 export function legendOf(step: Step, values?: string, frame: Frame | null = null): LegendEntry[] {
   const drawn = frameMarks(step, frame, (cell) => !!values && Number(values[cell]) > 0);
@@ -403,7 +401,6 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
   const out: LegendEntry[] = [];
   if (shown.has('place')) out.push({ kind: 'place', label: [tr`place`, ...lent(intoPlace)].join(': '), colour: P.place, ink: P.placeInk });
   if (shown.has('elim')) out.push({ kind: 'elim', label: [tr`remove`, ...lent(intoRemove)].join(': '), colour: '#ffffff', ink: P.elim });
-  if (COLOURING.has(step.tech)) return out;
   // a derived chain's truth, worded by its first node's premise
   const premise = premiseOf(step);
   if (premise) {

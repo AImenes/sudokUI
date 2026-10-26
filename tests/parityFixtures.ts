@@ -75,7 +75,7 @@ const simple = (d: number) =>
   `Each line joins the only two ${d}s of a house: exactly one of them is true, so they take opposite shades. Either every dark purple ${d} is true, or every light purple one is.`;
 const another = (d: number) => `Another cluster of ${d}s, shaded the same way in orange: either every dark orange ${d} is true, or every light orange one is.`;
 const medusa =
-  'Each line joins the only two places for a digit in a row, column or box; a cell with only two candidates joins those two, side by side (no line inside a cell). Joined candidates take opposite shades: either every dark purple candidate is true, or every light purple one is.';
+  'Each line joins the only two places for a digit in a row, column or box; a cell with only two candidates joins those two, side by side (no line inside a cell). Exactly one of two joined candidates is true, so they take opposite shades: either every dark purple candidate is true, or every light purple one is.';
 
 export const PARITY_FIXTURES: ParityFixture[] = [
   {

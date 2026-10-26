@@ -8,10 +8,7 @@
 // a removal; a candidate the step lists in more than one role takes the
 // first of pattern, acts-through, exception. A chain node takes the colour
 // the step names for it, in that same order, the pattern's when it names
-// none, so a walk's frames colour it as the full view does. In a colouring
-// a colour is a parity, so a node the step puts in no colour takes none: a
-// removal is a removal from the frame that reaches it, anything else a
-// plain ring round its digit ('node'), which the legend does not name.
+// none, so a walk's frames colour it as the full view does.
 //
 // A chain whose truth is derived (src/engine/truth.ts) draws each node as
 // what the chain makes it (G2, G18): a filled disc in the true colour, or
@@ -36,8 +33,7 @@
 // a shade.
 // A solved cell the step names shows the colour on its digit. A removal or
 // a placement keeps, inside its ring, the colour the step names for it
-// where that colour is an older colouring's parity or the candidate is one
-// of the chain's own nodes (G5: Nishio's
+// where the candidate is one of the chain's own nodes (G5: Nishio's
 // assumption, removed, and Digit Forcing's, placed, are still the
 // assumption), so a colour wholly removed or placed is still there to be
 // read; a colour only the chain default gave it is never shown.
@@ -102,13 +98,6 @@ export interface MarkOptions {
   /** a walk frame is shown, so a chain shows only the nodes of the links drawn, until its conclusion */
   walking?: boolean;
 }
-
-/**
- * the techniques whose colours are parities a removal still carries, as
- * drawn before a colouring said its parity (`truth: 'parity'`, drawn by
- * parityMarks below), for a colouring step that does not
- */
-export const COLOURING = new Set(['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D']);
 
 const has = (list: CellDigit[] | undefined, cd: CellDigit) => !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
 
@@ -196,8 +185,8 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const links = opts.links ?? step.links ?? [];
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
-      // a solved digit shows a colour the step names, and nothing for a plain node
-      if (kind !== 'node' && kind !== 'true' && kind !== 'false' && kind !== 'oneTrue' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
+      // a solved digit shows a colour the step names, and nothing for a chain's truth
+      if (kind !== 'true' && kind !== 'false' && kind !== 'oneTrue' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
       return;
     }
     if (!cands.has(cd.cell)) cands.set(cd.cell, new Map());
@@ -205,8 +194,6 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
     const prev = m.get(cd.digit);
     if (!prev || kind === 'elim' || (kind === 'place' && prev !== 'elim')) m.set(cd.digit, kind);
   };
-  const colouring = COLOURING.has(step.tech);
-  const removed = (cd: CellDigit) => step.eliminations.some((e) => e.cell === cd.cell && e.digit === cd.digit);
   // a derived chain's truth, node by node; a loop's start keeps its premise
   // until the link that closes the loop is drawn. A discontinuous loop's
   // truths hold only under the premise it refutes, so they are drawn in the
@@ -228,8 +215,7 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
     const t = truth.candidates.get(`${cd.cell}:${cd.digit}`);
     return t === 'true' ? 'true' : t === 'false' ? 'false' : t === 'groupTrue' ? 'oneTrue' : null;
   };
-  const node = (cd: CellDigit) =>
-    mark(cd, truthOf(cd) ?? namedRole(step, cd) ?? (!colouring ? 'primary' : removed(cd) ? 'elim' : 'node'));
+  const node = (cd: CellDigit) => mark(cd, truthOf(cd) ?? namedRole(step, cd) ?? 'primary');
   if (opts.walking && step.links?.length) {
     // walking a chain: only the nodes of the links drawn so far
     for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
@@ -259,7 +245,7 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
       for (const cd of list) {
         const colour = namedRole(step, cd);
         if (!colour || opts.solved(cd.cell)) continue;
-        if (!colouring && !nodes.has(`${cd.cell}:${cd.digit}`)) continue;
+        if (!nodes.has(`${cd.cell}:${cd.digit}`)) continue;
         // a derived chain's removed or placed node: the mark says its truth
         if (truth) continue;
         // a removal wins over a placement of the same candidate
@@ -331,10 +317,8 @@ export function legendKinds(
   proven: { false: boolean; removed: boolean; true: boolean; otherRemoved: boolean };
 } {
   const shown = new Set<CandMark>();
-  // a plain ring is named only in a colouring, where it is the cell a colour would empty
   const parity = isParity(step);
-  for (const m of marks.cands.values())
-    for (const k of m.values()) if (k !== 'node' || parity) shown.add(k === 'elimOn' ? 'elim' : k === 'placeOn' ? 'place' : k);
+  for (const m of marks.cands.values()) for (const k of m.values()) shown.add(k === 'elimOn' ? 'elim' : k === 'placeOn' ? 'place' : k);
   for (const k of marks.inside.values()) for (const r of k.values()) shown.add(r);
   const onValue = new Set<CandMark>();
   for (const k of marks.values.values()) {

@@ -542,10 +542,15 @@ test.describe('the walk', () => {
     // argument, dashed lines with no head and no start dot, and no tie
     const shafts = page.locator('svg.board .chain-arrows .chain-shaft');
     const ties = page.locator('svg.board .chain-arrows .chain-tie');
+    const heads = page.locator('svg.board .chain-arrows polygon');
     const all = await shafts.count();
-    expect(all).toBeGreaterThan(0);
+    expect(all).toBeGreaterThanOrEqual(1);
+    expect(all).toBeLessThanOrEqual(3);
+    await expect(page.locator('svg.board .chain-arrows .chain-shaft.weak-tie')).toHaveCount(all);
+    await expect(heads).toHaveCount(0);
     await expect(ties).toHaveCount(0);
     await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
+    await expect(page.locator('svg.board .walk-badge')).toHaveCount(0);
     await page.getByRole('button', { name: 'Walk through it' }).click();
     await expect(page.locator('.hint-walk-count')).toContainText('1 of');
     const first = await page.locator('.hint-walk-text').innerText();
@@ -555,9 +560,11 @@ test.describe('the walk', () => {
     await expect(shafts).toHaveCount(0);
     await page.keyboard.press('ArrowRight');
     await expect(page.locator('.hint-walk-count')).toContainText('2 of');
-    // the argument's first line, and the ties gone
+    // the argument's first line, wearing its frame's number, and the ties gone
     await expect(shafts).toHaveCount(1);
     await expect(ties).toHaveCount(0);
+    await expect(heads).toHaveCount(0);
+    await expect(page.locator('svg.board .walk-badge')).toHaveText(['2']);
     await page.keyboard.press('ArrowLeft');
     await expect(page.locator('.hint-walk-count')).toContainText('1 of');
     await page.getByRole('button', { name: 'Show all' }).click();

@@ -332,7 +332,7 @@ function medusaStep(cl: Cluster, rule: ColourRule, dark: number, eliminations: C
     links: [
       ...tieLinks(
         ties,
-        tr`Each line joins the only two places for a digit in a row, column or box; a cell with only two candidates joins those two, side by side (no line inside a cell). Joined candidates take opposite shades: either every dark purple candidate is true, or every light purple one is.`
+        tr`Each line joins the only two places for a digit in a row, column or box; a cell with only two candidates joins those two, side by side (no line inside a cell). Exactly one of two joined candidates is true, so they take opposite shades: either every dark purple candidate is true, or every light purple one is.`
       ),
       ...argument
     ],
