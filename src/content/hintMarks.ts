@@ -11,7 +11,20 @@
 // none, so a walk's frames colour it as the full view does. In a colouring
 // a colour is a parity, so a node the step puts in no colour takes none: a
 // removal is a removal from the frame that reaches it, anything else a
-// plain ring round its digit ('node'), which the legend does not name. A solved cell the step names shows the
+// plain ring round its digit ('node'), which the legend does not name.
+//
+// A chain whose truth is derived (src/engine/truth.ts) draws each node as
+// what the chain makes it (G2, G18): a filled disc in the true colour, or
+// a ring in the false colour, from its first node's premise; that truth
+// wins over the roles. A discontinuous loop's start shows its premise
+// until the walk reaches the link that closes the loop, and its proven
+// value at that link; its truths hold only under the premise the loop
+// refutes, so its full view and conclusion draw it as main did, the
+// pattern beside the placement or removal. A true group means one of its members is true, not all, so
+// its members are 'oneTrue', drawn as the pattern's disc until phase 4 draws
+// sets as hulls, with legend words of their own.
+// A removed or placed node is the removal or the placement, its truth
+// plain from the mark. A solved cell the step names shows the
 // colour on its digit. A removal or a placement keeps, inside its ring,
 // the colour the step names for it where that colour is a colouring's
 // parity or the candidate is one of the chain's own nodes (G5: Nishio's
@@ -20,9 +33,11 @@
 // read; a colour only the chain default gave it is never shown.
 import type { CellDigit, ChainLink, Step, UnitBand } from '../engine/steps';
 import type { Frame, Part } from '../engine/hintFrames';
+import { deriveTruth } from '../engine/truth';
+import { sees } from '../engine/board';
 
 export type Role = 'primary' | 'secondary' | 'fin';
-export type CandMark = Role | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node';
+export type CandMark = Role | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node' | 'true' | 'false' | 'oneTrue';
 
 /** a placement, with or without a named colour inside its ring */
 export const isPlaced = (kind: CandMark | undefined) => kind === 'place' || kind === 'placeOn';
@@ -36,6 +51,12 @@ export interface HintMarks {
   values: Map<number, CandMark>;
   /** the houses shaded as bands */
   bands: UnitBand[];
+  /**
+   * the drawing shows a derived chain's premise refuted: a loop drawn back
+   * to its start, or two of its true candidates in one cell, or of one
+   * digit in one house (the chain then proves its start the other way)
+   */
+  refuted: boolean;
 }
 
 export interface MarkOptions {
@@ -54,6 +75,24 @@ export const COLOURING = new Set(['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D'])
 
 const has = (list: CellDigit[] | undefined, cd: CellDigit) => !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
 
+/** what a derived chain assumes of its first node, and whether that node is a group (true: one of its candidates; false: none) */
+export interface Premise {
+  assumed: boolean;
+  group: boolean;
+}
+
+/**
+ * What a derived chain assumes of its first node: false when it opens with
+ * a strong link, true when it opens with a weak one; null for a step whose
+ * truth is not derived, or whose derivation finds a fault
+ */
+export function premiseOf(step: Step): Premise | null {
+  const d = deriveTruth(step);
+  if (!d || d.problems.length || !d.nodes.length) return null;
+  const first = d.closure ? d.closure.node : d.nodes[0].node;
+  return { assumed: d.closure ? d.closure.assumed : d.nodes[0].truth, group: first.length > 1 };
+}
+
 /** the colour the step names for a candidate, if any: the first of the lists the full view marks in order */
 export function namedRole(step: Step, cd: CellDigit): Role | null {
   return has(step.primary, cd) ? 'primary' : has(step.secondary, cd) ? 'secondary' : has(step.fins, cd) ? 'fin' : null;
@@ -69,7 +108,7 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
       // a solved digit shows a colour the step names, and nothing for a plain node
-      if (kind !== 'node' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
+      if (kind !== 'node' && kind !== 'true' && kind !== 'false' && kind !== 'oneTrue' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
       return;
     }
     if (!cands.has(cd.cell)) cands.set(cd.cell, new Map());
@@ -79,16 +118,39 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   };
   const colouring = COLOURING.has(step.tech);
   const removed = (cd: CellDigit) => step.eliminations.some((e) => e.cell === cd.cell && e.digit === cd.digit);
+  // a derived chain's truth, node by node; a loop's start keeps its premise
+  // until the link that closes the loop is drawn. A discontinuous loop's
+  // truths hold only under the premise it refutes, so they are drawn in the
+  // walk up to that link, and the full view and the conclusion draw the
+  // proof as a pattern beside the start's placement or removal, as a
+  // forcing chain's full view does (G18, G21)
+  const derived = deriveTruth(step);
+  const proofOnly = !!derived?.closure && (!opts.walking || show('conclusion'));
+  const truth = derived && !derived.problems.length && !proofOnly ? derived : null;
+  const closed = links.length >= (step.links ?? []).length;
+  const truthOf = (cd: CellDigit): 'true' | 'false' | 'oneTrue' | null => {
+    if (!truth) return null;
+    const isStart = truth.closure?.node.some((o) => o.cell === cd.cell && o.digit === cd.digit);
+    if (truth.closure && isStart && !closed) {
+      // a group assumed true means one of its members, not all
+      if (truth.closure.assumed) return truth.closure.node.length > 1 ? 'oneTrue' : 'true';
+      return 'false';
+    }
+    const t = truth.candidates.get(`${cd.cell}:${cd.digit}`);
+    return t === 'true' ? 'true' : t === 'false' ? 'false' : t === 'groupTrue' ? 'oneTrue' : null;
+  };
   const node = (cd: CellDigit) =>
-    mark(cd, namedRole(step, cd) ?? (!colouring ? 'primary' : removed(cd) ? 'elim' : 'node'));
+    mark(cd, truthOf(cd) ?? namedRole(step, cd) ?? (!colouring ? 'primary' : removed(cd) ? 'elim' : 'node'));
   if (opts.walking && step.links?.length) {
     // walking a chain: only the nodes of the links drawn so far
     for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
   } else {
+    // a chain's truth comes before the roles, which mark only what it leaves
+    if (truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
     if (show('primary')) for (const cd of step.primary ?? []) mark(cd, 'primary');
     if (show('secondary')) for (const cd of step.secondary ?? []) mark(cd, 'secondary');
     // every chain node gets a mark, so arrows root on one
-    for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
+    if (!truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
     if (show('fins')) for (const cd of step.fins ?? []) mark(cd, 'fin');
   }
   if (show('conclusion')) {
@@ -109,6 +171,8 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
         const colour = namedRole(step, cd);
         if (!colour || opts.solved(cd.cell)) continue;
         if (!colouring && !nodes.has(`${cd.cell}:${cd.digit}`)) continue;
+        // a derived chain's removed or placed node: the mark says its truth
+        if (truth) continue;
         // a removal wins over a placement of the same candidate
         if (kind === 'placeOn' && cands.get(cd.cell)?.get(cd.digit) !== 'place') continue;
         cands.get(cd.cell)!.set(cd.digit, kind);
@@ -117,7 +181,11 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
       }
     }
   }
-  return { cands, inside, values, bands };
+  // two true candidates that cannot both be: the premise is impossible
+  const trues = [...cands].flatMap(([cell, m]) => [...m].filter(([, k]) => k === 'true').map(([digit]) => ({ cell, digit })));
+  const clash = trues.some((a, i) => trues.slice(i + 1).some((b) => a.cell === b.cell || (a.digit === b.digit && sees(a.cell, b.cell))));
+  const refuted = !!truth && ((!!truth.closure && closed) || clash);
+  return { cands, inside, values, bands, refuted };
 }
 
 /**
@@ -154,7 +222,7 @@ export const markedCandidates = (marks: HintMarks): CellDigit[] =>
 export function legendKinds(
   step: Step,
   marks: HintMarks
-): { shown: Set<CandMark>; onValue: Set<CandMark>; onBand: Set<CandMark>; intoRemove: Role[]; intoPlace: Role[] } {
+): { shown: Set<CandMark>; onValue: Set<CandMark>; onBand: Set<CandMark>; intoRemove: Role[]; intoPlace: Role[]; refuted: boolean } {
   const shown = new Set<CandMark>();
   for (const m of marks.cands.values())
     for (const k of m.values()) if (k !== 'node') shown.add(k === 'elimOn' ? 'elim' : k === 'placeOn' ? 'place' : k);
@@ -176,5 +244,5 @@ export function legendKinds(
     if (list.every((cd) => kindOf(cd) === 'elim' || kindOf(cd) === 'elimOn')) intoRemove.push(role);
     else if (list.every((cd) => isPlaced(kindOf(cd)))) intoPlace.push(role);
   }
-  return { shown, onValue, onBand, intoRemove, intoPlace };
+  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted };
 }

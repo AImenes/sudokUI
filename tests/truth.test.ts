@@ -13,9 +13,11 @@ import { describe, it, expect } from 'vitest';
 import { deriveLinks, deriveTruth } from '../src/engine/truth';
 import { alternatingLinks, CellDigit, ChainLink, Step } from '../src/engine/steps';
 import { EXAMPLES } from '../src/content/examples';
-import { parseGrid, cloneGrid, isSolved, PEERS } from '../src/engine/board';
+import { parseGrid, cloneGrid, isSolved, PEERS, UNITS, Grid, bit, popcount, sees } from '../src/engine/board';
 import { generatePuzzle } from '../src/engine/generator';
 import { findNextStep, findAllSteps, applyStep } from '../src/engine/humanSolver';
+import { findWWing } from '../src/engine/techniques/wings';
+import { linkText } from '../src/engine/hintFrames';
 import type { Tech } from '../src/engine/ratings';
 
 const cd = (r: number, c: number, digit: number): CellDigit => ({ cell: (r - 1) * 9 + (c - 1), digit });
@@ -126,11 +128,80 @@ function conflicts(e: CellDigit, node: CellDigit[]): boolean {
 /** the chains whose links run from one end to the other, unclosed */
 const OPEN: Tech[] = ['X_CHAIN', 'XY_CHAIN', 'AIC', 'AIC_GROUPED', 'AIC_ALS', 'SKYSCRAPER', 'TWO_STRING_KITE', 'TURBOT_FISH', 'W_WING'];
 
+/**
+ * What is wrong with a link on the board it was found on, if anything,
+ * checked from the board's houses and not by the finders' own code: a weak
+ * link joins two candidates of one cell, or two nodes of one digit whose
+ * every member sees every member of the other; a strong link is the two
+ * candidates of a bivalue cell, two nodes holding all of one house's
+ * candidates for their digit, or (an AIC with ALS) two digits of one
+ * almost locked set, each node all the set's cells that hold its digit
+ */
+function linkProblem(g: Grid, l: ChainLink, tech: Tech): string | null {
+  const cells = (n: CellDigit[]) => [...new Set(n.map((m) => m.cell))];
+  const digits = (n: CellDigit[]) => [...new Set(n.map((m) => m.digit))];
+  if (digits(l.from).length !== 1 || digits(l.to).length !== 1) return 'a node of more than one digit';
+  const [fd, td] = [digits(l.from)[0], digits(l.to)[0]];
+  const [fc, tc] = [cells(l.from), cells(l.to)];
+  for (const m of [...l.from, ...l.to]) if (g.values[m.cell] || !(g.cands[m.cell] & bit(m.digit))) return `${k(m)} is not a candidate`;
+  if (fd === td) {
+    if (fc.some((c) => tc.includes(c))) return 'two nodes sharing a cell';
+    if (!l.strong) return fc.every((a) => tc.every((b) => sees(a, b))) ? null : 'a weak link between cells that do not see each other';
+    const both = [...fc, ...tc].sort((a, b) => a - b);
+    const conjugate = UNITS.some((u) => {
+      const holding = u.filter((c) => !g.values[c] && g.cands[c] & bit(fd));
+      return holding.length === both.length && holding.every((c) => both.includes(c));
+    });
+    return conjugate ? null : 'a strong link that is not all of a house';
+  }
+  if (fc.length === 1 && tc.length === 1 && fc[0] === tc[0]) {
+    if (!l.strong || popcount(g.cands[fc[0]]) === 2) return null;
+  }
+  if (!l.strong) return 'a weak link between two digits outside one cell';
+  if (tech !== 'AIC_ALS') return 'a strong link between two digits that is not a bivalue cell';
+  // an almost locked set in one house: as many cells as digits less one,
+  // each node all of its cells that hold the node's digit
+  const own = [...new Set([...fc, ...tc])];
+  for (const u of UNITS) {
+    if (!own.every((c) => u.includes(c))) continue;
+    const rest = u.filter((c) => !g.values[c] && !own.includes(c));
+    for (let pick = 0; pick < 1 << rest.length; pick++) {
+      const set = [...own, ...rest.filter((_, i) => pick & (1 << i))];
+      let mask = 0;
+      for (const c of set) mask |= g.cands[c];
+      if (popcount(mask) !== set.length + 1) continue;
+      const holding = (d: number) => set.filter((c) => g.cands[c] & bit(d)).sort((a, b) => a - b).join();
+      if (holding(fd) === [...fc].sort((a, b) => a - b).join() && holding(td) === [...tc].sort((a, b) => a - b).join()) return null;
+    }
+  }
+  return 'a strong link between two digits that is no bivalue cell and no almost locked set';
+}
+
+/** every link of a chain is one the board has, and its sentence in the walk says what it is */
+function checkLinks(g: Grid, step: Step, where: string): void {
+  (step.links ?? []).forEach((l, i) => {
+    if (l.undirected) return;
+    expect(linkProblem(g, l, step.tech), `${where}, link ${i + 1}`).toBeNull();
+    // "the cell has only these two" only of a bivalue cell (an almost
+    // locked set's two digits in one of its cells say so in their own words)
+    const cell = l.from[0].cell;
+    const text = linkText(l);
+    if (text.includes('the cell has only these two')) expect(popcount(g.cands[cell]), `${where}, link ${i + 1}: ${text}`).toBe(2);
+    // a group holds its digit in one of its cells at most: never "r5c7, r6c7 must be 2"
+    const many = (n: CellDigit[]) => new Set(n.map((m) => m.cell)).size > 1;
+    if (!l.text && l.from[0].digit === l.to[0].digit) {
+      if (many(l.to)) expect(text, `${where}, link ${i + 1}`).toMatch(l.strong ? /one of .* must be/ : /none of .* can be/);
+      if (many(l.from)) expect(text, `${where}, link ${i + 1}`).toMatch(l.strong ? /if none of/ : /if one of/);
+    }
+  });
+}
+
 /** what every derived step must satisfy */
-function checkDerived(step: Step, where: string): void {
+function checkDerived(step: Step, where: string, g?: Grid): void {
   const d = deriveTruth(step)!;
   expect(d, where).not.toBeNull();
   expect(d.problems, where).toEqual([]);
+  if (g) checkLinks(g, step, where);
   if (!OPEN.includes(step.tech)) return;
   const first = d.nodes[0];
   const last = d.nodes[d.nodes.length - 1];
@@ -146,7 +217,8 @@ describe('every chain the engine finds', () => {
     let n = 0;
     for (const [tech, ex] of Object.entries(EXAMPLES)) {
       if (ex?.step.truth !== 'derived') continue;
-      checkDerived(ex.step, tech);
+      const g: Grid = { values: Uint8Array.from(ex.values, Number), cands: Uint16Array.from(ex.cands), given: new Uint8Array(81) };
+      checkDerived(ex.step, tech, g);
       n++;
     }
     // the twelve derived techniques with a stored example (X_CYCLES has none)
@@ -173,7 +245,7 @@ describe('every chain the engine finds', () => {
         if (!['FULL_HOUSE', 'NAKED_SINGLE', 'HIDDEN_SINGLE'].includes(step.tech)) {
           for (const s of findAllSteps(g)) {
             if (s.truth !== 'derived') continue;
-            checkDerived(s, `puzzle ${pi}, step ${i}, ${s.tech}`);
+            checkDerived(s, `puzzle ${pi}, step ${i}, ${s.tech}`, g);
             seen.set(s.tech, (seen.get(s.tech) ?? 0) + 1);
           }
         }
@@ -183,5 +255,31 @@ describe('every chain the engine finds', () => {
     // eslint-disable-next-line no-console
     console.info('derived chains checked:', [...seen].map(([t, n]) => `${t} ${n}`).join(', '));
     expect(seen.size).toBeGreaterThanOrEqual(6);
+  });
+
+  it("joins a W-Wing's weak links between cells that see each other", () => {
+    // positions where one end of the strong link sees both bivalue cells,
+    // and only the other end sees the second: the link order once went by
+    // the first end alone, and joined two cells that do not see each other
+    // (24 and 31 steps in, as "What's in this position?" finds them)
+    const PUZZLES = [
+      '3....681..8......6.....8.5.......27...4.....5.57..1..91....4...9.6....3.7...9..62',
+      '..5......1.2..5....6.3...1...1.893.6.7..6..21.....3.8.8.....4...576........7.....'
+    ];
+    let wings = 0;
+    for (const [pi, p] of PUZZLES.entries()) {
+      const g = parseGrid(p)!;
+      for (let i = 0; i < 300 && !isSolved(g); i++) {
+        const w = findWWing(g);
+        if (w) {
+          checkDerived(w, `puzzle ${pi}, step ${i}, W_WING`, g);
+          wings++;
+        }
+        const step = findNextStep(g);
+        if (!step) break;
+        applyStep(g, step);
+      }
+    }
+    expect(wings).toBeGreaterThan(1);
   });
 });

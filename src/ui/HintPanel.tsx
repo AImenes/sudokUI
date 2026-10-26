@@ -11,8 +11,15 @@ import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 import { stepText } from '../content/eureka';
-import { frameMarks, legendKinds } from '../content/hintMarks';
-import type { Role } from '../content/hintMarks';
+import { frameMarks, legendKinds, premiseOf } from '../content/hintMarks';
+import type { Premise, Role } from '../content/hintMarks';
+
+interface TruthWords {
+  isTrue: string;
+  isFalse: string;
+  oneTrue: string;
+  refuted: string;
+}
 import { copyText } from './send';
 import { useT, rich, Translator } from '../content/i18n';
 import { useLearnLocale } from './useLearnLocale';
@@ -28,6 +35,44 @@ const KEY_SEEN = 'sudokui-cellkey-seen';
 function useTechWhat(): (tech: Tech) => string {
   const loc = useLearnLocale();
   return (tech) => loc?.techDocs[tech]?.what ?? TECH_DOCS[tech].what;
+}
+
+/**
+ * The legend's words for a chain's true discs, false rings and true
+ * groups, under the premise of its first node, the one with the small start
+ * dot, a group worded as a group (true: one of its candidates; false:
+ * none); and the line that says so when the drawing shows that premise
+ * impossible
+ */
+function truthWords(t: Translator, p: Premise): TruthWords {
+  if (p.group) {
+    return p.assumed
+      ? {
+          isTrue: t('true, if one candidate of the first group (by the small dot) is true'),
+          isFalse: t('false, if one candidate of the first group (by the small dot) is true'),
+          oneTrue: t('one candidate of each group is true, if one candidate of the first group (by the small dot) is true'),
+          refuted: t('the chain shows that premise is impossible: no candidate of the first group (by the small dot) is true')
+        }
+      : {
+          isTrue: t('true, if no candidate of the first group (by the small dot) is true'),
+          isFalse: t('false, if no candidate of the first group (by the small dot) is true'),
+          oneTrue: t('one candidate of each group is true, if no candidate of the first group (by the small dot) is true'),
+          refuted: t('the chain shows that premise is impossible: one candidate of the first group (by the small dot) is true')
+        };
+  }
+  return p.assumed
+    ? {
+        isTrue: t('true, if the first candidate (by the small dot) is true'),
+        isFalse: t('false, if the first candidate (by the small dot) is true'),
+        oneTrue: t('one candidate of each group is true, if the first candidate (by the small dot) is true'),
+        refuted: t('the chain shows that premise is impossible: the first candidate (by the small dot) is false')
+      }
+    : {
+        isTrue: t('true, if the first candidate (by the small dot) is false'),
+        isFalse: t('false, if the first candidate (by the small dot) is false'),
+        oneTrue: t('one candidate of each group is true, if the first candidate (by the small dot) is false'),
+        refuted: t('the chain shows that premise is impossible: the first candidate (by the small dot) is true')
+      };
 }
 
 /**
@@ -59,6 +104,7 @@ export function ChainPanel() {
   const walkIndex = useGame((s) => s.walkIndex);
   const walkHint = useGame((s) => s.walkHint);
   const revealHint = useGame((s) => s.revealHint);
+  const cells = useGame((s) => s.cells);
   const t = useT();
   if (!chain) return null;
   const elims = hint?.eliminations ?? [];
@@ -66,6 +112,10 @@ export function ChainPanel() {
   const frames = hint ? walkFrames(hint) : [];
   const walking = stage === 'walk' && frames.length > 0;
   const frame = walking ? frames[Math.min(walkIndex, frames.length - 1)] : null;
+  // the legend names what the board draws (G23), and a chain whose own
+  // truths clash shows its premise impossible, and the legend says so
+  const legend = hint ? legendKinds(hint, frameMarks(hint, frame, (c) => cells[c].value > 0)) : null;
+  const words = truthWords(t, { assumed: false, group: false });
   return (
     <div className="hint-panel" role="region" aria-label={t('Build a chain')} aria-live="polite">
       <div className="hint-head">
@@ -94,11 +144,21 @@ export function ChainPanel() {
         )}
         {n > 1 && (
           <ul className="hint-legend">
-            <li>
-              <i className="swatch-primary" />
-              {t('your chain: solid into a candidate it makes true, dashed into one it makes false')}
-            </li>
-            {elims.length > 0 && (
+            {legend?.shown.has('true') && (
+              <li>
+                <i className="swatch-true" />
+                {words.isTrue}
+              </li>
+            )}
+            {legend?.shown.has('false') && (
+              <li>
+                <i className="swatch-false" />
+                {words.isFalse}
+              </li>
+            )}
+            <li>{t('your chain: solid into a candidate it makes true, dashed into one it makes false')}</li>
+            {legend?.refuted && <li>{words.refuted}</li>}
+            {legend?.shown.has('elim') && (
               <li>
                 <i className="swatch-elim" />
                 {t('removed by it')}
@@ -201,6 +261,8 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
     roles
       .map((r) => (r === 'primary' ? hint.labels?.primary : r === 'secondary' ? hint.labels?.secondary : hint.labels?.fins))
       .filter((s): s is string => !!s);
+  // what a derived chain's truths are under: its first node's premise
+  const premise = premiseOf(hint);
   // a swatch is drawn like the role's mark: a disc, the solved digit's
   // outline, or a house band
   const swatch = (role: Role) =>
@@ -283,6 +345,25 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                   {[t('remove'), ...lent(legend.intoRemove)].join(': ')}
                 </li>
               )}
+              {premise && legend.shown.has('true') && (
+                <li>
+                  <i className="swatch-true" />
+                  {truthWords(t, premise).isTrue}
+                </li>
+              )}
+              {premise && legend.shown.has('false') && (
+                <li>
+                  <i className="swatch-false" />
+                  {truthWords(t, premise).isFalse}
+                </li>
+              )}
+              {premise && legend.shown.has('oneTrue') && (
+                <li>
+                  <i className="swatch-primary" />
+                  {truthWords(t, premise).oneTrue}
+                </li>
+              )}
+              {premise && legend.refuted && <li>{truthWords(t, premise).refuted}</li>}
               {legend.shown.has('primary') && (
                 <li>
                   <i className={swatch('primary')} />

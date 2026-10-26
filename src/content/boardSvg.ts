@@ -10,8 +10,16 @@ import { tr } from '../engine/text';
 import { arrowShapes, startMarkers, pointsOf, SIZES } from './hintGeometry';
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
-import { hintMarks, markedCandidates, legendKinds, placedKeys, COLOURING } from './hintMarks';
-import type { Role } from './hintMarks';
+import { hintMarks, frameMarks, markedCandidates, legendKinds, placedKeys, premiseOf, COLOURING } from './hintMarks';
+import type { Premise, Role } from './hintMarks';
+import type { Frame } from '../engine/hintFrames';
+
+interface TruthWords {
+  isTrue: string;
+  isFalse: string;
+  oneTrue: string;
+  refuted: string;
+}
 
 export interface Example {
   puzzle: string;
@@ -152,7 +160,7 @@ export function boardSvg(example: Example, title: string): string {
     if (value) {
       const kind = drawn.values.get(cell);
       let fill = '';
-      if (kind && kind !== 'node') {
+      if (kind && kind !== 'node' && kind !== 'true' && kind !== 'false' && kind !== 'oneTrue') {
         const ink = kind === 'elim' || kind === 'elimOn' ? P.elim : fillOf(P, kind === 'placeOn' ? 'place' : kind).ink;
         // a style, not an attribute, so the class's own fill cannot win
         fill = ` style="fill:${ink}"`;
@@ -172,6 +180,12 @@ export function boardSvg(example: Example, title: string): string {
       const ty = f(candY(cd) + 4.4);
       if (!kind) {
         texts.push(`<text x="${x}" y="${ty}" class="cd">${digit}</text>`);
+        continue;
+      }
+      if (kind === 'false') {
+        // a chain node the chain makes false: a ring in the false colour, faintly tinted inside
+        parts.push(`<circle cx="${x}" cy="${y}" r="${f(MARK.ring * s)}" fill="${P.false}" fill-opacity="${P.ringTint}" stroke="${P.false}" stroke-width="${f(MARK.ringStroke * s * LINE)}"/>`);
+        texts.push(`<text x="${x}" y="${ty}" class="rm">${digit}</text>`);
         continue;
       }
       if (kind === 'node') {
@@ -196,7 +210,7 @@ export function boardSvg(example: Example, title: string): string {
       }
       // a placed chain node keeps the colour the step names for it inside the placement's ring (G5)
       const inside = kind === 'placeOn' ? drawn.inside.get(cell)?.get(digit) : undefined;
-      const { fill, ink } = fillOf(P, inside ?? (kind === 'placeOn' ? 'place' : kind));
+      const { fill, ink } = fillOf(P, inside ?? (kind === 'placeOn' || kind === 'true' ? 'place' : kind === 'oneTrue' ? 'primary' : kind));
       parts.push(
         `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - MARK.edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(MARK.edge * s)}"/>`
       );
@@ -285,9 +299,48 @@ ${parts.join('\n')}
 `;
 }
 
+/**
+ * The legend's words for a chain's true discs, false rings and true
+ * groups, under the premise of its first node, the one with the small start
+ * dot, a group worded as a group (true: one of its candidates; false:
+ * none); and the line that says so when the drawing shows that premise
+ * impossible
+ */
+function truthWords(p: Premise): TruthWords {
+  if (p.group) {
+    return p.assumed
+      ? {
+          isTrue: tr`true, if one candidate of the first group (by the small dot) is true`,
+          isFalse: tr`false, if one candidate of the first group (by the small dot) is true`,
+          oneTrue: tr`one candidate of each group is true, if one candidate of the first group (by the small dot) is true`,
+          refuted: tr`the chain shows that premise is impossible: no candidate of the first group (by the small dot) is true`
+        }
+      : {
+          isTrue: tr`true, if no candidate of the first group (by the small dot) is true`,
+          isFalse: tr`false, if no candidate of the first group (by the small dot) is true`,
+          oneTrue: tr`one candidate of each group is true, if no candidate of the first group (by the small dot) is true`,
+          refuted: tr`the chain shows that premise is impossible: one candidate of the first group (by the small dot) is true`
+        };
+  }
+  return p.assumed
+    ? {
+        isTrue: tr`true, if the first candidate (by the small dot) is true`,
+        isFalse: tr`false, if the first candidate (by the small dot) is true`,
+        oneTrue: tr`one candidate of each group is true, if the first candidate (by the small dot) is true`,
+        refuted: tr`the chain shows that premise is impossible: the first candidate (by the small dot) is false`
+      }
+    : {
+        isTrue: tr`true, if the first candidate (by the small dot) is false`,
+        isFalse: tr`false, if the first candidate (by the small dot) is false`,
+        oneTrue: tr`one candidate of each group is true, if the first candidate (by the small dot) is false`,
+        refuted: tr`the chain shows that premise is impossible: the first candidate (by the small dot) is true`
+      };
+}
+
 /** a legend entry: the kind of mark (its swatch is drawn like the mark, src/ui/styles.css .swatch-*) and its words */
 export interface LegendEntry {
-  kind: 'place' | 'elim' | 'primary' | 'secondary' | 'fin';
+  /** 'note' is a line of words with no swatch */
+  kind: 'place' | 'elim' | 'true' | 'false' | 'oneTrue' | 'primary' | 'secondary' | 'fin' | 'note';
   label: string;
   /** the mark's fill and edge on the diagram, for a swatch drawn inline */
   colour: string;
@@ -299,21 +352,31 @@ export interface LegendEntry {
 }
 
 /**
- * What the legend under a diagram names: the kinds the diagram draws, and
+ * What the legend under a diagram names (or under a walk frame, given one): the kinds the diagram draws, and
  * nothing it does not (G22). A role whose every candidate was drawn as a
  * removal or a placement lends its words to that entry. The colouring
  * techniques name their own colours in the explanation (blue and gold are
  * the two parities there), so only the removals and placements are listed.
  */
-export function legendOf(step: Step, values?: string): LegendEntry[] {
-  const drawn = hintMarks(step, { solved: (cell) => !!values && Number(values[cell]) > 0 });
-  const { shown, onValue, onBand, intoRemove, intoPlace } = legendKinds(step, drawn);
+export function legendOf(step: Step, values?: string, frame: Frame | null = null): LegendEntry[] {
+  const drawn = frameMarks(step, frame, (cell) => !!values && Number(values[cell]) > 0);
+  const { shown, onValue, onBand, intoRemove, intoPlace, refuted } = legendKinds(step, drawn);
   const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
   if (shown.has('place')) out.push({ kind: 'place', label: [tr`place`, ...lent(intoPlace)].join(': '), colour: P.place, ink: P.placeInk });
   if (shown.has('elim')) out.push({ kind: 'elim', label: [tr`remove`, ...lent(intoRemove)].join(': '), colour: '#ffffff', ink: P.elim });
   if (COLOURING.has(step.tech)) return out;
+  // a derived chain's truth, worded by its first node's premise
+  const premise = premiseOf(step);
+  if (premise) {
+    const w = truthWords(premise);
+    if (shown.has('true')) out.push({ kind: 'true', label: w.isTrue, colour: P.place, ink: P.placeInk });
+    if (shown.has('false')) out.push({ kind: 'false', label: w.isFalse, colour: '#ffffff', ink: P.false });
+    if (shown.has('oneTrue')) out.push({ kind: 'oneTrue', label: w.oneTrue, colour: P.primary, ink: P.primaryInk });
+    // a line of words, no swatch: the premise the marks are drawn under is shown impossible
+    if (refuted) out.push({ kind: 'note', label: w.refuted, colour: '', ink: '' });
+  }
   const role = (kind: Role, label: string, colour: string, ink: string) =>
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });
   if (shown.has('primary')) role('primary', step.labels?.primary ?? tr`the pattern`, P.primary, P.primaryInk);
@@ -342,6 +405,7 @@ export function swatchStyle(l: LegendEntry): { background: string; border: strin
       width: '16px'
     };
   }
+  if (l.kind === 'false') return { background: '#ffffff', border: `2px solid ${l.ink}`, boxShadow: chip };
   if (l.kind === 'elim') {
     return {
       background: `linear-gradient(45deg,transparent 40%,${l.ink} 40%,${l.ink} 60%,transparent 60%),#ffffff`,

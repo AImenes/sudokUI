@@ -169,7 +169,7 @@ const TIPS = [
 /** Text colour for a candidate a hint marks: near-black on every filled
  *  mark, whatever the theme; the theme's ink inside a removal's ring, unless
  *  the ring is filled with the colour the candidate carried (colouring) */
-const hintTextFill = (kind: string) => (kind === 'elim' || kind === 'node' ? 'var(--hint-in-ring)' : 'var(--hint-on-fill)');
+const hintTextFill = (kind: string) => (kind === 'elim' || kind === 'node' || kind === 'false' ? 'var(--hint-in-ring)' : 'var(--hint-on-fill)');
 
 /** the fill and the edge of each kind of hint mark (src/content/hintPalette.ts) */
 const MARK_FILL: Record<string, { fill: string; ink: string }> = {
@@ -177,6 +177,9 @@ const MARK_FILL: Record<string, { fill: string; ink: string }> = {
   secondary: { fill: 'var(--hint-secondary)', ink: 'var(--hint-secondary-ink)' },
   fin: { fill: 'var(--hint-fin)', ink: 'var(--hint-fin-ink)' },
   place: { fill: 'var(--hint-place)', ink: 'var(--hint-place-ink)' },
+  true: { fill: 'var(--hint-place)', ink: 'var(--hint-place-ink)' },
+  // a true group's members: one of them is true; the pattern's disc until phase 4's hulls
+  oneTrue: { fill: 'var(--hint-primary)', ink: 'var(--hint-primary-ink)' },
   elim: { fill: 'var(--hint-elim)', ink: 'var(--hint-elim)' }
 };
 
@@ -193,6 +196,25 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
     <circle cx={x} cy={y} r={(outer + MARK.keyline / 2) * s} fill="none" stroke="var(--cell-bg)" strokeWidth={MARK.keyline * s} />
   );
   const keyline = keyOf(MARK.disc);
+  if (kind === 'false') {
+    // a chain node the chain makes false (G2): a ring in the false colour,
+    // faintly tinted inside, round its digit
+    return (
+      <g>
+        {keyline}
+        <circle
+          className="hint-ring"
+          cx={x}
+          cy={y}
+          r={MARK.ring * s}
+          fill="var(--hint-false)"
+          style={{ fillOpacity: 'var(--hint-ring-tint)' }}
+          stroke="var(--hint-false)"
+          strokeWidth={MARK.ringStroke * s}
+        />
+      </g>
+    );
+  }
   if (kind === 'node') {
     // a chain node no colour claims (a colouring's witness target): a plain
     // ring in the arrow's ink round its digit, for the arrow to end on

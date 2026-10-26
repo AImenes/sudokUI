@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { parseGrid, gridFromValues, bit } from '../src/engine/board';
 import { classifyLink, extend, conclusions, chainStep, statement, nextLinks, EMPTY_CHAIN, Chain } from '../src/engine/chainTrainer';
 import { deriveTruth } from '../src/engine/truth';
+import { hintMarks } from '../src/content/hintMarks';
 import { EXAMPLES } from '../src/content/examples';
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
@@ -54,6 +55,11 @@ describe('links', () => {
       // (docs/hint-drawing.md G8), whatever each pair's real kind
       expect(drawn.links!.map((l) => l.strong)).toEqual(chain.links.map((_, i) => i % 2 === 0));
       expect(deriveTruth(drawn)!.problems, tech).toEqual([]);
+      // so the trainer draws its nodes true and false, from a false first node
+      const marks = hintMarks(drawn, { solved: () => false });
+      const truths = nodes.map((n) => marks.cands.get(n.cell)?.get(n.digit));
+      expect(truths.every((x) => x === 'true' || x === 'false' || x === 'elim'), tech).toBe(true);
+      expect(truths[0], tech).toBe('false');
       expect(statement(chain)).toMatch(/^If the \d in r\dc\d is false, then/);
     }
   });

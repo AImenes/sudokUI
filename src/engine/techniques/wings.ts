@@ -137,9 +137,11 @@ export function findWWing(g: Grid): Step | null {
               { cell: e2, digit: linkDigit }
             ],
             labels: { primary: tr`cells holding ${x} and ${y}`, secondary: tr`strong link on ${linkDigit}` },
-            // full AIC: z@A =s= w@A -w- w@e1 =s= w@e2 -w- w@B =s= z@B
+            // full AIC: z@A =s= w@A -w- w@e1 =s= w@e2 -w- w@B =s= z@B; each
+            // weak link joins two cells that see each other, so the order
+            // goes by both ends (e1 can see A and B while only e2 sees B)
             links: alternatingLinks(
-              (sees(e1, A)
+              (sees(e1, A) && sees(e2, B)
                 ? [
                     { cell: A, digit: elimDigit },
                     { cell: A, digit: linkDigit },

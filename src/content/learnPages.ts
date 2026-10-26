@@ -374,7 +374,7 @@ function workedExample(lt: LearnText, tech: Tech): string {
     return { text: describe(step), keys: legendOf(step, example.values) };
   });
   const legend = keys
-    .map((l) => `<span class="key"><i style="${swatchCss(l)}"></i>${esc(l.label)}</span>`)
+    .map((l) => `<span class="key">${l.kind === 'note' ? '' : `<i style="${swatchCss(l)}"></i>`}${esc(l.label)}</span>`)
     .join(' ');
   return `      <h2>${esc(lt.s('Worked example'))}</h2>
       <figure>

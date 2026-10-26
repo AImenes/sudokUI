@@ -81,13 +81,17 @@ Every rule is numbered so a commit, a test or a review can cite it.
   removal ringed blue that was never blue: Simple Colors' trap target,
   Multi Colors rule 1 and 2, Medusa rules 3-5, Digit Forcing's removal;
   Aligned Pair Exclusion, Exocet and Pattern Overlay ring their removals
-  blue because the removals sit in the pattern list). A removed node that
-  WAS a chain node keeps its truth ring under the removal mark, because
-  the walk names it; until truth is drawn (phase 2b), it keeps the colour
-  the step names for it inside the removal ring, as Nishio's removed
-  assumption does, so the legend's words for that colour still find it. A
-  placed chain node the step names keeps that colour in its disc inside
-  the placement's outer ring, as Digit Forcing's placed assumption does.
+  blue because the removals sit in the pattern list). A removed or placed
+  node of a chain whose truth is drawn (phase 2b) is the removal or the
+  placement alone: the mark says its truth (removed is false, placed is
+  true), so no truth ring or disc is drawn with it; the walk's frames
+  before the conclusion show it as a truth mark (a true group's
+  candidates as the pattern's disc, until phase 4). Any other removed chain
+  node keeps the colour the step names for it inside the removal ring, as
+  Nishio's removed assumption does, so the legend's words for that colour
+  still find it. A placed chain node the step names keeps that colour in
+  its disc inside the placement's outer ring, as Digit Forcing's placed
+  assumption does.
 - **G6. Digits on discs.** A digit on a filled disc is near-black in every
   theme; a digit inside a ring is the theme's strongest ink (the givens'
   colour), in bold. Unmarked candidates stay as they are: nothing is dimmed
@@ -220,9 +224,20 @@ Every rule is numbered so a commit, a test or a review can cite it.
 - **G18. Chains** (X-Chain, XY-Chain, AIC, grouped and ALS AICs, Nice
   Loops, X-Cycles, Skyscraper, 2-String Kite, Turbot Fish, W-Wing):
   truth discs and rings (G2), solid and dashed arrows (G8), no in-cell
-  arrows (G12). A discontinuous loop's start node is proven the opposite of
-  its premise: the full view shows the proven value and its conclusion;
-  the walk's first frame shows the premise.
+  arrows (G12). A discontinuous loop proves its start the opposite of its
+  premise, so its nodes' truths hold only under a premise it refutes: the
+  walk draws them frame by frame, the start as its premise, up to the link
+  that closes the loop, whose frame shows the start's proven value, says
+  the premise is impossible ("So assuming r6c1 is not 6 makes it 6: that
+  is impossible, so r6c1 is 6.") and adds that line to the legend; the
+  full view and the conclusion frame draw its proof as main did, the
+  start's placement or removal beside the other nodes in the pattern's
+  colour, as a forcing chain's full view does (G21). An open chain whose
+  truths put two true candidates in one cell, or one digit twice in a
+  house, also proves its premise impossible; its legend says so (the
+  stronger conclusion this proves is the finder's to take, not the
+  drawing's). A group node is worded as one: "one of r5c7, r6c7 must be
+  2", never all of them.
 - **G19. Colouring** (Simple Colors, Multi Colors, 3D Medusa, Remote
   Pair): **hue per cluster, shade per parity** (HoDoKu's Multi Colors:
   dark and light orange for one cluster, dark and light purple for the
@@ -413,7 +428,7 @@ dark ones. Arrows are the only achromatic mark.
 
 | Token | LIGHT | DARK | Shape |
 | --- | --- | --- | --- |
-| `--hint-true` (fill / ink) | #57c274 / #006c2f | #35a458 | disc r 13; light themes add a 2-unit edge in the ink |
+| true (`--hint-place` / `--hint-place-ink`, shared with placed) | #57c274 / #006c2f | #35a458 | disc r 13; light themes add a 2-unit edge in the ink; a placement adds the outer ring |
 | `--hint-false` | #175bb7 | #7fbbff (HoDoKu's own off-blue) | ring r 11.5, stroke 3, inside tinted 0.10 / 0.16 |
 | `--hint-removed` | #bc072a | #fe9696 | the false ring in red plus a 45° bar (upper left to lower right, rim to rim, stroke 2.25, over the digit: the ISO "no" bar) |
 | placed | true fill + ring in true ink | same | disc plus a concentric ring r 16.5, stroke 2.5 (on a small board and in Learn r 17.5, stroke 4.5) |
@@ -438,7 +453,13 @@ only as a ring; green is always true or placed; red is always removed. In
 a chain step every node takes its truth mark, and pattern-blue discs are
 not used beside truth marks (in the dark theme pattern and true are only
 ΔE 4.1 apart under tritan vision, and both are discs). Gold discs are not
-put beside true discs either (light protan ΔE 8.3).
+put beside true discs either (light protan ΔE 8.3). Two exceptions stand
+until their phases: a true group's members keep the pattern's disc
+(a true group is "one of these", so none of them is a true disc), named
+in the legend as one candidate of each group true, until phase 4 draws
+groups as hulls, and the chain trainer's gold suggestions
+sit beside its true discs until phase 6 gives them a mark and a legend
+entry of their own.
 
 **Where shape carries it.** True vs false: disc vs ring. Removed: the
 bar. Placed vs true: the outer ring (same colour by design). A set member:
@@ -536,17 +557,57 @@ the values above are its final ones.
   when the trainer's chain starts over. To photograph the app's own board with
   an example's hint, a scratch Playwright run on port 4174 opens each
   example's position link (kept in the git-ignored `.vite/`).
-- [ ] Phase 2: truth. 2a done (commit 16556da): `truth: 'derived'` on
-  every AIC-form finder, `src/engine/truth.ts` with its self-check, the
-  examples refreshed, tests/truth.test.ts (518 chain steps of a solve batch,
-  all clean). Next, 2b: the chain trainer's `chainStep`
-  (src/engine/chainTrainer.ts) draws the kind each link is USED as
-  (position parity, i % 2 === 0 strong) and says `truth: 'derived'`, with
-  its walk sentence naming a pair used weakly; then both renderers draw
-  true discs and false rings from `deriveTruth` (groupTrue members keep the
-  pattern disc until phase 4's hulls), arrows dashed iff the target is
-  false, and the legend's words. Start 2b after the phase 1 review's
-  findings are fixed (workflow run wf_aae14104-777).
+- [x] Phase 2: truth. 2a (commit 16556da): `truth: 'derived'` on every
+  AIC-form finder, `src/engine/truth.ts` with its self-check, the examples
+  refreshed, tests/truth.test.ts; the chain trainer draws each link as the
+  kind it is used as and says `truth: 'derived'`. 2b: a derived chain
+  draws each node as the chain makes it (`src/content/hintMarks.ts`), a
+  true node a filled disc in the true colour and a false one a ring in the
+  false colour, faintly tinted, before the roles; a true group's
+  candidates are their own mark, `oneTrue`, drawn as the pattern's disc
+  until phase 4; a removed or placed node is its removal or placement. The
+  legend names them by the first node's premise ("true, if the first
+  candidate (by the small dot) is false"; a group start "... if no
+  candidate of the first group (by the small dot) is true"; an inverted
+  loop's "... is true"; a true group "one candidate of each group is true,
+  if ..."), in the app, the chain trainer and the Learn diagrams, in all
+  three languages. A discontinuous loop draws its truths in the walk up to
+  the link that closes it, which says the premise is impossible, and its
+  proof as main did in the full view and the conclusion (G18); any frame
+  that shows its premise impossible (also an open chain whose truths
+  clash) says so in the legend. The walk words a group as one ("one of
+  r5c7, r6c7 must be 2") and an ALS's link as the set's. Arrows were already
+  dashed exactly into false nodes (G8). Every link of every derived step
+  in the batch and the examples is checked against the board's houses
+  (tests/truth.test.ts). Three review rounds: round 1 found a high (an
+  inverted grouped loop drew its whole start group true in the walk, fixed
+  in e7c17ea) and a medium (a W-Wing could join a weak link between cells
+  that do not see each other, fixed in cf3e83f); round 2 four mediums (a
+  group's walk sentence said all its cells "must be" the digit; a true
+  group took the whole loop's label; a placing loop's full view drew its
+  start placed beside its partner true; fixed in 528a2af-a819369) and
+  lows; round 3, on a819369, found one high in round 2's own fix (a
+  halo under the removal bar painted out the middle of the removed digit,
+  an 8 read as a 3), reverted to main's bar in 8b4f50f, and lows (tests
+  for the app board's truth marks and both legends; the trainer's legend
+  names a removal only in the frame that draws it; the ALS sentence only
+  on a strong link), fixed; its logic lens checked 28,613 derived steps,
+  15,702 trainer chains and 201,813 grouped and ALS chains against each
+  puzzle's solution, and its regression lens 113,114 steps against main,
+  with nothing else found. Merged then.
+
+  Left for later, low: the ALS-XZ label's "one digit short of locked"
+  (phase 6's words, main's wording); an open chain whose truths clash
+  proves a stronger conclusion than its finder reports (the legend says
+  the premise is impossible; taking the placement is the finder's, not
+  the drawing's); the chain trainer's legend does not name its gold
+  suggestions and purple goal (phase 6); with false rings beside
+  removals, the bar is what tells removed from false without colour, and
+  on a phone it merges with the digit (phase 7's item; a halo under the
+  bar was tried in round 2 and round 3 found it erased the digit, an 8
+  read as a 3, so it went: keep the digit whole, e.g. outline the digit
+  in the board's colour over a bar drawn under it, or stop the bar short
+  of the digit's box).
 - [ ] Phase 3: colouring
 - [ ] Phase 4: sets
 - [ ] Phase 5: forcing
