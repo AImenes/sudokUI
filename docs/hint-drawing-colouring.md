@@ -36,7 +36,8 @@ things HoDoKu never shows:
 1. One frame per cluster: its shades and its ties, thin quiet lines
    along the shortest tree that joins it, straight unless one would cross
    another mark of its frame or another candidate of its digit, when it
-   bends round it as an arrow does, apart from the ties it meets. "Each line joins the only
+   bends round it as an arrow does, apart from the ties it meets, running
+   beside none of them, and off the board's edge (G13). "Each line joins the only
    two 4s of a house: exactly one of them is true, so they take opposite
    shades." Inside a cell with only two candidates a tie draws nothing: a
    dark and a light disc side by side say it. The ties leave the board
@@ -67,8 +68,8 @@ cell. The Learn diagram is the full view with its legend.
 
 | # | Question | Decision | Why |
 | --- | --- | --- | --- |
-| 1 | Ties in the full view? | No: only in their cluster's walk frame, along the shortest drawn spanning tree; nothing inside one cell | HoDoKu draws none; Medusa's BFS trees draw up to 46 lines, 418 of 1,431 over another mark; the shortest tree (Kruskal on drawn length + 3 per hint mark within 0.13 cell, reading-order tie-break) cuts that to 177 |
-| 2 | Witness, clash, bridge lines | A weak tie: dashed, headless, no start dot, bent like an arrow (G10), halo, digits cut out (G11), numbered in the walk; drawn from its frame on, and in the full view and Learn (1-3 lines) | the reason on the board, faster than HoDoKu; a directed head would claim an inference, and some would point into a candidate that is true in the solution (checked) |
+| 1 | Ties in the full view? | No: only in their cluster's walk frame, along the shortest drawn spanning tree; nothing inside one cell | HoDoKu draws none; Medusa's BFS trees draw up to 46 lines, 418 of 1,431 over another mark; the shortest tree (Kruskal on drawn length + 3 per hint mark within 0.13 cell; of equal weights, a straight line first, then the fewest ties at its ends within 60 degrees, then reading order) cuts that to 173 (177 with reading order alone) |
+| 2 | Witness, clash, bridge lines | A weak tie: dashed, headless, no start dot, bent like an arrow (G10), halo, digits cut out (G11), numbered in the walk; each end clearly its own candidate's, two into one candidate never crossing before it where the marks leave room (G13); drawn from its frame on, and in the full view and Learn (1-3 lines) | the reason on the board, faster than HoDoKu; a directed head would claim an inference, and some would point into a candidate that is true in the solution (checked) |
 | 3 | A symmetric clash | the same weak tie; inside one cell, corner brackets | "not both true" has no direction |
 | 4 | A proven-false colour | proof frame: false rings; conclusion and full view: plain removals, no shade inside (G5's colouring exception retired: a dark-theme removal ring on a shade fill is 1.16:1) | G19 as written, phase 2's order; the shade's name lives on in the legend |
 | 5 | The proven-true colour | green true discs, no outer ring; placements stay [] | it is proven; "each is then a single" holds (corpus test) |
@@ -144,7 +145,10 @@ at step 25), Medusa rule 4 and Remote Pair.
 - **Rule 3**: a cell holding both colours loses its uncoloured candidates:
   one bracket frame for the first such cell; others worded; a single
   removal named ("so its 6 is removed").
-- **Rule 4**: as the trap.
+- **Rule 4**: as the trap, but where a removal after the first sees
+  only one shade of its digit while its own cell holds the other (rule
+  5's reason), the extra removals "are false whichever shade is true":
+  "the same way" would send a reader looking for both shades round each.
 - **Rule 5**: dark = the colour seen outside the cell (a dashed line), light
   = the colour in its own cell (brackets); extra removals "fall the same
   way", as the trap's, since its sentence already says "whichever shade".

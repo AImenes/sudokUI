@@ -349,6 +349,8 @@ const engine: EngineTable = {
   " ({0} cells are narrowed to their two shades this way)": " (de esta forma, {0} casillas se quedan solo con sus dos tonos)",
   "{0} holds a dark purple {1} and a light purple {2} (the corner brackets); one of them is true, so its {3} is false.": "{0} tiene un {1} morado oscuro y un {2} morado claro (los corchetes de las esquinas); uno de ellos es verdadero, así que su {3} es falso.",
   "{0} holds a dark purple {1} and a light purple {2} (the corner brackets); one of them is true, so its {3} are false.": "{0} tiene un {1} morado oscuro y un {2} morado claro (los corchetes de las esquinas); uno de ellos es verdadero, así que sus {3} son falsos.",
+  "; one more candidate is false whichever shade is true": "; otro candidato se elimina sea cual sea el tono verdadero",
+  "; {0} more candidates are false whichever shade is true": "; {0} candidatos más se eliminan sea cual sea el tono verdadero",
   "The {0} in {1} sees a dark purple {2} in {3} while its own cell holds a light purple {4}, so whichever shade is true removes it": "El {0} de {1} ve un {2} morado oscuro en {3} mientras su propia casilla tiene un {4} morado claro, así que se elimina sea cual sea el tono verdadero",
   "If light purple is true, {0} is {1} (the corner brackets), and its {2} goes. Either way the {3} is false": "Si el morado claro es verdadero, {0} es {1} (los corchetes de las esquinas) y se elimina su {2}. En cualquier caso, el {3} es falso",
   "If dark purple is true, the {0} in {1} is true, and {2} loses its {3}. {4} would then be empty, so dark purple cannot be true.": "Si el morado oscuro es verdadero, el {0} de {1} es verdadero y {2} pierde su {3}. Entonces {4} quedaría vacía, así que el morado oscuro no puede ser verdadero.",
