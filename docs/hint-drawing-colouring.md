@@ -144,7 +144,10 @@ at step 25), Medusa rule 4 and Remote Pair.
 - **Rule 3**: a cell holding both colours loses its uncoloured candidates:
   one bracket frame for the first such cell; others worded; a single
   removal named ("so its 6 is removed").
-- **Rule 4**: as the trap.
+- **Rule 4**: as the trap, but where a removal after the first sees
+  only one shade of its digit while its own cell holds the other (rule
+  5's reason), the extra removals "are false whichever shade is true":
+  "the same way" would send a reader looking for both shades round each.
 - **Rule 5**: dark = the colour seen outside the cell (a dashed line), light
   = the colour in its own cell (brackets); extra removals "fall the same
   way", as the trap's, since its sentence already says "whichever shade".

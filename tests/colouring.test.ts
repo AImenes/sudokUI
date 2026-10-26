@@ -1436,3 +1436,161 @@ describe('the ties of a colouring, where two meet and where one passes a candida
     expect(runs[4]).toBeLessThan(25);
   });
 });
+
+/**
+ * Round 3's words and tooling: a 3D Medusa rule 4 says its removals after
+ * the first "fall the same way" only where each sees both shades of its
+ * digit, as the first does, and else that they are false whichever shade
+ * is true; docs/highlighting.md speaks of a colouring's shades, not the
+ * old colour roles, and bends a tie as G13 does; and the review gallery
+ * (scripts/hint-gallery.ts) shows each example's explanation as Learn does
+ */
+describe("a 3D Medusa's removals after its first, where they fall another way; the developer docs and the review gallery", () => {
+  const seesCell = (a: number, b: number) => a !== b && UNITS.some((u) => u.includes(a) && u.includes(b));
+  /** whether a removal sees a dark and a light candidate of its digit: rule 4's reason, the first one's */
+  function seesBothShades(s: Step, x: CellDigit): boolean {
+    const { dark, light } = s.colouring!.clusters[0];
+    const seen = (o: CellDigit) => o.digit === x.digit && seesCell(o.cell, x.cell);
+    return dark.some(seen) && light.some(seen);
+  }
+  /** whether a removal sees one shade of its digit while its own cell holds the other: rule 5's reason */
+  function seesOneHoldsOther(s: Step, x: CellDigit): boolean {
+    const { dark, light } = s.colouring!.clusters[0];
+    const seen = (o: CellDigit) => o.digit === x.digit && seesCell(o.cell, x.cell);
+    const held = (o: CellDigit) => o.cell === x.cell;
+    return (dark.some(seen) && light.some(held)) || (light.some(seen) && dark.some(held));
+  }
+  /** the tail after a rule 4 or 5's first removal, at the end of its sentence and of the light witness's */
+  const TAIL = {
+    en: {
+      same: /; (one more candidate falls|\d+ more candidates fall) the same way\.$/,
+      whichever: /; (one more candidate is|\d+ more candidates are) false whichever shade is true\.$/
+    },
+    nb: {
+      same: /; (én kandidat til|\d+ kandidater til) faller bort på samme måte\.$/,
+      whichever: /; (én kandidat til|\d+ kandidater til) faller bort, enten det er mørkelilla eller lyselilla som er sant\.$/
+    },
+    es: {
+      same: /; (otro candidato se elimina|\d+ candidatos más se eliminan) de la misma forma\.$/,
+      whichever: /; (otro candidato se elimina|\d+ candidatos más se eliminan) sea cual sea el tono verdadero\.$/
+    }
+  };
+
+  it("say a rule 4's removals after its first are false whichever shade is true where one falls by rule 5, in every language: on a practice solve path, 1r1c5 sees both shades but 7r6c5 and 9r6c6 one each; and one more so in a daily", () => {
+    const onPath = positionAt('72....3.5..8.....2...7..98..3...2..9.8..4..5.1..6...3..46..3...8.....5..3.2....41', 31).grid;
+    // daily 2026-11-07, off its path: 6r1c6 sees both shades, 8r4c6 a dark 8 while its cell holds a light 6
+    const oneMore = positionAt('9.....3.164....9....139.5......1.....1.5.7.6.....3......5.724....7....258.9.....7', 33).grid;
+    const said = {
+      en: [
+        'The 1 in r1c5 sees a dark purple 1 in r1c3 and a light purple 1 in r7c5, so it is false either way; 2 more candidates are false whichever shade is true.',
+        'If light purple is true, the 1 in r7c5 is true, and the 1 in r1c5 goes. Either way it is false; 2 more candidates are false whichever shade is true.',
+        'The 6 in r1c6 sees a dark purple 6 in r6c6 and a light purple 6 in r4c6, so it is false either way; one more candidate is false whichever shade is true.',
+        'If light purple is true, the 6 in r4c6 is true, and the 6 in r1c6 goes. Either way it is false; one more candidate is false whichever shade is true.'
+      ],
+      nb: [
+        '1-tallet i r1c5 ser et mørkelilla 1-tall i r1c3 og et lyselilla 1-tall i r7c5, så det er usant uansett; 2 kandidater til faller bort, enten det er mørkelilla eller lyselilla som er sant.',
+        'Hvis lyselilla er sant, er 1-tallet i r7c5 sant, og 1-tallet i r1c5 faller bort. Uansett er det usant; 2 kandidater til faller bort, enten det er mørkelilla eller lyselilla som er sant.',
+        '6-tallet i r1c6 ser et mørkelilla 6-tall i r6c6 og et lyselilla 6-tall i r4c6, så det er usant uansett; én kandidat til faller bort, enten det er mørkelilla eller lyselilla som er sant.',
+        'Hvis lyselilla er sant, er 6-tallet i r4c6 sant, og 6-tallet i r1c6 faller bort. Uansett er det usant; én kandidat til faller bort, enten det er mørkelilla eller lyselilla som er sant.'
+      ],
+      es: [
+        'El 1 de r1c5 ve un 1 morado oscuro en r1c3 y un 1 morado claro en r7c5, así que es falso en cualquier caso; 2 candidatos más se eliminan sea cual sea el tono verdadero.',
+        'Si el morado claro es verdadero, el 1 de r7c5 es verdadero y se elimina el 1 de r1c5. En cualquier caso, es falso; 2 candidatos más se eliminan sea cual sea el tono verdadero.',
+        'El 6 de r1c6 ve un 6 morado oscuro en r6c6 y un 6 morado claro en r4c6, así que es falso en cualquier caso; otro candidato se elimina sea cual sea el tono verdadero.',
+        'Si el morado claro es verdadero, el 6 de r4c6 es verdadero y se elimina el 6 de r1c6. En cualquier caso, es falso; otro candidato se elimina sea cual sea el tono verdadero.'
+      ]
+    };
+    // the solver's own next step on that path
+    const next = findNextStep(onPath)!;
+    expect([next.tech, next.colouring?.rule, next.eliminations.map(nameOf)]).toEqual(['MEDUSA_3D', 'medusa4', ['1r1c5', '7r6c5', '9r6c6']]);
+    for (const [s, removed] of [
+      [next, ['1r1c5', '7r6c5', '9r6c6']],
+      [findStep('MEDUSA_3D', oneMore)!, ['6r1c6', '8r4c6']]
+    ] as const) {
+      expect([s.colouring!.rule, s.eliminations.map(nameOf)]).toEqual(['medusa4', removed]);
+      expect(s.eliminations.map((x) => [seesBothShades(s, x), seesOneHoldsOther(s, x)])).toEqual(removed.map((_, k) => (k === 0 ? [true, false] : [false, true])));
+    }
+    try {
+      for (const [lang, table] of LANGS) {
+        setEngineText(lang, table);
+        for (const [k, s] of [findStep('MEDUSA_3D', onPath)!, findStep('MEDUSA_3D', oneMore)!].entries()) {
+          const [sentence, witness] = said[lang].slice(2 * k);
+          expect(s.description.endsWith(` ${sentence}`), `${lang}: ${s.description}`).toBe(true);
+          expect(argument(s).at(-1)!.text, lang).toBe(witness);
+          for (const text of [s.description, witness]) {
+            expect(text, lang).toMatch(TAIL[lang].whichever);
+            expect(text, lang).not.toMatch(TAIL[lang].same);
+            // never "1 6 más", "2 8-tall til": a reader takes them for 16 and 28
+            expect(text, lang).not.toMatch(/(?<![\p{L}\d])\d+[ -]+\d/u);
+          }
+        }
+      }
+    } finally {
+      setEngineText('en', null);
+    }
+  });
+
+  describe("over every 3D Medusa along the dailies' solve paths, and the solver's own on the practice paths", () => {
+    /** a rule 4 or 5 that removes more than its first */
+    const hits: { where: string; step: Step }[] = [];
+    const more = (s: Step | null): s is Step => !!s && ['medusa4', 'medusa5'].includes(s.colouring!.rule) && s.eliminations.length > 1;
+    beforeAll(() => {
+      const dailies: { date: string; puzzle: string }[] = JSON.parse(new TextDecoder().decode(readFileSync('src/content/dailies.json')));
+      for (const { date, puzzle } of dailies) {
+        const g = parseGrid(puzzle)!;
+        for (let k = 0; k < 400 && !isSolved(g); k++) {
+          const s = findMedusa3d(g);
+          if (more(s)) hits.push({ where: `daily ${date} @${k}`, step: s });
+          const step = findNextStep(g);
+          if (!step) break;
+          applyStep(g, step);
+        }
+      }
+      for (const { name, step } of colouringsOnPath()) if (more(step)) hits.push({ where: `practice ${name}`, step });
+    }, 600_000);
+
+    it("say 'the same way' only where it is true: after rule 5, or after rule 4 where every removal sees both shades; else each is false whichever shade is true, and is", () => {
+      const counts = { 'medusa4 same': 0, 'medusa4 whichever': 0, 'medusa5 same': 0, practice: 0 };
+      const wrong: string[] = [];
+      for (const { where, step: s } of hits) {
+        const rule = s.colouring!.rule;
+        const extras = s.eliminations.slice(1);
+        // every removal after the first is false whichever shade is true: it sees both, or one while its cell holds the other
+        for (const x of extras) if (!seesBothShades(s, x) && !seesOneHoldsOther(s, x)) wrong.push(`${where}: ${nameOf(x)} is not removed by rule 4 or 5`);
+        const same = rule === 'medusa5' || extras.every((x) => seesBothShades(s, x));
+        const tail = same ? 'same' : 'whichever';
+        for (const text of [s.description, argument(s).at(-1)!.text!]) if (!TAIL.en[tail].test(text)) wrong.push(`${where} ${rule}, ${tail}: ${text}`);
+        counts[`${rule as 'medusa4' | 'medusa5'} ${tail}` as keyof typeof counts]++;
+        if (where.startsWith('practice')) counts.practice++;
+      }
+      expect(wrong.slice(0, 10)).toEqual([]);
+      // 5,653, 295 and 272 along the dailies' paths when this was written; 11 on the practice paths, 2 of
+      // them a rule 4 with removals by rule 5 (1r1c5's above, and 2r4c7's 6r7c7 and 7r8c7)
+      expect(counts['medusa4 same']).toBeGreaterThan(1000);
+      expect(counts['medusa4 whichever']).toBeGreaterThan(100);
+      expect(counts['medusa5 same']).toBeGreaterThan(100);
+      expect(counts.practice).toBeGreaterThan(5);
+    });
+  });
+
+  it("are described in docs/highlighting.md as drawn since phase 3: a colouring in shades, with none of the old colour roles, and its ties bent as G13 bends them", () => {
+    const doc = new TextDecoder().decode(readFileSync('docs/highlighting.md')).replace(/\s+/g, ' ');
+    // the roles' and the legend's examples name no colouring, and the colouring none of the roles
+    expect(doc).not.toMatch(/the second colour|the bridge colours|the other colour|\bgold\b/);
+    expect(doc).toContain('A colouring has none of these roles: it draws each cluster in two shades of one hue, dark and light purple, and a second cluster dark and light orange');
+    expect(doc).toContain('A colouring carries none: its legend names its shades');
+    // a tie bends round another mark of its frame or a candidate of its digit, and apart from a tie at its end
+    expect(doc).toContain('It is straight unless it would pass over another mark its frame draws, or another candidate of its digit the board shows, when it bends round it as an arrow does; where two ties share a candidate, each leaves it well apart from the other');
+    expect(doc).toContain("(bent round another mark of the frame, or a candidate of their digit, where a straight one would cross it, and apart from a tie that shares their end)");
+  });
+
+  it("show in the review gallery what Learn shows beside each example: its explanation with the conclusion, which names Multi Colors' second removal, r7c4", async () => {
+    // the page scripts/hint-gallery.ts writes
+    const html = (await import('../scripts/hint-gallery-page')).galleryPage();
+    const shown = (tech: Tech) => html.match(new RegExp(`<figure id="${tech}">.*?<p>(.*?)</p></figure>`, 's'))?.[1];
+    const escaped = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    // as src/ui/Learn.tsx and src/content/learnPages.ts write it
+    for (const tech of Object.keys(EXAMPLES) as Tech[]) expect(shown(tech), tech).toBe(escaped(describeStep(exampleStep(tech, EXAMPLES[tech]!))));
+    expect(shown('MULTI_COLORS')).toMatch(/; one more 6 falls the same way\. So 6 is removed from r3c6, r7c4\.$/);
+  });
+});

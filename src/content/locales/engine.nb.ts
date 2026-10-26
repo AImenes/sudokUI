@@ -349,6 +349,8 @@ const engine: EngineTable = {
   " ({0} cells are narrowed to their two shades this way)": " (slik står {0} ruter igjen med bare sine to nyanser)",
   "{0} holds a dark purple {1} and a light purple {2} (the corner brackets); one of them is true, so its {3} is false.": "{0} har et mørkelilla {1}-tall og et lyselilla {2}-tall (hjørneklammene); ett av dem er sant, så {3}-tallet i ruten er usant.",
   "{0} holds a dark purple {1} and a light purple {2} (the corner brackets); one of them is true, so its {3} are false.": "{0} har et mørkelilla {1}-tall og et lyselilla {2}-tall (hjørneklammene); ett av dem er sant, så kandidatene {3} i ruten er usanne.",
+  "; one more candidate is false whichever shade is true": "; én kandidat til faller bort, enten det er mørkelilla eller lyselilla som er sant",
+  "; {0} more candidates are false whichever shade is true": "; {0} kandidater til faller bort, enten det er mørkelilla eller lyselilla som er sant",
   "The {0} in {1} sees a dark purple {2} in {3} while its own cell holds a light purple {4}, so whichever shade is true removes it": "{0}-tallet i {1} ser et mørkelilla {2}-tall i {3}, mens ruten det står i, har et lyselilla {4}-tall, så det fjernes uansett hvilken nyanse som er sann",
   "If light purple is true, {0} is {1} (the corner brackets), and its {2} goes. Either way the {3} is false": "Hvis lyselilla er sant, er {0} lik {1} (hjørneklammene), og {2}-tallet i ruten faller bort. Uansett er {3}-tallet usant",
   "If dark purple is true, the {0} in {1} is true, and {2} loses its {3}. {4} would then be empty, so dark purple cannot be true.": "Hvis mørkelilla er sant, er {0}-tallet i {1} sant, og {2} mister {3}-tallet sitt. {4} ville da vært tom, så mørkelilla kan ikke være sant.",

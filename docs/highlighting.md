@@ -16,14 +16,19 @@ needs:
 - **Colours, with one grammar.** Blue (`primary`) is the pattern itself:
   the base cells, the chain, the locked set, the stem. Amber
   (`secondary`) is what the pattern acts through: cover lines, pincers,
-  the second colour, the petals. Purple (`fins`) is the exception: a fin,
-  the extra candidate, the bridge colours, where a forcing chain breaks.
-  Red is removed, green is placed. A technique that has had its colours
-  chosen with care keeps them; the grammar names what they mean.
+  the petals. Purple (`fins`) is the exception: a fin, the extra
+  candidate, where a forcing chain breaks. Red is removed, green is
+  placed. A technique that has had its colours chosen with care keeps
+  them; the grammar names what they mean. A colouring has none of these
+  roles: it draws each cluster in two shades of one hue, dark and light
+  purple, and a second cluster dark and light orange (Colouring, below,
+  and [hint-drawing-colouring.md](hint-drawing-colouring.md)).
 - **A legend that always speaks.** `labels` says in words what each colour
   means in this step, in the technique's own terms ("base rows", "the
-  roof's extra candidate", "gold: the other colour"). Every technique
-  carries them; the generic "the pattern" is a fallback nothing uses.
+  roof's extra candidate", "pincers"). Every technique carries them; the
+  generic "the pattern" is a fallback nothing uses. A colouring carries
+  none: its legend names its shades ("dark purple, light purple: either
+  every dark purple 6 is true, or every light purple one is").
 - **Bands.** `units` shades whole houses under the marks: a fish's base
   and cover lines, a locked set's house, the box and the line of a Locked
   Candidates step, the house a single was found in, the lines a hidden
@@ -40,10 +45,14 @@ needs:
   where the eye expects. A tie (`undirected`, strong) is a quiet line
   without an arrowhead or a dot: a conjugate pair, or the two candidates
   of a bivalue cell, exactly one of them true. It is straight unless it
-  would pass over another mark its frame draws, when it bends round it
-  as an arrow does. A weak tie (`undirected`, not strong, a colouring
-  only) is a dashed line with no head, bent like an arrow. Every link can
-  carry its own sentence (`text`); the colouring witnesses do.
+  would pass over another mark its frame draws, or another candidate of
+  its digit the board shows, when it bends round it as an arrow does;
+  where two ties share a candidate, each leaves it well apart from the
+  other and crosses it nowhere further on, in two bends or an S where
+  ties stand at both ends (G13 in [hint-drawing.md](hint-drawing.md)). A
+  weak tie (`undirected`, not strong, a colouring only) is a dashed line
+  with no head, bent like an arrow. Every link can carry its own sentence
+  (`text`); the colouring witnesses do.
 - **Red over a colour.** A coloured candidate that the step removes is
   drawn red with a ring in its colour, so a colour that is removed
   entirely is still there to be read. A colouring is the exception: a
@@ -86,12 +95,13 @@ needs:
   colours are dark and light purple, Multi Colors' second cluster dark
   and light orange, and dark is the colour the argument tries first. A
   cluster's ties are quiet lines along its shortest tree (bent round
-  another mark of the frame where a straight one would cross it), drawn
-  only in that cluster's frame of the walk. The argument is one to three
-  dashed lines with no head (a witness, a clash, a bridge), or corner
-  brackets round one cell, each with its sentence ("If dark purple is
-  true, the 6 in r3c3 is true, and the 6 in r3c7 goes."), drawn from its
-  frame on and in the full view. A colour the step proves false is
+  another mark of the frame, or a candidate of their digit, where a
+  straight one would cross it, and apart from a tie that shares their
+  end), drawn only in that cluster's frame of the walk. The argument is
+  one to three dashed lines with no head (a witness, a clash, a bridge),
+  or corner brackets round one cell, each with its sentence ("If dark
+  purple is true, the 6 in r3c3 is true, and the 6 in r3c7 goes."), drawn
+  from its frame on and in the full view. A colour the step proves false is
   drawn as the removals it is, and its partner as green true discs.
 - **ALS.** Each set in its colour; the restricted common digits are drawn
   as links between the sets; a Death Blossom links each stem candidate to
@@ -134,10 +144,10 @@ while a hint is drawn.
 ## The rules
 
 1. A technique's colours are never changed for taste. They change only
-   when the drawing contradicts the technique's own words (Multi Colours
-   named purple candidates the old renderer drew blue, because a chain
-   node took its colour before the fins were read; now a named colour
-   wins over the chain default).
+   when the drawing contradicts the technique's own words (Multi Colours,
+   before it drew its clusters in shades, named purple candidates the old
+   renderer drew blue, because a chain node took its colour before the
+   fins were read; now a named colour wins over the chain default).
 2. Every step names its colours. `tests/examples.test.ts` holds every
    worked example to the engine; a drawing change means
    `npx vite-node scripts/hunt-examples.ts refresh` and a look at the

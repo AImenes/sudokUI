@@ -199,6 +199,8 @@ export function findMedusa3d(g: Grid): Step | null {
     // dark: the first in reading order for rule 4, the colour it sees
     // outside its cell for rule 5
     const elims45: CellDigit[] = [];
+    /** whether each removal sees both shades of its digit (rule 4), not one shade outside its cell and the other in it (rule 5) */
+    const seesBoth: boolean[] = [];
     let witnessed: { rule: 'medusa4' | 'medusa5'; dark: number; c: number; d: number; x: number; y: number; own: number } | null = null;
     for (let c = 0; c < 81; c++) {
       if (g.values[c] !== 0) continue;
@@ -218,6 +220,7 @@ export function findMedusa3d(g: Grid): Step | null {
         // rule 4: sees both colours of its own digit
         if (seen[0].length && seen[1].length) {
           elims45.push(target);
+          seesBoth.push(true);
           witnessed ??= { rule: 'medusa4', dark: first, c, d, x: nearest(target, seen[first]).cell, y: nearest(target, seen[1 - first]).cell, own: 0 };
           continue;
         }
@@ -225,6 +228,7 @@ export function findMedusa3d(g: Grid): Step | null {
         for (const A of [0, 1]) {
           if (seen[A].length && colorDigit[1 - A] !== undefined) {
             elims45.push(target);
+            seesBoth.push(false);
             witnessed ??= { rule: 'medusa5', dark: A, c, d, x: nearest(target, seen[A]).cell, y: c, own: colorDigit[1 - A]! };
             break;
           }
@@ -234,8 +238,23 @@ export function findMedusa3d(g: Grid): Step | null {
     if (witnessed) {
       const { rule, dark, c, d, x, y, own } = witnessed;
       const n = elims45.length - 1;
-      // as the trap's and Remote Pair's: rule 5's own sentence already says "whichever shade"
-      const tail = n <= 0 ? '' : n === 1 ? tr`; one more candidate falls the same way` : tr`; ${n} more candidates fall the same way`;
+      // the removals after the first "fall the same way", as the trap's and
+      // Remote Pair's, where the first one's reason holds for each: rule 5's
+      // "whichever shade is true" holds for every removal of rules 4 and 5;
+      // rule 4's "sees a dark and a light one" not for a rule 5 removal, which
+      // sees one shade while its cell holds the other, so then the tail says
+      // what holds for both
+      const sameWay = rule === 'medusa5' || seesBoth.every(Boolean);
+      const tail =
+        n <= 0
+          ? ''
+          : sameWay
+            ? n === 1
+              ? tr`; one more candidate falls the same way`
+              : tr`; ${n} more candidates fall the same way`
+            : n === 1
+              ? tr`; one more candidate is false whichever shade is true`
+              : tr`; ${n} more candidates are false whichever shade is true`;
       const here = cellName(c);
       const there = cellName(x);
       const target = { cell: c, digit: d };
