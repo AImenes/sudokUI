@@ -2164,7 +2164,7 @@ test.describe('the HoDoKu rating in the top bar', () => {
 
   // GitHub's runner draws these in DejaVu Sans, wider than the Inter a
   // developer's machine may have: run them with
-  // FONTCONFIG_FILE=tests/e2e/ci-fonts.conf to see the bar as CI does
+  // FONTCONFIG_FILE=$PWD/tests/e2e/ci-fonts.conf to see the bar as CI does
 
   /** every width from a phone to a wide laptop: the bar fits, the level and the rating always show */
   async function sweep(page: Page, label: string) {
