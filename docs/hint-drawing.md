@@ -52,7 +52,7 @@ Every rule is numbered so a commit, a test or a review can cite it.
   outline round it, so the shape says it as well as the colour (an
   entered digit is already coloured). It never tints a cell. The player's own layers (selection, peers, same digit,
   their colours, errors) stay under everything and are untouched. House
-  bands (G15) and set hulls (G16) are the only areas a hint shades.
+  bands (G15) and set tiles (G16) are the only areas a hint shades.
 - **G2. Truth by colour and shape.** A chain node that is true under the
   hint's premise is a **filled disc** in the true colour; a node that is
   false is a **ring** in the false colour, faintly tinted inside, around
@@ -74,9 +74,13 @@ Every rule is numbered so a commit, a test or a review can cite it.
   must never use the true colour: painting a fish base "true" teaches that
   it is placed.
 - **G5. Precedence.** One mark per candidate: removed > placed > chain
-  truth > a role. A candidate a step lists in more than one role takes the
-  first of pattern, acts-through, exception, in the full view and in every
-  walk frame alike. A candidate that is removed
+  truth (a true disc, a false ring, a "one of these" square) > a role > a
+  set's member (its digit bold on the set's tile, no shape; phase 4,
+  [hint-drawing-sets.md](hint-drawing-sets.md)). A view draws roles inside
+  a set only where it draws no truth (Death Blossom until phase 5), so no
+  role disc sits beside a truth mark. A candidate a step lists in more
+  than one role takes the first of pattern, acts-through, exception, in
+  the full view and in every walk frame alike. A candidate that is removed
   keeps no ring of a colour it never had (before phase 1 four techniques
   drew a removal ringed blue that was never blue: Simple Colors' trap
   target, Multi Colors rule 1 and 2, Medusa rules 3-5, Digit Forcing's
@@ -91,7 +95,8 @@ Every rule is numbered so a commit, a test or a review can cite it.
   placement alone: the mark says its truth (removed is false, placed is
   true), so no truth ring or disc is drawn with it; the walk's frames
   before the conclusion show it as a truth mark (a true group's
-  candidates as the pattern's disc, until phase 4). Any other removed chain
+  candidates as "one of these" squares on their bar, phase 4; the
+  pattern's disc until it lands). Any other removed chain
   node keeps the colour the step names for it inside the removal ring, as
   Nishio's removed assumption does, so the legend's words for that colour
   still find it. A placed chain node the step names keeps that colour in
@@ -123,7 +128,7 @@ Every rule is numbered so a commit, a test or a review can cite it.
   half a cell has no head.
 - **G10. Bend only to clear the hint's own marks.** If the straight
   segment passes within a disc radius of another mark of the same hint (a
-  node, a removal, a member of a set hull), the arrow becomes one gentle
+  node, a removal, a member of a group or set), the arrow becomes one gentle
   arc to the side with more clearance, and the arc is checked to clear
   those marks along its segments and its head, not only at sample points.
   The arc turns midway first, then nearer either end (an arrow can then
@@ -145,13 +150,28 @@ Every rule is numbered so a commit, a test or a review can cite it.
   (`SudokuPanel.java:2693-2711`); ours chooses the side. Unrelated
   candidates and digits are crossed straight, readable through the halo
   (G11). Two arrows joining the same two nodes are drawn side by side. A
-  group node is anchored at the member nearest the other end of the link
-  (a centroid can fall in a cell that is not one of its members); HoDoKu
-  anchors at a member too.
+  group or set node is anchored at its member nearest the other end of the
+  link (a centroid can fall in a cell that is not one of its members;
+  HoDoKu anchors at a group's first member only, so its other members get
+  no arrow), never at a bar's or tile's edge: the tail or tip is where the
+  ray towards the other end leaves that member's mark, exactly (a "one of
+  these" square reaches 13 on its axes and 15.5 at its corners), plus the
+  gap. From phase 4 a group's bar and a set's letter tabs are obstacles for
+  every arrow, tie, start dot and walk number, a group's own bar exempt
+  only beside the member it anchors at, and no arrow crosses a bar except
+  at its anchoring member, so none passes between a group's members (63 of
+  762 groups had one); a set's tiles are areas, crossed as bands are, and
+  its members obstacles, as marks are. A step with no sets is laid out
+  exactly as before ([hint-drawing-sets.md](hint-drawing-sets.md)).
 - **G11. Over the lines and marks, under the digits.** The layers, from
-  the bottom: the player's own layers, bands, marks, solved-digit
-  outlines, grid lines, arrows and ties (every halo before any line),
-  digits, removal bars, start markers and walk numbers. An arrow crosses
+  the bottom: the player's own layers, bands, set tiles (fill, then
+  outline; a shared cell's dashed inner outline), group bars (cut out by
+  the digits, as arrows are), marks (each keyline parting its mark from a
+  bar under it), solved-digit outlines, grid lines (a thin cell line
+  crosses a gapped group's bar; a group never crosses a box line), arrows
+  and ties (every halo before any line), digits, removal bars, letter
+  tabs, start markers and walk numbers (the tiles, bars and tabs from
+  phase 4, [hint-drawing-sets.md](hint-drawing-sets.md)). An arrow crosses
   box lines as HoDoKu's do, with a halo in the board's background colour,
   and passes under a digit: every digit is cut out of the arrows (a mask
   holding the digits, thickened), so a digit an arrow crosses stays whole
@@ -259,14 +279,31 @@ Every rule is numbered so a commit, a test or a review can cite it.
   and line. A pattern's band (base) has a solid outline, an acts-through
   band (cover) a dashed one, so the two differ by shape and not only by
   colour.
-- **G16. Set hulls.** A group node and an almost locked set are drawn as a
-  rounded hull around their candidates, not as discs that each claim a
-  truth: a TRUE group means "one of these", and painting every member true
-  teaches that all are placed. A group hull takes the truth style of its
-  node (filled tint for true, outline for false); an ALS hull takes one of
-  four ALS tints, in order of first appearance, with its restricted-common
-  digits in the acts-through colour and its eliminating digit in the
-  pattern colour. Arrows attach to the hull's edge.
+- **G16. Sets.** A group node (the 2-3 candidates of one digit in one box
+  and one row or column) and an almost locked set are drawn as what they
+  are, never as a hull round cells or candidates that are not theirs (a
+  hull would cover another candidate in 55% of groups and 33-43% of sets).
+  A group is its members' own marks on a bar: a short straight line in the
+  glyph-free gutter beside them, in their mark's ink. A TRUE group's
+  members are pale "one of these" rounded squares, never a true disc and
+  never the true green fill (a TRUE group means "one of these", and
+  painting every member true teaches that all are placed); a FALSE
+  group's are its false rings; a proof-only view's are pattern discs on a
+  pattern-ink bar; Grouped X-Cycles rule 3's start goes from squares
+  (assumed) to rings (proven false at the closing link) to removals, its
+  bar following. An almost locked set is a tight rounded tile in each of
+  its cells, round that cell's own candidates (every candidate of an ALS
+  cell belongs to it), in one of three tints at half strength, outlined in
+  the set's ink, with a lettered tab (A to D, HoDoKu's lettering) on every
+  tile; nothing joins its cells. In a derived chain the set's node digits
+  take their truth (rings, a disc, "one of these" squares), its other
+  digits are bold on the tile, and a link inside the set draws nothing
+  (G12); only where a view draws no truth (Death Blossom until phase 5)
+  are the restricted commons acts-through gold and z pattern blue. Arrows
+  attach at a member (G10). Designed for phase 4 in
+  [hint-drawing-sets.md](hint-drawing-sets.md), which gives the shapes,
+  tints, words and stages; until it lands, groups and sets are drawn as
+  phase 2 left them.
 - **G17. Digit focus (optional, Settings).** During a hint about one
   digit (fish, single-digit patterns, X-Chains, colouring), the other
   digits' candidates are dimmed. Off by default; a toggle in Settings and
@@ -319,7 +356,7 @@ Every rule is numbered so a commit, a test or a review can cite it.
 - **G20. Patterns** (singles, intersections, subsets, fish, wings,
   uniqueness, Sue de Coq, Fireworks, Exocet, APE, Pattern Overlay,
   Tridagon, Extended Rectangle, Chute Remote Pair, BUG+1): role colours
-  (G4), bands (G15), hulls where a set is the point (G16), no arrows
+  (G4), bands (G15), set tiles where a set is the point (G16), no arrows
   unless the technique's own logic is a chain.
 - **G21. Forcing chains** (Nishio, Digit, Cell, Unit; Check's "why not"):
   one branch at a time. The full view shows the premise or premises and
@@ -359,7 +396,7 @@ Every rule is numbered so a commit, a test or a review can cite it.
 - **G25. One renderer.** The app board (`src/ui/Grid.tsx`), the Learn
   diagrams (`src/content/boardSvg.ts`) and the intuition diagrams
   (`src/content/intuitionDiagrams.ts`) draw from one shared module that
-  turns a step into a display list (marks, bands, hulls, arrows) with
+  turns a step into a display list (marks, bands, tiles and bars, arrows) with
   geometry; each renderer only paints it in its own theme. Before this
   work they were three separate implementations that differed in 25 ways;
   since phase 1 the app board and the Learn diagrams share the marks
@@ -450,9 +487,11 @@ data changes later.
    ties from their walk frame on and in the full view, a proof frame
    where a colour is proven. Accept: coloringViz tests updated; the
    prose's colour words match the drawn hues.
-4. **Sets** (G16): group hulls, ALS hulls and tints, ALS finders emit
-   their internal links and ALS index, Death Blossom branches. Accept:
-   derivation covers the ALS family; eurekaOf renders ALS in braces.
+4. **Sets** (G16, [hint-drawing-sets.md](hint-drawing-sets.md)): group
+   bars and "one of these" squares, ALS tiles, tints and letters, the
+   finders' sets and the ALS patterns' internal links, Death Blossom's
+   branch links. Accept: derivation covers the ALS family; eurekaOf
+   renders ALS in braces.
 5. **Forcing** (G21): per-branch walk, summary full view, `fromTrue` from
    the forcing finders. Accept: forcingTrail tests hold; no node coloured
    by two branches at once.
@@ -490,7 +529,9 @@ cell is 100 units (the Learn diagrams scale everything by 0.6).
 
 **Principles.** Shape carries truth, hue carries meaning: a filled disc
 is true or a role, a ring is false, a barred ring is removed, a disc with
-an outer ring is placed, a rounded square is a member of a set. Digits on
+an outer ring is placed, a pale rounded square is one of several of which
+exactly one is true (a TRUE group's members, or a set's digit in one of
+its cells; phase 4). Digits on
 fills are near-black (#10131c, weight 700) in every theme, at 5.5:1 or
 more; marks are opaque (today's discs are 0.85 opacity with white digits,
 2.4 to 3.4:1, which is a measured reason HoDoKu reads better: its black on
@@ -511,7 +552,9 @@ dark ones. Arrows are the only achromatic mark.
 | `--hint-purple-light` (light purple) | #ccb9e7 / #c361f1 | #ccb9e7, edge = fill | disc r 13, digit at 10.30:1 |
 | `--hint-orange` (dark orange) | #ed6907 / #ed6907 | #ed6907, edge = fill | disc r 13, digit at 5.85:1; Multi Colors' second cluster only |
 | `--hint-orange-light` (light orange) | #fcd2b1 / #ed6907 | #fcd2b1, edge = fill | disc r 13, digit at 13.24:1 |
-| `--hint-als-1..5` (fill / light edge) | #ffd3b8/#9b5212, #dfe2fe/#5353ad, #a2b63c/#5b6704, #ec84b8/#9e366f, #a9926b/#745e39 | same fills, no edge | rounded square 24×24, rx 6 |
+| `--hint-one-of` ("one of these"; phase 4) | #abe1ba (true at 0.5 over white), edge #006c2f | #296243, edge #35a458 | rounded square 26×26, rx 7, edge 2 inside, keyline 1.5 (2 on a small board), digit `--hint-in-ring` (10.74:1; 6.36:1) |
+| `--hint-set-1..3` (fill / ink; phase 4) | sand #faea37 / #6b6000, rose #bf5481 / #a3365f, violet #8c56ff / #6a40d0 | #474801 / #e6d27a, #b4537b / #f0a0c0, #4020d0 / #c896ce | a tile per cell round its candidates, 15 out, rx 10, fill at `--hint-set-alpha` 0.5, outline in the ink stroked inwards 2.5 (4.5 under 600 CSS px, 5 under 330); a tab in the ink, 18×18 rx 4 (26 on a small board and in Learn), letter in `--cell-bg` |
+| group bar (phase 4) | the members' ink: true #006c2f, false #175bb7, pattern #175bb7, removal #bc072a | #35a458, #7fbbff, #498de5, #fe9696 | stroke 3 (4.5, 5.5), round caps, 15 off the members' line, under the marks, cut out by the digits |
 | `--hint-arrow` (arrows, ties, start dot, walk badges) | #151a24 | #f2f4f9 | stroke 3; weak dash "8 6" with butt caps; head 14 long × 11 wide; tail and tip 3 units outside the marks' rims |
 | halo | `--cell-bg`, arrow width + 2 (`SIZES.halo`), opacity 0.75, the head outlined 2 wide | same | drawn after the grid lines, with the arrow; on a small board 6.5 round a 4.5 shaft |
 | band | role fill at alpha 0.07 | 0.10 | outline inset 3.5, stroke 3, rx 8, role ink at full opacity |
@@ -547,19 +590,22 @@ not used beside truth marks (in the dark theme pattern and true are only
 ΔE 4.1 apart under tritan vision, and both are discs). Gold discs are not
 put beside true discs either (light protan ΔE 8.3), nor orange shades
 (ΔE 10.7): in Multi Colors orange is removals and true discs once a
-colour is proven, and a test holds it. Purple and orange are a
+colour is proven, and a test holds it. Purple and orange discs are a
 colouring's alone; the exception's light purple (`--hint-fin`) is never
-drawn beside them. Two exceptions stand
-until their phases: a true group's members keep the pattern's disc
-(a true group is "one of these", so none of them is a true disc), named
-in the legend as one candidate of each group true, until phase 4 draws
-groups as hulls, and the chain trainer's gold suggestions
-sit beside its true discs until phase 6 gives them a mark and a legend
-entry of their own.
+drawn beside them. Phase 4's violet set tint is an area under an outline
+and a letter, never a disc, and sets and colourings never share a step (a
+test holds it). One exception stands until its phase: the chain trainer's
+gold suggestions sit beside its true discs until phase 6 gives them a mark
+and a legend entry of their own. Phase 4 retires the other: a true
+group's members, which keep the pattern's disc until it lands, become pale
+"one of these" squares on a bar, never the pattern's disc and never the
+true disc ([hint-drawing-sets.md](hint-drawing-sets.md)).
 
 **Where shape carries it.** True vs false: disc vs ring. Removed: the
-bar. Placed vs true: the outer ring (same colour by design). A set member:
-the square. Strong vs weak: solid vs dashed. Every other pair is told
+bar. Placed vs true: the outer ring (same colour by design). "One of
+these" vs true: square vs disc (11.6 apart in the light themes), with the
+bar or the tile. Which set: the letter, never the tint. Strong vs weak:
+solid vs dashed. Every other pair is told
 apart by colour alone under all three simulations in the light themes;
 in the dark ones true/false (ΔE 11.9 tritan), secondary/removed (5.9),
 fin/false (5.3), dark orange/removed (11.8) and light orange/removed (8.5)
@@ -767,7 +813,23 @@ the values above are its final ones.
   corner can touch another line at a phone's size where no corner is clear
   (G14's trade-off; phase 7); a big chain hint's layout on the main
   thread, which main already pays (phase 7).
-- [ ] Phase 4: sets
+- [ ] Phase 4: sets. Designed (27 October 2026) in
+  [hint-drawing-sets.md](hint-drawing-sets.md), from five maps, three
+  designs and two judges, and in progress. A group is its members' marks on
+  a bar in the gutter beside them, a TRUE group's members pale "one of
+  these" squares (retiring `oneTrue`'s pattern disc); an almost locked set
+  a tight tile per cell with a lettered tab on every tile, in three tints;
+  ALS-XZ, ALS-XY-Wing and ALS-XY-Chain derived chains like AIC with ALS;
+  Death Blossom the pattern, with its branch links emitted for phase 5; a
+  walk that introduces each set before the chain uses it; Eureka with
+  braces round the whole set, and HoDoKu's lines rebuilt from the sets.
+  Before it, in its own reviewed change (built separately), ALS-XY-Chain
+  stops letting its sets overlap, as HoDoKu does by default; it changes
+  solve paths and ratings, so it is measured and lands first. Phase 4 then
+  runs in nine stages, data only first behind a split drawing fixture and
+  a path digest, and changes no conclusion. The relabelling of AIC with ALS
+  steps whose only set is a bivalue cell is left to a later measured
+  engine change.
 - [ ] Phase 5: forcing
 - [ ] Phase 6: words
 - [ ] Phase 7: polish

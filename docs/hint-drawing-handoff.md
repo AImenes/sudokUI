@@ -3,7 +3,7 @@
 For whoever continues this work. The design and its rules (G1-G25), the
 phases and the running status are in `docs/hint-drawing.md`; this note
 says what is done, what comes next, and how the work has been run.
-Updated 2026-10-26, at the merge of phase 3.
+Updated 2026-10-27, at the design of phase 4.
 
 ## State
 
@@ -43,10 +43,22 @@ Updated 2026-10-26, at the merge of phase 3.
 
 ## Next
 
-Phase 4 (sets: group and ALS hulls, which also retire the `oneTrue`
-exception), phase 5 (forcing chains per branch), phase 6 (words), phase 7
-(polish). After them, a readability pass over every technique's hint
-against HoDoKu, in all four themes and on a phone.
+Phase 4 (sets) is designed: `docs/hint-drawing-sets.md`, from five maps,
+three designs and two judges, settled by the lead engineer. First, in its
+own reviewed change (built separately, not part of phase 4), ALS-XY-Chain
+stops letting its four sets overlap, as HoDoKu does by default; it moves
+solve paths and ratings, so it is measured as the colouring search orders
+were and merged before phase 4 starts. Then phase 4's nine stages, in the
+order its Stages section gives, each commit green on its own: data only
+first (the drawing fixture split with frozen positions, a path digest,
+then `Step.sets` and the links' set ends with `checkSets`), the trainer,
+the notation, the palette, groups (pale "one of these" squares on a bar,
+retiring `oneTrue`), ALS tiles and letter tabs, the set walk and its
+words, the ALS patterns as chains with Death Blossom's pattern view, then
+screenshots and the spec, and the review rounds. After it, phase 5
+(forcing chains per branch, which also draws Death Blossom's branches),
+phase 6 (words), phase 7 (polish), and a readability pass over every
+technique's hint against HoDoKu, in all four themes and on a phone.
 
 ## How the work has been run
 
