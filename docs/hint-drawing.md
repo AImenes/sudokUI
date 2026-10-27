@@ -863,7 +863,7 @@ the values above are its final ones.
   corner can touch another line at a phone's size where no corner is clear
   (G14's trade-off; phase 7); a big chain hint's layout on the main
   thread, which main already pays (phase 7).
-- [ ] Phase 4: sets. Built, in review. Designed (27 October 2026) in
+- [x] Phase 4: sets. Built, reviewed and merged. Designed (27 October 2026) in
   [hint-drawing-sets.md](hint-drawing-sets.md), from five maps, three
   designs and two judges, and built in its nine stages, each commit green
   on its own (tsc, the unit tests, the build, and the browser tests in
@@ -899,15 +899,29 @@ the values above are its final ones.
   all four themes, desktop and phone, walk frames and panel, with and
   without the player's own cell colours, `PLAYER=1` in
   scripts/hint-shots.cjs) and the Learn gallery are kept outside the
-  repository. Next: the review rounds, then the merge when nothing is
-  high, medium, false or regressed. The relabelling of AIC with ALS steps
+  repository. Review round 1 (logic, words, design, code and regression,
+  two skeptics on each blocking claim) found one medium that taught
+  something false: where an ALS-XY-Chain's sets share a cell, a true set
+  node whose candidate another node already makes true drew its other
+  candidates as "one of these" squares; they are false rings now, and a
+  walk frame draws only the truths its own links prove (a005ceb). Its
+  twenty lows are fixed too: the words and legends in en, nb and es
+  (1a0a219), the board's drawing tested as the app draws it and the
+  digest's menus run before a merge (d5d9a54), tile outlines over their
+  marks' keylines, all three tints in a chain of four and a calmer dark
+  violet (15dc6bb), and Death Blossom's ties, tabs by their own tiles and
+  no two links drawn as one arrow (60edc72). The merge was checked by the
+  whole suite, the digest with its menus, the browser tests in both font
+  setups and phone screenshots in light and dark; no second full review
+  round was run, to spare the week's budget. The relabelling of AIC with ALS steps
   whose only set is a bivalue cell is left to a later measured engine
   change.
 
-  Left for later, low: of the grouped steps on offer at the positions of
-  the maps' 577 cached grouped chains, two arrows meet a bar where no
-  drawing clears it, neither on a solve path (the design's As built names
-  them); an ALS-XY-Chain of more sets than cells
+  Left for later, low: over every grouped chain on offer along the solve
+  paths of the pool, seed and hard puzzles, an arrow meets a bar away
+  from its anchoring member in 44 chains, one of them a solve path's own
+  step (the design's As built names it); a second full review round of
+  the round 1 fixes; an ALS-XY-Chain of more sets than cells
   leaves one set no filled tile (four sets on three cells on a hard path),
   its tabs and dashed outlines carrying it; App.tsx's "a {tech} places it"
   and the share line's "a {level} sudoku" can read "a X-Wing" and "a

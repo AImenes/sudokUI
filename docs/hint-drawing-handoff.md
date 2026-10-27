@@ -65,14 +65,14 @@ Updated 2026-10-27, with phase 4 built and in review.
 
 ## Next
 
-Phase 4's review rounds, as phases 1-3 had them (below), on the branch's
-last commit: the screenshots of every set example and of the set
+Phase 4 is merged after one review round, its findings fixed (the
+Status in hint-drawing.md). A second full round on the round 1 fixes was
+not run, to spare the week's budget: worth one, as phases 1-3 had them
+(below), with the screenshots of every set example and of the set
 fixture's eleven named positions, in all four themes, desktop and phone,
 every walk frame and the hint panel, with and without the player's own
-cell colours (`WALK=1 PANEL=1 PLAYER=1`), and the Learn gallery, kept
-outside the repository with a README that names each position. Fix each
-round's findings, then merge the branch whole when nothing is high,
-medium, false or regressed. After it, phase 5 (forcing chains per branch,
+cell colours (`WALK=1 PANEL=1 PLAYER=1`), and the Learn gallery. Then
+phase 5 (forcing chains per branch,
 which also draws Death Blossom's branches from the links phase 4 emits),
 phase 6 (words), phase 7 (polish), and a readability pass over every
 technique's hint against HoDoKu, in all four themes and on a phone. The
