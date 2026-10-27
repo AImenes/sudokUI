@@ -105,8 +105,8 @@ function setText(step: Step, set: ChainSet): string {
   const house = unitName(set.unit);
   const digits = listAnd(set.digits);
   return isHinge(step, set)
-    ? tr`Set ${L}, the hinge: the ${n} cells ${cells} of ${house} hold only ${digits}: one digit more than cells. Without any one of them, the others fill the cells.`
-    : tr`Set ${L}: the ${n} cells ${cells} of ${house} hold only ${digits}: one digit more than cells. Without any one of them, the others fill the cells.`;
+    ? tr`Set ${L}, the hinge: the ${n} cells ${cells} of ${house} hold only ${digits}: one digit more than cells. Without any one of these digits, the others fill the cells.`
+    : tr`Set ${L}: the ${n} cells ${cells} of ${house} hold only ${digits}: one digit more than cells. Without any one of these digits, the others fill the cells.`;
 }
 
 /**
@@ -369,16 +369,47 @@ function parityFrames(step: Step): Frame[] {
 /**
  * What an ALS pattern's conclusion says before its removals
  * (docs/hint-drawing-sets.md, "The walk and its words"): its two end sets,
- * one of which holds z, and why each removal goes; empty for any other step
+ * one of which holds z, and why each removal goes; for a chain that clashes,
+ * why its first set holds z (clashText); empty for any other step
  */
 function endsText(step: Step): string {
   if (!isAlsChain(step)) return '';
   const links = step.links!;
-  const F = step.sets?.[links[0].fromSet!]?.letter;
-  const L = step.sets?.[links[links.length - 1].toSet!]?.letter;
+  const first = step.sets?.[links[0].fromSet!];
+  const last = step.sets?.[links[links.length - 1].toSet!];
+  const [F, L] = [first?.letter, last?.letter];
   const z = step.eliminations[0]?.digit;
   if (!F || !L || z === undefined) return '';
-  return tr`Set ${F} or set ${L} holds ${aDigit(z)}: if ${F} holds none, ${L} holds one. Each removed ${z} sees every ${z} of both.`;
+  const clash = alsClash(step) ? clashText(step, first!, last!, z) : '';
+  return clash || tr`Set ${F} or set ${L} holds ${aDigit(z)}: if ${F} holds none, ${L} holds one. Each removed ${z} sees every ${z} of both.`;
+}
+
+/**
+ * Why an ALS-XY-Chain whose sets share cells and whose chain clashes
+ * (src/engine/truth.ts alsClash; docs/hint-drawing-sets.md, decision 13)
+ * removes what it does: its last set holds z only in cells of its first,
+ * so the premise that the first set holds no z gives it one after all. The
+ * first set cannot lack z: it holds z, and each removal sees every z of
+ * it. Worded by what the derivation meets: the last set's z the first's
+ * very own (a closure, the chain back at its start), several of the
+ * first's z (a TRUE node left no candidate, 'emptyTrue'), or one
+ * ('inFalseGroup', a true candidate in the first set's false node). Empty
+ * where the last set holds z outside the first, which no chain the
+ * corpora keep does: the plain ending then stands
+ */
+function clashText(step: Step, first: ChainSet, last: ChainSet, z: number): string {
+  const holding = (set: ChainSet) => set.members.filter((m) => m.digit === z).map((m) => m.cell);
+  const [inFirst, inLast] = [holding(first), holding(last)];
+  if (!inLast.length || !inLast.every((c) => inFirst.includes(c))) return '';
+  const [F, L] = [first.letter, last.letter];
+  if (inLast.length === 1) {
+    const cell = cellName(inLast[0]);
+    return tr`Set ${L} holds ${z} only in ${cell}, a cell of set ${F}: if ${F} holds no ${z}, ${cell} must be ${z}, and ${F} holds one after all. ${F} cannot lack ${aDigit(z)}, so set ${F} holds ${aDigit(z)}. Each removed ${z} sees every ${z} of ${F}.`;
+  }
+  const cells = cellNames(inLast);
+  return deriveTruth(step)?.closure
+    ? tr`Set ${L} holds ${z} only in ${cells}, the very cells set ${F} holds it in, so the chain comes back to ${F}: if ${F} holds no ${z}, one of these cells must be ${z}, and ${F} holds one after all. ${F} cannot lack ${aDigit(z)}, so set ${F} holds ${aDigit(z)}. Each removed ${z} sees every ${z} of ${F}.`
+    : tr`Set ${L} holds ${z} only in ${cells}, cells of set ${F}: if ${F} holds no ${z}, one of these cells must be ${z}, and ${F} holds one after all. ${F} cannot lack ${aDigit(z)}, so set ${F} holds ${aDigit(z)}. Each removed ${z} sees every ${z} of ${F}.`;
 }
 
 /**

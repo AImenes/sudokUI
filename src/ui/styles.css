@@ -1547,6 +1547,91 @@ button {
   box-shadow: 0 0 0 1px var(--panel);
 }
 
+/* a view that draws a group's bar in the pattern's ink and another in the
+   removal's (Grouped X-Cycles rule 3's full view): one bar of each, the
+   pattern's above */
+.hint-legend .swatch-bars {
+  position: relative;
+  width: 20px;
+  border-radius: 0;
+  background: transparent;
+}
+
+.hint-legend .swatch-bars::before,
+.hint-legend .swatch-bars::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  height: 3px;
+  border-radius: 1.5px;
+}
+
+.hint-legend .swatch-bars::before {
+  top: 1px;
+  background: var(--hint-primary-ink);
+}
+
+.hint-legend .swatch-bars::after {
+  top: 6px;
+  background: var(--hint-elim);
+}
+
+/* a cell of two sets (docs/hint-drawing-sets.md, decision 6): the small
+   tile of the set whose tile the cell carries, its tint at the set alpha
+   and its outline, with the other set's outline dashed inside it */
+.hint-legend .swatch-shared {
+  position: relative;
+  width: 14px;
+  border-radius: 3px;
+  border: 1.5px solid var(--sw-ink);
+  background: transparent;
+}
+
+.hint-legend .swatch-shared::before,
+.hint-legend .swatch-shared::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1.5px;
+}
+
+.hint-legend .swatch-shared::before {
+  background: var(--sw);
+  opacity: var(--hint-set-alpha);
+}
+
+.hint-legend .swatch-shared::after {
+  border: 1.5px dashed var(--dash);
+}
+
+.hint-legend .swatch-shared.tile-1 {
+  --sw: var(--hint-set-1);
+  --sw-ink: var(--hint-set-1-ink);
+}
+
+.hint-legend .swatch-shared.tile-2 {
+  --sw: var(--hint-set-2);
+  --sw-ink: var(--hint-set-2-ink);
+}
+
+.hint-legend .swatch-shared.tile-3 {
+  --sw: var(--hint-set-3);
+  --sw-ink: var(--hint-set-3-ink);
+}
+
+.hint-legend .swatch-shared.dash-1 {
+  --dash: var(--hint-set-1-ink);
+}
+
+.hint-legend .swatch-shared.dash-2 {
+  --dash: var(--hint-set-2-ink);
+}
+
+.hint-legend .swatch-shared.dash-3 {
+  --dash: var(--hint-set-3-ink);
+}
+
 .hint-actions {
   display: flex;
   gap: 8px;

@@ -564,7 +564,8 @@ describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 
         const kinds = new Set([...m.cands.values()].flatMap((x) => [...x.values()]));
         expect([...kinds].filter((k) => k !== 'member' && k !== 'elim'), `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
         expect(m.refuted, where).toBe(false);
-        expect(legendOf(s, values, fr).map((l) => l.kind).filter((k) => k !== 'elim' && k !== 'tile'), `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
+        // the removals, the lettered cells and a cell of two sets' dashed outline: no truth
+        expect(legendOf(s, values, fr).map((l) => l.kind).filter((k) => k !== 'elim' && k !== 'tile' && k !== 'shared'), `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
       }
       expect(premiseOf(s), where).toBeNull();
       // its tiles, its arrows and its removal still drawn
@@ -1138,3 +1139,29 @@ describe('a true node of several candidates where sets share a cell, and what a 
     expect(chains).toBeGreaterThan(120);
   });
 });
+
+describe('the swatches of review round 1 (docs/hint-drawing-sets.md, the legend lines)', () => {
+  it("draws, in the Learn legend, two bars where a view draws both inks, the pattern's above the removal's, and a cell of two sets as one set's tile with the other's outline dashed inside it", () => {
+    const bars = swatchStyle({ kind: 'bars', label: '', colour: LIGHT.primaryInk, ink: LIGHT.elim });
+    expect(bars.background).toBe(
+      `linear-gradient(${LIGHT.primaryInk},${LIGHT.primaryInk}) 2px 1px/16px 3px no-repeat,linear-gradient(${LIGHT.elim},${LIGHT.elim}) 2px 6px/16px 3px no-repeat,#ffffff`
+    );
+    const shared = swatchStyle({ kind: 'shared', label: '', colour: LIGHT.set1, ink: LIGHT.set1Ink, dash: LIGHT.set2Ink });
+    expect(shared.border).toBe(`1.5px solid ${LIGHT.set1Ink}`);
+    // dashes in the other set's ink along the four sides inside the outline, over the tile's tint at half strength
+    expect(shared.background.match(new RegExp(`repeating-linear-gradient\\((90|180)deg,${LIGHT.set2Ink} 0 2\\.5px,transparent 2\\.5px 4px\\)`, 'g'))).toHaveLength(4);
+    expect(shared.background).toContain(`linear-gradient(${LIGHT.set1}80,${LIGHT.set1}80)`);
+  });
+
+  it("gives the hint panel the same swatches: two bars, and a tile in any set's tint with any set's outline dashed inside it", () => {
+    const css = new TextDecoder().decode(readFileSync('src/ui/styles.css'));
+    expect(css).toMatch(/\.hint-legend \.swatch-bars::before \{[^}]*background: var\(--hint-primary-ink\);/);
+    expect(css).toMatch(/\.hint-legend \.swatch-bars::after \{[^}]*background: var\(--hint-elim\);/);
+    expect(css).toMatch(/\.hint-legend \.swatch-shared::after \{[^}]*border: 1\.5px dashed var\(--dash\);/);
+    for (const n of [1, 2, 3]) {
+      expect(css).toContain(`.hint-legend .swatch-shared.tile-${n} {\n  --sw: var(--hint-set-${n});\n  --sw-ink: var(--hint-set-${n}-ink);\n}`);
+      expect(css).toContain(`.hint-legend .swatch-shared.dash-${n} {\n  --dash: var(--hint-set-${n}-ink);\n}`);
+    }
+  });
+});
+

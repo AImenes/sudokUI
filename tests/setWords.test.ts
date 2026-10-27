@@ -44,6 +44,13 @@ import nb from '../src/content/locales/app.nb';
 import es from '../src/content/locales/app.es';
 import { readSource } from '../scripts/i18n-source';
 import { patternChain, wordProblems, GENERIC } from './setWords';
+import { boardSvg } from '../src/content/boardSvg';
+import type { LegendEntry } from '../src/content/boardSvg';
+import { frameMarks as marksAt, legendKinds } from '../src/content/hintMarks';
+import { LIGHT } from '../src/content/hintPalette';
+import { alsClash, deriveTruth } from '../src/engine/truth';
+import { solve } from '../src/engine/bruteForce';
+import { cellNames, sees } from '../src/engine/board';
 
 const storage = new Map<string, string>();
 (globalThis as any).localStorage = {
@@ -207,7 +214,7 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
     expect(walkFrames(s).map(told)).toEqual([
       { text: 'Strong link on 8: if r2c9 is not 8, r2c8 must be 8 (nowhere else for it).', links: 1 },
       {
-        text: 'Set A: the 2 cells r7c8, r8c8 of column 8 hold only 4, 8 and 9: one digit more than cells. Without any one of them, the others fill the cells.',
+        text: 'Set A: the 2 cells r7c8, r8c8 of column 8 hold only 4, 8 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.',
         links: 1,
         sets: [0]
       },
@@ -253,28 +260,28 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
   it("reads the ALS patterns, as the chains they derive, in the design's worked sentences: each set before its first link, a one-cell set folded into its lock", () => {
     const walk = (s: Step) => walkFrames(s).slice(0, -1).map(told);
     expect(walk(EXAMPLES.ALS_XZ!.step)).toEqual([
-      { text: 'Set A: the 2 cells r8c2, r9c1 of box 7 hold only 1, 5 and 9: one digit more than cells. Without any one of them, the others fill the cells.', links: 0, sets: [0] },
+      { text: 'Set A: the 2 cells r8c2, r9c1 of box 7 hold only 1, 5 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.', links: 0, sets: [0] },
       { text: 'If set A holds no 5, its other 2 digits fill its 2 cells, so r8c2 must be 1.', links: 1 },
-      { text: 'Set B: the 2 cells r7c8, r8c9 of box 9 hold only 1, 5 and 9: one digit more than cells. Without any one of them, the others fill the cells.', links: 1, sets: [1] },
+      { text: 'Set B: the 2 cells r7c8, r8c9 of box 9 hold only 1, 5 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.', links: 1, sets: [1] },
       { text: 'Every 1 of set A sees every 1 of set B: if r8c2 is 1, r8c9 cannot be 1.', links: 2 },
       { text: 'If set B holds no 1, its other 2 digits fill its 2 cells, so r7c8 must be 5.', links: 3 }
     ]);
     // the hinge C, one cell, folded into its lock; A, C, B along the chain
     expect(walk(EXAMPLES.ALS_XY_WING!.step).map((f) => f.text)).toEqual([
-      'Set A: the 2 cells r8c3, r8c8 of row 8 hold only 2, 4 and 7: one digit more than cells. Without any one of them, the others fill the cells.',
+      'Set A: the 2 cells r8c3, r8c8 of row 8 hold only 2, 4 and 7: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'If set A holds no 7, its other 2 digits fill its 2 cells, so r8c3 must be 4.',
       'Every 4 of set A sees every 4 of set C: if r8c3 is 4, r6c3 cannot be 4.',
       'Set C, the hinge, is the cell r6c3, which holds only 4 and 6: if it is not 4, it must be 6.',
-      'Set B: the 2 cells r4c9, r6c8 of box 6 hold only 4, 6 and 7: one digit more than cells. Without any one of them, the others fill the cells.',
+      'Set B: the 2 cells r4c9, r6c8 of box 6 hold only 4, 6 and 7: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'Every 6 of set C sees every 6 of set B: if r6c3 is 6, r6c8 cannot be 6.',
       'If set B holds no 6, its other 2 digits fill its 2 cells, so one of r4c9, r6c8 must be 7.'
     ]);
     expect(walk(EXAMPLES.ALS_XY_CHAIN!.step).map((f) => f.text)).toEqual([
-      'Set A: the 2 cells r4c2, r4c7 of row 4 hold only 4, 6 and 9: one digit more than cells. Without any one of them, the others fill the cells.',
+      'Set A: the 2 cells r4c2, r4c7 of row 4 hold only 4, 6 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'If set A holds no 4, its other 2 digits fill its 2 cells, so r4c7 must be 9.',
       'Every 9 of set A sees every 9 of set B: if r4c7 is 9, r1c7 cannot be 9.',
       'Set B is the cell r1c7, which holds only 3 and 9: if it is not 9, it must be 3.',
-      'Set C: the 2 cells r1c5, r1c6 of row 1 hold only 2, 3 and 9: one digit more than cells. Without any one of them, the others fill the cells.',
+      'Set C: the 2 cells r1c5, r1c6 of row 1 hold only 2, 3 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'Every 3 of set B sees every 3 of set C: if r1c7 is 3, none of r1c5, r1c6 can be 3.',
       'If set C holds no 3, its other 2 digits fill its 2 cells, so r1c5 must be 9.',
       'Every 9 of set C sees every 9 of set D: if r1c5 is 9, r7c5 cannot be 9.',
@@ -284,13 +291,13 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
     const shared = kept.find((k) => k.where === 'shared cells that derive, step 25, ALS_XY_CHAIN')!.step;
     expect(walk(shared).map((f) => f.text)).toEqual([
       'Set A is the cell r7c7, which holds only 1 and 5: if it is not 1, it must be 5.',
-      'Set B: the 2 cells r2c7, r2c9 of row 2 hold only 2, 3 and 5: one digit more than cells. Without any one of them, the others fill the cells.',
+      'Set B: the 2 cells r2c7, r2c9 of row 2 hold only 2, 3 and 5: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'Every 5 of set A sees every 5 of set B: if r7c7 is 5, r2c7 cannot be 5.',
       'If set B holds no 5, its other 2 digits fill its 2 cells, so r2c9 must be 2.',
-      'Set C: the 2 cells r5c5, r5c9 of row 5 hold only 2, 3 and 7: one digit more than cells. Without any one of them, the others fill the cells.',
+      'Set C: the 2 cells r5c5, r5c9 of row 5 hold only 2, 3 and 7: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'Every 2 of set B sees every 2 of set C: if r2c9 is 2, r5c9 cannot be 2.',
       'If set C holds no 2, its other 2 digits fill its 2 cells, so r5c5 must be 7.',
-      'Set D: the 2 cells r7c5, r7c7 of row 7 hold only 1, 5 and 7: one digit more than cells. Without any one of them, the others fill the cells.',
+      'Set D: the 2 cells r7c5, r7c7 of row 7 hold only 1, 5 and 7: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'Every 7 of set C sees every 7 of set D: if r5c5 is 7, r7c5 cannot be 7.',
       'If set D holds no 7, its other 2 digits fill its 2 cells, so one of r7c5, r7c7 must be 1.'
     ]);
@@ -357,10 +364,12 @@ describe("an ALS pattern's conclusion and Death Blossom's walk (docs/hint-drawin
     expect(last(EXAMPLES.ALS_XY_CHAIN!.step)).toBe(
       'Set A or set D holds a 4: if A holds none, D holds one. Each removed 4 sees every 4 of both. So 4 is removed from r4c5.'
     );
-    // a chain that clashes is told in the same words, and its loop back to the start says no more than the pattern
+    // a chain that clashes ends on why its first set holds z, and its loop back to the start is drawn as no proof
     const closes = kept.find((k) => k.where === 'a clash that closes, step 16, ALS_XY_CHAIN')!.step;
     expect(walkFrames(closes).map((f) => f.text).filter((t) => /impossible/.test(t))).toEqual([]);
-    expect(last(closes)).toBe('Set A or set D holds a 7: if A holds none, D holds one. Each removed 7 sees every 7 of both. So 7 is removed from r2c9.');
+    expect(last(closes)).toBe(
+      'Set D holds 7 only in r1c9, r7c9, the very cells set A holds it in, so the chain comes back to A: if A holds no 7, one of these cells must be 7, and A holds one after all. A cannot lack a 7, so set A holds a 7. Each removed 7 sees every 7 of A. So 7 is removed from r2c9.'
+    );
     // no other chain says it
     expect(last(EXAMPLES.AIC_ALS!.step)).toBe('So 8 is removed from r6c9.');
   });
@@ -472,7 +481,7 @@ describe('an 8: the article before a digit (src/engine/text.ts aDigit)', () => {
     expect([...eights].sort()).toEqual(['ALS_XY_CHAIN', 'ALS_XY_WING', 'ALS_XZ', 'DEATH_BLOSSOM']);
     // the conclusion of a chain whose sets share cells, about 8
     const clash = kept.find((k) => k.where === 'shared cells that clash, step 15, ALS_XY_CHAIN')!.step;
-    expect(walkFrames(clash).at(-1)!.text).toMatch(/^Set A or set D holds an 8: if A holds none, D holds one\./);
+    expect(walkFrames(clash).at(-1)!.text).toMatch(/^Set D holds 8 only in r4c4, r6c4, cells of set A: .* A cannot lack an 8, so set A holds an 8\./);
     expect(clash.description).toMatch(/A or D holds an 8, so 8 is removed/);
   });
 
@@ -509,3 +518,153 @@ describe('an 8: the article before a digit (src/engine/text.ts aDigit)', () => {
     expect([...source.uiKeys.keys()].filter((k) => /(^|[^A-Za-z])an? \{(?!tech\}|level\}|method\})\w+\}/.test(k)).sort()).toEqual(['a {d}', 'an {d}']);
   });
 });
+
+describe('the words and the legends, review round 1 (docs/hint-drawing-sets.md, "The walk and its words")', () => {
+  /** the hint panel's legend at a position, each entry's swatch class and its words */
+  function panelItems(position: Position, step: Step, walkIndex: number | null): { swatch: string; label: string }[] {
+    panelLegend(position, step, walkIndex);
+    const html = renderToStaticMarkup(React.createElement(HintPanel, { onLearn: () => {} }));
+    const list = /<ul class="hint-legend">([\s\S]*?)<\/ul>/.exec(html)?.[1] ?? '';
+    const decode = (x: string) => x.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+    return [...list.matchAll(/<li>(?:<i class="([^"]*)"><\/i>)?([^<]*)<\/li>/g)].map((m) => ({ swatch: m[1] ?? '', label: decode(m[2]) }));
+  }
+  const stored = (tech: Tech) => ({ where: tech as string, position: EXAMPLES[tech]! as Position, step: EXAMPLES[tech]!.step });
+  const solvedIn = (position: Position) => (c: number) => position.values[c] !== '0';
+
+  it("words a Death Blossom's gold as the stem's candidates while no petal's digit is drawn, and in full from the first petal's on, in the panel and the Learn legend alike", () => {
+    const stemOnly = "the stem's candidates";
+    const full = "the stem's candidates, and each petal's digit the stem sees";
+    const gold = (s: Step, position: Position, f: Frame | null) => legendOf(s, position.values, f).find((l) => l.kind === 'secondary')?.label;
+    // the stored example: its stem frame, then a petal's digit from petal A's branch on
+    const db = stored('DEATH_BLOSSOM');
+    expect([null, ...walkFrames(db.step)].map((f) => gold(db.step, db.position, f))).toEqual([full, stemOnly, full, full, full, full, full]);
+    // every Death Blossom the repository keeps: the stem's label exactly where the gold is the stem's alone
+    const blossoms = [db, ...kept.filter((k) => k.step.tech === 'DEATH_BLOSSOM')];
+    let stems = 0;
+    for (const { where, position, step } of blossoms) {
+      const stem = step.links!.find((l) => l.undirected)!.from[0].cell;
+      for (const [i, f] of [null, ...walkFrames(step)].entries()) {
+        const at = `${where}, ${f ? `frame ${i}` : 'full view'}`;
+        const goldCells = [...marksAt(step, f, solvedIn(position)).cands].filter(([, m]) => [...m.values()].includes('secondary')).map(([cell]) => cell);
+        const want = goldCells.every((cell) => cell === stem) ? stemOnly : full;
+        if (want === stemOnly) stems++;
+        expect(gold(step, position, f), at).toBe(want);
+        expect(panelItems(position, step, f ? i - 1 : null).map((e) => e.label), at).toContain(want);
+      }
+      expect(gold(step, position, walkFrames(step)[0]), where).toBe(stemOnly);
+    }
+    expect(stems).toBeGreaterThanOrEqual(blossoms.length);
+  });
+
+  it('ends an ALS-XY-Chain whose chain clashes on why its first set holds z, worded by what the derivation meets, and true in the solution (decision 13)', () => {
+    const last = (where: string) => walkFrames(kept.find((k) => k.where === where)!.step).at(-1)!.text;
+    expect(last('shared cells that clash, step 15, ALS_XY_CHAIN')).toBe(
+      'Set D holds 8 only in r4c4, r6c4, cells of set A: if A holds no 8, one of these cells must be 8, and A holds one after all. A cannot lack an 8, so set A holds an 8. Each removed 8 sees every 8 of A. So 8 is removed from r3c4.'
+    );
+    expect(last('a clash in a false group, step 29, ALS_XY_CHAIN')).toBe(
+      'Set D holds 4 only in r8c2, a cell of set A: if A holds no 4, r8c2 must be 4, and A holds one after all. A cannot lack a 4, so set A holds a 4. Each removed 4 sees every 4 of A. So 4 is removed from r7c2.'
+    );
+    expect(last('a clash that closes, step 16, ALS_XY_CHAIN')).toBe(
+      'Set D holds 7 only in r1c9, r7c9, the very cells set A holds it in, so the chain comes back to A: if A holds no 7, one of these cells must be 7, and A holds one after all. A cannot lack a 7, so set A holds a 7. Each removed 7 sees every 7 of A. So 7 is removed from r2c9.'
+    );
+    // every clash the set fixture keeps: D's z in cells of A, each kind of clash in its own words, every claim true
+    const kinds = new Set<string>();
+    for (const { where, step, position } of kept.filter((k) => alsClash(k.step))) {
+      const d = deriveTruth(step)!;
+      const [A, D] = ['A', 'D'].map((L) => step.sets!.find((x) => x.letter === L)!);
+      const z = step.eliminations[0].digit;
+      const zOf = (set: typeof A) => set.members.filter((m) => m.digit === z).map((m) => m.cell);
+      expect(zOf(D).every((c) => A.cells.includes(c)), where).toBe(true);
+      const kind = d.closure ? 'closure' : d.problems.map((p) => p.issue).join();
+      kinds.add(kind);
+      const wording = zOf(D).length === 1 ? 'a cell of set A' : kind === 'closure' ? 'the very cells set A holds it in' : 'cells of set A';
+      if (kind === 'emptyTrue') expect(zOf(D).length, where).toBeGreaterThan(1);
+      if (kind === 'inFalseGroup') expect(zOf(D).length, where).toBe(1);
+      if (kind === 'closure') expect(zOf(D), where).toEqual(zOf(A));
+      const text = walkFrames(step).at(-1)!.text;
+      expect(text, where).toContain(`Set D holds ${z} only in ${cellNames(zOf(D))}, ${wording}`);
+      expect(text, where).toContain(`set A holds ${aDigit(z)}. Each removed ${z} sees every ${z} of A.`);
+      // in the puzzle's solution set A holds z, and each removal sees every z of A
+      const solution = solve(parseGrid(position.puzzle)!)!.values;
+      expect(A.cells.some((c) => solution[c] === z), where).toBe(true);
+      for (const e of step.eliminations) expect(zOf(A).every((c) => sees(e.cell, c)), where).toBe(true);
+    }
+    expect([...kinds].sort()).toEqual(['closure', 'emptyTrue', 'inFalseGroup']);
+    // no chain that derives cleanly says it
+    for (const { where, step } of kept.filter((k) => PATTERNS.includes(k.step.tech) && !alsClash(k.step))) {
+      expect(walkFrames(step).at(-1)!.text, where).toMatch(/^Set A or set [BD] holds an? \d: if A holds none, [BD] holds one\./);
+    }
+  });
+
+  it("draws the bar's swatch in the inks the view's bars are drawn in: the pattern's, the removal's, or one of each, as Grouped X-Cycles rule 3's full view draws them", () => {
+    const rule3 = kept.find((k) => k.where === 'rule 3, step 14, GROUPED_X_CYCLES')!;
+    const isBar = (l: LegendEntry) => l.kind === 'bar' || l.kind === 'bars';
+    expect(legendOf(rule3.step, rule3.position.values).find(isBar)).toMatchObject({ kind: 'bars', colour: LIGHT.primaryInk, ink: LIGHT.elim });
+    expect(panelItems(rule3.position, rule3.step, null).find((e) => e.label.startsWith('bar:'))?.swatch).toBe('swatch-bars');
+    // every grouped view the repository keeps, in the panel and the Learn legend alike
+    const grouped = [
+      ...(['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES'] as Tech[]).map(stored),
+      ...kept.filter((k) => ['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'AIC_ALS'].includes(k.step.tech))
+    ];
+    const seen = new Set<string>();
+    for (const { where, position, step } of grouped) {
+      for (const [i, f] of [null, ...walkFrames(step)].entries()) {
+        const at = `${where}, ${f ? `frame ${i}` : 'full view'}`;
+        const bars = legendKinds(step, marksAt(step, f, solvedIn(position))).bars;
+        const inks = (['primary', 'elim'] as const).filter((b) => bars.has(b));
+        const entry = legendOf(step, position.values, f).find(isBar);
+        const swatch = panelItems(position, step, f ? i - 1 : null).find((e) => e.label.startsWith('bar:'))?.swatch;
+        if (!inks.length) {
+          expect([entry, swatch], at).toEqual([undefined, undefined]);
+          continue;
+        }
+        const ink = (b: 'primary' | 'elim') => (b === 'primary' ? LIGHT.primaryInk : LIGHT.elim);
+        seen.add(inks.join('+'));
+        expect(entry, at).toMatchObject(inks.length === 2 ? { kind: 'bars', colour: ink('primary'), ink: ink('elim') } : { kind: 'bar', colour: ink(inks[0]), ink: ink(inks[0]) });
+        expect(swatch, at).toBe(inks.length === 2 ? 'swatch-bars' : `swatch-bar-${inks[0]}`);
+      }
+    }
+    // a proof-only view's bar alone, and rule 3's two; no view these keep draws a removed bar alone
+    expect([...seen].sort()).toEqual(['primary', 'primary+elim']);
+  });
+
+  it('names the dashed outline of a cell of two sets, drawn like it, wherever a view draws one, in the panel and the Learn legend alike (decision 6)', () => {
+    const label = 'dashed outline: a cell of two sets; each tab names one';
+    const tint = (n: string) => [LIGHT[`set${n}` as 'set1'], LIGHT[`set${n}Ink` as 'set1Ink']];
+    const als = [
+      ...(['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'] as Tech[]).map(stored),
+      ...kept.filter((k) => ['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'].includes(k.step.tech))
+    ];
+    let views = 0;
+    for (const { where, position, step } of als) {
+      for (const [i, f] of [null, ...walkFrames(step)].entries()) {
+        const at = `${where}, ${f ? `frame ${i}` : 'full view'}`;
+        // a cell in two of the sets the view draws
+        const drawn = marksAt(step, f, solvedIn(position)).sets.filter((m) => m.style === 'als').map((m) => step.sets![m.set].cells);
+        const two = drawn.some((cells, a) => drawn.some((other, b) => a < b && cells.some((c) => other.includes(c))));
+        const entry = legendOf(step, position.values, f).find((l) => l.kind === 'shared');
+        const item = panelItems(position, step, f ? i - 1 : null).find((e) => e.swatch.startsWith('swatch-shared'));
+        expect([!!entry, !!item], at).toEqual([two, two]);
+        if (!entry || !item) continue;
+        views++;
+        expect([entry.label, item.label], at).toEqual([label, label]);
+        // the panel's swatch in the Learn swatch's tints: the tile's, and the ink of the outline dashed inside it
+        const [, t, d] = /^swatch-shared tile-(\d) dash-(\d)$/.exec(item.swatch) ?? [];
+        expect([entry.colour, entry.ink, entry.dash], at).toEqual([...tint(t), tint(d)[1]]);
+      }
+      // the full view's swatch is the board's first such cell: its tile's tint, and the ink of the outline dashed inside it
+      const svg = boardSvg({ ...position, stepIndex: 0, step } as Parameters<typeof boardSvg>[0], where);
+      const dashed = /<rect class="to" x="([\d.]+)" y="([\d.]+)"[^>]*stroke="([^"]+)"[^>]*stroke-dasharray/.exec(svg);
+      const entry = legendOf(step, position.values).find((l) => l.kind === 'shared');
+      expect(!!entry, where).toBe(!!dashed);
+      if (!dashed || !entry) continue;
+      const [x, y] = [Number(dashed[1]), Number(dashed[2])];
+      const owner = [...svg.matchAll(/<rect class="tl" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"[^>]*fill="([^"]+)"/g)].find(
+        (m) => x >= Number(m[1]) && y >= Number(m[2]) && x <= Number(m[1]) + Number(m[3]) && y <= Number(m[2]) + Number(m[4])
+      );
+      expect([entry.colour, entry.dash], where).toEqual([owner?.[5], dashed[3]]);
+    }
+    expect(views).toBeGreaterThan(20);
+  });
+});
+

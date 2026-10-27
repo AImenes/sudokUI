@@ -333,7 +333,9 @@ Every rule is numbered so a commit, a test or a review can cite it.
     it, drawing its tiles, tabs and members and no truth. An ALS pattern
     whose chain clashes (sets that share cells, a truth claiming more than
     the step proves) draws no truth, no role and no start dot in any view:
-    tiles, tabs, members, arrows and removals, the walk in words. Only
+    tiles, tabs, members, arrows and removals, the walk in words, its
+    conclusion saying why the first set holds z (the last set holds z
+    only in its cells). Only
     Death Blossom, which draws no truth until phase 5, draws roles in a
     set: the stem's candidates and each petal's digit the stem sees
     acts-through gold, every petal's z pattern blue, the stem no tile, a

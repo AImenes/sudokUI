@@ -108,8 +108,8 @@ hold), and its walk tells each branch in words.
 
 **The walk introduces each set before the chain uses it.** A set of several
 cells gets its own frame first ("the 2 cells r8c2, r9c1 of box 7 hold only
-1, 5 and 9: one digit more than cells. Without any one of them, the others
-fill the cells."); a one-cell set's introduction is folded into its
+1, 5 and 9: one digit more than cells. Without any one of these digits, the
+others fill the cells."); a one-cell set's introduction is folded into its
 internal link's frame. Then one link per frame, as every chain walk. The
 conclusion names both end sets and gives the reason ("Each removed 5 sees
 every 5 of both."). Every sentence comes from the step's data: a single
@@ -291,7 +291,7 @@ walk, the numbers on arrows and ties those of the frame that adds them.
   inside A; a dashed arrow from r2c8's 8 into r7c8's 8 and one from the 9
   square nearest r6c8 to r6c8. Frames: link 1 (today's); set A ("Set A: the
   2 cells r7c8, r8c8 of column 8 hold only 4, 8 and 9: one digit more than
-  cells. Without any one of them, the others fill the cells.", the house
+  cells. Without any one of these digits, the others fill the cells.", the house
   being the finder's); "If r2c8 is 8, set A holds no 8: every 8 of A sees
   r2c8."; "If set A holds no 8, its other 2 digits fill its 2 cells, so one
   of r7c8, r8c8 must be 9."; "If set A holds a 9, r6c8 cannot be 9: it sees
@@ -449,7 +449,10 @@ tritan simulations), each tint composited at 0.5 over each theme's cell.
   a colouring's alone" becomes "purple and orange discs").
 - Legend swatches: a small tile in its tint over `--panel` with its tab
   (7.1-15.8 from every panel), two squares on a green bar, two rings on a
-  blue bar, a bar alone in the pattern's or the removal's ink.
+  blue bar, a bar alone in the pattern's or the removal's ink, or one of
+  each, the pattern's above, where a view draws both (rule 3's full view);
+  a cell of two sets as the small tile of the set whose tile it carries,
+  with the other set's outline dashed inside it, in their tints and inks.
 
 ## The walk and its words
 
@@ -468,7 +471,7 @@ language: en 8, un 8), so the sentence's template reads "holds {z}".
 
 | Frame | en | nb | es |
 | --- | --- | --- | --- |
-| set of several cells | Set {L}: the {n} cells {cells} of {house} hold only {digits}: one digit more than cells. Without any one of them, the others fill the cells. | Mengde {L}: de {n} rutene {cells} i {house} har bare {digits}: ett tall mer enn ruter. Mangler ett av dem, uansett hvilket, fyller de andre rutene. | Conjunto {L}: las {n} casillas {cells} de la {house} solo tienen {digits}: un número más que casillas. Sin uno cualquiera de ellos, los demás llenan las casillas. |
+| set of several cells | Set {L}: the {n} cells {cells} of {house} hold only {digits}: one digit more than cells. Without any one of these digits, the others fill the cells. | Mengde {L}: de {n} rutene {cells} i {house} har bare {digits}: ett tall mer enn ruter. Mangler ett av dem, uansett hvilket, fyller de andre tallene rutene. | Conjunto {L}: las {n} casillas {cells} de la {house} solo tienen {digits}: un número más que casillas. Sin uno cualquiera de ellos, los demás llenan las casillas. |
 | the same, the XY-Wing's hinge | Set {L}, the hinge: the {n} cells ... | Mengde {L}, hengselet: de {n} rutene ... | Conjunto {L}, la bisagra: las {n} casillas ... |
 | a set's lock, one exit | If set {L} holds no {a}, its other {n} digits fill its {n} cells, so {cell} must be {b}. | Hvis mengde {L} ikke har noen {a}, fyller de {n} andre tallene de {n} rutene, så {cell} må være {b}. | Si el conjunto {L} no tiene ningún {a}, sus otros {n} números llenan sus {n} casillas, así que {cell} debe ser {b}. |
 | a set's lock, several | ..., so one of {cells} must be {b}. | ..., så en av {cells} må være {b}. | ..., así que una de {cells} debe ser {b}. |
@@ -481,6 +484,9 @@ language: en 8, un 8), so the sentence's template reads "holds {z}".
 | out of a set | If set {L} holds a {x}, {cell} cannot be {x}: it sees every {x} of {L}. | Hvis mengde {L} har en {x}, kan {cell} ikke være {x}: ruten ser hvert {x}-tall i {L}. | Si el conjunto {L} tiene un {x}, {cell} no puede ser {x}: ve cada {x} de {L}. |
 | the same, into a group | If set {L} holds a {x}, none of {cells} can be {x}: they see every {x} of {L}. | Hvis mengde {L} har en {x}, kan ingen av {cells} være {x}: de ser hvert {x}-tall i {L}. | Si el conjunto {L} tiene un {x}, ninguna de {cells} puede ser {x}: ven cada {x} de {L}. |
 | conclusion (the three patterns), before today's "So ... is removed" | Set {F} or set {L} holds a {z}: if {F} holds none, {L} holds one. Each removed {z} sees every {z} of both. | Mengde {F} eller mengde {L} har en {z}: har {F} ingen, har {L} en. Hvert {z}-tall som fjernes, ser alle {z}-tallene i begge. | El conjunto {F} o el conjunto {L} tiene un {z}: si {F} no tiene ninguno, {L} tiene uno. Cada {z} eliminado ve todos los {z} de ambos. |
+| the conclusion of an ALS-XY-Chain whose chain clashes (decision 13; its last set {L} holds z only in cells of its first, {F}), one cell, as an `inFalseGroup` | Set {L} holds {z} only in {cell}, a cell of set {F}: if {F} holds no {z}, {cell} must be {z}, and {F} holds one after all. {F} cannot lack a {z}, so set {F} holds a {z}. Each removed {z} sees every {z} of {F}. | Mengde {L} har {z} bare i {cell}, og den ruten hører til mengde {F}: har {F} ingen {z}, må {cell} være {z}, og da har {F} likevel en. {F} kan ikke mangle en {z}, så mengde {F} har en {z}. Hvert {z}-tall som fjernes, ser alle {z}-tallene i {F}. | El conjunto {L} solo puede tener el {z} en {cell}, una casilla del conjunto {F}: si {F} no tiene ningún {z}, {cell} debe ser {z}, y {F} tiene uno después de todo. {F} no puede quedarse sin un {z}, así que el conjunto {F} tiene un {z}. Cada {z} eliminado ve todos los {z} de {F}. |
+| the same, several cells (`emptyTrue`) | Set {L} holds {z} only in {cells}, cells of set {F}: if {F} holds no {z}, one of these cells must be {z}, ... | Mengde {L} har {z} bare i {cells}, og de rutene hører til mengde {F}: har {F} ingen {z}, må en av disse rutene være {z}, ... | El conjunto {L} solo puede tener el {z} en {cells}, casillas del conjunto {F}: si {F} no tiene ningún {z}, una de esas casillas debe ser {z}, ... |
+| the same, all of the first set's (a closure) | Set {L} holds {z} only in {cells}, the very cells set {F} holds it in, so the chain comes back to {F}: if {F} holds no {z}, one of these cells must be {z}, ... | Mengde {L} har {z} bare i {cells}, akkurat der mengde {F} har {z}-tallene sine, så kjeden kommer tilbake til {F}: ... | El conjunto {L} solo puede tener el {z} en {cells}, justo donde puede tenerlo el conjunto {F}, así que la cadena vuelve a {F}: ... |
 | Death Blossom: the stem | The stem {cell} holds {digits}: one of them is true, and each has a petal. | Stammen {cell} har {digits}: ett av dem er sant, og hvert har et kronblad. | El tallo {cell} tiene {digits}: uno de ellos es verdadero, y cada uno tiene un pétalo. |
 | a petal of several cells | Petal {L}, for the stem's {p}: the {n} cells {cells} of {house} hold only {digits}: one digit more than cells, and every {p} of it sees the stem. | Kronblad {L}, for stammens {p}: de {n} rutene {cells} i {house} har bare {digits}: ett tall mer enn ruter, og hvert {p}-tall i kronbladet ser stammen. | Pétalo {L}, para el {p} del tallo: las {n} casillas {cells} de la {house} solo tienen {digits}: un número más que casillas, y cada {p} suyo ve el tallo. |
 | its branch, one exit (several: "one of {cells}") | If the stem is {p}, petal {L} holds no {p}, so its other {n} digits fill its {n} cells: {cell} must be {z}. | Hvis stammen er {p}, har kronblad {L} ingen {p}, så de {n} andre tallene fyller de {n} rutene: {cell} må være {z}. | Si el tallo es {p}, el pétalo {L} no tiene ningún {p}, así que sus otros {n} números llenan sus {n} casillas: {cell} debe ser {z}. |
@@ -494,11 +500,13 @@ Legend lines (each premise ending is today's, or the set's):
 | squares on a bar | squares joined by a bar: one of them is true, if {premise} | firkanter forbundet med en bjelke: én av dem er sann hvis {premise} | cuadrados unidos por una barra: uno de ellos es verdadero si {premise} |
 | rings on a bar | rings joined by a bar: none of them is true, if {premise} | ringer forbundet med en bjelke: ingen av dem er sann hvis {premise} | anillos unidos por una barra: ninguno de ellos es verdadero si {premise} |
 | squares in a set | squares in a set: one of them is true, if {premise} | firkanter i en mengde: én av dem er sann hvis {premise} | cuadrados en un conjunto: uno de ellos es verdadero si {premise} |
-| a bar alone | bar: a group (one digit's cells in one box and one row or column), read as one node | bjelke: en gruppe (rutene til ett tall i én boks og én rad eller kolonne), lest som ett ledd | barra: un grupo (las casillas de un número en una caja y una fila o columna), leído como un solo eslabón |
-| tiles | lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells | ruter med bokstav: en nesten låst mengde, ett tall mer enn ruter; mangler ett av tallene, fyller de andre rutene | casillas con letra: un conjunto casi bloqueado, un número más que casillas; sin uno cualquiera de sus números, los demás llenan sus casillas |
+| a bar alone (both inks where both are drawn) | bar: a group (one digit's cells in one box and one row or column), read as one node | bjelke: en gruppe (rutene til ett tall i én boks og én rad eller kolonne), lest som én node | barra: un grupo (las casillas de un número en una caja y una fila o columna), leído como un solo nodo |
+| tiles | lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells | ruter med bokstav: en nesten låst mengde, ett tall mer enn ruter; mangler ett av tallene, fyller de øvrige tallene rutene | casillas con letra: un conjunto casi bloqueado, un número más que casillas; sin uno cualquiera de sus números, los demás llenan sus casillas |
 | tiles, Death Blossom | lettered cells: a petal, an almost locked set for one of the stem's digits | ruter med bokstav: et kronblad, en nesten låst mengde for ett av stammens tall | casillas con letra: un pétalo, un conjunto casi bloqueado para uno de los números del tallo |
 | a set premise | true, if set {L} holds no {a} (by the small dot) | sann hvis mengde {L} ikke har noen {a} (ved den lille prikken) | verdadero si el conjunto {L} no tiene ningún {a} (junto al punto pequeño) |
 | Death Blossom, gold | the stem's candidates, and each petal's digit the stem sees | stammens kandidater, og tallet i hvert kronblad som stammen ser | los candidatos del tallo, y el número de cada pétalo que el tallo ve |
+| the same, where no petal's digit is drawn yet (the stem's frame) | the stem's candidates | stammens kandidater | los candidatos del tallo |
+| a cell of two sets (decision 6), where a view draws one | dashed outline: a cell of two sets; each tab names one | stiplet ramme: en rute i to mengder; hver bokstav står for én av dem | contorno discontinuo: una casilla de dos conjuntos; cada letra nombra uno de ellos |
 | Death Blossom, blue | {z} in every petal: whichever digit the stem takes, a petal holds a {z} | {z} i hvert kronblad: uansett hvilket tall stammen får, har et kronblad en {z} | el {z} de cada pétalo: tome el tallo el número que tome, algún pétalo tiene un {z} |
 
 The bar is "bjelke" and "barra", never "strek" or "línea", which are phase

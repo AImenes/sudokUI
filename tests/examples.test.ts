@@ -295,7 +295,7 @@ describe('worked examples', () => {
     );
     // the hinge C holds 4 or 6, and so takes one of them from a wing
     expect(EXAMPLES.ALS_XY_WING!.step.description).toMatch(
-      /^ALS-XY-Wing: the wings A \(r8c3, r8c8\) and B \(r4c9, r6c8\) and the hinge C \(r6c3\) .* C lacks at most one of its digits, so it holds a 4, and A then holds no 4, or a 6, and B then holds no 6\. .* A or B holds a 7, so 7 is removed from every cell that sees every 7 of both\.$/
+      /^ALS-XY-Wing: the wings A \(r8c3, r8c8\) and B \(r4c9, r6c8\) and the hinge C \(r6c3\) .* C lacks at most one of its digits, so it holds a 4 \(and A then holds no 4\) or a 6 \(and B then holds no 6\)\. .* A or B holds a 7, so 7 is removed from every cell that sees every 7 of both\.$/
     );
     // each set in turn loses its link digit and fills its cells
     expect(EXAMPLES.ALS_XY_CHAIN!.step.description).toMatch(

@@ -11,7 +11,7 @@ import { hintDrawing, tilesIn, squareReach, pointsOf, SIZES } from './hintGeomet
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
 import type { HintPalette } from './hintPalette';
-import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, premiseOf, isParity, isShade, parityLegend } from './hintMarks';
+import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, premiseOf, isParity, isShade, parityLegend, stemAlone, sharedTile } from './hintMarks';
 import type { BarStyle, Premise, Role, Tint } from './hintMarks';
 import type { Frame } from '../engine/hintFrames';
 import { drawnLinks } from '../engine/hintFrames';
@@ -511,7 +511,9 @@ export interface LegendEntry {
    * (docs/hint-drawing-sets.md, decision 18) "one of these" squares on a
    * bar ('oneOfBar'), false rings on a bar ('falseBar'), squares in a set
    * ('oneOf') and a bar alone, in the pattern's or the removal's ink
-   * ('bar'); an almost locked set's lettered tile ('tile')
+   * ('bar'), or one in each where a view draws both ('bars'); an almost
+   * locked set's lettered tile ('tile'), and a cell of two sets, one's
+   * tile with the other's outline dashed inside it ('shared')
    */
   kind:
     | 'place'
@@ -522,7 +524,9 @@ export interface LegendEntry {
     | 'oneOfBar'
     | 'falseBar'
     | 'bar'
+    | 'bars'
     | 'tile'
+    | 'shared'
     | 'primary'
     | 'secondary'
     | 'fin'
@@ -543,6 +547,8 @@ export interface LegendEntry {
   onValue?: boolean;
   /** drawn only as a house band */
   onBand?: boolean;
+  /** a cell of two sets: the ink of the set whose outline is dashed inside the other's tile */
+  dash?: string;
 }
 
 /**
@@ -588,12 +594,19 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
   const role = (kind: Role, label: string, colour: string, ink: string) =>
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });
   if (shown.has('primary')) role('primary', step.labels?.primary ?? tr`the pattern`, P.primary, P.primaryInk);
-  if (shown.has('secondary')) role('secondary', step.labels?.secondary ?? tr`supporting cells`, P.secondary, P.secondaryInk);
+  // a Death Blossom's gold before any petal's digit is drawn: the stem's candidates alone
+  if (shown.has('secondary')) role('secondary', stemAlone(step, drawn) ? tr`the stem's candidates` : (step.labels?.secondary ?? tr`supporting cells`), P.secondary, P.secondaryInk);
   if (shown.has('fin')) role('fin', step.labels?.fins ?? tr`fin`, P.fin, P.finInk);
-  // a bar in the pattern's ink (a proof-only view) or the removal's: what a bar is
+  // a bar in the pattern's ink (a proof-only view) or the removal's: what a
+  // bar is, its swatch in the ink drawn, or one bar in each where both are
+  // (Grouped X-Cycles rule 3's full view: the removed start and the proof)
   if (bars.has('primary') || bars.has('elim')) {
-    const ink = bars.has('primary') ? P.primaryInk : P.elim;
-    out.push({ kind: 'bar', label: tr`bar: a group (one digit's cells in one box and one row or column), read as one node`, colour: ink, ink });
+    const label = tr`bar: a group (one digit's cells in one box and one row or column), read as one node`;
+    if (bars.has('primary') && bars.has('elim')) out.push({ kind: 'bars', label, colour: P.primaryInk, ink: P.elim });
+    else {
+      const ink = bars.has('primary') ? P.primaryInk : P.elim;
+      out.push({ kind: 'bar', label, colour: ink, ink });
+    }
   }
   // an almost locked set's lettered tiles (decision 18), the swatch in the first tint drawn: a Death Blossom's are its petals
   if (tiles.length) {
@@ -603,6 +616,12 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
         ? tr`lettered cells: a petal, an almost locked set for one of the stem's digits`
         : tr`lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells`;
     out.push({ kind: 'tile', label, colour: fill, ink });
+  }
+  // a cell of two sets drawn (decision 6): one set's tile, the other's outline dashed inside it, in their tints
+  const shared = sharedTile(step, drawn);
+  if (shared) {
+    const [tile, dashed] = [tintOf(shared.tile), tintOf(shared.dashed)];
+    out.push({ kind: 'shared', label: tr`dashed outline: a cell of two sets; each tab names one`, colour: tile.fill, ink: tile.ink, dash: dashed.ink });
   }
   // a Death Blossom's weak ties from its stem to its petals, dashed with no head (decision 15)
   if (lines.has('weakTie')) out.push({ kind: 'weakTie', label: tr`dashed line: its two ends see each other, so at most one is true`, colour: '#ffffff', ink: P.arrow });
@@ -684,11 +703,41 @@ export function swatchStyle(l: LegendEntry): { background: string; border: strin
   if (l.kind === 'bar') {
     return { background: `linear-gradient(${l.ink},${l.ink}) 2px 3.5px/16px 3px no-repeat,#ffffff`, border: 'none', boxShadow: chip, borderRadius: '0', width: '20px' };
   }
+  // a bar in the pattern's ink above one in the removal's
+  if (l.kind === 'bars') {
+    return {
+      background: `linear-gradient(${l.colour},${l.colour}) 2px 1px/16px 3px no-repeat,linear-gradient(${l.ink},${l.ink}) 2px 6px/16px 3px no-repeat,#ffffff`,
+      border: 'none',
+      boxShadow: chip,
+      borderRadius: '0',
+      width: '20px'
+    };
+  }
   // a set's small tile, its tint at half strength over the chip's white,
   // outlined in its ink, with its tab in the corner, a keyline round it
   if (l.kind === 'tile') {
     return {
       background: `linear-gradient(${l.ink},${l.ink}) 1px 1px/4px 4px no-repeat,linear-gradient(#ffffff,#ffffff) 0 0/6px 6px no-repeat,linear-gradient(${l.colour}80,${l.colour}80),#ffffff`,
+      border: `1.5px solid ${l.ink}`,
+      boxShadow: chip,
+      borderRadius: '3px',
+      width: '14px'
+    };
+  }
+  // a cell of two sets: the small tile of one, its outline dashed inside it in the other's ink
+  if (l.kind === 'shared') {
+    const dash = l.dash ?? l.ink;
+    const edge = (dir: string, at: string) =>
+      `repeating-linear-gradient(${dir},${dash} 0 2.5px,transparent 2.5px 4px) ${at} no-repeat`;
+    return {
+      background: [
+        edge('90deg', '0 0/100% 1.5px'),
+        edge('90deg', '0 100%/100% 1.5px'),
+        edge('180deg', '0 0/1.5px 100%'),
+        edge('180deg', '100% 0/1.5px 100%'),
+        `linear-gradient(${l.colour}80,${l.colour}80)`,
+        '#ffffff'
+      ].join(','),
       border: `1.5px solid ${l.ink}`,
       boxShadow: chip,
       borderRadius: '3px',

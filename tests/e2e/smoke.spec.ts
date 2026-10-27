@@ -729,7 +729,7 @@ for (const [name, size] of [
       await page.keyboard.press('ArrowRight');
       await expect(page.locator('.hint-walk-count')).toContainText('2 of 7');
       await expect(page.locator('.hint-walk-text')).toHaveText(
-        'Set A: the 2 cells r7c8, r8c8 of column 8 hold only 4, 8 and 9: one digit more than cells. Without any one of them, the others fill the cells.'
+        'Set A: the 2 cells r7c8, r8c8 of column 8 hold only 4, 8 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.'
       );
       await expect(tiles).toHaveCount(2);
       await expect(tabs).toHaveCount(2);
@@ -814,7 +814,7 @@ for (const [name, size] of [
       await page.getByRole('button', { name: 'Walk through it' }).click();
       await expect(page.locator('.hint-walk-count')).toContainText('1 of 6');
       await expect(page.locator('.hint-walk-text')).toHaveText(
-        'Set A: the 2 cells r8c2, r9c1 of box 7 hold only 1, 5 and 9: one digit more than cells. Without any one of them, the others fill the cells.'
+        'Set A: the 2 cells r8c2, r9c1 of box 7 hold only 1, 5 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.'
       );
       await expect(tiles).toHaveCount(2);
       await expect(shafts(page)).toHaveCount(0);
@@ -901,7 +901,9 @@ for (const [name, size] of [
       await expect(squares(page)).toHaveCount(0);
       await expect(page.locator('svg.board circle[fill="var(--hint-primary)"], svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(0);
       await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
-      await expect(page.locator('.hint-legend li')).toHaveText([/^remove/, /^lettered cells/]);
+      // and the dashed outline of a cell of two sets, drawn like it
+      await expect(page.locator('.hint-legend li')).toHaveText([/^remove/, /^lettered cells/, /^dashed outline/]);
+      await expect(page.locator('.hint-legend li', { hasText: 'dashed outline' }).locator('i.swatch-shared')).toHaveCount(1);
     });
   });
 }

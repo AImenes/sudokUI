@@ -70,7 +70,7 @@ import { drawnLinks, colouringDigit, walkFrames } from '../engine/hintFrames';
 import { alsClash, deriveLinks, deriveTruth } from '../engine/truth';
 import { sees } from '../engine/board';
 import { tr } from '../engine/text';
-import { insideOneCell } from './hintGeometry';
+import { insideOneCell, tilesIn } from './hintGeometry';
 import type { Shade } from './hintPalette';
 
 export { isParity };
@@ -597,4 +597,38 @@ export function parityLegend(step: Step, marks: HintMarks): ParityEntry[] {
   if (proven.false) out.push({ kind: 'false', label: orange ? tr`false: dark orange, proven` : tr`false: dark purple, proven` });
   if (kinds.shown.has('node') && rule === 'medusa6') out.push({ kind: 'node', label: tr`a cell dark purple would empty` });
   return out;
+}
+
+/**
+ * A Death Blossom's view whose gold marks only its stem's candidates, no
+ * petal's digit the stem sees drawn yet: its walk's first frame, and the
+ * frame that introduces a first petal of several cells before its branch.
+ * The legend then names the gold as the stem's candidates alone, since a
+ * legend names only what its view draws (docs/hint-drawing-sets.md, "The
+ * walk and its words", the legend lines)
+ */
+export function stemAlone(step: Step, marks: HintMarks): boolean {
+  if (step.tech !== 'DEATH_BLOSSOM') return false;
+  const stem = step.links?.find((l) => l.undirected && l.fromSet === undefined)?.from[0]?.cell;
+  const gold = [...marks.cands].filter(([, m]) => [...m.values()].includes('secondary')).map(([cell]) => cell);
+  return gold.length > 0 && gold.every((cell) => cell === stem);
+}
+
+/**
+ * A cell a view draws in two almost locked sets (docs/hint-drawing-sets.md,
+ * decision 6), the first the board's tiles have: the tint of the set whose
+ * tile the cell carries, and of the set whose outline is dashed inside it,
+ * as the board draws them (src/content/hintGeometry.ts tilesIn), for the
+ * legend's entry drawn like it; null when no cell is in two sets the view
+ * draws
+ */
+export function sharedTile(step: Step, marks: HintMarks): { tile: Tint; dashed: Tint } | null {
+  const tints = new Map(marks.sets.flatMap((m) => (m.tint ? [[m.set, m.tint] as const] : [])));
+  if (tints.size < 2) return null;
+  // a tile for each cell of each set, where on the board it lies aside: tilesIn reads only whose cells they are
+  const tiles = (step.sets ?? []).flatMap((s, set) => (s.kind === 'als' ? s.cells.map((cell) => ({ set, cell, x0: 0, y0: 0, x1: 0, y1: 0 })) : []));
+  const drawn = tilesIn(step, { bars: [], tiles, tabs: [] }, tints.keys());
+  const dashed = drawn.find((t) => t.inset > 0);
+  const tile = dashed && drawn.find((t) => t.inset === 0 && t.cell === dashed.cell);
+  return dashed && tile ? { tile: tints.get(tile.set)!, dashed: tints.get(dashed.set)! } : null;
 }

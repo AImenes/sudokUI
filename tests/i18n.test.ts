@@ -17,6 +17,9 @@ import { EXAMPLES } from '../src/content/examples';
 import { walkFrames } from '../src/engine/hintFrames';
 import { findStep } from '../src/engine/humanSolver';
 import { legendOf } from '../src/content/boardSvg';
+import { readFileSync } from 'node:fs';
+import { parseGrid } from '../src/engine/board';
+import type { Step } from '../src/engine/steps';
 
 const LOCALES = [
   ['nb', nb],
@@ -160,7 +163,7 @@ describe('the set walk in three languages (docs/hint-drawing-sets.md, "The walk 
     const xz = EXAMPLES.ALS_XZ!.step;
     const want = {
       nb: {
-        intro: 'Mengde A: de 2 rutene r7c8, r8c8 i kolonne 8 har bare 4, 8 og 9: ett tall mer enn ruter. Mangler ett av dem, uansett hvilket, fyller de andre rutene.',
+        intro: 'Mengde A: de 2 rutene r7c8, r8c8 i kolonne 8 har bare 4, 8 og 9: ett tall mer enn ruter. Mangler ett av dem, uansett hvilket, fyller de andre tallene rutene.',
         into: 'Hvis r2c8 er 8, har mengde A ingen 8: hvert 8-tall i A ser r2c8.',
         lock: 'Hvis mengde A ikke har noen 8, fyller de 2 andre tallene de 2 rutene, så en av r7c8, r8c8 må være 9.',
         common: 'Hvert 1-tall i mengde A ser hvert 1-tall i mengde B: hvis r8c2 er 1, kan r8c9 ikke være 1.',
@@ -233,3 +236,94 @@ describe('the set walk in three languages (docs/hint-drawing-sets.md, "The walk 
     }
   });
 });
+
+describe('the words of review round 1 in Norwegian and Spanish (docs/hint-drawing-sets.md, "The walk and its words")', () => {
+  afterEach(() => setEngineText('en', null));
+  /** a step the set fixture keeps, found again at its position */
+  const keptStep = (where: string): { step: Step; values: string } => {
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    const { position } = fx.named[where] ?? fx.paths[where];
+    const g = parseGrid(position.puzzle)!;
+    for (let i = 0; i < 81; i++) {
+      g.values[i] = Number(position.values[i]);
+      g.cands[i] = position.cands[i];
+    }
+    return { step: findStep(where.split(', ').at(-1) as Tech, g)!, values: position.values };
+  };
+
+  it("says in Norwegian what fills a set's cells, the other digits, in the walk and in both legends alike", () => {
+    const tiles = 'lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells';
+    expect(nb.engine[tiles]).toBe('ruter med bokstav: en nesten låst mengde, ett tall mer enn ruter; mangler ett av tallene, fyller de øvrige tallene rutene');
+    expect(nb.ui[tiles]).toBe(nb.engine[tiles]);
+    // the set frame, plain and the hinge's
+    for (const key of Object.keys(nb.engine).filter((k) => / hold only \{4\}: one digit more than cells\./.test(k))) {
+      expect(key).toMatch(/ Without any one of these digits, the others fill the cells\.$/);
+      expect(nb.engine[key]).toMatch(/ Mangler ett av dem, uansett hvilket, fyller de andre tallene rutene\.$/);
+      expect(es.engine[key]).toMatch(/ Sin uno cualquiera de ellos, los demás llenan las casillas\.$/);
+    }
+  });
+
+  it('calls a group read as one node a node, as the descriptions do, in both tables', () => {
+    const bar = "bar: a group (one digit's cells in one box and one row or column), read as one node";
+    expect([nb.engine[bar], es.engine[bar]]).toEqual([
+      'bjelke: en gruppe (rutene til ett tall i én boks og én rad eller kolonne), lest som én node',
+      'barra: un grupo (las casillas de un número en una caja y una fila o columna), leído como un solo nodo'
+    ]);
+    expect([nb.ui[bar], es.ui[bar]]).toEqual([nb.engine[bar], es.engine[bar]]);
+    for (const [lang, loc] of LOCALES) {
+      const all = [...Object.values(loc.engine), ...Object.values(loc.ui)].join('\n');
+      expect(all, lang).not.toMatch(lang === 'nb' ? /\bledd\b/ : /eslabón/);
+    }
+  });
+
+  it("parts the ALS-XY-Wing's two cases in brackets: C holds x, and A then holds none, or y, and B then holds none", () => {
+    const ex = EXAMPLES.ALS_XY_WING!;
+    const g = { values: Uint8Array.from(ex.values, Number), cands: Uint16Array.from(ex.cands), given: new Uint8Array(81) };
+    const want = {
+      nb: 'C mangler høyst ett av tallene sine, så C har en 4 (og da har A ingen 4) eller en 6 (og da har B ingen 6). ',
+      es: 'A C le falta como mucho uno de sus números, así que tiene un 4 (y entonces A no tiene ningún 4) o un 6 (y entonces B no tiene ningún 6). '
+    };
+    for (const [lang, loc] of LOCALES) {
+      setEngineText(lang, loc.engine);
+      expect(findStep('ALS_XY_WING', g)!.description, lang).toContain(want[lang]);
+    }
+  });
+
+  it("words a Death Blossom's stem frame, a clashing chain's ending and a shared cell's outline as Norwegian and Spanish write them", () => {
+    const db = EXAMPLES.DEATH_BLOSSOM!;
+    const g = { values: Uint8Array.from(db.values, Number), cands: Uint16Array.from(db.cands), given: new Uint8Array(81) };
+    const clashes = ['shared cells that clash, step 15, ALS_XY_CHAIN', 'a clash in a false group, step 29, ALS_XY_CHAIN', 'a clash that closes, step 16, ALS_XY_CHAIN'].map(keptStep);
+    const shared = keptStep('shared cells that derive, step 25, ALS_XY_CHAIN');
+    const want = {
+      nb: {
+        stem: 'stammens kandidater',
+        ends: [
+          'Mengde D har 8 bare i r4c4, r6c4, og de rutene hører til mengde A: har A ingen 8, må en av disse rutene være 8, og da har A likevel en. A kan ikke mangle en 8, så mengde A har en 8. Hvert 8-tall som fjernes, ser alle 8-tallene i A.',
+          'Mengde D har 4 bare i r8c2, og den ruten hører til mengde A: har A ingen 4, må r8c2 være 4, og da har A likevel en. A kan ikke mangle en 4, så mengde A har en 4. Hvert 4-tall som fjernes, ser alle 4-tallene i A.',
+          'Mengde D har 7 bare i r1c9, r7c9, akkurat der mengde A har 7-tallene sine, så kjeden kommer tilbake til A: har A ingen 7, må en av disse rutene være 7, og da har A likevel en. A kan ikke mangle en 7, så mengde A har en 7. Hvert 7-tall som fjernes, ser alle 7-tallene i A.'
+        ],
+        shared: 'stiplet ramme: en rute i to mengder; hver bokstav står for én av dem'
+      },
+      es: {
+        stem: 'los candidatos del tallo',
+        ends: [
+          'El conjunto D solo puede tener el 8 en r4c4, r6c4, casillas del conjunto A: si A no tiene ningún 8, una de esas casillas debe ser 8, y A tiene uno después de todo. A no puede quedarse sin un 8, así que el conjunto A tiene un 8. Cada 8 eliminado ve todos los 8 de A.',
+          'El conjunto D solo puede tener el 4 en r8c2, una casilla del conjunto A: si A no tiene ningún 4, r8c2 debe ser 4, y A tiene uno después de todo. A no puede quedarse sin un 4, así que el conjunto A tiene un 4. Cada 4 eliminado ve todos los 4 de A.',
+          'El conjunto D solo puede tener el 7 en r1c9, r7c9, justo donde puede tenerlo el conjunto A, así que la cadena vuelve a A: si A no tiene ningún 7, una de esas casillas debe ser 7, y A tiene uno después de todo. A no puede quedarse sin un 7, así que el conjunto A tiene un 7. Cada 7 eliminado ve todos los 7 de A.'
+        ],
+        shared: 'contorno discontinuo: una casilla de dos conjuntos; cada letra nombra uno de ellos'
+      }
+    };
+    for (const [lang, loc] of LOCALES) {
+      setEngineText(lang, loc.engine);
+      const w = want[lang];
+      const step = findStep('DEATH_BLOSSOM', g)!;
+      expect(legendOf(step, db.values, walkFrames(step)[0]).find((l) => l.kind === 'secondary')?.label, lang).toBe(w.stem);
+      expect(makeTranslator(lang, loc)("the stem's candidates"), lang).toBe(w.stem);
+      clashes.forEach(({ step: s }, i) => expect(walkFrames(s).at(-1)!.text.startsWith(`${w.ends[i]} `), `${lang}: ${walkFrames(s).at(-1)!.text}`).toBe(true));
+      expect(legendOf(shared.step, shared.values).find((l) => l.kind === 'shared')?.label, lang).toBe(w.shared);
+      expect(makeTranslator(lang, loc)('dashed outline: a cell of two sets; each tab names one'), lang).toBe(w.shared);
+    }
+  });
+});
+

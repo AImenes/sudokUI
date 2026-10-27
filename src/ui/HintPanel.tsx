@@ -11,7 +11,7 @@ import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 import { stepText } from '../content/eureka';
-import { frameMarks, legendKinds, premiseOf, parityLegend, isParity } from '../content/hintMarks';
+import { frameMarks, legendKinds, premiseOf, parityLegend, isParity, stemAlone, sharedTile } from '../content/hintMarks';
 import type { Premise, Role, ParityEntry } from '../content/hintMarks';
 
 interface TruthWords {
@@ -305,6 +305,8 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
   // a colouring names its shades, its lines and its proven colours
   // (docs/hint-drawing-colouring.md), in the words the Learn legend uses
   const parity = isParity(hint) ? parityLegend(hint, marks) : null;
+  // a cell of two almost locked sets the view draws, as the board draws it (docs/hint-drawing-sets.md, decision 6)
+  const shared = sharedTile(hint, marks);
   const lent = (roles: Role[]) =>
     roles
       .map((r) => (r === 'primary' ? hint.labels?.primary : r === 'secondary' ? hint.labels?.secondary : hint.labels?.fins))
@@ -442,7 +444,8 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
               {legend.shown.has('secondary') && (
                 <li>
                   <i className={swatch('secondary')} />
-                  {hint.labels?.secondary ?? t('supporting cells')}
+                  {/* a Death Blossom's gold before any petal's digit is drawn: the stem's candidates alone */}
+                  {stemAlone(hint, marks) ? t("the stem's candidates") : (hint.labels?.secondary ?? t('supporting cells'))}
                 </li>
               )}
               {legend.shown.has('fin') && (
@@ -451,10 +454,14 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                   {hint.labels?.fins ?? t('fin')}
                 </li>
               )}
-              {/* a bar in the pattern's ink (a proof-only view) or the removal's: what a bar is */}
+              {/* a bar in the pattern's ink (a proof-only view) or the removal's: what a bar is, its swatch in the ink drawn, or one bar in each where both are */}
               {(legend.bars.has('primary') || legend.bars.has('elim')) && (
                 <li>
-                  <i className={legend.bars.has('primary') ? 'swatch-bar-primary' : 'swatch-bar-elim'} />
+                  <i
+                    className={
+                      legend.bars.has('primary') && legend.bars.has('elim') ? 'swatch-bars' : legend.bars.has('primary') ? 'swatch-bar-primary' : 'swatch-bar-elim'
+                    }
+                  />
                   {t("bar: a group (one digit's cells in one box and one row or column), read as one node")}
                 </li>
               )}
@@ -465,6 +472,13 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                   {hint.tech === 'DEATH_BLOSSOM'
                     ? t("lettered cells: a petal, an almost locked set for one of the stem's digits")
                     : t('lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells')}
+                </li>
+              )}
+              {/* a cell of two sets: one set's tile with the other's outline dashed inside it, in their tints */}
+              {shared && (
+                <li>
+                  <i className={`swatch-shared tile-${shared.tile} dash-${shared.dashed}`} />
+                  {t('dashed outline: a cell of two sets; each tab names one')}
                 </li>
               )}
               {/* a Death Blossom's weak ties from its stem to its petals, dashed with no head (docs/hint-drawing-sets.md, decision 15) */}

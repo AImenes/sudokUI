@@ -260,7 +260,7 @@ export function findAlsXyWing(g: Grid): Step | null {
             links: alsChain(sets, [0, 2, 1], [l1.x, l2.x], z),
             truth: 'derived',
             sets,
-            description: tr`ALS-XY-Wing: the wings A (${a}) and B (${b}) and the hinge C (${c}) each hold one digit more than they have cells; every ${l1.x} of C sees every ${l1.x} of A, and every ${l2.x} of C every ${l2.x} of B. C lacks at most one of its digits, so it holds ${aDigit(l1.x)}, and A then holds no ${l1.x}, or ${aDigit(l2.x)}, and B then holds no ${l2.x}. That wing's other digits fill its cells, and it holds ${aDigit(z)}: A or B holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`
+            description: tr`ALS-XY-Wing: the wings A (${a}) and B (${b}) and the hinge C (${c}) each hold one digit more than they have cells; every ${l1.x} of C sees every ${l1.x} of A, and every ${l2.x} of C every ${l2.x} of B. C lacks at most one of its digits, so it holds ${aDigit(l1.x)} (and A then holds no ${l1.x}) or ${aDigit(l2.x)} (and B then holds no ${l2.x}). That wing's other digits fill its cells, and it holds ${aDigit(z)}: A or B holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`
           };
         }
       }
