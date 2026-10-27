@@ -13,6 +13,10 @@ import { TECHS, Tech } from '../src/engine/ratings';
 import { readSource, placeholders, holes } from '../scripts/i18n-source';
 import nb from '../src/content/locales/app.nb';
 import es from '../src/content/locales/app.es';
+import { EXAMPLES } from '../src/content/examples';
+import { walkFrames } from '../src/engine/hintFrames';
+import { legendOf } from '../src/content/boardSvg';
+import { chainOfPattern } from './setWords';
 
 const LOCALES = [
   ['nb', nb],
@@ -145,5 +149,42 @@ describe('engine sentences', () => {
     setEngineText('xx', { [key]: '{1} is seen by {0}.' });
     expect(tr`${'r1c1'} sees ${'r2c2'}.`).toBe('r2c2 is seen by r1c1.');
     expect(tr`${'r1c1'} is alone.`).toBe('r1c1 is alone.');
+  });
+});
+
+describe('the set walk in three languages (docs/hint-drawing-sets.md, "The walk and its words")', () => {
+  afterEach(() => setEngineText('en', null));
+
+  it('introduces a set, tells its links and words its premise as Norwegian and Spanish write them, a set never a group', () => {
+    const aic = EXAMPLES.AIC_ALS!.step;
+    const xz = chainOfPattern(EXAMPLES.ALS_XZ!.step);
+    const want = {
+      nb: {
+        intro: 'Mengde A: de 2 rutene r7c8, r8c8 i kolonne 8 har bare 4, 8 og 9: ett tall mer enn ruter. Mangler ett av dem, uansett hvilket, fyller de andre rutene.',
+        into: 'Hvis r2c8 er 8, har mengde A ingen 8: hvert 8-tall i A ser r2c8.',
+        lock: 'Hvis mengde A ikke har noen 8, fyller de 2 andre tallene de 2 rutene, så en av r7c8, r8c8 må være 9.',
+        common: 'Hvert 1-tall i mengde A ser hvert 1-tall i mengde B: hvis r8c2 er 1, kan r8c9 ikke være 1.',
+        premise: 'sann hvis mengde A ikke har noen 5 (ved den lille prikken)',
+        group: /grupp/i
+      },
+      es: {
+        intro: 'Conjunto A: las 2 casillas r7c8, r8c8 de la columna 8 solo tienen 4, 8 y 9: un número más que casillas. Sin uno cualquiera de ellos, los demás llenan las casillas.',
+        into: 'Si r2c8 es 8, el conjunto A no tiene ningún 8: cada 8 de A ve r2c8.',
+        lock: 'Si el conjunto A no tiene ningún 8, sus otros 2 números llenan sus 2 casillas, así que una de r7c8, r8c8 debe ser 9.',
+        common: 'Cada 1 del conjunto A ve cada 1 del conjunto B: si r8c2 es 1, r8c9 no puede ser 1.',
+        premise: 'verdadero si el conjunto A no tiene ningún 5 (junto al punto pequeño)',
+        group: /grupo/i
+      }
+    };
+    for (const [lang, loc] of LOCALES) {
+      setEngineText(lang, loc.engine);
+      const w = want[lang];
+      expect(walkFrames(aic).slice(1, 4).map((f) => f.text), lang).toEqual([w.intro, w.into, w.lock]);
+      expect(walkFrames(xz)[3].text, lang).toBe(w.common);
+      expect(legendOf(xz, EXAMPLES.ALS_XZ!.values).map((l) => l.label), lang).toContain(w.premise);
+      for (const s of [aic, xz]) for (const f of walkFrames(s)) expect(f.text, lang).not.toMatch(w.group);
+      // the hint panel's words for the same premise
+      expect(makeTranslator(lang, loc)('true, if set {L} holds no {a} (by the small dot)', { L: 'A', a: 5 }), lang).toBe(w.premise);
+    }
   });
 });

@@ -208,11 +208,13 @@ function checkLinks(g: Grid, step: Step, where: string): void {
     // "the cell has only these two" only of a bivalue cell (an almost
     // locked set's two digits in one of its cells say so in their own words)
     const cell = l.from[0].cell;
-    const text = linkText(l);
+    const text = linkText(l, step);
     if (text.includes('the cell has only these two')) expect(popcount(g.cands[cell]), `${where}, link ${i + 1}: ${text}`).toBe(2);
     // a group holds its digit in one of its cells at most: never "r5c7, r6c7 must be 2"
+    // (a link into or out of an almost locked set is told as the set's, tests/setWords.test.ts)
     const many = (n: CellDigit[]) => new Set(n.map((m) => m.cell)).size > 1;
-    if (!l.text && l.from[0].digit === l.to[0].digit) {
+    const als = (k: number | undefined) => k !== undefined && step.sets?.[k]?.kind === 'als';
+    if (!l.text && l.from[0].digit === l.to[0].digit && !als(l.fromSet) && !als(l.toSet)) {
       if (many(l.to)) expect(text, `${where}, link ${i + 1}`).toMatch(l.strong ? /one of .* must be/ : /none of .* can be/);
       if (many(l.from)) expect(text, `${where}, link ${i + 1}`).toMatch(l.strong ? /if none of/ : /if one of/);
     }

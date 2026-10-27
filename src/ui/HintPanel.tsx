@@ -45,10 +45,32 @@ function useTechWhat(): (tech: Tech) => string {
  * groups and sets drawn as shapes ("squares joined by a bar", "rings joined
  * by a bar", "squares in a set"; docs/hint-drawing-sets.md, decision 18),
  * under the premise of its first node, the one with the small start dot, a
- * group worded as a group (true: one of its candidates; false: none); and
- * the line that says so when the drawing shows that premise impossible
+ * group worded as a group (true: one of its candidates; false: none), a
+ * digit of an almost locked set as the set's (true: the set holds it;
+ * false: it holds none); and the line that says so when the drawing shows
+ * that premise impossible
  */
 function truthWords(t: Translator, p: Premise): TruthWords {
+  if (p.kind === 'set') {
+    const v = { L: p.letter, a: p.digit };
+    return p.assumed
+      ? {
+          isTrue: t('true, if set {L} holds a {a} (by the small dot)', v),
+          isFalse: t('false, if set {L} holds a {a} (by the small dot)', v),
+          squaresOnBar: t('squares joined by a bar: one of them is true, if set {L} holds a {a} (by the small dot)', v),
+          ringsOnBar: t('rings joined by a bar: none of them is true, if set {L} holds a {a} (by the small dot)', v),
+          squaresInSet: t('squares in a set: one of them is true, if set {L} holds a {a} (by the small dot)', v),
+          refuted: t('the chain shows that premise is impossible: set {L} holds no {a} (by the small dot)', v)
+        }
+      : {
+          isTrue: t('true, if set {L} holds no {a} (by the small dot)', v),
+          isFalse: t('false, if set {L} holds no {a} (by the small dot)', v),
+          squaresOnBar: t('squares joined by a bar: one of them is true, if set {L} holds no {a} (by the small dot)', v),
+          ringsOnBar: t('rings joined by a bar: none of them is true, if set {L} holds no {a} (by the small dot)', v),
+          squaresInSet: t('squares in a set: one of them is true, if set {L} holds no {a} (by the small dot)', v),
+          refuted: t('the chain shows that premise is impossible: set {L} holds a {a} (by the small dot)', v)
+        };
+  }
   if (p.kind === 'group') {
     return p.assumed
       ? {

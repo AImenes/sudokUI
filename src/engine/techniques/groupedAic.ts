@@ -1,5 +1,5 @@
 import { Grid, UNITS, bit, digitsOf, sees, rowOf, colOf, cellName, cellNames } from '../board';
-import { Step, CellDigit, ChainLink, ChainSet, alternatingLinks, groupSet } from '../steps';
+import { Step, CellDigit, ChainSet, alternatingLinks, groupSet } from '../steps';
 import { collectAls, alsSet } from './als';
 import type { Als } from './als';
 import { tr } from '../text';
@@ -39,33 +39,6 @@ interface GNode {
   digit: number;
   /** index of the ALS this node belongs to, for ALS-augmented chains */
   als?: number;
-}
-
-/**
- * A link between two digits of one almost locked set says so: the set is
- * not one cell with only those two digits, so the walk's sentence for a
- * bivalue cell would be false (and the set may have more cells)
- */
-function alsLinkTexts(links: ChainLink[], path: GNode[], alses: Als[]): ChainLink[] {
-  return links.map((l, i) => {
-    const [a, b] = [path[i], path[i + 1]];
-    // only the strong link between two of the set's digits: a weak one
-    // inside a cell reads as any other
-    if (!l.strong || a.als === undefined || a.als !== b.als) return l;
-    const set = alses[a.als];
-    // a set of one cell is a bivalue cell, which the plain sentence fits
-    if (set.cells.length === 1) return l;
-    const cells = cellNames(set.cells);
-    const digits = digitsOf(set.mask).join('');
-    const to = cellNames(b.cells);
-    return {
-      ...l,
-      text:
-        b.cells.length === 1
-          ? tr`In the almost locked set ${cells} (${digits}, one digit more than cells): if none of its cells is ${a.digit}, it locks on its other digits, so ${to} must be ${b.digit}.`
-          : tr`In the almost locked set ${cells} (${digits}, one digit more than cells): if none of its cells is ${a.digit}, it locks on its other digits, so one of ${to} must be ${b.digit}.`
-    };
-  });
 }
 
 /**
@@ -279,7 +252,7 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
             primary: path.flatMap((n) =>
               nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))
             ),
-            links: alsLinkTexts(alternatingLinks(ends, undefined, setOf), path.map((n) => nodes[n]), alses),
+            links: alternatingLinks(ends, undefined, setOf),
             ...(sets.length > 0 && { sets }),
             description: alsInPath
               ? tr`AIC with ALS: ${chain}; at least one end is true, so candidates conflicting with both ends are removed.`

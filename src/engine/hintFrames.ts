@@ -1,17 +1,19 @@
 /**
  * The walk: a hint's drawing revealed one idea at a time, with a sentence
  * for each. For a chain the ideas are its links, in order, then the
- * conclusion. For a pattern they are its colours, in the order the
- * explanation introduces them (the legend labels supply the words), then
- * the conclusion. For a colouring (docs/hint-drawing-colouring.md) they
- * are each cluster with its ties, then each link of the argument, then,
- * where a colour is proven, the proof, then the conclusion. A step whose
- * walk has a single frame has nothing to walk through, and the panel
- * offers no walk for it.
+ * conclusion; an almost locked set of several cells a derived chain passes
+ * through is introduced in a frame of its own before the first link that
+ * reaches it (docs/hint-drawing-sets.md, decision 17). For a pattern they
+ * are its colours, in the order the explanation introduces them (the
+ * legend labels supply the words), then the conclusion. For a colouring
+ * (docs/hint-drawing-colouring.md) they are each cluster with its ties,
+ * then each link of the argument, then, where a colour is proven, the
+ * proof, then the conclusion. A step whose walk has a single frame has
+ * nothing to walk through, and the panel offers no walk for it.
  */
 import { cellName, cellNames } from './board';
-import { CellDigit, ChainLink, Step, isParity, isTie } from './steps';
-import { tr } from './text';
+import { CellDigit, ChainLink, ChainSet, Step, insideSet, isParity, isTie } from './steps';
+import { listAnd, tr, unitName } from './text';
 import { deriveTruth } from './truth';
 
 /**
@@ -36,6 +38,12 @@ export interface Frame {
    * reached is drawn
    */
   drawn?: number[];
+  /**
+   * the almost locked sets this frame introduces, as indices into
+   * Step.sets: a set of several cells has a frame of its own before the
+   * first link that reaches it, which draws the set and adds no link
+   */
+  sets?: number[];
   /** which parts of the drawing are shown */
   show: Set<Part>;
 }
@@ -67,9 +75,119 @@ function nodeDigits(node: CellDigit[]): string {
     .join('/');
 }
 
-/** One link, read as an inference: what the chain argues at that point. */
-export function linkText(link: ChainLink): string {
+/**
+ * The almost locked set a link end is a node of, along a derived chain,
+ * whose words then say what the set does at that point (docs/hint-drawing-sets.md,
+ * "The walk and its words"); none for a lone candidate or a group, whose
+ * sentences are the chain's own, and none in a step whose truth is not
+ * derived (a pattern's links between its sets claim no truth)
+ */
+function alsAt(step: Step, index: number | undefined): ChainSet | undefined {
+  if (step.truth !== 'derived' || index === undefined) return undefined;
+  const set = step.sets?.[index];
+  return set?.kind === 'als' ? set : undefined;
+}
+
+/** the ALS-XY-Wing's hinge, its set C, which its sentences name so (decision 16) */
+const isHinge = (step: Step, set: ChainSet) => step.tech === 'ALS_XY_WING' && set.letter === 'C';
+
+/**
+ * A set frame's sentence: what an almost locked set of several cells is,
+ * before the chain uses it, in the house the finder found it in
+ */
+function setText(step: Step, set: ChainSet): string {
+  const L = set.letter;
+  const n = set.cells.length;
+  const cells = cellNames(set.cells);
+  const house = unitName(set.unit);
+  const digits = listAnd(set.digits);
+  return isHinge(step, set)
+    ? tr`Set ${L}, the hinge: the ${n} cells ${cells} of ${house} hold only ${digits}: one digit more than cells. Without any one of them, the others fill the cells.`
+    : tr`Set ${L}: the ${n} cells ${cells} of ${house} hold only ${digits}: one digit more than cells. Without any one of them, the others fill the cells.`;
+}
+
+/**
+ * A link's sentence where an end is a node of an almost locked set, from
+ * the step's sets (decision 17): the set's lock, a one-cell set's folded
+ * into it; a restricted common between two sets; a link into a set or out
+ * of it, from or to a candidate or a group, each naming the drawn
+ * candidates, and from or to another digit of the set's only cell holding
+ * its digit, a candidate's or another set's. Null where neither end is a
+ * set's node, and for a link checkSets refuses (a weak link inside a set,
+ * a strong one out of it), whose plain sentence then stands.
+ */
+function setLinkText(link: ChainLink, step: Step): string | null {
+  const from = alsAt(step, link.fromSet);
+  const to = alsAt(step, link.toSet);
+  if (!from && !to) return null;
+  const fd = link.from[0].digit;
+  const td = link.to[0].digit;
+  const fromCells = uniq(link.from.map((cd) => cd.cell));
+  const toCells = uniq(link.to.map((cd) => cd.cell));
+  if (insideSet(link)) {
+    if (!link.strong || fd === td) return null;
+    const L = from!.letter;
+    const n = from!.cells.length;
+    // a set of one cell is introduced by its lock: it holds just its two digits
+    if (n === 1) {
+      const cell = cellName(from!.cells[0]);
+      const [a, b] = from!.digits;
+      return isHinge(step, from!)
+        ? tr`Set ${L}, the hinge, is the cell ${cell}, which holds only ${a} and ${b}: if it is not ${fd}, it must be ${td}.`
+        : tr`Set ${L} is the cell ${cell}, which holds only ${a} and ${b}: if it is not ${fd}, it must be ${td}.`;
+    }
+    const exit = cellNames(toCells);
+    return toCells.length === 1
+      ? tr`If set ${L} holds no ${fd}, its other ${n} digits fill its ${n} cells, so ${exit} must be ${td}.`
+      : tr`If set ${L} holds no ${fd}, its other ${n} digits fill its ${n} cells, so one of ${exit} must be ${td}.`;
+  }
+  if (link.strong) return null;
+  if (fd !== td) {
+    // two digits of one cell, each end a set's only cell holding its digit or a candidate
+    const oneCell = fromCells.length === 1 && toCells.length === 1 && fromCells[0] === toCells[0];
+    if (!oneCell) return null;
+    const cell = cellName(fromCells[0]);
+    if (from && to) return tr`If set ${from.letter} holds a ${fd}, set ${to.letter} holds no ${td}: the only ${fd} of ${from.letter} and the only ${td} of ${to.letter} are both in ${cell}.`;
+    return from
+      ? tr`If set ${from.letter} holds a ${fd}, ${cell} cannot be ${td}: the only ${fd} of ${from.letter} is in ${cell}.`
+      : tr`If ${cell} is ${fd}, set ${to!.letter} holds no ${td}: the only ${td} of ${to!.letter} is in ${cell}.`;
+  }
+  const x = fd;
+  const one = (cells: number[]) => cells.length === 1;
+  if (from && to) {
+    // a restricted common: every x of one set sees every x of the other
+    const [L, M] = [from.letter, to.letter];
+    const [f, t] = [cellNames(fromCells), cellNames(toCells)];
+    if (one(fromCells) && one(toCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if ${f} is ${x}, ${t} cannot be ${x}.`;
+    if (one(toCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if one of ${f} is ${x}, ${t} cannot be ${x}.`;
+    if (one(fromCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if ${f} is ${x}, none of ${t} can be ${x}.`;
+    return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if one of ${f} is ${x}, none of ${t} can be ${x}.`;
+  }
+  if (from) {
+    const L = from.letter;
+    const cells = cellNames(toCells);
+    return one(toCells)
+      ? tr`If set ${L} holds a ${x}, ${cells} cannot be ${x}: it sees every ${x} of ${L}.`
+      : tr`If set ${L} holds a ${x}, none of ${cells} can be ${x}: they see every ${x} of ${L}.`;
+  }
+  const L = to!.letter;
+  const cells = cellNames(fromCells);
+  return one(fromCells)
+    ? tr`If ${cells} is ${x}, set ${L} holds no ${x}: every ${x} of ${L} sees ${cells}.`
+    : tr`If one of ${cells} is ${x}, set ${L} holds no ${x}: every ${x} of ${L} sees all of them.`;
+}
+
+/**
+ * One link, read as an inference: what the chain argues at that point. A
+ * link with an end in an almost locked set of a derived chain is told from
+ * the step's sets, never by the plain sentences below, which would read
+ * the set's cells as a group, or two of its digits as a link between
+ * single candidates.
+ */
+export function linkText(link: ChainLink, step: Step): string {
   if (link.text) return link.text;
+  const set = setLinkText(link, step);
+  if (set) return set;
   const fromCells = uniq(link.from.map((cd) => cd.cell));
   const toCells = uniq(link.to.map((cd) => cd.cell));
   const fd = nodeDigits(link.from);
@@ -227,7 +345,7 @@ function parityFrames(step: Step): Frame[] {
   links.forEach((l, i) => {
     if (isTie(l)) return;
     argument.push(i);
-    frames.push({ text: linkText(l), links: i + 1, drawn: [...argument], show: new Set(shown) });
+    frames.push({ text: linkText(l, step), links: i + 1, drawn: [...argument], show: new Set(shown) });
   });
   if (darkFalse !== undefined) {
     shown.add('proof');
@@ -250,10 +368,19 @@ export function walkFrames(step: Step): Frame[] {
   const base = new Set<Part>(['units']);
   if (step.links && step.links.length > 0) {
     const closing = closureText(step);
+    const introduced = new Set<number>();
     // every inference is a frame of its own; the link that closes a
-    // discontinuous loop says what it proves
+    // discontinuous loop says what it proves. An almost locked set of
+    // several cells comes first in a frame of its own, the locking idea
+    // before the chain uses it; a one-cell set is told in its lock's frame
     step.links.forEach((link, i) => {
-      const text = closing && i === step.links!.length - 1 ? `${linkText(link)} ${closing}` : linkText(link);
+      for (const k of [link.fromSet, link.toSet]) {
+        const set = alsAt(step, k);
+        if (k === undefined || !set || set.cells.length < 2 || introduced.has(k)) continue;
+        introduced.add(k);
+        frames.push({ text: setText(step, set), links: i, sets: [k], show: new Set(base) });
+      }
+      const text = closing && i === step.links!.length - 1 ? `${linkText(link, step)} ${closing}` : linkText(link, step);
       frames.push({ text, links: i + 1, show: new Set(base) });
     });
     frames.push({

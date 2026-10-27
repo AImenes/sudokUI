@@ -18,6 +18,7 @@ import { parseGrid } from '../src/engine/board';
 import { findNextStep, findStep, findAllSteps, applyStep } from '../src/engine/humanSolver';
 import { boardSvg, legendOf, swatchStyle } from '../src/content/boardSvg';
 import { PARITY_FIXTURES, positionOf } from './parityFixtures';
+import { chainOfPattern } from './setWords';
 import { LIGHT } from '../src/content/hintPalette';
 import { EXAMPLES } from '../src/content/examples';
 import { TECHS, Tech } from '../src/engine/ratings';
@@ -424,18 +425,18 @@ describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 
   })();
   const kindAt = (m: ReturnType<typeof hintMarks>, cd: CellDigit) => m.cands.get(cd.cell)?.get(cd.digit);
 
-  it("draws each set from the frame of the first link that reaches it, in its tint, its candidates no other mark takes its members", () => {
+  it("draws each set from the frame of the first link that reaches it, or its own frame before that, in its tint, its candidates no other mark takes its members", () => {
     let members = 0;
     expect(corpus.length).toBeGreaterThan(60);
     for (const { where, step: s, values } of corpus) {
       const tints = setTints(s);
       for (const fr of [null, ...walkFrames(s)]) {
         const m = frameMarks(s, fr, (c) => values[c] !== '0');
+        // a set frame introduces its set before any link reaches it (decision 17)
         const reached = new Set(
-          (s.links ?? [])
-            .slice(0, fr ? fr.links : undefined)
-            .flatMap((l) => [l.fromSet, l.toSet])
-            .filter((k): k is number => k !== undefined && s.sets![k].kind === 'als')
+          [...(s.links ?? []).slice(0, fr ? fr.links : undefined).flatMap((l) => [l.fromSet, l.toSet]), ...(fr?.sets ?? [])].filter(
+            (k): k is number => k !== undefined && s.sets![k].kind === 'als'
+          )
         );
         const drawn = m.sets.filter((x) => x.style === 'als');
         expect(drawn.map((x) => x.set).sort(), `${where}, frame ${fr?.links}`).toEqual([...reached].sort());
@@ -525,6 +526,46 @@ describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 
     // the swatch: a small tile in the tint at half strength over white, outlined in the ink, its tab in the corner
     expect(swatchStyle(legendOf(xz.step, xz.values).at(-1)!)).toMatchObject({ border: `1.5px solid ${LIGHT.set1Ink}`, width: '14px' });
     expect(swatchStyle(legendOf(xz.step, xz.values).at(-1)!).background).toContain(`${LIGHT.set1}80`);
+  });
+
+  it('draws the set a walk frame introduces before any link reaches it: its tiles in its tint and its candidates members, no truth (decision 17)', () => {
+    const ex = EXAMPLES.AIC_ALS!;
+    const solved = (c: number) => ex.values[c] !== '0';
+    const links = ex.step.links!.slice(0, 1);
+    // the frame's set, given or not: its tiles and members, or nothing of it
+    const show = (part: string) => part === 'units';
+    const introduced = hintMarks(ex.step, { solved, links, sets: [0], walking: true, show });
+    expect(introduced.sets).toEqual([{ set: 0, style: 'als', tint: 1 }]);
+    expect(ex.step.sets![0].members.map((m) => kindAt(introduced, m))).toEqual(ex.step.sets![0].members.map(() => 'member'));
+    const before = hintMarks(ex.step, { solved, links, walking: true, show });
+    expect(before.sets).toEqual([]);
+    expect(ex.step.sets![0].members.map((m) => kindAt(before, m))).toEqual(ex.step.sets![0].members.map(() => undefined));
+    // through the walk: the set's own frame, and every frame after it, draws it
+    const frames = walkFrames(ex.step);
+    const own = frames.findIndex((f) => f.sets?.includes(0));
+    expect(own).toBe(1);
+    for (const [i, fr] of frames.entries()) expect(frameMarks(ex.step, fr, solved).sets.length, `frame ${i + 1}`).toBe(i < own ? 0 : 1);
+  });
+
+  it('words the premise of a chain that opens in an almost locked set by the set, whichever way it is assumed, and its refutation (decision 18)', () => {
+    const xz = EXAMPLES.ALS_XZ!.step;
+    const node = (k: number, d: number) => xz.sets![k].members.filter((m) => m.digit === d);
+    // (5)A=(1)A-(1)B=(5)B: A holds no 5
+    const chain = chainOfPattern(xz);
+    expect(premiseOf(chain)).toEqual({ assumed: false, kind: 'set', letter: 'A', digit: 5 });
+    // (1)A-(1)B=(5)B, opening weak: A holds a 1
+    const weak = step({ ...chain, links: chain.links!.slice(1), eliminations: [] });
+    expect(premiseOf(weak)).toEqual({ assumed: true, kind: 'set', letter: 'A', digit: 1 });
+    expect(legendOf(weak).map((l) => l.label)).toEqual(['true, if set A holds a 1 (by the small dot)', 'false, if set A holds a 1 (by the small dot)', expect.stringMatching(/^lettered cells/)]);
+    // a chain that goes on to a true 5 beside B's true 5, in box 9: A holds a 5 after all
+    const clash = step({
+      ...chain,
+      links: [...chain.links!, { from: node(1, 5), to: [{ cell: 60, digit: 5 }], strong: false, toSet: undefined }, { from: [{ cell: 60, digit: 5 }], to: [{ cell: 80, digit: 5 }], strong: true }]
+    });
+    expect(frameMarks(clash, null, () => false).refuted).toBe(true);
+    expect(legendOf(clash).map((l) => l.label)).toContain('the chain shows that premise is impossible: set A holds a 5 (by the small dot)');
+    // a set's digit in one cell is still the set's, never "the first candidate": B's 1, in r8c9 only
+    expect(premiseOf(step({ ...chain, links: chain.links!.slice(2) }))).toEqual({ assumed: false, kind: 'set', letter: 'B', digit: 1 });
   });
 
   it('never draws a set and a colouring in one step: the violet tile and the purple shades are 3.0 apart as areas', () => {

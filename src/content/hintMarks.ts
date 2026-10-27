@@ -29,9 +29,10 @@
 // (decisions 2 and 3); the geometry puts it (src/content/hintGeometry.ts).
 // An almost locked set (Step.sets of kind 'als') is drawn as a tile in each
 // of its cells, in one of three tints, with its letter on a tab, from the
-// frame that first reaches it (decisions 5-8); its candidates the view
-// gives no other mark are its members, no shape, the digit bold on the
-// tile (decision 10), the last mark of all (G5).
+// frame that first reaches it, or from its own frame before that, which
+// introduces it (decisions 5-8 and 17); its candidates the view gives no
+// other mark are its members, no shape, the digit bold on the tile
+// (decision 10), the last mark of all (G5).
 // A removed or placed node is the removal or the placement, its truth
 // plain from the mark.
 // A colouring whose truth is its parity (docs/hint-drawing-colouring.md)
@@ -132,31 +133,39 @@ export interface MarkOptions {
   show?(part: Part): boolean;
   /** a walk frame is shown, so a chain shows only the nodes of the links drawn, until its conclusion */
   walking?: boolean;
+  /** the almost locked sets a walk frame introduces before any link drawn reaches them (src/engine/hintFrames.ts Frame.sets) */
+  sets?: number[];
 }
 
 const has = (list: CellDigit[] | undefined, cd: CellDigit) => !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
 
 /**
  * What a derived chain assumes of its first node, and what kind of node it
- * is: a candidate, or several read as one ('group': true, one of them;
- * false, none of them), so the legend words the premise by its kind
- * (docs/hint-drawing-sets.md, Data)
+ * is: a candidate, several read as one ('group': true, one of them; false,
+ * none of them), or one digit of an almost locked set ('set', with the
+ * set's letter and the digit: true, the set holds it; false, it holds
+ * none), so the legend words the premise by its kind
+ * (docs/hint-drawing-sets.md, Data and decision 18)
  */
-export interface Premise {
-  assumed: boolean;
-  kind: 'candidate' | 'group';
-}
+export type Premise = { assumed: boolean } & ({ kind: 'candidate' | 'group' } | { kind: 'set'; letter: string; digit: number });
 
 /**
  * What a derived chain assumes of its first node: false when it opens with
  * a strong link, true when it opens with a weak one; null for a step whose
- * truth is not derived, or whose derivation finds a fault
+ * truth is not derived, or whose derivation finds a fault. A first node
+ * that is a digit of an almost locked set is worded as the set's, never as
+ * a group, wherever its digit lies in the set
  */
 export function premiseOf(step: Step): Premise | null {
   const d = deriveTruth(step);
   if (!d || d.problems.length || !d.nodes.length) return null;
   const first = d.closure ? d.closure.node : d.nodes[0].node;
-  return { assumed: d.closure ? d.closure.assumed : d.nodes[0].truth, kind: first.length > 1 ? 'group' : 'candidate' };
+  const assumed = d.closure ? d.closure.assumed : d.nodes[0].truth;
+  // the chain's first node is its first link's start, a loop's too
+  const at = step.links![0].fromSet;
+  const set = at === undefined ? undefined : step.sets?.[at];
+  if (set?.kind === 'als' && set.letter) return { assumed, kind: 'set', letter: set.letter, digit: first[0].digit };
+  return { assumed, kind: first.length > 1 ? 'group' : 'candidate' };
 }
 
 /** the colour the step names for a candidate, if any: the first of the lists the full view marks in order */
@@ -261,16 +270,17 @@ export function setTints(step: Step): Map<number, Tint> {
 }
 
 /**
- * The sets a view draws (docs/hint-drawing-sets.md, decisions 2, 3 and
- * 5-8): each set a link drawn reaches, from the frame of the first such
- * link. A group's bar takes its members' mark: they take one mark in
- * every view a chain draws (a node's truth, the pattern's disc, a
- * removal), and where a removal takes some of them, the bar is the
- * removal's. An almost locked set is drawn as its tiles, in its tint
+ * The sets a view draws (docs/hint-drawing-sets.md, decisions 2, 3, 5-8
+ * and 17): each set a link drawn reaches, from the frame of the first such
+ * link, and each set a frame introduces before that. A group's bar takes
+ * its members' mark: they take one mark in every view a chain draws (a
+ * node's truth, the pattern's disc, a removal), and where a removal takes
+ * some of them, the bar is the removal's. An almost locked set is drawn as
+ * its tiles, in its tint
  */
-function setMarks(step: Step, links: ChainLink[], cands: Map<number, Map<number, CandMark>>): SetMark[] {
+function setMarks(step: Step, links: ChainLink[], introduced: number[], cands: Map<number, Map<number, CandMark>>): SetMark[] {
   const sets = step.sets ?? [];
-  const drawn = new Set(links.flatMap((l) => [l.fromSet, l.toSet]).filter((k): k is number => k !== undefined && !!sets[k]));
+  const drawn = new Set([...links.flatMap((l) => [l.fromSet, l.toSet]), ...introduced].filter((k): k is number => k !== undefined && !!sets[k]));
   const tints = setTints(step);
   return [...drawn]
     .sort((a, b) => a - b)
@@ -366,7 +376,7 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   // the sets the view draws; an almost locked set's candidates the view
   // gives no other mark are its members, the last mark of all (G5): no
   // shape, the digit bold on its tile (docs/hint-drawing-sets.md, decision 10)
-  const sets = setMarks(step, links, cands);
+  const sets = setMarks(step, links, opts.sets ?? [], cands);
   for (const { set, style } of sets) if (style === 'als') for (const cd of step.sets![set].members) mark(cd, 'member');
   // two true candidates that cannot both be: the premise is impossible
   const trues = [...cands].flatMap(([cell, m]) => [...m].filter(([, k]) => k === 'true').map(([digit]) => ({ cell, digit })));
@@ -386,7 +396,8 @@ export function frameMarks(step: Step, frame: Frame | null, solved: (cell: numbe
     solved,
     links: (step.links ?? []).filter((_, i) => drawn.has(i)),
     show: frame ? (part) => frame.show.has(part) : undefined,
-    walking: !!frame
+    walking: !!frame,
+    sets: frame?.sets
   });
 }
 

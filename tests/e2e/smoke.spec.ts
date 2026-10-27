@@ -671,12 +671,12 @@ for (const [name, size] of [
 }
 
 /**
- * An almost locked set on the board (docs/hint-drawing-sets.md, stage 6):
- * the stored AIC with ALS, loaded as a pencil-mark grid at its position,
- * goes through set A, r7c8 and r8c8: a tile in each cell in its tint,
- * outlined in its ink, wider on a phone, with a lettered tab, drawn from
- * the walk frame of the link that reaches it; the link inside A draws no
- * arrow
+ * An almost locked set on the board (docs/hint-drawing-sets.md, stages 6
+ * and 7): the stored AIC with ALS, loaded as a pencil-mark grid at its
+ * position, goes through set A, r7c8 and r8c8: a tile in each cell in its
+ * tint, outlined in its ink, wider on a phone, with a lettered tab, drawn
+ * from the walk frame that introduces the set, before the link that reaches
+ * it; the link inside A draws no arrow
  */
 async function showAlsChain(page: Page) {
   const examples = JSON.parse(new TextDecoder().decode(readFileSync('src/content/examples.json')));
@@ -702,7 +702,7 @@ for (const [name, size] of [
   test.describe(`an almost locked set, ${name}`, () => {
     test.use(size);
 
-    test('draws a lettered tile in each cell of the set, from the frame that reaches it, and no arrow inside it', async ({ page }) => {
+    test('draws a lettered tile in each cell of the set, from the frame that introduces it, and no arrow inside it', async ({ page }) => {
       await showAlsChain(page);
       const tiles = page.locator('svg.board g.hint-tile');
       const tabs = page.locator('svg.board g.hint-tab');
@@ -721,15 +721,23 @@ for (const [name, size] of [
       // four of its five links drawn: the one inside the set draws nothing
       await expect(page.locator('svg.board .chain-shaft')).toHaveCount(4);
       await expect(page.locator('.hint-legend li', { hasText: 'lettered cells' }).locator('i.swatch-set-1')).toHaveCount(1);
-      // the walk: no tile until the link that reaches the set, then its tiles and tabs
+      // the walk: no tile until set A's own frame, which introduces it before the link that reaches it, then its tiles and tabs
       await page.getByRole('button', { name: 'Walk through it' }).click();
-      await expect(page.locator('.hint-walk-count')).toContainText('1 of 6');
+      await expect(page.locator('.hint-walk-count')).toContainText('1 of 7');
       await expect(tiles).toHaveCount(0);
       await expect(tabs).toHaveCount(0);
       await page.keyboard.press('ArrowRight');
-      await expect(page.locator('.hint-walk-count')).toContainText('2 of 6');
+      await expect(page.locator('.hint-walk-count')).toContainText('2 of 7');
+      await expect(page.locator('.hint-walk-text')).toHaveText(
+        'Set A: the 2 cells r7c8, r8c8 of column 8 hold only 4, 8 and 9: one digit more than cells. Without any one of them, the others fill the cells.'
+      );
       await expect(tiles).toHaveCount(2);
       await expect(tabs).toHaveCount(2);
+      // no link added: only the first arrow, with its number; the next frame adds the link into the set, numbered 3
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['1']);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-text')).toHaveText('If r2c8 is 8, set A holds no 8: every 8 of A sees r2c8.');
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['1', '3']);
     });
   });
 }
