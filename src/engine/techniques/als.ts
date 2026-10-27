@@ -1,7 +1,7 @@
 import { Grid, UNITS, bit, digitsOf, popcount, sees, cellName, cellNames } from '../board';
 import { Step, CellDigit, ChainLink, ChainSet } from '../steps';
 import { combinations } from './subsets';
-import { tr, listAnd, unitName } from '../text';
+import { aDigit, tr, listAnd, unitName } from '../text';
 
 export interface Als {
   cells: number[];
@@ -71,7 +71,7 @@ function alsXzStep(
     links: alsChain(sets, [0, 1], [x], z),
     truth: 'derived',
     sets,
-    description: tr`ALS-XZ: sets A (${cellNames(sets[0].cells)}) and B (${cellNames(sets[1].cells)}) each hold one digit more than they have cells, and every ${x} of A sees every ${x} of B, so at most one of them keeps a ${x}. The other loses its ${x}, its other digits fill its cells, and it holds a ${z}: A or B holds a ${z}, so ${z} is removed from every cell that sees every ${z} of both.`
+    description: tr`ALS-XZ: sets A (${cellNames(sets[0].cells)}) and B (${cellNames(sets[1].cells)}) each hold one digit more than they have cells, and every ${x} of A sees every ${x} of B, so at most one of them keeps ${aDigit(x)}. The other loses its ${x}, its other digits fill its cells, and it holds ${aDigit(z)}: A or B holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`
   };
 }
 
@@ -260,7 +260,7 @@ export function findAlsXyWing(g: Grid): Step | null {
             links: alsChain(sets, [0, 2, 1], [l1.x, l2.x], z),
             truth: 'derived',
             sets,
-            description: tr`ALS-XY-Wing: the wings A (${a}) and B (${b}) and the hinge C (${c}) each hold one digit more than they have cells; every ${l1.x} of C sees every ${l1.x} of A, and every ${l2.x} of C every ${l2.x} of B. C lacks at most one of its digits, so it holds a ${l1.x}, and A then holds no ${l1.x}, or a ${l2.x}, and B then holds no ${l2.x}. That wing's other digits fill its cells, and it holds a ${z}: A or B holds a ${z}, so ${z} is removed from every cell that sees every ${z} of both.`
+            description: tr`ALS-XY-Wing: the wings A (${a}) and B (${b}) and the hinge C (${c}) each hold one digit more than they have cells; every ${l1.x} of C sees every ${l1.x} of A, and every ${l2.x} of C every ${l2.x} of B. C lacks at most one of its digits, so it holds ${aDigit(l1.x)}, and A then holds no ${l1.x}, or ${aDigit(l2.x)}, and B then holds no ${l2.x}. That wing's other digits fill its cells, and it holds ${aDigit(z)}: A or B holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`
           };
         }
       }
@@ -329,7 +329,7 @@ export function findAlsXyChain(g: Grid): Step | null {
               links: alsChain(sets, [0, 1, 2, 3], [x1, x2, x3], z),
               truth: 'derived',
               sets,
-              description: tr`ALS-XY-Chain: sets A (${a}), B (${b}), C (${c}) and D (${d}) each hold one digit more than they have cells, linked by ${x1}, ${x2} and ${x3}: every ${x1} of A sees every ${x1} of B, every ${x2} of B every ${x2} of C, and every ${x3} of C every ${x3} of D. If A holds no ${z}, its other digits fill its cells, so it holds a ${x1}; then B holds no ${x1} and holds a ${x2}, C no ${x2} and a ${x3}, and D no ${x3} and a ${z}: each set in turn loses its link digit and fills its cells. A or D holds a ${z}, so ${z} is removed from every cell that sees every ${z} of both.`
+              description: tr`ALS-XY-Chain: sets A (${a}), B (${b}), C (${c}) and D (${d}) each hold one digit more than they have cells, linked by ${x1}, ${x2} and ${x3}: every ${x1} of A sees every ${x1} of B, every ${x2} of B every ${x2} of C, and every ${x3} of C every ${x3} of D. If A holds no ${z}, its other digits fill its cells, so it holds ${aDigit(x1)}; then B holds no ${x1} and holds ${aDigit(x2)}, C no ${x2} and ${aDigit(x3)}, and D no ${x3} and ${aDigit(z)}: each set in turn loses its link digit and fills its cells. A or D holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`
             };
           }
         }
@@ -397,7 +397,7 @@ export function findDeathBlossom(g: Grid): Step | null {
               primary: sets.flatMap((_, k) => holding(k, z)),
               secondary: [...stemDigits.map((digit) => ({ cell: stem, digit })), ...stemDigits.flatMap((p, k) => holding(k, p))],
               labels: {
-                primary: tr`${z} in every petal: whichever digit the stem takes, a petal holds a ${z}`,
+                primary: tr`${z} in every petal: whichever digit the stem takes, a petal holds ${aDigit(z)}`,
                 secondary: tr`the stem's candidates, and each petal's digit the stem sees`
               },
               // each stem digit's branch (docs/hint-drawing-sets.md, decision
@@ -438,6 +438,6 @@ function blossomText(stem: number, digits: number[], sets: ChainSet[], z: number
   const [a, b, c] = sets.map((set) => cellNames(set.cells));
   const [p, q, r] = digits;
   return digits.length === 3
-    ? tr`Death Blossom: the stem ${at} holds ${p}, ${q} and ${r}, and each has a petal, an almost locked set whose copies of that digit all see the stem: A (${a}) for ${p}, B (${b}) for ${q} and C (${c}) for ${r}. Whichever digit the stem takes, its petal loses that digit, fills its cells with its other digits and holds a ${z}, so ${z} is removed from every cell that sees every ${z} of every petal.`
-    : tr`Death Blossom: the stem ${at} holds ${p} and ${q}, and each has a petal, an almost locked set whose copies of that digit all see the stem: A (${a}) for ${p} and B (${b}) for ${q}. Whichever digit the stem takes, its petal loses that digit, fills its cells with its other digits and holds a ${z}, so ${z} is removed from every cell that sees every ${z} of every petal.`;
+    ? tr`Death Blossom: the stem ${at} holds ${p}, ${q} and ${r}, and each has a petal, an almost locked set whose copies of that digit all see the stem: A (${a}) for ${p}, B (${b}) for ${q} and C (${c}) for ${r}. Whichever digit the stem takes, its petal loses that digit, fills its cells with its other digits and holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of every petal.`
+    : tr`Death Blossom: the stem ${at} holds ${p} and ${q}, and each has a petal, an almost locked set whose copies of that digit all see the stem: A (${a}) for ${p} and B (${b}) for ${q}. Whichever digit the stem takes, its petal loses that digit, fills its cells with its other digits and holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of every petal.`;
 }

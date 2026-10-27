@@ -6,7 +6,7 @@
 // The board is always drawn light: a diagram has to read the same on a dark
 // page, a light page and in an image search result.
 import { CellDigit, Step } from '../engine/steps';
-import { tr } from '../engine/text';
+import { aDigit, tr } from '../engine/text';
 import { hintDrawing, tilesIn, squareReach, pointsOf, SIZES } from './hintGeometry';
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
@@ -448,11 +448,11 @@ function truthWords(p: Premise): TruthWords {
     const [L, a] = [p.letter, p.digit];
     return p.assumed
       ? {
-          isTrue: tr`true, if set ${L} holds a ${a} (by the small dot)`,
-          isFalse: tr`false, if set ${L} holds a ${a} (by the small dot)`,
-          squaresOnBar: tr`squares joined by a bar: one of them is true, if set ${L} holds a ${a} (by the small dot)`,
-          ringsOnBar: tr`rings joined by a bar: none of them is true, if set ${L} holds a ${a} (by the small dot)`,
-          squaresInSet: tr`squares in a set: one of them is true, if set ${L} holds a ${a} (by the small dot)`,
+          isTrue: tr`true, if set ${L} holds ${aDigit(a)} (by the small dot)`,
+          isFalse: tr`false, if set ${L} holds ${aDigit(a)} (by the small dot)`,
+          squaresOnBar: tr`squares joined by a bar: one of them is true, if set ${L} holds ${aDigit(a)} (by the small dot)`,
+          ringsOnBar: tr`rings joined by a bar: none of them is true, if set ${L} holds ${aDigit(a)} (by the small dot)`,
+          squaresInSet: tr`squares in a set: one of them is true, if set ${L} holds ${aDigit(a)} (by the small dot)`,
           refuted: tr`the chain shows that premise is impossible: set ${L} holds no ${a} (by the small dot)`
         }
       : {
@@ -461,7 +461,7 @@ function truthWords(p: Premise): TruthWords {
           squaresOnBar: tr`squares joined by a bar: one of them is true, if set ${L} holds no ${a} (by the small dot)`,
           ringsOnBar: tr`rings joined by a bar: none of them is true, if set ${L} holds no ${a} (by the small dot)`,
           squaresInSet: tr`squares in a set: one of them is true, if set ${L} holds no ${a} (by the small dot)`,
-          refuted: tr`the chain shows that premise is impossible: set ${L} holds a ${a} (by the small dot)`
+          refuted: tr`the chain shows that premise is impossible: set ${L} holds ${aDigit(a)} (by the small dot)`
         };
   }
   if (p.kind === 'group') {

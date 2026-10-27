@@ -3,8 +3,7 @@
 For whoever continues this work. The design and its rules (G1-G25), the
 phases and the running status are in `docs/hint-drawing.md`; this note
 says what is done, what comes next, and how the work has been run.
-Updated 2026-10-27, at the design of phase 4 and its amendment (no
-overlap ban).
+Updated 2026-10-27, with phase 4 built and in review.
 
 ## State
 
@@ -39,30 +38,46 @@ overlap ban).
   parity walk, `drawnLinks`), `src/content/hintMarks.ts` (`parityMarks`,
   `parityLegend`), `src/content/hintPalette.ts`, the tie and weak-tie
   routing and the brackets in `src/content/hintGeometry.ts`.
+- **Phase 4 (sets)** built on its branch, in its nine stages, and in
+  review (the commits are in the spec's Status): a group is its members'
+  own marks on a bar in the gutter beside them, a TRUE group's members
+  pale "one of these" squares; an almost locked set a tight tile in each
+  of its cells, in one of three tints, with a lettered tab on every tile;
+  ALS-XZ, ALS-XY-Wing and ALS-XY-Chain the derived chains they are, drawn
+  with no truth where a chain whose sets share cells clashes; Death
+  Blossom the pattern, its branch links emitted for phase 5; a walk that
+  introduces each set before the chain uses it; Eureka with braces round
+  the whole set. Design and what the build refined: `docs/hint-drawing-sets.md`
+  (As built). Code: `Step.sets` and the links' `fromSet`/`toSet` in
+  `src/engine/steps.ts`, the finders (`groupedAic.ts`, `groupedXCycles.ts`,
+  `als.ts`), `checkSets` and `alsClash` in `src/engine/truth.ts`, the set
+  walk and its words in `src/engine/hintFrames.ts`, the marks and tints
+  in `src/content/hintMarks.ts`, the bars, tiles and tabs in
+  `src/content/hintGeometry.ts` (`setShapes`, `tilesIn`, `hintDrawing`),
+  both renderers and both legends, the notation in
+  `src/content/eureka.ts`. Guards: `tests/fixtures/drawingSnapshot.json`
+  and the path digest, unchanged since stage 1, and
+  `tests/fixtures/setDrawings.json`, written again only by
+  `DRAWING_SNAPSHOT=write-sets` in a commit that names its techniques.
 - What each review round found is in the spec's Status. What is left for
-  later, all low, is listed there under phases 2 and 3 and phases 6 and 7.
+  later, all low, is listed there under phases 2, 3 and 4 and phases 6
+  and 7.
 
 ## Next
 
-Phase 4 (sets) is designed: `docs/hint-drawing-sets.md`, from five maps,
-three designs and two judges, settled by the lead engineer. ALS-XY-Chain
-keeps its finder: the overlap ban the design first put before phase 4 was
-built and measured (commit `eecb8c1`, kept outside the repository for
-reference) and dropped, because HoDoKu lets sets that are not neighbours
-share cells, so the ban would rate stricter than HoDoKu while moving solve
-paths and ratings (the design's decision 13). Phase 4 starts from main as
-it is, in the nine stages its Stages section gives, each commit green on
-its own: data only first (the drawing fixture split with frozen
-positions, a path digest, then `Step.sets` and the links' set ends with
-`checkSets`), the trainer, the notation, the palette, groups (pale "one
-of these" squares on a bar, retiring `oneTrue`), ALS tiles and letter
-tabs, the set walk and its words, the ALS patterns as chains (a chain
-whose sets share cells drawn as it derives, with no truth where its
-derivation clashes) with Death Blossom's pattern view, then screenshots
-and the spec, and the review rounds. After it, phase 5
-(forcing chains per branch, which also draws Death Blossom's branches),
+Phase 4's review rounds, as phases 1-3 had them (below), on the branch's
+last commit: the screenshots of every set example and of the set
+fixture's eleven named positions, in all four themes, desktop and phone,
+every walk frame and the hint panel, with and without the player's own
+cell colours (`WALK=1 PANEL=1 PLAYER=1`), and the Learn gallery, kept
+outside the repository with a README that names each position. Fix each
+round's findings, then merge the branch whole when nothing is high,
+medium, false or regressed. After it, phase 5 (forcing chains per branch,
+which also draws Death Blossom's branches from the links phase 4 emits),
 phase 6 (words), phase 7 (polish), and a readability pass over every
-technique's hint against HoDoKu, in all four themes and on a phone.
+technique's hint against HoDoKu, in all four themes and on a phone. The
+relabelling of AIC with ALS steps whose only set is a bivalue cell is a
+later measured engine change (the design's decision 14).
 
 ## How the work has been run
 
@@ -78,8 +93,12 @@ technique's hint against HoDoKu, in all four themes and on a phone.
   `node scripts/hint-shots.cjs .vite/shots` photographs the app's board
   with every stored example that has links, in all four themes, desktop
   and phone (`WALK=1` every walk frame, `PANEL=1` the hint panel,
-  `TRAINER=1` the chain trainer); `--puzzle <puzzle> <steps> [TECH]` any
-  position on a solve path (a review's repro); `--gallery <html>` the
+  `TRAINER=1` the chain trainer, `PLAYER=1` the board again over the
+  player's own cell colours: the hint's sets' and groups' cells and a
+  neighbour of each, the full view in each of the nine colours, each walk
+  frame in one); `--puzzle <puzzle> <steps> [TECH]` any position on a
+  solve path (a review's repro; TECH's step is its finder's there, as the
+  drawing fixtures find it); `--gallery <html>` the
   Learn diagrams from `npx vite-node scripts/hint-gallery.ts <html>`. For
   main's drawings to compare, a worktree of `main` with its own
   `node_modules` (`cp -al` is quick) served on another port. After a

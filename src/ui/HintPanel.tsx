@@ -53,13 +53,15 @@ function useTechWhat(): (tech: Tech) => string {
 function truthWords(t: Translator, p: Premise): TruthWords {
   if (p.kind === 'set') {
     const v = { L: p.letter, a: p.digit };
+    // the digit with its article, "a 5" or "an 8", where the set holds one
+    const w = { L: p.letter, aDigit: t(p.digit === 8 ? 'an {d}' : 'a {d}', { d: p.digit }) };
     return p.assumed
       ? {
-          isTrue: t('true, if set {L} holds a {a} (by the small dot)', v),
-          isFalse: t('false, if set {L} holds a {a} (by the small dot)', v),
-          squaresOnBar: t('squares joined by a bar: one of them is true, if set {L} holds a {a} (by the small dot)', v),
-          ringsOnBar: t('rings joined by a bar: none of them is true, if set {L} holds a {a} (by the small dot)', v),
-          squaresInSet: t('squares in a set: one of them is true, if set {L} holds a {a} (by the small dot)', v),
+          isTrue: t('true, if set {L} holds {aDigit} (by the small dot)', w),
+          isFalse: t('false, if set {L} holds {aDigit} (by the small dot)', w),
+          squaresOnBar: t('squares joined by a bar: one of them is true, if set {L} holds {aDigit} (by the small dot)', w),
+          ringsOnBar: t('rings joined by a bar: none of them is true, if set {L} holds {aDigit} (by the small dot)', w),
+          squaresInSet: t('squares in a set: one of them is true, if set {L} holds {aDigit} (by the small dot)', w),
           refuted: t('the chain shows that premise is impossible: set {L} holds no {a} (by the small dot)', v)
         }
       : {
@@ -68,7 +70,7 @@ function truthWords(t: Translator, p: Premise): TruthWords {
           squaresOnBar: t('squares joined by a bar: one of them is true, if set {L} holds no {a} (by the small dot)', v),
           ringsOnBar: t('rings joined by a bar: none of them is true, if set {L} holds no {a} (by the small dot)', v),
           squaresInSet: t('squares in a set: one of them is true, if set {L} holds no {a} (by the small dot)', v),
-          refuted: t('the chain shows that premise is impossible: set {L} holds a {a} (by the small dot)', v)
+          refuted: t('the chain shows that premise is impossible: set {L} holds {aDigit} (by the small dot)', w)
         };
   }
   if (p.kind === 'group') {

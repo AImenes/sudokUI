@@ -5610,7 +5610,7 @@
     "secondary": "cover rows: where the base's 8s must land",
     "fins": "fin: 8s outside the fish, in one box; a removal must see every fin"
    },
-   "description": "Finned X-Wing on 8: in columns 3, 9, 8 sits in rows 5, 8 (r5c3, r8c3, r5c9, r8c9) except for the fin r4c3. Either the fin is false and the fish holds, or the fin is true; a 8 that sees every fin and lies in the cover rows outside the base is false both ways."
+   "description": "Finned X-Wing on 8: in columns 3, 9, 8 sits in rows 5, 8 (r5c3, r8c3, r5c9, r8c9) except for the fin r4c3. Either the fin is false and the fish holds, or the fin is true; an 8 that sees every fin and lies in the cover rows outside the base is false both ways."
   }
  },
  "SASHIMI_X_WING": {

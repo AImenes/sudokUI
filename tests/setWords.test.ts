@@ -20,9 +20,11 @@
  *   its frame;
  * - in the legends: a chain that opens in a set words its premise by the
  *   set, the legend names what its frame draws, and the hint panel's
- *   legend says what the Learn legend says, frame by frame.
+ *   legend says what the Learn legend says, frame by frame;
+ * - in English, "an 8" wherever a sentence puts an article before a digit,
+ *   and "a" before the others (src/engine/text.ts aDigit).
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
@@ -36,6 +38,11 @@ import { frameMarks, premiseOf } from '../src/content/hintMarks';
 import { legendOf } from '../src/content/boardSvg';
 import type { Step } from '../src/engine/steps';
 import type { Tech } from '../src/engine/ratings';
+import { aDigit, setEngineText } from '../src/engine/text';
+import { makeTranslator } from '../src/content/i18n';
+import nb from '../src/content/locales/app.nb';
+import es from '../src/content/locales/app.es';
+import { readSource } from '../scripts/i18n-source';
 import { patternChain, wordProblems, GENERIC } from './setWords';
 
 const storage = new Map<string, string>();
@@ -321,7 +328,7 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
       `link 3: a plain sentence for a set's link: ${generic}`,
       `link 3: does not name set A: ${generic}`
     ]);
-    expect(wordProblems(saying({ 0: 'If set B holds a 8, r2c8 must be 8.' }))).toEqual(['frame 1: names set B, which it does not draw']);
+    expect(wordProblems(saying({ 0: 'If set B holds an 8, r2c8 must be 8.' }))).toEqual(['frame 1: names set B, which it does not draw']);
     expect(wordProblems(saying({ 1: 'If r2c8 is 8, the group A holds no 8: every 8 of set A sees r2c8.' }))).toEqual([
       'frame 3: says "group" of a set: If r2c8 is 8, the group A holds no 8: every 8 of set A sees r2c8.'
     ]);
@@ -433,5 +440,72 @@ describe('the legend of a set walk (docs/hint-drawing-sets.md, decision 18)', ()
       }
     }
     expect(views).toBeGreaterThan(120);
+  });
+});
+
+describe('an 8: the article before a digit (src/engine/text.ts aDigit)', () => {
+  afterEach(() => setEngineText('en', null));
+
+  it('writes "an" before 8 and "a" before every other digit in English, and the Norwegian and Spanish article before each', () => {
+    const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    expect(digits.map(aDigit)).toEqual(['a 1', 'a 2', 'a 3', 'a 4', 'a 5', 'a 6', 'a 7', 'an 8', 'a 9']);
+    setEngineText('nb', nb.engine);
+    expect(digits.map(aDigit)).toEqual(digits.map((d) => `en ${d}`));
+    setEngineText('es', es.engine);
+    expect(digits.map(aDigit)).toEqual(digits.map((d) => `un ${d}`));
+    // the hint panel's own words for it
+    for (const [lang, loc, art] of [['nb', nb, 'en'], ['es', es, 'un']] as const) {
+      const t = makeTranslator(lang, loc);
+      expect([t('a {d}', { d: 5 }), t('an {d}', { d: 8 })], lang).toEqual([`${art} 5`, `${art} 8`]);
+    }
+  });
+
+  it('never writes "a 8" in a set step the repository keeps: its description, its walk and its legends; an ALS pattern and a Death Blossom about 8 say "an 8"', () => {
+    const steps = [...SETS.map((tech) => ({ where: tech as string, position: EXAMPLES[tech]!, step: EXAMPLES[tech]!.step })), ...kept];
+    const eights = new Set<Tech>();
+    for (const { where, position, step } of steps) {
+      const frames = walkFrames(step);
+      const words = [step.description, ...frames.map((f) => f.text), ...[null, ...frames].flatMap((f) => legendOf(step, position.values, f).map((l) => l.label))];
+      for (const w of words) expect(w, where).not.toMatch(/\ba 8\b/);
+      if (words.some((w) => /\ban 8\b/.test(w))) eights.add(step.tech);
+    }
+    expect([...eights].sort()).toEqual(['ALS_XY_CHAIN', 'ALS_XY_WING', 'ALS_XZ', 'DEATH_BLOSSOM']);
+    // the conclusion of a chain whose sets share cells, about 8
+    const clash = kept.find((k) => k.where === 'shared cells that clash, step 15, ALS_XY_CHAIN')!.step;
+    expect(walkFrames(clash).at(-1)!.text).toMatch(/^Set A or set D holds an 8: if A holds none, D holds one\./);
+    expect(clash.description).toMatch(/A or D holds an 8, so 8 is removed/);
+  });
+
+  it('words a premise that a set holds an 8 so in the hint panel and the Learn legend', () => {
+    // the stored AIC with ALS read backwards from set A's 8s: if A holds an 8, r2c8 is not 8, so r2c9 is
+    const ex = EXAMPLES.AIC_ALS!;
+    const [into, out] = [ex.step.links![1], ex.step.links![0]];
+    const step: Step = {
+      ...ex.step,
+      links: [
+        { from: into.to, to: into.from, strong: false, fromSet: into.toSet },
+        { from: out.to, to: out.from, strong: true }
+      ]
+    };
+    expect(premiseOf(step)).toEqual({ assumed: true, kind: 'set', letter: 'A', digit: 8 });
+    const learn = legendOf(step, ex.values).map((l) => l.label);
+    expect(learn).toContain('true, if set A holds an 8 (by the small dot)');
+    expect(learn).toContain('false, if set A holds an 8 (by the small dot)');
+    expect(panelLegend(ex, step, null)).toEqual(learn);
+  });
+
+  it('writes "an 8" in a finned fish about 8, and no English template puts "a" before a hole but the article\'s own', () => {
+    const ex = EXAMPLES.FINNED_X_WING!;
+    expect(ex.step.description).toMatch(/; an 8 that sees every fin/);
+    const g = parseGrid(ex.puzzle)!;
+    for (let i = 0; i < 81; i++) {
+      g.values[i] = Number(ex.values[i]);
+      g.cands[i] = ex.cands[i];
+    }
+    expect(findStep('FINNED_X_WING', g)!.description).toBe(ex.step.description);
+    const source = readSource();
+    expect([...source.engineKeys.keys()].filter((k) => /(^|[^A-Za-z])an? \{\d+\}/.test(k)).sort()).toEqual(['a {0}', 'an {0}']);
+    // a digit in the interface's keys, by its placeholder's name ({tech}, {level} and {method} are names, not digits)
+    expect([...source.uiKeys.keys()].filter((k) => /(^|[^A-Za-z])an? \{(?!tech\}|level\}|method\})\w+\}/.test(k)).sort()).toEqual(['a {d}', 'an {d}']);
   });
 });

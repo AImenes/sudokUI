@@ -15,7 +15,7 @@
  */
 import { cellName, cellNames } from './board';
 import { CellDigit, ChainLink, ChainSet, Step, insideSet, isParity, isTie } from './steps';
-import { listAnd, tr, unitName } from './text';
+import { aDigit, listAnd, tr, unitName } from './text';
 import { alsClash, deriveTruth, isAlsChain } from './truth';
 
 /**
@@ -150,9 +150,9 @@ function setLinkText(link: ChainLink, step: Step): string | null {
     const oneCell = fromCells.length === 1 && toCells.length === 1 && fromCells[0] === toCells[0];
     if (!oneCell) return null;
     const cell = cellName(fromCells[0]);
-    if (from && to) return tr`If set ${from.letter} holds a ${fd}, set ${to.letter} holds no ${td}: the only ${fd} of ${from.letter} and the only ${td} of ${to.letter} are both in ${cell}.`;
+    if (from && to) return tr`If set ${from.letter} holds ${aDigit(fd)}, set ${to.letter} holds no ${td}: the only ${fd} of ${from.letter} and the only ${td} of ${to.letter} are both in ${cell}.`;
     return from
-      ? tr`If set ${from.letter} holds a ${fd}, ${cell} cannot be ${td}: the only ${fd} of ${from.letter} is in ${cell}.`
+      ? tr`If set ${from.letter} holds ${aDigit(fd)}, ${cell} cannot be ${td}: the only ${fd} of ${from.letter} is in ${cell}.`
       : tr`If ${cell} is ${fd}, set ${to!.letter} holds no ${td}: the only ${td} of ${to!.letter} is in ${cell}.`;
   }
   const x = fd;
@@ -170,8 +170,8 @@ function setLinkText(link: ChainLink, step: Step): string | null {
     const L = from.letter;
     const cells = cellNames(toCells);
     return one(toCells)
-      ? tr`If set ${L} holds a ${x}, ${cells} cannot be ${x}: it sees every ${x} of ${L}.`
-      : tr`If set ${L} holds a ${x}, none of ${cells} can be ${x}: they see every ${x} of ${L}.`;
+      ? tr`If set ${L} holds ${aDigit(x)}, ${cells} cannot be ${x}: it sees every ${x} of ${L}.`
+      : tr`If set ${L} holds ${aDigit(x)}, none of ${cells} can be ${x}: they see every ${x} of ${L}.`;
   }
   const L = to!.letter;
   const cells = cellNames(fromCells);
@@ -378,7 +378,7 @@ function endsText(step: Step): string {
   const L = step.sets?.[links[links.length - 1].toSet!]?.letter;
   const z = step.eliminations[0]?.digit;
   if (!F || !L || z === undefined) return '';
-  return tr`Set ${F} or set ${L} holds a ${z}: if ${F} holds none, ${L} holds one. Each removed ${z} sees every ${z} of both.`;
+  return tr`Set ${F} or set ${L} holds ${aDigit(z)}: if ${F} holds none, ${L} holds one. Each removed ${z} sees every ${z} of both.`;
 }
 
 /**
@@ -436,7 +436,7 @@ function blossomFrames(step: Step): Frame[] {
     frames.push({ text, links: end, show });
   });
   frames.push({
-    text: `${tr`Whichever digit the stem takes, a petal holds a ${z}. Each removed ${z} sees every ${z} of every petal.`} ${conclusionText(step)}`,
+    text: `${tr`Whichever digit the stem takes, a petal holds ${aDigit(z)}. Each removed ${z} sees every ${z} of every petal.`} ${conclusionText(step)}`,
     links: links.length,
     show: new Set<Part>(['units', 'stem', 'primary', 'secondary', 'fins', 'conclusion'])
   });
