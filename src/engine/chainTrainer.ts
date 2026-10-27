@@ -276,9 +276,15 @@ export function chainStep(g: Grid, chain: Chain, opts: Drawing = {}): Step {
  * weak ties say how its drawing argues, not what the chain is: its chain
  * is its clusters' ties, and a weak tie may join more than one candidate
  * (3D Medusa rule 3 joins a cell's two shades at once to what they remove),
- * so weak ties are left out.
+ * so weak ties are left out. A step with sets (docs/hint-drawing-sets.md,
+ * decision 21) is refused whatever its links: the trainer builds neither a
+ * group, one node of several candidates, nor an almost locked set, whose
+ * own link is strong only through the whole set, even where the links
+ * between sets are single candidates (an ALS-XZ's restricted common, a
+ * Death Blossom's).
  */
 export function buildable(step: Step | null | undefined): boolean {
+  if (step?.sets?.length) return false;
   const chain = (step?.links ?? []).filter((l) => !(l.undirected && !l.strong));
   return chain.length > 0 && chain.every((l) => l.from.length === 1 && l.to.length === 1);
 }
