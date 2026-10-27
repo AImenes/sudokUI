@@ -13,7 +13,9 @@ tiles, as the solver judge listed them. Where those were silent this takes
 the judges' grafts, and where the judges disagreed the table says which way
 and why. It refines G5, G10, G11 and G16 of [hint-drawing.md](hint-drawing.md),
 which point here. The working notes (maps, designs, judges, scans and their
-scripts) are kept outside the repository.
+scripts) are kept outside the repository. Amended the same day: the
+ALS-XY-Chain overlap ban the designs put before phase 4 is dropped, and a
+chain whose sets share cells is drawn as it derives (decisions 6 and 13).
 
 ## Goal
 
@@ -130,15 +132,15 @@ Death Blossom's HoDoKu line built from the step's own sets.
 | 3 | FALSE groups, rule 3, proof-only views | A FALSE group: its members' false rings on a blue bar. Rule 3's start: green squares on a green bar before the closing link, with the start dot by the member nearest the next node; blue rings on a blue bar at the closing link; red barred rings (the pattern colour inside, G5) on a red bar in the full view and the conclusion. A discontinuous loop's full view and conclusion: pattern discs on a pattern-ink bar. `oneTrue` and its pattern-disc exception are retired | Every member of a false group is false, so each ring is true. The bar takes its members' ink in every state, so rule 3 reads assumed, proven false, removed. 17 groups are rule-3 starts; 48 Grouped Nice Loops and 7 Grouped X-Cycles are placing loops |
 | 4 | Where arrows meet groups and sets | At the node's member nearest the other end, as today, never at a bar's or tile's edge; the tail or tip where the ray towards the other end (or the first or last control point) leaves that member's mark exactly (a square reaches 13 on its axes, 15.5 at its corners), plus the gap. Bars and tabs are obstacles for every arrow, tie, start dot and walk number; a group's own bar is exempt within 14 + gap + half-width of the anchoring member. A strict test: no arrow crosses a bar except at its anchoring member. Tiles are areas, crossed as bands are; a set's members are obstacles, as marks are. All through an optional argument, so a step with no sets is laid out byte for byte as today | Joining a hull's nearest point lands beside another digit's member at 57% of ALS ends and beside a foreign digit at 22% of group ends; the member keeps the head on its candidate (HoDoKu anchors at a group's first member only, so its other members get no arrow). Another arrow passes between a group's members in 63 groups today; the exact reach keeps the gap at every angle |
 | 5 | The ALS mark | One tile per cell of the set: the rectangle round the centres of that cell's candidates, 15 units out, corner radius 10; fill the set's tint at `--hint-set-alpha` 0.5; outline in the set's ink at full strength, stroked inwards, 2.5 units (4.5 under 600 CSS px, 5 under 330; Learn half again), never under 1.5 CSS px on a phone. Its outer edge keeps 6 units from the cell's edge on every board (3 clear of a box line). No hull, no causeway, no whole-cell tint | 80-90% of multi-cell sets are not compact, and 68% have cells between their cells, 64% of them solved. A padded hull covers a foreign candidate in 43% of sets and a removal in 13% (the stored XY-Chain's 4r4c5); per-cell tiles round a cell's own candidates held no foreign candidate in 5,032 cases. A whole-cell tile is a cell tint (G1) and reads as the player's own colours (rose is 2.7 from their pink). Causeways hug a grid line in 17% of cases on a phone and cross another set's in about 3%. Outlines of 4.5 and 5 units are 1.6 CSS px at the smallest board of each step (G14a) |
-| 6 | A cell in two sets | The earlier set's tile; the later set's outline dashed "6 4", one outline width inside it, no fill; both tabs, each in its own free place | Only AIC with ALS menu steps share a cell once the overlap ban lands (31 of 4,778, none on the paths). Stacked tints read as one (1.6-5.8 apart); a nested tile does not fit a cell on a phone |
+| 6 | A cell in two sets | The smaller set's tile (on equal sizes, the earlier set's); the other set's outline dashed "6 4", one outline width inside it, no fill; both tabs, each in its own free place. So a set lying wholly inside another's cells has a tile in each of its cells, and the set round it shows its tint on its other cells and its dashed outline and tab on the shared ones: at `.37.4......67.8...........972.....61..91.54..14.....856...........9.28......8.23.` step 25, A (the cell r7c7) lies inside D (r7c5, r7c7), so r7c7 is A's tile with D's dashed outline inside it and both tabs, and r7c5 is D's tile | Common, since ALS-XY-Chain keeps HoDoKu's rule (decision 13): in the maps' scan of the practice pools, seeds and examples, 61 of 113 path XY-Chains put a cell in two sets (A and D in 57), and 32 put one set wholly inside another's cells, 29 of them A and D (124 and 64 of 211 over every corpus); AIC with ALS menu steps share a cell in 31 of 4,778, none on the paths. No cell is in three sets: only sets that are not neighbours share cells, and no three of A-D are (none in the scans). So a shared cell draws the same two outlines however the sets nest; nesting decides only whose tint shows. The earlier set's tile, as first decided, left a set with no filled tile in 19 of the 113 (31 of 211), a later set lying in earlier sets' cells (D inside A in 16), so its tint showed nowhere; the smaller set's tile leaves every set a filled tile in all 211. Stacked tints read as one (1.6-5.8 apart); a second filled tile inside the first does not fit a cell on a phone |
 | 7 | The letter | A tab on every tile: a rounded square in the set's ink (18 units, rx 4; 26 on a small board and in Learn) with a 1.5 keyline, the letter bold in the board's colour (13; 19). It is centred on a candidate place of the tile's cell that shows no digit: the places inside the tile's rectangle first, then those beside it, each in the order 1, 3, 7, 9, 2, 4, 6, 8, 5, taking the first where, at the phone's size, it keeps from every mark, start dot, walk number and head the 2 units two neighbouring discs keep; if none, the place with most room. Tabs are obstacles (radius 13; 18.4 on a small board) | Only a letter on every tile identifies every cell for a colour-blind player, on a phone, and over the player's own colours, where a tile's fill all but vanishes (sand on yellow 1.8, dark rose on teal 0.6). Drawn inverse, it cannot pass for a candidate, as a bare letter in a candidate place reads as an 8; it is 12.9 or more from the walk badge's fill. A grid-corner diamond sits on four cells and names the wrong one. An ALS cell shows at most 5 digits, so 4 places are free |
-| 8 | Tints and who takes which | Three: sand, rose, violet. Up to three sets take one each in letter order. Four or more take, in letter order, the lowest tint no set they conflict with already has (linked by a restricted common, sharing a cell, or sharing a cell side), and where none is free the lowest no linked set has: a tint is reused, never on two linked sets. Sets that share a tint are told apart by their tabs | Three tints are 15.3 apart (light) and 13.9 (forest) in the worst model, and keep linked, overlapping or touching sets apart in 555 of 556 path steps (the one left overlapped, which the ban removes); two tints fail in 41 (16 XY-Wings, 25 XY-Chains); four cannot hold digit contrast, the player's cells and the "one of these" square at once (palette map) |
+| 8 | Tints and who takes which | Three: sand, rose, violet. Up to three sets take one each in letter order. Four or more take, in letter order, the lowest tint no set they conflict with already has (linked by a restricted common, sharing a cell, or sharing a cell side), and where none is free the lowest no linked set has: a tint is reused, never on two linked sets. Sets that share a tint are told apart by their tabs | Three tints are 15.3 apart (light) and 13.9 (forest) in the worst model, and keep linked, overlapping or touching sets apart in 555 of 556 path steps (in the one left, an ALS-XY-Chain whose sets share cells, A and D share a tint and a cell, parted there by the dashed outline and everywhere by their tabs); two tints fail in 41 (16 XY-Wings, 25 XY-Chains); four cannot hold digit contrast, the player's cells and the "one of these" square at once (palette map) |
 | 9 | The dark violet ink | #c896ce, in place of the teaching design's #d4a3f7 | Pushed as far from the false ring's blue as the numbers allow: 8.7 worst-model (#d4a3f7 is 2.7, the map's #b4a6ff 0.5), and no nearer any other dark-theme mark or set ink (the pattern 9.4, the rose ink 9.1, the removal 12.8), at 6.03:1 or more on every dark board and panel and 5.35:1 on its own tile. It costs some saturation (CIELAB chroma 36 against 48) and contrast (7.19:1 before). The light violet ink stays #6a40d0, 3.3 from the false blue: an outline round candidates and a filled tab never take a ring's shape; a measured #8400fc (8.5) is kept in reserve should the screenshots show an outline read as a false ring |
 | 10 | The mark of each candidate of a set | In a derived view a chain node takes its truth: a false node's candidates false rings, a true node of one candidate a true disc, of several "one of these" squares (no bar: the tile carries them). The set's other digits are the new `member` mark: no shape, the digit bold in `--hint-in-ring` on the tile. No primary, secondary or fin role in a derived ALS step. G5 becomes removed > placed > chain truth (disc, ring, square) > a role > a set member. Roles are drawn only where a view has no truth (Death Blossom) | G2-G5 forbid role discs beside truth marks (pattern blue against true 4.1, gold against true 8.3). The candidate ink `--cand` is 2.2-3.9:1 on a tint, so members are drawn in the ring ink, as G2 already asks of a digit a hint marks |
-| 11 | ALS-XZ, ALS-XY-Wing, ALS-XY-Chain | Derived chains (`truth: 'derived'`): the finder emits each set's internal strong link, digit node to digit node, and the restricted commons as weak links. The restricted common is a dashed arrow with a head into the false ring(s), numbered in the walk; nothing is drawn inside a set; a start dot; the conclusion frame equals the full view. The one orientation the derivation picks, the finder's A first, is labelled by the premise in the legend, as W-Wing's is | They derive cleanly on every path and menu step of the corpora (391 and 9,142 XZ, 376 and 9,418 XY-Wing), and every removal conflicts with both ends. One grammar holds for the family: AIC with ALS draws the same relation the same way, and nothing changes kind on the last frame (HoDoKu's pattern full view would turn the walk's rings into blue discs). A headless tie would break a chain's reading order |
+| 11 | ALS-XZ, ALS-XY-Wing, ALS-XY-Chain | Derived chains (`truth: 'derived'`): the finder emits each set's internal strong link, digit node to digit node, and the restricted commons as weak links. The restricted common is a dashed arrow with a head into the false ring(s), numbered in the walk; nothing is drawn inside a set; a start dot; the conclusion frame equals the full view. The one orientation the derivation picks, the finder's A first, is labelled by the premise in the legend, as W-Wing's is | They derive cleanly on every path and menu step of the corpora (391 and 9,142 XZ, 376 and 9,418 XY-Wing), as do the 87 path XY-Chains of four separate sets (decision 13 for those whose sets share cells), and every removal conflicts with both ends. One grammar holds for the family: AIC with ALS draws the same relation the same way, and nothing changes kind on the last frame (HoDoKu's pattern full view would turn the walk's rings into blue discs). A headless tie would break a chain's reading order |
 | 12 | Doubly linked ALS-XZ | Only the restricted common the finder used is drawn and worded; the second common digit is a member | 13 path and 3,866 menu steps have two. Drawing the second would imply removals the step does not make; taking them is a finder change, its own review |
-| 13 | ALS-XY-Chain whose sets overlap | The overlap ban (all three designs' E1: its four sets pairwise disjoint, HoDoKu's `ALLOW_ALS_OVERLAP=false`) is its own reviewed change, built separately, and lands first. Phase 4 keeps no fallback for overlapping chains beyond refusing a truth the derivation cannot give: for an ALS pattern whose derivation has a problem or a closure, `hintMarks` draws no truth (tiles, tabs, members, arrows and removals only, and the legend names no truth), and a closure is never drawn as a proof. truth.ts gains `emptyTrue`: a TRUE node of several candidates all of which the chain makes false | 124 of 211 path XY-Chains overlap today: 36 derive with `inFalseGroup`, 10 close on their start and 10 silently draw a true end group whose members are all false. A closure drawn as a discontinuous loop would prove "set A holds z", more than the step concludes. The ban changes 40 of 65 affected paths and 37 scores, no level (measured by the teaching design), so it is reviewed alone. `emptyTrue` trips on none of 1,243 current derived chains, so it changes no drawing |
-| 14 | AIC with ALS whose only "set" is a bivalue cell | Keep the label; draw no tile and no letter for a one-cell set: it is the bivalue cell it is, drawn and worded as one (G12, "if it is not 2, it must be 6"), written `(2=6)r3c4`. The relabel is a later engine change, measured as the overlap ban is | The judges split: the casual one would relabel so the title never names an undrawn set; the solver would keep it. It affects 557 menu steps and none on the paths, so the title is a menu-only inaccuracy, while nothing drawn is false. Relabelling can move the search's first find and moves the step's rating (5970 against 5960), so it is not phase 4's |
+| 13 | ALS-XY-Chain whose sets share cells | No overlap ban: `findAlsXyChain` stays as it is, HoDoKu's rule (neighbouring sets share no cell, as a restricted common is looked for only between sets that share none; sets further apart may share cells), and a chain whose sets share cells is drawn honestly. One whose derivation is clean is drawn as the derived chain, its shared cells by decision 6. For an ALS pattern whose derivation has a problem, a closure or an `emptyTrue`, `hintMarks` draws no truth in any frame: tiles, tabs, members, arrows and removals only, the legend naming no truth, the walk in words; a closure is never drawn as a proof. truth.ts gains `emptyTrue`: a TRUE node of several candidates all of which the chain makes false | The designs took the ban (their E1, the four sets pairwise disjoint) for HoDoKu's default, `ALLOW_ALS_OVERLAP=false`. It is not: HoDoKu builds restricted commons only between sets that share no cell, so neighbours are kept apart, but "two non adjacent ALS may overlap without restrictions" (the javadoc of `AlsSolver.getAlsXYChainInt`), which is what `findAlsXyChain` does. The app's rating is HoDoKu's, so a ban would be stricter than HoDoKu. Built and measured on its own (commit eecb8c1, kept outside the repository for reference), it changed the solve paths of 21 of 336 practice puzzles and 17 of 144 seeds, moved 33 stored scores (-1,454 to +2,694), needed three stored puzzles replaced, and of 103,619 generated puzzles, where 990 take an ALS-XY-Chain and 696 one whose sets share a cell, moved 8 to another level; at some positions the hint became harder (a forcing chain in place of the overlapping chain). So the lead engineer kept the finder. On the paths 124 of 211 XY-Chains have sets sharing a cell: 56 clash in the derivation (36 `inFalseGroup`, 10 closures, 10 `emptyTrue`, a true end whose every candidate is false) and draw no truth; the other 68 are drawn as derived chains, with their shared cells. No chain of four separate sets clashes, and one whose last set lies inside the first always does, as its z are the first set's. A closure drawn as a discontinuous loop would prove "set A holds z", more than the step concludes. `emptyTrue` trips on none of 1,243 current derived chains, so it changes no drawing outside the ALS patterns |
+| 14 | AIC with ALS whose only "set" is a bivalue cell | Keep the label; draw no tile and no letter for a one-cell set: it is the bivalue cell it is, drawn and worded as one (G12, "if it is not 2, it must be 6"), written `(2=6)r3c4`. The relabel is a later engine change, measured as the colouring search orders were | The judges split: the casual one would relabel so the title never names an undrawn set; the solver would keep it. It affects 557 menu steps and none on the paths, so the title is a menu-only inaccuracy, while nothing drawn is false. Relabelling can move the search's first find and moves the step's rating (5970 against 5960), so it is not phase 4's |
 | 15 | Death Blossom (no truth until phase 5) | The pattern view: the stem's candidates and each petal's candidates of its stem digit acts-through gold, every petal's z pattern blue, the petals' other digits members; petals lettered tiles in stem-digit order, the stem no tile and never rings; a headless dashed weak tie from each stem digit to its petal's candidates of that digit, numbered in the walk, drawn from its frame on and in the full view; no start dot. Walk: the stem, then each petal in words only (a petal of several cells introduced first), then the conclusion. The branch links, (p)stem-(p)petal and (p)petal=(z)petal, are emitted in the data and derived in tests, ready for phase 5 | The removal's reason (every petal's z, seen by each removal) is on the board, and nothing claims a truth the full view cannot have: three stem candidates cannot be true at once in one map. Rings for the stem would be G2's false shape; one-of squares on the petals' z would read as "each petal holds its 4", true in one branch only. Branches drawn per frame are phase 5's model; emitting the links now means phase 5 extends rather than rebuilds. All 18 path Death Blossoms and the 8,726 menu ones derive branch by branch with no problem |
 | 16 | Letters | HoDoKu's: ALS-XZ A and B (A holds the start); ALS-XY-Wing A and B the wings (A linked by x, B by y), C the hinge; ALS-XY-Chain A to D along the chain; Death Blossom's petals A, B, C in stem-digit order; AIC with ALS in order of first appearance. The XY-Wing's walk reads A, C, B, and its hinge's frames say "set C, the hinge" | The board, the walk, the legend and the HoDoKu line must name one set alike (G22), and forum readers know the hinge as C. The solver judge asked for it; the casual judge's chain order (hinge B) loses that for a walk that reads A, B, C |
 | 17 | The walk | A frame per set of several cells before the first link that reaches it (no link added; its tiles, tab and members drawn, no truth yet); a one-cell set's introduction folded into its internal link's frame; then one frame per link; the conclusion naming both end sets and the reason. The words are built from `Step.sets` and the links, so a single reads "r8c2 must be 1" and several "one of r4c9, r6c8 must be 7". The restricted common's frame names the drawn candidates. Group chains keep today's frames and sentences | One idea per frame: the locking idea before the chain uses it. The casual judge's folds keep a bivalue hinge to one frame (73 one-cell sets on the scanned XY-Wing paths) and name the arrow's ends. The worked sentences must come from the data: in the stored ALS-XZ, A holds 1 only in r8c2 and B holds 5 only in r7c8 |
@@ -146,8 +148,8 @@ Death Blossom's HoDoKu line built from the step's own sets.
 | 19 | Copy step | ALS-XZ, ALS-XY-Wing, ALS-XY-Chain and AIC with ALS: Eureka, every set of several cells in braces over all its cells, from set identity (consecutive links inside one set merge into one node); a one-cell set plain, `(4=6)r6c3`. Death Blossom: HoDoKu's line rebuilt from `Step.sets`. `hodokuLine` builds every ALS pattern's line from `Step.sets` with the board's letters (the XY-Wing's hinge C); `alsSets`, the guesser, is retired; `stepText` keeps its rule (Eureka where `eurekaOf` gives a line) | G24 makes every chain Eureka, and the spec's acceptance line asks for ALS in braces. Braces from identity also fix AIC with ALS's false strong links ("(3)r8c2 = (8)r78c1" becomes "(3=8){r7c1,r8c12}"); reading the sets fixes every wrongly named set the scans found |
 | 20 | Data | `Step.sets` (kind `'group'` or `'als'`, cells, digits, members, unit, letter) and each link end's set (`fromSet`, `toSet`); `GNode.als` kept through the links; `checkSets` in src/engine/truth.ts holds every set and link to its rules over the corpora | 98 of 168 ALS digit nodes are box-line shaped, so shape cannot tell an ALS from a group; drawing, legend, walk and notation then read one object (G22). `members` and `unit` are the teaching design's (the tile and the words need a cell's candidates and the set's house); `checkSets` is HoDoKu's |
 | 21 | The chain trainer | `buildable()` refuses any step with sets | It accepts the stored ALS-XZ, ALS-XY-Wing and Death Blossom today, whose restricted commons happen to be single candidates, and offers "Build it yourself" for chains it cannot build (a set's internal link) |
-| 22 | Stored examples and Learn | AIC_GROUPED becomes `..5...2...7..14...6.........94..6..571.9.2.......3..8.......8..1..5...96.39.2..4.` at step 18, whose end group 8r89c6 is TRUE; GROUPED_NICE_LOOP becomes `.13.5......6...8.......34...2..6...5...2.1....39....6.68..7..2.1..8....4......9..` at step 10, a TRUE 7-group and a FALSE 9-group of three members on r1c9-r3c9; GROUPED_X_CYCLES keeps its false group, whose bar shows the point (a capsule would cover r2c4's 5); each ALS example is a chain with disjoint sets. The ALS patterns' and Death Blossom's descriptions are rewritten with the letters, so the Learn page explains the removal without a walk | All three stored group examples show a false group, so no Learn page shows the common case or a group of three. Both swaps are first uses on their paths (checked), so `exampleFrom` makes them again. The ALS examples' sets are disjoint and survive the overlap ban; the ban's own change re-hunts any example whose position it moves (the AIC with ALS puzzle's path changes under it). The grouped chains' and AIC with ALS's descriptions are chain lines whose form phase 6 replaces for every chain at once (G24); their legends already explain the removal from the two ends |
-| 23 | Proving nothing else moves | Data first, behind guards made before it: the drawing fixture split, the eight set techniques in their own file, rewritten only on purpose in a commit that names them, every other entry never rewritten, each path entry stored with its position so a solver change cannot move it; a path digest of every solve-path step's technique, placements and removals, and of the set techniques' menus | Phase 3's guard, sharpened. The digest proves the finders' data changes alter no conclusion; frozen positions keep the overlap ban and the colouring orders from shifting the fixture |
+| 22 | Stored examples and Learn | AIC_GROUPED becomes `..5...2...7..14...6.........94..6..571.9.2.......3..8.......8..1..5...96.39.2..4.` at step 18, whose end group 8r89c6 is TRUE; GROUPED_NICE_LOOP becomes `.13.5......6...8.......34...2..6...5...2.1....39....6.68..7..2.1..8....4......9..` at step 10, a TRUE 7-group and a FALSE 9-group of three members on r1c9-r3c9; GROUPED_X_CYCLES keeps its false group, whose bar shows the point (a capsule would cover r2c4's 5); the ALS examples stay where they are, each a chain whose sets share no cell, and no example is hunted again for the overlap ban, which is dropped (decision 13). The ALS patterns' and Death Blossom's descriptions are rewritten with the letters, so the Learn page explains the removal without a walk | All three stored group examples show a false group, so no Learn page shows the common case or a group of three. Both swaps are first uses on their paths (checked), so `exampleFrom` makes them again. With no ban no stored path moves, so every ALS example keeps its position (the ban would have brought the AIC with ALS and Nishio examples a step earlier), and a Learn page never opens on a shared cell; the overlapping chains are held by the set fixture's named positions instead. The grouped chains' and AIC with ALS's descriptions are chain lines whose form phase 6 replaces for every chain at once (G24); their legends already explain the removal from the two ends |
+| 23 | Proving nothing else moves | Data first, behind guards made before it: the drawing fixture split, the eight set techniques in their own file, rewritten only on purpose in a commit that names them, every other entry never rewritten, each path entry stored with its position so a solver change cannot move it; a path digest of every solve-path step's technique, placements and removals, and of the set techniques' menus | Phase 3's guard, sharpened. The digest proves the finders' data changes alter no conclusion; frozen positions keep any later solver change, as the colouring search orders were, from shifting the fixture. With the overlap ban dropped (decision 13) no solver change comes before phase 4 |
 | 24 | Left out | WXYZ-Wing and Sue de Coq keep their role drawings (they stay in the untouched fixture); forcing chains' multi-candidate nodes are phase 5's; an Eureka line for Grouped X-Cycles rule 3 (weak first) is phase 6's; the trainer does not build groups or sets | Scope and the merge rule |
 
 ## Data
@@ -203,7 +205,8 @@ What each finder emits:
   the description rewritten.
 - ALS_XY_WING: `sets` [A, B, C] (C the hinge); links (z)A=(x)A, (x)A-(x)C,
   (x)C=(y)C, (y)C-(y)B, (y)B=(z)B; derived; no roles.
-- ALS_XY_CHAIN: `sets` [A, B, C, D], pairwise disjoint once the ban lands;
+- ALS_XY_CHAIN: `sets` [A, B, C, D], neighbours disjoint, and A and C, A
+  and D or B and D free to share cells, as in HoDoKu (decision 13);
   seven links, (z)A=(x1)A-(x1)B=(x2)B-(x2)C=(x3)C-(x3)D=(z)D; derived; no
   roles.
 - DEATH_BLOSSOM: no `truth`; `sets` the petals A, B, C in stem-digit order;
@@ -213,8 +216,8 @@ What each finder emits:
   every petal's z, with new labels; the description rewritten.
 
 No finder's search, eliminations, placements, technique or rating changes in
-phase 4 (the path digest holds it); the overlap ban, before it, is the only
-change that moves a path.
+phase 4 (the path digest holds it), and no change before it moves a path:
+the overlap ban is dropped (decision 13).
 
 **truth.ts.** `Problem.issue` gains `emptyTrue` (above). `checkSets(step,
 cands)` returns what is wrong with a step's sets, each a bug in its finder:
@@ -226,10 +229,12 @@ inside one set that is weak, joins one digit, or is inside a group; a strong
 link between two digits in different cells that is not inside one ALS), `notRestricted` (a
 restricted common some candidate of which does not see every candidate of
 that digit in the other set), `zNotSeen` (a removal that does not see every
-z of both end sets, or of every petal), `overlap` (two sets of an ALS
-pattern sharing a cell), `letters` (letters not the technique's
-convention). The derivation is unchanged: a set's internal link is an
-ordinary strong link between two nodes.
+z of both end sets, or of every petal), `overlap` (two sets sharing a
+cell that the technique keeps apart: any two of an ALS-XZ, an ALS-XY-Wing
+or a Death Blossom's petals, and an ALS-XY-Chain's neighbours; its other
+pairs may share cells, decision 13), `letters` (letters not the
+technique's convention). The derivation is unchanged: a set's internal
+link is an ordinary strong link between two nodes.
 
 **Marks and geometry.** In src/content/hintMarks.ts the `oneTrue` mark
 becomes `oneOf` (the square) and `member` is added; `HintMarks` gains the
@@ -324,7 +329,7 @@ walk, the numbers on arrows and ties those of the frame that adds them.
   => r4c8<>7`; HoDoKu's line letters the hinge C, `A=r8c38 {247},
   B=r4c9,r6c8 {467}, C=r6c3 {46}, X,Y=4,6, Z=7`.
 - **ALS-XY-Chain** (stored, `.5.1....789......6......45...25....8.87.1.52.9....71...78......6......412....6.9.`
-  at step 27, disjoint sets, unchanged by the ban: A r4c2, r4c7 {469}; B
+  at step 27, four sets that share no cell: A r4c2, r4c7 {469}; B
   r1c7 {39}; C r1c5, r1c6 {239}; D r7c5 {49}; restricted commons 9, 3, 9; z
   4). Full view: tints by decision 8, a tab on every tile; r4c2's 4 a ring
   with the start dot, r4c7's 9 a disc, three dashed arrows between the sets,
@@ -335,6 +340,32 @@ walk, the numbers on arrows and ties those of the frame that adds them.
   r1c5, r1c6 can be 3"), C's lock, the 9 link, set D folded into its lock,
   the conclusion ("Set A or set D holds a 4 ..."). Copy: `(4=9){r4c27} -
   (9=3)r1c7 - (3=9){r1c56} - (9=4)r7c5 => r4c5<>4`.
+- **ALS-XY-Chain whose sets share cells** (124 of 211 on the paths,
+  decision 13; named positions in the set fixture). One that derives,
+  `.37.4......67.8...........972.....61..91.54..14.....856...........9.28......8.23.`
+  at step 25 (A r7c7 {15}; B r2c7, r2c9 {235}; C r5c5, r5c9 {237}; D
+  r7c5, r7c7 {157}, so A lies inside D; restricted commons 5, 2, 7; z 1):
+  the derived chain, r7c7 A's tile with D's dashed outline inside it and
+  both tabs, r7c5 D's tile (decision 6); r7c7's 1 a false ring with the
+  start dot and its 5 a true disc; dashed arrows into r2c7's 5, r5c9's 2
+  and r7c5's 7, false rings, with 2r2c9 and 7r5c5 true discs; D's 1s are
+  r7c5's, a "one of these" square, and r7c7's, already a false ring; r7c6's
+  1 removed. The walk as the stored chain's, A folded into its lock ("Set
+  A is the cell r7c7, which holds only 1 and 5: if it is not 1, it must be
+  5."), D's lock naming both its 1s ("... so one of r7c5, r7c7 must be
+  1."), and the conclusion ("Set A or set D holds a 1 ..."). Copy:
+  `(1=5)r7c7 - (5=2){r2c79} - (2=7){r5c59} - (7=1){r7c57} => r7c6<>1`.
+  One that clashes,
+  `..2....61...5.....7.4.....3.......3.42..3.9..3...9267..9.3...5.56.1.......3.8....`
+  at step 15 (A r1c4, r4c4, r5c4, r6c4 {46789}; B r1c1 {89}; C r4c1, r4c3
+  {689}; D r4c4, r6c4 {468}, inside A; restricted commons 9, 8, 6; z 8):
+  D's 8s are A's, which the premise makes false (`emptyTrue`), so no frame
+  draws a truth: D's tiles on r4c4 and r6c4 with A's dashed outlines inside
+  them, A's tiles on r1c4 and r5c4, a tab on every tile and both on each
+  shared cell, the sets' candidates members, three dashed arrows and
+  r3c4's 8 removed; the legend names no truth; the walk tells the same
+  frames in words. Copy:
+  `(8=9){r1456c4} - (9=8)r1c1 - (8=6){r4c13} - (6=8){r46c4} => r3c4<>8`.
 - **Death Blossom** (stored, `1.9..3.......9.5.....5.281.2..........18.....86.3...249.....1........63.5..76...8`
   at step 26: stem r8c9 {257}; petals A r9c7 {24}, B r8c5, r9c6 {145}, C
   r8c1 {47}; z 4). Full view: the stem's 2, 5 and 7 gold, no tile; tiles A,
@@ -495,10 +526,15 @@ it, and one template per number of petals.
   ALSs of AIC with ALS carry no set) over the examples, the pools' and seeds'
   paths and menus, the hard paths and a `findAllSteps` sample.
 - **The logic.** tests/truth.test.ts: the three patterns join `OPEN`; a
-  strong link inside an ALS is valid where `Step.sets` says so; every ALS-XZ,
-  ALS-XY-Wing, ALS-XY-Chain and AIC with ALS step derives with no problem
-  and no closure over every corpus, `emptyTrue` included, and every removal
-  conflicts with both ends; each Death Blossom branch derives from its two
+  strong link inside an ALS is valid where `Step.sets` says so; over every
+  corpus each derived ALS step either derives cleanly (no problem, no
+  closure, no `emptyTrue`), every removal conflicting with both ends, or,
+  when its derivation has a problem, a closure or an `emptyTrue`, draws no
+  truth (decision 13); the test counts both (on the paths today, of 211
+  ALS-XY-Chains 155 clean and 56 without truth) and holds that only an
+  ALS-XY-Chain whose sets share a cell takes the second, so every ALS-XZ,
+  ALS-XY-Wing and AIC with ALS step and every chain of four separate sets
+  derives cleanly; each Death Blossom branch derives from its two
   links (the stem's digit true, the petal's z true) and every removal
   conflicts with every branch end; the solution check finds no strong link
   without a true end and no weak link with two.
@@ -506,14 +542,18 @@ it, and one template per number of petals.
   true disc; a bar's ink is its members' mark; rule 3 is squares, rings,
   removals in turn; no primary, secondary or fin mark in a derived ALS step;
   no gold or pattern-blue disc beside a truth mark in any frame; Death
-  Blossom draws no truth in any frame; sets and colourings never share a
-  step; tints follow decision 8.
+  Blossom draws no truth in any frame, nor does an ALS pattern whose
+  derivation clashes, whose legend names no truth; sets and colourings
+  never share a step; tints follow decision 8.
 - **The geometry**, over the examples, both fixtures and the cached grouped
   chains: no arrow crosses a bar except at its anchoring member (strict:
   none); no bar crosses a shown glyph; an arrow ends at a square's exact
   reach plus the gap at eight angles; no arrow for a link inside a set;
   every tile holds only its cell's candidates and keeps 3 units off a box
-  line on every board; every tab sits on a free place with its room at a
+  line on every board; a cell in two sets draws the smaller set's tile and
+  the other's dashed outline inside it, never a cell in three, and every
+  set keeps a filled tile on at least one cell, a set inside another
+  included; every tab sits on a free place with its room at a
   phone's size, off every dot, number and head; a step with no sets is laid
   out exactly as before.
 - **The words.** tests/setWords.test.ts: every set is introduced by one
@@ -537,22 +577,30 @@ it, and one template per number of petals.
 - **The browser** (tests/e2e/smoke.spec.ts, in both font setups): an ALS-XZ
   walk (six frames, two tiles, two tabs, one dashed arrow, a start dot, no
   arrow inside a set), a grouped chain's squares and bar, Death Blossom's
-  three headless ties and no start dot, on desktop and a phone.
+  three headless ties and no start dot, and two ALS-XY-Chains whose sets
+  share a cell (Per technique): the one that derives (A's tile and D's
+  dashed outline on r7c7 with both tabs, its truth drawn) and the one that
+  clashes (tiles, tabs, arrows and the removal, no truth mark, the legend
+  naming no truth), on desktop and a phone.
 - **Review rounds** as in the handoff, on screenshots of every set example
   and the set fixture's named positions (the true group, the Grouped Nice
   Loop pair, the gapped group over a solved cell at
   `.1.........7.....1.9...32.51..58...9......76....9......54.......2.81.5.......98.7`
   step 20, rule 3, the short link of `..652....32.8...6..9.76.1.....39...8....5..3.1.26....9......5.4.5.....8...9....21`
   step 16, an XY-Wing whose wings touch at `..8.....1.61.9.......7..5...7.5....431..8..756....3.8...3..6.......4.23.1.....8..`
-  step 33, a two-digit stem, a shared cell) in all four themes, on a desktop
+  step 33, a two-digit stem, the two ALS-XY-Chains whose sets share a cell
+  from Per technique and the other two kinds of clash, `inFalseGroup` at
+  `7..1.4..9....694....25.....56.....1...4...7...1.....24.....69....591....3..2.5..6`
+  step 29 and a closure at
+  `..9.2..6....56........714..3.......6.5...2.98..4...5..4.........3.7..1....7.5..32`
+  step 16) in all four themes, on a desktop
   and a phone, walk frames included, and over the player's own cell colours
   under the tiles and the squares.
 
 ## Stages
 
-The overlap ban comes first, outside phase 4: its own change and review
-(built separately), measured as the colouring search orders were, merged to
-main with its examples refreshed. Phase 4's branch starts from that main.
+There is no stage before phase 4: the overlap ban once planned there is
+dropped (decision 13), so phase 4's branch starts from main as it is.
 Every commit below is green on its own: `npx tsc -b`, the whole
 `npx vitest run`, `npm run build`; the browser tests run at every stage
 that changes the board. The branch merges to main whole, after its review
@@ -610,14 +658,15 @@ role discs until stage 8, on the branch only.
    tests/parityDrawing.test.ts (`oneTrue` in their lists), tests/i18n.test.ts,
    tests/e2e/smoke.spec.ts (new: a grouped chain's squares and bar).
 6. **ALS tiles and tabs**: src/content/hintGeometry.ts (tiles, tabs and
-   their room, the shared cell, tabs as obstacles, nothing drawn for a link
-   inside a set, the start dot of a set start); src/content/hintMarks.ts
-   (`member`, the tints, a set drawn from the frame that first reaches it,
-   "lettered cells"); src/ui/Grid.tsx and src/content/boardSvg.ts (the tile
-   layer after the bands, tabs after the removal bars, members in the ring
-   ink); src/ui/HintPanel.tsx (the tile swatch). setDrawings.json rewritten
-   for AIC with ALS and the four patterns. Tests: tests/hintGeometry.test.ts
-   (tiles, tabs, no arrow inside a set), tests/hintMarks.test.ts,
+   their room, the shared cell with the smaller set's tile, tabs as
+   obstacles, nothing drawn for a link inside a set, the start dot of a set
+   start); src/content/hintMarks.ts (`member`, the tints, a set drawn from
+   the frame that first reaches it, "lettered cells"); src/ui/Grid.tsx and
+   src/content/boardSvg.ts (the tile layer after the bands, tabs after the
+   removal bars, members in the ring ink); src/ui/HintPanel.tsx (the tile
+   swatch). setDrawings.json rewritten for AIC with ALS and the four
+   patterns. Tests: tests/hintGeometry.test.ts (tiles, tabs, no arrow
+   inside a set, a set inside another), tests/hintMarks.test.ts,
    tests/gridDrawing.test.ts, tests/examples.test.ts, a test that sets and
    colourings never share a step.
 7. **The set walk and its words**: src/engine/hintFrames.ts (set frames,
@@ -632,16 +681,17 @@ role discs until stage 8, on the branch only.
    roles, new descriptions; Death Blossom's roles, labels, weak ties and
    branch links, new description); src/engine/hintFrames.ts (the patterns'
    conclusion, Death Blossom's frames); src/content/hintMarks.ts (no truth for
-   an ALS pattern whose derivation has a problem or a closure; Death
-   Blossom's marks); src/content/hintGeometry.ts (weak ties outside a
-   colouring); the four locale files; examples refreshed. setDrawings.json
-   rewritten for the four patterns. Tests: tests/truth.test.ts (`OPEN`, the
-   internal links, every corpus, Death Blossom's branches),
+   an ALS pattern whose derivation has a problem, a closure or an
+   `emptyTrue`; Death Blossom's marks); src/content/hintGeometry.ts (weak
+   ties outside a colouring); the four locale files; examples refreshed.
+   setDrawings.json rewritten for the four patterns. Tests:
+   tests/truth.test.ts (`OPEN`, the internal links, every corpus clean or
+   drawn without truth and both counted, Death Blossom's branches),
    tests/hintMarks.test.ts (113-118 rewritten; no roles beside truth; Death
    Blossom without truth), tests/eureka.test.ts (the three patterns in
    Eureka), tests/setWords.test.ts, tests/alsaic.test.ts,
    tests/examples.test.ts, tests/e2e/smoke.spec.ts (the ALS-XZ walk, Death
-   Blossom).
+   Blossom, the two ALS-XY-Chains whose sets share a cell).
 9. **Screenshots and the spec**: scripts/hint-shots.cjs gains an option
    that paints the player's own colours under a hint's cells, and with
    scripts/hint-gallery.ts photographs every set example and named position

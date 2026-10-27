@@ -3,7 +3,8 @@
 For whoever continues this work. The design and its rules (G1-G25), the
 phases and the running status are in `docs/hint-drawing.md`; this note
 says what is done, what comes next, and how the work has been run.
-Updated 2026-10-27, at the design of phase 4.
+Updated 2026-10-27, at the design of phase 4 and its amendment (no
+overlap ban).
 
 ## State
 
@@ -44,18 +45,21 @@ Updated 2026-10-27, at the design of phase 4.
 ## Next
 
 Phase 4 (sets) is designed: `docs/hint-drawing-sets.md`, from five maps,
-three designs and two judges, settled by the lead engineer. First, in its
-own reviewed change (built separately, not part of phase 4), ALS-XY-Chain
-stops letting its four sets overlap, as HoDoKu does by default; it moves
-solve paths and ratings, so it is measured as the colouring search orders
-were and merged before phase 4 starts. Then phase 4's nine stages, in the
-order its Stages section gives, each commit green on its own: data only
-first (the drawing fixture split with frozen positions, a path digest,
-then `Step.sets` and the links' set ends with `checkSets`), the trainer,
-the notation, the palette, groups (pale "one of these" squares on a bar,
-retiring `oneTrue`), ALS tiles and letter tabs, the set walk and its
-words, the ALS patterns as chains with Death Blossom's pattern view, then
-screenshots and the spec, and the review rounds. After it, phase 5
+three designs and two judges, settled by the lead engineer. ALS-XY-Chain
+keeps its finder: the overlap ban the design first put before phase 4 was
+built and measured (commit `eecb8c1`, kept outside the repository for
+reference) and dropped, because HoDoKu lets sets that are not neighbours
+share cells, so the ban would rate stricter than HoDoKu while moving solve
+paths and ratings (the design's decision 13). Phase 4 starts from main as
+it is, in the nine stages its Stages section gives, each commit green on
+its own: data only first (the drawing fixture split with frozen
+positions, a path digest, then `Step.sets` and the links' set ends with
+`checkSets`), the trainer, the notation, the palette, groups (pale "one
+of these" squares on a bar, retiring `oneTrue`), ALS tiles and letter
+tabs, the set walk and its words, the ALS patterns as chains (a chain
+whose sets share cells drawn as it derives, with no truth where its
+derivation clashes) with Death Blossom's pattern view, then screenshots
+and the spec, and the review rounds. After it, phase 5
 (forcing chains per branch, which also draws Death Blossom's branches),
 phase 6 (words), phase 7 (polish), and a readability pass over every
 technique's hint against HoDoKu, in all four themes and on a phone.

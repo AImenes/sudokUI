@@ -823,13 +823,15 @@ the values above are its final ones.
   Death Blossom the pattern, with its branch links emitted for phase 5; a
   walk that introduces each set before the chain uses it; Eureka with
   braces round the whole set, and HoDoKu's lines rebuilt from the sets.
-  Before it, in its own reviewed change (built separately), ALS-XY-Chain
-  stops letting its sets overlap, as HoDoKu does by default; it changes
-  solve paths and ratings, so it is measured and lands first. Phase 4 then
-  runs in nine stages, data only first behind a split drawing fixture and
-  a path digest, and changes no conclusion. The relabelling of AIC with ALS
-  steps whose only set is a bivalue cell is left to a later measured
-  engine change.
+  ALS-XY-Chain keeps HoDoKu's rule, neighbouring sets apart and sets
+  further apart free to share cells: the overlap ban first planned before
+  this phase was measured and dropped, as it would rate stricter than
+  HoDoKu and moved solve paths and ratings, so a chain whose sets share
+  cells is drawn as it derives, with no truth where its derivation clashes.
+  Phase 4 runs from main as it is, in nine stages, data only first behind a
+  split drawing fixture and a path digest, and changes no conclusion. The
+  relabelling of AIC with ALS steps whose only set is a bivalue cell is
+  left to a later measured engine change.
 - [ ] Phase 5: forcing
 - [ ] Phase 6: words
 - [ ] Phase 7: polish
