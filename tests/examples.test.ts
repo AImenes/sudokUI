@@ -346,3 +346,71 @@ describe('worked examples', () => {
     for (const a of assets) expect(a.path).toMatch(/^learn\/img\/[a-z0-9-]+\.svg$/);
   });
 });
+
+describe("the Learn diagrams after phase 4's first review (docs/hint-drawing-sets.md, decision 4)", () => {
+  /** a point's distance from another */
+  const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+  /** the numbers of an SVG path's or polygon's points */
+  const pointsIn = (s: string) => {
+    const n = (s.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+    return Array.from({ length: n.length >> 1 }, (_, k) => ({ x: n[2 * k], y: n[2 * k + 1] }));
+  };
+  /** the style block every diagram had before phase 4, as main's boardSvg writes it */
+  const MAIN_STYLE =
+    '<style>text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-anchor:middle}.giv{font-size:34px;font-weight:700;fill:#1b2233}.ent{font-size:34px;font-weight:600;fill:#2f6fd0}.cd{font-size:13px;fill:#5d6577}.mk{font-size:12.5px;font-weight:700;fill:#10131c}.rm{font-size:12.5px;font-weight:700;fill:#1b2233}.lab{font-size:12px;fill:#7a8294}.ko text{fill:#000!important;stroke:#000;stroke-width:max(.12em,2.4px);stroke-linejoin:round}</style>';
+  const styleOf = (svg: string) => svg.match(/<style>[\s\S]*?<\/style>/)![0];
+
+  it("end an arrow at a \"one of these\" square's reach and a gap, further than a disc's off its axes, as the app's board does", async () => {
+    const { squareReach, SIZES } = await import('../src/content/hintGeometry');
+    const { MARK } = await import('../src/content/hintPalette');
+    // a diagram's cell is 60 units
+    const S = 60;
+    const reach = (dir: { x: number; y: number }) => squareReach(dir, MARK.oneOf * S, MARK.oneOfRadius * S);
+    let ends = 0;
+    let beyondDisc = 0;
+    for (const tech of ['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'AIC_ALS'] as Tech[]) {
+      const svg = boardSvg(EXAMPLES[tech]!, tech);
+      // the squares' centres, and where each arrow's shaft starts and its head's tip
+      const squares = [...svg.matchAll(/<rect class="sq" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g)].map((m) => ({
+        x: Number(m[1]) + Number(m[3]) / 2,
+        y: Number(m[2]) + Number(m[4]) / 2
+      }));
+      const tails = [...svg.matchAll(/<path d="([^"]+)" fill="none" stroke="(?!#ffffff)[^"]+" stroke-width="[\d.]+" stroke-linecap/g)].map((m) => pointsIn(m[1])[0]);
+      const tips = [...svg.matchAll(/<polygon points="([^"]+)" fill="(?!#ffffff)[^"]+"\/>/g)].map((m) => pointsIn(m[1])[0]);
+      expect(tails.length, tech).toBeGreaterThan(0);
+      for (const p of [...tails, ...tips]) {
+        // the square it is at: no further off than a square's corner and a gap
+        const c = squares.find((q) => dist(p, q) < reach({ x: Math.SQRT1_2, y: Math.SQRT1_2 }) + SIZES.gap * S + 0.5);
+        if (!c) continue;
+        ends++;
+        const dir = { x: (p.x - c.x) / dist(p, c), y: (p.y - c.y) / dist(p, c) };
+        // to the diagram's tenth of a unit
+        expect(Math.abs(dist(p, c) - (reach(dir) + SIZES.gap * S)), `${tech}: an arrow at the square at ${c.x}, ${c.y}`).toBeLessThan(0.2);
+        if (reach(dir) - SIZES.r * S > 0.5) beyondDisc++;
+      }
+    }
+    // the stored AIC with Groups and Grouped Nice Loop each end an arrow at a square's corner side
+    expect(ends).toBeGreaterThanOrEqual(3);
+    expect(beyondDisc).toBeGreaterThanOrEqual(2);
+  });
+
+  it('write the tabs\' style rule only where a diagram draws a tab: a diagram with none keeps the style block it had before phase 4, byte for byte', () => {
+    let tabbed = 0;
+    for (const tech of techs) {
+      const svg = boardSvg(EXAMPLES[tech]!, tech);
+      const tabs = svg.includes('class="tab"');
+      expect(styleOf(svg).includes('.tab{'), tech).toBe(tabs);
+      if (tabs) {
+        tabbed++;
+        expect(styleOf(svg).replace(/\.tab\{[^}]*\}/, ''), tech).toBe(MAIN_STYLE);
+      } else expect(styleOf(svg), tech).toBe(MAIN_STYLE);
+      // a diagram with no set draws no tab
+      if (!EXAMPLES[tech]!.step.sets?.length) expect(tabs, tech).toBe(false);
+    }
+    // the five techniques with almost locked sets; the groups draw none
+    expect(tabbed).toBe(5);
+    expect(styleOf(boardSvg(EXAMPLES.AIC_GROUPED!, 'AIC_GROUPED'))).toBe(MAIN_STYLE);
+    // and so every Learn asset of an example
+    for (const a of buildLearnAssets().filter((x) => !x.path.startsWith('learn/img/intuition-'))) expect(styleOf(a.content).includes('.tab{'), a.path).toBe(a.content.includes('class="tab"'));
+  });
+});

@@ -3,8 +3,9 @@
  * docs/hint-drawing-sets.md, Data and "How it is checked"), as one list of
  * what is wrong with a step, for tests/chainSets.test.ts and for the walk
  * of tests/pathDigest.ts, which holds them over the practice pools' and
- * the seeds' solve paths and the set techniques' finds along them as it
- * digests them. Not a test file itself. A step's sets are held:
+ * the seeds' solve paths and, before a merge (PATH_DIGEST=menus), the set
+ * techniques' finds along them as it digests them. Not a test file
+ * itself. A step's sets are held:
  * - to their rules, by src/engine/truth.ts checkSets, against the board's
  *   candidates: each set's shape, each link end's set, the links inside a
  *   set and between sets, the ALS patterns' removals and the letters;

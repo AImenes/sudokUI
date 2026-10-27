@@ -81,7 +81,12 @@ later measured engine change (the design's decision 14).
 
 ## How the work has been run
 
-- **Checks**: `npx tsc -b`; `npx vitest run`; `npm run build`; the
+- **Checks**: `npx tsc -b`; `npx vitest run`; `npm run build`; before a
+  merge, and after any change to a set technique's finder,
+  `PATH_DIGEST=menus npx vitest run tests/pathDigest` (a plain run, and
+  CI, hold the solve paths alone; this adds what the seven set finders
+  first find at every position of every pool's and seed's path, about
+  eight minutes of finders dealt to four files, `tests/pathDigest.ts`); the
   browser tests, `CI=1 npx playwright test`, with a browser of your own
   in `PW_CHROMIUM` (on the owner's Windows machine Edge,
   `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`, with

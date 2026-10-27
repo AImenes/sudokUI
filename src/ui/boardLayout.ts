@@ -2,9 +2,12 @@
 // cell is 100 units, inside a 4-unit margin, and a cell's candidates sit on
 // a 28-unit 3×3 pitch. The hint geometry (src/content/hintGeometry.ts) is
 // told this through boardLayout, and the tests read the same layout.
-import { SIZES, squareReach } from '../content/hintGeometry';
-import type { Layout } from '../content/hintGeometry';
+import { SIZES, squareReach, hintDrawing } from '../content/hintGeometry';
+import type { HintDrawing, Layout } from '../content/hintGeometry';
 import { MARK } from '../content/hintPalette';
+import { frameMarks, markedCandidates, placedKeys, squareKeys } from '../content/hintMarks';
+import type { HintMarks } from '../content/hintMarks';
+import type { CellDigit, Step } from '../engine/steps';
 
 export const SIZE = 100;
 export const M = 4; // outer margin
@@ -79,3 +82,43 @@ export const boardLayout = (
     bounds: { x0: M, y0: M, x1: M + 9 * SIZE, y1: M + 9 * SIZE }
   };
 };
+
+/** a hint's drawing on the app's board, and what it was worked out from */
+export interface BoardDrawing extends HintDrawing {
+  /** the full view's marks */
+  full: HintMarks;
+  /** every candidate they hold, which the arrows bend round */
+  marks: CellDigit[];
+  /** whether the board shows a digit at its place on a cell's 3×3 */
+  shown: (cd: CellDigit) => boolean;
+  /** the board's layout, the placements' rings and the squares any frame draws reaching further than a disc */
+  layout: Layout;
+}
+
+/**
+ * A hint's arrows, start dots and walk numbers, its groups' bars and its
+ * sets' tiles and tabs, as the app's board works them out (src/ui/Grid.tsx
+ * `drawing`; the drawing fixtures and the geometry tests call it too, so
+ * they hold the board's own code): once for the whole hint, from the full
+ * view's marks and every link, so an arrow the reader has followed never
+ * moves as the walk goes on. An arrow bends round the hint's marks and
+ * nothing else; a placement's mark reaches out to its outer ring, and a
+ * square any frame draws further than a disc at its corners
+ * (docs/hint-drawing-sets.md, decision 4); a head, a dot and a number keep
+ * off the digits the board shows. `cellOf` a cell's digit and the player's
+ * own marks, `auto` a cell's candidates when the board shows them all
+ */
+export function boardDrawing(
+  step: Step,
+  cellOf: (cell: number) => { value: number; corner: number; center: number },
+  auto: ((cell: number) => number) | null
+): BoardDrawing {
+  const solved = (cell: number) => cellOf(cell).value > 0;
+  const full = frameMarks(step, null, solved);
+  const marks = markedCandidates(full);
+  // a cell the hint marks shows its digits at their places on the 3×3
+  const shown = (cd: CellDigit) => digitShown(cellOf(cd.cell), cd.digit, auto ? auto(cd.cell) : null, full.cands.get(cd.cell));
+  const layout = boardLayout(placedKeys(full), shown, solved, squareKeys(step, solved));
+  // the groups' bars and the sets' tiles and tabs first: the arrows, dots and numbers keep off them
+  return { ...hintDrawing(step, layout, marks), full, marks, shown, layout };
+}

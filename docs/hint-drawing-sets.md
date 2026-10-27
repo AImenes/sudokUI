@@ -533,12 +533,15 @@ it, and one template per number of petals.
   commit that names them. tests/pathDigest.test.ts holds every solve-path
   step's technique, placements and removals (practice pools, seeds, the six
   hard puzzles, the examples' puzzles) and the set techniques' first finds at
-  every path position of the pools and seeds, from stage 1 to the end.
+  every path position of the pools and seeds, from stage 1 to the end (the
+  finds, which take the finders minutes, with `PATH_DIGEST=menus`, before a
+  merge; As built).
 - **The data.** tests/chainSets.test.ts runs `checkSets` and the set
   invariants (every end of a derived step with several candidates carries a
   set of its kind; letters unique and in the technique's convention; one-cell
   ALSs of AIC with ALS carry no set) over the examples, the pools' and seeds'
-  paths and menus, the hard paths and a `findAllSteps` sample.
+  paths and menus (the menus with `PATH_DIGEST=menus`), the hard paths and
+  a `findAllSteps` sample.
 - **The logic.** tests/truth.test.ts: the three patterns join `OPEN`; a
   strong link inside an ALS is valid where `Step.sets` says so; over every
   corpus each derived ALS step either derives cleanly (no problem, no
@@ -577,8 +580,9 @@ it, and one template per number of petals.
   set keeps a filled tile on at least one cell, a set inside another
   included; every tab sits on a free place with its room at a
   phone's size, off every dot, number and head; a step with no sets is laid
-  out exactly as before. (Over the maps' cached grouped chains two arrows
-  are forced across a bar: As built.)
+  out exactly as before. (Over every grouped chain on offer along the
+  pools' and seeds' paths, 44 meet a bar, one of them a solve path's step:
+  As built.)
 - **The words.** tests/setWords.test.ts: every set is introduced by one
   frame before any frame that reaches it, a one-cell set by its internal
   link's; no set technique reaches the generic sentence; no ALS sentence or
@@ -766,24 +770,54 @@ hintMarks, i18n), and the decisions it refines point here.
 - **Start dots and bars** (decision 4). A start dot keeps off every bar,
   its own group's too, the whole of it: an arrow is free of its own bar
   only beside the member it is anchored at, a dot nowhere, so a dot never
-  sits on the bar of the group it opens.
+  sits on the bar of the group it opens (over the examples and both
+  fixtures; a wider corpus finds one dot on another group's bar, below).
 - **Arrows over bars** (How it is checked). No arrow crosses a bar but
   beside its anchoring member, strictly, over the stored examples and
-  both fixtures. Over 357 grouped steps (those, and every grouped step on
-  offer at the positions of the maps' 577 cached grouped chains; 437
-  bars, about 2,480 pairs of an arrow and a bar), two arrows still meet a
-  bar where no drawing clears it. At
-  `2..49..6....7.6583..6.5.......3...........418.94.1....6.....7.4.....7.9.45.9.....`
-  after 23 steps, a Grouped Nice Loop on offer, whose weak link
-  5r4c9-5r8c9 runs down column 9 a unit from the end of the bar under
-  6r6c79, which spans r6c7 to r6c9, with r6c9's 6 and the board's edge
-  closing the way round on the right. At
+  both fixtures. A wider corpus shows it is not so everywhere. Over every
+  grouped chain on offer at every position past the singles along the
+  solve paths of the 480 pool and seed puzzles and the six hard ones
+  (9,339 steps, 9,822 bars, about 56,800 pairs of an arrow and a bar, with
+  the strict check of tests/hintGeometry.test.ts, on review round 1's
+  code), an arrow meets a bar away from its anchoring member in 44 chains,
+  at 89 positions: in 37 it crosses the bar, in 7 its stroke grazes the
+  bar's at a phone's widest. 27 are Grouped Nice Loops, 9 AICs with ALS, 6
+  AICs with Groups and 2 Grouped X-Cycles. One of them is a solve path's
+  own step. Puzzle #5 of the Grouped Nice Loop practice pool,
+  `2..49..6....7.6583..6.5.......3...........418.94.1....6.....7.4.....7.9.45.9.....`,
+  has the loop on offer after 22 and 23 steps, and after 24 (a Finned and
+  a Sashimi X-Wing later) the solver takes it: its weak link 5r4c9-5r8c9
+  runs down column 9 across the bar of 6r6c79, which spans r6c7 to r6c9.
+  Any line inside the board from 5r4c9 to 5r8c9 passes between 6r6c7 and
+  6r6c9, since r6c9's 6 and the board's edge close the way round on the
+  right, so from walk frame 6 on the dashed 5 runs over the bar between
+  the group's two squares, about 50 units left of r6c9's member. The case
+  named before,
   `....5.8.91.5......8..76...4..754.9.8......3...81...56..1.8.......9......7..31.6..`
-  after 11 steps, an AIC with ALS on offer, whose first link
-  7r1c2=7r1c8 runs along row 1 across the bar beside 3r13c3, which runs
-  down column 3 from r1c3 to r3c3: the only ways past are over its top
-  member at the board's edge or below row 3. Neither is a solve path's
-  step.
+  (the AIC with Groups pool's first puzzle) after 8 to 11 steps, is on
+  offer only: an AIC with Groups and then an AIC with ALS whose first
+  link 7r1c2=7r1c8 runs along row 1 across the bar beside 3r13c3, where
+  the only ways past are over its top member at the board's edge or below
+  row 3. So are the other 42. The same corpus puts a start dot on another
+  group's bar in one chain (1r2c4's, beside the bar of 5r13c4, at
+  `......12........568.1.....4.6.3...1.92.........4...5..3...5.76......6...2..419.3.`
+  after 23 to 25 steps) and a walk number on a bar in two, none of them a
+  solve path's step.
+- **The path digest's menus** (decision 23, How it is checked). Dealt to
+  four test files, the digest's walk took about 570 s of the unit suite's
+  test time, near twice main's whole suite, most of it the seven set
+  finders' menus at every position past the singles of every pool's and
+  seed's path. A plain run, and CI, now hold the solve paths alone, with
+  their steps' sets, in tests/pathDigest.test.ts (about 105 s of one
+  worker, the other three files holding nothing; the solver walks the
+  paths anyway, and on a two-core runner's single worker shards would
+  save nothing); `PATH_DIGEST=menus` adds the menus and their finds' sets,
+  dealt to the four files side by side, where the shards still pay, and
+  is run before a merge (docs/hint-drawing-handoff.md, tests/pathDigest.ts).
+  Timed back to back on a busy four-core machine, the whole suite took
+  9 min 36 s of wall and 17 min 36 s of processor before, 8 min 53 s and
+  10 min 47 s after: about 410 s of processor less, which a one-worker
+  runner saves in full.
 - **Death Blossom's legend and walk** (decision 15). The legend keeps its
   role order: remove; blue ("4 in every petal: whichever digit
   the stem takes, a petal holds a 4"); gold ("the stem's candidates, and
@@ -802,4 +836,13 @@ hintMarks, i18n), and the decisions it refines point here.
   digit that only one of its cells holds to another digit of that cell, a
   candidate's or another set's; three templates say so ("If r6c5 is 2,
   set A holds no 4: the only 4 of A is in r6c5."). English writes "an 8"
-  where a template has "a {z}" (The walk and its words).
+  where a template has "a {z}" (The walk and its words). The same article
+  reaches the one sentence outside the eight that put "a" before a digit:
+  a finned or sashimi fish about 8 (Finned and Sashimi X-Wing, Swordfish
+  and Jellyfish) says "an 8 that sees every fin" where it said "a 8", in
+  the hint, on its Learn page and in its diagram's alt text; nb and es
+  read as before. That is the one change outside the set techniques, so
+  nothing else moves (How it is checked): no other word, drawing, path or
+  rating, and a Learn diagram that draws no letter tab keeps main's style
+  block byte for byte, the tabs' rule written only where a tab is drawn
+  (`boardSvg`).

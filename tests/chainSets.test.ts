@@ -14,7 +14,8 @@
  *   findAllSteps sample of generated puzzles.
  * The practice pools' and the seeds' solve paths, and the set techniques'
  * finds along them, are held to the same rules by tests/pathDigest.ts,
- * whose walk finds them anyway: walking them twice would take minutes more.
+ * whose walk finds them anyway: walking them twice would take minutes more
+ * (the paths in every run, the finds before a merge, PATH_DIGEST=menus).
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';

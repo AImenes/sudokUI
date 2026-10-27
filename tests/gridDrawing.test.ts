@@ -11,7 +11,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { EXAMPLES } from '../src/content/examples';
 import type { Tech } from '../src/engine/ratings';
-import type { Step } from '../src/engine/steps';
+import type { CellDigit, Step } from '../src/engine/steps';
 
 const storage = new Map<string, string>();
 (globalThis as any).localStorage = {
@@ -330,5 +330,46 @@ describe("the app board draws an almost locked set's tiles and letter tabs (docs
     expect(xz).not.toContain('weak-tie');
     useGame.setState({ hint: EXAMPLES.ALS_XZ!.step });
     expect(panel()).not.toContain('dashed line');
+  });
+});
+
+const { boardDrawing, squareReachOf } = await import('../src/ui/boardLayout');
+const { squareKeys } = await import('../src/content/hintMarks');
+const { SIZES, pointsOf } = await import('../src/content/hintGeometry');
+const { drawnLinks } = await import('../src/engine/hintFrames');
+
+describe("the app board draws boardDrawing's drawing, a square reaching further than a disc (docs/hint-drawing-sets.md, decision 4)", () => {
+  it("draws the arrows boardDrawing works out, and ends an arrow at a \"one of these\" square's reach and a gap, further than a disc's off its axes", () => {
+    let ends = 0;
+    let beyondDisc = 0;
+    for (const tech of ['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'AIC_ALS'] as Tech[]) {
+      const ex = EXAMPLES[tech]!;
+      const html = board(tech);
+      const d = boardDrawing(ex.step, (c) => ({ value: Number(ex.values[c]), corner: 0, center: 0 }), (c) => ex.cands[c]);
+      const drawn = drawnLinks(ex.step, null);
+      const arrows = d.shapes.filter((s): s is Extract<typeof s, { kind: 'arrow' }> => s.kind === 'arrow' && drawn.has(s.link));
+      // the board draws boardDrawing's shafts and heads, no others
+      expect([...html.matchAll(/<path class="chain-shaft[^"]*" d="([^"]+)"/g)].map((m) => m[1]), tech).toEqual(arrows.map((s) => s.d));
+      expect([...html.matchAll(/<polygon points="([^"]+)" fill="var\(--hint-arrow\)"/g)].map((m) => m[1]), tech).toEqual(arrows.filter((s) => s.head.length).map((s) => pointsOf(s.head)));
+      const squares = squareKeys(ex.step, (c) => ex.values[c] !== '0');
+      for (const s of arrows) {
+        const link = ex.step.links![s.link];
+        for (const [p, at] of [[s.tail, link.from], ...(s.head.length ? [[s.head[0], link.to] as const] : [])] as const) {
+          // the candidate the end is at: the nearest of its node
+          const off = (y: CellDigit) => Math.hypot(p.x - d.layout.centre(y).x, p.y - d.layout.centre(y).y);
+          const x = at.reduce((a, b) => (off(b) < off(a) ? b : a));
+          if (!squares.has(`${x.cell}:${x.digit}`)) continue;
+          const c = d.layout.centre(x);
+          ends++;
+          const r = Math.hypot(p.x - c.x, p.y - c.y);
+          const dir = { x: (p.x - c.x) / r, y: (p.y - c.y) / r };
+          expect(r, `${tech}: link ${s.link} at ${x.digit} of cell ${x.cell}`).toBeCloseTo(squareReachOf(dir) + SIZES.gap * 100, 5);
+          if (squareReachOf(dir) - SIZES.r * 100 > 0.5) beyondDisc++;
+        }
+      }
+    }
+    // the stored AIC with Groups and Grouped Nice Loop each end an arrow at a square's corner side
+    expect(ends).toBeGreaterThanOrEqual(4);
+    expect(beyondDisc).toBeGreaterThanOrEqual(2);
   });
 });

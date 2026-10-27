@@ -58,11 +58,10 @@ import type { Grid } from '../src/engine/board';
 import { findNextStep, findAllSteps, findStep, applyStep } from '../src/engine/humanSolver';
 import { walkFrames } from '../src/engine/hintFrames';
 import type { Frame } from '../src/engine/hintFrames';
-import { frameMarks, legendKinds, markedCandidates, placedKeys, squareKeys } from '../src/content/hintMarks';
+import { frameMarks, legendKinds } from '../src/content/hintMarks';
 import { legendOf } from '../src/content/boardSvg';
-import { hintDrawing } from '../src/content/hintGeometry';
-import { boardLayout, digitShown } from '../src/ui/boardLayout';
-import type { CellDigit, Step } from '../src/engine/steps';
+import { boardDrawing } from '../src/ui/boardLayout';
+import type { Step } from '../src/engine/steps';
 import type { Tech } from '../src/engine/ratings';
 
 const FIXTURE = 'tests/fixtures/drawingSnapshot.json';
@@ -186,8 +185,9 @@ function drawingOf(step: Step, values: string, cands: ArrayLike<number>): Drawin
 }
 
 /**
- * The arrows, start dots and walk numbers as the app board works them out
- * (src/ui/Grid.tsx, `drawing`): once for the whole hint, from the full
+ * The arrows, start dots and walk numbers as the app board works them out,
+ * by its own code (src/ui/boardLayout.ts boardDrawing, which
+ * src/ui/Grid.tsx's `drawing` calls): once for the whole hint, from the full
  * view's marks and every link, with the candidates on, so a cell shows its
  * candidates and the digits the hint marks at their places on the 3×3; and
  * the groups' bars and the sets' tiles and tabs first, which they keep off,
@@ -195,14 +195,7 @@ function drawingOf(step: Step, values: string, cands: ArrayLike<number>): Drawin
  */
 function geometryOf(step: Step, values: string, cands: ArrayLike<number>): unknown {
   if (!step.links?.length) return null;
-  const solved = (cell: number) => values[cell] !== '0';
-  const full = frameMarks(step, null, solved);
-  const marks = markedCandidates(full);
-  const placed = placedKeys(full);
-  const shown = (cd: CellDigit) =>
-    digitShown({ value: Number(values[cd.cell]), corner: 0, center: 0 }, cd.digit, cands[cd.cell], full.cands.get(cd.cell));
-  const layout = boardLayout(placed, shown, solved, squareKeys(step, solved));
-  const { sets, shapes, dots, badges: at } = hintDrawing(step, layout, marks);
+  const { sets, shapes, dots, badges: at } = boardDrawing(step, (cell) => ({ value: Number(values[cell]), corner: 0, center: 0 }), (cell) => cands[cell]);
   const badges = [...at].sort((a, b) => a[0] - b[0]);
   return rounded({
     shapes,

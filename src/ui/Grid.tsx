@@ -13,13 +13,12 @@ import { useGame, engineGrid, CellState } from '../state/gameStore';
 import { useSettings } from '../state/settings';
 import { bivaluePairs } from '../state/bivalue';
 import { bit, digitsOf, PEERS, UNITS } from '../engine/board';
-import { CellDigit } from '../engine/steps';
 import { walkFrames, drawnLinks } from '../engine/hintFrames';
-import { hintDrawing, tilesIn, pointsOf, SIZES } from '../content/hintGeometry';
+import { tilesIn, pointsOf, SIZES } from '../content/hintGeometry';
 import type { ArrowShape, HintDrawing } from '../content/hintGeometry';
-import { SIZE, M, candX, candY, boardLayout, digitShown } from './boardLayout';
+import { SIZE, M, candX, candY, boardDrawing } from './boardLayout';
 import { MARK } from '../content/hintPalette';
-import { frameMarks, markedCandidates as markedOf, placedKeys, squareKeys, isShade } from '../content/hintMarks';
+import { frameMarks, isShade } from '../content/hintMarks';
 import type { BarStyle } from '../content/hintMarks';
 import { useT, msg, translator } from '../content/i18n';
 import type { Translator } from '../content/i18n';
@@ -687,26 +686,14 @@ export function Grid() {
     () => (showHint ? new Set(frameMarks(hint, null, (c) => cells[c].value > 0).cands.keys()) : new Set<number>()),
     [showHint, hint, cells]
   );
-  // the arrows, start dots and walk numbers, worked out once for the whole
-  // hint, from the full view's marks and every link, so an arrow the reader
-  // has followed never moves or changes as the walk goes on; a frame draws
-  // the first of them. An arrow bends round the hint's marks and nothing
-  // else; a placement's mark reaches out to its outer ring; a head, a dot
-  // and a number keep off the digits the board shows (a cell a hint marks
-  // shows its digits at their places in the 3×3)
-  const drawing = React.useMemo((): Drawing | null => {
-    if (!showHint || !hint.links?.length) return null;
-    const solved = (c: number) => cells[c].value > 0;
-    const full = frameMarks(hint, null, solved);
-    const marks = markedOf(full);
-    const placed = placedKeys(full);
-    const shown = (cd: CellDigit) =>
-      digitShown(cells[cd.cell], cd.digit, canonical ? canonical.cands[cd.cell] : null, full.cands.get(cd.cell));
-    // a square any frame draws reaches further than a disc at its corners
-    const layout = boardLayout(placed, shown, solved, squareKeys(hint, solved));
-    // the groups' bars and the sets' tiles and tabs first: the arrows, dots and numbers keep off them
-    return hintDrawing(hint, layout, marks);
-  }, [showHint, hint, cells, canonical]);
+  // the arrows, start dots and walk numbers, the groups' bars and the
+  // sets' tiles and tabs, worked out once for the whole hint
+  // (src/ui/boardLayout.ts boardDrawing); a frame draws the first of them
+  const drawing = React.useMemo(
+    (): Drawing | null =>
+      showHint && hint.links?.length ? boardDrawing(hint, (c) => cells[c], canonical ? (c) => canonical.cands[c] : null) : null,
+    [showHint, hint, cells, canonical]
+  );
   // the links the frame draws, or the full view's (src/engine/hintFrames.ts)
   const drawnSet = showHint ? drawnLinks(hint, frame) : new Set<number>();
   // the mask that cuts the digits out of a hint's arrows, named for this board

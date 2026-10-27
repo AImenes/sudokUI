@@ -12,7 +12,7 @@ import type { GroupBar, SetShapes } from '../src/content/hintGeometry';
 import { alsClash } from '../src/engine/truth';
 import type { CellDigit, ChainLink, ChainSet, Step } from '../src/engine/steps';
 import { alternatingLinks, groupSet } from '../src/engine/steps';
-import { boardLayout, digitShown, squareReachOf, M } from '../src/ui/boardLayout';
+import { boardLayout, boardDrawing, digitShown, squareReachOf, M } from '../src/ui/boardLayout';
 import { MARK } from '../src/content/hintPalette';
 import { hintMarks, frameMarks, markedCandidates, placedKeys, squareKeys } from '../src/content/hintMarks';
 import { EXAMPLES } from '../src/content/examples';
@@ -993,13 +993,8 @@ describe("a group's bar and a square (docs/hint-drawing-sets.md, decisions 1, 2 
     const apart = half + 2.5;
     const free = (SIZES.barFree + SIZES.gap) * 100 + half;
     for (const { where, step, values, cands } of corpus) {
-      const solved = (c: number) => values[c] !== '0';
-      const full = frameMarks(step, null, solved);
-      const marks = markedCandidates(full);
-      const shown = (x: CellDigit) => digitShown({ value: Number(values[x.cell]), corner: 0, center: 0 }, x.digit, cands[x.cell], full.cands.get(x.cell));
-      const l = boardLayout(placedKeys(full), shown, solved, squareKeys(step, solved));
       // the drawing as the board works it out, the sets' tabs and all
-      const { sets, shapes, dots, badges } = hintDrawing(step, l, marks);
+      const { full, shown, layout: l, sets, shapes, dots, badges } = boardDrawing(step, (c) => ({ value: Number(values[c]), corner: 0, center: 0 }), (c) => cands[c]);
       for (const bar of sets.bars) {
         bars++;
         const own = new Set(bar.members.map(key));
@@ -1216,12 +1211,8 @@ describe("an almost locked set's tiles and letter tabs (docs/hint-drawing-sets.m
 
   /** a set step's drawing as the board works it out */
   const drawingOf = ({ step, values, cands }: (typeof corpus)[number]) => {
-    const solved = (c: number) => values[c] !== '0';
-    const full = frameMarks(step, null, solved);
-    const marks = markedCandidates(full);
-    const shown = (x: CellDigit) => digitShown({ value: Number(values[x.cell]), corner: 0, center: 0 }, x.digit, cands[x.cell], full.cands.get(x.cell));
-    const l = boardLayout(placedKeys(full), shown, solved, squareKeys(step, solved));
-    return { full, marks, shown, l, ...hintDrawing(step, l, marks) };
+    const d = boardDrawing(step, (c) => ({ value: Number(values[c]), corner: 0, center: 0 }), (c) => cands[c]);
+    return { ...d, l: d.layout };
   };
 
   it('keeps every tile inside its cell, 3 units clear of a box line, round its cell\'s candidates only, in every set step kept', () => {

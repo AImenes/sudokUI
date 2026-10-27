@@ -668,3 +668,31 @@ describe('the words and the legends, review round 1 (docs/hint-drawing-sets.md, 
   });
 });
 
+describe("the hint panel's bar entry (docs/hint-drawing-sets.md, decision 18)", () => {
+  it("is the same in the hint panel as in the Learn legend for every grouped chain kept, in the full view and every frame, and names a bar wherever the board draws one in the pattern's or the removal's ink", async () => {
+    const { boardDrawing } = await import('../src/ui/boardLayout');
+    const GROUPED: Tech[] = ['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'AIC_ALS'];
+    const shown = [...GROUPED.map((tech) => ({ where: tech as string, position: EXAMPLES[tech]!, step: EXAMPLES[tech]!.step })), ...kept.filter((k) => GROUPED.includes(k.step.tech))];
+    let views = 0;
+    const barred: string[] = [];
+    for (const { where, position, step } of shown) {
+      const solved = (c: number) => position.values[c] !== '0';
+      // the bars the board puts beside their groups
+      const { sets } = boardDrawing(step, (c) => ({ value: Number(position.values[c]), corner: 0, center: 0 }), (c) => position.cands[c]);
+      const frames = walkFrames(step);
+      for (const [i, f] of [null, ...frames].entries()) {
+        const at = `${where}, ${f ? `frame ${i}` : 'full view'}`;
+        const panel = panelLegend(position, step, f ? i - 1 : null);
+        expect(panel, at).toEqual(legendOf(step, position.values, f).map((l) => l.label));
+        // a bar the view draws in the pattern's ink (a proof-only view) or the removal's (src/ui/Grid.tsx groupBars)
+        const inked = frameMarks(step, f, solved).sets.some((m) => (m.style === 'primary' || m.style === 'elim') && sets.bars.some((b) => b.set === m.set));
+        expect(panel.some((l) => l.startsWith('bar: a group')), at).toBe(inked);
+        if (inked) barred.push(at);
+        views++;
+      }
+    }
+    expect(views).toBeGreaterThan(300);
+    // rule 3's removed group, and a group whose loop a solved cell breaks, each in the full view and its conclusion
+    expect(barred).toEqual(expect.arrayContaining(['rule 3, step 14, GROUPED_X_CYCLES, full view', 'the gapped group over a solved cell, step 20, GROUPED_X_CYCLES, full view']));
+  });
+});

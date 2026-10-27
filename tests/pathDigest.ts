@@ -19,23 +19,36 @@
  *
  * The same walk holds the steps it meets to their sets' rules
  * (tests/chainSets.ts, for tests/chainSets.test.ts): every step of every
- * path, and every find of the set techniques along the pools' and the
- * seeds' paths, so the minutes it takes are not spent twice; the ALS
- * patterns' truth among them (an ALS-XZ, ALS-XY-Wing or ALS-XY-Chain
- * derives cleanly, or is an ALS-XY-Chain whose sets share a cell drawn with
- * no truth; a Death Blossom's branches derive), and it counts how each
- * pattern derives.
+ * path, and with the menus every find of the set techniques along the
+ * pools' and the seeds' paths, so the minutes it takes are not spent
+ * twice; the ALS patterns' truth among them (an ALS-XZ, ALS-XY-Wing or
+ * ALS-XY-Chain derives cleanly, or is an ALS-XY-Chain whose sets share a
+ * cell drawn with no truth; a Death Blossom's branches derive), and it
+ * counts how each pattern derives.
  *
- * The finders take about eight minutes over all of it, so the puzzles are
- * dealt to four test files, tests/pathDigest.test.ts and
- * tests/pathDigest.2.test.ts to .4, which run side by side; each holds
- * its own share, and the first also that the fixture holds every puzzle.
- * Not a test file itself. Phase 4 never rewrites the fixture; only a
- * change that means to move a path or a menu, named in the commit that
- * makes it, writes it again, from the first file, which then works out
- * every share:
+ * Three ways to run it, by PATH_DIGEST:
+ * - unset, as `npx vitest run` and CI run it: the solve paths alone, and
+ *   their steps' sets, all in tests/pathDigest.test.ts (about two minutes
+ *   of one worker; the other three files hold nothing). The solver walks
+ *   the paths anyway, so this is the cheap part;
+ * - `menus`, before a merge, or whenever a change touches a set
+ *   technique's finder: the paths, the set techniques' menus along them
+ *   and every find's sets, which take the finders about eight minutes, so
+ *   the puzzles are dealt to four test files, tests/pathDigest.test.ts and
+ *   tests/pathDigest.2.test.ts to .4, which run side by side, each with
+ *   its own share, and the first also holds that the fixture holds every
+ *   puzzle:
  *
- *   PATH_DIGEST=write npx vitest run tests/pathDigest.test.ts
+ *     PATH_DIGEST=menus npx vitest run tests/pathDigest
+ *
+ * - `write`: the fixture written again, paths and menus, from the first
+ *   file, which then works out every share. Phase 4 never rewrites it;
+ *   only a change that means to move a path or a menu, named in the
+ *   commit that makes it, writes it again:
+ *
+ *     PATH_DIGEST=write npx vitest run tests/pathDigest.test.ts
+ *
+ * Not a test file itself.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -151,15 +164,15 @@ function walk(puzzle: string, menus: boolean, met: SetsMet): { path: string[]; s
   return { path, sets };
 }
 
-/** the digest of some puzzles, as the code works them out now, and the sets met on the way */
-function digestFor(puzzles: string[]): { digest: Digest; met: SetsMet } {
+/** the digest of some puzzles, as the code works them out now, the pools' and the seeds' menus with `menus`, and the sets met on the way */
+function digestFor(puzzles: string[], menus: boolean): { digest: Digest; met: SetsMet } {
   const d: Digest = { paths: {}, sets: {} };
   const met: SetsMet = { problems: [], withSets: 0, derived: {} };
   for (const puzzle of puzzles) {
-    const menus = POOLED.includes(puzzle);
-    const { path, sets } = walk(puzzle, menus, met);
+    const pooled = menus && POOLED.includes(puzzle);
+    const { path, sets } = walk(puzzle, pooled, met);
     d.paths[puzzle] = hashOf(path);
-    if (menus) d.sets[puzzle] = hashOf(sets);
+    if (pooled) d.sets[puzzle] = hashOf(sets);
   }
   return { digest: d, met };
 }
@@ -167,21 +180,28 @@ function digestFor(puzzles: string[]): { digest: Digest; met: SetsMet } {
 /** a share's puzzles: every SHARDS-th, from the shard's own on */
 const shareOf = (shard: number) => PUZZLES.filter((_, i) => i % SHARDS === shard);
 
-/** the digest's tests for one share of the puzzles (0 the first, which also writes the fixture) */
+/** what a run holds (the top of this file): the paths alone, the menus too, or the fixture written again */
+type Run = 'paths' | 'menus' | 'write';
+function runOf(flag: string | undefined): Run {
+  if (flag === undefined) return 'paths';
+  if (flag === 'menus' || flag === 'write') return flag;
+  throw new Error(`PATH_DIGEST=${flag}: menus or write`);
+}
+
+/** the digest's tests for one share of the puzzles (0 the first, which alone holds the paths in a plain run and writes the fixture) */
 export function holdPathDigest(shard: number) {
-  const writing = env.PATH_DIGEST !== undefined;
-  if (writing && env.PATH_DIGEST !== 'write') throw new Error(`PATH_DIGEST=${env.PATH_DIGEST}: write`);
-  // while the first file writes the fixture, the others have nothing to hold it to
-  const share = describe.skipIf(writing && shard !== 0);
-  share(`the solve paths and the set techniques' finds along them, share ${shard + 1} of ${SHARDS}`, () => {
-    const mine = shareOf(shard);
+  const run = runOf(env.PATH_DIGEST);
+  const menus = run !== 'paths';
+  // a plain run's paths, and the fixture's writing, are the first file's; the others hold nothing then
+  const share = describe.skipIf(run !== 'menus' && shard !== 0);
+  share(`the solve paths${menus ? " and the set techniques' finds along them" : ''}, ${run === 'menus' ? `share ${shard + 1} of ${SHARDS}` : 'every puzzle'}`, () => {
+    const mine = run === 'menus' ? shareOf(shard) : PUZZLES;
     let now: Digest;
     let then: Digest;
     let met: SetsMet;
     beforeAll(() => {
-      const all = writing ? digestFor(PUZZLES) : undefined;
-      if (all) writeFileSync(FIXTURE, `${JSON.stringify(all.digest, null, 1)}\n`);
-      ({ digest: now, met } = all ?? digestFor(mine));
+      ({ digest: now, met } = digestFor(mine, menus));
+      if (run === 'write') writeFileSync(FIXTURE, `${JSON.stringify(now, null, 1)}\n`);
       then = JSON.parse(new TextDecoder().decode(readFileSync(FIXTURE)));
     }, 1_800_000);
 
@@ -202,18 +222,23 @@ export function holdPathDigest(shard: number) {
       expect(moved).toEqual([]);
     });
 
-    it("the set techniques' first finds along the pools' and the seeds' paths, where the solver needs more than a single", () => {
+    // the menus take the finders minutes: held before a merge (PATH_DIGEST=menus), not in every run
+    it.skipIf(menus)("a plain run walks no set technique's menu, which the finders take minutes over", () => {
+      expect(Object.keys(now.sets)).toEqual([]);
+    });
+
+    it.skipIf(!menus)("the set techniques' first finds along the pools' and the seeds' paths, where the solver needs more than a single", () => {
       const moved = mine.filter((p) => POOLED.includes(p) && now.sets[p] !== then.sets[p]);
       expect(moved).toEqual([]);
     });
 
-    it("every step met on the way keeps its sets' rules (tests/chainSets.ts)", () => {
+    it(`every step met on the way keeps its sets' rules (tests/chainSets.ts)${menus ? '' : ': the paths\' steps'}`, () => {
       expect(met.problems).toEqual([]);
-      // thousands of them with sets in every share
-      expect(met.withSets).toBeGreaterThan(1000);
+      // with the menus, thousands of them with sets in every share; on the paths alone, about six hundred
+      expect(met.withSets).toBeGreaterThan(menus ? 1000 : 500);
       // the ALS patterns, clean or clashing (decision 13; tests/chainSets.ts holds which may clash, and that a clash draws no truth)
       // eslint-disable-next-line no-console
-      console.info(`share ${shard + 1}: the ALS patterns' chains,`, Object.entries(met.derived).sort().map(([k, n]) => `${k} ${n}`).join(', '));
+      console.info(`${run === 'menus' ? `share ${shard + 1}` : 'the paths'}: the ALS patterns' chains,`, Object.entries(met.derived).sort().map(([k, n]) => `${k} ${n}`).join(', '));
       for (const tech of ['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN']) expect(met.derived[`${tech} clean`], tech).toBeGreaterThan(0);
     });
   });
