@@ -79,6 +79,17 @@ export function listAnd(items: readonly (string | number)[]): string {
 }
 
 /**
+ * A digit with the article a sentence puts before it, where a set "holds a
+ * 5" and "holds an 8": English writes "an" before 8, the one digit said
+ * with a vowel, and "a" before the others; Norwegian writes "en" and
+ * Spanish "un" before every digit. Two templates chosen in the code, as a
+ * plural is, and put into a sentence's hole as `unitName` is.
+ */
+export function aDigit(d: number): string {
+  return d === 8 ? tr`an ${d}` : tr`a ${d}`;
+}
+
+/**
  * A house by its index in UNITS (rows 0-8, columns 9-17, boxes 18-26):
  * "row 3", "column 5", "box 9". Every language writes it without an
  * article (rad 3, fila 3), so the sentence around it supplies one if it

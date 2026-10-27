@@ -6,13 +6,14 @@
 import { describe, it, expect } from 'vitest';
 import { parseGrid, gridFromValues, bit } from '../src/engine/board';
 import { classifyLink, extend, conclusions, chainStep, statement, nextLinks, buildable, EMPTY_CHAIN, Chain } from '../src/engine/chainTrainer';
-import { findNextStep, applyStep } from '../src/engine/humanSolver';
+import { findNextStep, findStep, applyStep } from '../src/engine/humanSolver';
 import { isTie } from '../src/engine/steps';
 import type { CellDigit, Step } from '../src/engine/steps';
 import { PARITY_FIXTURES } from './parityFixtures';
 import { deriveTruth } from '../src/engine/truth';
 import { hintMarks } from '../src/content/hintMarks';
 import { EXAMPLES } from '../src/content/examples';
+import { SET_TECHS } from './chainSets';
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
 
@@ -182,9 +183,32 @@ describe('what the trainer can take as its goal (Build it yourself)', () => {
     for (const tech of ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D', 'REMOTE_PAIR', 'X_CHAIN', 'XY_CHAIN', 'AIC'] as const) {
       expect(buildable(EXAMPLES[tech]!.step), tech).toBe(true);
     }
-    for (const tech of ['AIC_GROUPED', 'AIC_ALS', 'GROUPED_NICE_LOOP'] as const) expect(buildable(EXAMPLES[tech]!.step), tech).toBe(false);
+    // every technique whose step names sets, the ALS family too: an ALS-XZ's,
+    // an ALS-XY-Wing's and a Death Blossom's links between sets may be single
+    // candidates, but no tap builds a set's own link (docs/hint-drawing-sets.md, decision 21)
+    for (const tech of SET_TECHS) {
+      const { step } = EXAMPLES[tech]!;
+      expect(step.sets?.length, tech).toBeGreaterThan(0);
+      expect(buildable(step), tech).toBe(false);
+    }
     expect(buildable(EXAMPLES.NAKED_PAIR!.step)).toBe(false);
     expect(buildable(null)).toBe(false);
+  });
+
+  it('refuses a step for its sets alone, whatever its links', () => {
+    const { step } = EXAMPLES.AIC!;
+    expect(buildable(step)).toBe(true);
+    // the stored ALS-XZ's set A on a chain of single candidates
+    const set = EXAMPLES.ALS_XZ!.step.sets![0];
+    expect(buildable({ ...step, sets: [set] })).toBe(false);
+    expect(buildable({ ...step, sets: [] })).toBe(true);
+    // by its sets, not its name: an AIC with ALS whose only "set" is a bivalue
+    // cell names no set (decision 14), and the trainer builds that cell's link
+    const g = parseGrid('4..1.27.......3..45.7.9...3..45..62..8.....4..25..43..7...4.9.12..3.......67.9..2')!;
+    for (let i = 0; i < 10; i++) applyStep(g, findNextStep(g)!);
+    const oneCell = findStep('AIC_GROUPED', g)!;
+    expect([oneCell.tech, oneCell.sets]).toEqual(['AIC_ALS', undefined]);
+    expect(buildable(oneCell)).toBe(true);
   });
 });
 

@@ -1,4 +1,5 @@
 import { Tech } from './ratings';
+import { rowOf, colOf } from './board';
 
 export interface CellDigit {
   cell: number;
@@ -33,29 +34,85 @@ export interface ChainLink {
    *   and in the full view (docs/hint-drawing-colouring.md).
    */
   undirected?: boolean;
+  /**
+   * the set each end is a node of (an index into Step.sets): a group, or one
+   * digit of an almost locked set (of one candidate too, so a link inside a
+   * set is known); absent for a lone candidate, and for AIC with ALS's
+   * one-cell "set", a bivalue cell
+   */
+  fromSet?: number;
+  toSet?: number;
 }
 
 /** a link drawn as a tie: exactly one of its two ends is true, and it says nothing more */
 export const isTie = (link: ChainLink): boolean => !!link.undirected && link.strong;
 
 /**
+ * A node of several candidates a chain reads as one, or an almost locked
+ * set (docs/hint-drawing-sets.md, Data).
+ */
+export interface ChainSet {
+  /**
+   * 'group': the 2-3 candidates of one digit in one box and one row or
+   * column, all the digit has there: one node (TRUE: one of them; FALSE:
+   * none).
+   * 'als': n cells of one house holding n+1 digits between them; each digit
+   * is a node (the set's cells holding it), and without any one digit the
+   * others fill the cells.
+   */
+  kind: 'group' | 'als';
+  /** ascending */
+  cells: number[];
+  /** ascending: a group's one digit, an almost locked set's n+1 */
+  digits: number[];
+  /** every candidate of the set at the step's position, by cell then digit */
+  members: CellDigit[];
+  /** the house the finder found it in (a UNITS index), for the words: a group's row or column */
+  unit: number;
+  /** an almost locked set's name, 'A' to 'D' in the patterns, 'A', 'B', ... along an AIC with ALS (HoDoKu's lettering); none for a group */
+  letter?: string;
+}
+
+/** a link between two digits of one almost locked set: drawn as nothing (G12), carried by its tiles and its sentence */
+export const insideSet = (l: ChainLink) => l.fromSet !== undefined && l.fromSet === l.toSet;
+
+/** a link's set ends, each only where that end is a node of a set */
+export const setEnds = (fromSet?: number, toSet?: number): Pick<ChainLink, 'fromSet' | 'toSet'> => ({
+  ...(fromSet !== undefined && { fromSet }),
+  ...(toSet !== undefined && { toSet })
+});
+
+/**
+ * A group node as a set: its cells, all the cells of one box and one row
+ * or column that hold the digit; its unit that row or column
+ */
+export function groupSet(cells: number[], digit: number): ChainSet {
+  const sorted = [...cells].sort((a, b) => a - b);
+  const unit = sorted.every((c) => rowOf(c) === rowOf(sorted[0])) ? rowOf(sorted[0]) : 9 + colOf(sorted[0]);
+  return { kind: 'group', cells: sorted, digits: [digit], members: sorted.map((cell) => ({ cell, digit })), unit };
+}
+
+/**
  * Links for a chain given as a node sequence with strict alternation,
  * starting strong (the AIC normal form every chain finder uses). `closure`
- * appends the loop-closing link back to the first node.
+ * appends the loop-closing link back to the first node. `sets` gives each
+ * node's set (an index into Step.sets), where it is a set's node.
  */
 export function alternatingLinks(
   nodes: CellDigit[][],
-  closure?: 'strong' | 'weak'
+  closure?: 'strong' | 'weak',
+  sets?: (number | undefined)[]
 ): ChainLink[] {
   const links: ChainLink[] = [];
   for (let i = 1; i < nodes.length; i++) {
-    links.push({ from: nodes[i - 1], to: nodes[i], strong: (i - 1) % 2 === 0 });
+    links.push({ from: nodes[i - 1], to: nodes[i], strong: (i - 1) % 2 === 0, ...setEnds(sets?.[i - 1], sets?.[i]) });
   }
   if (closure) {
     links.push({
       from: nodes[nodes.length - 1],
       to: nodes[0],
-      strong: closure === 'strong'
+      strong: closure === 'strong',
+      ...setEnds(sets?.[nodes.length - 1], sets?.[0])
     });
   }
   return links;
@@ -171,5 +228,11 @@ export interface Step {
   truth?: 'derived' | 'parity';
   /** with truth 'parity' only; such a step names no primary, secondary, fins or labels */
   colouring?: Colouring;
+  /**
+   * the groups and almost locked sets the step's links pass through, or its
+   * pattern is made of (docs/hint-drawing-sets.md, Data); each link end
+   * names its own in `fromSet` and `toSet`
+   */
+  sets?: ChainSet[];
   description: string;
 }

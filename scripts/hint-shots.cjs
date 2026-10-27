@@ -9,12 +9,23 @@
 //       view; <TECH>-<theme>-<desktop|phone>[-walkN][-panel].png
 //   node scripts/hint-shots.cjs <outDir> --puzzle <puzzle> <steps> [TECH]
 //       the hint after <steps> steps of the puzzle's solve path (the
-//       solver's next step, or the first step of TECH on offer there)
+//       solver's next step, or TECH's finder's step there, as the drawing
+//       fixtures find it)
 //
 //   env: BASE (http://localhost:4174), THEMES (dark,light,rose,forest),
 //   SIZES (desktop,phone), WALK=1 every walk frame, PANEL=1 the hint panel
-//   too, TRAINER=1 the chain trainer building the X-Chain, XY-Chain and
-//   AIC examples, PW_CHROMIUM a browser of your own
+//   too, PLAYER=1 the board again over the player's own cell colours,
+//   TRAINER=1 the chain trainer building the X-Chain, XY-Chain and AIC
+//   examples, PW_CHROMIUM a browser of your own
+//
+// PLAYER=1 paints the cells of the hint's sets and groups (for a step with
+// none, the cells of its links), and beside each the cell to its right (to
+// its left in column 9), in one of the player's nine colours, none
+// elsewhere: the full view in each colour in turn,
+// <TECH>-<theme>-<size>-player<1-9>.png, and with WALK=1 every walk frame
+// once, its colour turning frame by frame, -walkN-player<k>.png. The
+// colours are the player's own (src/ui/Grid.tsx PALETTE, in the order the
+// colour keys give them), drawn as the app draws them, under the hint.
 //
 // The Learn diagrams, from the page scripts/hint-gallery.ts writes:
 //
@@ -47,6 +58,52 @@ const loadInPage = async ({ values, cands, given }) => {
   if (!gs.useGame.getState().loadPosition(gs.encodePosition(cells, true))) throw new Error('the position did not load');
 };
 
+/** in the page: the cells the player's colours go under, from the hint shown (PLAYER=1, above) */
+const paintedInPage = async () => {
+  const step = (await import('/src/state/gameStore.ts')).useGame.getState().hint;
+  const own = step.sets?.length ? step.sets.flatMap((x) => x.cells) : (step.links ?? []).flatMap((l) => [...l.from, ...l.to].map((cd) => cd.cell));
+  const cells = new Set(own);
+  for (const c of own) cells.add(c % 9 === 8 ? c - 1 : c + 1);
+  return [...cells].sort((a, b) => a - b);
+};
+
+/** in the page: the player's colour k (0-8) on the cells given and none elsewhere, or none at all (k null); the hint stays as it is */
+const paintInPage = async ({ cells, k }) => {
+  const gs = await import('/src/state/gameStore.ts');
+  const on = new Set(cells);
+  gs.useGame.setState((s) => ({ cells: s.cells.map((c, i) => ({ ...c, colors: k !== null && on.has(i) ? [k] : [] })) }));
+};
+
+/** in the page: the hint's full view, or frame i of its walk */
+const viewInPage = async (i) => {
+  const { useGame } = await import('/src/state/gameStore.ts');
+  useGame.getState().showStep(useGame.getState().hint);
+  if (i === null) return;
+  useGame.getState().walkHint();
+  for (let j = 0; j < i; j++) useGame.getState().walkHint(1);
+};
+
+/** the board over the player's own colours: the full view in each of the nine, then each walk frame in one, turning */
+async function shootPlayer(page, base, frames) {
+  const cells = await page.evaluate(paintedInPage);
+  await page.evaluate(viewInPage, null);
+  for (let k = 0; k < 9; k++) {
+    await page.evaluate(paintInPage, { cells, k });
+    await page.waitForTimeout(80);
+    await page.locator('svg.board').screenshot({ path: path.join(out, `${base}-player${k + 1}.png`) });
+  }
+  if (process.env.WALK && frames >= 2) {
+    for (let i = 0; i < frames; i++) {
+      await page.evaluate(paintInPage, { cells, k: i % 9 });
+      await page.evaluate(viewInPage, i);
+      await page.waitForTimeout(80);
+      await page.locator('svg.board').screenshot({ path: path.join(out, `${base}-walk${i + 1}-player${(i % 9) + 1}.png`) });
+    }
+  }
+  await page.evaluate(paintInPage, { cells, k: null });
+  await page.evaluate(viewInPage, null);
+}
+
 async function shoot(page, base, frames) {
   await page.waitForTimeout(150);
   await page.locator('svg.board').screenshot({ path: path.join(out, `${base}.png`) });
@@ -62,6 +119,12 @@ async function shoot(page, base, frames) {
     await page.locator('svg.board').screenshot({ path: path.join(out, `${base}-walk${i + 1}.png`) });
     if (process.env.PANEL) await page.locator('.hint-panel').screenshot({ path: path.join(out, `${base}-walk${i + 1}-panel.png`) });
   }
+}
+
+/** the plain shots, then, with PLAYER=1, the board over the player's colours */
+async function shootAll(page, base, frames) {
+  await shoot(page, base, frames);
+  if (process.env.PLAYER) await shootPlayer(page, base, frames);
 }
 
 async function board(mode) {
@@ -85,8 +148,8 @@ async function board(mode) {
             const hf = await import('/src/engine/hintFrames.ts');
             const g = board.parseGrid(puzzle);
             for (let i = 0; i < steps; i++) hs.applyStep(g, hs.findNextStep(g));
-            const step = tech ? hs.findAllSteps(g).find((x) => x.tech === tech) : hs.findNextStep(g);
-            if (!step) throw new Error('no such step there');
+            const step = tech ? hs.findStep(tech, g) : hs.findNextStep(g);
+            if (!step || (tech && step.tech !== tech)) throw new Error('no such step there');
             await new Function('return ' + load)()({ values: [...g.values], cands: [...g.cands], given: [...g.given].map(Boolean) });
             (await import('/src/state/gameStore.ts')).useGame.getState().showStep(step);
             return hf.walkFrames(step).map((f) => f.text);
@@ -94,7 +157,7 @@ async function board(mode) {
           { ...mode.puzzle, load: loadInPage.toString() }
         );
         const base = `${mode.puzzle.tech ?? 'step'}-${mode.puzzle.steps}-${theme}-${size}`;
-        await shoot(page, base, r.length);
+        await shootAll(page, base, r.length);
         fs.writeFileSync(path.join(out, `${base}.txt`), r.join('\n') + '\n');
         console.log('shot', base);
         continue;
@@ -109,7 +172,7 @@ async function board(mode) {
           },
           { ex, load: loadInPage.toString() }
         );
-        await shoot(page, `${tech}-${theme}-${size}`, frames);
+        await shootAll(page, `${tech}-${theme}-${size}`, frames);
         console.log('shot', `${tech}-${theme}-${size}`);
       }
       if (process.env.TRAINER) {

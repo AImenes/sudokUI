@@ -1,19 +1,21 @@
 import { Grid, UNITS, bit, digitsOf, popcount, sees, cellName, cellNames } from '../board';
-import { Step, CellDigit } from '../steps';
+import { Step, CellDigit, ChainLink, ChainSet } from '../steps';
 import { combinations } from './subsets';
-import { tr, listAnd, unitName } from '../text';
+import { aDigit, tr, listAnd, unitName } from '../text';
 
 export interface Als {
   cells: number[];
   mask: number;
+  /** the house it was found in (a UNITS index), the first that holds it */
+  unit: number;
 }
 
 /** Almost Locked Sets: n cells in one unit with n+1 candidates. */
 export function collectAls(g: Grid, maxSize = 4, cap = 600): Als[] {
   const out: Als[] = [];
   const seen = new Set<string>();
-  for (const unit of UNITS) {
-    const empty = unit.filter((c) => g.values[c] === 0);
+  for (let u = 0; u < UNITS.length; u++) {
+    const empty = UNITS[u].filter((c) => g.values[c] === 0);
     for (let size = 1; size <= Math.min(maxSize, empty.length); size++) {
       for (const combo of combinations(empty, size)) {
         let mask = 0;
@@ -22,7 +24,7 @@ export function collectAls(g: Grid, maxSize = 4, cap = 600): Als[] {
         const key = combo.join(',');
         if (seen.has(key)) continue;
         seen.add(key);
-        out.push({ cells: combo, mask });
+        out.push({ cells: combo, mask, unit: u });
         if (out.length >= cap) return out;
       }
     }
@@ -59,30 +61,48 @@ function alsXzStep(
   }
   if (!elims.length) return null;
   if (tech === 'WXYZ_WING') return wxyzStep(g, A, B, x, z, elims);
+  // A holds the start (HoDoKu's lettering)
+  const sets = [alsSet(g, A, 'A'), alsSet(g, B, 'B')];
   return {
     tech,
     placements: [],
     eliminations: elims,
-    primary: allCands(g, A.cells),
-    secondary: allCands(g, B.cells),
-    labels: {
-      primary: tr`set A: one digit short of locked; ${x} is its restricted common with set B`,
-      secondary: tr`set B: whichever set loses ${x} locks and places ${z}`
-    },
-    // the restricted common: every x of one set sees every x of the other
-    links: [
-      {
-        from: A.cells.filter((c) => g.cands[c] & bit(x)).map((cell) => ({ cell, digit: x })),
-        to: B.cells.filter((c) => g.cands[c] & bit(x)).map((cell) => ({ cell, digit: x })),
-        strong: false
-      }
-    ],
-    description: tr`ALS-XZ: sets ${cellNames(A.cells)} and ${cellNames(B.cells)} share restricted common ${x}; digit ${z} can be removed from cells seeing every ${z} of both sets.`
+    // the chain it derives: (z)A=(x)A-(x)B=(z)B
+    links: alsChain(sets, [0, 1], [x], z),
+    truth: 'derived',
+    sets,
+    description: tr`ALS-XZ: sets A (${cellNames(sets[0].cells)}) and B (${cellNames(sets[1].cells)}) each hold one digit more than they have cells, and every ${x} of A sees every ${x} of B, so at most one of them keeps ${aDigit(x)}. The other loses its ${x}, its other digits fill its cells, and it holds ${aDigit(z)}: A or B holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`
   };
 }
 
 const allCands = (g: Grid, cells: number[]): CellDigit[] =>
   cells.flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit })));
+
+/** an almost locked set as a step's set (docs/hint-drawing-sets.md, Data), named by its letter */
+export function alsSet(g: Grid, A: Als, letter: string): ChainSet {
+  const cells = [...A.cells].sort((a, b) => a - b);
+  return { kind: 'als', cells, digits: digitsOf(A.mask), members: allCands(g, cells), unit: A.unit, letter };
+}
+
+/**
+ * An ALS pattern as the chain it derives (docs/hint-drawing-sets.md,
+ * decision 11): (z)A=(x)A-(x)B=(z)B and its longer forms. `order` is the
+ * step's sets along the chain (indices into `sets`), `commons` the
+ * restricted common between each and the next, and `z` the digit removed.
+ * Each set's lock is a strong link inside it, from the digit the chain
+ * enters it by to the one it leaves by; the restricted commons are the weak
+ * links between them; each end is the set's cells holding that digit.
+ */
+function alsChain(sets: ChainSet[], order: number[], commons: number[], z: number): ChainLink[] {
+  const node = (k: number, d: number) => sets[k].members.filter((m) => m.digit === d);
+  return order.flatMap((k, i): ChainLink[] => {
+    const enter = i === 0 ? z : commons[i - 1];
+    const leave = i === order.length - 1 ? z : commons[i];
+    const lock: ChainLink = { from: node(k, enter), to: node(k, leave), strong: true, fromSet: k, toSet: k };
+    if (i === order.length - 1) return [lock];
+    return [lock, { from: node(k, leave), to: node(order[i + 1], leave), strong: false, fromSet: k, toSet: order[i + 1] }];
+  });
+}
 
 /**
  * A WXYZ-Wing drawn by role, in the terms of docs/glossary_input.md: the
@@ -229,33 +249,18 @@ export function findAlsXyWing(g: Grid): Step | null {
             if (zCells.every((zc) => sees(c, zc))) elims.push({ cell: c, digit: z });
           }
           if (!elims.length) continue;
+          // HoDoKu's lettering: A and B the wings, linked to the hinge C by x and by y
+          const sets = [alsSet(g, A, 'A'), alsSet(g, B, 'B'), alsSet(g, C, 'C')];
+          const [a, b, c] = sets.map((set) => cellNames(set.cells));
           return {
             tech: 'ALS_XY_WING',
             placements: [],
             eliminations: elims,
-            primary: A.cells.flatMap((cell) =>
-              digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
-            ),
-            secondary: B.cells.flatMap((cell) =>
-              digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
-            ),
-            fins: C.cells.flatMap((cell) =>
-              digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
-            ),
-            labels: { primary: tr`set linked via ${l1.x}`, secondary: tr`set linked via ${l2.x}`, fins: tr`hinge` },
-            links: [
-              {
-                from: A.cells.filter((c) => g.cands[c] & bit(l1.x)).map((cell) => ({ cell, digit: l1.x })),
-                to: C.cells.filter((c) => g.cands[c] & bit(l1.x)).map((cell) => ({ cell, digit: l1.x })),
-                strong: false
-              },
-              {
-                from: C.cells.filter((c) => g.cands[c] & bit(l2.x)).map((cell) => ({ cell, digit: l2.x })),
-                to: B.cells.filter((c) => g.cands[c] & bit(l2.x)).map((cell) => ({ cell, digit: l2.x })),
-                strong: false
-              }
-            ],
-            description: tr`ALS-XY-Wing: hinge ${cellNames(C.cells)} links ${cellNames(A.cells)} (via ${l1.x}) and ${cellNames(B.cells)} (via ${l2.x}); digit ${z} can be removed from cells seeing every ${z} of both outer sets.`
+            // the chain it derives: (z)A=(x)A-(x)C=(y)C-(y)B=(z)B
+            links: alsChain(sets, [0, 2, 1], [l1.x, l2.x], z),
+            truth: 'derived',
+            sets,
+            description: tr`ALS-XY-Wing: the wings A (${a}) and B (${b}) and the hinge C (${c}) each hold one digit more than they have cells; every ${l1.x} of C sees every ${l1.x} of A, and every ${l2.x} of C every ${l2.x} of B. C lacks at most one of its digits, so it holds ${aDigit(l1.x)} (and A then holds no ${l1.x}) or ${aDigit(l2.x)} (and B then holds no ${l2.x}). That wing's other digits fill its cells, and it holds ${aDigit(z)}: A or B holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`
           };
         }
       }
@@ -312,30 +317,19 @@ export function findAlsXyChain(g: Grid): Step | null {
               if (zCells.every((zc) => sees(c, zc))) elims.push({ cell: c, digit: z });
             }
             if (!elims.length) continue;
+            // A to D along the chain (HoDoKu's lettering)
+            const sets = [alsSet(g, A, 'A'), alsSet(g, B, 'B'), alsSet(g, C, 'C'), alsSet(g, D, 'D')];
+            const [a, b, c, d] = sets.map((set) => cellNames(set.cells));
+            const [x1, x2, x3] = [l1.x, l2.x, l3.x];
             return {
               tech: 'ALS_XY_CHAIN',
               placements: [],
               eliminations: elims,
-              primary: [...A.cells, ...D.cells].flatMap((cell) =>
-                digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
-              ),
-              secondary: [...B.cells, ...C.cells].flatMap((cell) =>
-                digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
-              ),
-              labels: {
-                primary: tr`the end sets, which both hold ${z}`,
-                secondary: tr`the middle sets, each linked to its neighbours by a restricted common digit`
-              },
-              links: [
-                [A, B, l1.x],
-                [B, C, l2.x],
-                [C, D, l3.x]
-              ].map(([P, Q, x]) => ({
-                from: (P as Als).cells.filter((c) => g.cands[c] & bit(x as number)).map((cell) => ({ cell, digit: x as number })),
-                to: (Q as Als).cells.filter((c) => g.cands[c] & bit(x as number)).map((cell) => ({ cell, digit: x as number })),
-                strong: false
-              })),
-              description: tr`ALS-XY-Chain: ${cellNames(A.cells)} –${l1.x}– ${cellNames(B.cells)} –${l2.x}– ${cellNames(C.cells)} –${l3.x}– ${cellNames(D.cells)}; digit ${z} falls from cells seeing every ${z} of both end sets.`
+              // the chain it derives: (z)A=(x1)A-(x1)B=(x2)B-(x2)C=(x3)C-(x3)D=(z)D
+              links: alsChain(sets, [0, 1, 2, 3], [x1, x2, x3], z),
+              truth: 'derived',
+              sets,
+              description: tr`ALS-XY-Chain: sets A (${a}), B (${b}), C (${c}) and D (${d}) each hold one digit more than they have cells, linked by ${x1}, ${x2} and ${x3}: every ${x1} of A sees every ${x1} of B, every ${x2} of B every ${x2} of C, and every ${x3} of C every ${x3} of D. If A holds no ${z}, its other digits fill its cells, so it holds ${aDigit(x1)}; then B holds no ${x1} and holds ${aDigit(x2)}, C no ${x2} and ${aDigit(x3)}, and D no ${x3} and ${aDigit(z)}: each set in turn loses its link digit and fills its cells. A or D holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`
             };
           }
         }
@@ -390,27 +384,31 @@ export function findDeathBlossom(g: Grid): Step | null {
             if (zCells.every((zc) => sees(c, zc))) elims.push({ cell: c, digit: z });
           }
           if (elims.length) {
+            // the petals, lettered in stem-digit order (HoDoKu's lettering); the stem is no set
+            const sets = chosen.map((A, i) => alsSet(g, A, String.fromCharCode(65 + i)));
+            const holding = (k: number, d: number) => sets[k].members.filter((m) => m.digit === d);
             return {
               tech: 'DEATH_BLOSSOM',
               placements: [],
               eliminations: elims,
-              primary: digitsOf(g.cands[stem]).map((digit) => ({ cell: stem, digit })),
-              secondary: chosen.flatMap((A) =>
-                A.cells.flatMap((cell) =>
-                  digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
-                )
-              ),
+              // the pattern, until phase 5 draws its branches: every petal's z
+              // in the pattern's colour, and what it acts through, the stem's
+              // candidates and each petal's digit the stem sees
+              primary: sets.flatMap((_, k) => holding(k, z)),
+              secondary: [...stemDigits.map((digit) => ({ cell: stem, digit })), ...stemDigits.flatMap((p, k) => holding(k, p))],
               labels: {
-                primary: tr`the stem: each of its candidates leads to a petal`,
-                secondary: tr`the petals: one set per stem digit, all holding ${z}`
+                primary: tr`${z} in every petal: whichever digit the stem takes, a petal holds ${aDigit(z)}`,
+                secondary: tr`the stem's candidates, and each petal's digit the stem sees`
               },
-              // each stem digit reaches the petal that holds it
-              links: stemDigits.map((p, i) => ({
-                from: [{ cell: stem, digit: p }],
-                to: chosen[i].cells.filter((c) => g.cands[c] & bit(p)).map((cell) => ({ cell, digit: p })),
-                strong: false
-              })),
-              description: tr`Death Blossom: stem ${cellName(stem)} links each of its candidates to a petal set; whichever digit the stem takes, some petal locks and places ${z}, so ${z} is removed from cells seeing every ${z} of all petals.`
+              // each stem digit's branch (docs/hint-drawing-sets.md, decision
+              // 15): a weak tie from the stem's p to its petal's, which claims
+              // no truth, and the petal's lock, from its p to its z
+              links: stemDigits.flatMap((p, k): ChainLink[] => [
+                { from: [{ cell: stem, digit: p }], to: holding(k, p), strong: false, undirected: true, toSet: k },
+                { from: holding(k, p), to: holding(k, z), strong: true, fromSet: k, toSet: k }
+              ]),
+              sets,
+              description: blossomText(stem, stemDigits, sets, z)
             };
           }
         }
@@ -428,4 +426,18 @@ export function findDeathBlossom(g: Grid): Step | null {
     if (step) return step;
   }
   return null;
+}
+
+/**
+ * A Death Blossom's description, one sentence per number of petals: the
+ * stem, each petal with the stem's digit it is for, and why whichever
+ * digit the stem takes leaves a petal holding z
+ */
+function blossomText(stem: number, digits: number[], sets: ChainSet[], z: number): string {
+  const at = cellName(stem);
+  const [a, b, c] = sets.map((set) => cellNames(set.cells));
+  const [p, q, r] = digits;
+  return digits.length === 3
+    ? tr`Death Blossom: the stem ${at} holds ${p}, ${q} and ${r}, and each has a petal, an almost locked set whose copies of that digit all see the stem: A (${a}) for ${p}, B (${b}) for ${q} and C (${c}) for ${r}. Whichever digit the stem takes, its petal loses that digit, fills its cells with its other digits and holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of every petal.`
+    : tr`Death Blossom: the stem ${at} holds ${p} and ${q}, and each has a petal, an almost locked set whose copies of that digit all see the stem: A (${a}) for ${p} and B (${b}) for ${q}. Whichever digit the stem takes, its petal loses that digit, fills its cells with its other digits and holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of every petal.`;
 }

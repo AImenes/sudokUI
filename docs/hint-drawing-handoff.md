@@ -3,7 +3,7 @@
 For whoever continues this work. The design and its rules (G1-G25), the
 phases and the running status are in `docs/hint-drawing.md`; this note
 says what is done, what comes next, and how the work has been run.
-Updated 2026-10-26, at the merge of phase 3.
+Updated 2026-10-27, with phase 4 built and in review.
 
 ## State
 
@@ -38,19 +38,55 @@ Updated 2026-10-26, at the merge of phase 3.
   parity walk, `drawnLinks`), `src/content/hintMarks.ts` (`parityMarks`,
   `parityLegend`), `src/content/hintPalette.ts`, the tie and weak-tie
   routing and the brackets in `src/content/hintGeometry.ts`.
+- **Phase 4 (sets)** built on its branch, in its nine stages, and in
+  review (the commits are in the spec's Status): a group is its members'
+  own marks on a bar in the gutter beside them, a TRUE group's members
+  pale "one of these" squares; an almost locked set a tight tile in each
+  of its cells, in one of three tints, with a lettered tab on every tile;
+  ALS-XZ, ALS-XY-Wing and ALS-XY-Chain the derived chains they are, drawn
+  with no truth where a chain whose sets share cells clashes; Death
+  Blossom the pattern, its branch links emitted for phase 5; a walk that
+  introduces each set before the chain uses it; Eureka with braces round
+  the whole set. Design and what the build refined: `docs/hint-drawing-sets.md`
+  (As built). Code: `Step.sets` and the links' `fromSet`/`toSet` in
+  `src/engine/steps.ts`, the finders (`groupedAic.ts`, `groupedXCycles.ts`,
+  `als.ts`), `checkSets` and `alsClash` in `src/engine/truth.ts`, the set
+  walk and its words in `src/engine/hintFrames.ts`, the marks and tints
+  in `src/content/hintMarks.ts`, the bars, tiles and tabs in
+  `src/content/hintGeometry.ts` (`setShapes`, `tilesIn`, `hintDrawing`),
+  both renderers and both legends, the notation in
+  `src/content/eureka.ts`. Guards: `tests/fixtures/drawingSnapshot.json`
+  and the path digest, unchanged since stage 1, and
+  `tests/fixtures/setDrawings.json`, written again only by
+  `DRAWING_SNAPSHOT=write-sets` in a commit that names its techniques.
 - What each review round found is in the spec's Status. What is left for
-  later, all low, is listed there under phases 2 and 3 and phases 6 and 7.
+  later, all low, is listed there under phases 2, 3 and 4 and phases 6
+  and 7.
 
 ## Next
 
-Phase 4 (sets: group and ALS hulls, which also retire the `oneTrue`
-exception), phase 5 (forcing chains per branch), phase 6 (words), phase 7
-(polish). After them, a readability pass over every technique's hint
-against HoDoKu, in all four themes and on a phone.
+Phase 4 is merged after one review round, its findings fixed (the
+Status in hint-drawing.md). A second full round on the round 1 fixes was
+not run, to spare the week's budget: worth one, as phases 1-3 had them
+(below), with the screenshots of every set example and of the set
+fixture's eleven named positions, in all four themes, desktop and phone,
+every walk frame and the hint panel, with and without the player's own
+cell colours (`WALK=1 PANEL=1 PLAYER=1`), and the Learn gallery. Then
+phase 5 (forcing chains per branch,
+which also draws Death Blossom's branches from the links phase 4 emits),
+phase 6 (words), phase 7 (polish), and a readability pass over every
+technique's hint against HoDoKu, in all four themes and on a phone. The
+relabelling of AIC with ALS steps whose only set is a bivalue cell is a
+later measured engine change (the design's decision 14).
 
 ## How the work has been run
 
-- **Checks**: `npx tsc -b`; `npx vitest run`; `npm run build`; the
+- **Checks**: `npx tsc -b`; `npx vitest run`; `npm run build`; before a
+  merge, and after any change to a set technique's finder,
+  `PATH_DIGEST=menus npx vitest run tests/pathDigest` (a plain run, and
+  CI, hold the solve paths alone; this adds what the seven set finders
+  first find at every position of every pool's and seed's path, about
+  eight minutes of finders dealt to four files, `tests/pathDigest.ts`); the
   browser tests, `CI=1 npx playwright test`, with a browser of your own
   in `PW_CHROMIUM` (on the owner's Windows machine Edge,
   `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`, with
@@ -62,8 +98,12 @@ against HoDoKu, in all four themes and on a phone.
   `node scripts/hint-shots.cjs .vite/shots` photographs the app's board
   with every stored example that has links, in all four themes, desktop
   and phone (`WALK=1` every walk frame, `PANEL=1` the hint panel,
-  `TRAINER=1` the chain trainer); `--puzzle <puzzle> <steps> [TECH]` any
-  position on a solve path (a review's repro); `--gallery <html>` the
+  `TRAINER=1` the chain trainer, `PLAYER=1` the board again over the
+  player's own cell colours: the hint's sets' and groups' cells and a
+  neighbour of each, the full view in each of the nine colours, each walk
+  frame in one); `--puzzle <puzzle> <steps> [TECH]` any position on a
+  solve path (a review's repro; TECH's step is its finder's there, as the
+  drawing fixtures find it); `--gallery <html>` the
   Learn diagrams from `npx vite-node scripts/hint-gallery.ts <html>`. For
   main's drawings to compare, a worktree of `main` with its own
   `node_modules` (`cp -al` is quick) served on another port. After a
