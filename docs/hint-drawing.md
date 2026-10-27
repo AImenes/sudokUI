@@ -159,7 +159,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
   no arrow), never at a bar's or tile's edge: the tail or tip is where the
   ray towards the other end leaves that member's mark, exactly (a "one of
   these" square reaches 13 on its axes and 15.5 at its corners), plus the
-  gap. Since phase 4 a group's bar and a set's letter tabs are obstacles
+  gap. A link between other nodes that would so be anchored at the same
+  two candidates as an earlier link (sets that share cells) is anchored at
+  the nearest two of its members still free, or, where none is, drawn
+  beside the earlier, so two links are never drawn as one arrow. Since
+  phase 4 a group's bar and a set's letter tabs are obstacles
   for every arrow, tie, start dot and walk number: an arrow is free of its
   own group's bar only beside the member it anchors at, a start dot not at
   all, so a dot never sits on the bar of the group it opens. No arrow
@@ -170,9 +174,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
   meet a bar where no drawing clears it. A set's tiles are areas, crossed
   as bands are, and its members obstacles, as marks are. The tabs are
   placed knowing the drawing without them, off its heads, dots and
-  numbers and, where a place allows, off its arrows' lines, so no arrow
-  bends for a tab; the arrows, dots and numbers are then worked out round
-  the tabs, once for the whole hint (G14). A link between two digits of
+  numbers, never nearer another set's tile than their own, inside or
+  beside their tile before two places off, and among those, where a place
+  allows, off its arrows' lines, so no arrow bends for a tab; the arrows,
+  dots and numbers are then worked out round the tabs, once for the whole
+  hint (G14). A link between two digits of
   one set draws no line, wherever the two lie (G12). A step with no sets
   is laid out exactly as before
   ([hint-drawing-sets.md](hint-drawing-sets.md), As built).
@@ -341,7 +347,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
     Death Blossom, which draws no truth until phase 5, draws roles in a
     set: the stem's candidates and each petal's digit the stem sees
     acts-through gold, every petal's z pattern blue, the stem no tile, a
-    headless dashed weak tie from each stem digit into its petal.
+    headless dashed weak tie from each stem digit into its petal: along
+    the row or column the two share, bending only round what lies on it,
+    where that keeps clear and is shorter, counting what the digits it
+    crosses cut out of it twice; crossing another tie only where the
+    crossing shows, never under a digit.
   - Arrows attach at a member (G10).
 - **G17. Digit focus (optional, Settings).** During a hint about one
   digit (fish, single-digit patterns, X-Chains, colouring), the other

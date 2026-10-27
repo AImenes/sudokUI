@@ -59,32 +59,29 @@ const arrow = (s: ArrowShape) => {
   return s;
 };
 
-/** points along a shape's shaft, read back from its path */
+/** points along a shape's shaft, read back from its path: 40 along each line or curve it is made of */
 function samples(d: string): Point[] {
-  const n = d.match(/-?\d+(\.\d+)?/g)!.map(Number);
-  if (d.includes('C')) {
-    const [x0, y0, ax, ay, bx, by, x1, y1] = n;
-    return Array.from({ length: 41 }, (_, k) => {
-      const t = k / 40;
+  const tokens = d.match(/[MLQC]|-?\d+(\.\d+)?/g)!;
+  const out: Point[] = [];
+  let at = { x: 0, y: 0 };
+  for (let k = 0; k < tokens.length; ) {
+    const op = tokens[k++];
+    const n: number[] = [];
+    while (k < tokens.length && !/[MLQC]/.test(tokens[k])) n.push(Number(tokens[k++]));
+    const from = at;
+    const point = (t: number): Point => {
       const s = 1 - t;
-      return {
-        x: s ** 3 * x0 + 3 * s * s * t * ax + 3 * s * t * t * bx + t ** 3 * x1,
-        y: s ** 3 * y0 + 3 * s * s * t * ay + 3 * s * t * t * by + t ** 3 * y1
-      };
-    });
+      if (op === 'C') return { x: s ** 3 * from.x + 3 * s * s * t * n[0] + 3 * s * t * t * n[2] + t ** 3 * n[4], y: s ** 3 * from.y + 3 * s * s * t * n[1] + 3 * s * t * t * n[3] + t ** 3 * n[5] };
+      if (op === 'Q') return { x: s * s * from.x + 2 * s * t * n[0] + t * t * n[2], y: s * s * from.y + 2 * s * t * n[1] + t * t * n[3] };
+      return { x: from.x + (n[0] - from.x) * t, y: from.y + (n[1] - from.y) * t };
+    };
+    if (op === 'M') out.push((at = { x: n[0], y: n[1] }));
+    else {
+      for (let j = 1; j <= 40; j++) out.push(point(j / 40));
+      at = out[out.length - 1];
+    }
   }
-  if (d.includes('Q')) {
-    const [x0, y0, cx, cy, x1, y1] = n;
-    return Array.from({ length: 41 }, (_, k) => {
-      const t = k / 40;
-      return {
-        x: (1 - t) ** 2 * x0 + 2 * (1 - t) * t * cx + t * t * x1,
-        y: (1 - t) ** 2 * y0 + 2 * (1 - t) * t * cy + t * t * y1
-      };
-    });
-  }
-  const [x0, y0, x1, y1] = n;
-  return Array.from({ length: 41 }, (_, k) => ({ x: x0 + ((x1 - x0) * k) / 40, y: y0 + ((y1 - y0) * k) / 40 }));
+  return out;
 }
 
 describe('an arrow', () => {
@@ -1354,5 +1351,178 @@ describe("an almost locked set's tiles and letter tabs (docs/hint-drawing-sets.m
       [3, 64],
       [3, 73]
     ]);
+  });
+});
+
+describe("what the first review of phase 4 found: where the ties, the tabs and two links joined alike go", () => {
+  const key = (x: CellDigit) => `${x.cell}:${x.digit}`;
+  const SET_TECHS: Tech[] = ['AIC_GROUPED', 'AIC_ALS', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'];
+  /** a step's drawing on the app's board at a position (its digits, every cell's candidates), as src/ui/Grid.tsx works it out */
+  const appDrawing = (step: Step, values: string, cands: number[]) => {
+    const solved = (c: number) => values[c] !== '0';
+    const full = frameMarks(step, null, solved);
+    const marks = markedCandidates(full);
+    const shown = (x: CellDigit) => digitShown({ value: Number(values[x.cell]), corner: 0, center: 0 }, x.digit, cands[x.cell], full.cands.get(x.cell));
+    const l = boardLayout(placedKeys(full), shown, solved, squareKeys(step, solved));
+    return { marks, shown, solved, l, ...hintDrawing(step, l, marks) };
+  };
+  /** the position after `n` of the solver's steps, and the step there: the solver's own, or a technique's finder's */
+  const after = (puzzle: string, n: number, tech?: Tech) => {
+    const g = parseGrid(puzzle)!;
+    for (let i = 0; i < n; i++) applyStep(g, findNextStep(g)!);
+    const step = tech ? findStep(tech, g)! : findNextStep(g)!;
+    return { step, values: Array.from(g.values).join(''), cands: Array.from(g.cands) };
+  };
+  /** every step of the eight set techniques the repository keeps: the stored examples, and the set fixture's at the positions it keeps */
+  const kept = (() => {
+    const out: { where: string; step: Step; values: string; cands: number[] }[] = SET_TECHS.map((tech) => ({ where: tech, step: EXAMPLES[tech]!.step, values: EXAMPLES[tech]!.values, cands: EXAMPLES[tech]!.cands }));
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    for (const section of ['paths', 'named']) {
+      for (const [id, d] of Object.entries<{ position: { puzzle: string; values: string; cands: number[] } }>(fx[section])) {
+        const tech = id.split(', ').at(-1) as Tech;
+        const g = parseGrid(d.position.puzzle)!;
+        for (let i = 0; i < 81; i++) {
+          g.values[i] = Number(d.position.values[i]);
+          g.cands[i] = d.position.cands[i];
+        }
+        const step = findStep(tech, g);
+        if (step?.tech === tech) out.push({ where: id, step, values: d.position.values, cands: d.position.cands });
+      }
+    }
+    return out.map((x) => ({ ...x, drawing: appDrawing(x.step, x.values, x.cands) }));
+  })();
+  const lineOf = (s: ArrowShape) => (s.kind === 'arrow' || s.kind === 'tie' ? samples(s.d) : []);
+  const lengthOf = (line: Point[]) => line.reduce((n, p, k) => (k ? n + dist(p, line[k - 1]) : 0), 0);
+  /** where two lines cross */
+  const crossings = (p: Point[], q: Point[]) => {
+    const out: Point[] = [];
+    const side = (a: Point, b: Point, r: Point) => Math.sign((b.x - a.x) * (r.y - a.y) - (b.y - a.y) * (r.x - a.x));
+    for (let k = 1; k < p.length; k++)
+      for (let m = 1; m < q.length; m++) {
+        const [a, b, c, d] = [p[k - 1], p[k], q[m - 1], q[m]];
+        if (side(a, b, c) * side(a, b, d) >= 0 || side(c, d, a) * side(c, d, b) >= 0) continue;
+        const t = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / ((b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x));
+        out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+      }
+    return out;
+  };
+  /**
+   * whether a point of the app's board lies where a digit is cut out of the
+   * lines: a solved digit's box in its cell's middle, or a pencilled
+   * candidate's at its place (but the hint's marks), with the 4 units the
+   * cut-out's outline adds round each
+   */
+  const underADigit = (p: Point, d: (typeof kept)[number]['drawing'], values: string) => {
+    const [col, row] = [Math.floor((p.x - M) / 100), Math.floor((p.y - M) / 100)];
+    const cell = row * 9 + col;
+    const [x0, y0] = [M + col * 100, M + row * 100];
+    if (values[cell] !== '0') return p.x > x0 + 30 && p.x < x0 + 70 && p.y > y0 + 25 && p.y < y0 + 75;
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9].some((digit) => {
+      const x = { cell, digit };
+      if (!d.shown(x) || d.marks.some((m) => key(m) === key(x))) return false;
+      const q = d.l.centre(x);
+      return Math.abs(p.x - q.x) < 6.4 + 4 && p.y > q.y - 9.6 - 4 && p.y < q.y + 7 + 4;
+    });
+  };
+
+  it("runs the stored Death Blossom's 7 tie along row 8, which its two candidates share, bending only round the 7 of r8c2 between them", () => {
+    // the drawing Learn opens on: 7r8c9 to 7r8c1, along the bottom row of row 8's places; the line sagged through
+    // row 9, over r9c2's 2 and 3 and past the solved 7 and 9 there, 821 units long
+    const ex = EXAMPLES.DEATH_BLOSSOM!;
+    const d = appDrawing(ex.step, ex.values, ex.cands);
+    const i = ex.step.links!.findIndex((l) => key(l.from[0]) === key(cd(8, 9, 7)) && key(l.to[0]) === key(cd(8, 1, 7)));
+    const line = lineOf(d.shapes[i]);
+    const bottom = d.l.centre(cd(8, 1, 7)).y;
+    // in row 8 all the way, never above its middle row of places, never into row 9
+    expect(Math.min(...line.map((p) => p.y))).toBeGreaterThanOrEqual(d.l.centre(cd(8, 1, 4)).y);
+    expect(Math.max(...line.map((p) => p.y))).toBeLessThanOrEqual(M + 8 * 100);
+    // on the row's line but in r8c1 and r8c2, where it rises over r8c2's 7, clear of it as of a mark
+    expect(line.filter((p) => p.x > M + 2 * 100).every((p) => Math.abs(p.y - bottom) < 0.5)).toBe(true);
+    expect(Math.min(...line.map((p) => dist(p, d.l.centre(cd(8, 2, 7)))))).toBeGreaterThanOrEqual(SIZES.r * 100 + SIZES.clearance * 100 - 0.5);
+    expect(lengthOf(line)).toBeLessThan(790);
+  });
+
+  it('crosses no Death Blossom tie over another under a digit, where the cut-out hides the crossing: the stored example and every Death Blossom kept', () => {
+    // the stored example's 2 tie (2r8c9 to 2r9c7) crossed its 5 tie (5r8c9 to 5r8c5) at (766, 743), in r8c8's solved 3
+    let ties = 0;
+    let crossed = 0;
+    for (const { where, step, values, drawing } of kept.filter((x) => x.step.tech === 'DEATH_BLOSSOM')) {
+      const lines = drawing.shapes.filter((s) => s.kind === 'arrow').map((s) => ({ link: s.link, line: lineOf(s) }));
+      ties += lines.length;
+      for (const [k, a] of lines.entries())
+        for (const b of lines.slice(k + 1))
+          for (const p of crossings(a.line, b.line)) {
+            crossed++;
+            expect(underADigit(p, drawing, values), `${where}: ties ${a.link} and ${b.link} at (${p.x.toFixed(0)}, ${p.y.toFixed(0)})`).toBe(false);
+          }
+    }
+    expect(ties).toBeGreaterThan(15);
+    expect(crossed).toBeGreaterThan(0);
+  });
+
+  it("never puts a tab nearer another set's tile than its own, nor two places off its tile where one beside it has the room", () => {
+    const fromTile = (p: Point, t: { x0: number; y0: number; x1: number; y1: number }) => Math.hypot(Math.max(t.x0 - p.x, 0, p.x - t.x1), Math.max(t.y0 - p.y, 0, p.y - t.y1));
+    const offOwn = (d: (typeof kept)[number]['drawing'], tab: (typeof d)['sets']['tabs'][number]) => fromTile(tab.p, d.sets.tiles.find((t) => t.set === tab.set && t.cell === tab.cell)!);
+    const nearestOther = (d: (typeof kept)[number]['drawing'], tab: (typeof d)['sets']['tabs'][number]) => Math.min(...d.sets.tiles.filter((t) => t.set !== tab.set).map((t) => fromTile(tab.p, t)));
+    // an ALS-XY-Chain on the solve path: C's tab on r2c1 went to the place right of the 1, two places off C's
+    // tile and 16 units from B's on r2c2 (as though r2c2 were in both sets); now inside C's tile, between its 1 and 7
+    const one = after('9.....71...693..2..8.4........74.6..4.......7..2.63........7.5..1..593...37.....1', 22);
+    expect(one.step.tech).toBe('ALS_XY_CHAIN');
+    const d1 = appDrawing(one.step, one.values, one.cands);
+    const c = d1.sets.tabs.find((t) => t.letter === 'C' && t.cell === 9)!;
+    expect(c.p).toEqual(d1.l.centre(cd(2, 1, 4)));
+    // and D's tab on r7c9 went below its tile to the place above C's tile on r8c9; now beside its own
+    const two = after('.5.....284...........3.617....9..5.292..4.........7.1...6..2...7....3.5..8.4....7', 18);
+    expect(two.step.tech).toBe('ALS_XY_CHAIN');
+    const d2 = appDrawing(two.step, two.values, two.cands);
+    const tab = d2.sets.tabs.find((t) => t.letter === 'D' && t.cell === 62)!;
+    expect(offOwn(d2, tab)).toBeLessThanOrEqual(28);
+    const C = two.step.sets!.findIndex((x) => x.letter === 'C');
+    expect(offOwn(d2, tab)).toBeLessThan(fromTile(tab.p, d2.sets.tiles.find((t) => t.set === C && t.cell === 71)!));
+    // every set step kept: no tab nearer another set's tile than its own; and a tab two places off its tile only
+    // where no place inside or beside it keeps the room from the marks, the other tabs and the heads, start dots
+    // and walk numbers of the drawing without tabs
+    let tabs = 0;
+    const far: string[] = [];
+    for (const { where, drawing: d } of kept) {
+      for (const t of d.sets.tabs) {
+        tabs++;
+        expect(nearestOther(d, t), `${where}: the tab ${t.letter} on cell ${t.cell}`).toBeGreaterThanOrEqual(offOwn(d, t) - 1e-9);
+        if (offOwn(d, t) > 28) far.push(`${where}: ${t.letter} on r${Math.floor(t.cell / 9) + 1}c${(t.cell % 9) + 1}`);
+      }
+    }
+    expect(tabs).toBeGreaterThan(400);
+    // r7c2 of the hard ALS-XY-Chains whose four sets lie on three cells: in two sets, its 8 and 9 take three
+    // arrowheads and their walk numbers, and no place beside its tile has the room
+    expect(far).toEqual(['hard 1, step 3, ALS_XY_CHAIN: B on r7c2', 'hard 1, step 4, ALS_XY_CHAIN: D on r7c2', 'hard 1, step 5, ALS_XY_CHAIN: D on r7c2', 'hard 1, step 6, ALS_XY_CHAIN: D on r7c2']);
+  });
+
+  it('never draws two links of a step as one line: a link between other nodes joined at the same two candidates as an earlier one is joined at two others, or drawn beside it', () => {
+    // the fixture's ALS-XY-Chain whose four sets lie on three cells: 8 from A to B and 8 from C to D were both
+    // drawn from 8r7c1 to 8r7c2; C's 8s are in r7c1 and r7c3, so the second now leaves from r7c3
+    const lent = kept.find((x) => x.where === 'hard 1, step 3, ALS_XY_CHAIN')!;
+    // whether an arrow leaves one candidate and its head points into another, a mark's radius and a gap off each
+    const by = (s: ArrowShape, from: CellDigit, to: CellDigit) =>
+      [dist(arrow(s).tail, lent.drawing.l.centre(from)), dist(arrow(s).head[0], lent.drawing.l.centre(to))].every((r) => r < 0.17 * 100);
+    expect(by(lent.drawing.shapes[1], cd(7, 1, 8), cd(7, 2, 8))).toBe(true);
+    expect(by(lent.drawing.shapes[5], cd(7, 3, 8), cd(7, 2, 8))).toBe(true);
+    // a practice puzzle's ALS-XY-Chain on offer: 3r1c4 to 3r1c5 (A to B) and the 3s of r1c4 and r1c6 to 3r1c5 (C to D)
+    const pool = after('.71....49.3..915......87..........24..8.......1...9738257.......8..5.39.....6....', 2, 'ALS_XY_CHAIN');
+    const dp = appDrawing(pool.step, pool.values, pool.cands);
+    const drawn = dp.shapes.filter((s) => s.kind === 'arrow').map((s) => (s.kind === 'arrow' ? s.d : ''));
+    expect(new Set(drawn).size).toBe(drawn.length);
+    // nodes whose only members are those two candidates: the two are drawn side by side, as two links between the
+    // same nodes are
+    const x = cd(5, 2, 4);
+    const y = cd(5, 8, 4);
+    const z = cd(9, 8, 4);
+    const both = arrowShapes([link(x, [y, z], false), link(x, y, false)], layout, [x, y, z]).map((s) => samples(arrow(s).d));
+    for (const line of both) expect(Math.abs(line[0].y - line[line.length - 1].y)).toBeLessThan(0.01);
+    expect(Math.abs(both[0][0].y - both[1][0].y)).toBeCloseTo(SIZES.pair * 100, 6);
+    // and in every step kept, no two links drawn on one line, nor two links between other nodes from and to the same two candidates
+    for (const { where, drawing } of kept) {
+      const lines = drawing.shapes.flatMap((s) => (s.kind === 'arrow' || s.kind === 'tie' ? [s.d] : []));
+      expect(new Set(lines).size, where).toBe(lines.length);
+    }
   });
 });
