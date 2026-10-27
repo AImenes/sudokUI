@@ -13,14 +13,19 @@
 // A chain whose truth is derived (src/engine/truth.ts) draws each node as
 // what the chain makes it (G2, G18): a filled disc in the true colour, or
 // a ring in the false colour, from its first node's premise; that truth
-// wins over the roles. A discontinuous loop's start shows its premise
+// wins over the roles. A walk frame draws what the links it has drawn
+// prove, so no frame draws a truth ahead of the sentence that gives it
+// (where an ALS-XY-Chain's sets share a cell, a later set can settle a
+// candidate drawn earlier). A discontinuous loop's start shows its premise
 // until the walk reaches the link that closes the loop, and its proven
 // value at that link; its truths hold only under the premise the loop
 // refutes, so its full view and conclusion draw it as main did, the
 // pattern beside the placement or removal. A true node of several
 // candidates means one of them is true, not all, so its candidates are
 // 'oneOf', the pale "one of these" square, never a true disc
-// (docs/hint-drawing-sets.md, decision 1).
+// (docs/hint-drawing-sets.md, decision 1), unless a node of one candidate
+// already makes one of them true: that one is then a true disc and the
+// others, which see it, false rings, never squares beside the disc.
 // A group (the 2-3 candidates of one digit in one box and one row or
 // column, Step.sets) is drawn as one node: its members' own marks on a bar
 // in their ink, from the frame that first reaches it. The bar takes its
@@ -62,7 +67,7 @@ import type { CellDigit, ChainLink, Step, UnitBand } from '../engine/steps';
 import { isParity, isTie } from '../engine/steps';
 import type { Frame, Part } from '../engine/hintFrames';
 import { drawnLinks, colouringDigit, walkFrames } from '../engine/hintFrames';
-import { alsClash, deriveTruth } from '../engine/truth';
+import { alsClash, deriveLinks, deriveTruth } from '../engine/truth';
 import { sees } from '../engine/board';
 import { tr } from '../engine/text';
 import { insideOneCell } from './hintGeometry';
@@ -333,15 +338,20 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const clash = alsClash(step);
   const truth = derived && !derived.problems.length && !proofOnly && !clash ? derived : null;
   const closed = links.length >= (step.links ?? []).length;
+  // a walk frame draws what the links drawn so far prove, never what a
+  // later link adds (where sets share a cell, a later set's lock makes a
+  // candidate drawn earlier true or false); the full view and the
+  // conclusion draw the whole chain's
+  const proven = truth && opts.walking && !closed ? deriveLinks(links.filter((l) => !l.undirected)) : truth;
   const truthOf = (cd: CellDigit): 'true' | 'false' | 'oneOf' | null => {
-    if (!truth) return null;
+    if (!truth || !proven) return null;
     const isStart = truth.closure?.node.some((o) => o.cell === cd.cell && o.digit === cd.digit);
     if (truth.closure && isStart && !closed) {
       // a group assumed true means one of its members, not all
       if (truth.closure.assumed) return truth.closure.node.length > 1 ? 'oneOf' : 'true';
       return 'false';
     }
-    const t = truth.candidates.get(`${cd.cell}:${cd.digit}`);
+    const t = proven.candidates.get(`${cd.cell}:${cd.digit}`);
     return t === 'true' ? 'true' : t === 'false' ? 'false' : t === 'groupTrue' ? 'oneOf' : null;
   };
   const node = (cd: CellDigit) => {

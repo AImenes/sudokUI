@@ -21,6 +21,12 @@ import { PARITY_FIXTURES, positionOf } from './parityFixtures';
 import { LIGHT } from '../src/content/hintPalette';
 import { EXAMPLES } from '../src/content/examples';
 import { TECHS, Tech } from '../src/engine/ratings';
+import { deriveLinks } from '../src/engine/truth';
+import { drawnLinks } from '../src/engine/hintFrames';
+import { isPlaced } from '../src/content/hintMarks';
+import { sees } from '../src/engine/board';
+import type { Grid } from '../src/engine/board';
+import { solve } from '../src/engine/bruteForce';
 
 const storage = new Map<string, string>();
 (globalThis as any).localStorage = {
@@ -919,5 +925,216 @@ describe('the store', () => {
     useGame.getState().toggleAutoCandidates();
     expect(useGame.getState().hint).toBeNull();
     expect(useGame.getState().hintStage).toBe('hidden');
+  });
+});
+
+describe('a true node of several candidates where sets share a cell, and what a walk frame has proven (phase 4 review round 1)', () => {
+  /** the techniques whose chains derive with sets: the grouped chains, AIC with ALS and the three ALS patterns */
+  const DERIVED: Tech[] = ['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN'];
+  /**
+   * Positions, as a puzzle and the solver's steps before them, where an
+   * ALS-XY-Chain on offer has a true set node one of whose candidates a
+   * one-cell set already makes true (the review's repros and scans; the
+   * first is the set fixture's hard 1, step 19); in the second and the last
+   * four the premise holds in the solution, and in the third and fourth a
+   * walk frame once drew a truth only a later set proves
+   */
+  const SHARED: [string, number][] = [
+    ['4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......', 19],
+    ['.......38.1..2.....5.7469..42...1...3.1...5.6...9...14..7614.5.....8..7.56.......', 21],
+    ['..9.....2.5.6...3.1....9....6..8...7.1.46....5.4...1..683.4...1...29.8..........4', 4],
+    ['..1..569.8......7..7..9...5...3..48.3...6...7.87..1...9...7..3..2......6.462..7..', 7],
+    ['...9.....216547....89.21..............2.93.61......4.3.41.7...98.....7....51...2.', 11],
+    ['...9.......95....47.5.436..53...2467.........6947...32..231.8.91....93.......4...', 32],
+    ['1.8.9....3..7.5.....6.....7.....68.1.......2.96.4...5..9.2......2...7..8..4....3.', 10],
+    ['.......2..3..1..949....6..55.....6.....9.8.7.....2......2....4.86..7....1.7.35...', 13]
+  ];
+  const at = (r: number, c: number, d: number): CellDigit => ({ cell: (r - 1) * 9 + c - 1, digit: d });
+  const key = (x: CellDigit) => `${x.cell}:${x.digit}`;
+  const kindAt = (m: ReturnType<typeof hintMarks>, cd: CellDigit) => m.cands.get(cd.cell)?.get(cd.digit);
+  /** two candidates that cannot both be true */
+  const excludes = (a: CellDigit, b: CellDigit) => (a.cell === b.cell ? a.digit !== b.digit : a.digit === b.digit && sees(a.cell, b.cell));
+  type Entry = { where: string; step: Step; values: string; solution: Grid };
+  /** every derived set step the repository keeps (the examples, the set fixture's positions) and the shared positions' */
+  const corpus = (() => {
+    const out: Entry[] = [];
+    const solutionOf = (digits: string) => solve(parseGrid(digits)!)!;
+    for (const tech of DERIVED) out.push({ where: tech, step: EXAMPLES[tech]!.step, values: EXAMPLES[tech]!.values, solution: solutionOf(EXAMPLES[tech]!.values) });
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    for (const section of ['paths', 'named']) {
+      for (const [id, d] of Object.entries<{ position: { puzzle: string; values: string; cands: number[] } }>(fx[section])) {
+        const tech = id.split(', ').at(-1) as Tech;
+        if (!DERIVED.includes(tech)) continue;
+        const g = parseGrid(d.position.puzzle)!;
+        for (let i = 0; i < 81; i++) {
+          g.values[i] = Number(d.position.values[i]);
+          g.cands[i] = d.position.cands[i];
+        }
+        const s = findStep(tech, g);
+        if (s?.tech === tech) out.push({ where: id, step: s, values: d.position.values, solution: solutionOf(d.position.puzzle) });
+      }
+    }
+    for (const [puzzle, steps] of SHARED) {
+      const g = parseGrid(puzzle)!;
+      for (let i = 0; i < steps; i++) applyStep(g, findNextStep(g)!);
+      const values = Array.from(g.values).join('');
+      for (const tech of DERIVED) {
+        const s = findStep(tech, g);
+        if (s?.tech === tech) out.push({ where: `${puzzle} after ${steps}, ${tech}`, step: s, values, solution: solutionOf(puzzle) });
+      }
+    }
+    return out;
+  })();
+  /** each view of a step that draws its truth, with the nodes of the links it draws (their truth as those links derive it) and its marks */
+  const views = (e: Entry) => {
+    const d = deriveTruth(e.step);
+    if (!d || d.problems.length || alsClash(e.step)) return [];
+    return [null, ...walkFrames(e.step)].map((fr) => {
+      const drawn = drawnLinks(e.step, fr);
+      const links = (e.step.links ?? []).filter((l, i) => drawn.has(i) && !l.undirected);
+      return { fr, nodes: deriveLinks(links).nodes, marks: frameMarks(e.step, fr, (c) => e.values[c] !== '0') };
+    });
+  };
+  const SHAPES = ['true', 'false', 'oneOf'];
+
+  it('draws a true node of several candidates as "one of these" squares, or, where a node of one candidate already makes one of them true, as that disc and false rings, never a disc beside squares', () => {
+    let fixed = 0;
+    expect(corpus.length).toBeGreaterThan(140);
+    expect(new Set(corpus.map((e) => e.step.tech))).toEqual(new Set(DERIVED));
+    for (const e of corpus) {
+      for (const { fr, nodes, marks } of views(e)) {
+        const where = `${e.where}, frame ${fr ? fr.links : 'full'}`;
+        const trueOne = (cd: CellDigit) => nodes.some((n) => n.truth && n.node.length === 1 && key(n.node[0]) === key(cd));
+        for (const { node, truth } of nodes) {
+          if (!truth || node.length < 2) continue;
+          const kinds = node.map((cd) => kindAt(marks, cd));
+          const discs = node.filter((cd) => kindAt(marks, cd) === 'true');
+          expect(kinds.includes('true') && kinds.includes('oneOf'), `${where}: ${node.map(key)} ${kinds}`).toBe(false);
+          // a disc is a node of one candidate the links drawn make true, and its node's others, which see it, are rings
+          for (const cd of discs) expect(trueOne(cd), `${where}: ${key(cd)}`).toBe(true);
+          if (discs.length) {
+            fixed++;
+            for (const cd of node) if (!discs.includes(cd) && SHAPES.includes(kindAt(marks, cd)!)) expect([kindAt(marks, cd), discs.some((p) => excludes(p, cd))], `${where}: ${key(cd)}`).toEqual(['false', true]);
+          }
+        }
+      }
+    }
+    // the shared positions' nodes, in their full views, the last frames and the frames from the one-cell set's on
+    expect(fixed).toBeGreaterThan(40);
+  });
+
+  it('draws in each view only the truths its links prove: a disc on a true node of one candidate, a square on a true node of several, a ring on a false node or beside a disc in its own node', () => {
+    let early = 0;
+    for (const e of corpus) {
+      for (const { fr, nodes, marks } of views(e)) {
+        const where = `${e.where}, frame ${fr ? fr.links : 'full'}`;
+        const holding = (cd: CellDigit) => nodes.filter((n) => n.node.some((x) => key(x) === key(cd)));
+        for (const [cell, m] of marks.cands) {
+          for (const [digit, kind] of m) {
+            if (!SHAPES.includes(kind)) continue;
+            const cd = { cell, digit };
+            const ns = holding(cd);
+            const ok =
+              kind === 'true'
+                ? ns.some((n) => n.truth && n.node.length === 1)
+                : kind === 'oneOf'
+                  ? ns.some((n) => n.truth && n.node.length > 1)
+                  : ns.some((n) => !n.truth) || ns.some((n) => n.truth && n.node.some((x) => kindAt(marks, x) === 'true' && excludes(x, cd)));
+            if (!ok) early++;
+            expect(ok, `${where}: ${kind} ${digit} in cell ${cell}`).toBe(true);
+          }
+        }
+      }
+    }
+    expect(early).toBe(0);
+  });
+
+  it('draws nothing false under a premise that holds in the solution: every disc true there, every ring false, and each true node\'s squares holding its true candidate', () => {
+    let held = 0;
+    let settled = 0;
+    for (const e of corpus) {
+      const d = deriveTruth(e.step);
+      if (!d || d.closure || !views(e).length) continue;
+      const sol = (cd: CellDigit) => e.solution.values[cd.cell] === cd.digit;
+      // the premise: the first node as the chain assumes it
+      if (d.nodes[0].node.some(sol) !== d.nodes[0].truth) continue;
+      held++;
+      for (const { fr, nodes, marks } of views(e)) {
+        const where = `${e.where}, frame ${fr ? fr.links : 'full'}`;
+        for (const [cell, m] of marks.cands) {
+          for (const [digit, kind] of m) {
+            if (kind === 'true') expect(sol({ cell, digit }), `${where}: the disc on ${digit} in cell ${cell}`).toBe(true);
+            if (kind === 'false') expect(sol({ cell, digit }), `${where}: the ring on ${digit} in cell ${cell}`).toBe(false);
+          }
+        }
+        for (const { node, truth } of nodes) {
+          if (!truth || node.length < 2) continue;
+          if (node.some((cd) => kindAt(marks, cd) === 'true')) settled++;
+          const squares = node.filter((cd) => kindAt(marks, cd) === 'oneOf');
+          if (!squares.length) continue;
+          // the true candidate is a square, or the step places it
+          const placed = node.filter((cd) => isPlaced(kindAt(marks, cd)));
+          expect([...squares, ...placed].some(sol), `${where}: the squares ${squares.map(key)}`).toBe(true);
+        }
+      }
+    }
+    expect(held).toBeGreaterThan(50);
+    // the shared positions' true set nodes a one-cell set settles, their disc and rings checked
+    expect(settled).toBeGreaterThan(20);
+  });
+
+  it('draws the stored repros as the chain proves them, frame by frame', () => {
+    const find = (puzzle: string) => corpus.find((e) => e.where.startsWith(puzzle) && e.step.tech === 'ALS_XY_CHAIN')!;
+    const allViews = (e: Entry) => [null, ...walkFrames(e.step)].map((fr) => ({ fr, m: frameMarks(e.step, fr, (c) => e.values[c] !== '0') }));
+    const kinds = (m: ReturnType<typeof hintMarks>, cds: CellDigit[]) => cds.map((cd) => kindAt(m, cd));
+    /** the walk frames before the one that draws the step's lock inside its set `letter`, and the rest */
+    const split = (e: Entry, letter: string) => {
+      const set = e.step.sets!.findIndex((s) => s.letter === letter);
+      const lock = e.step.links!.findIndex((l) => l.fromSet === set && l.toSet === set);
+      const all = allViews(e).filter((v) => v.fr && !v.fr.show.has('conclusion'));
+      return [all.filter((v) => v.fr!.links <= lock), all.filter((v) => v.fr!.links > lock)];
+    };
+    // hard 1, step 19: B's lock makes 5r4c6 true, so D's other 5s, in column 6, are false
+    const hard = find(SHARED[0][0]);
+    expect(kinds(allViews(hard)[0].m, [at(4, 6, 5), at(2, 6, 5), at(3, 6, 5)])).toEqual(['true', 'false', 'false']);
+    // the premise holds in the solution, where r2c1 is 9: 7r2c1 is no square
+    const second = find(SHARED[1][0]);
+    for (const { m } of allViews(second)) expect(kindAt(m, at(2, 1, 7)), 'r2c1').not.toBe('oneOf');
+    expect(kinds(allViews(second)[0].m, [at(1, 2, 7), at(2, 1, 7)])).toEqual(['true', 'false']);
+    // A's 7s are "one of these" until C's lock, the one-cell set r5c3, makes 7r5c3 true and the others false
+    const third = find(SHARED[2][0]);
+    const [before, after] = split(third, 'C');
+    expect(before.length).toBeGreaterThan(2);
+    for (const { m } of before.slice(1)) expect(kinds(m, [at(5, 3, 7), at(8, 3, 7), at(9, 3, 7)])).toEqual(['oneOf', 'oneOf', 'oneOf']);
+    for (const { m } of after) expect(kinds(m, [at(5, 3, 7), at(8, 3, 7), at(9, 3, 7)])).toEqual(['true', 'false', 'false']);
+    // A's 2s, r3c1 and r3c3, are "one of these" until C's lock makes 2r3c3 true
+    const fourth = find(SHARED[3][0]);
+    const [early, late] = split(fourth, 'C');
+    for (const { m } of early.slice(1)) expect(kinds(m, [at(3, 1, 2), at(3, 3, 2)])).toEqual(['oneOf', 'oneOf']);
+    for (const { m } of late) expect(kinds(m, [at(3, 1, 2), at(3, 3, 2)])).toEqual(['false', 'true']);
+  });
+
+  it('draws each walk frame of a chain whose nodes share no candidate as the whole chain derives it, as before', () => {
+    let chains = 0;
+    for (const e of corpus) {
+      const d = deriveTruth(e.step);
+      if (!d || d.problems.length || alsClash(e.step)) continue;
+      const counted = d.nodes.flatMap((n) => n.node.map(key));
+      if (new Set(counted).size !== counted.length) continue;
+      chains++;
+      const start = new Set((d.closure?.node ?? []).map(key));
+      const shape = (t: string | undefined) => (t === 'groupTrue' ? 'oneOf' : t);
+      for (const fr of walkFrames(e.step)) {
+        if (fr.show.has('conclusion')) continue;
+        const m = frameMarks(e.step, fr, (c) => e.values[c] !== '0');
+        for (const [cell, ds] of m.cands) {
+          for (const [digit, kind] of ds) {
+            if (!SHAPES.includes(kind) || start.has(`${cell}:${digit}`)) continue;
+            expect(kind, `${e.where}, frame ${fr.links}: ${digit} in cell ${cell}`).toBe(shape(d.candidates.get(`${cell}:${digit}`)));
+          }
+        }
+      }
+    }
+    expect(chains).toBeGreaterThan(120);
   });
 });

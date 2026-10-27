@@ -17,10 +17,13 @@
 //
 // A group or set node that is TRUE means "one of these", not "all of
 // these": its members are 'groupTrue', never 'true', so a drawing does not
-// teach that all of them are placed. A FALSE group means none of them, and
-// its members are 'false'. A TRUE node whose every candidate the chain
-// makes false says nothing true ('emptyTrue'), as when a chain's last set
-// lies inside its first and the premise makes the first set's z false.
+// teach that all of them are placed. Where a node of one candidate already
+// makes one member true (an ALS-XY-Chain whose sets share a cell), that
+// member is the one, and the others, which see it, are 'false'. A FALSE
+// group means none of them, and its members are 'false'. A TRUE node whose
+// every candidate the chain makes false says nothing true ('emptyTrue'), as
+// when a chain's last set lies inside its first and the premise makes the
+// first set's z false.
 //
 // An ALS pattern read as its chain may clash where its sets share cells
 // (alsClash): it is then drawn with no truth, as a pattern is.
@@ -72,6 +75,8 @@ export interface Problem {
 const keyOf = (cd: CellDigit) => `${cd.cell}:${cd.digit}`;
 const nodeKey = (node: CellDigit[]) => node.map(keyOf).sort().join('+');
 const label = (node: CellDigit[]) => node.map((cd) => `${cd.digit}r${Math.floor(cd.cell / 9) + 1}c${(cd.cell % 9) + 1}`).join(',');
+/** two candidates that cannot both be true: two digits of one cell, or one digit in two cells that see each other */
+const excludes = (a: CellDigit, b: CellDigit) => (a.cell === b.cell ? a.digit !== b.digit : a.digit === b.digit && sees(a.cell, b.cell));
 
 /** the truth of a 'derived' chain's nodes; null for any other step */
 export function deriveTruth(step: Step): Derivation | null {
@@ -155,6 +160,17 @@ export function deriveLinks(links: ChainLink[]): Derivation {
         if (was === 'true') problems.push({ link: 0, issue: 'inFalseGroup', at: label([cd]) });
         if (was !== 'true') candidates.set(k, 'false');
       } else if (!was) candidates.set(k, 'groupTrue');
+    }
+  }
+  // a true node of several candidates one of which a node of one candidate
+  // already makes true (an ALS-XY-Chain whose sets share a cell): that one
+  // is its true member, and the others, one digit in one house with it, see
+  // it and are false, never "one of these"
+  for (const { node, truth } of nodes) {
+    if (!truth || node.length === 1) continue;
+    const placed = node.filter((cd) => candidates.get(keyOf(cd)) === 'true');
+    for (const cd of node) {
+      if (candidates.get(keyOf(cd)) === 'groupTrue' && placed.some((p) => excludes(p, cd))) candidates.set(keyOf(cd), 'false');
     }
   }
   // a true node of several candidates must keep one of them

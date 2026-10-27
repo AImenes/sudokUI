@@ -488,3 +488,53 @@ describe('every chain the engine finds', () => {
     expect(wings).toBeGreaterThan(1);
   });
 });
+
+describe('a true node of several candidates one of which a node of one candidate makes true (phase 4 review round 1)', () => {
+  it("calls that one true and the node's others, which see it, false, never \"one of these\"", () => {
+    // the set fixture's hard 1, step 19: (5=7)r9c6 - (7=5)r4c6 - (5=7){r4c1379} - (7=5){r234c6}.
+    // B, the cell r4c6, makes 5r4c6 true, and D's 5s, r2c6, r3c6, r4c6, are a true node
+    const D = [cd(2, 6, 5), cd(3, 6, 5), cd(4, 6, 5)];
+    const C7 = [cd(4, 1, 7), cd(4, 7, 7), cd(4, 9, 7)];
+    const d = deriveLinks(alternatingLinks([[cd(9, 6, 5)], [cd(9, 6, 7)], [cd(4, 6, 7)], [cd(4, 6, 5)], [cd(4, 3, 5), cd(4, 7, 5)], C7, [cd(4, 6, 7)], D]));
+    expect(d.problems).toEqual([]);
+    expect(D.map((m) => d.candidates.get(k(m)))).toEqual(['false', 'false', 'true']);
+    // a true node with no member made true keeps its squares
+    expect(C7.map((m) => d.candidates.get(k(m)))).toEqual(['groupTrue', 'groupTrue', 'groupTrue']);
+  });
+
+  it('turns a member an earlier true node made "one of these" false where a later one settles it, and keeps the earlier node\'s others', () => {
+    // X, 8r1c3 or 8r1c4, is true first; 8r2c6 is made true later; Y, 8r1c4 or
+    // 8r2c6 (box 2), is true at the end: 8r1c4 sees 8r2c6, 8r1c3 does not
+    const X = [cd(1, 3, 8), cd(1, 4, 8)];
+    const Y = [cd(1, 4, 8), cd(2, 6, 8)];
+    const d = deriveLinks(alternatingLinks([[cd(1, 3, 5)], X, [cd(7, 3, 8)], [cd(2, 6, 8)], [cd(2, 6, 9)], Y]));
+    expect(d.problems).toEqual([]);
+    expect([...X, cd(2, 6, 8)].map((m) => d.candidates.get(k(m)))).toEqual(['groupTrue', 'false', 'true']);
+  });
+
+  it('leaves no true node of several candidates with a true candidate beside "one of these" in any derived step the repository keeps, every such node one digit in one house', () => {
+    let nodes = 0;
+    let settled = 0;
+    const steps = [
+      ...Object.entries(EXAMPLES).flatMap(([tech, ex]) => (ex?.step.truth === 'derived' ? [{ where: tech, step: ex.step }] : [])),
+      ...keptSteps().filter(({ step }) => step.truth === 'derived')
+    ];
+    for (const { where, step } of steps) {
+      const d = deriveTruth(step)!;
+      for (const { node, truth } of d.nodes) {
+        if (node.length < 2) continue;
+        nodes++;
+        // one digit in one house, so a member made true sees every other
+        expect(new Set(node.map((m) => m.digit)).size, where).toBe(1);
+        expect(UNITS.some((u) => node.every((m) => u.includes(m.cell))), `${where}: ${node.map(k)}`).toBe(true);
+        if (!truth) continue;
+        const kinds = node.map((m) => d.candidates.get(k(m)));
+        if (kinds.includes('true')) settled++;
+        expect(kinds.includes('true') && kinds.includes('groupTrue'), `${where}: ${node.map(k)} ${kinds}`).toBe(false);
+      }
+    }
+    expect(nodes).toBeGreaterThan(200);
+    // three ALS-XY-Chains on the hard paths, hard 1, step 19's D among them
+    expect(settled).toBeGreaterThanOrEqual(3);
+  });
+});
