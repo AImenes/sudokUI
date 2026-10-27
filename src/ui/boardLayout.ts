@@ -2,7 +2,7 @@
 // cell is 100 units, inside a 4-unit margin, and a cell's candidates sit on
 // a 28-unit 3×3 pitch. The hint geometry (src/content/hintGeometry.ts) is
 // told this through boardLayout, and the tests read the same layout.
-import { SIZES } from '../content/hintGeometry';
+import { SIZES, squareReach } from '../content/hintGeometry';
 import type { Layout } from '../content/hintGeometry';
 import { MARK } from '../content/hintPalette';
 
@@ -15,6 +15,11 @@ export const candY = (d: number) => 30 + Math.floor((d - 1) / 3) * 28;
 
 /** a placement's mark reaches out to its outer ring, at the size a small board draws it */
 export const PLACED_RADIUS = (MARK.placeRingSmall + MARK.placeRingSmallStroke / 2) * SIZE;
+
+/** how far a "one of these" square reaches along a direction (docs/hint-drawing-sets.md, decision 4): 13 on its axes, 15.5 at its corners */
+export const squareReachOf = (dir: { x: number; y: number }) => squareReach(dir, MARK.oneOf * SIZE, MARK.oneOfRadius * SIZE);
+/** a square's reach at its corners, the most it reaches: what keeps off it keeps off that */
+export const SQUARE_RADIUS = squareReachOf({ x: Math.SQRT1_2, y: Math.SQRT1_2 });
 
 /**
  * Whether a cell shows a digit at its place on the 3×3 grid, which a hint's
@@ -45,16 +50,32 @@ export function digitShown(
   return !!(c.corner || c.center);
 }
 
-/** where the app board draws its candidates' marks, and which digits it shows, for the hint geometry */
-export const boardLayout = (placed: Set<string> = new Set(), shown?: Layout['shown'], solved?: Layout['solved']): Layout => ({
-  centre: ({ cell, digit }) => ({
-    x: M + (cell % 9) * SIZE + candX(digit),
-    y: M + Math.floor(cell / 9) * SIZE + candY(digit) - 7
-  }),
-  r: SIZES.r * SIZE,
-  radiusOf: (cd) => (placed.has(`${cd.cell}:${cd.digit}`) ? PLACED_RADIUS : SIZES.r * SIZE),
-  ...(shown ? { shown } : {}),
-  ...(solved ? { solved } : {}),
-  cell: SIZE,
-  bounds: { x0: M, y0: M, x1: M + 9 * SIZE, y1: M + 9 * SIZE }
-});
+/**
+ * Where the app board draws its candidates' marks, and which digits it
+ * shows, for the hint geometry; `placed` the placements, whose outer ring
+ * reaches further, and `squares` the candidates drawn as "one of these"
+ * squares in any view of the hint (src/content/hintMarks.ts squareKeys),
+ * which reach further at their corners
+ */
+export const boardLayout = (
+  placed: Set<string> = new Set(),
+  shown?: Layout['shown'],
+  solved?: Layout['solved'],
+  squares: Set<string> = new Set()
+): Layout => {
+  const radiusOf = (cd: { cell: number; digit: number }) =>
+    placed.has(`${cd.cell}:${cd.digit}`) ? PLACED_RADIUS : squares.has(`${cd.cell}:${cd.digit}`) ? SQUARE_RADIUS : SIZES.r * SIZE;
+  return {
+    centre: ({ cell, digit }) => ({
+      x: M + (cell % 9) * SIZE + candX(digit),
+      y: M + Math.floor(cell / 9) * SIZE + candY(digit) - 7
+    }),
+    r: SIZES.r * SIZE,
+    radiusOf,
+    ...(squares.size ? { reach: (cd, dir) => (squares.has(`${cd.cell}:${cd.digit}`) ? squareReachOf(dir) : radiusOf(cd)) } : {}),
+    ...(shown ? { shown } : {}),
+    ...(solved ? { solved } : {}),
+    cell: SIZE,
+    bounds: { x0: M, y0: M, x1: M + 9 * SIZE, y1: M + 9 * SIZE }
+  };
+};

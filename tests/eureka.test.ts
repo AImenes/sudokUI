@@ -81,15 +81,15 @@ describe('Eureka notation', () => {
       'Nice Loop: (3=4)r1c4 - (4)r6c4 = (4-3)r6c5 = (3)r2c5 - loop => r3c4<>4, r8c4<>4, r6c5<>2, r2c4<>3, r2c6<>3'
     );
     expect(stepText(step('GROUPED_NICE_LOOP'))).toBe(
-      'Grouped Nice Loop: (7)r5c9 = (7)r7c9 - (7=8)r7c7 - (8)r56c7 = (8)r5c9 - loop => r9c7<>8, r5c9<>1'
+      'Grouped Nice Loop: (7=9)r1c8 - (9)r123c9 = (9-8)r5c9 = (8-7)r9c9 = (7)r123c9 - loop => r2c8<>9, r3c8<>9, r9c9<>1, r9c9<>6, r2c8<>7, r3c8<>7'
     );
     expect(stepText(step('GROUPED_X_CYCLES'))).toBe(
       'Grouped X-Cycles: (2)r1c1 = (2)r1c6 - (2)r23c4 = (2)r4c4 - (2)r4c3 = (2)r2c3 - loop => r3c6<>2, r4c1<>2, r3c1<>2'
     );
   });
 
-  it('writes a group as r3c23 and an almost locked set as its own node, in braces over all its cells', () => {
-    expect(stepText(step('AIC_GROUPED'))).toBe('AIC with Groups: (6=2)r1c1 - (2)r3c23 = (2)r3c6 - (2=6)r4c6 => r4c1<>6');
+  it('writes a group as r89c6 and an almost locked set as its own node, in braces over all its cells', () => {
+    expect(stepText(step('AIC_GROUPED'))).toBe('AIC with Groups: (8=4)r1c2 - (4)r1c1 = (4)r7c1 - (4)r7c5 = (4-8)r8c5 = (8)r89c6 => r1c6<>8');
     expect(stepText(step('AIC_ALS'))).toBe('AIC with ALSs: (8)r2c9 = (8)r2c8 - (8=9){r78c8} - (9)r6c8 = (9)r6c9 => r6c9<>8');
     // set A (r7c1, r8c1, r8c2) entered by its 3, in r8c2, and left by its
     // 8s, in r7c1 and r8c1: once '(3)r8c2 = (8)r78c1', a strong link between

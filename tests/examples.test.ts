@@ -22,6 +22,8 @@ import { setEngineText, engineLang, unitName } from '../src/engine/text';
 import { cleanTechniques } from '../src/engine/generator';
 import { EXAMPLES } from '../src/content/examples';
 import { boardSvg } from '../src/content/boardSvg';
+import { frameMarks } from '../src/content/hintMarks';
+import { deriveTruth } from '../src/engine/truth';
 import { buildLearnAssets } from '../src/content/learnPages';
 import { exampleGrid, exampleStep } from '../src/content/learnLocale';
 import engineNb from '../src/content/locales/engine.nb';
@@ -176,6 +178,18 @@ describe('worked examples', () => {
       // a chain node (Nishio's assumption)
       const nodes = new Set((ex.step.links ?? []).flatMap((l) => [...l.from, ...l.to]).map(key));
       const circlesOf = (k: string) => (removed.has(k) ? (named.has(k) && nodes.has(k) ? 1 : 2) : placed.has(k) ? 2 : 1);
+      // a "one of these" square is a rounded square, not a circle; a group's
+      // members on its bar keep a keyline, a circle round a ring or a disc and
+      // a rounded square round a square (docs/hint-drawing-sets.md, decisions 1 and 2)
+      const full = frameMarks(ex.step, null, (c) => ex.values[c] !== '0');
+      const kindOf = (k: string) => full.cands.get(Number(k.split(':')[0]))?.get(Number(k.split(':')[1]));
+      const squares = [...marked].filter((k) => kindOf(k) === 'oneOf');
+      const onBar = new Set(full.sets.flatMap(({ set }) => ex.step.sets![set].members.map(key)));
+      expect((svg.match(/<rect class="sq" /g) ?? []).length, tech).toBe(squares.length);
+      expect((svg.match(/<rect class="kl" /g) ?? []).length, tech).toBe(squares.filter((k) => onBar.has(k)).length);
+      expect((svg.match(/<circle class="kl" /g) ?? []).length, tech).toBe([...onBar].filter((k) => kindOf(k) !== 'oneOf').length);
+      // one bar per group the full view draws
+      expect((svg.match(/<line class="gb" /g) ?? []).length, tech).toBe(full.sets.length);
       // the arrows: none for a link whose ends share a cell and differ in
       // digit (a switch inside a cell, or a set's change of digit: its
       // marks say it), but a colouring's weak tie there is corner brackets;
@@ -196,10 +210,10 @@ describe('worked examples', () => {
         starts++;
         counted = true;
       });
-      const circles = [...marked].reduce((n, k) => n + circlesOf(k), 0) + starts;
-      expect((svg.match(/<circle /g) ?? []).length, tech).toBe(circles);
+      const circles = [...marked].filter((k) => kindOf(k) !== 'oneOf').reduce((n, k) => n + circlesOf(k), 0) + starts;
+      expect((svg.match(/<circle (?!class="kl")/g) ?? []).length, tech).toBe(circles);
       // the grid's 20 lines, and one bar over each removed candidate
-      expect((svg.match(/<line /g) ?? []).length, tech).toBe(20 + removed.size);
+      expect((svg.match(/<line (?!class="gb")/g) ?? []).length, tech).toBe(20 + removed.size);
       // every drawn link twice: a halo under the line
       expect((svg.match(/<path d="[^"]+" fill="none"/g) ?? []).length, tech).toBe(2 * drawn.length);
       const givens = ex.puzzle.replace(/[^1-9]/g, '').length;
@@ -221,27 +235,47 @@ describe('worked examples', () => {
     }
     expect(sets).toEqual({
       GROUPED_X_CYCLES: ['group r2c4, r3c4 {2} in column 4'],
-      GROUPED_NICE_LOOP: ['group r5c7, r6c7 {8} in column 7'],
+      // decision 22's swaps: a TRUE end group, and a false and a true group of three on the same cells
+      GROUPED_NICE_LOOP: ['group r1c9, r2c9, r3c9 {9} in column 9', 'group r1c9, r2c9, r3c9 {7} in column 9'],
       ALS_XZ: ['A r8c2, r9c1 {159} in box 7', 'B r7c8, r8c9 {159} in box 9'],
       ALS_XY_WING: ['A r8c3, r8c8 {247} in row 8', 'B r4c9, r6c8 {467} in box 6', 'C r6c3 {46} in row 6'],
       ALS_XY_CHAIN: ['A r4c2, r4c7 {469} in row 4', 'B r1c7 {39} in row 1', 'C r1c5, r1c6 {239} in row 1', 'D r7c5 {49} in row 7'],
-      AIC_GROUPED: ['group r3c2, r3c3 {2} in row 3'],
+      AIC_GROUPED: ['group r8c6, r9c6 {8} in column 6'],
       AIC_ALS: ['A r7c8, r8c8 {489} in column 8'],
       DEATH_BLOSSOM: ['A r9c7 {24} in row 9', 'B r8c5, r9c6 {145} in box 8', 'C r8c1 {47} in row 8']
     });
     expect(ends).toEqual({
       GROUPED_X_CYCLES: ['·-·', '·-group', 'group-·', '·-·', '·-·', '·-·'],
-      GROUPED_NICE_LOOP: ['·-·', '·-·', '·-·', '·-group', 'group-·', '·-·'],
+      GROUPED_NICE_LOOP: ['·-·', '·-group', 'group-·', '·-·', '·-·', '·-·', '·-group', 'group-·'],
       // the restricted commons: A's 1 to B's; the wings' to the hinge C and on
       ALS_XZ: ['A-B'],
       ALS_XY_WING: ['A-C', 'C-B'],
       ALS_XY_CHAIN: ['A-B', 'B-C', 'C-D'],
-      AIC_GROUPED: ['·-·', '·-group', 'group-·', '·-·', '·-·'],
+      AIC_GROUPED: ['·-·', '·-·', '·-·', '·-·', '·-·', '·-·', '·-group'],
       // into set A on 8, inside it from 8 to 9, out of it on 9
       AIC_ALS: ['·-·', '·-A', 'A-A', 'A-·', '·-·'],
       // the stem is no set
       DEATH_BLOSSOM: ['·-A', '·-B', '·-C']
     });
+  });
+
+  it('show a group as it mostly is, TRUE, and groups of three: one TRUE and one FALSE on the same cells (docs/hint-drawing-sets.md, decision 22)', () => {
+    const truthOf = (tech: Tech) => {
+      const d = deriveTruth(EXAMPLES[tech]!.step)!;
+      expect(d.problems, tech).toEqual([]);
+      return EXAMPLES[tech]!.step.sets!.map((set) => {
+        const node = d.nodes.find((n) => n.node.length === set.members.length && set.members.every((m) => n.node.some((x) => x.cell === m.cell && x.digit === m.digit)))!;
+        return `${set.members.length} ${node.truth ? 'TRUE' : 'FALSE'}`;
+      });
+    };
+    // the end group of AIC with Groups is TRUE, its two members "one of these" squares
+    expect(truthOf('AIC_GROUPED')).toEqual(['2 TRUE']);
+    // the Grouped Nice Loop: the 9s of r1c9-r3c9 FALSE, the 7s of the same cells TRUE
+    expect(truthOf('GROUPED_NICE_LOOP')).toEqual(['3 FALSE', '3 TRUE']);
+    // Grouped X-Cycles keeps its false group
+    expect(truthOf('GROUPED_X_CYCLES')).toEqual(['2 FALSE']);
+    // both swaps are the first use of their technique on their puzzle's path, as exampleFrom takes it
+    expect([EXAMPLES.AIC_GROUPED!.stepIndex, EXAMPLES.GROUPED_NICE_LOOP!.stepIndex]).toEqual([18, 10]);
   });
 
   it('ship one diagram per example', () => {

@@ -7,15 +7,18 @@
  * side by side; the start marker on each branch's first arrow.
  */
 import { describe, it, expect } from 'vitest';
-import { arrowShapes, startMarkers, badgePoints, insideOneCell, Layout, Point, SIZES, ArrowShape } from '../src/content/hintGeometry';
-import type { CellDigit, ChainLink } from '../src/engine/steps';
-import { alternatingLinks } from '../src/engine/steps';
-import { boardLayout, digitShown } from '../src/ui/boardLayout';
+import { arrowShapes, startMarkers, badgePoints, insideOneCell, setShapes, squareReach, Layout, Point, SIZES, ArrowShape } from '../src/content/hintGeometry';
+import type { GroupBar } from '../src/content/hintGeometry';
+import type { CellDigit, ChainLink, Step } from '../src/engine/steps';
+import { alternatingLinks, groupSet } from '../src/engine/steps';
+import { boardLayout, digitShown, squareReachOf } from '../src/ui/boardLayout';
 import { MARK } from '../src/content/hintPalette';
-import { hintMarks, markedCandidates, placedKeys } from '../src/content/hintMarks';
+import { hintMarks, frameMarks, markedCandidates, placedKeys, squareKeys } from '../src/content/hintMarks';
 import { EXAMPLES } from '../src/content/examples';
 import { parseGrid } from '../src/engine/board';
-import { findNextStep, findAllSteps, applyStep } from '../src/engine/humanSolver';
+import { findNextStep, findAllSteps, findStep, applyStep } from '../src/engine/humanSolver';
+import type { Tech } from '../src/engine/ratings';
+import { readFileSync } from 'node:fs';
 
 /** the app board's layout: 100 units a cell, a 4-unit margin, candidates on a 28 pitch */
 const layout: Layout = boardLayout();
@@ -148,12 +151,22 @@ describe('an arrow', () => {
     expect(dist(start, layout.centre(cd(4, 3, 8)))).toBeGreaterThan(layout.r);
   });
 
-  it('joins a group at its member nearest the other end, never at a middle outside the group', () => {
+  it('joins a group at its member nearest the other end, never at a middle outside the group, where the ray leaves its square', () => {
     // a group of 8s in r5c7 and r6c7, linked to an 8 in r9c7 below them
     const group = [cd(5, 7, 8), cd(6, 7, 8)];
     const below = cd(9, 7, 8);
     const s = arrow(arrowShapes([link(group, below)], layout, [...group, below])[0]);
     expect(dist(s.tail, layout.centre(cd(6, 7, 8)))).toBeCloseTo(layout.r + SIZES.gap * 100, 0);
+    // drawn as "one of these" squares, it is joined where the ray leaves the
+    // square: towards r9c9, past the square's side and short of its corner
+    const squares = boardLayout(new Set(), undefined, undefined, new Set(group.map((x) => `${x.cell}:${x.digit}`)));
+    const far = cd(9, 9, 8);
+    const t = arrow(arrowShapes([link(group, far)], squares, [...group, far])[0]);
+    const from = squares.centre(cd(6, 7, 8));
+    const u = { x: (t.tail.x - from.x) / dist(t.tail, from), y: (t.tail.y - from.y) / dist(t.tail, from) };
+    expect(dist(t.tail, from)).toBeCloseTo(squareReachOf(u) + SIZES.gap * 100, 5);
+    expect(squareReachOf(u)).toBeGreaterThan(13.2);
+    expect(squareReachOf(u)).toBeLessThan(15.4);
   });
 
   it('has no head when the link is too short to carry one', () => {
@@ -330,7 +343,9 @@ describe('what the third review of phase 1 found', () => {
     const mk = new Set(marked.map(key));
     const placed = placedKeys(marks);
     const shown = (cd: CellDigit) => !solved(cd.cell) && ((ex!.cands[cd.cell] & (1 << (cd.digit - 1))) !== 0 || mk.has(key(cd)));
-    return { marked, mk, shown, layout: boardLayout(placed, shown, solved) };
+    // a group's squares and bars as the board draws them (docs/hint-drawing-sets.md)
+    const layout = boardLayout(placed, shown, solved, squareKeys(step, solved));
+    return { marked, mk, shown, layout, sets: setShapes(step, layout, marked) };
   }
 
   it('measures an arrow\'s clearance along its segments, not only at sample points', () => {
@@ -348,8 +363,8 @@ describe('what the third review of phase 1 found', () => {
     for (const [tech, ex] of Object.entries(EXAMPLES)) {
       const step = ex!.step;
       if (!step.links?.length) continue;
-      const { marked, mk, shown, layout: l } = boardOf(ex);
-      arrowShapes(step.links, l, marked).forEach((s, i) => {
+      const { marked, mk, shown, layout: l, sets } = boardOf(ex);
+      arrowShapes(step.links, l, marked, sets).forEach((s, i) => {
         if (s.kind !== 'arrow' || !s.head.length) return;
         heads++;
         for (const t of step.links![i].to) {
@@ -395,16 +410,24 @@ describe('what the third review of phase 1 found', () => {
 
   it('keeps every example\'s walk numbers, at a phone\'s size, off every head, the digits shown and the empty places, nearest their own arrow', () => {
     let numbers = 0;
+    /**
+     * the numbers G14 lets fall back to the wide board's size, where nothing
+     * on or beside their shaft is clear at a phone's: the stored Grouped Nice
+     * Loop's closing link (docs/hint-drawing-sets.md, decision 22), a short
+     * arc from the square of r1c9 under the 9 of r1c8 into its 7, between
+     * that 9, its own head and the 3 and the empty place of 2 in r2c8
+     */
+    const wide: Record<string, number[]> = { GROUPED_NICE_LOOP: [7] };
     for (const [tech, ex] of Object.entries(EXAMPLES)) {
       const step = ex!.step;
       if (!step.links?.length) continue;
-      const { marked, mk, shown, layout: l } = boardOf(ex);
-      const shapes = arrowShapes(step.links, l, marked);
+      const { marked, mk, shown, layout: l, sets } = boardOf(ex);
+      const shapes = arrowShapes(step.links, l, marked, sets);
       const arrows = shapes.flatMap((s) => (s.kind === 'arrow' ? [s] : []));
-      const at = badgePoints(shapes, l, marked, startMarkers(step.links, l, marked));
-      const r = SIZES.badgeLarge * 100;
+      const at = badgePoints(shapes, l, marked, startMarkers(step.links, l, marked, shapes, sets), sets);
       for (const [i, p] of at) {
         numbers++;
+        const r = (wide[tech]?.includes(i) ? SIZES.badge : SIZES.badgeLarge) * 100;
         const what = `${tech} number ${i + 1}`;
         for (const s of arrows) if (s.head.length) expect(toHead(p, s.head), `${what} and the head of link ${s.link + 1}`).toBeGreaterThan(r);
         for (let cell = 0; cell < 81; cell++) {
@@ -798,5 +821,216 @@ describe('what the third review of phase 3 found', () => {
     expect(dist(end, l.centre(cd(9, 8, 3))) - dist(end, l.centre(cd(9, 8, 6)))).toBeGreaterThanOrEqual(SIZES.clearance * 100 - 0.15);
     expect(end.y).toBeGreaterThan(l.centre(cd(9, 8, 6)).y);
     for (const m of marks.slice(2)) for (const p of line) expect(dist(p, l.centre(m))).toBeGreaterThanOrEqual((SIZES.r + SIZES.clearance) * 100 - 0.5);
+  });
+});
+
+describe("a group's bar and a square (docs/hint-drawing-sets.md, decisions 1, 2 and 4)", () => {
+  const key = (x: CellDigit) => `${x.cell}:${x.digit}`;
+  /** a grouped chain's step: its nodes, the groups among them as sets, and its links' set ends */
+  function grouped(nodes: CellDigit[][], extra: Partial<Step> = {}): Step {
+    const sets = nodes.filter((n) => n.length > 1).map((n) => groupSet(n.map((x) => x.cell), n[0].digit));
+    const index = nodes.map((n) => (n.length > 1 ? sets.findIndex((g) => g.members.every((m) => n.some((x) => key(x) === key(m)))) : undefined));
+    return { tech: 'AIC_GROUPED', truth: 'derived', placements: [], eliminations: [], description: '', links: alternatingLinks(nodes, undefined, index), sets, ...extra } as Step;
+  }
+  /** a step's bars, as the board works them out, every candidate of the step's cells shown */
+  function barsOf(step: Step, marks: CellDigit[] = step.links!.flatMap((l) => [...l.from, ...l.to]), shown?: Layout['shown']) {
+    return setShapes(step, boardLayout(new Set(), shown), marks).bars;
+  }
+  /** a bar's side of its members: +1 below or to the right, -1 above or to the left */
+  const sideOf = (bar: GroupBar) => {
+    const m = layout.centre(bar.members[0]);
+    return Math.sign(bar.a.y - m.y + bar.a.x - m.x);
+  };
+
+  it('reaches 13 along its axes and 15.5 at its corners, and an arrow ends that far out and a gap more at every angle', () => {
+    expect(squareReachOf({ x: 1, y: 0 })).toBeCloseTo(13, 9);
+    expect(squareReachOf({ x: 0, y: -1 })).toBeCloseTo(13, 9);
+    expect(squareReachOf({ x: Math.SQRT1_2, y: Math.SQRT1_2 })).toBeCloseTo(15.49, 2);
+    expect(squareReach({ x: Math.SQRT1_2, y: -Math.SQRT1_2 }, 13, 7)).toBeCloseTo(15.49, 2);
+    // a square in the middle of r5c5, joined from eight cells round it, two away
+    const centre = cd(5, 5, 5);
+    const l = boardLayout(new Set(), undefined, undefined, new Set([key(centre)]));
+    const round = [cd(5, 8, 5), cd(2, 8, 5), cd(2, 5, 5), cd(2, 2, 5), cd(5, 2, 5), cd(8, 2, 5), cd(8, 5, 5), cd(8, 8, 5)];
+    for (const other of round) {
+      const into = arrow(arrowShapes([link(other, centre)], l, [other, centre])[0]);
+      const out = arrow(arrowShapes([link(centre, other)], l, [other, centre])[0]);
+      const c = l.centre(centre);
+      const dir = (p: Point) => ({ x: (p.x - c.x) / dist(p, c), y: (p.y - c.y) / dist(p, c) });
+      expect(dist(into.head[0], c), `into from ${other.cell}`).toBeCloseTo(squareReachOf(dir(into.head[0])) + SIZES.gap * 100, 5);
+      expect(dist(out.tail, c), `out to ${other.cell}`).toBeCloseTo(squareReachOf(dir(out.tail)) + SIZES.gap * 100, 5);
+    }
+    // a start dot beside a square keeps the same gap off its corner as off a disc's rim
+    const [dot] = startMarkers([link(centre, cd(5, 9, 5))], l, [centre, cd(5, 9, 5)]);
+    const c = l.centre(centre);
+    expect(dist(dot, c)).toBeCloseTo(squareReachOf({ x: (dot.x - c.x) / dist(dot, c), y: (dot.y - c.y) / dist(dot, c) }) + (SIZES.gap * 100) / 2 + SIZES.dotLarge * 100, 5);
+  });
+
+  it('runs a bar in the gutter beside its members, below or to the right unless the other side crosses less', () => {
+    // the 5s of r5c4 and r5c5, in the middle row of their cells: below them, from the first's centre to the last's
+    const middle = grouped([[cd(2, 4, 5)], [cd(5, 4, 5), cd(5, 5, 5)], [cd(5, 9, 5)]]);
+    const [bar] = barsOf(middle);
+    expect(bar.a).toEqual({ x: layout.centre(cd(5, 4, 5)).x, y: layout.centre(cd(5, 4, 5)).y + MARK.groupBar * 100 });
+    expect(bar.b).toEqual({ x: layout.centre(cd(5, 5, 5)).x, y: layout.centre(cd(5, 5, 5)).y + MARK.groupBar * 100 });
+    // a column's group to the right
+    expect(sideOf(barsOf(grouped([[cd(1, 5, 5)], [cd(4, 5, 5), cd(5, 5, 5)], [cd(5, 9, 5)]]))[0])).toBe(1);
+    // members in the top row of their places: below, off the edge band; in the bottom row, above
+    expect(sideOf(barsOf(grouped([[cd(2, 4, 2)], [cd(5, 4, 2), cd(5, 5, 2)], [cd(5, 9, 2)]]))[0])).toBe(1);
+    expect(sideOf(barsOf(grouped([[cd(2, 4, 8)], [cd(5, 4, 8), cd(5, 5, 8)], [cd(5, 9, 8)]]))[0])).toBe(-1);
+    // in the right column of their places, to the left, off the box line
+    expect(sideOf(barsOf(grouped([[cd(1, 6, 6)], [cd(4, 6, 6), cd(5, 6, 6)], [cd(5, 1, 6)]]))[0])).toBe(-1);
+    // another mark of the hint beside the gutter below sends it above
+    expect(sideOf(barsOf(middle, [...middle.links!.flatMap((l) => [...l.from, ...l.to]), cd(5, 4, 8)])[0])).toBe(-1);
+    // a straight arrow of the hint through the gutter below, away from the members it is anchored at, sends it
+    // above: up from the 2 of r6c5 into the 4 of r5c5, between the gutters (its mark is beside both)
+    const crossed = grouped([[cd(2, 4, 5)], [cd(5, 4, 5), cd(5, 5, 5)], [cd(5, 9, 5)]]);
+    crossed.links!.push({ from: [cd(6, 5, 2)], to: [cd(5, 5, 4)], strong: true });
+    expect(sideOf(barsOf(crossed)[0])).toBe(-1);
+    // two groups on the same cells, both in the left column of their places: the second takes the other side
+    const two = grouped([[cd(1, 9, 4)], [cd(4, 1, 4), cd(5, 1, 4)], [cd(4, 1, 7), cd(5, 1, 7)], [cd(9, 1, 7)]]);
+    const [first, second] = barsOf(two);
+    expect([sideOf(first), sideOf(second)]).toEqual([1, -1]);
+  });
+
+  it('keeps an arrow off a bar it is not anchored at: none passes between a group\'s members', () => {
+    // the 5s of r5c4 and r5c5, their bar below them; an arrow from the 3 of r4c4 down to the 1 of r6c5 would cross it, between them
+    const step = grouped([[cd(2, 4, 5)], [cd(5, 4, 5), cd(5, 5, 5)], [cd(5, 9, 5)]]);
+    const across = link(cd(4, 4, 3), cd(6, 5, 1));
+    step.links!.push(across);
+    const marks = step.links!.flatMap((l) => [...l.from, ...l.to]);
+    const sets = setShapes(step, layout, marks);
+    const [bar] = sets.bars;
+    const near = (s: Extract<ArrowShape, { kind: 'arrow' }>) => Math.min(...samples(s.d).map((p) => toSegment(p, bar.a, bar.b)));
+    const half = (MARK.groupBarStrokeTiny * 100) / 2;
+    // without the bars it runs straight across, with them it bends round
+    expect(near(arrow(arrowShapes(step.links!, layout, marks)[2]))).toBeLessThan(1);
+    expect(near(arrow(arrowShapes(step.links!, layout, marks, sets)[2]))).toBeGreaterThan(half + (SIZES.stroke * 100) / 2);
+    // and an arrow anchored at a member crosses its own bar beside that member, straight
+    const down = grouped([[cd(2, 4, 5)], [cd(5, 4, 5), cd(5, 5, 5)], [cd(9, 5, 5)]]);
+    const downMarks = down.links!.flatMap((l) => [...l.from, ...l.to]);
+    const own = setShapes(down, layout, downMarks);
+    expect(own.bars.map(sideOf)).toEqual([1]);
+    expect(arrow(arrowShapes(down.links!, layout, downMarks, own)[1]).d).toMatch(/^M [\d.]+ [\d.]+ L /);
+  });
+
+  it('keeps a start dot and a walk number off a bar, as off a mark', () => {
+    const half = (MARK.groupBarStrokeTiny * 100) / 2;
+    // a chain that opens at the 8s of r5c4 and r5c5, in the bottom row of their places: their bar runs
+    // above them, and the dot's first place, upper left of the 8 of r5c5 it starts at, is on it
+    const step = grouped([[cd(5, 4, 8), cd(5, 5, 8)], [cd(5, 9, 8)], [cd(2, 9, 8)]]);
+    const marks = step.links!.flatMap((l) => [...l.from, ...l.to]);
+    const sets = setShapes(step, layout, marks);
+    expect(sets.bars.map(sideOf)).toEqual([-1]);
+    const shapes = arrowShapes(step.links!, layout, marks, sets);
+    const [bare] = startMarkers(step.links!, layout, marks, shapes);
+    const [dot] = startMarkers(step.links!, layout, marks, shapes, sets);
+    const [bar] = sets.bars;
+    expect(toSegment(bare, bar.a, bar.b)).toBeLessThan(SIZES.dotLarge * 100 + half);
+    expect(toSegment(dot, bar.a, bar.b)).toBeGreaterThanOrEqual(SIZES.dotLarge * 100 + half);
+    // an arrow running beside the 5s' bar, under them: its number keeps off the bar
+    const beside = grouped([[cd(2, 4, 5)], [cd(5, 4, 5), cd(5, 5, 5)], [cd(5, 9, 5)]]);
+    beside.links!.push(link(cd(5, 3, 7), cd(5, 6, 9)));
+    const besideMarks = beside.links!.flatMap((l) => [...l.from, ...l.to]);
+    const besideSets = setShapes(beside, layout, besideMarks);
+    const [under] = besideSets.bars;
+    expect(sideOf(under)).toBe(1);
+    const along = arrowShapes(beside.links!, layout, besideMarks, besideSets);
+    expect(arrow(along[2]).d).toMatch(/^M [\d.]+ [\d.]+ L /);
+    const number = (withBars: boolean) => badgePoints(along, layout, besideMarks, [], withBars ? besideSets : undefined).get(2)!;
+    expect(toSegment(number(false), under.a, under.b)).toBeLessThan(SIZES.badgeLarge * 100 + half);
+    expect(toSegment(number(true), under.a, under.b)).toBeGreaterThanOrEqual(SIZES.badgeLarge * 100 + half);
+  });
+
+  it('is laid out exactly as before for a step with no groups: the same arrows, dots and numbers, no bar', () => {
+    for (const [tech, ex] of Object.entries(EXAMPLES)) {
+      const step = ex!.step;
+      if (!step.links?.length || step.sets?.some((x) => x.kind === 'group')) continue;
+      const solved = (c: number) => ex!.values[c] !== '0';
+      const full = frameMarks(step, null, solved);
+      const marks = markedCandidates(full);
+      const l = boardLayout(placedKeys(full), undefined, solved, squareKeys(step, solved));
+      const sets = setShapes(step, l, marks);
+      expect(sets.bars, tech).toEqual([]);
+      const shapes = arrowShapes(step.links, l, marks);
+      expect(arrowShapes(step.links, l, marks, sets), tech).toEqual(shapes);
+      expect(startMarkers(step.links, l, marks, shapes, sets), tech).toEqual(startMarkers(step.links, l, marks, shapes));
+    }
+  });
+
+  /**
+   * every grouped chain in the repository: the stored examples, and the set
+   * fixture's grouped steps at the positions it keeps (the steps on offer
+   * along the hard paths and the named positions)
+   */
+  const corpus = (() => {
+    const GROUPED: Tech[] = ['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'AIC_ALS'];
+    const out: { where: string; step: Step; values: string; cands: number[] }[] = GROUPED.map((tech) => ({ where: tech, step: EXAMPLES[tech]!.step, values: EXAMPLES[tech]!.values, cands: EXAMPLES[tech]!.cands }));
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    for (const section of ['paths', 'named']) {
+      for (const [id, d] of Object.entries<{ position: { puzzle: string; values: string; cands: number[] } }>(fx[section])) {
+        const tech = id.split(', ').at(-1) as Tech;
+        if (!GROUPED.includes(tech)) continue;
+        const g = parseGrid(d.position.puzzle)!;
+        for (let i = 0; i < 81; i++) {
+          g.values[i] = Number(d.position.values[i]);
+          g.cands[i] = d.position.cands[i];
+        }
+        const step = findStep(tech, g);
+        if (step?.tech === tech) out.push({ where: id, step, values: d.position.values, cands: d.position.cands });
+      }
+    }
+    return out;
+  })();
+
+  it('crosses no arrow over a bar but beside the member it is anchored at, and puts no glyph, start dot or walk number on a bar, in any grouped chain kept (strict)', () => {
+    let bars = 0;
+    let pairs = 0;
+    // a bar's half width and an arrow's at the widest they are drawn, a phone's under 330 CSS px: their strokes never meet
+    const half = (MARK.groupBarStrokeTiny * 100) / 2;
+    const apart = half + 2.5;
+    const free = (SIZES.barFree + SIZES.gap) * 100 + half;
+    for (const { where, step, values, cands } of corpus) {
+      const solved = (c: number) => values[c] !== '0';
+      const full = frameMarks(step, null, solved);
+      const marks = markedCandidates(full);
+      const shown = (x: CellDigit) => digitShown({ value: Number(values[x.cell]), corner: 0, center: 0 }, x.digit, cands[x.cell], full.cands.get(x.cell));
+      const l = boardLayout(placedKeys(full), shown, solved, squareKeys(step, solved));
+      const sets = setShapes(step, l, marks);
+      const shapes = arrowShapes(step.links!, l, marks, sets);
+      const dots = startMarkers(step.links!, l, marks, shapes, sets);
+      const badges = badgePoints(shapes, l, marks, dots, sets);
+      for (const bar of sets.bars) {
+        bars++;
+        const own = new Set(bar.members.map(key));
+        // no candidate's glyph the board shows under it, but its members'
+        for (let cell = 0; cell < 81; cell++)
+          for (let digit = 1; digit <= 9; digit++) {
+            const x = { cell, digit };
+            if (own.has(key(x)) || !shown(x)) continue;
+            const p = l.centre(x);
+            const meets = Math.min(bar.a.x, bar.b.x) - half < p.x + 6.4 && Math.max(bar.a.x, bar.b.x) + half > p.x - 6.4 && Math.min(bar.a.y, bar.b.y) - half < p.y + 7 && Math.max(bar.a.y, bar.b.y) + half > p.y - 9.6;
+            if (!full.cands.get(cell)?.has(digit)) expect(meets, `${where}: the ${digit} of cell ${cell} under the bar of set ${bar.set}`).toBe(false);
+          }
+        for (const s of shapes) {
+          if (s.kind !== 'arrow') continue;
+          pairs++;
+          const lk = step.links![s.link];
+          const shaft = samples(s.d);
+          // the member the arrow is anchored at, if it is anchored in this group: the member its nearer end is at
+          const ends = [shaft[0], s.head[0] ?? shaft[shaft.length - 1]];
+          const anchors = [...lk.from, ...lk.to].filter((x) => own.has(key(x)));
+          const anchor = anchors.length ? anchors.reduce((b, x) => (Math.min(...ends.map((p) => dist(p, l.centre(x)))) < Math.min(...ends.map((p) => dist(p, l.centre(b)))) ? x : b)) : null;
+          for (let k = 0; k <= 200; k++) {
+            const p = { x: bar.a.x + ((bar.b.x - bar.a.x) * k) / 200, y: bar.a.y + ((bar.b.y - bar.a.y) * k) / 200 };
+            if (anchor && dist(p, l.centre(anchor)) < free) continue;
+            expect(Math.min(toArrow(p, s), s.head.length ? toHead(p, s.head) : Infinity), `${where}: arrow ${s.link} and the bar of set ${bar.set}`).toBeGreaterThanOrEqual(apart);
+          }
+        }
+        for (const p of dots) expect(toSegment(p, bar.a, bar.b), `${where}: a start dot`).toBeGreaterThanOrEqual(SIZES.dotLarge * 100 + half);
+        for (const [, p] of badges) expect(toSegment(p, bar.a, bar.b), `${where}: a walk number`).toBeGreaterThanOrEqual(SIZES.badgeLarge * 100 + half);
+      }
+    }
+    expect(corpus.length).toBeGreaterThan(50);
+    expect(bars).toBeGreaterThan(70);
+    expect(pairs).toBeGreaterThan(300);
   });
 });

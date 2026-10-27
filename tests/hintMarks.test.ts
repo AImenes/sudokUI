@@ -9,9 +9,13 @@ import { describe, it, expect } from 'vitest';
 import type { CellDigit, Step } from '../src/engine/steps';
 import { hintMarks, legendKinds, frameMarks, premiseOf } from '../src/content/hintMarks';
 import { deriveTruth } from '../src/engine/truth';
-import { alternatingLinks } from '../src/engine/steps';
+import { alternatingLinks, groupSet } from '../src/engine/steps';
 import type { ChainLink } from '../src/engine/steps';
 import { walkFrames } from '../src/engine/hintFrames';
+import type { Frame } from '../src/engine/hintFrames';
+import { readFileSync } from 'node:fs';
+import { parseGrid } from '../src/engine/board';
+import { findNextStep, findStep, applyStep } from '../src/engine/humanSolver';
 import { boardSvg, legendOf } from '../src/content/boardSvg';
 import { LIGHT } from '../src/content/hintPalette';
 import { EXAMPLES } from '../src/content/examples';
@@ -147,8 +151,8 @@ describe("a chain's truth (phase 2b)", () => {
         if (ex!.values[cell] !== '0' || removedOrPlaced({ cell, digit })) continue;
         nodes++;
         const kind = kindAt(m, { cell, digit });
-        // a true group's members are "one of these", not all: their own mark
-        expect(kind, `${tech}: ${digit} in cell ${cell}`).toBe(truth === 'groupTrue' ? 'oneTrue' : truth);
+        // a true group's members are "one of these", not all: their own mark, the square
+        expect(kind, `${tech}: ${digit} in cell ${cell}`).toBe(truth === 'groupTrue' ? 'oneOf' : truth);
       }
       // and the legend says under which premise
       const k = legendKinds(s, m);
@@ -162,7 +166,7 @@ describe("a chain's truth (phase 2b)", () => {
     const ring = [[at(1, 1, 7)], [at(1, 5, 7)], [at(3, 5, 7)], [at(3, 1, 7)], [at(3, 9, 7)]];
     const links = alternatingLinks(ring, 'strong');
     const s = step({ tech: 'NICE_LOOP', truth: 'derived', links, primary: ring.flat(), placements: [at(1, 1, 7)] });
-    expect(premiseOf(s)).toEqual({ assumed: false, group: false });
+    expect(premiseOf(s)).toEqual({ assumed: false, kind: 'candidate' });
     const frames = walkFrames(s);
     const start = at(1, 1, 7);
     // the premise while the loop is open, proven once its closing link is drawn, placed at the conclusion
@@ -219,7 +223,7 @@ describe("a chain's truth (phase 2b)", () => {
       { from: [at(4, 3, 4)], to: a, strong: false }
     ];
     const s = step({ tech: 'GROUPED_X_CYCLES', truth: 'derived', links, primary: [...a, at(2, 8, 4), at(6, 8, 4), at(6, 3, 4), at(4, 3, 4)], eliminations: [at(9, 9, 4)] });
-    expect(premiseOf(s)).toEqual({ assumed: true, group: true });
+    expect(premiseOf(s)).toEqual({ assumed: true, kind: 'group' });
     // its start is a group: one of its candidates assumed true, not all (in
     // the walk: the full view of a loop that refutes its premise draws none)
     const labels = walkFrames(s).flatMap((fr) => legendOf(s, undefined, fr).map((l) => l.label));
@@ -234,32 +238,161 @@ describe("a chain's truth (phase 2b)", () => {
   it('words a chain that opens at a group by the group: none of its candidates assumed true', () => {
     // (8)r5c7,r6c7 = r9c7 - r9c1 = r5c1 => r5c8, r5c9 <> 8
     const g = [at(5, 7, 8), at(6, 7, 8)];
-    const links = alternatingLinks([g, [at(9, 7, 8)], [at(9, 1, 8)], [at(5, 1, 8)]]);
-    const s = step({ tech: 'AIC_GROUPED', truth: 'derived', links, primary: [...g, at(9, 7, 8), at(9, 1, 8), at(5, 1, 8)], eliminations: [at(5, 8, 8), at(5, 9, 8)] });
-    expect(premiseOf(s)).toEqual({ assumed: false, group: true });
+    const links = alternatingLinks([g, [at(9, 7, 8)], [at(9, 1, 8)], [at(5, 1, 8)]], undefined, [0]);
+    const s = step({ tech: 'AIC_GROUPED', truth: 'derived', links, sets: [groupSet([g[0].cell, g[1].cell], 8)], primary: [...g, at(9, 7, 8), at(9, 1, 8), at(5, 1, 8)], eliminations: [at(5, 8, 8), at(5, 9, 8)] });
+    expect(premiseOf(s)).toEqual({ assumed: false, kind: 'group' });
     const labels = legendOf(s).map((l) => l.label);
     expect(labels).toContain('true, if no candidate of the first group (by the small dot) is true');
     expect(labels).toContain('false, if no candidate of the first group (by the small dot) is true');
-    // a false group is none of its candidates: each a false ring
-    for (const m of g) expect(kindAt(frameMarks(s, null, () => false), m)).toBe('false');
+    // a false group is none of its candidates: each a false ring, on a bar in the false ink
+    const full = frameMarks(s, null, () => false);
+    for (const m of g) expect(kindAt(full, m)).toBe('false');
+    expect(full.sets).toEqual([{ set: 0, style: 'false' }]);
+    expect(legendOf(s).find((l) => l.kind === 'falseBar')).toEqual({
+      kind: 'falseBar',
+      label: 'rings joined by a bar: none of them is true, if no candidate of the first group (by the small dot) is true',
+      colour: '#ffffff',
+      ink: LIGHT.false
+    });
   });
 
-  it("names a true group's candidates as one of each group, never by the whole step's label", () => {
+  it("draws a true group's candidates as one of them, squares on a bar, never true discs nor the whole step's label (docs/hint-drawing-sets.md, decision 1)", () => {
     // 3r1c1 = 3r1c56 - 3r2c4 = 3r8c4 => r8c1 <> 3: the group r1c5,r1c6 is true
     const grp = [at(1, 5, 3), at(1, 6, 3)];
-    const links = alternatingLinks([[at(1, 1, 3)], grp, [at(2, 4, 3)], [at(8, 4, 3)]]);
-    const s = step({ tech: 'AIC_GROUPED', truth: 'derived', links, primary: [at(1, 1, 3), ...grp, at(2, 4, 3), at(8, 4, 3)], eliminations: [at(8, 1, 3)], labels: { primary: 'the chain, with grouped nodes' } });
+    const links = alternatingLinks([[at(1, 1, 3)], grp, [at(2, 4, 3)], [at(8, 4, 3)]], undefined, [undefined, 0]);
+    const s = step({ tech: 'AIC_GROUPED', truth: 'derived', links, sets: [groupSet([grp[0].cell, grp[1].cell], 3)], primary: [at(1, 1, 3), ...grp, at(2, 4, 3), at(8, 4, 3)], eliminations: [at(8, 1, 3)], labels: { primary: 'the chain, with grouped nodes' } });
     expect(deriveTruth(s)!.candidates.get(`${grp[0].cell}:3`)).toBe('groupTrue');
-    for (const fr of [null, ...walkFrames(s)]) {
+    const frames = walkFrames(s);
+    for (const fr of [null, ...frames]) {
       const m = frameMarks(s, fr, () => false);
-      for (const cd of grp) if (kindAt(m, cd)) expect(kindAt(m, cd)).toBe('oneTrue');
+      for (const cd of grp) if (kindAt(m, cd)) expect(kindAt(m, cd)).toBe('oneOf');
+      // the bar with its squares, from the frame of the link that reaches the group
+      expect(m.sets, `frame ${fr?.links}`).toEqual(fr && fr.links < 1 ? [] : [{ set: 0, style: 'oneOf' }]);
       expect(legendKinds(s, m).shown.has('primary')).toBe(false);
     }
+    expect(frameMarks(s, frames[0], () => false).sets).toEqual([{ set: 0, style: 'oneOf' }]);
     const labels = legendOf(s).map((l) => l.label);
-    expect(labels).toContain('one candidate of each group is true, if the first candidate (by the small dot) is false');
+    expect(labels).toContain('squares joined by a bar: one of them is true, if the first candidate (by the small dot) is false');
     expect(labels).not.toContain('the chain, with grouped nodes');
-    // drawn as the pattern's disc until phase 4's hulls, its legend swatch too
-    expect(legendOf(s).find((l) => l.kind === 'oneTrue')!.colour).toBe(LIGHT.primary);
+    expect(labels.some((l) => l.includes('each group'))).toBe(false);
+    // its swatch is the square on its bar, in the true ink, never the pattern's disc
+    expect(legendOf(s).find((l) => l.kind === 'oneOfBar')).toMatchObject({ colour: LIGHT.oneOf, ink: LIGHT.placeInk });
+    // without the step's sets, the same squares are a set's, on no bar
+    const bare = { ...s, sets: undefined, links: links.map(({ fromSet, toSet, ...l }) => l) };
+    expect(frameMarks(bare, null, () => false).sets).toEqual([]);
+    expect(legendOf(bare).map((l) => l.label)).toContain('squares in a set: one of them is true, if the first candidate (by the small dot) is false');
+  });
+});
+
+describe("groups on the board (docs/hint-drawing-sets.md, decisions 1-3 and 18)", () => {
+  const at = (r: number, c: number, d: number): CellDigit => ({ cell: (r - 1) * 9 + c - 1, digit: d });
+  const kindAt = (m: ReturnType<typeof hintMarks>, cd: CellDigit) => m.cands.get(cd.cell)?.get(cd.digit);
+  /** the grouped chains: every set example, and the set fixture's grouped steps at the positions it keeps */
+  const grouped = (() => {
+    const out: { where: string; step: Step; values: string }[] = [];
+    for (const tech of ['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'AIC_ALS'] as Tech[]) out.push({ where: tech, step: EXAMPLES[tech]!.step, values: EXAMPLES[tech]!.values });
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    for (const section of ['paths', 'named']) {
+      for (const [id, d] of Object.entries<{ position: { puzzle: string; values: string; cands: number[] } }>(fx[section])) {
+        const tech = id.split(', ').at(-1) as Tech;
+        if (!['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'AIC_ALS'].includes(tech)) continue;
+        const g = parseGrid(d.position.puzzle)!;
+        for (let i = 0; i < 81; i++) {
+          g.values[i] = Number(d.position.values[i]);
+          g.cands[i] = d.position.cands[i];
+        }
+        const s = findStep(tech, g);
+        if (s?.tech === tech) out.push({ where: id, step: s, values: d.position.values });
+      }
+    }
+    return out;
+  })();
+  const styleOf = (kind: string | undefined) => (kind === 'elimOn' ? 'elim' : kind);
+
+  it('never draws a candidate of a true node of several candidates as a true disc, in any view of any grouped chain', () => {
+    let squares = 0;
+    expect(grouped.length).toBeGreaterThan(50);
+    for (const { where, step: s, values } of grouped) {
+      const d = deriveTruth(s);
+      if (!d || d.problems.length) continue;
+      const several = d.nodes.filter((n) => n.truth && n.node.length > 1).flatMap((n) => n.node);
+      for (const fr of [null, ...walkFrames(s)]) {
+        const m = frameMarks(s, fr, (c) => values[c] !== '0');
+        for (const cd of several) {
+          const kind = kindAt(m, cd);
+          expect(kind, `${where}, frame ${fr?.links}: ${cd.digit} in cell ${cd.cell}`).not.toBe('true');
+          if (kind === 'oneOf') squares++;
+        }
+        // squares and a colouring's shades are never drawn together (the square is 1.6 from light orange under protan vision)
+        if ([...m.cands.values()].some((x) => [...x.values()].includes('oneOf'))) {
+          expect([...m.cands.values()].flatMap((x) => [...x.values()]).filter((k) => /Dark|Light/.test(k)), where).toEqual([]);
+        }
+      }
+    }
+    expect(squares).toBeGreaterThan(100);
+  });
+
+  it("draws each group a view reaches on a bar in its members' mark, from the frame of the first link that reaches it", () => {
+    const styles = new Set<string>();
+    for (const { where, step: s, values } of grouped) {
+      const frames = walkFrames(s);
+      for (const fr of [null, ...frames]) {
+        const m = frameMarks(s, fr, (c) => values[c] !== '0');
+        const reached = new Set(
+          (s.links ?? [])
+            .slice(0, fr ? fr.links : undefined)
+            .flatMap((l) => [l.fromSet, l.toSet])
+            .filter((k): k is number => k !== undefined && s.sets![k].kind === 'group')
+        );
+        expect(m.sets.map((x) => x.set).sort(), `${where}, frame ${fr?.links}`).toEqual([...reached].sort());
+        for (const { set, style } of m.sets) {
+          styles.add(style);
+          // every member wears the bar's mark: a square, a ring, the pattern's disc, a removal
+          for (const cd of s.sets![set].members) expect(styleOf(kindAt(m, cd)), `${where}, frame ${fr?.links}: ${cd.digit} in cell ${cd.cell}`).toBe(style);
+        }
+      }
+    }
+    // squares and rings, the pattern's in a discontinuous loop's full view, and rule 3's removal
+    expect([...styles].sort()).toEqual(['elim', 'false', 'oneOf', 'primary']);
+  });
+
+  it("takes Grouped X-Cycles rule 3's start through three marks: squares while assumed, rings at the closing link, removals at the end", () => {
+    // the set fixture's named rule 3, its first group assumed true
+    const g = parseGrid('.4...2.6.8.2.....51..4.8...4....1..7..5.7.6..3..5....4...1.9..66.....9.2.9.2...5.')!;
+    for (let i = 0; i < 14; i++) applyStep(g, findNextStep(g)!);
+    const s = findStep('GROUPED_X_CYCLES', g)!;
+    const solved = (c: number) => g.values[c] > 0;
+    const start = s.links![0].fromSet!;
+    expect(s.sets![start].kind).toBe('group');
+    expect(premiseOf(s)).toEqual({ assumed: true, kind: 'group' });
+    const frames = walkFrames(s);
+    const styleIn = (fr: Frame | null) => frameMarks(s, fr, solved).sets.find((x) => x.set === start)?.style;
+    const closing = frames.findIndex((fr) => fr.links === s.links!.length);
+    for (const fr of frames.slice(0, closing)) expect(styleIn(fr), `frame ${fr.links}`).toBe('oneOf');
+    expect(styleIn(frames[closing])).toBe('false');
+    expect(styleIn(frames[frames.length - 1])).toBe('elim');
+    expect(styleIn(null)).toBe('elim');
+    // the legend follows: squares joined by a bar, then rings joined by a bar with the premise refuted, then a bar in the removal's ink
+    const words = (fr: Frame | null) => legendOf(s, Array.from(g.values).join(''), fr).map((l) => l.label);
+    expect(words(frames[0])).toContain('squares joined by a bar: one of them is true, if one candidate of the first group (by the small dot) is true');
+    expect(words(frames[closing])).toContain('rings joined by a bar: none of them is true, if one candidate of the first group (by the small dot) is true');
+    expect(words(frames[closing])).toContain('the chain shows that premise is impossible: no candidate of the first group (by the small dot) is true');
+    expect(words(null)).toContain("bar: a group (one digit's cells in one box and one row or column), read as one node");
+    expect(words(null).some((l) => l.includes('joined by a bar'))).toBe(false);
+  });
+
+  it('names a bar alone where it is the pattern\'s or the removal\'s, and squares in a set where no bar joins them', () => {
+    // a discontinuous grouped loop's full view: the pattern's discs on a bar in its ink
+    const loop = grouped.find(({ step: s }) => deriveTruth(s)?.closure && s.sets?.some((x) => x.kind === 'group'))!;
+    const full = frameMarks(loop.step, null, (c) => loop.values[c] !== '0');
+    expect(full.sets.map((x) => x.style)).toContain('primary');
+    const entry = legendOf(loop.step, loop.values).find((l) => l.kind === 'bar')!;
+    expect(entry).toMatchObject({ label: "bar: a group (one digit's cells in one box and one row or column), read as one node", ink: LIGHT.primaryInk });
+    // AIC with ALS: its set's 9s, squares on no bar
+    const als = EXAMPLES.AIC_ALS!;
+    const labels = legendOf(als.step, als.values).map((l) => l.label);
+    expect(labels).toContain('squares in a set: one of them is true, if the first candidate (by the small dot) is false');
+    expect(labels.some((l) => l.includes('group') || l.includes('joined by a bar'))).toBe(false);
   });
 });
 
@@ -285,7 +418,7 @@ describe('a colouring', () => {
       const m = frameMarks(s, frame, solved);
       for (const [cell, ds] of m.cands)
         for (const [digit, kind] of ds) {
-          expect(['primary', 'secondary', 'fin', 'elimOn', 'placeOn', 'oneTrue'], `${label}: ${digit} in cell ${cell}`).not.toContain(kind);
+          expect(['primary', 'secondary', 'fin', 'elimOn', 'placeOn', 'oneOf'], `${label}: ${digit} in cell ${cell}`).not.toContain(kind);
           if (/Dark|Light/.test(kind)) expect(kind, `${label}: ${digit} in cell ${cell}`).toBe(shadeOf(cell, digit));
         }
       expect(m.inside.size, label).toBe(0);
@@ -371,23 +504,30 @@ describe('the Learn diagrams', () => {
   const last = (xs: number[]) => (xs.length ? Math.max(...xs) : -1);
   const first = (xs: number[]) => (xs.length ? Math.min(...xs) : Infinity);
 
-  it('draw in the spec’s order: marks, grid lines, arrows, digits, bars, start dots (G11)', () => {
+  it('draw in the spec’s order: groups\' bars, marks, grid lines, arrows, digits, bars, start dots (G11)', () => {
+    let grouped = 0;
     for (const tech of techs) {
       // the digits cut out of the arrows are drawn in the mask too, before them
       const svg = boardSvg(EXAMPLES[tech]!, TECHS[tech].name).replace(/<mask [\s\S]*?<\/mask>/, '');
       const dot = new RegExp(`<circle [^>]*fill="${LIGHT.arrow}"`);
-      const marks = at(svg, /<circle /).filter((i) => !dot.test(svg.slice(i, svg.indexOf('>', i) + 1)));
+      // a group's bar, under its members' marks (docs/hint-drawing-sets.md, decision 2)
+      const groupBars = at(svg, /<line class="gb" /);
+      if (groupBars.length) grouped++;
+      const marks = at(svg, /<(?:circle|rect class="(?:sq|kl)") /).filter((i) => !dot.test(svg.slice(i, svg.indexOf('>', i) + 1)));
       const grid = at(svg, /<line [^>]*stroke="#(?:b4bac8|23293a)"/);
       const arrows = at(svg, /<(?:path|polygon) /);
       const digits = at(svg, /<text [^>]*class="(?:cd|mk|rm|giv|ent)"/);
-      const bars = at(svg, new RegExp(`<line [^>]*stroke="${LIGHT.elim}"`));
+      const bars = at(svg, new RegExp(`<line (?!class="gb")[^>]*stroke="${LIGHT.elim}"`));
       const dots = at(svg, dot);
+      expect(last(groupBars), tech).toBeLessThan(first(marks));
       expect(last(marks), tech).toBeLessThan(first(grid));
       expect(last(grid), tech).toBeLessThan(first(arrows));
       expect(last(arrows), tech).toBeLessThan(first(digits));
       expect(last(digits), tech).toBeLessThan(first(bars));
       expect(last(bars), tech).toBeLessThan(first(dots));
     }
+    // the four grouped chains: AIC with Groups, Grouped Nice Loop and X-Cycles, and AIC with ALS, whose set is no group
+    expect(grouped).toBe(3);
   });
 
   it('colour a solved digit the step names through its style, with a rounded outline as the shape cue', () => {

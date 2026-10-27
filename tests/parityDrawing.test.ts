@@ -252,7 +252,7 @@ describe('the marks', () => {
           }
         });
         // nothing a pattern or an older colouring would draw, and nothing inside a removal
-        for (const k of Object.values(kinds)) expect(['primary', 'secondary', 'fin', 'elimOn', 'placeOn', 'oneTrue', 'place'], where).not.toContain(k);
+        for (const k of Object.values(kinds)) expect(['primary', 'secondary', 'fin', 'elimOn', 'placeOn', 'oneOf', 'place'], where).not.toContain(k);
         expect(marksAt(f, frame).inside.size, where).toBe(0);
         if (!proving) expect(Object.values(kinds), where).not.toContain('false');
         // orange is never in shades beside a true disc (worst-model ΔE 10.7)

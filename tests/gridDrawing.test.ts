@@ -95,17 +95,68 @@ describe("the app board and its panels draw a chain's truth (phase 2b)", () => {
   };
 
   it('a ring in the false colour for each false node, a disc in the true colour for each true one, and none outside a derived chain', () => {
-    for (const tech of ['AIC', 'XY_CHAIN', 'W_WING', 'AIC_GROUPED'] as Tech[]) {
+    for (const tech of ['AIC', 'XY_CHAIN', 'W_WING', 'AIC_GROUPED', 'GROUPED_NICE_LOOP'] as Tech[]) {
       const html = board(tech);
       const k = kinds(tech);
       const n = (kind: string) => k.filter((x) => x === kind).length;
       expect(n('false'), tech).toBeGreaterThan(0);
       expect(n('true'), tech).toBeGreaterThan(0);
-      expect((html.match(/stroke="var\(--hint-false\)"/g) ?? []).length, tech).toBe(n('false'));
+      expect((html.match(/<circle class="hint-ring"[^>]*stroke="var\(--hint-false\)"/g) ?? []).length, tech).toBe(n('false'));
       expect(n('place') + n('placeOn'), tech).toBe(0);
       expect((html.match(/<circle[^>]*fill="var\(--hint-place\)"/g) ?? []).length, tech).toBe(n('true'));
     }
     for (const tech of ['X_WING', 'SIMPLE_COLORS', 'NISHIO_FORCING_CHAIN'] as Tech[]) expect(board(tech), tech).not.toContain('var(--hint-false)');
+  });
+
+  it('a true group\'s members as pale "one of these" squares on a bar in the true ink, a false group\'s rings on a bar in the false ink (docs/hint-drawing-sets.md, decisions 1-3)', () => {
+    for (const tech of ['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'AIC_ALS'] as Tech[]) {
+      const ex = EXAMPLES[tech]!;
+      const html = board(tech);
+      const m = frameMarks(ex.step, null, (c) => ex.values[c] !== '0');
+      const squares = [...m.cands.values()].flatMap((x) => [...x.values()]).filter((x) => x === 'oneOf').length;
+      // each square: the pale fill edged inside in the true ink, never the true disc's fill, with a keyline for each board size
+      expect((html.match(/<rect class="hint-one-of"[^>]*fill="var\(--hint-one-of\)" stroke="var\(--hint-place-ink\)"/g) ?? []).length, tech).toBe(squares);
+      expect((html.match(/class="hint-one-of-wide"/g) ?? []).length, tech).toBe(squares);
+      expect((html.match(/class="hint-one-of-small"/g) ?? []).length, tech).toBe(squares);
+      // one bar per group, in its members' mark's ink, under the marks and cut out by the digits
+      const ink = { oneOf: 'var(--hint-place-ink)', false: 'var(--hint-false)', primary: 'var(--hint-primary-ink)', elim: 'var(--hint-elim)' };
+      const bars = [...html.matchAll(/<line class="hint-group-bar"[^>]*stroke="([^"]+)"[^>]*stroke-width="3"[^>]*stroke-linecap="round"/g)].map((x) => x[1]);
+      expect(bars, tech).toEqual(m.sets.map((x) => ink[x.style]));
+      if (bars.length) {
+        expect(html.indexOf('class="hint-group-bars" mask="url(#'), tech).toBeGreaterThan(html.indexOf('<mask id='));
+        expect(html.indexOf('class="hint-group-bars"'), tech).toBeLessThan(html.indexOf('<rect class="hint-one-of"') === -1 ? html.indexOf('class="hint-ring"') : html.indexOf('<rect class="hint-one-of"'));
+        // still one mask, cutting the digits out of the bars and the arrows alike
+        expect((html.match(/<mask id=/g) ?? []).length, tech).toBe(1);
+      }
+    }
+    // the stored AIC with Groups ends at a TRUE group, two squares on one green bar; the Grouped Nice Loop has a true and a false group of three
+    expect(board('AIC_GROUPED').match(/<rect class="hint-one-of"/g)).toHaveLength(2);
+    expect(board('GROUPED_NICE_LOOP').match(/<line class="hint-group-bar"/g)).toHaveLength(2);
+    expect(board('GROUPED_NICE_LOOP').match(/<rect class="hint-one-of"/g)).toHaveLength(3);
+    // a square's digit is bold in the ring's ink, as on a ring: near-black would be 2.58:1 on the dark square
+    const html = board('AIC_GROUPED');
+    const ex = EXAMPLES.AIC_GROUPED!;
+    for (const { cell, digit } of ex.step.sets![0].members) {
+      const x = 4 + (cell % 9) * 100 + 22 + ((digit - 1) % 3) * 28;
+      const y = 4 + Math.floor(cell / 9) * 100 + 30 + Math.floor((digit - 1) / 3) * 28;
+      expect(html).toMatch(new RegExp(`<text x="${x}" y="${y}"[^>]*font-weight="700" fill="var\\(--hint-in-ring\\)">${digit}</text>`));
+    }
+  });
+
+  it("the hint panel names a group by its shapes, squares or rings joined by a bar, and a set's squares as a set's", () => {
+    const panel = (tech: Tech) => {
+      board(tech);
+      useGame.setState({ info: { puzzle: EXAMPLES[tech]!.puzzle, score: 1000, level: 'hard' } as any });
+      Object.assign(useGame.getInitialState() as unknown as Record<string, unknown>, useGame.getState());
+      return renderToStaticMarkup(React.createElement(HintPanel, { onLearn: () => {} }));
+    };
+    const loop = panel('GROUPED_NICE_LOOP');
+    expect(loop).toContain('<i class="swatch-one-of-bar"></i>squares joined by a bar: one of them is true, if the first candidate (by the small dot) is false');
+    expect(loop).toContain('<i class="swatch-false-bar"></i>rings joined by a bar: none of them is true, if the first candidate (by the small dot) is false');
+    expect(loop).not.toContain('each group');
+    const als = panel('AIC_ALS');
+    expect(als).toContain('<i class="swatch-one-of"></i>squares in a set: one of them is true, if the first candidate (by the small dot) is false');
+    expect(als).not.toContain('joined by a bar');
   });
 
   it("the hint panel's legend names them by the premise, and the trainer's only what its board draws", () => {

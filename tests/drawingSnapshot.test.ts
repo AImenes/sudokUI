@@ -27,12 +27,17 @@
  *   the parts it shows (src/engine/hintFrames.ts walkFrames);
  * - the marks of the full view and of every frame (src/content/hintMarks.ts
  *   frameMarks): the candidates' kinds, the colours inside a ring, the solved
- *   digits' colours, the bands and whether the premise is refuted, sorted;
+ *   digits' colours, the bands, whether the premise is refuted, and the
+ *   groups drawn on their bars, sorted;
  * - for the same views, the kinds a legend shows (legendKinds) and the
  *   Learn legend (src/content/boardSvg.ts legendOf);
  * - the arrows, the start dots and the walk's numbers the app board draws
- *   (src/content/hintGeometry.ts), worked out as src/ui/Grid.tsx works them
- *   out, with the candidates on and every number rounded to 0.01.
+ *   (src/content/hintGeometry.ts), and its groups' bars, worked out as
+ *   src/ui/Grid.tsx works them out, with the candidates on and every number
+ *   rounded to 0.01.
+ * A part a step without groups draws nothing of (a bar, a group's style)
+ * is left out of its drawing, so the drawings outside the set techniques
+ * read as they did before phase 4 drew any.
  *
  * Only a deliberate change to the set techniques' drawings, named in the
  * commit that makes it, writes their fixture again, at the positions it
@@ -52,9 +57,9 @@ import type { Grid } from '../src/engine/board';
 import { findNextStep, findAllSteps, findStep, applyStep } from '../src/engine/humanSolver';
 import { walkFrames } from '../src/engine/hintFrames';
 import type { Frame } from '../src/engine/hintFrames';
-import { frameMarks, legendKinds, markedCandidates, placedKeys } from '../src/content/hintMarks';
+import { frameMarks, legendKinds, markedCandidates, placedKeys, squareKeys } from '../src/content/hintMarks';
 import { legendOf } from '../src/content/boardSvg';
-import { arrowShapes, startMarkers, badgePoints } from '../src/content/hintGeometry';
+import { arrowShapes, startMarkers, badgePoints, setShapes } from '../src/content/hintGeometry';
 import { boardLayout, digitShown } from '../src/ui/boardLayout';
 import type { CellDigit, Step } from '../src/engine/steps';
 import type { Tech } from '../src/engine/ratings';
@@ -157,7 +162,8 @@ function drawingOf(step: Step, values: string, cands: ArrayLike<number>): Drawin
       inside: perCandidate(m.inside),
       values: [...m.values].sort((a, b) => a[0] - b[0]),
       bands: m.bands.map((b): [number, string] => [b.unit, b.role]).sort((a, b) => a[0] - b[0] || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0)),
-      refuted: m.refuted
+      refuted: m.refuted,
+      ...(m.sets.length ? { sets: m.sets.map((x): [number, string] => [x.set, x.style]) } : {})
     })),
     legendKinds: marks.map((m) => {
       const k = legendKinds(step, m);
@@ -167,7 +173,9 @@ function drawingOf(step: Step, values: string, cands: ArrayLike<number>): Drawin
         onBand: [...k.onBand].sort(),
         intoRemove: k.intoRemove,
         intoPlace: k.intoPlace,
-        refuted: k.refuted
+        refuted: k.refuted,
+        ...(k.bars.size ? { bars: [...k.bars].sort() } : {}),
+        ...(k.setSquares ? { setSquares: true } : {})
       };
     }),
     legendOf: views.map((frame) => legendOf(step, values, frame)),
@@ -179,7 +187,9 @@ function drawingOf(step: Step, values: string, cands: ArrayLike<number>): Drawin
  * The arrows, start dots and walk numbers as the app board works them out
  * (src/ui/Grid.tsx, `drawing`): once for the whole hint, from the full
  * view's marks and every link, with the candidates on, so a cell shows its
- * candidates and the digits the hint marks at their places on the 3×3
+ * candidates and the digits the hint marks at their places on the 3×3; and
+ * the groups' bars first, which they keep off, a square any frame draws
+ * reaching further than a disc
  */
 function geometryOf(step: Step, values: string, cands: ArrayLike<number>): unknown {
   if (!step.links?.length) return null;
@@ -189,11 +199,12 @@ function geometryOf(step: Step, values: string, cands: ArrayLike<number>): unkno
   const placed = placedKeys(full);
   const shown = (cd: CellDigit) =>
     digitShown({ value: Number(values[cd.cell]), corner: 0, center: 0 }, cd.digit, cands[cd.cell], full.cands.get(cd.cell));
-  const layout = boardLayout(placed, shown, solved);
-  const shapes = arrowShapes(step.links, layout, marks);
-  const dots = startMarkers(step.links, layout, marks, shapes);
-  const badges = [...badgePoints(shapes, layout, marks, dots)].sort((a, b) => a[0] - b[0]);
-  return rounded({ shapes, dots, badges });
+  const layout = boardLayout(placed, shown, solved, squareKeys(step, solved));
+  const sets = setShapes(step, layout, marks);
+  const shapes = arrowShapes(step.links, layout, marks, sets);
+  const dots = startMarkers(step.links, layout, marks, shapes, sets);
+  const badges = [...badgePoints(shapes, layout, marks, dots, sets)].sort((a, b) => a[0] - b[0]);
+  return rounded({ shapes, dots, badges, ...(sets.bars.length ? { bars: sets.bars } : {}) });
 }
 
 /** a grid's position, to keep */

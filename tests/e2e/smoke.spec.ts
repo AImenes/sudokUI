@@ -611,6 +611,65 @@ test.describe('the walk', () => {
   });
 });
 
+/**
+ * A grouped chain on the board (docs/hint-drawing-sets.md, stage 5): the
+ * stored AIC with Groups, loaded as a pencil-mark grid at its position, ends
+ * at a TRUE group, its two members pale "one of these" squares on a bar in
+ * the true ink, drawn from the walk frame of the link that reaches it
+ */
+async function showGroupedChain(page: Page) {
+  const examples = JSON.parse(new TextDecoder().decode(readFileSync('src/content/examples.json')));
+  const ex = examples.AIC_GROUPED as { values: string; cands: number[] };
+  await open(page);
+  const cells = Array.from({ length: 81 }, (_, i) => ({ value: Number(ex.values[i]), corner: 0, center: Number(ex.values[i]) ? 0 : ex.cands[i], excluded: 0 }));
+  await page.locator('.menu-row button', { hasText: 'Import' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Import a puzzle' });
+  await dialog.locator('textarea').fill(formatPencilGrid(cells, false, 'exhaustive'));
+  await dialog.getByRole('button', { name: 'Load puzzle' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: /Hint/ }).first().click();
+  const use = page.getByRole('button', { name: 'Use Hint' });
+  if (await use.count()) await use.click();
+  await page.getByRole('button', { name: 'Show me' }).click();
+  await expect(page.locator('.hint-tech strong')).toHaveText('AIC with Groups');
+}
+
+for (const [name, size] of [
+  ['desktop', { viewport: { width: 1280, height: 1000 } }],
+  ['phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }]
+] as const) {
+  test.describe(`a grouped chain, ${name}`, () => {
+    test.use(size);
+
+    test("draws its TRUE group as squares on a bar in the true ink, from the frame that reaches it", async ({ page }) => {
+      await showGroupedChain(page);
+      const squares = page.locator('svg.board rect.hint-one-of');
+      const bars = page.locator('svg.board .hint-group-bar');
+      await expect(squares).toHaveCount(2);
+      await expect(bars).toHaveCount(1);
+      await expect(bars).toHaveAttribute('stroke', 'var(--hint-place-ink)');
+      // under the marks, cut out by the digits as the arrows are, and wider on a phone (G14a)
+      await expect(page.locator('svg.board g.hint-group-bars')).toHaveAttribute('mask', /^url\(#/);
+      expect(await bars.evaluate((el) => getComputedStyle(el).strokeWidth)).toBe(name === 'phone' ? '4.5px' : '3px');
+      // never a true disc: the squares' fill is the pale "one of these" one, and the legend names them by shape
+      await expect(squares.first()).toHaveAttribute('fill', 'var(--hint-one-of)');
+      await expect(page.locator('.hint-legend li', { hasText: 'squares joined by a bar' }).locator('i.swatch-one-of-bar')).toHaveCount(1);
+      await expect(page.locator('.hint-legend')).toContainText('squares joined by a bar: one of them is true, if the first candidate (by the small dot) is false');
+      await expect(page.locator('.hint-legend')).not.toContainText('each group');
+      // the walk: no bar until the last link reaches the group, then the squares on their bar
+      await page.getByRole('button', { name: 'Walk through it' }).click();
+      await expect(page.locator('.hint-walk-count')).toContainText('1 of 8');
+      await expect(bars).toHaveCount(0);
+      await expect(squares).toHaveCount(0);
+      for (let k = 2; k <= 7; k++) await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-count')).toContainText('7 of 8');
+      await expect(bars).toHaveCount(1);
+      await expect(squares).toHaveCount(2);
+      await expect(page.locator('.hint-walk-text')).toContainText('one of r8c6, r9c6 must be 8');
+    });
+  });
+}
+
 test.describe('phone, 390 x 844', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 

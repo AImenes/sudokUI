@@ -17,9 +17,16 @@
 // until the walk reaches the link that closes the loop, and its proven
 // value at that link; its truths hold only under the premise the loop
 // refutes, so its full view and conclusion draw it as main did, the
-// pattern beside the placement or removal. A true group means one of its members is true, not all, so
-// its members are 'oneTrue', drawn as the pattern's disc until phase 4 draws
-// sets as hulls, with legend words of their own.
+// pattern beside the placement or removal. A true node of several
+// candidates means one of them is true, not all, so its candidates are
+// 'oneOf', the pale "one of these" square, never a true disc
+// (docs/hint-drawing-sets.md, decision 1).
+// A group (the 2-3 candidates of one digit in one box and one row or
+// column, Step.sets) is drawn as one node: its members' own marks on a bar
+// in their ink, from the frame that first reaches it. The bar takes its
+// members' mark in each view: "one of these" squares while one of them is
+// true, false rings, the pattern's discs in a proof-only view, removals
+// (decisions 2 and 3); the geometry puts it (src/content/hintGeometry.ts).
 // A removed or placed node is the removal or the placement, its truth
 // plain from the mark.
 // A colouring whose truth is its parity (docs/hint-drawing-colouring.md)
@@ -40,7 +47,7 @@
 import type { CellDigit, ChainLink, Step, UnitBand } from '../engine/steps';
 import { isParity, isTie } from '../engine/steps';
 import type { Frame, Part } from '../engine/hintFrames';
-import { drawnLinks, colouringDigit } from '../engine/hintFrames';
+import { drawnLinks, colouringDigit, walkFrames } from '../engine/hintFrames';
 import { deriveTruth } from '../engine/truth';
 import { sees } from '../engine/board';
 import { tr } from '../engine/text';
@@ -50,7 +57,21 @@ import type { Shade } from './hintPalette';
 export { isParity };
 export type { Shade };
 export type Role = 'primary' | 'secondary' | 'fin';
-export type CandMark = Role | Shade | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node' | 'true' | 'false' | 'oneTrue';
+export type CandMark = Role | Shade | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node' | 'true' | 'false' | 'oneOf';
+
+/**
+ * How a view draws a group's bar, by its members' mark: "one of these"
+ * squares ('oneOf'), false rings ('false'), the pattern's discs in a
+ * proof-only view ('primary'), or removals ('elim')
+ * (docs/hint-drawing-sets.md, decisions 2 and 3)
+ */
+export type SetStyle = 'oneOf' | 'false' | 'primary' | 'elim';
+
+/** a set a view draws (an index into Step.sets), and how */
+export interface SetMark {
+  set: number;
+  style: SetStyle;
+}
 
 /**
  * A line a colouring draws, for its legend: a tie ('tie', a straight line),
@@ -86,6 +107,8 @@ export interface HintMarks {
   refuted: boolean;
   /** the kinds of line a colouring draws, for its legend; none for any other step */
   lines: Set<LineKind>;
+  /** the groups the view draws on their bars, each with its members' mark; none for a step without groups */
+  sets: SetMark[];
 }
 
 export interface MarkOptions {
@@ -101,10 +124,15 @@ export interface MarkOptions {
 
 const has = (list: CellDigit[] | undefined, cd: CellDigit) => !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
 
-/** what a derived chain assumes of its first node, and whether that node is a group (true: one of its candidates; false: none) */
+/**
+ * What a derived chain assumes of its first node, and what kind of node it
+ * is: a candidate, or several read as one ('group': true, one of them;
+ * false, none of them), so the legend words the premise by its kind
+ * (docs/hint-drawing-sets.md, Data)
+ */
 export interface Premise {
   assumed: boolean;
-  group: boolean;
+  kind: 'candidate' | 'group';
 }
 
 /**
@@ -116,7 +144,7 @@ export function premiseOf(step: Step): Premise | null {
   const d = deriveTruth(step);
   if (!d || d.problems.length || !d.nodes.length) return null;
   const first = d.closure ? d.closure.node : d.nodes[0].node;
-  return { assumed: d.closure ? d.closure.assumed : d.nodes[0].truth, group: first.length > 1 };
+  return { assumed: d.closure ? d.closure.assumed : d.nodes[0].truth, kind: first.length > 1 ? 'group' : 'candidate' };
 }
 
 /** the colour the step names for a candidate, if any: the first of the lists the full view marks in order */
@@ -172,7 +200,34 @@ function parityMarks(step: Step, opts: MarkOptions): HintMarks {
     for (const cd of step.eliminations) mark(cd, 'elim');
     for (const cd of step.placements) mark(cd, 'place');
   }
-  return { cands, inside: new Map(), values: new Map(), bands: show('units') ? (step.units ?? []) : [], refuted: false, lines };
+  return { cands, inside: new Map(), values: new Map(), bands: show('units') ? (step.units ?? []) : [], refuted: false, lines, sets: [] };
+}
+
+/** a group mark's style, by its members' marks: removed over false over "one of these" over the pattern's */
+const STYLES: [SetStyle, (kind: CandMark | undefined) => boolean][] = [
+  ['elim', (k) => k === 'elim' || k === 'elimOn'],
+  ['false', (k) => k === 'false'],
+  ['oneOf', (k) => k === 'oneOf'],
+  ['primary', (k) => k === 'primary']
+];
+
+/**
+ * The groups a view draws (docs/hint-drawing-sets.md, decisions 2 and 3):
+ * each group node of a link drawn, its bar in its members' mark. A group's
+ * members take one mark in every view a chain draws (a node's truth, the
+ * pattern's disc, a removal), and where a removal takes some of them, the
+ * bar is the removal's
+ */
+function groupMarks(step: Step, links: ChainLink[], cands: Map<number, Map<number, CandMark>>): SetMark[] {
+  const sets = step.sets ?? [];
+  const drawn = new Set(links.flatMap((l) => [l.fromSet, l.toSet]).filter((k): k is number => k !== undefined && sets[k]?.kind === 'group'));
+  return [...drawn]
+    .sort((a, b) => a - b)
+    .flatMap((set) => {
+      const kinds = sets[set].members.map((cd) => cands.get(cd.cell)?.get(cd.digit));
+      const style = STYLES.find(([, is]) => kinds.some(is))?.[0];
+      return style ? [{ set, style }] : [];
+    });
 }
 
 export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
@@ -186,7 +241,7 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
       // a solved digit shows a colour the step names, and nothing for a chain's truth
-      if (kind !== 'true' && kind !== 'false' && kind !== 'oneTrue' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
+      if (kind !== 'true' && kind !== 'false' && kind !== 'oneOf' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
       return;
     }
     if (!cands.has(cd.cell)) cands.set(cd.cell, new Map());
@@ -204,16 +259,16 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const proofOnly = !!derived?.closure && (!opts.walking || show('conclusion'));
   const truth = derived && !derived.problems.length && !proofOnly ? derived : null;
   const closed = links.length >= (step.links ?? []).length;
-  const truthOf = (cd: CellDigit): 'true' | 'false' | 'oneTrue' | null => {
+  const truthOf = (cd: CellDigit): 'true' | 'false' | 'oneOf' | null => {
     if (!truth) return null;
     const isStart = truth.closure?.node.some((o) => o.cell === cd.cell && o.digit === cd.digit);
     if (truth.closure && isStart && !closed) {
       // a group assumed true means one of its members, not all
-      if (truth.closure.assumed) return truth.closure.node.length > 1 ? 'oneTrue' : 'true';
+      if (truth.closure.assumed) return truth.closure.node.length > 1 ? 'oneOf' : 'true';
       return 'false';
     }
     const t = truth.candidates.get(`${cd.cell}:${cd.digit}`);
-    return t === 'true' ? 'true' : t === 'false' ? 'false' : t === 'groupTrue' ? 'oneTrue' : null;
+    return t === 'true' ? 'true' : t === 'false' ? 'false' : t === 'groupTrue' ? 'oneOf' : null;
   };
   const node = (cd: CellDigit) => mark(cd, truthOf(cd) ?? namedRole(step, cd) ?? 'primary');
   if (opts.walking && step.links?.length) {
@@ -260,7 +315,7 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const trues = [...cands].flatMap(([cell, m]) => [...m].filter(([, k]) => k === 'true').map(([digit]) => ({ cell, digit })));
   const clash = trues.some((a, i) => trues.slice(i + 1).some((b) => a.cell === b.cell || (a.digit === b.digit && sees(a.cell, b.cell))));
   const refuted = !!truth && ((!!truth.closure && closed) || clash);
-  return { cands, inside, values, bands, refuted, lines: new Set() };
+  return { cands, inside, values, bands, refuted, lines: new Set(), sets: groupMarks(step, links, cands) };
 }
 
 /**
@@ -276,6 +331,23 @@ export function frameMarks(step: Step, frame: Frame | null, solved: (cell: numbe
     show: frame ? (part) => frame.show.has(part) : undefined,
     walking: !!frame
   });
+}
+
+/**
+ * The candidates any view of a hint draws as "one of these" squares, as
+ * "cell:digit": a square reaches further than a disc at its corners, and
+ * the arrows are worked out once for every frame of the walk (G14), so an
+ * arrow keeps that far off a candidate the walk draws as a square, though
+ * the full view draws it otherwise (a discontinuous loop's start, proven
+ * at the end)
+ */
+export function squareKeys(step: Step, solved: (cell: number) => boolean): Set<string> {
+  const out = new Set<string>();
+  if (step.truth !== 'derived') return out;
+  for (const frame of [null, ...walkFrames(step)]) {
+    for (const [cell, m] of frameMarks(step, frame, solved).cands) for (const [digit, kind] of m) if (kind === 'oneOf') out.add(`${cell}:${digit}`);
+  }
+  return out;
 }
 
 /** the placements among the marks, as "cell:digit": their outer ring reaches further than a disc */
@@ -315,6 +387,14 @@ export function legendKinds(
    * its partner as true discs; and whether any removal is of another kind
    */
   proven: { false: boolean; removed: boolean; true: boolean; otherRemoved: boolean };
+  /**
+   * the groups' bars drawn, by their members' mark: squares on a bar,
+   * rings on a bar, a bar in the pattern's or the removal's ink
+   * (docs/hint-drawing-sets.md, decision 18)
+   */
+  bars: Set<SetStyle>;
+  /** "one of these" squares drawn on no bar: the true digit of an almost locked set, several candidates read as one */
+  setSquares: boolean;
 } {
   const shown = new Set<CandMark>();
   const parity = isParity(step);
@@ -348,7 +428,11 @@ export function legendKinds(
     true: darkFalse !== undefined && step.colouring!.clusters[darkFalse].light.some((cd) => kindOf(cd) === 'true'),
     otherRemoved: removals.some((cd) => !has(provenDark, cd))
   };
-  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted, clusters, lines: marks.lines, proven };
+  const bars = new Set(marks.sets.map((m) => m.style));
+  const sets = step.sets ?? [];
+  const onBar = new Set(marks.sets.flatMap((m) => sets[m.set].members.map((cd) => `${cd.cell}:${cd.digit}`)));
+  const setSquares = [...marks.cands].some(([cell, m]) => [...m].some(([digit, k]) => k === 'oneOf' && !onBar.has(`${cell}:${digit}`)));
+  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted, clusters, lines: marks.lines, proven, bars, setSquares };
 }
 
 /** an entry of a colouring's legend: what its swatch draws, and its words */

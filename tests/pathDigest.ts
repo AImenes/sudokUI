@@ -95,8 +95,15 @@ const said = (s: Step) => `${s.tech} +${s.placements.map(nameOf).join(' ')} -${s
 const puzzlesOf = (pools: Record<string, { puzzle: string }[]>) => Object.values(pools).flat().map((p) => p.puzzle);
 /** the pools' and the seeds' puzzles, whose menus are held too */
 const POOLED = [...new Set([...puzzlesOf(practice as Record<string, { puzzle: string }[]>), ...puzzlesOf(seeds as Record<string, { puzzle: string }[]>)])];
-/** every puzzle whose path is held, in the fixture's order */
-const PUZZLES = [...new Set([...POOLED, ...HARD, ...Object.values(EXAMPLES).map((ex) => ex!.puzzle)])];
+/**
+ * the stored examples' puzzles a later stage of phase 4 swapped for others
+ * (docs/hint-drawing-sets.md, decision 22), whose paths are still held as
+ * when the fixture was taken: the Grouped Nice Loop's (the AIC with
+ * Groups' was a pool's puzzle, and both new ones are)
+ */
+const SWAPPED = ['.....72.4..83.9.76...5..1..4..871...............496..2..6..4...34.7.56..7.91.....'];
+/** every puzzle whose path is held, in the fixture's order but for a swapped example's, which the fixture holds where the example stood */
+const PUZZLES = [...new Set([...POOLED, ...HARD, ...Object.values(EXAMPLES).map((ex) => ex!.puzzle), ...SWAPPED])];
 
 /** what the walk finds wrong with the sets of the steps it meets, and how many of them have sets */
 interface SetsMet {
@@ -169,7 +176,9 @@ export function holdPathDigest(shard: number) {
 
     if (shard === 0) {
       it("the fixture holds the same puzzles: the pools', the seeds', the hard ones and the stored examples'", () => {
-        expect(Object.keys(then.paths)).toEqual(PUZZLES);
+        // the same puzzles; a swapped example's puzzle moves to the end of the list
+        expect([...Object.keys(then.paths)].sort()).toEqual([...PUZZLES].sort());
+        for (const ex of Object.values(EXAMPLES)) expect(PUZZLES).toContain(ex!.puzzle);
         expect(Object.keys(then.sets)).toEqual(POOLED);
         expect(PUZZLES.length).toBe(536);
         expect(POOLED.length).toBe(480);

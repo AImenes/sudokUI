@@ -1,8 +1,9 @@
 // The SVG board. Renders back to front (docs/hint-drawing.md G11): per cell
 // the background → user colours → peer/same-digit tints → selection →
-// error tint; then a hint's house bands, its marks and its solved-digit
-// outlines; the grid lines; a hint's arrows and ties (halos first), with
-// every digit cut out of them; the cell content (the big digit, corner
+// error tint; then a hint's house bands, its groups' bars (cut out by the
+// digits), its marks and its solved-digit outlines; the grid lines; a
+// hint's arrows and ties (halos first), with every digit cut out of them;
+// the cell content (the big digit, corner
 // marks at digit-bound 3×3 positions, the centre-mark line, or the
 // auto-candidate 3×3 view); the bars over removed candidates; and last the
 // start dots and the walk's numbers. Pointer events implement drag
@@ -14,11 +15,12 @@ import { bivaluePairs } from '../state/bivalue';
 import { bit, digitsOf, PEERS, UNITS } from '../engine/board';
 import { CellDigit } from '../engine/steps';
 import { walkFrames, drawnLinks } from '../engine/hintFrames';
-import { arrowShapes, startMarkers, badgePoints, pointsOf, SIZES } from '../content/hintGeometry';
-import type { ArrowShape, Point } from '../content/hintGeometry';
+import { arrowShapes, startMarkers, badgePoints, setShapes, pointsOf, SIZES } from '../content/hintGeometry';
+import type { ArrowShape, Point, SetShapes } from '../content/hintGeometry';
 import { SIZE, M, candX, candY, boardLayout, digitShown } from './boardLayout';
 import { MARK } from '../content/hintPalette';
-import { frameMarks, markedCandidates as markedOf, placedKeys, isShade } from '../content/hintMarks';
+import { frameMarks, markedCandidates as markedOf, placedKeys, squareKeys, isShade } from '../content/hintMarks';
+import type { SetStyle } from '../content/hintMarks';
 import { useT, msg, translator } from '../content/i18n';
 import type { Translator } from '../content/i18n';
 import { touchIntent, cellsBetween, INTENT_MS, SLOP_PX } from './touchIntent';
@@ -39,11 +41,12 @@ const PALETTE = [
   '#9aa3b5'
 ];
 
-/** a hint's arrows, start dots and walk numbers, worked out once for the whole hint */
+/** a hint's arrows, start dots and walk numbers, and its groups' bars, worked out once for the whole hint */
 interface Drawing {
   shapes: ArrowShape[];
   dots: (Point & { link: number })[];
   badges: Map<number, Point>;
+  sets: SetShapes;
 }
 
 /**
@@ -200,7 +203,16 @@ const TIPS = [
  *  mark, whatever the theme; the theme's ink inside a removal's ring, unless
  *  the ring is filled with the colour the candidate carried (an older
  *  colouring) */
-const hintTextFill = (kind: string) => (kind === 'elim' || kind === 'node' || kind === 'false' ? 'var(--hint-in-ring)' : 'var(--hint-on-fill)');
+const hintTextFill = (kind: string) =>
+  kind === 'elim' || kind === 'node' || kind === 'false' || kind === 'oneOf' ? 'var(--hint-in-ring)' : 'var(--hint-on-fill)';
+
+/** a group's bar takes its members' mark's ink (docs/hint-drawing-sets.md, decisions 2 and 3) */
+const BAR_INK: Record<SetStyle, string> = {
+  oneOf: 'var(--hint-place-ink)',
+  false: 'var(--hint-false)',
+  primary: 'var(--hint-primary-ink)',
+  elim: 'var(--hint-elim)'
+};
 
 /** the fill and the edge of each kind of hint mark (src/content/hintPalette.ts) */
 const MARK_FILL: Record<string, { fill: string; ink: string }> = {
@@ -209,8 +221,6 @@ const MARK_FILL: Record<string, { fill: string; ink: string }> = {
   fin: { fill: 'var(--hint-fin)', ink: 'var(--hint-fin-ink)' },
   place: { fill: 'var(--hint-place)', ink: 'var(--hint-place-ink)' },
   true: { fill: 'var(--hint-place)', ink: 'var(--hint-place-ink)' },
-  // a true group's members: one of them is true; the pattern's disc until phase 4's hulls
-  oneTrue: { fill: 'var(--hint-primary)', ink: 'var(--hint-primary-ink)' },
   elim: { fill: 'var(--hint-elim)', ink: 'var(--hint-elim)' },
   // a colouring's shades (docs/hint-drawing-colouring.md, Colours)
   purpleDark: { fill: 'var(--hint-purple)', ink: 'var(--hint-purple-ink)' },
@@ -247,6 +257,45 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
           style={{ fillOpacity: 'var(--hint-ring-tint)' }}
           stroke="var(--hint-false)"
           strokeWidth={MARK.ringStroke * s}
+        />
+      </g>
+    );
+  }
+  if (kind === 'oneOf') {
+    // one of several candidates read as one node is true (a TRUE group, a
+    // set's true digit): a pale "one of these" square, never a true disc,
+    // edged inside in the true ink; its keyline wider on a small board, as
+    // a shade's (styles.css; docs/hint-drawing-sets.md, decision 1)
+    const half = MARK.oneOf * s;
+    const round = MARK.oneOfRadius * s;
+    const edge = MARK.oneOfEdge * s;
+    const squareKey = (width: number, className: string) => (
+      <rect
+        className={className}
+        x={x - half - (width * s) / 2}
+        y={y - half - (width * s) / 2}
+        width={2 * half + width * s}
+        height={2 * half + width * s}
+        rx={round + (width * s) / 2}
+        fill="none"
+        stroke="var(--cell-bg)"
+        strokeWidth={width * s}
+      />
+    );
+    return (
+      <g>
+        {squareKey(MARK.keyline, 'hint-one-of-wide')}
+        {squareKey(MARK.keylineSmall, 'hint-one-of-small')}
+        <rect
+          className="hint-one-of"
+          x={x - half + edge / 2}
+          y={y - half + edge / 2}
+          width={2 * half - edge}
+          height={2 * half - edge}
+          rx={round - edge / 2}
+          fill="var(--hint-one-of)"
+          stroke="var(--hint-place-ink)"
+          strokeWidth={edge}
         />
       </g>
     );
@@ -655,10 +704,13 @@ export function Grid() {
     const placed = placedKeys(full);
     const shown = (cd: CellDigit) =>
       digitShown(cells[cd.cell], cd.digit, canonical ? canonical.cands[cd.cell] : null, full.cands.get(cd.cell));
-    const layout = boardLayout(placed, shown, solved);
-    const shapes = arrowShapes(hint.links, layout, marks);
-    const dots = startMarkers(hint.links, layout, marks, shapes);
-    return { shapes, dots, badges: badgePoints(shapes, layout, marks, dots) };
+    // a square any frame draws reaches further than a disc at its corners
+    const layout = boardLayout(placed, shown, solved, squareKeys(hint, solved));
+    // the groups' bars first: the arrows, dots and numbers keep off them
+    const sets = setShapes(hint, layout, marks);
+    const shapes = arrowShapes(hint.links, layout, marks, sets);
+    const dots = startMarkers(hint.links, layout, marks, shapes, sets);
+    return { shapes, dots, badges: badgePoints(shapes, layout, marks, dots, sets), sets };
   }, [showHint, hint, cells, canonical]);
   // the links the frame draws, or the full view's (src/engine/hintFrames.ts)
   const drawnSet = showHint ? drawnLinks(hint, frame) : new Set<number>();
@@ -1243,6 +1295,30 @@ export function Grid() {
   // the lines and the mask that cuts the digits out of them, only when a
   // line is drawn (a switch inside one cell draws none, but has its start dot)
   const linesShown = arrowsShown && drawing!.shapes.some((s) => s.kind !== 'none' && drawnSet.has(s.link));
+  // the groups' bars the view draws, each in its members' mark's ink, where
+  // the geometry put it (docs/hint-drawing-sets.md, decisions 2 and 3)
+  const groupBars =
+    drawing && drawn && (!paused || won)
+      ? drawn.sets.flatMap(({ set, style }) => {
+          const bar = drawing.sets.bars.find((b) => b.set === set);
+          return bar ? [{ bar, style }] : [];
+        })
+      : [];
+  // the mask that cuts the digits out of the bars and the arrows: before
+  // the bars when any is drawn, else where the arrows are
+  const knockout = (linesShown || groupBars.length > 0) && (
+    <mask id={maskId} maskUnits="userSpaceOnUse" x={0} y={0} width={SIZE * 9 + M * 2} height={SIZE * 9 + M * 2}>
+      <rect width={SIZE * 9 + M * 2} height={SIZE * 9 + M * 2} fill="#fff" />
+      <g className="knockout">{content}</g>
+      {/* a head is never cut: where no approach keeps it off a
+          digit, the digit is drawn over it */}
+      {drawing!.shapes.map((s) =>
+        s.kind === 'arrow' && drawnSet.has(s.link) && s.head.length ? (
+          <polygon key={s.link} points={pointsOf(s.head)} fill="#fff" stroke="#fff" strokeWidth={SIZES.halo * SIZE * 2} strokeLinejoin="round" />
+        ) : null
+      )}
+    </mask>
+  );
 
   // what a screen reader hears: the selected cell and what is in it, read
   // out as the selection moves (the arrow keys move it; digits enter)
@@ -1362,6 +1438,29 @@ export function Grid() {
           );
         })}
 
+        {/* a group's bar (G11, docs/hint-drawing-sets.md decision 2): a
+            straight line in the gutter beside its members, in their mark's
+            ink, under the marks, whose keylines part them from it, with the
+            digits cut out of it as out of the arrows */}
+        {groupBars.length > 0 && knockout}
+        {groupBars.length > 0 && (
+          <g className="hint-group-bars" mask={`url(#${maskId})`}>
+            {groupBars.map(({ bar, style }) => (
+              <line
+                key={`gb-${bar.set}`}
+                className="hint-group-bar"
+                x1={bar.a.x}
+                y1={bar.a.y}
+                x2={bar.b.x}
+                y2={bar.b.y}
+                stroke={BAR_INK[style]}
+                strokeWidth={MARK.groupBarStroke * SIZE}
+                strokeLinecap="round"
+              />
+            ))}
+          </g>
+        )}
+
         {/* a hint's marks, under the grid lines, the arrows and the digits */}
         {(!paused || won) &&
           [...hintMarks].flatMap(([i, m]) =>
@@ -1426,17 +1525,7 @@ export function Grid() {
             stays whole and is never struck through */}
         {linesShown && (
           <>
-            <mask id={maskId} maskUnits="userSpaceOnUse" x={0} y={0} width={SIZE * 9 + M * 2} height={SIZE * 9 + M * 2}>
-              <rect width={SIZE * 9 + M * 2} height={SIZE * 9 + M * 2} fill="#fff" />
-              <g className="knockout">{content}</g>
-              {/* a head is never cut: where no approach keeps it off a
-                  digit, the digit is drawn over it */}
-              {drawing!.shapes.map((s) =>
-                s.kind === 'arrow' && drawnSet.has(s.link) && s.head.length ? (
-                  <polygon key={s.link} points={pointsOf(s.head)} fill="#fff" stroke="#fff" strokeWidth={SIZES.halo * SIZE * 2} strokeLinejoin="round" />
-                ) : null
-              )}
-            </mask>
+            {groupBars.length === 0 && knockout}
             <ChainArrows layer="lines" drawing={drawing!} drawn={drawnSet} mask={maskId} />
           </>
         )}

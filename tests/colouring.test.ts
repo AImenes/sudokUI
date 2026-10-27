@@ -363,7 +363,7 @@ describe('the marks of a colouring the finders give', () => {
           }
         });
         const all = Object.values(kinds);
-        for (const k of all) expect(['primary', 'secondary', 'fin', 'elimOn', 'placeOn', 'oneTrue', 'place'], where).not.toContain(k);
+        for (const k of all) expect(['primary', 'secondary', 'fin', 'elimOn', 'placeOn', 'oneOf', 'place'], where).not.toContain(k);
         if (darkFalse === undefined || !(concluded || proving)) expect(all.filter((k) => k === 'true' || k === 'false'), where).toEqual([]);
         if (!proving) expect(all, where).not.toContain('false');
         // orange is never in shades beside a true disc

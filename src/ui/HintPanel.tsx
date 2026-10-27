@@ -17,7 +17,10 @@ import type { Premise, Role, ParityEntry } from '../content/hintMarks';
 interface TruthWords {
   isTrue: string;
   isFalse: string;
-  oneTrue: string;
+  /** a TRUE group, a FALSE group, and a set's true digit of several candidates (docs/hint-drawing-sets.md, decision 18) */
+  squaresOnBar: string;
+  ringsOnBar: string;
+  squaresInSet: string;
   refuted: string;
 }
 import { copyText } from './send';
@@ -38,25 +41,30 @@ function useTechWhat(): (tech: Tech) => string {
 }
 
 /**
- * The legend's words for a chain's true discs, false rings and true
- * groups, under the premise of its first node, the one with the small start
- * dot, a group worded as a group (true: one of its candidates; false:
- * none); and the line that says so when the drawing shows that premise
- * impossible
+ * The legend's words for a chain's true discs and false rings, and for its
+ * groups and sets drawn as shapes ("squares joined by a bar", "rings joined
+ * by a bar", "squares in a set"; docs/hint-drawing-sets.md, decision 18),
+ * under the premise of its first node, the one with the small start dot, a
+ * group worded as a group (true: one of its candidates; false: none); and
+ * the line that says so when the drawing shows that premise impossible
  */
 function truthWords(t: Translator, p: Premise): TruthWords {
-  if (p.group) {
+  if (p.kind === 'group') {
     return p.assumed
       ? {
           isTrue: t('true, if one candidate of the first group (by the small dot) is true'),
           isFalse: t('false, if one candidate of the first group (by the small dot) is true'),
-          oneTrue: t('one candidate of each group is true, if one candidate of the first group (by the small dot) is true'),
+          squaresOnBar: t('squares joined by a bar: one of them is true, if one candidate of the first group (by the small dot) is true'),
+          ringsOnBar: t('rings joined by a bar: none of them is true, if one candidate of the first group (by the small dot) is true'),
+          squaresInSet: t('squares in a set: one of them is true, if one candidate of the first group (by the small dot) is true'),
           refuted: t('the chain shows that premise is impossible: no candidate of the first group (by the small dot) is true')
         }
       : {
           isTrue: t('true, if no candidate of the first group (by the small dot) is true'),
           isFalse: t('false, if no candidate of the first group (by the small dot) is true'),
-          oneTrue: t('one candidate of each group is true, if no candidate of the first group (by the small dot) is true'),
+          squaresOnBar: t('squares joined by a bar: one of them is true, if no candidate of the first group (by the small dot) is true'),
+          ringsOnBar: t('rings joined by a bar: none of them is true, if no candidate of the first group (by the small dot) is true'),
+          squaresInSet: t('squares in a set: one of them is true, if no candidate of the first group (by the small dot) is true'),
           refuted: t('the chain shows that premise is impossible: one candidate of the first group (by the small dot) is true')
         };
   }
@@ -64,13 +72,17 @@ function truthWords(t: Translator, p: Premise): TruthWords {
     ? {
         isTrue: t('true, if the first candidate (by the small dot) is true'),
         isFalse: t('false, if the first candidate (by the small dot) is true'),
-        oneTrue: t('one candidate of each group is true, if the first candidate (by the small dot) is true'),
+        squaresOnBar: t('squares joined by a bar: one of them is true, if the first candidate (by the small dot) is true'),
+        ringsOnBar: t('rings joined by a bar: none of them is true, if the first candidate (by the small dot) is true'),
+        squaresInSet: t('squares in a set: one of them is true, if the first candidate (by the small dot) is true'),
         refuted: t('the chain shows that premise is impossible: the first candidate (by the small dot) is false')
       }
     : {
         isTrue: t('true, if the first candidate (by the small dot) is false'),
         isFalse: t('false, if the first candidate (by the small dot) is false'),
-        oneTrue: t('one candidate of each group is true, if the first candidate (by the small dot) is false'),
+        squaresOnBar: t('squares joined by a bar: one of them is true, if the first candidate (by the small dot) is false'),
+        ringsOnBar: t('rings joined by a bar: none of them is true, if the first candidate (by the small dot) is false'),
+        squaresInSet: t('squares in a set: one of them is true, if the first candidate (by the small dot) is false'),
         refuted: t('the chain shows that premise is impossible: the first candidate (by the small dot) is true')
       };
 }
@@ -123,7 +135,7 @@ export function ChainPanel() {
   // the legend names what the board draws (G23), and a chain whose own
   // truths clash shows its premise impossible, and the legend says so
   const legend = hint ? legendKinds(hint, frameMarks(hint, frame, (c) => cells[c].value > 0)) : null;
-  const words = truthWords(t, { assumed: false, group: false });
+  const words = truthWords(t, { assumed: false, kind: 'candidate' });
   return (
     <div className="hint-panel" role="region" aria-label={t('Build a chain')} aria-live="polite">
       <div className="hint-head">
@@ -378,10 +390,22 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                   {truthWords(t, premise).isFalse}
                 </li>
               )}
-              {premise && legend.shown.has('oneTrue') && (
+              {premise && legend.bars.has('oneOf') && (
                 <li>
-                  <i className="swatch-primary" />
-                  {truthWords(t, premise).oneTrue}
+                  <i className="swatch-one-of-bar" />
+                  {truthWords(t, premise).squaresOnBar}
+                </li>
+              )}
+              {premise && legend.bars.has('false') && (
+                <li>
+                  <i className="swatch-false-bar" />
+                  {truthWords(t, premise).ringsOnBar}
+                </li>
+              )}
+              {premise && legend.setSquares && (
+                <li>
+                  <i className="swatch-one-of" />
+                  {truthWords(t, premise).squaresInSet}
                 </li>
               )}
               {premise && legend.refuted && <li>{truthWords(t, premise).refuted}</li>}
@@ -401,6 +425,13 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                 <li>
                   <i className={swatch('fin')} />
                   {hint.labels?.fins ?? t('fin')}
+                </li>
+              )}
+              {/* a bar in the pattern's ink (a proof-only view) or the removal's: what a bar is */}
+              {(legend.bars.has('primary') || legend.bars.has('elim')) && (
+                <li>
+                  <i className={legend.bars.has('primary') ? 'swatch-bar-primary' : 'swatch-bar-elim'} />
+                  {t("bar: a group (one digit's cells in one box and one row or column), read as one node")}
                 </li>
               )}
             </ul>

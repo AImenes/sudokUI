@@ -8348,91 +8348,91 @@
   }
  },
  "GROUPED_NICE_LOOP": {
-  "puzzle": ".....72.4..83.9.76...5..1..4..871...............496..2..6..4...34.7.56..7.91.....",
-  "stepIndex": 20,
-  "values": "000617284008349576674528100400871000000253000000496002006934000340785600709162000",
+  "puzzle": ".13.5......6...8.......34...2..6...5...2.1....39....6.68..7..2.1..8....4......9..",
+  "stepIndex": 10,
+  "values": "013050000006000800000003400021060005060201000039000060680070020190800004300000900",
   "cands": [
-   272,
-   276,
-   20,
+   458,
    0,
    0,
+   360,
+   0,
+   490,
+   34,
+   320,
+   354,
+   346,
+   88,
+   0,
+   329,
+   267,
+   330,
+   0,
+   341,
+   327,
+   466,
+   80,
+   208,
+   353,
+   387,
    0,
    0,
+   337,
+   355,
+   200,
    0,
+   0,
+   332,
+   0,
+   328,
+   68,
+   392,
+   0,
+   216,
+   0,
+   216,
+   0,
+   396,
+   0,
+   68,
+   392,
+   384,
+   200,
+   0,
+   0,
+   88,
+   136,
+   216,
+   3,
    0,
    3,
-   3,
    0,
    0,
+   24,
+   285,
+   0,
+   280,
+   17,
+   0,
+   5,
    0,
    0,
+   82,
+   0,
+   6,
+   50,
+   48,
+   68,
    0,
    0,
+   88,
+   90,
+   57,
+   11,
+   58,
    0,
-   0,
-   0,
-   0,
-   0,
-   0,
-   0,
-   0,
-   260,
-   260,
-   0,
-   310,
-   22,
-   0,
-   0,
-   0,
-   260,
-   52,
-   20,
-   385,
-   417,
-   65,
-   0,
-   0,
-   0,
-   456,
-   41,
    193,
-   145,
-   149,
-   85,
-   0,
-   0,
-   0,
-   196,
-   21,
-   0,
-   147,
-   146,
-   0,
-   0,
-   0,
-   0,
-   192,
-   19,
-   209,
-   0,
-   0,
-   3,
-   0,
-   0,
-   0,
-   0,
-   259,
-   257,
-   0,
-   144,
-   0,
-   0,
-   0,
-   0,
-   140,
-   28,
-   148
+   225
   ],
   "step": {
    "tech": "GROUPED_NICE_LOOP",
@@ -8443,56 +8443,92 @@
    "placements": [],
    "eliminations": [
     {
-     "cell": 78,
-     "digit": 8
+     "cell": 16,
+     "digit": 9
     },
     {
-     "cell": 44,
+     "cell": 25,
+     "digit": 9
+    },
+    {
+     "cell": 80,
      "digit": 1
+    },
+    {
+     "cell": 80,
+     "digit": 6
+    },
+    {
+     "cell": 16,
+     "digit": 7
+    },
+    {
+     "cell": 25,
+     "digit": 7
     }
    ],
    "primary": [
     {
-     "cell": 44,
+     "cell": 7,
      "digit": 7
     },
     {
-     "cell": 62,
-     "digit": 7
+     "cell": 7,
+     "digit": 9
     },
     {
-     "cell": 60,
-     "digit": 7
+     "cell": 8,
+     "digit": 9
     },
     {
-     "cell": 60,
-     "digit": 8
+     "cell": 17,
+     "digit": 9
     },
     {
-     "cell": 42,
-     "digit": 8
-    },
-    {
-     "cell": 51,
-     "digit": 8
+     "cell": 26,
+     "digit": 9
     },
     {
      "cell": 44,
+     "digit": 9
+    },
+    {
+     "cell": 44,
      "digit": 8
+    },
+    {
+     "cell": 80,
+     "digit": 8
+    },
+    {
+     "cell": 80,
+     "digit": 7
+    },
+    {
+     "cell": 8,
+     "digit": 7
+    },
+    {
+     "cell": 17,
+     "digit": 7
+    },
+    {
+     "cell": 26,
+     "digit": 7
     }
    ],
    "links": [
     {
      "from": [
       {
-       "cell": 44,
+       "cell": 7,
        "digit": 7
       }
      ],
      "to": [
       {
-       "cell": 62,
-       "digit": 7
+       "cell": 7,
+       "digit": 9
       }
      ],
      "strong": true
@@ -8500,48 +8536,22 @@
     {
      "from": [
       {
-       "cell": 62,
-       "digit": 7
+       "cell": 7,
+       "digit": 9
       }
      ],
      "to": [
       {
-       "cell": 60,
-       "digit": 7
-      }
-     ],
-     "strong": false
-    },
-    {
-     "from": [
-      {
-       "cell": 60,
-       "digit": 7
-      }
-     ],
-     "to": [
-      {
-       "cell": 60,
-       "digit": 8
-      }
-     ],
-     "strong": true
-    },
-    {
-     "from": [
-      {
-       "cell": 60,
-       "digit": 8
-      }
-     ],
-     "to": [
-      {
-       "cell": 42,
-       "digit": 8
+       "cell": 8,
+       "digit": 9
       },
       {
-       "cell": 51,
-       "digit": 8
+       "cell": 17,
+       "digit": 9
+      },
+      {
+       "cell": 26,
+       "digit": 9
       }
      ],
      "strong": false,
@@ -8550,18 +8560,22 @@
     {
      "from": [
       {
-       "cell": 42,
-       "digit": 8
+       "cell": 8,
+       "digit": 9
       },
       {
-       "cell": 51,
-       "digit": 8
+       "cell": 17,
+       "digit": 9
+      },
+      {
+       "cell": 26,
+       "digit": 9
       }
      ],
      "to": [
       {
        "cell": 44,
-       "digit": 8
+       "digit": 9
       }
      ],
      "strong": true,
@@ -8571,42 +8585,151 @@
      "from": [
       {
        "cell": 44,
-       "digit": 8
+       "digit": 9
       }
      ],
      "to": [
       {
        "cell": 44,
+       "digit": 8
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 44,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 80,
+       "digit": 8
+      }
+     ],
+     "strong": true
+    },
+    {
+     "from": [
+      {
+       "cell": 80,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 80,
        "digit": 7
       }
      ],
      "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 80,
+       "digit": 7
+      }
+     ],
+     "to": [
+      {
+       "cell": 8,
+       "digit": 7
+      },
+      {
+       "cell": 17,
+       "digit": 7
+      },
+      {
+       "cell": 26,
+       "digit": 7
+      }
+     ],
+     "strong": true,
+     "toSet": 1
+    },
+    {
+     "from": [
+      {
+       "cell": 8,
+       "digit": 7
+      },
+      {
+       "cell": 17,
+       "digit": 7
+      },
+      {
+       "cell": 26,
+       "digit": 7
+      }
+     ],
+     "to": [
+      {
+       "cell": 7,
+       "digit": 7
+      }
+     ],
+     "strong": false,
+     "fromSet": 1
     }
    ],
    "sets": [
     {
      "kind": "group",
      "cells": [
-      42,
-      51
+      8,
+      17,
+      26
      ],
      "digits": [
-      8
+      9
      ],
      "members": [
       {
-       "cell": 42,
-       "digit": 8
+       "cell": 8,
+       "digit": 9
       },
       {
-       "cell": 51,
-       "digit": 8
+       "cell": 17,
+       "digit": 9
+      },
+      {
+       "cell": 26,
+       "digit": 9
       }
      ],
-     "unit": 15
+     "unit": 17
+    },
+    {
+     "kind": "group",
+     "cells": [
+      8,
+      17,
+      26
+     ],
+     "digits": [
+      7
+     ],
+     "members": [
+      {
+       "cell": 8,
+       "digit": 7
+      },
+      {
+       "cell": 17,
+       "digit": 7
+      },
+      {
+       "cell": 26,
+       "digit": 7
+      }
+     ],
+     "unit": 17
     }
    ],
-   "description": "Grouped Nice Loop: the continuous loop 7@r5c9 → 7@r7c9 → 7@r7c7 → 8@r7c7 → 8@[r5c7, r6c7] → 8@r5c9 alternates perfectly; every weak link has exactly one true side, clearing candidates along it."
+   "description": "Grouped Nice Loop: the continuous loop 7@r1c8 → 9@r1c8 → 9@[r1c9, r2c9, r3c9] → 9@r5c9 → 8@r5c9 → 8@r9c9 → 7@r9c9 → 7@[r1c9, r2c9, r3c9] alternates perfectly; every weak link has exactly one true side, clearing candidates along it."
   }
  },
  "ALS_XZ": {
@@ -9660,91 +9783,91 @@
   }
  },
  "AIC_GROUPED": {
-  "puzzle": "....5.8.91.5......8..76...4..754.9.8......3...81...56..1.8.......9......7..31.6..",
-  "stepIndex": 20,
-  "values": "000050809105000006800760154007540918950000340481000560010800003009000081708310605",
+  "puzzle": "..5...2...7..14...6.........94..6..571.9.2.......3..8.......8..1..5...96.39.2..4.",
+  "stepIndex": 18,
+  "values": "005060200073014000601005000394006025718952000000430080000000802100500096039620040",
   "cands": [
+   392,
+   136,
+   0,
+   196,
+   0,
+   452,
+   0,
+   69,
+   461,
+   386,
+   0,
+   0,
+   130,
+   0,
+   0,
+   48,
+   48,
+   384,
+   0,
+   138,
+   0,
+   198,
+   448,
+   0,
+   332,
+   68,
+   460,
+   0,
+   0,
+   0,
+   193,
+   192,
+   0,
+   65,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   44,
+   36,
+   12,
+   18,
+   48,
    34,
-   106,
-   46,
-   11,
-   0,
-   7,
-   0,
-   70,
    0,
    0,
-   330,
+   65,
+   321,
    0,
-   266,
-   390,
-   398,
-   66,
-   70,
+   320,
+   24,
+   48,
+   96,
+   69,
+   328,
+   260,
    0,
-   0,
-   258,
-   6,
-   0,
-   0,
-   262,
+   85,
    0,
    0,
-   0,
-   38,
-   38,
-   0,
-   0,
-   0,
-   34,
-   0,
-   0,
-   0,
-   0,
-   0,
-   34,
-   35,
-   194,
-   227,
-   0,
-   0,
+   138,
    66,
    0,
+   200,
+   196,
+   68,
    0,
    0,
-   258,
-   326,
-   326,
-   0,
-   0,
-   66,
-   50,
-   0,
-   42,
-   0,
-   322,
-   376,
-   74,
-   322,
-   0,
-   54,
-   46,
-   0,
-   42,
-   66,
-   122,
-   74,
+   144,
    0,
    0,
    0,
-   10,
    0,
+   193,
+   80,
    0,
-   0,
-   266,
-   0,
-   258,
-   0
+   65
   ],
   "step": {
    "tech": "AIC_GROUPED",
@@ -9752,52 +9875,60 @@
    "placements": [],
    "eliminations": [
     {
-     "cell": 27,
-     "digit": 6
+     "cell": 5,
+     "digit": 8
     }
    ],
    "primary": [
     {
-     "cell": 0,
-     "digit": 6
+     "cell": 1,
+     "digit": 8
+    },
+    {
+     "cell": 1,
+     "digit": 4
     },
     {
      "cell": 0,
-     "digit": 2
+     "digit": 4
     },
     {
-     "cell": 19,
-     "digit": 2
+     "cell": 54,
+     "digit": 4
     },
     {
-     "cell": 20,
-     "digit": 2
+     "cell": 58,
+     "digit": 4
     },
     {
-     "cell": 23,
-     "digit": 2
+     "cell": 67,
+     "digit": 4
     },
     {
-     "cell": 32,
-     "digit": 2
+     "cell": 67,
+     "digit": 8
     },
     {
-     "cell": 32,
-     "digit": 6
+     "cell": 68,
+     "digit": 8
+    },
+    {
+     "cell": 77,
+     "digit": 8
     }
    ],
    "links": [
     {
      "from": [
       {
-       "cell": 0,
-       "digit": 6
+       "cell": 1,
+       "digit": 8
       }
      ],
      "to": [
       {
-       "cell": 0,
-       "digit": 2
+       "cell": 1,
+       "digit": 4
       }
      ],
      "strong": true
@@ -9805,54 +9936,14 @@
     {
      "from": [
       {
+       "cell": 1,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
        "cell": 0,
-       "digit": 2
-      }
-     ],
-     "to": [
-      {
-       "cell": 19,
-       "digit": 2
-      },
-      {
-       "cell": 20,
-       "digit": 2
-      }
-     ],
-     "strong": false,
-     "toSet": 0
-    },
-    {
-     "from": [
-      {
-       "cell": 19,
-       "digit": 2
-      },
-      {
-       "cell": 20,
-       "digit": 2
-      }
-     ],
-     "to": [
-      {
-       "cell": 23,
-       "digit": 2
-      }
-     ],
-     "strong": true,
-     "fromSet": 0
-    },
-    {
-     "from": [
-      {
-       "cell": 23,
-       "digit": 2
-      }
-     ],
-     "to": [
-      {
-       "cell": 32,
-       "digit": 2
+       "digit": 4
       }
      ],
      "strong": false
@@ -9860,43 +9951,108 @@
     {
      "from": [
       {
-       "cell": 32,
-       "digit": 2
+       "cell": 0,
+       "digit": 4
       }
      ],
      "to": [
       {
-       "cell": 32,
-       "digit": 6
+       "cell": 54,
+       "digit": 4
       }
      ],
      "strong": true
+    },
+    {
+     "from": [
+      {
+       "cell": 54,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 58,
+       "digit": 4
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 58,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 67,
+       "digit": 4
+      }
+     ],
+     "strong": true
+    },
+    {
+     "from": [
+      {
+       "cell": 67,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 67,
+       "digit": 8
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 67,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 68,
+       "digit": 8
+      },
+      {
+       "cell": 77,
+       "digit": 8
+      }
+     ],
+     "strong": true,
+     "toSet": 0
     }
    ],
    "sets": [
     {
      "kind": "group",
      "cells": [
-      19,
-      20
+      68,
+      77
      ],
      "digits": [
-      2
+      8
      ],
      "members": [
       {
-       "cell": 19,
-       "digit": 2
+       "cell": 68,
+       "digit": 8
       },
       {
-       "cell": 20,
-       "digit": 2
+       "cell": 77,
+       "digit": 8
       }
      ],
-     "unit": 2
+     "unit": 14
     }
    ],
-   "description": "Grouped AIC: 6@r1c1 → 2@r1c1 → 2@[r3c2, r3c3] → 2@r3c6 → 2@r4c6 → 6@r4c6; at least one end is true, so candidates conflicting with both ends are removed."
+   "description": "Grouped AIC: 8@r1c2 → 4@r1c2 → 4@r1c1 → 4@r7c1 → 4@r7c5 → 4@r8c5 → 8@r8c5 → 8@[r8c6, r9c6]; at least one end is true, so candidates conflicting with both ends are removed."
   }
  },
  "AIC_ALS": {
