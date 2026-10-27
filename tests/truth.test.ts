@@ -3,11 +3,13 @@
  * "Truth: where it comes from"): what a hint draws as a true disc or a
  * false ring must be what the chain proves. Held three ways: the
  * derivation on chains built by hand in every shape (open, continuous,
- * discontinuous, inverted, broken); every stored example marked 'derived'
- * derives without a problem; and every 'derived' step met while solving a
- * batch of puzzles does too, with each open chain's removals in conflict
- * with both its ends (checked here from the board's houses, not by the
- * finders' own code), its start false and its end true.
+ * discontinuous, inverted, broken, a true end left no candidate); every
+ * stored example marked 'derived' derives without a problem; and every
+ * 'derived' step met while solving a batch of puzzles does too (none of
+ * them a true node left no candidate, 'emptyTrue'), with each open
+ * chain's removals in conflict with both its ends (checked here from the
+ * board's houses, not by the finders' own code), its start false and its
+ * end true.
  */
 import { describe, it, expect } from 'vitest';
 import { deriveLinks, deriveTruth } from '../src/engine/truth';
@@ -92,6 +94,27 @@ describe('the derivation', () => {
     const d = deriveLinks(alternatingLinks([[cd(5, 1, 8)], g, [cd(9, 7, 8)], [cd(9, 1, 8)]]));
     expect(d.problems).toEqual([]);
     for (const m of g) expect(d.candidates.get(k(m))).toBe('groupTrue');
+  });
+
+  it('reports a true node every candidate of which the chain makes false', () => {
+    // a chain whose last set lies inside its first: the start, the first
+    // set's 8s, is false, and the end, the last set's 8s, true, but every
+    // one of them is one of the first set's (docs/hint-drawing-sets.md,
+    // decision 13)
+    const first = [cd(4, 4, 8), cd(5, 4, 8), cd(6, 4, 8)];
+    const last = [cd(4, 4, 8), cd(6, 4, 8)];
+    const chain = (end: CellDigit[]): ChainLink[] => [
+      { from: first, to: [cd(2, 4, 6)], strong: true },
+      { from: [cd(2, 4, 6)], to: [cd(5, 4, 6)], strong: false },
+      { from: [cd(5, 4, 6)], to: end, strong: true }
+    ];
+    const d = deriveLinks(chain(last));
+    expect(d.problems).toEqual([{ link: 0, issue: 'emptyTrue', at: '8r4c4,8r6c4' }]);
+    for (const m of last) expect(d.candidates.get(k(m))).toBe('false');
+    // one candidate the chain leaves it is enough
+    const kept = deriveLinks(chain([cd(4, 4, 8), cd(7, 4, 8)]));
+    expect(kept.problems).toEqual([]);
+    expect(kept.candidates.get(k(cd(7, 4, 8)))).toBe('groupTrue');
   });
 
   it('reports a chain that does not alternate, or jumps', () => {

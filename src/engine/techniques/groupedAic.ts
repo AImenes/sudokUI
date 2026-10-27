@@ -1,6 +1,6 @@
 import { Grid, UNITS, bit, digitsOf, sees, rowOf, colOf, cellName, cellNames } from '../board';
-import { Step, CellDigit, ChainLink, alternatingLinks } from '../steps';
-import { collectAls } from './als';
+import { Step, CellDigit, ChainLink, ChainSet, alternatingLinks, groupSet } from '../steps';
+import { collectAls, alsSet } from './als';
 import type { Als } from './als';
 import { tr } from '../text';
 
@@ -68,9 +68,39 @@ function alsLinkTexts(links: ChainLink[], path: GNode[], alses: Als[]): ChainLin
   });
 }
 
-/** node path -> candidate sets for arrow drawing */
-const nodeCds = (nodes: GNode[], path: number[]): CellDigit[][] =>
-  path.map((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit })));
+/**
+ * A chain's nodes, as the candidates its arrows join, and its sets
+ * (docs/hint-drawing-sets.md, Data): each group node and each almost locked
+ * set of two or more cells on the path, once, in order of first
+ * appearance, the almost locked sets lettered A, B, ...; and each node's
+ * set, none for a lone candidate or a node of a one-cell set, which is the
+ * bivalue cell it is. A loop passes through groups only, so it has no
+ * `alses`.
+ */
+function chainOf(
+  g: Grid,
+  nodes: GNode[],
+  path: number[],
+  alses: Als[] = []
+): { ends: CellDigit[][]; sets: ChainSet[]; setOf: (number | undefined)[] } {
+  const sets: ChainSet[] = [];
+  const index = new Map<string, number>();
+  let letters = 0;
+  const setOf = path.map((n) => {
+    const node = nodes[n];
+    const als = node.als === undefined ? undefined : alses[node.als];
+    if ((als?.cells ?? node.cells).length < 2) return undefined;
+    // a group is its node; an almost locked set is every node of its digits
+    const key = als ? `als ${node.als}` : `group ${n}`;
+    if (!index.has(key)) {
+      index.set(key, sets.length);
+      sets.push(als ? alsSet(g, als, String.fromCharCode(65 + letters++)) : groupSet(node.cells, node.digit));
+    }
+    return index.get(key);
+  });
+  const ends = path.map((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit })));
+  return { ends, sets, setOf };
+}
 
 export function findGroupedAic(g: Grid, maxNodes = 10): Step | null {
   return search(g, 'chain', maxNodes);
@@ -240,6 +270,7 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
         }
         if (elims.length) {
           const chain = path.map(label).join(' → ');
+          const { ends, sets, setOf } = chainOf(g, nodes, path, alses);
           return {
             tech: alsInPath ? 'AIC_ALS' : 'AIC_GROUPED',
             truth: 'derived',
@@ -248,7 +279,8 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
             primary: path.flatMap((n) =>
               nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))
             ),
-            links: alsLinkTexts(alternatingLinks(nodeCds(nodes, path)), path.map((n) => nodes[n]), alses),
+            links: alsLinkTexts(alternatingLinks(ends, undefined, setOf), path.map((n) => nodes[n]), alses),
+            ...(sets.length > 0 && { sets }),
             description: alsInPath
               ? tr`AIC with ALS: ${chain}; at least one end is true, so candidates conflicting with both ends are removed.`
               : tr`Grouped AIC: ${chain}; at least one end is true, so candidates conflicting with both ends are removed.`
@@ -297,6 +329,7 @@ function loopRule2(
 ): Step | null {
   const start = nodes[path[0]];
   const chain = path.map(label).join(' → ');
+  const { ends, sets, setOf } = chainOf(g, nodes, path);
   if (start.cells.length === 1) {
     return {
       tech: 'GROUPED_NICE_LOOP',
@@ -305,7 +338,8 @@ function loopRule2(
       placements: [{ cell: start.cells[0], digit: start.digit }],
       eliminations: [],
       primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
-      links: alternatingLinks(nodeCds(nodes, path), 'strong'),
+      links: alternatingLinks(ends, 'strong', setOf),
+      ...(sets.length > 0 && { sets }),
       description: tr`Grouped Nice Loop: ${chain} closes with two strong links at the start: denying it forces it, so it is placed.`
     };
   }
@@ -324,7 +358,8 @@ function loopRule2(
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
-    links: alternatingLinks(nodeCds(nodes, path), 'strong'),
+    links: alternatingLinks(ends, 'strong', setOf),
+    ...(sets.length > 0 && { sets }),
     description: tr`Grouped Nice Loop: ${chain} closes with two strong links at the start group, so the digit lives there and falls from every cell seeing the whole group.`
   };
 }
@@ -365,6 +400,7 @@ function loopRule1(
     }
   }
   if (!elims.length) return null;
+  const { ends, sets, setOf } = chainOf(g, nodes, path);
   return {
     tech: 'GROUPED_NICE_LOOP',
     truth: 'derived',
@@ -372,7 +408,8 @@ function loopRule1(
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
-    links: alternatingLinks(nodeCds(nodes, path), 'weak'),
+    links: alternatingLinks(ends, 'weak', setOf),
+    ...(sets.length > 0 && { sets }),
     description: tr`Grouped Nice Loop: the continuous loop ${path.map(label).join(' → ')} alternates perfectly; every weak link has exactly one true side, clearing candidates along it.`
   };
 }

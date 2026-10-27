@@ -1,10 +1,30 @@
 import { Grid, UNITS, bit, sees, rowOf, colOf, cellNames } from '../board';
-import { Step, CellDigit, alternatingLinks } from '../steps';
+import { Step, CellDigit, ChainSet, alternatingLinks, groupSet, setEnds } from '../steps';
 import { tr } from '../text';
 
-/** node path -> candidate sets for arrow drawing */
-const nodeCds = (nodes: GNode[], path: number[], d: number): CellDigit[][] =>
-  path.map((n) => nodes[n].cells.map((cell) => ({ cell, digit: d })));
+/**
+ * A loop's nodes, as the candidates its arrows join, and its groups as
+ * sets (docs/hint-drawing-sets.md, Data): each once, in order of first
+ * appearance, with each node's set, none for a lone candidate
+ */
+function chainOf(
+  nodes: GNode[],
+  path: number[],
+  d: number
+): { ends: CellDigit[][]; sets: ChainSet[]; setOf: (number | undefined)[] } {
+  const sets: ChainSet[] = [];
+  const index = new Map<number, number>();
+  const setOf = path.map((n) => {
+    if (nodes[n].cells.length < 2) return undefined;
+    if (!index.has(n)) {
+      index.set(n, sets.length);
+      sets.push(groupSet(nodes[n].cells, d));
+    }
+    return index.get(n);
+  });
+  const ends = path.map((n) => nodes[n].cells.map((cell) => ({ cell, digit: d })));
+  return { ends, sets, setOf };
+}
 
 /**
  * Grouped X-Cycles (sudokuwiki.org/Grouped_X_Cycles): X-Cycles where a node
@@ -116,6 +136,7 @@ export function findGroupedXCycles(g: Grid, maxLen = 10): Step | null {
           // rule 3 (first link weak, weak closure): start node is false
           const startCells = nodes[start].cells;
           if (startCells.length >= 2) {
+            const { ends, sets, setOf } = chainOf(nodes, path, d);
             return {
               tech: 'GROUPED_X_CYCLES',
               truth: 'derived',
@@ -126,16 +147,18 @@ export function findGroupedXCycles(g: Grid, maxLen = 10): Step | null {
               // rule 3 paths start with a WEAK link (inverted alternation)
               // and also close weak
               links: [
-                ...alternatingLinks(nodeCds(nodes, path, d)).map((l) => ({
+                ...alternatingLinks(ends, undefined, setOf).map((l) => ({
                   ...l,
                   strong: !l.strong
                 })),
                 {
                   from: nodes[path[path.length - 1]].cells.map((cell) => ({ cell, digit: d })),
                   to: nodes[path[0]].cells.map((cell) => ({ cell, digit: d })),
-                  strong: false
+                  strong: false,
+                  ...setEnds(setOf[path.length - 1], setOf[0])
                 }
               ],
+              sets,
               description: tr`Grouped X-Cycle on ${d}: the loop closes with two weak links at the group ${cellNames(startCells)}, so none of those cells can be ${d}.`
             };
           }
@@ -176,6 +199,7 @@ export function findGroupedXCycles(g: Grid, maxLen = 10): Step | null {
 function rule2(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null {
   const start = nodes[path[0]];
   const inPath = new Set(path.flatMap((n) => nodes[n].cells));
+  const { ends, sets, setOf } = chainOf(nodes, path, d);
   if (start.cells.length === 1) {
     return {
       tech: 'GROUPED_X_CYCLES',
@@ -184,7 +208,8 @@ function rule2(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
       placements: [{ cell: start.cells[0], digit: d }],
       eliminations: [],
       primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
-      links: alternatingLinks(nodeCds(nodes, path, d), 'strong'),
+      links: alternatingLinks(ends, 'strong', setOf),
+      ...(sets.length > 0 && { sets }),
       description: tr`Grouped X-Cycle on ${d}: the loop closes with two strong links at ${cellNames(start.cells)}, forcing it to be ${d}.`
     };
   }
@@ -203,7 +228,8 @@ function rule2(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
-    links: alternatingLinks(nodeCds(nodes, path, d), 'strong'),
+    links: alternatingLinks(ends, 'strong', setOf),
+    sets,
     description: tr`Grouped X-Cycle on ${d}: two strong links meet at the group ${cellNames(start.cells)}, so ${d} lives there and falls from every cell seeing the whole group.`
   };
 }
@@ -226,6 +252,7 @@ function rule1(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
     }
   }
   if (!elims.length) return null;
+  const { ends, sets, setOf } = chainOf(nodes, path, d);
   return {
     tech: 'GROUPED_X_CYCLES',
     truth: 'derived',
@@ -233,7 +260,8 @@ function rule1(g: Grid, d: number, nodes: GNode[], path: number[]): Step | null 
     placements: [],
     eliminations: elims,
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: d }))),
-    links: alternatingLinks(nodeCds(nodes, path, d), 'weak'),
+    links: alternatingLinks(ends, 'weak', setOf),
+    ...(sets.length > 0 && { sets }),
     description: tr`Grouped X-Cycle on ${d}: a continuous loop through ${path.length} nodes (groups included); along each weak link one side is ${d}, so ${d} falls from outside cells seeing both sides.`
   };
 }

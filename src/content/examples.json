@@ -7795,7 +7795,8 @@
        "digit": 2
       }
      ],
-     "strong": false
+     "strong": false,
+     "toSet": 0
     },
     {
      "from": [
@@ -7814,7 +7815,8 @@
        "digit": 2
       }
      ],
-     "strong": true
+     "strong": true,
+     "fromSet": 0
     },
     {
      "from": [
@@ -7860,6 +7862,29 @@
       }
      ],
      "strong": false
+    }
+   ],
+   "sets": [
+    {
+     "kind": "group",
+     "cells": [
+      12,
+      21
+     ],
+     "digits": [
+      2
+     ],
+     "members": [
+      {
+       "cell": 12,
+       "digit": 2
+      },
+      {
+       "cell": 21,
+       "digit": 2
+      }
+     ],
+     "unit": 12
     }
    ],
    "description": "Grouped X-Cycle on 2: a continuous loop through 6 nodes (groups included); along each weak link one side is 2, so 2 falls from outside cells seeing both sides."
@@ -8519,7 +8544,8 @@
        "digit": 8
       }
      ],
-     "strong": false
+     "strong": false,
+     "toSet": 0
     },
     {
      "from": [
@@ -8538,7 +8564,8 @@
        "digit": 8
       }
      ],
-     "strong": true
+     "strong": true,
+     "fromSet": 0
     },
     {
      "from": [
@@ -8554,6 +8581,29 @@
       }
      ],
      "strong": false
+    }
+   ],
+   "sets": [
+    {
+     "kind": "group",
+     "cells": [
+      42,
+      51
+     ],
+     "digits": [
+      8
+     ],
+     "members": [
+      {
+       "cell": 42,
+       "digit": 8
+      },
+      {
+       "cell": 51,
+       "digit": 8
+      }
+     ],
+     "unit": 15
     }
    ],
    "description": "Grouped Nice Loop: the continuous loop 7@r5c9 → 7@r7c9 → 7@r7c7 → 8@r7c7 → 8@[r5c7, r6c7] → 8@r5c9 alternates perfectly; every weak link has exactly one true side, clearing candidates along it."
@@ -8713,7 +8763,79 @@
        "digit": 1
       }
      ],
-     "strong": false
+     "strong": false,
+     "fromSet": 0,
+     "toSet": 1
+    }
+   ],
+   "sets": [
+    {
+     "kind": "als",
+     "cells": [
+      64,
+      72
+     ],
+     "digits": [
+      1,
+      5,
+      9
+     ],
+     "members": [
+      {
+       "cell": 64,
+       "digit": 1
+      },
+      {
+       "cell": 64,
+       "digit": 5
+      },
+      {
+       "cell": 64,
+       "digit": 9
+      },
+      {
+       "cell": 72,
+       "digit": 5
+      },
+      {
+       "cell": 72,
+       "digit": 9
+      }
+     ],
+     "unit": 24,
+     "letter": "A"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      61,
+      71
+     ],
+     "digits": [
+      1,
+      5,
+      9
+     ],
+     "members": [
+      {
+       "cell": 61,
+       "digit": 5
+      },
+      {
+       "cell": 61,
+       "digit": 9
+      },
+      {
+       "cell": 71,
+       "digit": 1
+      },
+      {
+       "cell": 71,
+       "digit": 9
+      }
+     ],
+     "unit": 26,
+     "letter": "B"
     }
    ],
    "description": "ALS-XZ: sets r8c2, r9c1 and r7c8, r8c9 share restricted common 1; digit 5 can be removed from cells seeing every 5 of both sets."
@@ -8884,7 +9006,9 @@
        "digit": 4
       }
      ],
-     "strong": false
+     "strong": false,
+     "fromSet": 0,
+     "toSet": 2
     },
     {
      "from": [
@@ -8899,7 +9023,101 @@
        "digit": 6
       }
      ],
-     "strong": false
+     "strong": false,
+     "fromSet": 2,
+     "toSet": 1
+    }
+   ],
+   "sets": [
+    {
+     "kind": "als",
+     "cells": [
+      65,
+      70
+     ],
+     "digits": [
+      2,
+      4,
+      7
+     ],
+     "members": [
+      {
+       "cell": 65,
+       "digit": 2
+      },
+      {
+       "cell": 65,
+       "digit": 4
+      },
+      {
+       "cell": 70,
+       "digit": 2
+      },
+      {
+       "cell": 70,
+       "digit": 7
+      }
+     ],
+     "unit": 7,
+     "letter": "A"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      35,
+      52
+     ],
+     "digits": [
+      4,
+      6,
+      7
+     ],
+     "members": [
+      {
+       "cell": 35,
+       "digit": 4
+      },
+      {
+       "cell": 35,
+       "digit": 7
+      },
+      {
+       "cell": 52,
+       "digit": 4
+      },
+      {
+       "cell": 52,
+       "digit": 6
+      },
+      {
+       "cell": 52,
+       "digit": 7
+      }
+     ],
+     "unit": 23,
+     "letter": "B"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      47
+     ],
+     "digits": [
+      4,
+      6
+     ],
+     "members": [
+      {
+       "cell": 47,
+       "digit": 4
+      },
+      {
+       "cell": 47,
+       "digit": 6
+      }
+     ],
+     "unit": 5,
+     "letter": "C"
     }
    ],
    "description": "ALS-XY-Wing: hinge r6c3 links r8c3, r8c8 (via 4) and r4c9, r6c8 (via 6); digit 7 can be removed from cells seeing every 7 of both outer sets."
@@ -9075,7 +9293,9 @@
        "digit": 9
       }
      ],
-     "strong": false
+     "strong": false,
+     "fromSet": 0,
+     "toSet": 1
     },
     {
      "from": [
@@ -9094,7 +9314,9 @@
        "digit": 3
       }
      ],
-     "strong": false
+     "strong": false,
+     "fromSet": 1,
+     "toSet": 2
     },
     {
      "from": [
@@ -9109,7 +9331,123 @@
        "digit": 9
       }
      ],
-     "strong": false
+     "strong": false,
+     "fromSet": 2,
+     "toSet": 3
+    }
+   ],
+   "sets": [
+    {
+     "kind": "als",
+     "cells": [
+      28,
+      33
+     ],
+     "digits": [
+      4,
+      6,
+      9
+     ],
+     "members": [
+      {
+       "cell": 28,
+       "digit": 4
+      },
+      {
+       "cell": 28,
+       "digit": 6
+      },
+      {
+       "cell": 33,
+       "digit": 6
+      },
+      {
+       "cell": 33,
+       "digit": 9
+      }
+     ],
+     "unit": 3,
+     "letter": "A"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      6
+     ],
+     "digits": [
+      3,
+      9
+     ],
+     "members": [
+      {
+       "cell": 6,
+       "digit": 3
+      },
+      {
+       "cell": 6,
+       "digit": 9
+      }
+     ],
+     "unit": 0,
+     "letter": "B"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      4,
+      5
+     ],
+     "digits": [
+      2,
+      3,
+      9
+     ],
+     "members": [
+      {
+       "cell": 4,
+       "digit": 2
+      },
+      {
+       "cell": 4,
+       "digit": 3
+      },
+      {
+       "cell": 4,
+       "digit": 9
+      },
+      {
+       "cell": 5,
+       "digit": 2
+      },
+      {
+       "cell": 5,
+       "digit": 3
+      }
+     ],
+     "unit": 0,
+     "letter": "C"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      58
+     ],
+     "digits": [
+      4,
+      9
+     ],
+     "members": [
+      {
+       "cell": 58,
+       "digit": 4
+      },
+      {
+       "cell": 58,
+       "digit": 9
+      }
+     ],
+     "unit": 6,
+     "letter": "D"
     }
    ],
    "description": "ALS-XY-Chain: r4c2, r4c7 –9– r1c7 –3– r1c5, r1c6 –9– r7c5; digit 4 falls from cells seeing every 4 of both end sets."
@@ -9481,7 +9819,8 @@
        "digit": 2
       }
      ],
-     "strong": false
+     "strong": false,
+     "toSet": 0
     },
     {
      "from": [
@@ -9500,7 +9839,8 @@
        "digit": 2
       }
      ],
-     "strong": true
+     "strong": true,
+     "fromSet": 0
     },
     {
      "from": [
@@ -9531,6 +9871,29 @@
       }
      ],
      "strong": true
+    }
+   ],
+   "sets": [
+    {
+     "kind": "group",
+     "cells": [
+      19,
+      20
+     ],
+     "digits": [
+      2
+     ],
+     "members": [
+      {
+       "cell": 19,
+       "digit": 2
+      },
+      {
+       "cell": 20,
+       "digit": 2
+      }
+     ],
+     "unit": 2
     }
    ],
    "description": "Grouped AIC: 6@r1c1 → 2@r1c1 → 2@[r3c2, r3c3] → 2@r3c6 → 2@r4c6 → 6@r4c6; at least one end is true, so candidates conflicting with both ends are removed."
@@ -9700,7 +10063,8 @@
        "digit": 8
       }
      ],
-     "strong": false
+     "strong": false,
+     "toSet": 0
     },
     {
      "from": [
@@ -9724,6 +10088,8 @@
       }
      ],
      "strong": true,
+     "fromSet": 0,
+     "toSet": 0,
      "text": "In the almost locked set r7c8, r8c8 (489, one digit more than cells): if none of its cells is 8, it locks on its other digits, so one of r7c8, r8c8 must be 9."
     },
     {
@@ -9743,7 +10109,8 @@
        "digit": 9
       }
      ],
-     "strong": false
+     "strong": false,
+     "fromSet": 0
     },
     {
      "from": [
@@ -9759,6 +10126,48 @@
       }
      ],
      "strong": true
+    }
+   ],
+   "sets": [
+    {
+     "kind": "als",
+     "cells": [
+      61,
+      70
+     ],
+     "digits": [
+      4,
+      8,
+      9
+     ],
+     "members": [
+      {
+       "cell": 61,
+       "digit": 4
+      },
+      {
+       "cell": 61,
+       "digit": 8
+      },
+      {
+       "cell": 61,
+       "digit": 9
+      },
+      {
+       "cell": 70,
+       "digit": 4
+      },
+      {
+       "cell": 70,
+       "digit": 8
+      },
+      {
+       "cell": 70,
+       "digit": 9
+      }
+     ],
+     "unit": 16,
+     "letter": "A"
     }
    ],
    "description": "AIC with ALS: 8@r2c9 → 8@r2c8 → 8@[r7c8, r8c8] → 9@[r7c8, r8c8] → 9@r6c8 → 9@r6c9; at least one end is true, so candidates conflicting with both ends are removed."
@@ -9930,7 +10339,8 @@
        "digit": 2
       }
      ],
-     "strong": false
+     "strong": false,
+     "toSet": 0
     },
     {
      "from": [
@@ -9945,7 +10355,8 @@
        "digit": 5
       }
      ],
-     "strong": false
+     "strong": false,
+     "toSet": 1
     },
     {
      "from": [
@@ -9960,7 +10371,86 @@
        "digit": 7
       }
      ],
-     "strong": false
+     "strong": false,
+     "toSet": 2
+    }
+   ],
+   "sets": [
+    {
+     "kind": "als",
+     "cells": [
+      78
+     ],
+     "digits": [
+      2,
+      4
+     ],
+     "members": [
+      {
+       "cell": 78,
+       "digit": 2
+      },
+      {
+       "cell": 78,
+       "digit": 4
+      }
+     ],
+     "unit": 8,
+     "letter": "A"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      67,
+      77
+     ],
+     "digits": [
+      1,
+      4,
+      5
+     ],
+     "members": [
+      {
+       "cell": 67,
+       "digit": 1
+      },
+      {
+       "cell": 67,
+       "digit": 5
+      },
+      {
+       "cell": 77,
+       "digit": 1
+      },
+      {
+       "cell": 77,
+       "digit": 4
+      }
+     ],
+     "unit": 25,
+     "letter": "B"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      63
+     ],
+     "digits": [
+      4,
+      7
+     ],
+     "members": [
+      {
+       "cell": 63,
+       "digit": 4
+      },
+      {
+       "cell": 63,
+       "digit": 7
+      }
+     ],
+     "unit": 7,
+     "letter": "C"
     }
    ],
    "description": "Death Blossom: stem r8c9 links each of its candidates to a petal set; whichever digit the stem takes, some petal locks and places 4, so 4 is removed from cells seeing every 4 of all petals."

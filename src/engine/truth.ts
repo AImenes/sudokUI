@@ -18,15 +18,22 @@
 // A group or set node that is TRUE means "one of these", not "all of
 // these": its members are 'groupTrue', never 'true', so a drawing does not
 // teach that all of them are placed. A FALSE group means none of them, and
-// its members are 'false'.
+// its members are 'false'. A TRUE node whose every candidate the chain
+// makes false says nothing true ('emptyTrue'), as when a chain's last set
+// lies inside its first and the premise makes the first set's z false.
 //
 // A colouring (Step.truth === 'parity') reads its truth from its clusters
 // instead: each cluster's two colours, exactly one of them wholly true.
-// checkParity, at the end, holds a colouring to that, and to its links'
-// walk order, as the derivation holds a chain.
-import type { CellDigit, ChainLink, Step } from './steps';
-import { isParity, isTie } from './steps';
-import { UNITS, bit, popcount, sees } from './board';
+// checkParity holds a colouring to that, and to its links' walk order, as
+// the derivation holds a chain.
+//
+// A step's groups and almost locked sets (Step.sets; docs/hint-drawing-sets.md,
+// Data) are held to their rules by checkSets, at the end: each set's
+// shape, each link end's set, the links inside a set and between sets, the
+// removals of the ALS patterns, and the letters.
+import type { CellDigit, ChainLink, ChainSet, Step } from './steps';
+import { isParity, isTie, insideSet } from './steps';
+import { UNITS, bit, popcount, sees, boxOf, rowOf, colOf } from './board';
 
 export type CandidateTruth = 'true' | 'false' | 'groupTrue';
 
@@ -48,12 +55,13 @@ export interface Derivation {
  * leaves a node the chain has not reached, or leaves a node of the wrong
  * truth (a strong link must leave a false node, a weak one a true node), a
  * node given both truths short of a loop's closing, a candidate both true
- * and false, or a true candidate inside a false group
+ * and false, a true candidate inside a false group, or a TRUE node of
+ * several candidates all of which the chain makes false ('emptyTrue')
  */
 export interface Problem {
-  /** the link, counted from 1, or 0 for a candidate */
+  /** the link, counted from 1, or 0 for a candidate or a node */
   link: number;
-  issue: 'unreached' | 'wrongTruth' | 'twoTruths' | 'bothWays' | 'inFalseGroup';
+  issue: 'unreached' | 'wrongTruth' | 'twoTruths' | 'bothWays' | 'inFalseGroup' | 'emptyTrue';
   /** the node or candidate, as 4r1c6 */
   at: string;
 }
@@ -125,6 +133,12 @@ export function deriveLinks(links: ChainLink[]): Derivation {
         if (was === 'true') problems.push({ link: 0, issue: 'inFalseGroup', at: label([cd]) });
         if (was !== 'true') candidates.set(k, 'false');
       } else if (!was) candidates.set(k, 'groupTrue');
+    }
+  }
+  // a true node of several candidates must keep one of them
+  for (const { node, truth } of nodes) {
+    if (truth && node.length > 1 && node.every((cd) => candidates.get(keyOf(cd)) === 'false')) {
+      problems.push({ link: 0, issue: 'emptyTrue', at: label(node) });
     }
   }
   return { nodes, candidates, ends, closure, problems };
@@ -239,5 +253,195 @@ export function checkParity(step: Step, cands?: ArrayLike<number>): ParityProble
     const c = colour.get(keyOf(cd));
     if (c && !(c.k === darkFalse && c.dark)) problems.push({ link: 0, issue: 'removedOutside', at: label([cd]) });
   }
+  return problems;
+}
+
+/**
+ * Something wrong with a step's sets (Step.sets, docs/hint-drawing-sets.md,
+ * Data), which is a bug in its finder:
+ * - 'shape': a group that is not 2-3 candidates of one digit in one box and
+ *   one row or column, all the digit has there; an almost locked set that
+ *   is not n cells of one house holding n+1 digits, or whose members are
+ *   not every candidate of its cells; a set its own unit does not hold;
+ * - 'notMember': a link end that is not exactly its set's cells holding
+ *   that one digit;
+ * - 'internal': a link inside one set that is weak, joins one digit, or is
+ *   inside a group; a strong link between two digits in different cells
+ *   that is not inside one almost locked set, in a chain read as an AIC
+ *   (truth 'derived') or a step with sets (a forcing chain's links are
+ *   inferences of another kind);
+ * - 'notRestricted': a restricted common some candidate of which does not
+ *   see every candidate of that digit in the other set (any weak link of
+ *   one digit with an almost locked set at either end: into a set, out of
+ *   one, between two, or from a Death Blossom's stem to its petal);
+ * - 'zNotSeen': a removal of an ALS pattern that does not see every z of
+ *   both end sets (ALS-XZ's A and B, an ALS-XY-Wing's wings A and B, an
+ *   ALS-XY-Chain's A and D), or of every petal of a Death Blossom;
+ * - 'overlap': two sets sharing a cell that the technique keeps apart: any
+ *   two of an ALS-XZ, an ALS-XY-Wing or a Death Blossom's petals, and an
+ *   ALS-XY-Chain's neighbours (its other pairs may share cells, as in
+ *   HoDoKu);
+ * - 'letters': letters not the technique's convention: every almost locked
+ *   set lettered and no group, each letter once; ALS-XZ's A and B, A
+ *   holding the start; an ALS-XY-Wing's A and B the wings, linked to the
+ *   hinge C by x and by y; an ALS-XY-Chain's A to D along the chain; Death
+ *   Blossom's petals A, B, C in stem-digit order; any other step's sets
+ *   listed in order of first appearance, its almost locked sets lettered A,
+ *   B, ... in that order.
+ */
+export interface SetProblem {
+  /** the link, counted from 1, or 0 for a set, a removal or the letters */
+  link: number;
+  issue: 'shape' | 'notMember' | 'internal' | 'notRestricted' | 'zNotSeen' | 'overlap' | 'letters';
+  /**
+   * the set (its letter, or its candidates as 4r1c6,4r2c6), the link's
+   * first end, the removal, or the sets in order (each by its letter, a
+   * group as 'group')
+   */
+  at: string;
+}
+
+const ascending = (xs: number[]) => xs.every((x, i) => i === 0 || xs[i - 1] < x);
+/** one node's digit, or NaN for a node of several digits */
+const digitOf = (node: CellDigit[]) => (node.length && node.every((m) => m.digit === node[0].digit) ? node[0].digit : NaN);
+
+/** a set as its rules have it (the 'shape' of checkSets); `cands` the position's, 0 for a solved cell */
+function shaped(s: ChainSet, cands?: ArrayLike<number>): boolean {
+  const { cells, digits, members } = s;
+  if (!cells.length || !ascending(cells) || !ascending(digits)) return false;
+  if (!cells.every((c) => UNITS[s.unit]?.includes(c))) return false;
+  // members by cell then digit, each of the set's cells and digits, every cell holding one
+  if (!ascending(members.map((m) => m.cell * 10 + m.digit))) return false;
+  if (!members.every((m) => cells.includes(m.cell) && digits.includes(m.digit))) return false;
+  if (!cells.every((c) => members.some((m) => m.cell === c))) return false;
+  if (s.kind === 'group') {
+    if (digits.length !== 1 || cells.length < 2 || cells.length > 3 || members.length !== cells.length) return false;
+    const [first] = cells;
+    const inRow = cells.every((c) => rowOf(c) === rowOf(first));
+    const inColumn = cells.every((c) => colOf(c) === colOf(first));
+    if (!cells.every((c) => boxOf(c) === boxOf(first)) || !(inRow || inColumn)) return false;
+    // all the digit has in that box and line
+    if (!cands) return true;
+    const line = (c: number) => (inRow ? rowOf(c) === rowOf(first) : colOf(c) === colOf(first));
+    return UNITS[18 + boxOf(first)].filter((c) => line(c) && cands[c] & bit(digits[0])).join() === cells.join();
+  }
+  if (s.kind !== 'als' || digits.length !== cells.length + 1) return false;
+  // between them its cells hold its digits, and nothing else
+  if (digits.some((d) => !members.some((m) => m.digit === d))) return false;
+  if (!cands) return true;
+  return members.length === cells.reduce((n, c) => n + popcount(cands[c]), 0) && members.every((m) => cands[m.cell] & bit(m.digit));
+}
+
+/** the removals' end sets of each ALS pattern, by letter: Death Blossom's every petal */
+const END_SETS: Partial<Record<Step['tech'], string[]>> = { ALS_XZ: ['A', 'B'], ALS_XY_WING: ['A', 'B'], ALS_XY_CHAIN: ['A', 'D'] };
+
+/** the links between two sets of each ALS pattern, from set to set by letter, in link order: Death Blossom's from the stem */
+const LINKED: Partial<Record<Step['tech'], string[][]>> = {
+  ALS_XZ: [['A', 'B']],
+  ALS_XY_WING: [
+    ['A', 'C'],
+    ['C', 'B']
+  ],
+  ALS_XY_CHAIN: [
+    ['A', 'B'],
+    ['B', 'C'],
+    ['C', 'D']
+  ]
+};
+
+/**
+ * What is wrong with a step's sets; empty for every finder's step, and for
+ * a step with none. `cands`, the position's candidates (0 for a solved
+ * cell), lets each set's shape be checked against the board.
+ */
+export function checkSets(step: Step, cands?: ArrayLike<number>): SetProblem[] {
+  const sets = step.sets ?? [];
+  const links = step.links ?? [];
+  const problems: SetProblem[] = [];
+  const named = (s: ChainSet) => (s.letter ? `set ${s.letter}` : label(s.members));
+  const letterOf = (i: number | undefined) => (i === undefined ? '' : (sets[i]?.letter ?? '?'));
+  const isAls = (i: number | undefined) => i !== undefined && sets[i]?.kind === 'als';
+
+  for (const s of sets) if (!shaped(s, cands)) problems.push({ link: 0, issue: 'shape', at: named(s) });
+
+  links.forEach((l, i) => {
+    const at = label(l.from);
+    // each end that is a set's node: exactly the set's cells holding its one digit
+    for (const [end, index] of [
+      [l.from, l.fromSet],
+      [l.to, l.toSet]
+    ] as const) {
+      if (index === undefined) continue;
+      const s = sets[index];
+      const d = digitOf(end);
+      const holding = s?.members.filter((m) => m.digit === d).map((m) => m.cell);
+      const cells = end.map((m) => m.cell).sort((a, b) => a - b);
+      if (!s || !holding?.length || holding.join() !== cells.join()) problems.push({ link: i + 1, issue: 'notMember', at });
+    }
+    const [fd, td] = [digitOf(l.from), digitOf(l.to)];
+    const oneCell = l.from.length === 1 && l.to.length === 1 && l.from[0].cell === l.to[0].cell;
+    if (insideSet(l)) {
+      // the set's lock: from one of its digits to another, strong
+      if (!isAls(l.fromSet) || !l.strong || fd === td) problems.push({ link: i + 1, issue: 'internal', at });
+    } else if ((step.truth === 'derived' || sets.length > 0) && l.strong && fd !== td && !oneCell) {
+      problems.push({ link: i + 1, issue: 'internal', at });
+    }
+    // a restricted common: every candidate of its digit at one end sees every one at the other
+    if (!l.strong && !insideSet(l) && fd === td && (isAls(l.fromSet) || isAls(l.toSet))) {
+      const side = (end: CellDigit[], index: number | undefined) =>
+        index === undefined ? end : (sets[index]?.members.filter((m) => m.digit === fd) ?? []);
+      const [a, b] = [side(l.from, l.fromSet), side(l.to, l.toSet)];
+      if (!a.length || !b.length || !a.every((p) => b.every((q) => sees(p.cell, q.cell)))) {
+        problems.push({ link: i + 1, issue: 'notRestricted', at });
+      }
+    }
+  });
+
+  // the ALS patterns: each removal sees every z of the end sets
+  const ends = step.tech === 'DEATH_BLOSSOM' ? sets : END_SETS[step.tech]?.map((L) => sets.find((s) => s.letter === L));
+  for (const e of ends ? step.eliminations : []) {
+    const seen = ends!.every((s) => {
+      const zs = s?.members.filter((m) => m.digit === e.digit) ?? [];
+      return zs.length > 0 && zs.every((m) => sees(e.cell, m.cell));
+    });
+    if (!seen) problems.push({ link: 0, issue: 'zNotSeen', at: label([e]) });
+  }
+
+  // the sets an ALS pattern keeps apart
+  const apart: [number, number][] = [];
+  if (step.tech === 'ALS_XY_CHAIN') for (let i = 1; i < sets.length; i++) apart.push([i - 1, i]);
+  else if (['ALS_XZ', 'ALS_XY_WING', 'DEATH_BLOSSOM'].includes(step.tech)) {
+    for (let i = 0; i < sets.length; i++) for (let j = i + 1; j < sets.length; j++) apart.push([i, j]);
+  }
+  for (const [i, j] of apart) {
+    if (!sets[i].cells.some((c) => sets[j].cells.includes(c))) continue;
+    problems.push({ link: 0, issue: 'overlap', at: `${named(sets[i])} ${named(sets[j])}` });
+  }
+
+  // the letters: every almost locked set's, no group's, each once, in the technique's order
+  const letters = sets.map((s) => s.letter ?? '');
+  const between = links.filter((l) => !insideSet(l) && l.toSet !== undefined).map((l) => [letterOf(l.fromSet), letterOf(l.toSet)]);
+  const abc = (n: number) => Array.from({ length: n }, (_, k) => String.fromCharCode(65 + k));
+  let lettered =
+    sets.every((s) => (s.kind === 'als') === !!s.letter) && new Set(letters.filter(Boolean)).size === letters.filter(Boolean).length;
+  if (LINKED[step.tech]) {
+    const expected = LINKED[step.tech]!;
+    lettered &&= letters.join() === abc(expected.length + 1).join() && JSON.stringify(between) === JSON.stringify(expected);
+  } else if (step.tech === 'DEATH_BLOSSOM') {
+    // a petal for each stem digit, in its order
+    const stemDigits = links.filter((l) => l.fromSet === undefined && l.toSet !== undefined).map((l) => digitOf(l.from));
+    lettered &&=
+      letters.join() === abc(sets.length).join() &&
+      JSON.stringify(between) === JSON.stringify(letters.map((L) => ['', L])) &&
+      ascending(stemDigits);
+  } else if (sets.length) {
+    // in order of first appearance along the links
+    const order: number[] = [];
+    for (const l of links) for (const i of [l.fromSet, l.toSet]) if (i !== undefined && !order.includes(i)) order.push(i);
+    sets.forEach((_, i) => order.includes(i) || order.push(i));
+    const inOrder = order.map((i) => letters[i]).filter(Boolean);
+    lettered &&= inOrder.join() === abc(inOrder.length).join() && order.every((i, k) => i === k);
+  }
+  if (!lettered) problems.push({ link: 0, issue: 'letters', at: sets.map((s) => s.letter ?? s.kind).join() });
   return problems;
 }

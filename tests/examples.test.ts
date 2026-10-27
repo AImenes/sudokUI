@@ -12,13 +12,13 @@
  * step, only in other words.
  */
 import { describe, it, expect } from 'vitest';
-import { Grid, parseGrid, bit } from '../src/engine/board';
+import { Grid, parseGrid, bit, cellNames } from '../src/engine/board';
 import { solve } from '../src/engine/bruteForce';
 import { ratePuzzle, applyStep, findStep } from '../src/engine/humanSolver';
 import { TECHS, Tech } from '../src/engine/ratings';
 import type { Step } from '../src/engine/steps';
 import { isParity, isTie } from '../src/engine/steps';
-import { setEngineText, engineLang } from '../src/engine/text';
+import { setEngineText, engineLang, unitName } from '../src/engine/text';
 import { cleanTechniques } from '../src/engine/generator';
 import { EXAMPLES } from '../src/content/examples';
 import { boardSvg } from '../src/content/boardSvg';
@@ -205,6 +205,43 @@ describe('worked examples', () => {
       const givens = ex.puzzle.replace(/[^1-9]/g, '').length;
       expect((svg.match(/class="giv"/g) ?? []).length, tech).toBe(givens);
     }
+  });
+
+  it("name their sets: the set techniques' groups and lettered sets, at each link end, and no other technique any", () => {
+    // each set (docs/hint-drawing-sets.md, Data and Per technique): its letter, or a group's kind; its cells, digits and house
+    const sets: Record<string, string[]> = {};
+    // each link from set to set by name, '·' for a lone candidate
+    const ends: Record<string, string[]> = {};
+    for (const tech of techs) {
+      const { sets: own, links } = EXAMPLES[tech]!.step;
+      if (!own) continue;
+      const name = (i?: number) => (i === undefined ? '·' : (own[i].letter ?? own[i].kind));
+      sets[tech] = own.map((s) => `${name(own.indexOf(s))} ${cellNames(s.cells)} {${s.digits.join('')}} in ${unitName(s.unit)}`);
+      ends[tech] = (links ?? []).map((l) => `${name(l.fromSet)}-${name(l.toSet)}`);
+    }
+    expect(sets).toEqual({
+      GROUPED_X_CYCLES: ['group r2c4, r3c4 {2} in column 4'],
+      GROUPED_NICE_LOOP: ['group r5c7, r6c7 {8} in column 7'],
+      ALS_XZ: ['A r8c2, r9c1 {159} in box 7', 'B r7c8, r8c9 {159} in box 9'],
+      ALS_XY_WING: ['A r8c3, r8c8 {247} in row 8', 'B r4c9, r6c8 {467} in box 6', 'C r6c3 {46} in row 6'],
+      ALS_XY_CHAIN: ['A r4c2, r4c7 {469} in row 4', 'B r1c7 {39} in row 1', 'C r1c5, r1c6 {239} in row 1', 'D r7c5 {49} in row 7'],
+      AIC_GROUPED: ['group r3c2, r3c3 {2} in row 3'],
+      AIC_ALS: ['A r7c8, r8c8 {489} in column 8'],
+      DEATH_BLOSSOM: ['A r9c7 {24} in row 9', 'B r8c5, r9c6 {145} in box 8', 'C r8c1 {47} in row 8']
+    });
+    expect(ends).toEqual({
+      GROUPED_X_CYCLES: ['·-·', '·-group', 'group-·', '·-·', '·-·', '·-·'],
+      GROUPED_NICE_LOOP: ['·-·', '·-·', '·-·', '·-group', 'group-·', '·-·'],
+      // the restricted commons: A's 1 to B's; the wings' to the hinge C and on
+      ALS_XZ: ['A-B'],
+      ALS_XY_WING: ['A-C', 'C-B'],
+      ALS_XY_CHAIN: ['A-B', 'B-C', 'C-D'],
+      AIC_GROUPED: ['·-·', '·-group', 'group-·', '·-·', '·-·'],
+      // into set A on 8, inside it from 8 to 9, out of it on 9
+      AIC_ALS: ['·-·', '·-A', 'A-A', 'A-·', '·-·'],
+      // the stem is no set
+      DEATH_BLOSSOM: ['·-A', '·-B', '·-C']
+    });
   });
 
   it('ship one diagram per example', () => {

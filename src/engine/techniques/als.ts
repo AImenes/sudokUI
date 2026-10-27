@@ -1,19 +1,21 @@
 import { Grid, UNITS, bit, digitsOf, popcount, sees, cellName, cellNames } from '../board';
-import { Step, CellDigit } from '../steps';
+import { Step, CellDigit, ChainSet } from '../steps';
 import { combinations } from './subsets';
 import { tr, listAnd, unitName } from '../text';
 
 export interface Als {
   cells: number[];
   mask: number;
+  /** the house it was found in (a UNITS index), the first that holds it */
+  unit: number;
 }
 
 /** Almost Locked Sets: n cells in one unit with n+1 candidates. */
 export function collectAls(g: Grid, maxSize = 4, cap = 600): Als[] {
   const out: Als[] = [];
   const seen = new Set<string>();
-  for (const unit of UNITS) {
-    const empty = unit.filter((c) => g.values[c] === 0);
+  for (let u = 0; u < UNITS.length; u++) {
+    const empty = UNITS[u].filter((c) => g.values[c] === 0);
     for (let size = 1; size <= Math.min(maxSize, empty.length); size++) {
       for (const combo of combinations(empty, size)) {
         let mask = 0;
@@ -22,7 +24,7 @@ export function collectAls(g: Grid, maxSize = 4, cap = 600): Als[] {
         const key = combo.join(',');
         if (seen.has(key)) continue;
         seen.add(key);
-        out.push({ cells: combo, mask });
+        out.push({ cells: combo, mask, unit: u });
         if (out.length >= cap) return out;
       }
     }
@@ -74,15 +76,25 @@ function alsXzStep(
       {
         from: A.cells.filter((c) => g.cands[c] & bit(x)).map((cell) => ({ cell, digit: x })),
         to: B.cells.filter((c) => g.cands[c] & bit(x)).map((cell) => ({ cell, digit: x })),
-        strong: false
+        strong: false,
+        fromSet: 0,
+        toSet: 1
       }
     ],
+    // A holds the start (HoDoKu's lettering)
+    sets: [alsSet(g, A, 'A'), alsSet(g, B, 'B')],
     description: tr`ALS-XZ: sets ${cellNames(A.cells)} and ${cellNames(B.cells)} share restricted common ${x}; digit ${z} can be removed from cells seeing every ${z} of both sets.`
   };
 }
 
 const allCands = (g: Grid, cells: number[]): CellDigit[] =>
   cells.flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit })));
+
+/** an almost locked set as a step's set (docs/hint-drawing-sets.md, Data), named by its letter */
+export function alsSet(g: Grid, A: Als, letter: string): ChainSet {
+  const cells = [...A.cells].sort((a, b) => a - b);
+  return { kind: 'als', cells, digits: digitsOf(A.mask), members: allCands(g, cells), unit: A.unit, letter };
+}
 
 /**
  * A WXYZ-Wing drawn by role, in the terms of docs/glossary_input.md: the
@@ -247,14 +259,20 @@ export function findAlsXyWing(g: Grid): Step | null {
               {
                 from: A.cells.filter((c) => g.cands[c] & bit(l1.x)).map((cell) => ({ cell, digit: l1.x })),
                 to: C.cells.filter((c) => g.cands[c] & bit(l1.x)).map((cell) => ({ cell, digit: l1.x })),
-                strong: false
+                strong: false,
+                fromSet: 0,
+                toSet: 2
               },
               {
                 from: C.cells.filter((c) => g.cands[c] & bit(l2.x)).map((cell) => ({ cell, digit: l2.x })),
                 to: B.cells.filter((c) => g.cands[c] & bit(l2.x)).map((cell) => ({ cell, digit: l2.x })),
-                strong: false
+                strong: false,
+                fromSet: 2,
+                toSet: 1
               }
             ],
+            // HoDoKu's lettering: A and B the wings, linked to the hinge C by x and by y
+            sets: [alsSet(g, A, 'A'), alsSet(g, B, 'B'), alsSet(g, C, 'C')],
             description: tr`ALS-XY-Wing: hinge ${cellNames(C.cells)} links ${cellNames(A.cells)} (via ${l1.x}) and ${cellNames(B.cells)} (via ${l2.x}); digit ${z} can be removed from cells seeing every ${z} of both outer sets.`
           };
         }
@@ -330,11 +348,15 @@ export function findAlsXyChain(g: Grid): Step | null {
                 [A, B, l1.x],
                 [B, C, l2.x],
                 [C, D, l3.x]
-              ].map(([P, Q, x]) => ({
+              ].map(([P, Q, x], i) => ({
                 from: (P as Als).cells.filter((c) => g.cands[c] & bit(x as number)).map((cell) => ({ cell, digit: x as number })),
                 to: (Q as Als).cells.filter((c) => g.cands[c] & bit(x as number)).map((cell) => ({ cell, digit: x as number })),
-                strong: false
+                strong: false,
+                fromSet: i,
+                toSet: i + 1
               })),
+              // A to D along the chain (HoDoKu's lettering)
+              sets: [alsSet(g, A, 'A'), alsSet(g, B, 'B'), alsSet(g, C, 'C'), alsSet(g, D, 'D')],
               description: tr`ALS-XY-Chain: ${cellNames(A.cells)} –${l1.x}– ${cellNames(B.cells)} –${l2.x}– ${cellNames(C.cells)} –${l3.x}– ${cellNames(D.cells)}; digit ${z} falls from cells seeing every ${z} of both end sets.`
             };
           }
@@ -408,8 +430,11 @@ export function findDeathBlossom(g: Grid): Step | null {
               links: stemDigits.map((p, i) => ({
                 from: [{ cell: stem, digit: p }],
                 to: chosen[i].cells.filter((c) => g.cands[c] & bit(p)).map((cell) => ({ cell, digit: p })),
-                strong: false
+                strong: false,
+                toSet: i
               })),
+              // the petals, lettered in stem-digit order (HoDoKu's lettering); the stem is no set
+              sets: chosen.map((A, i) => alsSet(g, A, String.fromCharCode(65 + i))),
               description: tr`Death Blossom: stem ${cellName(stem)} links each of its candidates to a petal set; whichever digit the stem takes, some petal locks and places ${z}, so ${z} is removed from cells seeing every ${z} of all petals.`
             };
           }

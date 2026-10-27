@@ -17,6 +17,11 @@
  * A hash is FNV-1a, 32 bits, as tests/fixtures/colouringRemovals.json's,
  * after the number of lines it is taken over.
  *
+ * The same walk holds the steps it meets to their sets' rules
+ * (tests/chainSets.ts, for tests/chainSets.test.ts): every step of every
+ * path, and every find of the set techniques along the pools' and the
+ * seeds' paths, so the minutes it takes are not spent twice.
+ *
  * The finders take about eight minutes over all of it, so the puzzles are
  * dealt to four test files, tests/pathDigest.test.ts and
  * tests/pathDigest.2.test.ts to .4, which run side by side; each holds
@@ -38,6 +43,7 @@ import { parseGrid, isSolved } from '../src/engine/board';
 import { findNextStep, findStep, applyStep } from '../src/engine/humanSolver';
 import type { CellDigit, Step } from '../src/engine/steps';
 import type { Tech } from '../src/engine/ratings';
+import { setProblems } from './chainSets';
 
 const FIXTURE = 'tests/fixtures/pathDigest.json';
 
@@ -92,20 +98,34 @@ const POOLED = [...new Set([...puzzlesOf(practice as Record<string, { puzzle: st
 /** every puzzle whose path is held, in the fixture's order */
 const PUZZLES = [...new Set([...POOLED, ...HARD, ...Object.values(EXAMPLES).map((ex) => ex!.puzzle)])];
 
-/** a puzzle's solve path, and the set techniques' first finds along it */
-function walk(puzzle: string, menus: boolean): { path: string[]; sets: string[] } {
+/** what the walk finds wrong with the sets of the steps it meets, and how many of them have sets */
+interface SetsMet {
+  problems: string[];
+  withSets: number;
+}
+
+/** a puzzle's solve path, and the set techniques' first finds along it; each step met held to its sets' rules */
+function walk(puzzle: string, menus: boolean, met: SetsMet): { path: string[]; sets: string[] } {
   const g = parseGrid(puzzle)!;
   const path: string[] = [];
   const sets: string[] = [];
+  const hold = (s: Step, k: number) => {
+    for (const p of setProblems(s, g.cands)) met.problems.push(`${puzzle}, step ${k}, ${s.tech}: ${p}`);
+    if (s.sets) met.withSets++;
+  };
   for (let k = 0; k < 400 && !isSolved(g); k++) {
     const step = findNextStep(g);
     if (!step) break;
     path.push(`${k} ${said(step)}`);
+    hold(step, k);
     // the menu, where the solver needs more than a single
     if (menus && !SINGLES.has(step.tech)) {
       for (const tech of SET_FINDERS) {
         const s = findStep(tech, g);
-        if (s) sets.push(`${k} ${said(s)}`);
+        if (s) {
+          sets.push(`${k} ${said(s)}`);
+          hold(s, k);
+        }
       }
     }
     applyStep(g, step);
@@ -113,16 +133,17 @@ function walk(puzzle: string, menus: boolean): { path: string[]; sets: string[] 
   return { path, sets };
 }
 
-/** the digest of some puzzles, as the code works them out now */
-function digestFor(puzzles: string[]): Digest {
+/** the digest of some puzzles, as the code works them out now, and the sets met on the way */
+function digestFor(puzzles: string[]): { digest: Digest; met: SetsMet } {
   const d: Digest = { paths: {}, sets: {} };
+  const met: SetsMet = { problems: [], withSets: 0 };
   for (const puzzle of puzzles) {
     const menus = POOLED.includes(puzzle);
-    const { path, sets } = walk(puzzle, menus);
+    const { path, sets } = walk(puzzle, menus, met);
     d.paths[puzzle] = hashOf(path);
     if (menus) d.sets[puzzle] = hashOf(sets);
   }
-  return d;
+  return { digest: d, met };
 }
 
 /** a share's puzzles: every SHARDS-th, from the shard's own on */
@@ -138,10 +159,11 @@ export function holdPathDigest(shard: number) {
     const mine = shareOf(shard);
     let now: Digest;
     let then: Digest;
+    let met: SetsMet;
     beforeAll(() => {
       const all = writing ? digestFor(PUZZLES) : undefined;
-      if (all) writeFileSync(FIXTURE, `${JSON.stringify(all, null, 1)}\n`);
-      now = all ?? digestFor(mine);
+      if (all) writeFileSync(FIXTURE, `${JSON.stringify(all.digest, null, 1)}\n`);
+      ({ digest: now, met } = all ?? digestFor(mine));
       then = JSON.parse(new TextDecoder().decode(readFileSync(FIXTURE)));
     }, 1_800_000);
 
@@ -163,6 +185,12 @@ export function holdPathDigest(shard: number) {
     it("the set techniques' first finds along the pools' and the seeds' paths, where the solver needs more than a single", () => {
       const moved = mine.filter((p) => POOLED.includes(p) && now.sets[p] !== then.sets[p]);
       expect(moved).toEqual([]);
+    });
+
+    it("every step met on the way keeps its sets' rules (tests/chainSets.ts)", () => {
+      expect(met.problems).toEqual([]);
+      // thousands of them with sets in every share
+      expect(met.withSets).toBeGreaterThan(1000);
     });
   });
 }
