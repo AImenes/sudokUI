@@ -105,9 +105,15 @@ function simpleColorsStep(
   };
 }
 
-/** Simple Colors: color wrap (same color twice in a unit) and color trap
- *  (uncolored cell sees both colors). */
+/**
+ * Simple Colors: color wrap (same color twice in a unit) and color trap
+ * (uncolored cell sees both colors). A wrap proves its colour false, the
+ * stronger and clearer step, so it comes before any trap, on every digit:
+ * the first trap is given only where no digit has a wrap
+ * (docs/hint-drawing-colouring.md, decision 13).
+ */
 export function findSimpleColors(g: Grid): Step | null {
+  let trap: Step | null = null;
   for (let d = 1; d <= 9; d++) {
     const mask = bit(d);
     for (const cl of clusters(g, d)) {
@@ -139,6 +145,9 @@ export function findSimpleColors(g: Grid): Step | null {
           }
         }
       }
+      // the first trap waits while the search looks on for a wrap; any
+      // later trap is not needed
+      if (trap) continue;
       // color trap: dark is the colour of the cluster's first candidate,
       // and the first removal's witnesses are the nearest of each shade
       const dark = firstParity(cl.cells.map(at(d)), (x) => cl.color.get(x.cell)!);
@@ -158,7 +167,7 @@ export function findSimpleColors(g: Grid): Step | null {
         const target = cellName(first.c);
         const x = cellName(first.x);
         const y = cellName(first.y);
-        return simpleColorsStep(
+        trap = simpleColorsStep(
           cl,
           d,
           'trap',
@@ -177,7 +186,7 @@ export function findSimpleColors(g: Grid): Step | null {
       }
     }
   }
-  return null;
+  return trap;
 }
 
 /**

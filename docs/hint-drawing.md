@@ -753,6 +753,12 @@ the values above are its final ones.
   now. No stored solve path, rating, practice puzzle or example changed;
   9 of 480 served isomorphs of the saved Multi Colors puzzles take the
   sees-both on their path, 10 points lower and at the same level.
+  Simple Colors' order followed in the same way, in its own change: a
+  wrap, on any digit, comes before any trap, so the 455 traps that hid one
+  on the practice paths (5% of the traps given there) are each a wrap now.
+  No stored solve path, rating, practice puzzle or example changed, nor
+  any of 800 served isomorphs of the stored puzzles whose path takes
+  Simple Colors.
 
   Left for later, low: off the solve paths, in corner or edge cells boxed
   in by marks, a few ties keep outside the marks but under a mark and a
