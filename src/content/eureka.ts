@@ -5,24 +5,26 @@
 //   (4=3)r1c6 - (3=1)r5c6 - (1=6)r5c7 - (6=4)r2c7 => r1c9<>4
 //
 // a node is a candidate (4)r1c6, the two candidates of a cell with the
-// strong link between them (4=3)r1c6, a group (2)r3c23, or an ALS with
-// the link through it (8=9){r78c8}; = is a strong link, - a weak one; a
-// continuous loop ends "- loop". Every other technique is written the way
-// HoDoKu writes it: the name, what defines the pattern, => what it does:
+// strong link between them (4=3)r1c6, a group (2)r3c23, or an almost
+// locked set with the link through it, in braces over all its cells
+// (8=9){r78c8}; = is a strong link, - a weak one; a continuous loop ends
+// "- loop". Every other technique is written the way HoDoKu writes it:
+// the name, what defines the pattern, => what it does:
 //
 //   X-Wing: 7 r38 c38 => r2c3<>7
 //   Naked Pair: 2,5 in r9c27 => r9c6<>5
 //   ALS-XZ: A=r8c2,r9c1 {159}, B=r7c8,r8c9 {159}, X=1, Z=5 => r7c1<>5
+//   Death Blossom: [r8c9], -2- r9c7 {24}, -5- r8c5,r9c6 {145}, -7- r8c1 {47} => r9c2<>4, r9c3<>4
 //   Simple Colors Trap: 4 (r1c5,r6c4,r8c6) / (r1c6,r5c5,r8c8) => r6c8<>4
 //
 // Cells are rXcY, a set of them r45c18 when it is rows by columns, else
 // by row, by column and singly. Nothing here is translated: the notation
 // is the same in every language, and the names are the ones the
 // community (and HoDoKu) uses.
-import { rowOf, colOf, sees, cellName } from '../engine/board';
-import { TECHS } from '../engine/ratings';
-import type { Step, CellDigit, ChainLink, ColourRule } from '../engine/steps';
-import { isParity } from '../engine/steps';
+import { rowOf, colOf, cellName } from '../engine/board';
+import { TECHS, Tech } from '../engine/ratings';
+import type { Step, CellDigit, ChainLink, ChainSet, ColourRule } from '../engine/steps';
+import { isParity, insideSet } from '../engine/steps';
 
 const uniq = <T>(xs: T[]) => [...new Set(xs)];
 const asc = (a: number, b: number) => a - b;
@@ -82,9 +84,14 @@ export function conclusions(step: Step): string {
   ].join(', ');
 }
 
-/** a node of the chain: its cells, and the digits the chain passes through in them with the link between each pair */
+/**
+ * a node of the chain: its cells, the set it is a node of (an index into
+ * Step.sets), and the digits the chain passes through in it with the link
+ * between each pair
+ */
 interface Node {
   cells: number[];
+  set?: number;
   digits: string[];
   ops: string[];
 }
@@ -92,19 +99,37 @@ interface Node {
 /** a candidate set's digit: one digit for every node the engine draws; several, should one come, as 1|2 */
 const nodeDigit = (cds: readonly CellDigit[]) => digitsIn(cds).join('|');
 
-function writeNode(node: Node): string {
+/** one node of a chain: the same candidates, of the same set or of none */
+const sameNode = (a: readonly CellDigit[], aSet: number | undefined, b: readonly CellDigit[], bSet: number | undefined) =>
+  aSet === bSet && sameCells(cellsOf(a), cellsOf(b)) && nodeDigit(a) === nodeDigit(b);
+
+/** an almost locked set of several cells, which the notation writes in braces over all its cells */
+const braced = (step: Step, set?: number) => {
+  const s = set === undefined ? undefined : step.sets?.[set];
+  return s?.kind === 'als' && s.cells.length > 1;
+};
+
+/**
+ * Where a node is, as the notation writes it: a cell plainly, a group as
+ * r3c23, an almost locked set of several cells in braces over all its
+ * cells, whichever of them the chain enters and leaves it by
+ */
+const placeOf = (step: Step, node: Node) => (braced(step, node.set) ? `{${compactCells(node.cells)}}` : compactCells(node.cells));
+
+function writeNode(step: Step, node: Node): string {
   let inside = node.digits[0];
   for (let i = 0; i < node.ops.length; i++) inside += node.ops[i] + node.digits[i + 1];
-  // a cell is written plainly, a group as r3c23; an ALS, the cells the
-  // chain enters on one digit and leaves on another, in braces
-  const cells = compactCells(node.cells);
-  return `(${inside})${node.cells.length > 1 && node.ops.length ? `{${cells}}` : cells}`;
+  return `(${inside})${placeOf(step, node)}`;
 }
 
 /**
  * A chain step in Eureka notation, or null when its links are not a
  * chain: a colouring's ties, a forcing chain's trails, an ALS pattern's
  * restricted commons are drawn as links too, but read as patterns.
+ * The links inside one almost locked set (docs/hint-drawing-sets.md,
+ * decision 19) are one node, the set's, written over all its cells:
+ * (5=1){r8c2,r9c1}, from the set the links name, not from the cells
+ * each digit happens to have in it.
  */
 export function eurekaOf(step: Step): string | null {
   if (isParity(step)) return null;
@@ -114,33 +139,39 @@ export function eurekaOf(step: Step): string | null {
   for (let i = 0; i < links.length; i++) {
     // one path, strictly alternating, strong first: the normal form every chain finder writes
     if (!link(links[i], i)) return null;
-    if (i > 0 && !sameCells(cellsOf(links[i].from), cellsOf(links[i - 1].to))) return null;
-    if (i > 0 && nodeDigit(links[i].from) !== nodeDigit(links[i - 1].to)) return null;
+    if (i > 0 && !sameNode(links[i].from, links[i].fromSet, links[i - 1].to, links[i - 1].toSet)) return null;
   }
   const first = links[0].from;
   const last = links[links.length - 1];
-  const loop =
-    links.length > 1 && sameCells(cellsOf(last.to), cellsOf(first)) && nodeDigit(last.to) === nodeDigit(first) ? last : null;
+  // a loop comes back to its first node, not merely to its candidates: an
+  // ALS-XY-Chain may end on a set whose z are its first set's
+  const loop = links.length > 1 && sameNode(last.to, last.toSet, first, links[0].fromSet) ? last : null;
   const path = loop ? links.slice(0, -1) : links;
-  const nodes: Node[] = [{ cells: cellsOf(first), digits: [nodeDigit(first)], ops: [] }];
+  const nodeAt = (end: readonly CellDigit[], set?: number): Node => ({
+    cells: (set !== undefined && step.sets?.[set]?.cells) || cellsOf(end),
+    set,
+    digits: [nodeDigit(end)],
+    ops: []
+  });
+  const nodes: Node[] = [nodeAt(first, links[0].fromSet)];
   const joins: string[] = [];
   for (const l of path) {
-    const cells = cellsOf(l.to);
     const node = nodes[nodes.length - 1];
-    if (sameCells(node.cells, cells)) {
+    // a link inside one almost locked set, or inside one cell, stays in its node
+    if (insideSet(l) || (node.set === undefined && l.toSet === undefined && sameCells(node.cells, cellsOf(l.to)))) {
       node.digits.push(nodeDigit(l.to));
       node.ops.push(l.strong ? '=' : '-');
     } else {
       joins.push(l.strong ? ' = ' : ' - ');
-      nodes.push({ cells, digits: [nodeDigit(l.to)], ops: [] });
+      nodes.push(nodeAt(l.to, l.toSet));
     }
   }
-  let text = writeNode(nodes[0]);
-  for (let i = 1; i < nodes.length; i++) text += joins[i - 1] + writeNode(nodes[i]);
+  let text = writeNode(step, nodes[0]);
+  for (let i = 1; i < nodes.length; i++) text += joins[i - 1] + writeNode(step, nodes[i]);
   if (loop) {
     // a continuous loop closes on a weak link; two strong links meeting at
     // the start is a discontinuous loop, written as a chain back to it
-    text += loop.strong ? ` = (${nodes[0].digits[0]})${compactCells(nodes[0].cells)}` : ' - loop';
+    text += loop.strong ? ` = (${nodes[0].digits[0]})${placeOf(step, nodes[0])}` : ' - loop';
   }
   return `${text} => ${conclusions(step)}`;
 }
@@ -152,41 +183,41 @@ function group(cds: readonly CellDigit[], sep: string, known?: string): string {
   return digits === known ? cells : `${digits} in ${cells}`;
 }
 
+/** an almost locked set as HoDoKu writes one: its cells, then its digits in braces */
+const alsText = (s: ChainSet) => `${compactCells(s.cells)} {${s.digits.join('')}}`;
+
+/** what HoDoKu calls the restricted commons of each chain of sets */
+const RC_NAMES: Partial<Record<Tech, string>> = { ALS_XZ: 'X', ALS_XY_WING: 'X,Y', ALS_XY_CHAIN: 'RCs' };
+
 /**
- * The almost locked sets a step is made of, lettered in the order its
- * links visit them, each with the digits it holds: the links name the
- * cells a restricted common lives in, and every other highlighted cell
- * joins the one set it shares a house with. Null when a cell could join
- * two, so the sets cannot be told apart.
+ * What defines an ALS pattern, as HoDoKu writes it (its SolutionStep),
+ * read from the step's own sets with the board's letters
+ * (docs/hint-drawing-sets.md, decision 19): each set by its letter, then
+ * the restricted commons, the digits of the links between two sets in the
+ * order the chain takes them, and z; Death Blossom's stem in brackets, then
+ * each petal after the stem's digit it is for, in the petals' order. Null
+ * when the step names no sets, or a petal no link from the stem.
  */
-function alsSets(step: Step): { cells: number[]; digits: number[] }[] | null {
+function alsPattern(step: Step): string | null {
+  const sets = step.sets ?? [];
   const links = step.links ?? [];
-  if (!links.length) return null;
-  const marked = [...(step.primary ?? []), ...(step.secondary ?? []), ...(step.fins ?? [])];
-  const sets: number[][] = [];
-  const join = (cells: number[]) => {
-    const set = sets.find((s) => s.some((c) => cells.includes(c)));
-    if (!set) sets.push([...cells]);
-    else for (const c of cells) if (!set.includes(c)) set.push(c);
-  };
-  for (const l of links) {
-    join(cellsOf(l.from));
-    join(cellsOf(l.to));
+  if (!sets.length) return null;
+  if (step.tech === 'DEATH_BLOSSOM') {
+    // the stem is no set: its links come from no set into a petal
+    const fromStem = links.filter((l) => l.fromSet === undefined && l.toSet !== undefined);
+    const petals = sets.map((s, i) => {
+      const digit = fromStem.find((l) => l.toSet === i)?.from[0]?.digit;
+      return digit === undefined ? null : `-${digit}- ${alsText(s)}`;
+    });
+    const stem = fromStem[0]?.from[0]?.cell;
+    if (stem === undefined || petals.includes(null)) return null;
+    return `[${cellName(stem)}], ${petals.join(', ')}`;
   }
-  const digitCount = (cells: number[]) => digitsIn(marked.filter((cd) => cells.includes(cd.cell))).length;
-  for (const cell of uniq(marked.map((cd) => cd.cell))) {
-    if (sets.some((s) => s.includes(cell))) continue;
-    let fits = sets.filter((s) => s.every((c) => sees(c, cell)));
-    // an almost locked set holds one digit more than it has cells: of two
-    // sets the cell could join, its home is the one that stays one
-    if (fits.length > 1) fits = fits.filter((s) => digitCount([...s, cell]) === s.length + 2);
-    if (fits.length !== 1) return null;
-    fits[0].push(cell);
-  }
-  return sets.map((cells) => ({
-    cells: cells.sort(asc),
-    digits: digitsIn(marked.filter((cd) => cells.includes(cd.cell)))
-  }));
+  // the sets come lettered in order: A, B for ALS-XZ, A to D along an ALS-XY-Chain, the hinge C last of an ALS-XY-Wing
+  const named = sets.map((s) => `${s.letter}=${alsText(s)}`);
+  const rcs = links.filter((l) => l.fromSet !== undefined && l.toSet !== undefined && !insideSet(l)).map((l) => nodeDigit(l.from));
+  const z = digitsIn(step.eliminations);
+  return [...named, `${RC_NAMES[step.tech] ?? 'RCs'}=${rcs.join(',')}`, ...(z.length === 1 ? [`Z=${z[0]}`] : [])].join(', ');
 }
 
 /** a colouring's rule as HoDoKu names it; 3D Medusa and Remote Pair, which HoDoKu does not colour, by their own names */
@@ -240,8 +271,8 @@ function colouringLine(step: Step): string {
  * The HoDoKu line of a step that is not a chain: the technique's name,
  * what defines it, => what it does. Fish name their digit, base and cover
  * houses and fins; singles their house; sets their digits and cells, one
- * colour after another; ALS patterns their sets with the digits in braces;
- * a colouring its clusters' two colours, dark first.
+ * colour after another; ALS patterns the sets they are made of, each with
+ * its digits in braces; a colouring its clusters' two colours, dark first.
  */
 export function hodokuLine(step: Step): string {
   if (isParity(step)) return colouringLine(step);
@@ -268,15 +299,8 @@ export function hodokuLine(step: Step): string {
   }
 
   if (info.category === 'Almost Locked Sets') {
-    const sets = alsSets(step);
-    if (sets && sets.length > 1 && step.links?.length) {
-      const named = sets.map((s, i) => `${String.fromCharCode(65 + i)}=${compactCells(s.cells)} {${s.digits.join('')}}`);
-      const rcs = step.links.map((l) => digitsIn(l.from)[0]);
-      const z = digitsIn(step.eliminations);
-      const parts = [...named, `${rcs.length === 1 ? 'X' : rcs.length === 2 ? 'X,Y' : 'RCs'}=${rcs.join(',')}`];
-      if (z.length === 1) parts.push(`Z=${z[0]}`);
-      return `${name}: ${parts.join(', ')} => ${done}`;
-    }
+    const pattern = alsPattern(step);
+    if (pattern) return `${name}: ${pattern} => ${done}`;
   }
 
   const parts: string[] = [];
