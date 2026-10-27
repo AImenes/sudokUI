@@ -23,9 +23,10 @@ Updated 2026-10-26, at the merge of phase 3.
   `src/engine/hintFrames.ts` (`linkText`, `closureText`).
 - **Phase 3 (colouring)** merged and live after three review rounds (the
   third a targeted confirmation on `e9df0f6`), a follow-up that fixed
-  the third round's eight lows, and the Multi Colors search order
-  (decision 13: a colour seeing both before any bridge) in its own
-  change. Simple Colors, Multi
+  the third round's eight lows, and the colouring search orders in
+  their own change (decision 13: Multi Colors gives a colour seeing
+  both before any bridge, Simple Colors a wrap before any trap, on every
+  digit). Simple Colors, Multi
   Colors, 3D Medusa and Remote Pair carry `truth: 'parity'`
   (`Step.colouring`): each cluster in two shades, dark and light purple
   (orange for Multi Colors' second), its ties quiet lines along the
