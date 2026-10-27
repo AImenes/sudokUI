@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import type { CellDigit, Step } from '../src/engine/steps';
 import { hintMarks, legendKinds, frameMarks, premiseOf, setTints, isParity } from '../src/content/hintMarks';
-import { deriveTruth } from '../src/engine/truth';
+import { alsClash, deriveTruth } from '../src/engine/truth';
 import { alternatingLinks, groupSet } from '../src/engine/steps';
 import type { ChainLink, ChainSet } from '../src/engine/steps';
 import { walkFrames } from '../src/engine/hintFrames';
@@ -18,7 +18,6 @@ import { parseGrid } from '../src/engine/board';
 import { findNextStep, findStep, findAllSteps, applyStep } from '../src/engine/humanSolver';
 import { boardSvg, legendOf, swatchStyle } from '../src/content/boardSvg';
 import { PARITY_FIXTURES, positionOf } from './parityFixtures';
-import { chainOfPattern } from './setWords';
 import { LIGHT } from '../src/content/hintPalette';
 import { EXAMPLES } from '../src/content/examples';
 import { TECHS, Tech } from '../src/engine/ratings';
@@ -117,8 +116,9 @@ describe('the walk', () => {
   });
 
   it('colours a chain node listed in two roles the same in the walk as in the full view', () => {
+    // a chain that claims no truth and names roles (the ALS patterns, once so, are derived chains now)
     const links = [{ from: [A], to: [B], strong: true }];
-    const s = step({ tech: 'ALS_XY_CHAIN', primary: [A, B], secondary: [B], links, eliminations: [C] });
+    const s = step({ tech: 'DIGIT_FORCING_CHAIN', primary: [A, B], secondary: [B], links, eliminations: [C] });
     const frames = walkFrames(s);
     expect(frameMarks(s, frames[0], () => false).cands.get(B.cell)?.get(B.digit)).toBe('primary');
     expect(frameMarks(s, null, () => false).cands.get(B.cell)?.get(B.digit)).toBe('primary');
@@ -467,14 +467,105 @@ describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 
     expect(m.sets).toEqual([{ set: 0, style: 'als', tint: 1 }]);
     // not before the link that reaches A
     expect(frameMarks(ex.step, walkFrames(ex.step)[0], (c) => ex.values[c] !== '0').sets).toEqual([]);
-    // a pattern's roles come before its members: the ALS-XZ's conclusion is its roles, its first frame the
-    // restricted common's candidates and the sets' other candidates as members
+    // an ALS pattern is the chain it derives (decision 11): A's 5s false
+    // rings, r8c2's 1 a true disc, r8c9's 1 a false ring, r7c8's 5 a true
+    // disc, the 9s members, r7c1's 5 removed, and no role anywhere; its first
+    // frame introduces set A, its candidates members, no truth yet
     const xz = EXAMPLES.ALS_XZ!;
+    const at = (r: number, c: number) => (r - 1) * 9 + c - 1;
+    const full = frameMarks(xz.step, null, (c) => xz.values[c] !== '0');
+    const of = (r: number, c: number) => [...(full.cands.get(at(r, c)) ?? [])].sort((a, b) => a[0] - b[0]);
+    expect([of(8, 2), of(9, 1), of(7, 8), of(8, 9), of(7, 1)]).toEqual([
+      [[1, 'true'], [5, 'false'], [9, 'member']],
+      [[5, 'false'], [9, 'member']],
+      [[5, 'true'], [9, 'member']],
+      [[1, 'false'], [9, 'member']],
+      [[5, 'elim']]
+    ]);
     const frames = walkFrames(xz.step);
     const kinds = (fr: Frame | null) => new Set([...frameMarks(xz.step, fr, (c) => xz.values[c] !== '0').cands.values()].flatMap((x) => [...x.values()]));
-    expect([...kinds(frames[0])].sort()).toEqual(['member', 'primary', 'secondary']);
-    expect(kinds(frames[frames.length - 1]).has('member')).toBe(false);
-    expect(kinds(null).has('member')).toBe(false);
+    expect([...kinds(frames[0])]).toEqual(['member']);
+    expect([...kinds(frames[1])].sort()).toEqual(['false', 'member', 'true']);
+  });
+
+  it('draws no role in a derived ALS pattern, and no gold or pattern-blue disc beside a truth mark in any frame of any set step (G2-G5, decision 10)', () => {
+    const ROLES = new Set(['primary', 'secondary', 'fin']);
+    const TRUTHS = new Set(['true', 'false', 'oneOf']);
+    let views = 0;
+    for (const { where, step: s, values } of corpus) {
+      for (const fr of [null, ...walkFrames(s)]) {
+        const kinds = new Set([...frameMarks(s, fr, (c) => values[c] !== '0').cands.values()].flatMap((x) => [...x.values()]));
+        const roles = [...kinds].filter((k) => ROLES.has(k));
+        if (s.truth === 'derived') expect(roles, `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
+        if ([...kinds].some((k) => TRUTHS.has(k))) expect(roles, `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
+        views++;
+      }
+    }
+    expect(views).toBeGreaterThan(500);
+  });
+
+  it("draws Death Blossom with no truth: the stem's candidates and each petal's stem digit gold, every petal's z blue, the rest members, the stem no tile (decision 15)", () => {
+    const db = EXAMPLES.DEATH_BLOSSOM!;
+    const solved = (c: number) => db.values[c] !== '0';
+    const at = (r: number, c: number) => (r - 1) * 9 + c - 1;
+    const full = frameMarks(db.step, null, solved);
+    const of = (r: number, c: number) => [...(full.cands.get(at(r, c)) ?? [])].sort((a, b) => a[0] - b[0]);
+    // the stem r8c9 {257}; petals A r9c7 {24}, B r8c5 {15} and r9c6 {14}, C r8c1 {47}; r9c2's and r9c3's 4 removed
+    expect([of(8, 9), of(9, 7), of(8, 5), of(9, 6), of(8, 1), of(9, 2).filter(([d]) => d === 4), of(9, 3).filter(([d]) => d === 4)]).toEqual([
+      [[2, 'secondary'], [5, 'secondary'], [7, 'secondary']],
+      [[2, 'secondary'], [4, 'primary']],
+      [[1, 'member'], [5, 'secondary']],
+      [[1, 'member'], [4, 'primary']],
+      [[4, 'primary'], [7, 'secondary']],
+      [[4, 'elim']],
+      [[4, 'elim']]
+    ]);
+    expect(full.sets.map((x) => x.set)).toEqual([0, 1, 2]);
+    expect(db.step.sets!.some((set) => set.cells.includes(at(8, 9)))).toBe(false);
+    // the step names them so: every petal's z its pattern, the stem's candidates and each petal's stem digit what it acts through
+    const named = (list: CellDigit[] | undefined) => (list ?? []).map((cd) => `${cd.digit}@${cd.cell}`);
+    expect(named(db.step.primary)).toEqual([`4@${at(9, 7)}`, `4@${at(9, 6)}`, `4@${at(8, 1)}`]);
+    expect(named(db.step.secondary)).toEqual([`2@${at(8, 9)}`, `5@${at(8, 9)}`, `7@${at(8, 9)}`, `2@${at(9, 7)}`, `5@${at(8, 5)}`, `7@${at(8, 1)}`]);
+    expect(full.lines).toEqual(new Set(['weakTie']));
+    // no truth in any frame; the stem from the first, alone; each branch's nodes from its frame
+    const frames = walkFrames(db.step);
+    for (const fr of [null, ...frames]) {
+      const kinds = [...frameMarks(db.step, fr, solved).cands.values()].flatMap((x) => [...x.values()]);
+      expect(kinds.filter((k) => k === 'true' || k === 'false' || k === 'oneOf' || k === 'node'), `frame ${fr?.links ?? 'full'}`).toEqual([]);
+    }
+    const marked = (fr: Frame) =>
+      [...frameMarks(db.step, fr, solved).cands]
+        .flatMap(([cell, m]) => [...m].map(([digit, k]) => `${cell}:${digit}:${k}`))
+        .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+    expect(marked(frames[0])).toEqual([`${at(8, 9)}:2:secondary`, `${at(8, 9)}:5:secondary`, `${at(8, 9)}:7:secondary`]);
+    expect(frameMarks(db.step, frames[0], solved).sets).toEqual([]);
+    expect(marked(frames[1])).toEqual([`${at(8, 9)}:2:secondary`, `${at(8, 9)}:5:secondary`, `${at(8, 9)}:7:secondary`, `${at(9, 7)}:2:secondary`, `${at(9, 7)}:4:primary`]);
+    // petal B's own frame: its tiles and its candidates members, no branch yet
+    expect(frameMarks(db.step, frames[2], solved).sets.map((x) => x.set)).toEqual([0, 1]);
+    expect(marked(frames[2]).filter((k) => k.startsWith(`${at(8, 5)}:`))).toEqual([`${at(8, 5)}:1:member`, `${at(8, 5)}:5:member`]);
+    // the legend: the removal, the pattern's z and what it acts through in words, the petals, the dashed line, no truth
+    expect(legendOf(db.step, db.values).map((l) => l.kind)).toEqual(['elim', 'primary', 'secondary', 'tile', 'weakTie']);
+    expect(premiseOf(db.step)).toBeNull();
+  });
+
+  it('draws an ALS pattern whose chain clashes with no truth in any view, its legend naming none (decision 13)', () => {
+    let clashes = 0;
+    for (const { where, step: s, values } of corpus) {
+      if (!alsClash(s)) continue;
+      clashes++;
+      for (const fr of [null, ...walkFrames(s)]) {
+        const m = frameMarks(s, fr, (c) => values[c] !== '0');
+        const kinds = new Set([...m.cands.values()].flatMap((x) => [...x.values()]));
+        expect([...kinds].filter((k) => k !== 'member' && k !== 'elim'), `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
+        expect(m.refuted, where).toBe(false);
+        expect(legendOf(s, values, fr).map((l) => l.kind).filter((k) => k !== 'elim' && k !== 'tile'), `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
+      }
+      expect(premiseOf(s), where).toBeNull();
+      // its tiles, its arrows and its removal still drawn
+      const full = frameMarks(s, null, (c) => values[c] !== '0');
+      expect(full.sets.length, where).toBe(s.sets!.length);
+    }
+    expect(clashes).toBe(9);
   });
 
   it('gives the tints by decision 8: one each in letter order up to three, then the lowest no conflicting set has, never one linked set\'s on another', () => {
@@ -551,7 +642,7 @@ describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 
     const xz = EXAMPLES.ALS_XZ!.step;
     const node = (k: number, d: number) => xz.sets![k].members.filter((m) => m.digit === d);
     // (5)A=(1)A-(1)B=(5)B: A holds no 5
-    const chain = chainOfPattern(xz);
+    const chain = xz;
     expect(premiseOf(chain)).toEqual({ assumed: false, kind: 'set', letter: 'A', digit: 5 });
     // (1)A-(1)B=(5)B, opening weak: A holds a 1
     const weak = step({ ...chain, links: chain.links!.slice(1), eliminations: [] });

@@ -742,6 +742,170 @@ for (const [name, size] of [
   });
 }
 
+/**
+ * The ALS patterns as chains, and Death Blossom (docs/hint-drawing-sets.md,
+ * stage 8), each loaded as a pencil-mark grid at its position: the stored
+ * ALS-XZ and Death Blossom, and the set fixture's two ALS-XY-Chains whose
+ * sets share a cell, the one that derives and the one that clashes
+ */
+async function showAt(page: Page, at: { values: string; cands: number[] }, name: string) {
+  await open(page);
+  const cells = Array.from({ length: 81 }, (_, i) => ({ value: Number(at.values[i]), corner: 0, center: Number(at.values[i]) ? 0 : at.cands[i], excluded: 0 }));
+  await page.locator('.menu-row button', { hasText: 'Import' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Import a puzzle' });
+  await dialog.locator('textarea').fill(formatPencilGrid(cells, false, 'exhaustive'));
+  await dialog.getByRole('button', { name: 'Load puzzle' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: /Hint/ }).first().click();
+  const use = page.getByRole('button', { name: 'Use Hint' });
+  if (await use.count()) await use.click();
+  await page.getByRole('button', { name: 'Show me' }).click();
+  await expect(page.locator('.hint-tech strong')).toHaveText(name);
+}
+
+const storedExample = (tech: string) => JSON.parse(new TextDecoder().decode(readFileSync('src/content/examples.json')))[tech] as { values: string; cands: number[] };
+const namedPosition = (id: string) =>
+  JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json'))).named[id].position as { values: string; cands: number[] };
+
+/** the letters of the tabs drawn in a cell of the board */
+const tabsIn = (page: Page, cell: number) =>
+  page.locator('svg.board g.hint-tab').evaluateAll((tabs, cell) => {
+    const out: string[] = [];
+    for (const tab of tabs) {
+      const m = /translate\(([\d.]+) ([\d.]+)\)/.exec(tab.parentElement?.getAttribute('transform') ?? '');
+      if (!m) continue;
+      const [col, row] = [Math.floor((Number(m[1]) - 4) / 100), Math.floor((Number(m[2]) - 4) / 100)];
+      if (row * 9 + col === cell) out.push(tab.querySelector('text')?.textContent ?? '');
+    }
+    return out.sort();
+  }, cell);
+
+for (const [name, size] of [
+  ['desktop', { viewport: { width: 1280, height: 1000 } }],
+  ['phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }]
+] as const) {
+  test.describe(`the ALS patterns as chains, and Death Blossom, ${name}`, () => {
+    test.use(size);
+    const shafts = (page: Page) => page.locator('svg.board .chain-shaft');
+    const heads = (page: Page) => page.locator('svg.board .chain-arrows polygon[fill="var(--hint-arrow)"]');
+    const trueDiscs = (page: Page) => page.locator('svg.board circle[fill="var(--hint-place)"]');
+    const falseRings = (page: Page) => page.locator('svg.board circle.hint-ring[stroke="var(--hint-false)"]');
+    const squares = (page: Page) => page.locator('svg.board rect.hint-one-of');
+
+    test('walks an ALS-XZ in six frames: two lettered sets, one dashed arrow between them, a start dot, no arrow inside a set', async ({ page }) => {
+      await showAt(page, storedExample('ALS_XZ'), 'ALS-XZ');
+      const tiles = page.locator('svg.board g.hint-tile');
+      const tabs = page.locator('svg.board g.hint-tab');
+      // sets A and B, a tile and a tab in each of their two cells
+      await expect(tiles).toHaveCount(4);
+      await expect(tabs).toHaveCount(4);
+      expect((await tabs.locator('text').allTextContents()).sort()).toEqual(['A', 'A', 'B', 'B']);
+      // one arrow, the restricted common, dashed with its head; the locks inside A and B draw nothing
+      await expect(shafts(page)).toHaveCount(1);
+      await expect(shafts(page)).toHaveClass('chain-shaft weak');
+      await expect(heads(page)).toHaveCount(1);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
+      // A's 5s false, its 1 and B's 5 true, B's 1 false; no role
+      await expect(falseRings(page)).toHaveCount(3);
+      await expect(trueDiscs(page)).toHaveCount(2);
+      await expect(page.locator('svg.board circle[fill="var(--hint-primary)"], svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(0);
+      await expect(page.locator('.hint-legend')).toContainText('true, if set A holds no 5 (by the small dot)');
+      // the walk: set A, its lock, set B, the restricted common, B's lock, the conclusion
+      await page.getByRole('button', { name: 'Walk through it' }).click();
+      await expect(page.locator('.hint-walk-count')).toContainText('1 of 6');
+      await expect(page.locator('.hint-walk-text')).toHaveText(
+        'Set A: the 2 cells r8c2, r9c1 of box 7 hold only 1, 5 and 9: one digit more than cells. Without any one of them, the others fill the cells.'
+      );
+      await expect(tiles).toHaveCount(2);
+      await expect(shafts(page)).toHaveCount(0);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-text')).toHaveText('If set A holds no 5, its other 2 digits fill its 2 cells, so r8c2 must be 1.');
+      await expect(shafts(page)).toHaveCount(0);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
+      await page.keyboard.press('ArrowRight');
+      await expect(tiles).toHaveCount(4);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-text')).toHaveText('Every 1 of set A sees every 1 of set B: if r8c2 is 1, r8c9 cannot be 1.');
+      await expect(shafts(page)).toHaveCount(1);
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['4']);
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-count')).toContainText('6 of 6');
+      await expect(page.locator('.hint-walk-text')).toHaveText(
+        'Set A or set B holds a 5: if A holds none, B holds one. Each removed 5 sees every 5 of both. So 5 is removed from r7c1.'
+      );
+    });
+
+    test("draws a Death Blossom with three headless dashed ties from its stem, no start dot and no truth, and walks it branch by branch", async ({ page }) => {
+      await showAt(page, storedExample('DEATH_BLOSSOM'), 'Death Blossom');
+      const ties = page.locator('svg.board .chain-shaft.weak-tie');
+      await expect(ties).toHaveCount(3);
+      await expect(shafts(page)).toHaveCount(3);
+      await expect(heads(page)).toHaveCount(0);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
+      await expect(trueDiscs(page)).toHaveCount(0);
+      await expect(falseRings(page)).toHaveCount(0);
+      await expect(squares(page)).toHaveCount(0);
+      // the stem and each petal's stem digit gold, every petal's 4 blue; the petals lettered, the stem not
+      await expect(page.locator('svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(6);
+      await expect(page.locator('svg.board circle[fill="var(--hint-primary)"]')).toHaveCount(3);
+      expect(await tabsIn(page, 7 * 9 + 8)).toEqual([]);
+      expect((await page.locator('svg.board g.hint-tab text').allTextContents()).sort()).toEqual(['A', 'B', 'B', 'C']);
+      await expect(page.locator('.hint-legend li', { hasText: 'dashed line' }).locator('i.swatch-weak-tie')).toHaveCount(1);
+      await expect(page.locator('.hint-legend')).not.toContainText('small dot');
+      // the walk: the stem alone, then a tie a branch, numbered by its frame
+      await page.getByRole('button', { name: 'Walk through it' }).click();
+      await expect(page.locator('.hint-walk-count')).toContainText('1 of 6');
+      await expect(page.locator('.hint-walk-text')).toHaveText('The stem r8c9 holds 2, 5 and 7: one of them is true, and each has a petal.');
+      await expect(ties).toHaveCount(0);
+      await expect(page.locator('svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(3);
+      await page.keyboard.press('ArrowRight');
+      await expect(ties).toHaveCount(1);
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['2']);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-text')).toContainText("Petal B, for the stem's 5:");
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['2', '4']);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['2', '4', '5']);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
+    });
+
+    test("draws an ALS-XY-Chain whose set A lies inside its set D as the chain it derives: A's tile and D's dashed outline on r7c7, both tabs", async ({ page }) => {
+      await showAt(page, namedPosition('shared cells that derive, step 25, ALS_XY_CHAIN'), 'ALS-XY-Chain');
+      const r7c7 = 6 * 9 + 6;
+      expect(await tabsIn(page, r7c7)).toEqual(['A', 'D']);
+      // seven tiles for four sets on seven cells, one of them D's dashed outline inside A's on r7c7
+      await expect(page.locator('svg.board g.hint-tile')).toHaveCount(7);
+      await expect(page.locator('svg.board g.hint-tile').filter({ has: page.locator('rect[stroke-dasharray="6 4"]') })).toHaveCount(1);
+      // its truth drawn: three dashed arrows between the sets, a start dot, true discs, false rings and r7c5's 1 a square
+      await expect(shafts(page)).toHaveCount(3);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
+      await expect(trueDiscs(page)).toHaveCount(3);
+      await expect(falseRings(page)).toHaveCount(4);
+      await expect(squares(page)).toHaveCount(1);
+      await expect(page.locator('.hint-legend')).toContainText('true, if set A holds no 1 (by the small dot)');
+    });
+
+    test('draws an ALS-XY-Chain whose sets share cells and whose chain clashes with no truth: tiles, tabs, arrows and the removal, a legend naming none', async ({ page }) => {
+      await showAt(page, namedPosition('shared cells that clash, step 15, ALS_XY_CHAIN'), 'ALS-XY-Chain');
+      // D (r4c4, r6c4) inside A (r1c4, r4c4, r5c4, r6c4): both tabs on each shared cell
+      expect(await tabsIn(page, 3 * 9 + 3)).toEqual(['A', 'D']);
+      expect(await tabsIn(page, 5 * 9 + 3)).toEqual(['A', 'D']);
+      await expect(page.locator('svg.board g.hint-tile')).toHaveCount(9);
+      await expect(shafts(page)).toHaveCount(3);
+      await expect(page.locator('svg.board circle.hint-ring[stroke="var(--hint-elim)"]')).toHaveCount(1);
+      // no truth mark, no role, no start dot, and a legend that names no truth
+      await expect(trueDiscs(page)).toHaveCount(0);
+      await expect(falseRings(page)).toHaveCount(0);
+      await expect(squares(page)).toHaveCount(0);
+      await expect(page.locator('svg.board circle[fill="var(--hint-primary)"], svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(0);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
+      await expect(page.locator('.hint-legend li')).toHaveText([/^remove/, /^lettered cells/]);
+    });
+  });
+}
+
 test.describe('phone, 390 x 844', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 

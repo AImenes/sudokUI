@@ -36,7 +36,7 @@ import { frameMarks, premiseOf } from '../src/content/hintMarks';
 import { legendOf } from '../src/content/boardSvg';
 import type { Step } from '../src/engine/steps';
 import type { Tech } from '../src/engine/ratings';
-import { chainOfPattern, wordProblems, GENERIC } from './setWords';
+import { patternChain, wordProblems, GENERIC } from './setWords';
 
 const storage = new Map<string, string>();
 (globalThis as any).localStorage = {
@@ -226,8 +226,25 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
     }
   });
 
+  it('gives the ALS patterns as the chains they derive: each set\'s lock inside it, the restricted commons between them, no roles (decision 11)', () => {
+    const patterns = [...PATTERNS.map((tech) => ({ where: tech, step: EXAMPLES[tech]!.step })), ...kept.filter((k) => PATTERNS.includes(k.step.tech))];
+    for (const { where, step } of patterns) {
+      expect(step.truth, where).toBe('derived');
+      expect(step.links, where).toEqual(patternChain(step));
+      expect([step.primary, step.secondary, step.fins, step.labels], where).toEqual([undefined, undefined, undefined, undefined]);
+    }
+    expect(patterns.length).toBe(55);
+    // the stored ALS-XZ link by link: (5)A=(1)A, A's 5s r8c2 and r9c1, its 1 r8c2; (1)A-(1)B, into r8c9's 1; (1)B=(5)B, B's 5 r7c8
+    const at = (r: number, c: number, digit: number) => ({ cell: (r - 1) * 9 + c - 1, digit });
+    expect(EXAMPLES.ALS_XZ!.step.links).toEqual([
+      { from: [at(8, 2, 5), at(9, 1, 5)], to: [at(8, 2, 1)], strong: true, fromSet: 0, toSet: 0 },
+      { from: [at(8, 2, 1)], to: [at(8, 9, 1)], strong: false, fromSet: 0, toSet: 1 },
+      { from: [at(8, 9, 1)], to: [at(7, 8, 5)], strong: true, fromSet: 1, toSet: 1 }
+    ]);
+  });
+
   it("reads the ALS patterns, as the chains they derive, in the design's worked sentences: each set before its first link, a one-cell set folded into its lock", () => {
-    const walk = (s: Step) => walkFrames(chainOfPattern(s)).slice(0, -1).map(told);
+    const walk = (s: Step) => walkFrames(s).slice(0, -1).map(told);
     expect(walk(EXAMPLES.ALS_XZ!.step)).toEqual([
       { text: 'Set A: the 2 cells r8c2, r9c1 of box 7 hold only 1, 5 and 9: one digit more than cells. Without any one of them, the others fill the cells.', links: 0, sets: [0] },
       { text: 'If set A holds no 5, its other 2 digits fill its 2 cells, so r8c2 must be 1.', links: 1 },
@@ -271,7 +288,7 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
       'If set D holds no 7, its other 2 digits fill its 2 cells, so one of r7c5, r7c7 must be 1.'
     ]);
     // a hinge of several cells is named so in its own frame
-    const wing = kept.filter((k) => k.step.tech === 'ALS_XY_WING' && k.step.sets![2].cells.length > 1).map((k) => chainOfPattern(k.step))[0];
+    const wing = kept.filter((k) => k.step.tech === 'ALS_XY_WING' && k.step.sets![2].cells.length > 1).map((k) => k.step)[0];
     expect(wing, 'an ALS-XY-Wing whose hinge has several cells').toBeDefined();
     expect(walkFrames(wing!).find((f) => f.sets?.[0] === 2)?.text).toMatch(/^Set C, the hinge: the \d cells /);
   });
@@ -282,14 +299,14 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
       ...kept,
       ...linkSteps.map((l) => ({ where: `${l.puzzle} after ${l.at}`, step: l.step }))
     ];
-    const chains = steps.filter(({ step }) => PATTERNS.includes(step.tech)).map(({ where, step }) => ({ where: `${where}, as a chain`, step: chainOfPattern(step) }));
     let sets = 0;
-    for (const { where, step } of [...steps, ...chains]) {
+    for (const { where, step } of steps) {
       expect(wordProblems(step), where).toEqual([]);
       if (step.truth === 'derived') sets += (step.sets ?? []).filter((s) => s.kind === 'als').length;
     }
     expect(steps.filter(({ step }) => step.tech === 'AIC_ALS').length).toBeGreaterThanOrEqual(18);
-    expect(chains.length).toBeGreaterThan(50);
+    expect(steps.filter(({ step }) => PATTERNS.includes(step.tech)).length).toBeGreaterThan(50);
+    expect(steps.filter(({ step }) => step.tech === 'DEATH_BLOSSOM').length).toBe(10);
     expect(sets).toBeGreaterThan(150);
   });
 
@@ -313,7 +330,7 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
     expect(wordProblems(s, [first, into, ...rest])).toEqual(['set A: introduced by 0 frames']);
     expect(wordProblems(s, [first, into, intro, ...rest])).toEqual(['set A: introduced after the frame that reaches it']);
     // a one-cell set, the ALS-XY-Wing's hinge, given a frame of its own
-    const wing = chainOfPattern(EXAMPLES.ALS_XY_WING!.step);
+    const wing = EXAMPLES.ALS_XY_WING!.step;
     const frames = walkFrames(wing);
     const hinge = frames.findIndex((f) => f.text.startsWith('Set C, the hinge, is the cell'));
     const own: Frame = { text: 'Set C: the cell r6c3.', links: frames[hinge].links - 1, sets: [2], show: new Set(['units']) };
@@ -321,8 +338,65 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
   });
 });
 
+describe("an ALS pattern's conclusion and Death Blossom's walk (docs/hint-drawing-sets.md, decisions 15 and 17)", () => {
+  it('ends each ALS pattern naming its two end sets and the reason, before the removals', () => {
+    const last = (s: Step) => walkFrames(s).at(-1)!.text;
+    expect(last(EXAMPLES.ALS_XZ!.step)).toBe(
+      'Set A or set B holds a 5: if A holds none, B holds one. Each removed 5 sees every 5 of both. So 5 is removed from r7c1.'
+    );
+    expect(last(EXAMPLES.ALS_XY_WING!.step)).toBe(
+      'Set A or set B holds a 7: if A holds none, B holds one. Each removed 7 sees every 7 of both. So 7 is removed from r4c8.'
+    );
+    expect(last(EXAMPLES.ALS_XY_CHAIN!.step)).toBe(
+      'Set A or set D holds a 4: if A holds none, D holds one. Each removed 4 sees every 4 of both. So 4 is removed from r4c5.'
+    );
+    // a chain that clashes is told in the same words, and its loop back to the start says no more than the pattern
+    const closes = kept.find((k) => k.where === 'a clash that closes, step 16, ALS_XY_CHAIN')!.step;
+    expect(walkFrames(closes).map((f) => f.text).filter((t) => /impossible/.test(t))).toEqual([]);
+    expect(last(closes)).toBe('Set A or set D holds a 7: if A holds none, D holds one. Each removed 7 sees every 7 of both. So 7 is removed from r2c9.');
+    // no other chain says it
+    expect(last(EXAMPLES.AIC_ALS!.step)).toBe('So 8 is removed from r6c9.');
+  });
+
+  it("walks the stored Death Blossom as the design tells it: the stem, each petal's branch in words, a petal of several cells introduced first, then the conclusion", () => {
+    const s = EXAMPLES.DEATH_BLOSSOM!.step;
+    expect(walkFrames(s).map(told)).toEqual([
+      { text: 'The stem r8c9 holds 2, 5 and 7: one of them is true, and each has a petal.', links: 0 },
+      { text: 'Petal A is the cell r9c7, which holds only 2 and 4, and its 2 sees the stem: if the stem is 2, r9c7 must be 4.', links: 2 },
+      {
+        text: "Petal B, for the stem's 5: the 2 cells r8c5, r9c6 of box 8 hold only 1, 4 and 5: one digit more than cells, and every 5 of it sees the stem.",
+        links: 2,
+        sets: [1]
+      },
+      { text: 'If the stem is 5, petal B holds no 5, so its other 2 digits fill its 2 cells: r9c6 must be 4.', links: 4 },
+      { text: 'Petal C is the cell r8c1, which holds only 4 and 7, and its 7 sees the stem: if the stem is 7, r8c1 must be 4.', links: 6 },
+      { text: 'Whichever digit the stem takes, a petal holds a 4. Each removed 4 sees every 4 of every petal. So 4 is removed from r9c2, r9c3.', links: 6 }
+    ]);
+    // a petal whose z lies in several cells: "one of"; a two-digit stem
+    const two = kept.find((k) => k.where === 'a two-digit stem, step 43, DEATH_BLOSSOM')!.step;
+    expect(walkFrames(two)[0].text).toBe('The stem r3c3 holds 3 and 7: one of them is true, and each has a petal.');
+    const several = kept.map((k) => k.step).filter((x) => x.tech === 'DEATH_BLOSSOM').flatMap((x) => walkFrames(x).map((f) => f.text)).filter((t) => /cells: one of r\dc\d, /.test(t));
+    expect(several.length, 'a branch into several cells').toBeGreaterThan(0);
+  });
+
+  it('catches a Death Blossom walk that breaks its rules', () => {
+    const s = EXAMPLES.DEATH_BLOSSOM!.step;
+    const frames = walkFrames(s);
+    expect(wordProblems(s)).toEqual([]);
+    // petal B not introduced, or after its branch; its branch told in two frames; a group
+    expect(wordProblems(s, frames.filter((f) => !f.sets))[0]).toMatch(/^petal B: not introduced once/);
+    expect(wordProblems(s, [frames[0], frames[1], frames[3], frames[2], ...frames.slice(4)])[0]).toMatch(/^petal B: not introduced once/);
+    const split = [...frames.slice(0, 3), { ...frames[3], links: 3 }, ...frames.slice(3)];
+    expect(wordProblems(s, split)).toContain('branch 5: its tie and its lock in different frames');
+    expect(wordProblems(s, [{ ...frames[0], text: 'The group r8c9 holds 2, 5 and 7.' }, ...frames.slice(1)])).toEqual([
+      'frame 1: not the stem: The group r8c9 holds 2, 5 and 7.',
+      'frame 1: says "group": The group r8c9 holds 2, 5 and 7.'
+    ]);
+  });
+});
+
 describe('the legend of a set walk (docs/hint-drawing-sets.md, decision 18)', () => {
-  const xz = { ...EXAMPLES.ALS_XZ!, step: chainOfPattern(EXAMPLES.ALS_XZ!.step) };
+  const xz = EXAMPLES.ALS_XZ!;
 
   it('words the premise of a chain that opens in a set by the set: if set A holds no 5', () => {
     expect(premiseOf(xz.step)).toEqual({ assumed: false, kind: 'set', letter: 'A', digit: 5 });
@@ -347,9 +421,8 @@ describe('the legend of a set walk (docs/hint-drawing-sets.md, decision 18)', ()
 
   it("is the same in the hint panel as in the Learn legend, in the full view and every frame of the walk", () => {
     const shown = [
-      { where: 'AIC_ALS', position: EXAMPLES.AIC_ALS!, step: EXAMPLES.AIC_ALS!.step },
-      { where: 'ALS_XZ, as a chain', position: xz, step: xz.step },
-      ...kept.filter((k) => k.step.tech === 'AIC_ALS')
+      ...(['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'] as Tech[]).map((tech) => ({ where: tech, position: EXAMPLES[tech]!, step: EXAMPLES[tech]!.step })),
+      ...kept.filter((k) => k.step.tech === 'AIC_ALS' || k.where.startsWith('shared cells') || k.where.startsWith('a two-digit stem'))
     ];
     let views = 0;
     for (const { where, position, step } of shown) {
@@ -359,6 +432,6 @@ describe('the legend of a set walk (docs/hint-drawing-sets.md, decision 18)', ()
         views++;
       }
     }
-    expect(views).toBeGreaterThan(60);
+    expect(views).toBeGreaterThan(120);
   });
 });

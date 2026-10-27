@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { eurekaOf, stepText, hodokuLine, compactCells, conclusions } from '../src/content/eureka';
 import { EXAMPLES } from '../src/content/examples';
 import { alternatingLinks, insideSet } from '../src/engine/steps';
-import type { Step, ChainLink, CellDigit } from '../src/engine/steps';
+import type { Step } from '../src/engine/steps';
 import { TECHS, Tech } from '../src/engine/ratings';
 import { cellName, parseGrid } from '../src/engine/board';
 import type { Grid } from '../src/engine/board';
@@ -44,27 +44,6 @@ function kept(id: string): Step {
     g.cands[cell] = position.cands[cell];
   }
   return findStep(id.split(', ').at(-1) as Tech, g)!;
-}
-
-/**
- * The derived chain an ALS-XZ, ALS-XY-Wing or ALS-XY-Chain is
- * (docs/hint-drawing-sets.md, Data), built from the step's own sets and
- * restricted commons: (z)A=(x)A - (x)B=(z)B and its longer forms, each set's
- * internal strong link from the digit the chain enters it by to the one it
- * leaves by, both ends naming the set
- */
-function asChain(pattern: Step): Step {
-  const rcs = pattern.links!;
-  const order = [rcs[0].fromSet!, ...rcs.map((l) => l.toSet!)];
-  const z = pattern.eliminations[0].digit;
-  const by = [z, ...rcs.map((l) => l.from[0].digit), z];
-  const node = (set: number, digit: number): CellDigit[] => pattern.sets![set].members.filter((m) => m.digit === digit);
-  const links: ChainLink[] = [];
-  order.forEach((set, i) => {
-    if (i > 0) links.push({ from: node(order[i - 1], by[i]), to: node(set, by[i]), strong: false, fromSet: order[i - 1], toSet: set });
-    links.push({ from: node(set, by[i]), to: node(set, by[i + 1]), strong: true, fromSet: set, toSet: set });
-  });
-  return { ...pattern, links, truth: 'derived' };
 }
 
 describe('Eureka notation', () => {
@@ -107,28 +86,27 @@ describe('Eureka notation', () => {
     );
   });
 
-  it('writes a chain through almost locked sets with each set one node, its internal link inside it, over all its cells', () => {
-    // the three ALS patterns' examples as the chains they are; a one-cell set, the XY-Wing's hinge C, plainly
-    expect(eurekaOf(asChain(step('ALS_XZ')))).toBe('(5=1){r8c2,r9c1} - (1=5){r7c8,r8c9} => r7c1<>5');
-    expect(eurekaOf(asChain(step('ALS_XY_WING')))).toBe('(7=4){r8c38} - (4=6)r6c3 - (6=7){r4c9,r6c8} => r4c8<>7');
-    expect(eurekaOf(asChain(step('ALS_XY_CHAIN')))).toBe('(4=9){r4c27} - (9=3)r1c7 - (3=9){r1c56} - (9=4)r7c5 => r4c5<>4');
+  it('writes the ALS patterns as the chains they are, each set one node, its internal link inside it, over all its cells', () => {
+    // the three ALS patterns' examples (docs/hint-drawing-sets.md, decision 19); a one-cell set, the XY-Wing's hinge C, plainly
+    expect(stepText(step('ALS_XZ'))).toBe('ALS-XZ: (5=1){r8c2,r9c1} - (1=5){r7c8,r8c9} => r7c1<>5');
+    expect(stepText(step('ALS_XY_WING'))).toBe('ALS-XY-Wing: (7=4){r8c38} - (4=6)r6c3 - (6=7){r4c9,r6c8} => r4c8<>7');
+    expect(stepText(step('ALS_XY_CHAIN'))).toBe('ALS-XY-Chain: (4=9){r4c27} - (9=3)r1c7 - (3=9){r1c56} - (9=4)r7c5 => r4c5<>4');
     // set B (r3c3, r4c3, r5c3), whose 7s and 4s lie in two of its cells, over all three
-    expect(eurekaOf(asChain(kept('the short link, step 16, ALS_XZ')))).toBe('(4=7){r4c267} - (7=4){r345c3} => r4c1<>4');
+    expect(eurekaOf(kept('the short link, step 16, ALS_XZ'))).toBe('(4=7){r4c267} - (7=4){r345c3} => r4c1<>4');
     // ALS-XY-Chains whose sets share cells: A (r7c7) inside D (r7c5, r7c7); D (r4c4, r6c4) inside A
-    expect(eurekaOf(asChain(kept('shared cells that derive, step 25, ALS_XY_CHAIN')))).toBe(
+    expect(eurekaOf(kept('shared cells that derive, step 25, ALS_XY_CHAIN'))).toBe(
       '(1=5)r7c7 - (5=2){r2c79} - (2=7){r5c59} - (7=1){r7c57} => r7c6<>1'
     );
-    expect(eurekaOf(asChain(kept('shared cells that clash, step 15, ALS_XY_CHAIN')))).toBe(
+    expect(eurekaOf(kept('shared cells that clash, step 15, ALS_XY_CHAIN'))).toBe(
       '(8=9){r1456c4} - (9=8)r1c1 - (8=6){r4c13} - (6=8){r46c4} => r3c4<>8'
     );
     // its last set's 3s are its first set's, r1c7 and r1c9: the same candidates, not the same node, so no loop
     const ends = findStep('ALS_XY_CHAIN', onPath('9..86....3......9..784..2....6.4.5...9..5..8...3.1.7....5..716..8......4....34..7', 22))!;
     expect(ends.sets!.map((s) => s.cells.map(cellName).join(','))).toEqual(['r1c2,r1c7,r1c9', 'r1c3', 'r2c3', 'r1c2,r1c3,r1c7,r1c9']);
-    const chain = asChain(ends);
-    expect(chain.links!.at(-1)!.to).toEqual(chain.links![0].from);
-    expect(eurekaOf(chain)).toBe('(3=2){r1c279} - (2=1)r1c3 - (1=2)r2c3 - (2=3){r1c2379} => r1c6<>3, r3c9<>3');
+    expect(ends.links!.at(-1)!.to).toEqual(ends.links![0].from);
+    expect(eurekaOf(ends)).toBe('(3=2){r1c279} - (2=1)r1c3 - (1=2)r2c3 - (2=3){r1c2379} => r1c6<>3, r3c9<>3');
     // a link that does not leave the node the one before it reached, there of another set, is no chain
-    const torn = asChain(step('ALS_XZ'));
+    const torn: Step = JSON.parse(JSON.stringify(step('ALS_XZ')));
     torn.links![1] = { ...torn.links![1], fromSet: 1 };
     expect(eurekaOf(torn)).toBeNull();
   });
@@ -153,24 +131,12 @@ describe('Eureka notation', () => {
     expect(eurekaOf(loop)).toBe('(5)r1c1 = (5)r1c5 - (5)r3c5 = (5)r3c1 - (5)r2c2 = (5)r1c1 => r1c1=5');
   });
 
-  it('is not written for links that are not a chain: colouring ties, forcing trails, the restricted commons of ALS patterns', () => {
-    // an ALS pattern's links are its restricted commons alone, Death Blossom's
-    // the stem's to its petals: Copy step gives HoDoKu's line, from the sets
-    const patterns: Tech[] = [
-      'SIMPLE_COLORS',
-      'MULTI_COLORS',
-      'MEDUSA_3D',
-      'DIGIT_FORCING_CHAIN',
-      'NISHIO_FORCING_CHAIN',
-      'ALS_XZ',
-      'ALS_XY_WING',
-      'ALS_XY_CHAIN',
-      'DEATH_BLOSSOM'
-    ];
+  it("is not written for links that are not a chain: colouring ties, forcing trails, Death Blossom's weak ties", () => {
+    // Death Blossom's links are its branches, a weak tie from the stem into
+    // each petal and the petal's lock: Copy step gives HoDoKu's line, from the sets
+    const patterns: Tech[] = ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D', 'DIGIT_FORCING_CHAIN', 'NISHIO_FORCING_CHAIN', 'DEATH_BLOSSOM'];
     for (const tech of patterns) expect(eurekaOf(step(tech)), tech).toBeNull();
-    for (const tech of ['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'] as Tech[]) {
-      expect(stepText(step(tech)), tech).toBe(hodokuLine(step(tech)));
-    }
+    expect(stepText(step('DEATH_BLOSSOM'))).toBe(hodokuLine(step('DEATH_BLOSSOM')));
     expect(eurekaOf(step('X_WING'))).toBeNull();
   });
 });
@@ -204,10 +170,7 @@ describe('the HoDoKu line', () => {
     expect(hodokuLine(step('ALS_XY_CHAIN'))).toBe(
       'ALS-XY-Chain: A=r4c27 {469}, B=r1c7 {39}, C=r1c56 {239}, D=r7c5 {49}, RCs=9,3,9, Z=4 => r4c5<>4'
     );
-    // the same from the chains they are: a link inside a set is no restricted common
-    for (const tech of ['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN'] as Tech[]) {
-      expect(hodokuLine(asChain(step(tech))), tech).toBe(hodokuLine(step(tech)));
-    }
+    // read from the chains they are: a link inside a set is no restricted common
     // HoDoKu's form (its SolutionStep): the stem, then each petal after the stem's digit it is for
     expect(hodokuLine(step('DEATH_BLOSSOM'))).toBe(
       'Death Blossom: [r8c9], -2- r9c7 {24}, -5- r8c5,r9c6 {145}, -7- r8c1 {47} => r9c2<>4, r9c3<>4'

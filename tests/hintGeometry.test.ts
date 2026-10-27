@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { arrowShapes, startMarkers, badgePoints, insideOneCell, setShapes, squareReach, hintDrawing, tilesIn, Layout, Point, SIZES, ArrowShape } from '../src/content/hintGeometry';
 import type { GroupBar, SetShapes } from '../src/content/hintGeometry';
+import { alsClash } from '../src/engine/truth';
 import type { CellDigit, ChainLink, ChainSet, Step } from '../src/engine/steps';
 import { alternatingLinks, groupSet } from '../src/engine/steps';
 import { boardLayout, digitShown, squareReachOf, M } from '../src/ui/boardLayout';
@@ -1163,6 +1164,26 @@ describe("an almost locked set's tiles and letter tabs (docs/hint-drawing-sets.m
     const [dot] = startMarkers(links, layout, marks, shapes);
     expect(dot.at).toEqual(cd(1, 3, 1));
     expect(Math.floor((dot.x - M) / 100)).toBe(2);
+    // a Death Blossom's branches, a weak tie from the stem into the petal and
+    // the petal's lock inside it, have no reading order: no dot (decision 15)
+    const P = als([at(9, 7, [2, 4])], 'A', 8);
+    const blossom: ChainLink[] = [
+      { from: [cd(8, 9, 2)], to: [cd(9, 7, 2)], strong: false, undirected: true, toSet: 0 },
+      { from: [cd(9, 7, 2)], to: [cd(9, 7, 4)], strong: true, fromSet: 0, toSet: 0 }
+    ];
+    expect(arrowShapes(blossom, layout, [cd(8, 9, 2), ...P.members]).map((x) => x.kind)).toEqual(['arrow', 'none']);
+    expect(startMarkers(blossom, layout, [cd(8, 9, 2), ...P.members])).toEqual([]);
+    // the same lock alone after an arrow that is no weak tie starts a reading
+    expect(startMarkers([{ ...blossom[0], undirected: undefined }, blossom[1]], layout, [cd(8, 9, 2), ...P.members])).toHaveLength(1);
+    // an ALS pattern's chain starts at one dot; one that clashes, drawn with no truth, at none (decision 13);
+    // a Death Blossom at none
+    const dots: Record<string, number[]> = {};
+    for (const { step: s } of corpus) {
+      const kind = alsClash(s) ? 'clash' : s.tech === 'DEATH_BLOSSOM' ? 'blossom' : s.tech === 'AIC_ALS' ? null : 'clean';
+      if (kind) (dots[kind] ??= []).push(hintDrawing(s, layout, s.links!.flatMap((l) => [...l.from, ...l.to])).dots.length);
+    }
+    expect(Object.fromEntries(Object.entries(dots).map(([k, ns]) => [k, [...new Set(ns)]]))).toEqual({ clean: [1], clash: [0], blossom: [0] });
+    expect(dots.clash.length).toBe(9);
     // a step's every link inside a set, in every set step kept, draws nothing
     for (const { where, step: s } of corpus) {
       const kinds = arrowShapes(s.links!, layout, s.links!.flatMap((l) => [...l.from, ...l.to])).map((x) => x.kind);

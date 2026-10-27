@@ -5,21 +5,32 @@
  * derivation on chains built by hand in every shape (open, continuous,
  * discontinuous, inverted, broken, a true end left no candidate); every
  * stored example marked 'derived' derives without a problem; and every
- * 'derived' step met while solving a batch of puzzles does too (none of
- * them a true node left no candidate, 'emptyTrue'), with each open
- * chain's removals in conflict with both its ends (checked here from the
- * board's houses, not by the finders' own code), its start false and its
- * end true.
+ * 'derived' step met while solving a batch of puzzles does too, with each
+ * open chain's removals in conflict with both its ends (checked here from
+ * the board's houses, not by the finders' own code), its start false and
+ * its end true, and every link true to the puzzle's solution: no strong
+ * link without a true end, no weak link with two.
+ *
+ * The ALS patterns are chains too (docs/hint-drawing-sets.md, decisions 11
+ * and 13): an ALS-XZ, ALS-XY-Wing or ALS-XY-Chain derives cleanly, but an
+ * ALS-XY-Chain whose sets share a cell may clash, in a false set's node, a
+ * true node left no candidate ('emptyTrue') or a loop back to its start,
+ * and then draws no truth; both are counted. A Death Blossom claims no
+ * truth until phase 5, but each of its branches derives from its two
+ * links, and its removals conflict with every branch's end.
  */
 import { describe, it, expect } from 'vitest';
-import { deriveLinks, deriveTruth } from '../src/engine/truth';
-import { alternatingLinks, CellDigit, ChainLink, Step } from '../src/engine/steps';
+import { readFileSync } from 'node:fs';
+import { alsClash, deriveLinks, deriveTruth } from '../src/engine/truth';
+import { alternatingLinks, insideSet, CellDigit, ChainLink, ChainSet, Step } from '../src/engine/steps';
 import { EXAMPLES } from '../src/content/examples';
 import { parseGrid, cloneGrid, isSolved, PEERS, UNITS, Grid, bit, popcount, sees } from '../src/engine/board';
+import { solve } from '../src/engine/bruteForce';
 import { generatePuzzle } from '../src/engine/generator';
-import { findNextStep, findAllSteps, applyStep } from '../src/engine/humanSolver';
+import { findNextStep, findAllSteps, findStep, applyStep } from '../src/engine/humanSolver';
 import { findWWing } from '../src/engine/techniques/wings';
-import { linkText } from '../src/engine/hintFrames';
+import { linkText, walkFrames } from '../src/engine/hintFrames';
+import { frameMarks, premiseOf } from '../src/content/hintMarks';
 import type { Tech } from '../src/engine/ratings';
 
 const cd = (r: number, c: number, digit: number): CellDigit => ({ cell: (r - 1) * 9 + (c - 1), digit });
@@ -148,8 +159,21 @@ function conflicts(e: CellDigit, node: CellDigit[]): boolean {
   return node.every((m) => (m.cell === e.cell ? m.digit !== e.digit : m.digit === e.digit && PEERS[e.cell].includes(m.cell)));
 }
 
-/** the chains whose links run from one end to the other, unclosed */
-const OPEN: Tech[] = ['X_CHAIN', 'XY_CHAIN', 'AIC', 'AIC_GROUPED', 'AIC_ALS', 'SKYSCRAPER', 'TWO_STRING_KITE', 'TURBOT_FISH', 'W_WING'];
+/** the chains whose links run from one end to the other, unclosed: the ALS patterns among them (docs/hint-drawing-sets.md, decision 11) */
+const OPEN: Tech[] = [
+  'X_CHAIN',
+  'XY_CHAIN',
+  'AIC',
+  'AIC_GROUPED',
+  'AIC_ALS',
+  'SKYSCRAPER',
+  'TWO_STRING_KITE',
+  'TURBOT_FISH',
+  'W_WING',
+  'ALS_XZ',
+  'ALS_XY_WING',
+  'ALS_XY_CHAIN'
+];
 
 /**
  * What is wrong with a link on the board it was found on, if anything,
@@ -157,10 +181,12 @@ const OPEN: Tech[] = ['X_CHAIN', 'XY_CHAIN', 'AIC', 'AIC_GROUPED', 'AIC_ALS', 'S
  * link joins two candidates of one cell, or two nodes of one digit whose
  * every member sees every member of the other; a strong link is the two
  * candidates of a bivalue cell, two nodes holding all of one house's
- * candidates for their digit, or (an AIC with ALS) two digits of one
- * almost locked set, each node all the set's cells that hold its digit
+ * candidates for their digit, or two digits of one almost locked set, each
+ * node all the set's cells that hold its digit: a set the step names
+ * (Step.sets, an ALS pattern's or an AIC with ALS's), or one an AIC with
+ * ALS's link lies in
  */
-function linkProblem(g: Grid, l: ChainLink, tech: Tech): string | null {
+function linkProblem(g: Grid, l: ChainLink, step: Step): string | null {
   const cells = (n: CellDigit[]) => [...new Set(n.map((m) => m.cell))];
   const digits = (n: CellDigit[]) => [...new Set(n.map((m) => m.digit))];
   if (digits(l.from).length !== 1 || digits(l.to).length !== 1) return 'a node of more than one digit';
@@ -181,7 +207,19 @@ function linkProblem(g: Grid, l: ChainLink, tech: Tech): string | null {
     if (!l.strong || popcount(g.cands[fc[0]]) === 2) return null;
   }
   if (!l.strong) return 'a weak link between two digits outside one cell';
-  if (tech !== 'AIC_ALS') return 'a strong link between two digits that is not a bivalue cell';
+  // a link inside a set the step names: an almost locked set on the board, each end all its cells that hold the end's digit
+  const named: ChainSet | undefined = insideSet(l) ? step.sets?.[l.fromSet!] : undefined;
+  if (named) {
+    const cells = named.cells;
+    const mask = cells.reduce((m, c) => m | g.cands[c], 0);
+    const house = UNITS.some((u) => cells.every((c) => u.includes(c)));
+    const holding = (d: number) => cells.filter((c) => g.cands[c] & bit(d)).join();
+    const ok = named.kind === 'als' && house && cells.every((c) => !g.values[c]) && popcount(mask) === cells.length + 1;
+    return ok && holding(fd) === [...fc].sort((a, b) => a - b).join() && holding(td) === [...tc].sort((a, b) => a - b).join()
+      ? null
+      : 'a strong link inside a set that is no almost locked set, or not all its cells holding a digit';
+  }
+  if (step.tech !== 'AIC_ALS') return 'a strong link between two digits that is not a bivalue cell';
   // an almost locked set in one house: as many cells as digits less one,
   // each node all of its cells that hold the node's digit
   const own = [...new Set([...fc, ...tc])];
@@ -204,7 +242,7 @@ function linkProblem(g: Grid, l: ChainLink, tech: Tech): string | null {
 function checkLinks(g: Grid, step: Step, where: string): void {
   (step.links ?? []).forEach((l, i) => {
     if (l.undirected) return;
-    expect(linkProblem(g, l, step.tech), `${where}, link ${i + 1}`).toBeNull();
+    expect(linkProblem(g, l, step), `${where}, link ${i + 1}`).toBeNull();
     // "the cell has only these two" only of a bivalue cell (an almost
     // locked set's two digits in one of its cells say so in their own words)
     const cell = l.from[0].cell;
@@ -221,20 +259,111 @@ function checkLinks(g: Grid, step: Step, where: string): void {
   });
 }
 
-/** what every derived step must satisfy */
-function checkDerived(step: Step, where: string, g?: Grid): void {
+/** how each ALS pattern's chain derives, by technique: cleanly, or with a clash and no truth drawn */
+type Tally = Record<string, { clean: number; clash: number }>;
+
+/**
+ * An ALS pattern's chain that clashes (decision 13): only an ALS-XY-Chain
+ * whose sets share a cell, and it draws no truth in any view, nor words a
+ * premise
+ */
+function checkClash(step: Step, where: string, g?: Grid): void {
+  const sets = step.sets ?? [];
+  expect(step.tech, where).toBe('ALS_XY_CHAIN');
+  expect(sets.some((a, i) => sets.slice(i + 1).some((b) => a.cells.some((c) => b.cells.includes(c)))), `${where}: sets sharing a cell`).toBe(true);
+  for (const f of [null, ...walkFrames(step)]) {
+    const kinds = [...frameMarks(step, f, (c) => !!g?.values[c]).cands.values()].flatMap((m) => [...m.values()]);
+    expect(kinds.filter((k) => k === 'true' || k === 'false' || k === 'oneOf'), `${where}, frame ${f?.links ?? 'full'}`).toEqual([]);
+  }
+  expect(premiseOf(step), where).toBeNull();
+}
+
+/** what every derived step must satisfy; an ALS pattern's chain counted in `tally`, cleanly derived or clashing */
+function checkDerived(step: Step, where: string, g?: Grid, tally?: Tally): void {
   const d = deriveTruth(step)!;
   expect(d, where).not.toBeNull();
-  expect(d.problems, where).toEqual([]);
   if (g) checkLinks(g, step, where);
+  const count = (k: 'clean' | 'clash') => tally && ((tally[step.tech] ??= { clean: 0, clash: 0 })[k] += 1);
+  if (alsClash(step)) {
+    checkClash(step, where, g);
+    count('clash');
+    return;
+  }
+  expect(d.problems, where).toEqual([]);
+  if (['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN'].includes(step.tech)) {
+    expect(d.closure, where).toBeNull();
+    count('clean');
+  }
   if (!OPEN.includes(step.tech)) return;
-  const first = d.nodes[0];
-  const last = d.nodes[d.nodes.length - 1];
+  // its ends: the first link's first node and the last link's second, which
+  // may be a node the chain reached before (an ALS-XY-Chain whose last set
+  // holds z only in a cell of an earlier set, where that set's node is)
+  const links = step.links!.filter((l) => !l.undirected);
+  const first = { node: links[0].from, truth: d.nodes[0].truth };
+  const last = { node: links[links.length - 1].to, truth: d.ends[d.ends.length - 1].to };
   expect(first.truth, where).toBe(false);
   expect(last.truth, where).toBe(true);
   for (const e of step.eliminations) {
     expect(conflicts(e, first.node) && conflicts(e, last.node), `${where}: ${k(e)} must conflict with both ends`).toBe(true);
   }
+}
+
+/**
+ * A Death Blossom's branches (decision 15): for each stem digit, a weak tie
+ * from the stem into its petal and the petal's lock, which derive from the
+ * stem's digit true to the petal's z true ('groupTrue' over several cells),
+ * every removal in conflict with that end; and no truth drawn in any view
+ */
+function checkBlossom(step: Step, where: string, g?: Grid): number {
+  const links = step.links ?? [];
+  expect(step.truth, where).toBeUndefined();
+  const ties = links.flatMap((l, i) => (l.undirected && !l.strong ? [i] : []));
+  expect(ties.length, where).toBe(step.sets!.length);
+  const z = step.eliminations[0].digit;
+  for (const i of ties) {
+    const [tie, lock] = [links[i], links[i + 1]];
+    expect([tie.fromSet, tie.toSet, lock.fromSet, lock.toSet, lock.strong], `${where}, branch ${i / 2 + 1}`).toEqual([undefined, i / 2, i / 2, i / 2, true]);
+    const d = deriveLinks([tie, lock]);
+    expect(d.problems, where).toEqual([]);
+    expect(d.nodes.map((n) => n.truth), where).toEqual([true, false, true]);
+    const end = d.nodes[2].node;
+    expect(new Set(end.map((cd) => cd.digit)), where).toEqual(new Set([z]));
+    for (const cd of end) expect(d.candidates.get(k(cd)), where).toBe(end.length > 1 ? 'groupTrue' : 'true');
+    for (const e of step.eliminations) expect(conflicts(e, end), `${where}: ${k(e)} must conflict with branch ${i / 2 + 1}'s end`).toBe(true);
+  }
+  for (const f of [null, ...walkFrames(step)]) {
+    const kinds = [...frameMarks(step, f, (c) => !!g?.values[c]).cands.values()].flatMap((m) => [...m.values()]);
+    expect(kinds.filter((x) => x === 'true' || x === 'false' || x === 'oneOf'), `${where}, frame ${f?.links ?? 'full'}`).toEqual([]);
+  }
+  return ties.length;
+}
+
+/** every link of a chain true to the puzzle's solution: a node is true where one of its candidates is the solution's digit */
+function checkSolution(step: Step, solution: Grid, where: string): void {
+  const holds = (node: CellDigit[]) => node.some((cd) => solution.values[cd.cell] === cd.digit);
+  (step.links ?? []).forEach((l, i) => {
+    if (l.undirected) return;
+    if (l.strong) expect(holds(l.from) || holds(l.to), `${where}, link ${i + 1}: a strong link with no true end`).toBe(true);
+    else expect(holds(l.from) && holds(l.to), `${where}, link ${i + 1}: a weak link with two true ends`).toBe(false);
+  });
+}
+
+/** a position the set fixture keeps, and the step found again there */
+function keptSteps(): { where: string; step: Step; g: Grid }[] {
+  const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+  const out: { where: string; step: Step; g: Grid }[] = [];
+  for (const section of ['paths', 'named']) {
+    for (const [id, d] of Object.entries<{ position: { puzzle: string; values: string; cands: number[] } }>(fx[section])) {
+      const g = parseGrid(d.position.puzzle)!;
+      for (let cell = 0; cell < 81; cell++) {
+        g.values[cell] = Number(d.position.values[cell]);
+        g.cands[cell] = d.position.cands[cell];
+      }
+      const step = findStep(id.split(', ').at(-1) as Tech, g);
+      if (step) out.push({ where: id, step, g });
+    }
+  }
+  return out;
 }
 
 describe('every chain the engine finds', () => {
@@ -246,8 +375,8 @@ describe('every chain the engine finds', () => {
       checkDerived(ex.step, tech, g);
       n++;
     }
-    // the twelve derived techniques with a stored example (X_CYCLES has none)
-    expect(n).toBe(12);
+    // the fifteen derived techniques with a stored example (X_CYCLES has none), the three ALS patterns among them
+    expect(n).toBe(15);
   });
 
   it('derives without a problem in every chain step met while solving a batch of puzzles', () => {
@@ -261,16 +390,22 @@ describe('every chain the engine finds', () => {
     ];
     const puzzles = [...HARD.map((p) => parseGrid(p)!), ...Array.from({ length: 24 }, (_, i) => generatePuzzle(i % 2 ? 'rotational' : 'none'))];
     const seen = new Map<string, number>();
+    const tally: Tally = {};
+    let branches = 0;
     for (const [pi, puzzle] of puzzles.entries()) {
       const g = cloneGrid(puzzle);
+      const solution = solve(cloneGrid(puzzle))!;
       for (let i = 0; i < 300 && !isSolved(g); i++) {
         const step = findNextStep(g);
         if (!step) break;
         // where the solver needs more than a single, look at every step on offer
         if (!['FULL_HOUSE', 'NAKED_SINGLE', 'HIDDEN_SINGLE'].includes(step.tech)) {
           for (const s of findAllSteps(g)) {
+            const where = `puzzle ${pi}, step ${i}, ${s.tech}`;
+            if (s.tech === 'DEATH_BLOSSOM') branches += checkBlossom(s, where, g);
             if (s.truth !== 'derived') continue;
-            checkDerived(s, `puzzle ${pi}, step ${i}, ${s.tech}`, g);
+            checkDerived(s, where, g, tally);
+            checkSolution(s, solution, where);
             seen.set(s.tech, (seen.get(s.tech) ?? 0) + 1);
           }
         }
@@ -278,8 +413,53 @@ describe('every chain the engine finds', () => {
       }
     }
     // eslint-disable-next-line no-console
-    console.info('derived chains checked:', [...seen].map(([t, n]) => `${t} ${n}`).join(', '));
+    console.info('derived chains checked:', [...seen].map(([t, n]) => `${t} ${n}`).join(', '), '; the ALS patterns:', JSON.stringify(tally), `; ${branches} Death Blossom branches`);
     expect(seen.size).toBeGreaterThanOrEqual(6);
+    // the six hard paths alone offer each ALS pattern, and Death Blossoms
+    for (const tech of ['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN']) expect(tally[tech]?.clean, tech).toBeGreaterThan(0);
+    expect(branches).toBeGreaterThan(0);
+  });
+
+  it('reads each ALS pattern the repository keeps as a chain that derives cleanly, or, an ALS-XY-Chain whose sets share a cell, clashes and draws no truth: both counted (decision 13)', () => {
+    const tally: Tally = {};
+    const steps = [
+      ...(['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN'] as Tech[]).map((tech) => {
+        const ex = EXAMPLES[tech]!;
+        return { where: tech, step: ex.step, g: { values: Uint8Array.from(ex.values, Number), cands: Uint16Array.from(ex.cands), given: new Uint8Array(81) } as Grid };
+      }),
+      ...keptSteps()
+    ];
+    for (const { where, step, g } of steps) if (['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN'].includes(step.tech)) checkDerived(step, where, g, tally);
+    // the examples, the hard paths' offers and the named positions: only
+    // ALS-XY-Chains clash, 9 of the 21, the named clashes in a false group,
+    // that close and that leave a true end no candidate among them
+    expect(tally).toEqual({
+      ALS_XZ: { clean: 18, clash: 0 },
+      ALS_XY_WING: { clean: 16, clash: 0 },
+      ALS_XY_CHAIN: { clean: 12, clash: 9 }
+    });
+    for (const name of ['shared cells that clash, step 15', 'a clash in a false group, step 29', 'a clash that closes, step 16']) {
+      const { step } = steps.find((x) => x.where.startsWith(name))!;
+      expect(alsClash(step), name).toBe(true);
+    }
+    const derives = steps.find((x) => x.where.startsWith('shared cells that derive'))!.step;
+    expect([alsClash(derives), deriveTruth(derives)!.problems]).toEqual([false, []]);
+    const issues = (name: string) => {
+      const d = deriveTruth(steps.find((x) => x.where.startsWith(name))!.step)!;
+      return [d.problems.map((p) => p.issue), !!d.closure];
+    };
+    expect(issues('shared cells that clash')).toEqual([['emptyTrue'], false]);
+    expect(issues('a clash in a false group')).toEqual([['inFalseGroup'], false]);
+    expect(issues('a clash that closes')).toEqual([[], true]);
+  });
+
+  it("derives each Death Blossom's branch from the stem's digit to its petal's z, every removal in conflict with each branch's end (decision 15)", () => {
+    let branches = 0;
+    const ex = EXAMPLES.DEATH_BLOSSOM!;
+    branches += checkBlossom(ex.step, 'DEATH_BLOSSOM', { values: Uint8Array.from(ex.values, Number), cands: Uint16Array.from(ex.cands), given: new Uint8Array(81) } as Grid);
+    for (const { where, step, g } of keptSteps()) if (step.tech === 'DEATH_BLOSSOM') branches += checkBlossom(step, where, g);
+    // the stored example's three, and the set fixture's nine Death Blossoms' eighteen
+    expect(branches).toBe(21);
   });
 
   it("joins a W-Wing's weak links between cells that see each other", () => {

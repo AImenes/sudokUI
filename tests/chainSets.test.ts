@@ -81,10 +81,10 @@ describe('checkSets', () => {
   });
 
   it('catches a restricted common some candidate of which does not see every candidate of its digit in the other set', () => {
-    // ALS-XZ on 5 in place of 1: r8c2's 5 does not see r7c8's
+    // ALS-XZ's restricted common, its second link, on 5 in place of 1: r8c2's 5 does not see r7c8's
     const step = example('ALS_XZ');
-    step.links![0] = { ...step.links![0], from: [cd(8, 2, 5), cd(9, 1, 5)], to: [cd(7, 8, 5)] };
-    expect(checkSets(step, candsOf('ALS_XZ'))).toEqual([{ link: 1, issue: 'notRestricted', at: '5r8c2,5r9c1' }]);
+    step.links![1] = { ...step.links![1], from: [cd(8, 2, 5), cd(9, 1, 5)], to: [cd(7, 8, 5)] };
+    expect(checkSets(step, candsOf('ALS_XZ'))).toEqual([{ link: 2, issue: 'notRestricted', at: '5r8c2,5r9c1' }]);
   });
 
   it('catches a removal that does not see every z of both end sets, or of every petal', () => {
@@ -102,9 +102,10 @@ describe('checkSets', () => {
     // ALS-XZ whose set B is set A again: no restricted common either, as no cell sees itself
     const step = example('ALS_XZ');
     step.sets![1] = { ...step.sets![0], letter: 'B' };
-    step.links![0].to = [cd(8, 2, 1)];
+    step.links![1].to = [cd(8, 2, 1)];
+    step.links![2] = { ...step.links![2], from: [cd(8, 2, 1)], to: [cd(8, 2, 5), cd(9, 1, 5)] };
     expect(checkSets(step, candsOf('ALS_XZ'))).toEqual([
-      { link: 1, issue: 'notRestricted', at: '1r8c2' },
+      { link: 2, issue: 'notRestricted', at: '1r8c2' },
       { link: 0, issue: 'overlap', at: 'set A set B' }
     ]);
     // the chain whose set A, the cell r7c7, lies inside its set D (r7c5, r7c7), as HoDoKu allows
@@ -124,12 +125,20 @@ describe('checkSets', () => {
     // Death Blossom's petals lettered against the order of the stem's links to them
     const crossed = example('DEATH_BLOSSOM');
     crossed.sets!.reverse().forEach((s, i) => (s.letter = 'ABC'[i]));
-    crossed.links!.forEach((l) => (l.toSet = 2 - l.toSet!));
+    crossed.links!.forEach((l) => {
+      l.toSet = 2 - l.toSet!;
+      if (l.fromSet !== undefined) l.fromSet = 2 - l.fromSet;
+    });
     expect(checkSets(crossed, candsOf('DEATH_BLOSSOM'))).toEqual([{ link: 0, issue: 'letters', at: 'A,B,C' }]);
     // and petals and links both out of stem-digit order: A the 7's petal, C the 2's
     const backwards = example('DEATH_BLOSSOM');
     backwards.sets!.reverse().forEach((s, i) => (s.letter = 'ABC'[i]));
-    backwards.links!.reverse().forEach((l, i) => (l.toSet = i));
+    // each branch, the stem's tie and the petal's lock, kept together, the branches backwards
+    const branches = [0, 2, 4].map((i) => backwards.links!.slice(i, i + 2)).reverse();
+    backwards.links = branches.flatMap(([tie, lock], k) => [
+      { ...tie, toSet: k },
+      { ...lock, fromSet: k, toSet: k }
+    ]);
     expect(checkSets(backwards, candsOf('DEATH_BLOSSOM'))).toEqual([{ link: 0, issue: 'letters', at: 'A,B,C' }]);
     // the Grouped Nice Loop pair's groups listed against the order the loop reaches them
     const { step: pair, cands } = kept('the Grouped Nice Loop pair, step 10, GROUPED_NICE_LOOP');

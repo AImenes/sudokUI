@@ -15,6 +15,14 @@
  * - no sentence that names a set says "group", nor does a legend whose
  *   premise is a set's;
  * - every letter a sentence names is drawn in its frame.
+ * A Death Blossom's walk (decision 15) is told in words:
+ * - the stem first, naming its cell;
+ * - every petal of several cells introduced by one frame of its own before
+ *   its branch's, naming it, the stem's digit, its cells and its house;
+ * - a one-cell petal introduced by its branch's frame;
+ * - every branch told in its own frame, naming its petal and the stem's
+ *   digit, and every petal a sentence names drawn in its frame;
+ * - never "group".
  */
 import type { ChainLink, Step } from '../src/engine/steps';
 import { insideSet } from '../src/engine/steps';
@@ -36,6 +44,7 @@ export function wordProblems(step: Step, frames: Frame[] = walkFrames(step)): st
   frames.forEach((f, i) => {
     if (GENERIC.test(f.text)) out.push(`frame ${i + 1}: the plain sentence for two digits: ${f.text}`);
   });
+  if (step.tech === 'DEATH_BLOSSOM') return [...out, ...blossomProblems(step, frames)];
   if (step.truth !== 'derived') return out;
   const sets = step.sets ?? [];
   const links = step.links ?? [];
@@ -81,26 +90,61 @@ export function wordProblems(step: Step, frames: Frame[] = walkFrames(step)): st
   return out;
 }
 
+/** what is wrong with a Death Blossom's walk, by the rules above */
+function blossomProblems(step: Step, frames: Frame[]): string[] {
+  const out: string[] = [];
+  const sets = step.sets ?? [];
+  const links = step.links ?? [];
+  const ties = links.flatMap((l, i) => (l.undirected && l.fromSet === undefined ? [i] : []));
+  if (!frames[0]?.text.startsWith(`The stem ${cellNames([links[ties[0]].from[0].cell])} holds `)) out.push(`frame 1: not the stem: ${frames[0]?.text}`);
+  ties.forEach((i) => {
+    const k = links[i].toSet!;
+    const petal = sets[k];
+    const p = links[i].from[0].digit;
+    // the frame that reaches the branch: its tie and the petal's lock
+    const branch = frames.findIndex((f) => f.links > i && !f.sets);
+    const own = frames.flatMap((f, j) => (f.sets?.includes(k) ? [j] : []));
+    if (petal.cells.length > 1) {
+      const intro = own.length === 1 ? frames[own[0]].text : '';
+      const named = [`Petal ${petal.letter}, for the stem's ${p}:`, cellNames(petal.cells), unitName(petal.unit)].every((w) => intro.includes(w));
+      if (own.length !== 1 || own[0] > branch || !named) out.push(`petal ${petal.letter}: not introduced once, before its branch, by its letter, digit, cells and house: ${intro}`);
+    } else if (own.length || !frames[branch]?.text.startsWith(`Petal ${petal.letter} is the cell ${cellNames(petal.cells)}, `)) {
+      out.push(`petal ${petal.letter}: a one-cell petal not introduced by its branch: ${frames[branch]?.text}`);
+    }
+    if (!new RegExp(`\\b[Pp]etal ${petal.letter}\\b`).test(frames[branch]?.text ?? '') || !frames[branch].text.includes(`stem is ${p}`)) {
+      out.push(`branch ${p}: its frame does not name petal ${petal.letter} and the stem's ${p}: ${frames[branch]?.text}`);
+    }
+    if (frames.findIndex((f) => f.links > i + 1) !== branch) out.push(`branch ${p}: its tie and its lock in different frames`);
+  });
+  frames.forEach((f, i) => {
+    if (/group/i.test(f.text)) out.push(`frame ${i + 1}: says "group": ${f.text}`);
+    const named = [...f.text.matchAll(/\b[Pp]etal ([A-Z])\b/g)].map((m) => m[1]);
+    const drawn = new Set(frameMarks(step, f, () => false).sets.map((m) => sets[m.set].letter));
+    for (const L of named) if (!drawn.has(L)) out.push(`frame ${i + 1}: names petal ${L}, which it does not draw`);
+  });
+  return out;
+}
+
 /**
- * An ALS pattern (ALS-XZ, ALS-XY-Wing, ALS-XY-Chain) read as the chain it
- * derives (docs/hint-drawing-sets.md, decision 11), from its sets and its
- * restricted commons: (z)A=(x)A-(x)B=(z)B and its longer forms, each set's
- * lock a strong link inside it, the restricted commons the weak links
- * between them, `truth: 'derived'` and no roles, so its walk is the set
- * walk, in the design's worked sentences.
+ * The chain an ALS pattern (ALS-XZ, ALS-XY-Wing, ALS-XY-Chain) is
+ * (docs/hint-drawing-sets.md, decision 11), rebuilt from its sets and the
+ * digits of its links between two sets alone, apart from the finder's
+ * code: (z)A=(x)A-(x)B=(z)B and its longer forms, the sets in the order
+ * those links take them, each set's lock a strong link inside it from the
+ * digit the chain enters it by to the one it leaves by (z, the removals'
+ * digit, at both ends), the restricted commons the weak links between
+ * them, each end all the set's cells that hold its digit.
  */
-export function chainOfPattern(step: Step): Step {
-  const commons = step.links!;
+export function patternChain(step: Step): ChainLink[] {
+  const commons = step.links!.filter((l) => !insideSet(l));
   const order = [commons[0].fromSet!, ...commons.map((l) => l.toSet!)];
   const x = commons.map((l) => l.from[0].digit);
   const z = step.eliminations[0].digit;
   const node = (k: number, d: number) => step.sets![k].members.filter((m) => m.digit === d);
-  const links: ChainLink[] = order.flatMap((k, i): ChainLink[] => {
+  return order.flatMap((k, i): ChainLink[] => {
     const [enter, leave] = [i === 0 ? z : x[i - 1], i === order.length - 1 ? z : x[i]];
     const lock: ChainLink = { from: node(k, enter), to: node(k, leave), strong: true, fromSet: k, toSet: k };
     if (i === order.length - 1) return [lock];
     return [lock, { from: node(k, leave), to: node(order[i + 1], leave), strong: false, fromSet: k, toSet: order[i + 1] }];
   });
-  const { primary, secondary, fins, labels, ...rest } = step;
-  return { ...rest, truth: 'derived', links };
 }

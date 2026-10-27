@@ -465,6 +465,13 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                     : t('lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells')}
                 </li>
               )}
+              {/* a Death Blossom's weak ties from its stem to its petals, dashed with no head (docs/hint-drawing-sets.md, decision 15) */}
+              {legend.lines.has('weakTie') && (
+                <li>
+                  <i className="swatch-weak-tie" />
+                  {t('dashed line: its two ends see each other, so at most one is true')}
+                </li>
+              )}
             </ul>
           )}
           <div className="hint-actions">

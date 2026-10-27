@@ -55,6 +55,7 @@
 //   line would merge with theirs, and off the board's edge.
 import type { CellDigit, ChainLink, Step } from '../engine/steps';
 import { insideSet } from '../engine/steps';
+import { alsClash } from '../engine/truth';
 import { MARK } from './hintPalette';
 
 export interface Point {
@@ -1505,9 +1506,10 @@ const partsOf = (s: Extract<ArrowShape, { kind: 'arrow' }>) => ({ shaft: s.trace
 
 /**
  * Where the start markers go (G14): beside the first node of every branch
- * that infers something (a branch of ties only, a colouring's cluster, has
- * no reading order; a chain of sets goes on through each set, so it has one
- * start). The dot stays inside its node's cell and off the places of the
+ * that infers something (a branch of ties only, a colouring's cluster or a
+ * Death Blossom's weak tie, has no reading order, nor has a petal's lock,
+ * which draws nothing; a chain of sets goes on through each set, so it has
+ * one start). The dot stays inside its node's cell and off the places of the
  * cell's other digits, so it never sits on a grid line or reads as part of
  * a pencilled digit, and keeps clear of the arrows, the ties and the other
  * marks, at the largest size it is drawn, nearer its own node than any
@@ -1539,7 +1541,9 @@ export function startMarkers(
     // the branch's links, up to the next branch
     let j = i;
     while (j + 1 < links.length && goesOn(links, j + 1)) j++;
-    if (links.slice(i, j + 1).every((b) => b.undirected)) return;
+    // a branch that draws no arrow (a colouring's ties, a Death Blossom's
+    // weak ties and the petals' locks inside them) claims no reading order
+    if (links.slice(i, j + 1).every((b) => b.undirected || insideSet(b))) return;
     const next = links.slice(i, j + 1).find((b) => !silent(b)) ?? l;
     const at = memberOf(l.from, layout, centroidOf(next.to, layout));
     const a = layout.centre(at);
@@ -1777,14 +1781,18 @@ export interface HintDrawing {
  * the hint has without them: they keep off its heads, its start dots and
  * its walk numbers (docs/hint-drawing-sets.md, decision 7) and, where a
  * place allows it, off its lines, so no arrow bends for a tab; the
- * arrows, the dots and the numbers are then worked out round the tabs. A
- * step with no sets is laid out as the four calls lay it out
+ * arrows, the dots and the numbers are then worked out round the tabs. An
+ * ALS pattern whose chain clashes has no start dot. A step with no sets is
+ * laid out as the four calls lay it out
  */
 export function hintDrawing(step: Step, layout: Layout, marks: CellDigit[]): HintDrawing {
   const links = step.links ?? [];
+  // an ALS pattern whose chain clashes draws no truth and words no premise:
+  // no dot says where a reading starts (docs/hint-drawing-sets.md, decision 13)
+  const clash = alsClash(step);
   const around = (sets: SetShapes): HintDrawing => {
     const shapes = arrowShapes(links, layout, marks, sets);
-    const dots = startMarkers(links, layout, marks, shapes, sets);
+    const dots = clash ? [] : startMarkers(links, layout, marks, shapes, sets);
     return { sets, shapes, dots, badges: badgePoints(shapes, layout, marks, dots, sets) };
   };
   const first = setShapes(step, layout, marks);

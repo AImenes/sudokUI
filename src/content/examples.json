@@ -8828,51 +8828,28 @@
      "digit": 5
     }
    ],
-   "primary": [
-    {
-     "cell": 64,
-     "digit": 1
-    },
-    {
-     "cell": 64,
-     "digit": 5
-    },
-    {
-     "cell": 64,
-     "digit": 9
-    },
-    {
-     "cell": 72,
-     "digit": 5
-    },
-    {
-     "cell": 72,
-     "digit": 9
-    }
-   ],
-   "secondary": [
-    {
-     "cell": 61,
-     "digit": 5
-    },
-    {
-     "cell": 61,
-     "digit": 9
-    },
-    {
-     "cell": 71,
-     "digit": 1
-    },
-    {
-     "cell": 71,
-     "digit": 9
-    }
-   ],
-   "labels": {
-    "primary": "set A: one digit short of locked; 1 is its restricted common with set B",
-    "secondary": "set B: whichever set loses 1 locks and places 5"
-   },
    "links": [
+    {
+     "from": [
+      {
+       "cell": 64,
+       "digit": 5
+      },
+      {
+       "cell": 72,
+       "digit": 5
+      }
+     ],
+     "to": [
+      {
+       "cell": 64,
+       "digit": 1
+      }
+     ],
+     "strong": true,
+     "fromSet": 0,
+     "toSet": 0
+    },
     {
      "from": [
       {
@@ -8889,8 +8866,26 @@
      "strong": false,
      "fromSet": 0,
      "toSet": 1
+    },
+    {
+     "from": [
+      {
+       "cell": 71,
+       "digit": 1
+      }
+     ],
+     "to": [
+      {
+       "cell": 61,
+       "digit": 5
+      }
+     ],
+     "strong": true,
+     "fromSet": 1,
+     "toSet": 1
     }
    ],
+   "truth": "derived",
    "sets": [
     {
      "kind": "als",
@@ -8961,7 +8956,7 @@
      "letter": "B"
     }
    ],
-   "description": "ALS-XZ: sets r8c2, r9c1 and r7c8, r8c9 share restricted common 1; digit 5 can be removed from cells seeing every 5 of both sets."
+   "description": "ALS-XZ: sets A (r8c2, r9c1) and B (r7c8, r8c9) each hold one digit more than they have cells, and every 1 of A sees every 1 of B, so at most one of them keeps a 1. The other loses its 1, its other digits fill its cells, and it holds a 5: A or B holds a 5, so 5 is removed from every cell that sees every 5 of both."
   }
  },
  "ALS_XY_WING": {
@@ -9060,62 +9055,24 @@
      "digit": 7
     }
    ],
-   "primary": [
-    {
-     "cell": 65,
-     "digit": 2
-    },
-    {
-     "cell": 65,
-     "digit": 4
-    },
-    {
-     "cell": 70,
-     "digit": 2
-    },
-    {
-     "cell": 70,
-     "digit": 7
-    }
-   ],
-   "secondary": [
-    {
-     "cell": 35,
-     "digit": 4
-    },
-    {
-     "cell": 35,
-     "digit": 7
-    },
-    {
-     "cell": 52,
-     "digit": 4
-    },
-    {
-     "cell": 52,
-     "digit": 6
-    },
-    {
-     "cell": 52,
-     "digit": 7
-    }
-   ],
-   "fins": [
-    {
-     "cell": 47,
-     "digit": 4
-    },
-    {
-     "cell": 47,
-     "digit": 6
-    }
-   ],
-   "labels": {
-    "primary": "set linked via 4",
-    "secondary": "set linked via 6",
-    "fins": "hinge"
-   },
    "links": [
+    {
+     "from": [
+      {
+       "cell": 70,
+       "digit": 7
+      }
+     ],
+     "to": [
+      {
+       "cell": 65,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "fromSet": 0,
+     "toSet": 0
+    },
     {
      "from": [
       {
@@ -9137,6 +9094,23 @@
      "from": [
       {
        "cell": 47,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 47,
+       "digit": 6
+      }
+     ],
+     "strong": true,
+     "fromSet": 2,
+     "toSet": 2
+    },
+    {
+     "from": [
+      {
+       "cell": 47,
        "digit": 6
       }
      ],
@@ -9149,8 +9123,30 @@
      "strong": false,
      "fromSet": 2,
      "toSet": 1
+    },
+    {
+     "from": [
+      {
+       "cell": 52,
+       "digit": 6
+      }
+     ],
+     "to": [
+      {
+       "cell": 35,
+       "digit": 7
+      },
+      {
+       "cell": 52,
+       "digit": 7
+      }
+     ],
+     "strong": true,
+     "fromSet": 1,
+     "toSet": 1
     }
    ],
+   "truth": "derived",
    "sets": [
     {
      "kind": "als",
@@ -9243,7 +9239,7 @@
      "letter": "C"
     }
    ],
-   "description": "ALS-XY-Wing: hinge r6c3 links r8c3, r8c8 (via 4) and r4c9, r6c8 (via 6); digit 7 can be removed from cells seeing every 7 of both outer sets."
+   "description": "ALS-XY-Wing: the wings A (r8c3, r8c8) and B (r4c9, r6c8) and the hinge C (r6c3) each hold one digit more than they have cells; every 4 of C sees every 4 of A, and every 6 of C every 6 of B. C lacks at most one of its digits, so it holds a 4, and A then holds no 4, or a 6, and B then holds no 6. That wing's other digits fill its cells, and it holds a 7: A or B holds a 7, so 7 is removed from every cell that sees every 7 of both."
   }
  },
  "ALS_XY_CHAIN": {
@@ -9342,67 +9338,24 @@
      "digit": 4
     }
    ],
-   "primary": [
-    {
-     "cell": 28,
-     "digit": 4
-    },
-    {
-     "cell": 28,
-     "digit": 6
-    },
-    {
-     "cell": 33,
-     "digit": 6
-    },
-    {
-     "cell": 33,
-     "digit": 9
-    },
-    {
-     "cell": 58,
-     "digit": 4
-    },
-    {
-     "cell": 58,
-     "digit": 9
-    }
-   ],
-   "secondary": [
-    {
-     "cell": 6,
-     "digit": 3
-    },
-    {
-     "cell": 6,
-     "digit": 9
-    },
-    {
-     "cell": 4,
-     "digit": 2
-    },
-    {
-     "cell": 4,
-     "digit": 3
-    },
-    {
-     "cell": 4,
-     "digit": 9
-    },
-    {
-     "cell": 5,
-     "digit": 2
-    },
-    {
-     "cell": 5,
-     "digit": 3
-    }
-   ],
-   "labels": {
-    "primary": "the end sets, which both hold 4",
-    "secondary": "the middle sets, each linked to its neighbours by a restricted common digit"
-   },
    "links": [
+    {
+     "from": [
+      {
+       "cell": 28,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 33,
+       "digit": 9
+      }
+     ],
+     "strong": true,
+     "fromSet": 0,
+     "toSet": 0
+    },
     {
      "from": [
       {
@@ -9418,6 +9371,23 @@
      ],
      "strong": false,
      "fromSet": 0,
+     "toSet": 1
+    },
+    {
+     "from": [
+      {
+       "cell": 6,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 6,
+       "digit": 3
+      }
+     ],
+     "strong": true,
+     "fromSet": 1,
      "toSet": 1
     },
     {
@@ -9445,6 +9415,27 @@
      "from": [
       {
        "cell": 4,
+       "digit": 3
+      },
+      {
+       "cell": 5,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 4,
+       "digit": 9
+      }
+     ],
+     "strong": true,
+     "fromSet": 2,
+     "toSet": 2
+    },
+    {
+     "from": [
+      {
+       "cell": 4,
        "digit": 9
       }
      ],
@@ -9457,8 +9448,26 @@
      "strong": false,
      "fromSet": 2,
      "toSet": 3
+    },
+    {
+     "from": [
+      {
+       "cell": 58,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 58,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "fromSet": 3,
+     "toSet": 3
     }
    ],
+   "truth": "derived",
    "sets": [
     {
      "kind": "als",
@@ -9573,7 +9582,7 @@
      "letter": "D"
     }
    ],
-   "description": "ALS-XY-Chain: r4c2, r4c7 –9– r1c7 –3– r1c5, r1c6 –9– r7c5; digit 4 falls from cells seeing every 4 of both end sets."
+   "description": "ALS-XY-Chain: sets A (r4c2, r4c7), B (r1c7), C (r1c5, r1c6) and D (r7c5) each hold one digit more than they have cells, linked by 9, 3 and 9: every 9 of A sees every 9 of B, every 3 of B every 3 of C, and every 9 of C every 9 of D. If A holds no 4, its other digits fill its cells, so it holds a 9; then B holds no 9 and holds a 3, C no 3 and a 9, and D no 9 and a 4: each set in turn loses its link digit and fills its cells. A or D holds a 4, so 4 is removed from every cell that sees every 4 of both."
   }
  },
  "AIC": {
@@ -10430,6 +10439,20 @@
    ],
    "primary": [
     {
+     "cell": 78,
+     "digit": 4
+    },
+    {
+     "cell": 77,
+     "digit": 4
+    },
+    {
+     "cell": 63,
+     "digit": 4
+    }
+   ],
+   "secondary": [
+    {
      "cell": 71,
      "digit": 2
     },
@@ -10440,36 +10463,14 @@
     {
      "cell": 71,
      "digit": 7
-    }
-   ],
-   "secondary": [
+    },
     {
      "cell": 78,
      "digit": 2
     },
     {
-     "cell": 78,
-     "digit": 4
-    },
-    {
-     "cell": 67,
-     "digit": 1
-    },
-    {
      "cell": 67,
      "digit": 5
-    },
-    {
-     "cell": 77,
-     "digit": 1
-    },
-    {
-     "cell": 77,
-     "digit": 4
-    },
-    {
-     "cell": 63,
-     "digit": 4
     },
     {
      "cell": 63,
@@ -10477,8 +10478,8 @@
     }
    ],
    "labels": {
-    "primary": "the stem: each of its candidates leads to a petal",
-    "secondary": "the petals: one set per stem digit, all holding 4"
+    "primary": "4 in every petal: whichever digit the stem takes, a petal holds a 4",
+    "secondary": "the stem's candidates, and each petal's digit the stem sees"
    },
    "links": [
     {
@@ -10495,6 +10496,24 @@
       }
      ],
      "strong": false,
+     "undirected": true,
+     "toSet": 0
+    },
+    {
+     "from": [
+      {
+       "cell": 78,
+       "digit": 2
+      }
+     ],
+     "to": [
+      {
+       "cell": 78,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "fromSet": 0,
      "toSet": 0
     },
     {
@@ -10511,6 +10530,24 @@
       }
      ],
      "strong": false,
+     "undirected": true,
+     "toSet": 1
+    },
+    {
+     "from": [
+      {
+       "cell": 67,
+       "digit": 5
+      }
+     ],
+     "to": [
+      {
+       "cell": 77,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "fromSet": 1,
      "toSet": 1
     },
     {
@@ -10527,6 +10564,24 @@
       }
      ],
      "strong": false,
+     "undirected": true,
+     "toSet": 2
+    },
+    {
+     "from": [
+      {
+       "cell": 63,
+       "digit": 7
+      }
+     ],
+     "to": [
+      {
+       "cell": 63,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "fromSet": 2,
      "toSet": 2
     }
    ],
@@ -10608,7 +10663,7 @@
      "letter": "C"
     }
    ],
-   "description": "Death Blossom: stem r8c9 links each of its candidates to a petal set; whichever digit the stem takes, some petal locks and places 4, so 4 is removed from cells seeing every 4 of all petals."
+   "description": "Death Blossom: the stem r8c9 holds 2, 5 and 7, and each has a petal, an almost locked set whose copies of that digit all see the stem: A (r9c7) for 2, B (r8c5, r9c6) for 5 and C (r8c1) for 7. Whichever digit the stem takes, its petal loses that digit, fills its cells with its other digits and holds a 4, so 4 is removed from every cell that sees every 4 of every petal."
   }
  },
  "FIREWORKS": {

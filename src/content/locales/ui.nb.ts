@@ -413,6 +413,7 @@ const ui: Dictionary = {
   "bar: a group (one digit's cells in one box and one row or column), read as one node": "bjelke: en gruppe (rutene til ett tall i én boks og én rad eller kolonne), lest som ett ledd",
   "lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells": "ruter med bokstav: en nesten låst mengde, ett tall mer enn ruter; mangler ett av tallene, fyller de andre rutene",
   "lettered cells: a petal, an almost locked set for one of the stem's digits": "ruter med bokstav: et kronblad, en nesten låst mengde for ett av stammens tall",
+  "dashed line: its two ends see each other, so at most one is true": "stiplet strek: de to endene ser hverandre, så høyst én av dem er sann",
   "the chain shows that premise is impossible: the first candidate (by the small dot) is true": "kjeden viser at den forutsetningen er umulig: den første kandidaten (ved den lille prikken) er sann",
   "the chain shows that premise is impossible: the first candidate (by the small dot) is false": "kjeden viser at den forutsetningen er umulig: den første kandidaten (ved den lille prikken) er usann",
   "the chain shows that premise is impossible: one candidate of the first group (by the small dot) is true": "kjeden viser at den forutsetningen er umulig: én kandidat i den første gruppen (ved den lille prikken) er sann",

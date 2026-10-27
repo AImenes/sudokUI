@@ -413,6 +413,7 @@ const ui: Dictionary = {
   "bar: a group (one digit's cells in one box and one row or column), read as one node": "barra: un grupo (las casillas de un número en una caja y una fila o columna), leído como un solo eslabón",
   "lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells": "casillas con letra: un conjunto casi bloqueado, un número más que casillas; sin uno cualquiera de sus números, los demás llenan sus casillas",
   "lettered cells: a petal, an almost locked set for one of the stem's digits": "casillas con letra: un pétalo, un conjunto casi bloqueado para uno de los números del tallo",
+  "dashed line: its two ends see each other, so at most one is true": "línea discontinua: sus dos extremos se ven entre sí, así que como mucho uno es verdadero",
   "the chain shows that premise is impossible: the first candidate (by the small dot) is true": "la cadena muestra que esa premisa es imposible: el primer candidato (junto al punto pequeño) es verdadero",
   "the chain shows that premise is impossible: the first candidate (by the small dot) is false": "la cadena muestra que esa premisa es imposible: el primer candidato (junto al punto pequeño) es falso",
   "the chain shows that premise is impossible: one candidate of the first group (by the small dot) is true": "la cadena muestra que esa premisa es imposible: un candidato del primer grupo (junto al punto pequeño) es verdadero",

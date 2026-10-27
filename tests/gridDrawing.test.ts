@@ -310,4 +310,25 @@ describe("the app board draws an almost locked set's tiles and letter tabs (docs
     expect(panel('DEATH_BLOSSOM')).toContain("<i class=\"swatch-set-1\"></i>lettered cells: a petal, an almost locked set for one of the stem&#x27;s digits");
     expect(panel('AIC_GROUPED')).not.toContain('lettered cells');
   });
+
+  it("draws Death Blossom's weak ties as dashed lines with no head and no start dot, nothing for a petal's lock, and the panel names the dashed line (decision 15)", () => {
+    const html = board('DEATH_BLOSSOM');
+    // three ties from the stem r8c9 to its petals, one per stem digit; the locks inside the petals draw nothing
+    expect((html.match(/class="chain-shaft weak weak-tie"/g) ?? []).length).toBe(3);
+    expect(html.match(/class="chain-shaft[^"]*"/g)).toHaveLength(3);
+    expect(html).not.toMatch(/<polygon points="[^"]+" fill="var\(--hint-arrow\)"/);
+    expect(html).not.toContain('class="chain-start"');
+    const panel = () => {
+      useGame.setState({ info: { puzzle: EXAMPLES.DEATH_BLOSSOM!.puzzle, score: 1000, level: 'hard' } as any });
+      Object.assign(useGame.getInitialState() as unknown as Record<string, unknown>, useGame.getState());
+      return renderToStaticMarkup(React.createElement(HintPanel, { onLearn: () => {} }));
+    };
+    expect(panel()).toContain('<i class="swatch-weak-tie"></i>dashed line: its two ends see each other, so at most one is true');
+    // a derived chain's dashed arrows are no weak ties: the ALS-XZ's restricted common has its head and its start dot
+    const xz = board('ALS_XZ');
+    expect(xz).toContain('class="chain-start"');
+    expect(xz).not.toContain('weak-tie');
+    useGame.setState({ hint: EXAMPLES.ALS_XZ!.step });
+    expect(panel()).not.toContain('dashed line');
+  });
 });

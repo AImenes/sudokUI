@@ -8,8 +8,13 @@
 // strong link between them (4=3)r1c6, a group (2)r3c23, or an almost
 // locked set with the link through it, in braces over all its cells
 // (8=9){r78c8}; = is a strong link, - a weak one; a continuous loop ends
-// "- loop". Every other technique is written the way HoDoKu writes it:
-// the name, what defines the pattern, => what it does:
+// "- loop". The ALS patterns but Death Blossom are such chains too:
+//
+//   (5=1){r8c2,r9c1} - (1=5){r7c8,r8c9} => r7c1<>5
+//
+// Every other technique is written the way HoDoKu writes it: the name,
+// what defines the pattern, => what it does (an ALS pattern's own line is
+// HoDoKu's too, hodokuLine):
 //
 //   X-Wing: 7 r38 c38 => r2c3<>7
 //   Naked Pair: 2,5 in r9c27 => r9c6<>5
@@ -124,8 +129,9 @@ function writeNode(step: Step, node: Node): string {
 
 /**
  * A chain step in Eureka notation, or null when its links are not a
- * chain: a colouring's ties, a forcing chain's trails, an ALS pattern's
- * restricted commons are drawn as links too, but read as patterns.
+ * chain: a colouring's ties, a forcing chain's trails, a Death Blossom's
+ * weak ties and its petals' locks are drawn as links too, but read as
+ * patterns.
  * The links inside one almost locked set (docs/hint-drawing-sets.md,
  * decision 19) are one node, the set's, written over all its cells:
  * (5=1){r8c2,r9c1}, from the set the links name, not from the cells

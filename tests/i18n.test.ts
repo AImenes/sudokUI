@@ -15,8 +15,8 @@ import nb from '../src/content/locales/app.nb';
 import es from '../src/content/locales/app.es';
 import { EXAMPLES } from '../src/content/examples';
 import { walkFrames } from '../src/engine/hintFrames';
+import { findStep } from '../src/engine/humanSolver';
 import { legendOf } from '../src/content/boardSvg';
-import { chainOfPattern } from './setWords';
 
 const LOCALES = [
   ['nb', nb],
@@ -157,7 +157,7 @@ describe('the set walk in three languages (docs/hint-drawing-sets.md, "The walk 
 
   it('introduces a set, tells its links and words its premise as Norwegian and Spanish write them, a set never a group', () => {
     const aic = EXAMPLES.AIC_ALS!.step;
-    const xz = chainOfPattern(EXAMPLES.ALS_XZ!.step);
+    const xz = EXAMPLES.ALS_XZ!.step;
     const want = {
       nb: {
         intro: 'Mengde A: de 2 rutene r7c8, r8c8 i kolonne 8 har bare 4, 8 og 9: ett tall mer enn ruter. Mangler ett av dem, uansett hvilket, fyller de andre rutene.',
@@ -185,6 +185,51 @@ describe('the set walk in three languages (docs/hint-drawing-sets.md, "The walk 
       for (const s of [aic, xz]) for (const f of walkFrames(s)) expect(f.text, lang).not.toMatch(w.group);
       // the hint panel's words for the same premise
       expect(makeTranslator(lang, loc)('true, if set {L} holds no {a} (by the small dot)', { L: 'A', a: 5 }), lang).toBe(w.premise);
+    }
+  });
+
+  it("ends an ALS pattern by its two sets, and walks a Death Blossom's stem and branches, as Norwegian and Spanish write them (decisions 15 and 17)", () => {
+    const xz = EXAMPLES.ALS_XZ!.step;
+    const db = EXAMPLES.DEATH_BLOSSOM!;
+    const want = {
+      nb: {
+        ends: 'Mengde A eller mengde B har en 5: har A ingen, har B en. Hvert 5-tall som fjernes, ser alle 5-tallene i begge.',
+        blossom: [
+          'Stammen r8c9 har 2, 5 og 7: ett av dem er sant, og hvert har et kronblad.',
+          'Kronblad A er ruten r9c7, som bare har 2 og 4, og 2-tallet der ser stammen: hvis stammen er 2, må r9c7 være 4.',
+          'Kronblad B, for stammens 5: de 2 rutene r8c5, r9c6 i boks 8 har bare 1, 4 og 5: ett tall mer enn ruter, og hvert 5-tall i kronbladet ser stammen.',
+          'Hvis stammen er 5, har kronblad B ingen 5, så de 2 andre tallene fyller de 2 rutene: r9c6 må være 4.',
+          'Kronblad C er ruten r8c1, som bare har 4 og 7, og 7-tallet der ser stammen: hvis stammen er 7, må r8c1 være 4.'
+        ],
+        last: 'Uansett hvilket tall stammen får, har et kronblad en 4. Hvert 4-tall som fjernes, ser alle 4-tallene i alle kronbladene.',
+        legend: ['stammens kandidater, og tallet i hvert kronblad som stammen ser', 'stiplet strek: de to endene ser hverandre, så høyst én av dem er sann']
+      },
+      es: {
+        ends: 'El conjunto A o el conjunto B tiene un 5: si A no tiene ninguno, B tiene uno. Cada 5 eliminado ve todos los 5 de ambos.',
+        blossom: [
+          'El tallo r8c9 tiene 2, 5 y 7: uno de ellos es verdadero, y cada uno tiene un pétalo.',
+          'El pétalo A es la casilla r9c7, que solo tiene 2 y 4, y su 2 ve el tallo: si el tallo es 2, r9c7 debe ser 4.',
+          'Pétalo B, para el 5 del tallo: las 2 casillas r8c5, r9c6 de la caja 8 solo tienen 1, 4 y 5: un número más que casillas, y cada 5 suyo ve el tallo.',
+          'Si el tallo es 5, el pétalo B no tiene ningún 5, así que sus otros 2 números llenan sus 2 casillas: r9c6 debe ser 4.',
+          'El pétalo C es la casilla r8c1, que solo tiene 4 y 7, y su 7 ve el tallo: si el tallo es 7, r8c1 debe ser 4.'
+        ],
+        last: 'Tome el tallo el número que tome, algún pétalo tiene un 4. Cada 4 eliminado ve todos los 4 de todos los pétalos.',
+        legend: ['los candidatos del tallo, y el número de cada pétalo que el tallo ve', 'línea discontinua: sus dos extremos se ven entre sí, así que como mucho uno es verdadero']
+      }
+    };
+    for (const [lang, loc] of LOCALES) {
+      setEngineText(lang, loc.engine);
+      const w = want[lang];
+      expect(walkFrames(xz).at(-1)!.text.startsWith(`${w.ends} `), lang).toBe(true);
+      const frames = walkFrames(db.step).map((f) => f.text);
+      expect(frames.slice(0, -1), lang).toEqual(w.blossom);
+      expect(frames.at(-1)!.startsWith(`${w.last} `), lang).toBe(true);
+      // the legend's words for what it acts through are the step's, so the step is found again in the language
+      const g = { values: Uint8Array.from(db.values, Number), cands: Uint16Array.from(db.cands), given: new Uint8Array(81) };
+      const labels = legendOf(findStep('DEATH_BLOSSOM', g)!, db.values).map((l) => l.label);
+      for (const l of w.legend) expect(labels, lang).toContain(l);
+      // the hint panel's words for the dashed line
+      expect(makeTranslator(lang, loc)('dashed line: its two ends see each other, so at most one is true'), lang).toBe(w.legend[1]);
     }
   });
 });

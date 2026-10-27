@@ -22,6 +22,9 @@
 // makes false says nothing true ('emptyTrue'), as when a chain's last set
 // lies inside its first and the premise makes the first set's z false.
 //
+// An ALS pattern read as its chain may clash where its sets share cells
+// (alsClash): it is then drawn with no truth, as a pattern is.
+//
 // A colouring (Step.truth === 'parity') reads its truth from its clusters
 // instead: each cluster's two colours, exactly one of them wholly true.
 // checkParity holds a colouring to that, and to its links' walk order, as
@@ -74,6 +77,25 @@ const label = (node: CellDigit[]) => node.map((cd) => `${cd.digit}r${Math.floor(
 export function deriveTruth(step: Step): Derivation | null {
   if (step.truth !== 'derived' || !step.links?.length) return null;
   return deriveLinks(step.links.filter((l) => !l.undirected));
+}
+
+/** the ALS patterns read as the chains they derive (docs/hint-drawing-sets.md, decision 11) */
+const ALS_CHAINS = new Set<Step['tech']>(['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN']);
+/** an ALS-XZ, ALS-XY-Wing or ALS-XY-Chain, a chain from its first set to its last */
+export const isAlsChain = (step: Step): boolean => ALS_CHAINS.has(step.tech) && step.truth === 'derived';
+
+/**
+ * An ALS pattern whose chain does not derive cleanly: a problem (a true
+ * candidate inside a false set's node, a true node left no candidate), or a
+ * loop back to its first node, as when an ALS-XY-Chain's sets share cells
+ * (docs/hint-drawing-sets.md, decision 13). Its truths would claim more than
+ * the step proves, and a loop would read as a proof it does not make, so it
+ * is drawn with no truth at all and told in words. No other step clashes
+ */
+export function alsClash(step: Step): boolean {
+  if (!isAlsChain(step)) return false;
+  const d = deriveTruth(step);
+  return !!d && (d.problems.length > 0 || !!d.closure);
 }
 
 /** the derivation itself, over a chain's directed links in reading order */

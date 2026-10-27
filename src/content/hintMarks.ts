@@ -33,6 +33,14 @@
 // introduces it (decisions 5-8 and 17); its candidates the view gives no
 // other mark are its members, no shape, the digit bold on the tile
 // (decision 10), the last mark of all (G5).
+// An ALS pattern read as its chain whose derivation clashes (an ALS-XY-Chain
+// whose sets share cells, src/engine/truth.ts alsClash) draws no truth in
+// any view: its sets' candidates are members, beside its arrows and its
+// removals (decision 13). A Death Blossom draws no truth either: its stem's
+// candidates and each petal's digit the stem sees are what it acts
+// through, every petal's z the pattern, its other candidates members, and
+// a dashed weak tie with no head joins each stem digit to its petal
+// (decision 15). Its walk shows the stem first, then each branch's nodes.
 // A removed or placed node is the removal or the placement, its truth
 // plain from the mark.
 // A colouring whose truth is its parity (docs/hint-drawing-colouring.md)
@@ -54,7 +62,7 @@ import type { CellDigit, ChainLink, Step, UnitBand } from '../engine/steps';
 import { isParity, isTie } from '../engine/steps';
 import type { Frame, Part } from '../engine/hintFrames';
 import { drawnLinks, colouringDigit, walkFrames } from '../engine/hintFrames';
-import { deriveTruth } from '../engine/truth';
+import { alsClash, deriveTruth } from '../engine/truth';
 import { sees } from '../engine/board';
 import { tr } from '../engine/text';
 import { insideOneCell } from './hintGeometry';
@@ -118,7 +126,7 @@ export interface HintMarks {
    * digit in one house (the chain then proves its start the other way)
    */
   refuted: boolean;
-  /** the kinds of line a colouring draws, for its legend; none for any other step */
+  /** the kinds of line a colouring draws, for its legend, and a Death Blossom's weak ties; none for any other step */
   lines: Set<LineKind>;
   /** the groups the view draws on their bars, each with its members' mark, and the almost locked sets it draws as tiles, each with its tint; none for a step without sets */
   sets: SetMark[];
@@ -152,13 +160,14 @@ export type Premise = { assumed: boolean } & ({ kind: 'candidate' | 'group' } | 
 /**
  * What a derived chain assumes of its first node: false when it opens with
  * a strong link, true when it opens with a weak one; null for a step whose
- * truth is not derived, or whose derivation finds a fault. A first node
+ * truth is not derived, or whose derivation finds a fault, and for an ALS
+ * pattern whose chain clashes, which draws no truth. A first node
  * that is a digit of an almost locked set is worded as the set's, never as
  * a group, wherever its digit lies in the set
  */
 export function premiseOf(step: Step): Premise | null {
   const d = deriveTruth(step);
-  if (!d || d.problems.length || !d.nodes.length) return null;
+  if (!d || d.problems.length || !d.nodes.length || alsClash(step)) return null;
   const first = d.closure ? d.closure.node : d.nodes[0].node;
   const assumed = d.closure ? d.closure.assumed : d.nodes[0].truth;
   // the chain's first node is its first link's start, a loop's too
@@ -319,7 +328,10 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   // forcing chain's full view does (G18, G21)
   const derived = deriveTruth(step);
   const proofOnly = !!derived?.closure && (!opts.walking || show('conclusion'));
-  const truth = derived && !derived.problems.length && !proofOnly ? derived : null;
+  // an ALS pattern whose chain clashes draws no truth in any view, and no
+  // mark for its nodes: they are its sets' members (decision 13)
+  const clash = alsClash(step);
+  const truth = derived && !derived.problems.length && !proofOnly && !clash ? derived : null;
   const closed = links.length >= (step.links ?? []).length;
   const truthOf = (cd: CellDigit): 'true' | 'false' | 'oneOf' | null => {
     if (!truth) return null;
@@ -332,9 +344,13 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
     const t = truth.candidates.get(`${cd.cell}:${cd.digit}`);
     return t === 'true' ? 'true' : t === 'false' ? 'false' : t === 'groupTrue' ? 'oneOf' : null;
   };
-  const node = (cd: CellDigit) => mark(cd, truthOf(cd) ?? namedRole(step, cd) ?? 'primary');
+  const node = (cd: CellDigit) => {
+    if (!clash) mark(cd, truthOf(cd) ?? namedRole(step, cd) ?? 'primary');
+  };
   if (opts.walking && step.links?.length) {
-    // walking a chain: only the nodes of the links drawn so far
+    // walking a chain: only the nodes of the links drawn so far; a Death
+    // Blossom's stem, the candidates its ties come from, from its first frame
+    if (show('stem')) for (const l of step.links) if (l.undirected && l.fromSet === undefined) for (const cd of l.from) node(cd);
     for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
   } else {
     // a chain's truth comes before the roles, which mark only what it leaves
@@ -380,9 +396,11 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   for (const { set, style } of sets) if (style === 'als') for (const cd of step.sets![set].members) mark(cd, 'member');
   // two true candidates that cannot both be: the premise is impossible
   const trues = [...cands].flatMap(([cell, m]) => [...m].filter(([, k]) => k === 'true').map(([digit]) => ({ cell, digit })));
-  const clash = trues.some((a, i) => trues.slice(i + 1).some((b) => a.cell === b.cell || (a.digit === b.digit && sees(a.cell, b.cell))));
-  const refuted = !!truth && ((!!truth.closure && closed) || clash);
-  return { cands, inside, values, bands, refuted, lines: new Set(), sets };
+  const clashing = trues.some((a, i) => trues.slice(i + 1).some((b) => a.cell === b.cell || (a.digit === b.digit && sees(a.cell, b.cell))));
+  const refuted = !!truth && ((!!truth.closure && closed) || clashing);
+  // a Death Blossom's weak ties, dashed lines with no head, for its legend
+  const lines = new Set<LineKind>(links.some((l) => l.undirected && !l.strong && !insideOneCell(l)) ? ['weakTie'] : []);
+  return { cands, inside, values, bands, refuted, lines, sets };
 }
 
 /**

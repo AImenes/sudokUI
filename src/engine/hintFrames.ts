@@ -8,20 +8,23 @@
  * legend labels supply the words), then the conclusion. For a colouring
  * (docs/hint-drawing-colouring.md) they are each cluster with its ties,
  * then each link of the argument, then, where a colour is proven, the
- * proof, then the conclusion. A step whose walk has a single frame has
- * nothing to walk through, and the panel offers no walk for it.
+ * proof, then the conclusion. For a Death Blossom they are its stem, then
+ * each petal's branch, a petal of several cells introduced first, then the
+ * conclusion. A step whose walk has a single frame has nothing to walk
+ * through, and the panel offers no walk for it.
  */
 import { cellName, cellNames } from './board';
 import { CellDigit, ChainLink, ChainSet, Step, insideSet, isParity, isTie } from './steps';
 import { listAnd, tr, unitName } from './text';
-import { deriveTruth } from './truth';
+import { alsClash, deriveTruth, isAlsChain } from './truth';
 
 /**
  * A part of the drawing a frame shows: a pattern's bands and roles; a
  * colouring's clusters in their shades, and its proof (the colour proven
- * false as false rings, its partner as true discs); the conclusion.
+ * false as false rings, its partner as true discs); a Death Blossom's stem,
+ * its candidates before any branch is drawn; the conclusion.
  */
-export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'cluster0' | 'cluster1' | 'proof' | 'conclusion';
+export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'cluster0' | 'cluster1' | 'proof' | 'stem' | 'conclusion';
 
 export interface Frame {
   /** the sentence for this frame */
@@ -80,7 +83,7 @@ function nodeDigits(node: CellDigit[]): string {
  * whose words then say what the set does at that point (docs/hint-drawing-sets.md,
  * "The walk and its words"); none for a lone candidate or a group, whose
  * sentences are the chain's own, and none in a step whose truth is not
- * derived (a pattern's links between its sets claim no truth)
+ * derived (a Death Blossom's links claim no truth, and its walk is its own)
  */
 function alsAt(step: Step, index: number | undefined): ChainSet | undefined {
   if (step.truth !== 'derived' || index === undefined) return undefined;
@@ -264,7 +267,8 @@ export function describe(step: Step): string {
  */
 export function closureText(step: Step): string {
   const d = deriveTruth(step);
-  if (!d?.closure || d.problems.length) return '';
+  // an ALS pattern's chain that comes back to its first set proves no more than the pattern (decision 13)
+  if (!d?.closure || d.problems.length || alsClash(step)) return '';
   const node = d.closure.node;
   const cells = nodeCells(node);
   const digit = nodeDigits(node);
@@ -362,8 +366,86 @@ function parityFrames(step: Step): Frame[] {
   return frames;
 }
 
+/**
+ * What an ALS pattern's conclusion says before its removals
+ * (docs/hint-drawing-sets.md, "The walk and its words"): its two end sets,
+ * one of which holds z, and why each removal goes; empty for any other step
+ */
+function endsText(step: Step): string {
+  if (!isAlsChain(step)) return '';
+  const links = step.links!;
+  const F = step.sets?.[links[0].fromSet!]?.letter;
+  const L = step.sets?.[links[links.length - 1].toSet!]?.letter;
+  const z = step.eliminations[0]?.digit;
+  if (!F || !L || z === undefined) return '';
+  return tr`Set ${F} or set ${L} holds a ${z}: if ${F} holds none, ${L} holds one. Each removed ${z} sees every ${z} of both.`;
+}
+
+/**
+ * A Death Blossom's walk (docs/hint-drawing-sets.md, decision 15): no truth
+ * until phase 5 draws its branches, so each branch is told in words. The
+ * stem first, its candidates shown; then for each of its digits, in order,
+ * the petal's branch, the weak tie from the stem into the petal and the
+ * petal's lock, a petal of several cells introduced in a frame of its own
+ * before it, a one-cell petal in its branch's frame; then the conclusion,
+ * which is the full view
+ */
+function blossomFrames(step: Step): Frame[] {
+  const links = step.links ?? [];
+  const sets = step.sets ?? [];
+  const z = step.eliminations[0]?.digit;
+  // the ties from the stem, each starting a branch
+  const ties = links.flatMap((l, i) => (l.undirected && l.fromSet === undefined && l.toSet !== undefined ? [i] : []));
+  const show = new Set<Part>(['units', 'stem']);
+  const stem = cellName(links[ties[0]].from[0].cell);
+  const frames: Frame[] = [
+    { text: tr`The stem ${stem} holds ${listAnd(ties.map((i) => links[i].from[0].digit))}: one of them is true, and each has a petal.`, links: 0, show }
+  ];
+  ties.forEach((i, t) => {
+    const end = ties[t + 1] ?? links.length;
+    const k = links[i].toSet!;
+    const petal = sets[k];
+    const p = links[i].from[0].digit;
+    const L = petal.letter;
+    const n = petal.cells.length;
+    // the cells the petal holds z in, which the branch makes one of true
+    const lock = links.slice(i + 1, end).find((l) => insideSet(l) && l.fromSet === k);
+    const exits = uniq((lock?.to ?? petal.members.filter((m) => m.digit === z)).map((cd) => cd.cell));
+    let text: string;
+    if (n === 1) {
+      // a one-cell petal holds just the stem's digit and z, named in order as a one-cell set's are
+      const cell = cellName(petal.cells[0]);
+      const [a, b] = petal.digits;
+      text = tr`Petal ${L} is the cell ${cell}, which holds only ${a} and ${b}, and its ${p} sees the stem: if the stem is ${p}, ${cell} must be ${z}.`;
+    } else {
+      const cells = cellNames(petal.cells);
+      const house = unitName(petal.unit);
+      const digits = listAnd(petal.digits);
+      frames.push({
+        text: tr`Petal ${L}, for the stem's ${p}: the ${n} cells ${cells} of ${house} hold only ${digits}: one digit more than cells, and every ${p} of it sees the stem.`,
+        links: i,
+        sets: [k],
+        show
+      });
+      const exit = cellNames(exits);
+      text =
+        exits.length === 1
+          ? tr`If the stem is ${p}, petal ${L} holds no ${p}, so its other ${n} digits fill its ${n} cells: ${exit} must be ${z}.`
+          : tr`If the stem is ${p}, petal ${L} holds no ${p}, so its other ${n} digits fill its ${n} cells: one of ${exit} must be ${z}.`;
+    }
+    frames.push({ text, links: end, show });
+  });
+  frames.push({
+    text: `${tr`Whichever digit the stem takes, a petal holds a ${z}. Each removed ${z} sees every ${z} of every petal.`} ${conclusionText(step)}`,
+    links: links.length,
+    show: new Set<Part>(['units', 'stem', 'primary', 'secondary', 'fins', 'conclusion'])
+  });
+  return frames;
+}
+
 export function walkFrames(step: Step): Frame[] {
   if (isParity(step)) return parityFrames(step);
+  if (step.tech === 'DEATH_BLOSSOM' && step.links?.some((l) => l.undirected)) return blossomFrames(step);
   const frames: Frame[] = [];
   const base = new Set<Part>(['units']);
   if (step.links && step.links.length > 0) {
@@ -383,8 +465,10 @@ export function walkFrames(step: Step): Frame[] {
       const text = closing && i === step.links!.length - 1 ? `${linkText(link, step)} ${closing}` : linkText(link, step);
       frames.push({ text, links: i + 1, show: new Set(base) });
     });
+    // an ALS pattern names its two end sets first, and why each removal goes
+    const ends = endsText(step);
     frames.push({
-      text: conclusionText(step),
+      text: ends ? `${ends} ${conclusionText(step)}` : conclusionText(step),
       links: step.links.length,
       show: new Set<Part>(['units', 'primary', 'secondary', 'fins', 'conclusion'])
     });

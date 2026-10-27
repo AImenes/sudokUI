@@ -220,9 +220,11 @@ describe('worked examples', () => {
       // digit (a switch inside a cell, or a set's change of digit: its
       // marks say it), but a colouring's weak tie there is corner brackets;
       // and a dot beside the first node of each branch that infers
-      // something (a cluster of ties has no reading order, and a weak tie
-      // no direction; a chain goes on through a node it reached, or through
-      // another digit of a set it reached)
+      // something (a cluster of ties has no reading order, a weak tie no
+      // direction, and a set's lock draws nothing, so a Death Blossom's
+      // branches, a weak tie and a petal's lock, have no dot; a chain goes on
+      // through a node it reached, or through another digit of a set it
+      // reached)
       const share = (a: { cell: number }[], b: { cell: number }[]) => a.some((x) => b.some((y) => y.cell === x.cell));
       const digits = (node: { digit: number }[]) => [...new Set(node.map((cd) => cd.digit))].sort().join(',');
       const silent = (l: (typeof links)[number]) => !parity && ((share(l.from, l.to) && digits(l.from) !== digits(l.to)) || (l.fromSet !== undefined && l.fromSet === l.toSet));
@@ -232,7 +234,7 @@ describe('worked examples', () => {
       links.forEach((l, i) => {
         const continues = i > 0 && share(links[i - 1].to, l.from);
         if (!continues) counted = false;
-        if (l.undirected || counted) return;
+        if (l.undirected || (l.fromSet !== undefined && l.fromSet === l.toSet) || counted) return;
         starts++;
         counted = true;
       });
@@ -273,16 +275,49 @@ describe('worked examples', () => {
     expect(ends).toEqual({
       GROUPED_X_CYCLES: ['·-·', '·-group', 'group-·', '·-·', '·-·', '·-·'],
       GROUPED_NICE_LOOP: ['·-·', '·-group', 'group-·', '·-·', '·-·', '·-·', '·-group', 'group-·'],
-      // the restricted commons: A's 1 to B's; the wings' to the hinge C and on
-      ALS_XZ: ['A-B'],
-      ALS_XY_WING: ['A-C', 'C-B'],
-      ALS_XY_CHAIN: ['A-B', 'B-C', 'C-D'],
+      // the chains they derive (decision 11): each set's lock inside it, and
+      // the restricted commons between them, A's 1 to B's; the wing A's to
+      // the hinge C, and the hinge's to the wing B
+      ALS_XZ: ['A-A', 'A-B', 'B-B'],
+      ALS_XY_WING: ['A-A', 'A-C', 'C-C', 'C-B', 'B-B'],
+      ALS_XY_CHAIN: ['A-A', 'A-B', 'B-B', 'B-C', 'C-C', 'C-D', 'D-D'],
       AIC_GROUPED: ['·-·', '·-·', '·-·', '·-·', '·-·', '·-·', '·-group'],
       // into set A on 8, inside it from 8 to 9, out of it on 9
       AIC_ALS: ['·-·', '·-A', 'A-A', 'A-·', '·-·'],
-      // the stem is no set
-      DEATH_BLOSSOM: ['·-A', '·-B', '·-C']
+      // the stem is no set: a weak tie from it into each petal, and the petal's lock (decision 15)
+      DEATH_BLOSSOM: ['·-A', 'A-A', '·-B', 'B-B', '·-C', 'C-C']
     });
+  });
+
+  it("explain the ALS patterns' and Death Blossom's removals with the board's letters, so the Learn page needs no walk (docs/hint-drawing-sets.md, decision 22)", () => {
+    expect(EXAMPLES.ALS_XZ!.step.description).toBe(
+      'ALS-XZ: sets A (r8c2, r9c1) and B (r7c8, r8c9) each hold one digit more than they have cells, and every 1 of A sees every 1 of B, so at most one of them keeps a 1. The other loses its 1, its other digits fill its cells, and it holds a 5: A or B holds a 5, so 5 is removed from every cell that sees every 5 of both.'
+    );
+    // the hinge C holds 4 or 6, and so takes one of them from a wing
+    expect(EXAMPLES.ALS_XY_WING!.step.description).toMatch(
+      /^ALS-XY-Wing: the wings A \(r8c3, r8c8\) and B \(r4c9, r6c8\) and the hinge C \(r6c3\) .* C lacks at most one of its digits, so it holds a 4, and A then holds no 4, or a 6, and B then holds no 6\. .* A or B holds a 7, so 7 is removed from every cell that sees every 7 of both\.$/
+    );
+    // each set in turn loses its link digit and fills its cells
+    expect(EXAMPLES.ALS_XY_CHAIN!.step.description).toMatch(
+      /^ALS-XY-Chain: sets A \(r4c2, r4c7\), B \(r1c7\), C \(r1c5, r1c6\) and D \(r7c5\) .* linked by 9, 3 and 9: .* each set in turn loses its link digit and fills its cells\. A or D holds a 4, so 4 is removed from every cell that sees every 4 of both\.$/
+    );
+    // whichever digit the stem takes, its petal loses it and holds z
+    expect(EXAMPLES.DEATH_BLOSSOM!.step.description).toMatch(
+      /^Death Blossom: the stem r8c9 holds 2, 5 and 7, .*: A \(r9c7\) for 2, B \(r8c5, r9c6\) for 5 and C \(r8c1\) for 7\. Whichever digit the stem takes, its petal loses that digit, fills its cells with its other digits and holds a 4, so 4 is removed from every cell that sees every 4 of every petal\.$/
+    );
+    // and the Learn page reads each with its removals named, in every language
+    for (const [lang, table] of [['nb', engineNb], ['es', engineEs]] as const) {
+      setEngineText(lang, table);
+      try {
+        for (const tech of ['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'] as Tech[]) {
+          const text = exampleStep(tech, EXAMPLES[tech]!)!.description;
+          expect(text, `${lang} ${tech}`).not.toMatch(/ sets? A \(| every petal/);
+          for (const L of tech === 'DEATH_BLOSSOM' ? ['A', 'B', 'C'] : EXAMPLES[tech]!.step.sets!.map((x) => x.letter!)) expect(text, `${lang} ${tech}`).toContain(`${L} (`);
+        }
+      } finally {
+        setEngineText('en', null);
+      }
+    }
   });
 
   it('show a group as it mostly is, TRUE, and groups of three: one TRUE and one FALSE on the same cells (docs/hint-drawing-sets.md, decision 22)', () => {

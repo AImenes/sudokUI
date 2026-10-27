@@ -389,7 +389,8 @@ describe("the set techniques' drawings are drawn as the set fixture last wrote t
     expect(Object.keys(setsThen.examples)).toEqual([...SETS].sort());
     expect(Object.keys(setsThen.named)).toEqual(NAMED.map((n) => `${n.name}, step ${n.at}, ${n.tech}`));
     // the 49 grouped chains the paths offered before phase 4, derived, and
-    // the ALS patterns beside them, which are not yet
+    // the ALS patterns beside them, derived chains too since stage 8 but
+    // Death Blossom, which claims no truth
     const count: Record<string, number> = {};
     for (const tech of Object.keys(setsThen.paths).map(techOf)) count[tech] = (count[tech] ?? 0) + 1;
     expect(count).toEqual({

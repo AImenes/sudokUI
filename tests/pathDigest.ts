@@ -20,7 +20,11 @@
  * The same walk holds the steps it meets to their sets' rules
  * (tests/chainSets.ts, for tests/chainSets.test.ts): every step of every
  * path, and every find of the set techniques along the pools' and the
- * seeds' paths, so the minutes it takes are not spent twice.
+ * seeds' paths, so the minutes it takes are not spent twice; the ALS
+ * patterns' truth among them (an ALS-XZ, ALS-XY-Wing or ALS-XY-Chain
+ * derives cleanly, or is an ALS-XY-Chain whose sets share a cell drawn with
+ * no truth; a Death Blossom's branches derive), and it counts how each
+ * pattern derives.
  *
  * The finders take about eight minutes over all of it, so the puzzles are
  * dealt to four test files, tests/pathDigest.test.ts and
@@ -43,7 +47,7 @@ import { parseGrid, isSolved } from '../src/engine/board';
 import { findNextStep, findStep, applyStep } from '../src/engine/humanSolver';
 import type { CellDigit, Step } from '../src/engine/steps';
 import type { Tech } from '../src/engine/ratings';
-import { setProblems } from './chainSets';
+import { setProblems, derivationOf } from './chainSets';
 
 const FIXTURE = 'tests/fixtures/pathDigest.json';
 
@@ -105,10 +109,15 @@ const SWAPPED = ['.....72.4..83.9.76...5..1..4..871...............496..2..6..4..
 /** every puzzle whose path is held, in the fixture's order but for a swapped example's, which the fixture holds where the example stood */
 const PUZZLES = [...new Set([...POOLED, ...HARD, ...Object.values(EXAMPLES).map((ex) => ex!.puzzle), ...SWAPPED])];
 
-/** what the walk finds wrong with the sets of the steps it meets, and how many of them have sets */
+/**
+ * what the walk finds wrong with the sets of the steps it meets, how many of
+ * them have sets, and how the ALS patterns among them derive, cleanly or
+ * with a clash (decision 13), by technique
+ */
 interface SetsMet {
   problems: string[];
   withSets: number;
+  derived: Record<string, number>;
 }
 
 /** a puzzle's solve path, and the set techniques' first finds along it; each step met held to its sets' rules */
@@ -119,6 +128,8 @@ function walk(puzzle: string, menus: boolean, met: SetsMet): { path: string[]; s
   const hold = (s: Step, k: number) => {
     for (const p of setProblems(s, g.cands)) met.problems.push(`${puzzle}, step ${k}, ${s.tech}: ${p}`);
     if (s.sets) met.withSets++;
+    const derivation = derivationOf(s);
+    if (derivation) met.derived[`${s.tech} ${derivation}`] = (met.derived[`${s.tech} ${derivation}`] ?? 0) + 1;
   };
   for (let k = 0; k < 400 && !isSolved(g); k++) {
     const step = findNextStep(g);
@@ -143,7 +154,7 @@ function walk(puzzle: string, menus: boolean, met: SetsMet): { path: string[]; s
 /** the digest of some puzzles, as the code works them out now, and the sets met on the way */
 function digestFor(puzzles: string[]): { digest: Digest; met: SetsMet } {
   const d: Digest = { paths: {}, sets: {} };
-  const met: SetsMet = { problems: [], withSets: 0 };
+  const met: SetsMet = { problems: [], withSets: 0, derived: {} };
   for (const puzzle of puzzles) {
     const menus = POOLED.includes(puzzle);
     const { path, sets } = walk(puzzle, menus, met);
@@ -200,6 +211,10 @@ export function holdPathDigest(shard: number) {
       expect(met.problems).toEqual([]);
       // thousands of them with sets in every share
       expect(met.withSets).toBeGreaterThan(1000);
+      // the ALS patterns, clean or clashing (decision 13; tests/chainSets.ts holds which may clash, and that a clash draws no truth)
+      // eslint-disable-next-line no-console
+      console.info(`share ${shard + 1}: the ALS patterns' chains,`, Object.entries(met.derived).sort().map(([k, n]) => `${k} ${n}`).join(', '));
+      for (const tech of ['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN']) expect(met.derived[`${tech} clean`], tech).toBeGreaterThan(0);
     });
   });
 }

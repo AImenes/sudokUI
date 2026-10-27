@@ -567,7 +567,7 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
       return { kind: e.kind, label: e.label, colour: '#ffffff', ink: P.arrow };
     });
   }
-  const { shown, onValue, onBand, intoRemove, intoPlace, refuted, bars, setSquares, tiles } = legendKinds(step, drawn);
+  const { shown, onValue, onBand, intoRemove, intoPlace, refuted, bars, setSquares, tiles, lines } = legendKinds(step, drawn);
   const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
@@ -604,6 +604,8 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
         : tr`lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells`;
     out.push({ kind: 'tile', label, colour: fill, ink });
   }
+  // a Death Blossom's weak ties from its stem to its petals, dashed with no head (decision 15)
+  if (lines.has('weakTie')) out.push({ kind: 'weakTie', label: tr`dashed line: its two ends see each other, so at most one is true`, colour: '#ffffff', ink: P.arrow });
   return out;
 }
 
