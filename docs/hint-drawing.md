@@ -746,16 +746,27 @@ the values above are its final ones.
   two weak ties into one candidate no longer cross before it, and a
   boxed-in weak tie comes in from a free side (2404ed1).
 
-  Left for later, low: the Multi Colors search order hides a colour
-  seeing both behind a bridge (24% of the bridges on offer; decision 13,
-  its own reviewed change, since it changes solve paths); off the solve
-  paths, in corner or edge cells boxed in by marks, a few ties keep
-  outside the marks but under a mark and a gap, meet at under 20
-  degrees, cross a tie they share an end with, or run beside another
-  (the tests bound each); a walk number on a bracket's corner can touch
-  another line at a phone's size where no corner is clear (G14's
-  trade-off; phase 7); a big chain hint's layout on the main thread,
-  which main already pays (phase 7).
+  The Multi Colors search order (decision 13) is done, in its own change
+  after the merge: a colour seeing both colours of another cluster, on
+  any digit, comes before any bridge, so the 191 bridges that hid one on
+  the practice paths (26% of the bridges given there) are each a sees-both
+  now. No stored solve path, rating, practice puzzle or example changed;
+  9 of 480 served isomorphs of the saved Multi Colors puzzles take the
+  sees-both on their path, 10 points lower and at the same level.
+  Simple Colors' order followed in the same way, in its own change: a
+  wrap, on any digit, comes before any trap, so the 455 traps that hid one
+  on the practice paths (5% of the traps given there) are each a wrap now.
+  No stored solve path, rating, practice puzzle or example changed, nor
+  any of 800 served isomorphs of the stored puzzles whose path takes
+  Simple Colors.
+
+  Left for later, low: off the solve paths, in corner or edge cells boxed
+  in by marks, a few ties keep outside the marks but under a mark and a
+  gap, meet at under 20 degrees, cross a tie they share an end with, or
+  run beside another (the tests bound each); a walk number on a bracket's
+  corner can touch another line at a phone's size where no corner is clear
+  (G14's trade-off; phase 7); a big chain hint's layout on the main
+  thread, which main already pays (phase 7).
 - [ ] Phase 4: sets
 - [ ] Phase 5: forcing
 - [ ] Phase 6: words

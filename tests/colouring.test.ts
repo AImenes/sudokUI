@@ -17,10 +17,20 @@
  * examples': each tie clear of the other marks of its frame, each weak tie
  * clear of the other candidates of its digit, of the box lines and of the
  * other weak ties' ends, all laid out without the ties, and the walk's
- * numbers apart. Then the tree on its own, and over every position of
+ * numbers apart. Then the tree on its own; Multi Colors' search order
+ * (decision 13) where a bridge used to hide a colour seeing both, once on
+ * a solve path, and Simple Colors' where a trap used to hide a wrap; and
+ * over every position of
  * the practice pools' solve paths: the finders remove exactly what they
  * removed before they said their parity (tests/fixtures/colouringRemovals.json,
- * a hash per puzzle of every removal, taken before the change), every
+ * a hash per puzzle of every removal, taken before the change, and retaken
+ * when Multi Colors came to give a colour seeing both before any bridge:
+ * 191 of its steps, on 53 puzzles, a bridge become a sees-both and nothing
+ * else changed; and again when Simple Colors came to give a wrap before
+ * any trap: 455 of its steps, on 103 puzzles, a trap become a wrap and
+ * nothing else changed), Multi Colors gives a bridge only where no digit
+ * has a colour seeing both colours of another cluster and Simple Colors a
+ * trap only where no digit has a colour twice in a house, every
  * colouring passes checkParity and is one the chain trainer can take as
  * its goal (Build it yourself) and names every removal in its
  * explanation (the solver's own in Norwegian and Spanish too), a proven
@@ -32,10 +42,10 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import practice from '../src/content/practicePuzzles.json';
-import { parseGrid, isSolved, cloneGrid, bit, UNITS, popcount, cellName } from '../src/engine/board';
+import { parseGrid, isSolved, cloneGrid, bit, UNITS, popcount, cellName, sees } from '../src/engine/board';
 import type { Grid } from '../src/engine/board';
 import { solve } from '../src/engine/bruteForce';
-import { findNextStep, applyStep, findStep } from '../src/engine/humanSolver';
+import { findNextStep, applyStep, findStep, ratePuzzle } from '../src/engine/humanSolver';
 import type { Tech } from '../src/engine/ratings';
 import type { CellDigit, ChainLink, ColourRule, Step } from '../src/engine/steps';
 import { isParity, isTie } from '../src/engine/steps';
@@ -553,14 +563,18 @@ describe('the drawing of a colouring the finders give', () => {
     expect(toLine(p[p.length - 1], q)).toBeGreaterThanOrEqual(layout.r + SIZES.gap * SIZE);
   });
 
-  it('keeps clear of the end of another weak tie: a Multi Colors bridge goes round the end of its witness into r7c9', () => {
-    const g = positionAt('..2.....4...3.7291...8.43.....9..48..45...76..87..2.....64.1...4917.3...3.....1..', 14).grid;
+  it('keeps clear of the end of another weak tie: a Multi Colors bridge goes round the end of its witness into r3c3', () => {
+    // where the bridge into r7c9 this was found at became a colour seeing both (decision 13), a daily's bridge down
+    // column 3 past the removal in r3c3, where the witness from r3c8 ends: without that end as an obstacle it bends
+    // into it, through the witness
+    const g = positionAt('8..6.2.5....89..6.67...5.......4.1.9.1.5.8.3.3.4.2.......7...92.3..89....9.2.4..6', 21).grid;
     const s = findStep('MULTI_COLORS', g)!;
+    expect(s.colouring!.rule).toBe('bridge');
     const { shapes } = drawingOf(s, g.values, g.cands);
-    const [down, witness] = ['2r4c9-2r8c9', '2r8c8-2r7c9'].map((n) => s.links!.findIndex((l) => named(l) === n));
+    const [down, witness] = ['2r2c3-2r5c3', '2r3c8-2r3c3'].map((n) => s.links!.findIndex((l) => named(l) === n));
     expect(down).toBeGreaterThanOrEqual(0);
     expect(witness).toBeGreaterThanOrEqual(0);
-    // round the 2s of r5c9 and r7c9 on its line, on the side away from the witness's end
+    // round the 2 of r3c3 on its line, on the side away from the witness's end
     const [p, q] = [lineOf(shapes[down]), lineOf(shapes[witness])];
     expect(cross(p, q)).toBe(false);
     expect(toLine(q[q.length - 1], p)).toBeGreaterThanOrEqual(((SIZES.headWidth / 2 + SIZES.clearance) * SIZE) - 0.5);
@@ -679,7 +693,7 @@ describe('the words of a colouring the finders give, where they could mislead', 
     ['SIMPLE_COLORS', '3.......5.9......2..49..637..1632...95.1.7.28...8591..635..12..1......9.7.......1', 0],
     ['SIMPLE_COLORS', '....4..6...963..5.68..5......5462.7...2...1...9.7156......2..14.3..785...5..9....', 0],
     ['MULTI_COLORS', '.5.8.4.......73.1.......9.89.....4...7.9.2.35..1...27..........7...8...4.8..597..', 25],
-    ['MULTI_COLORS', '.4.7..953.........9.386.1.46..34...8.........7...21..61.8.943.2.........497..3.6.', 24],
+    ['MULTI_COLORS', '.....2.9..3......4..9..8.71....5..27.58..71..6...1...839.7.14......2....1....3.5.', 12],
     ['MEDUSA_3D', '3.......5.9......2..49..637..1632...95.1.7.28...8591..635..12..1......9.7.......1', 0],
     ['MEDUSA_3D', '1..52.97.5.39.8.1.................53..2.1.6..45.................4.3.62.7.95.72..8', 22],
     ['MEDUSA_3D', '238.6...5.5..4.8......2..9.8.6.34..7.........3..27.5.4.1..5......5.8..4.6...9.351', 21],
@@ -975,6 +989,122 @@ describe('the shortest drawn tree', () => {
   });
 });
 
+/**
+ * A digit's clusters (three or more candidates joined by conjugate pairs,
+ * as the finders take them), each as its two colours, worked out here apart
+ * from the finders
+ */
+function clustersApart(g: Grid, d: number): number[][][] {
+  const partners = new Map<number, number[]>();
+  for (const unit of UNITS) {
+    const two = unit.filter((c) => g.values[c] === 0 && g.cands[c] & bit(d));
+    if (two.length === 2) for (const [a, b] of [two, [two[1], two[0]]]) partners.set(a, [...(partners.get(a) ?? []), b]);
+  }
+  const clusters: number[][][] = [];
+  const reached = new Set<number>();
+  for (const start of partners.keys()) {
+    if (reached.has(start)) continue;
+    const colours: number[][] = [[], []];
+    const todo: [number, number][] = [[start, 0]];
+    reached.add(start);
+    while (todo.length) {
+      const [c, k] = todo.pop()!;
+      colours[k].push(c);
+      for (const n of partners.get(c)!) {
+        if (reached.has(n)) continue;
+        reached.add(n);
+        todo.push([n, 1 - k]);
+      }
+    }
+    if (colours[0].length + colours[1].length >= 3) clusters.push(colours);
+  }
+  return clusters;
+}
+
+/**
+ * A colour of one digit's cluster that sees both colours of another
+ * cluster of the digit: a candidate of that colour, or null when no digit
+ * has one
+ */
+function colourSeeingBoth(g: Grid): CellDigit | null {
+  for (let d = 1; d <= 9; d++) {
+    const clusters = clustersApart(g, d);
+    const meets = (a: number[], b: number[]) => a.some((x) => b.some((y) => sees(x, y)));
+    for (const one of clusters)
+      for (const other of clusters) {
+        if (one === other) continue;
+        for (const colour of one) if (meets(colour, other[0]) && meets(colour, other[1])) return { cell: colour[0], digit: d };
+      }
+  }
+  return null;
+}
+
+/**
+ * A colour of one digit's cluster that is twice in a house (a wrap): a
+ * candidate of that colour, or null when no digit has one
+ */
+function colourTwiceInAHouse(g: Grid): CellDigit | null {
+  for (let d = 1; d <= 9; d++)
+    for (const cluster of clustersApart(g, d))
+      for (const colour of cluster) if (UNITS.some((unit) => unit.filter((c) => colour.includes(c)).length >= 2)) return { cell: colour[0], digit: d };
+  return null;
+}
+
+describe("Multi Colors' search order (docs/hint-drawing-colouring.md, decision 13): a colour seeing both colours of another cluster, on any digit, before any bridge", () => {
+  it('on a solve path: an isomorph of a saved Multi Colors practice puzzle, as the worker serves one, proves a colour false where a bridge stood', () => {
+    // the fifth saved Multi Colors puzzle, .263...4.4...6....537.9......45..., through an isomorphism
+    const r = ratePuzzle('.......93.3...126.....3.58.8.2......76...5...91..6.3.....79.6..3.9....15.8.1.4...')!;
+    const at = r.steps.findIndex((s) => s.tech === 'MULTI_COLORS');
+    const s = r.steps[at];
+    expect(at).toBe(23);
+    // before decision 13 the search stopped at the bridge 4r4c2-4r8c2, removing 4r2c3 and 4r2c5, and the puzzle rated 1,082
+    expect([s.colouring!.rule, s.eliminations.map(nameOf).sort()]).toEqual(['seesBoth', ['4r1c7', '4r5c4', '4r6c9', '4r7c8', '4r8c2']]);
+    expect(s.description).toContain('The dark orange 4s see a dark purple 4 (r8c2 sees r4c2) and a light purple 4 (r5c4 sees r4c5)');
+    expect([r.score, r.level]).toEqual([1072, 'Hard']);
+  });
+
+  it("off the paths, where a bridge hid it: of the same two clusters either way, of another pair of the digit's clusters, on a later digit", () => {
+    const HIDDEN: [string, number, string, string[]][] = [
+      // before decision 13 a bridge removed 9r5c4; HoDoKu's order, both colours of a pair of clusters before its bridges, finds this one
+      ['3.....68.....13...5.64...3....75..6..27...54..5..41....9...43.8...58.....84.....6', 32, 'the same two clusters', ['9r1c4', '9r3c9', '9r4c6', '9r5c5', '9r6c8']],
+      // a bridge removed 5r8c1, 5r8c2 and 5r8c3; the same two clusters, the other one leaving (HoDoKu's pairs are ordered)
+      ['.4.7..953.........9.386.1.46..34...8.........7...21..61.8.943.2.........497..3.6.', 24, 'the same two clusters, the other leaving', ['5r5c5', '5r7c4', '5r9c7']],
+      // a bridge with orange 8r1c3, 8r9c1 against the purple cluster of r8c5; the colour seeing both is in another cluster
+      ['4..1.27.......3..45.7.9...3..45..62..8.....4..25..43..7...4.9.12..3.......67.9..2', 17, 'another pair of clusters', ['8r2c4', '8r3c8', '8r7c6']],
+      // a bridge on 2 removed 2r5c8
+      ['..8..6..29.4....8.2....9.3.....35.6.5...4...8.4.69.....9.7....6.1....5.97..9..3..', 16, 'a later digit', ['4r8c4', '4r9c6']]
+    ];
+    for (const [puzzle, at, where, removed] of HIDDEN) {
+      const g = positionAt(puzzle, at).grid;
+      const s = findMultiColors(g)!;
+      expect([s.colouring!.rule, s.colouring!.darkFalse, s.eliminations.map(nameOf).sort()], where).toEqual(['seesBoth', 1, removed]);
+      // the colour proven false is the one that sees both
+      expect(s.colouring!.clusters[1].dark.map(nameOf).sort(), where).toEqual(removed);
+      expect(checkParity(s, g.cands), where).toEqual([]);
+    }
+  });
+});
+
+describe("Simple Colors' search order (docs/hint-drawing-colouring.md, decision 13): a wrap, on any digit, before any trap", () => {
+  it("off the paths, where a trap hid it: of another cluster of the digit, on a later digit", () => {
+    // a cluster's own wrap was looked for before its trap already, so no trap hid one of its own cluster
+    const HIDDEN: [string, number, string, string[]][] = [
+      // the old order gave a trap there, removing 2r6c1
+      ['.6....5...8...7..95..61.7..75.........82.............3..2..9..86..7.2........39.4', 1, 'another cluster of the digit', ['2r4c8', '2r6c7']],
+      // a trap on 2, removing 2r7c4
+      ['.5...31..318.....2..2...64....127......4.6......398....75...9..2.....385..15...7.', 0, 'a later digit', ['5r2c6', '5r3c5']]
+    ];
+    for (const [puzzle, at, where, removed] of HIDDEN) {
+      const g = positionAt(puzzle, at).grid;
+      const s = findSimpleColors(g)!;
+      expect([s.colouring!.rule, s.colouring!.darkFalse, s.eliminations.map(nameOf).sort()], where).toEqual(['wrap', 0, removed]);
+      // the colour proven false is the one twice in a house
+      expect(s.colouring!.clusters[0].dark.map(nameOf).sort(), where).toEqual(removed);
+      expect(checkParity(s, g.cands), where).toEqual([]);
+    }
+  });
+});
+
 describe("over the practice pools' solve paths", () => {
   const FINDERS: [Tech, (g: Grid) => Step | null][] = [
     ['SIMPLE_COLORS', findSimpleColors],
@@ -994,6 +1124,13 @@ describe("over the practice pools' solve paths", () => {
     return h.toString(16).padStart(8, '0');
   }
   const found = { hits: 0, proven: 0, multi: 0, medusaSteps: 0 };
+  // the positions where a colour of some digit sees both colours of another
+  // cluster, and where Multi Colors gave anything else there, or a colour
+  // seeing both where there is none (decision 13)
+  const seeingBoth = { offered: 0, missed: [] as string[], unfounded: [] as string[] };
+  // and where a colour of some digit is twice in a house, and Simple Colors
+  // gave anything but a wrap there, or a wrap where there is none
+  const wrapping = { offered: 0, missed: [] as string[], unfounded: [] as string[] };
   const removals: Record<string, string> = {};
   const problems: string[] = [];
   const wrong: string[] = [];
@@ -1017,8 +1154,12 @@ describe("over the practice pools' solve paths", () => {
       const solution = solve(parseGrid(puzzle)!)!.values;
       const lines: string[] = [];
       for (let k = 0; k < 400 && !isSolved(g); k++) {
+        let multi: Step | null = null;
+        let simple: Step | null = null;
         for (const [tech, find] of FINDERS) {
           const s = find(g);
+          if (tech === 'MULTI_COLORS') multi = s;
+          if (tech === 'SIMPLE_COLORS') simple = s;
           if (!s) continue;
           found.hits++;
           const where = `${puzzle} @${k} ${tech}`;
@@ -1056,6 +1197,18 @@ describe("over the practice pools' solve paths", () => {
             }
           }
         }
+        const offered = colourSeeingBoth(g);
+        const gave = multi ? `${multi.colouring!.rule} ${multi.eliminations.map(nameOf).join(' ')}` : 'nothing';
+        if (offered) {
+          seeingBoth.offered++;
+          if (multi?.colouring!.rule !== 'seesBoth') seeingBoth.missed.push(`${puzzle} @${k}: ${nameOf(offered)}'s colour sees both, Multi Colors gave ${gave}`);
+        } else if (multi?.colouring!.rule === 'seesBoth') seeingBoth.unfounded.push(`${puzzle} @${k}: ${gave}`);
+        const twice = colourTwiceInAHouse(g);
+        const gaveSimple = simple ? `${simple.colouring!.rule} ${simple.eliminations.map(nameOf).join(' ')}` : 'nothing';
+        if (twice) {
+          wrapping.offered++;
+          if (simple?.colouring!.rule !== 'wrap') wrapping.missed.push(`${puzzle} @${k}: ${nameOf(twice)}'s colour is twice in a house, Simple Colors gave ${gaveSimple}`);
+        } else if (simple?.colouring!.rule === 'wrap') wrapping.unfounded.push(`${puzzle} @${k}: ${gaveSimple}`);
         const step = findNextStep(g);
         if (!step) break;
         if (isParity(step)) {
@@ -1107,10 +1260,24 @@ describe("over the practice pools' solve paths", () => {
     }
   }, 600_000);
 
-  it('remove exactly what the finders removed before they said their parity', () => {
+  it("remove exactly what the finders removed before they said their parity, but for the search order of Multi Colors and Simple Colors (decision 13)", () => {
     expect(found.hits).toBe(28317);
     const changed = puzzles.filter((p) => removals[p] !== removalsBefore[p]);
     expect(changed).toEqual([]);
+  });
+
+  it("give a colour seeing both colours of another cluster wherever a digit has one, and a bridge only where none has (decision 13)", () => {
+    // 1,754 positions have one; the search order before decision 13 gave a bridge at 191 of them
+    expect(seeingBoth.offered).toBe(1754);
+    expect(seeingBoth.missed.slice(0, 10)).toEqual([]);
+    expect(seeingBoth.unfounded.slice(0, 10)).toEqual([]);
+  });
+
+  it('give a wrap wherever a digit has a colour twice in a house, and a trap only where none has (decision 13)', () => {
+    // 1,055 positions have one; the search order before gave a trap at 455 of them
+    expect(wrapping.offered).toBe(1055);
+    expect(wrapping.missed.slice(0, 10)).toEqual([]);
+    expect(wrapping.unfounded.slice(0, 10)).toEqual([]);
   });
 
   it('pass checkParity against the board, colours and removals the solution bears out, and no old words', () => {
