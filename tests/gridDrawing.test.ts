@@ -204,9 +204,10 @@ const { findStep } = await import('../src/engine/humanSolver');
 
 describe("the app board draws an almost locked set's tiles and letter tabs (docs/hint-drawing-sets.md, decisions 5-10)", () => {
   const ALS: Tech[] = ['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'];
-  /** the tiles and tabs a full view draws, from the markup */
+  /** the tiles a full view draws, their outlines, a filled tile's fill, and the tabs, from the markup */
   const parts = (html: string) => ({
     tiles: [...html.matchAll(/<g class="hint-tile">([\s\S]*?)<\/g>/g)].map((m) => m[1]),
+    fills: [...html.matchAll(/<g class="hint-tile-fill">([\s\S]*?)<\/g>/g)].map((m) => m[1]),
     tabs: [...html.matchAll(/<g class="hint-tab">([\s\S]*?)<\/g>/g)].map((m) => m[1])
   });
 
@@ -216,7 +217,7 @@ describe("the app board draws an almost locked set's tiles and letter tabs (docs
       const html = board(tech);
       const m = frameMarks(ex.step, null, (c) => ex.values[c] !== '0');
       const tint = new Map(m.sets.filter((x) => x.tint).map((x) => [x.set, x.tint!]));
-      const { tiles, tabs } = parts(html);
+      const { tiles, fills, tabs } = parts(html);
       const lettered = ex.step.sets!.flatMap((x, k) => (tint.has(k) ? x.cells.map(() => k) : []));
       expect(tiles.length, tech).toBe(lettered.length);
       expect(tabs.length, tech).toBe(lettered.length);
@@ -225,8 +226,9 @@ describe("the app board draws an almost locked set's tiles and letter tabs (docs
         const own = tiles.filter((x) => x.includes(`var(--hint-set-${t}-ink)`));
         expect(own.length, `${tech}: set ${set.letter}`).toBeGreaterThanOrEqual(set.cells.length);
         // filled at the set alpha, outlined inwards three times, one for each board size, wider on a small board
+        const solid = own.filter((x) => !x.includes('stroke-dasharray')).length;
+        expect(fills.filter((x) => x.includes(`fill="var(--hint-set-${t})" style="fill-opacity:var(--hint-set-alpha)"`)).length, tech).toBe(solid);
         for (const x of own) {
-          expect(x, tech).toContain(`fill="var(--hint-set-${t})" style="fill-opacity:var(--hint-set-alpha)"`);
           expect([...x.matchAll(/class="hint-tile-(wide|small|tiny)"[^>]*stroke-width="([\d.]+)"/g)].map((y) => [y[1], y[2]]), tech).toEqual([
             ['wide', '2.5'],
             ['small', '4.5'],
@@ -237,10 +239,10 @@ describe("the app board draws an almost locked set's tiles and letter tabs (docs
         const letters = tabs.filter((x) => x.includes(`fill="var(--hint-set-${t}-ink)"`)).map((x) => x.match(/<text[^>]*font-weight="700" fill="var\(--cell-bg\)">([A-D])<\/text>/)?.[1]);
         expect(letters.filter((x) => x === set.letter).length, `${tech}: set ${set.letter}`).toBe(set.cells.length);
       }
-      // the layers (G11): the tiles over the bands, under the groups' bars and the marks; the tabs over the
-      // removal bars, under the start dots and the walk's numbers
+      // the layers (G11): the tiles over the bands, their fill under the groups' bars, their outlines under the
+      // marks; the tabs over the removal bars, under the start dots and the walk's numbers
       const at = (re: RegExp) => [...html.matchAll(new RegExp(re.source, 'g'))].map((x) => x.index!);
-      const tileAt = at(/<g class="hint-tile">/);
+      const tileAt = at(/<g class="hint-tile(?:-fill)?">/);
       const marks = at(/class="hint-(?:ring|one-of)"|<circle[^>]*fill="var\(--hint-(?:primary|secondary|fin|place)\)"/);
       expect(Math.max(...tileAt), tech).toBeLessThan(Math.min(...marks));
       const tabAt = at(/<g class="hint-tab">/);
@@ -274,7 +276,7 @@ describe("the app board draws an almost locked set's tiles and letter tabs (docs
     }
     const step = findStep('ALS_XY_CHAIN', g)!;
     const html = boardAt(position, step);
-    const { tiles, tabs } = parts(html);
+    const { tiles, fills, tabs } = parts(html);
     const m = frameMarks(step, null, (c) => position.values[c] !== '0');
     const tintOf = (k: number) => m.sets.find((x) => x.set === k)!.tint!;
     // r7c7: A's tile, filled, and D's outline dashed one width inside it at each size, with no fill
@@ -285,7 +287,9 @@ describe("the app board draws an almost locked set's tiles and letter tabs (docs
     };
     const here = tiles.filter(inCell);
     expect(here).toHaveLength(2);
-    expect(here[0]).toContain(`fill="var(--hint-set-${tintOf(0)})"`);
+    expect(fills.filter(inCell)).toHaveLength(1);
+    expect(fills.filter(inCell)[0]).toContain(`fill="var(--hint-set-${tintOf(0)})"`);
+    expect(here[0]).toContain(`stroke="var(--hint-set-${tintOf(0)}-ink)"`);
     expect(here[1]).not.toContain('fill-opacity');
     expect((here[1].match(/stroke-dasharray="6 4"/g) ?? []).length).toBe(3);
     expect(here[1]).toContain(`stroke="var(--hint-set-${tintOf(3)}-ink)"`);
@@ -371,5 +375,73 @@ describe("the app board draws boardDrawing's drawing, a square reaching further 
     // the stored AIC with Groups and Grouped Nice Loop each end an arrow at a square's corner side
     expect(ends).toBeGreaterThanOrEqual(4);
     expect(beyondDisc).toBeGreaterThanOrEqual(2);
+  });
+});
+
+const { MARK } = await import('../src/content/hintPalette');
+
+describe("the app board draws a tile's outline over its marks' keylines, review round 1 of phase 4 (docs/hint-drawing-sets.md, decision 5)", () => {
+  /** the drawing's circles and rects in order, each with where it is and what it is: a keyline, a tile's outline, or a mark */
+  const shapes = (html: string) => {
+    const out: { at: number; kind: 'key' | 'edge' | 'mark' | 'tabKey' | 'tab'; x: number; y: number }[] = [];
+    // a tab is drawn about its place's centre, in a group moved there
+    for (const m of html.matchAll(/<g transform="translate\(([\d.]+) ([\d.]+)\)"><g class="hint-tab(-key)?">/g)) {
+      out.push({ at: m.index!, kind: m[3] ? 'tabKey' : 'tab', x: Number(m[1]), y: Number(m[2]) });
+    }
+    for (const m of html.matchAll(/<(circle|rect)\b([^>]*)>/g)) {
+      const attr = (name: string) => m[2].match(new RegExp(`(?:^|\\s)${name}="([^"]*)"`))?.[1];
+      const n = (name: string) => Number(attr(name));
+      const cls = attr('class') ?? '';
+      const [x, y] = m[1] === 'circle' ? [n('cx'), n('cy')] : [n('x') + n('width') / 2, n('y') + n('height') / 2];
+      if (/^hint-tile-(wide|small|tiny)$/.test(cls)) out.push({ at: m.index!, kind: 'edge', x, y });
+      else if (attr('stroke') === 'var(--cell-bg)' && attr('fill') === 'none' && !Number.isNaN(x)) out.push({ at: m.index!, kind: 'key', x, y });
+      else if (/^hint-(ring|node|shade|one-of)$/.test(cls) || /^var\(--hint-(primary|secondary|fin|place)\)$/.test(attr('fill') ?? '')) out.push({ at: m.index!, kind: 'mark', x, y });
+    }
+    return out.sort((a, b) => a.at - b.at);
+  };
+  const cellAt = (p: { x: number; y: number }) => Math.floor((p.y - 4) / 100) * 9 + Math.floor((p.x - 4) / 100);
+
+  it("draws the keylines of a tile's marks and tabs first, then the tile's outline, then the marks and the tabs, so a mark in its edge row sits on the outline", () => {
+    // a mark in a tile's edge row reaches the tile's outer edge, keyline
+    // and all, on a small board: under its keyline the outline was hidden
+    expect((MARK.disc + MARK.keylineSmall) * 100).toBeGreaterThanOrEqual(MARK.tile * 100);
+    const puzzle = '.37.4......67.8...........972.....61..91.54..14.....856...........9.28......8.23.';
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    const position = fx.named['shared cells that derive, step 25, ALS_XY_CHAIN'].position as { puzzle: string; values: string; cands: number[] };
+    expect(position.puzzle).toBe(puzzle);
+    const g = parseGrid(puzzle)!;
+    for (let i = 0; i < 81; i++) {
+      g.values[i] = Number(position.values[i]);
+      g.cands[i] = position.cands[i];
+    }
+    const boards = [
+      ...(['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'] as Tech[]).map((tech) => ({ where: tech, html: board(tech) })),
+      { where: 'shared cells that derive', html: boardAt(position, findStep('ALS_XY_CHAIN', g)!) }
+    ];
+    for (const { where, html } of boards) {
+      const all = shapes(html);
+      const edges = all.filter((s) => s.kind === 'edge');
+      const tiled = new Set(edges.map(cellAt));
+      expect(tiled.size, where).toBeGreaterThan(0);
+      let marks = 0;
+      for (const cell of tiled) {
+        const here = all.filter((s) => cellAt(s) === cell);
+        const first = Math.min(...here.filter((s) => s.kind === 'edge').map((s) => s.at));
+        const last = Math.max(...here.filter((s) => s.kind === 'edge').map((s) => s.at));
+        for (const s of here) {
+          if (s.kind === 'key' || s.kind === 'tabKey') expect(s.at, `${where}: a keyline in cell ${cell}`).toBeLessThan(first);
+          if (s.kind === 'mark' || s.kind === 'tab') expect(s.at, `${where}: a mark in cell ${cell}`).toBeGreaterThan(last);
+        }
+        expect(here.filter((s) => s.kind === 'tabKey').length, `${where}: cell ${cell}`).toBe(here.filter((s) => s.kind === 'tab').length);
+        marks += here.filter((s) => s.kind === 'mark').length;
+      }
+      expect(marks, where).toBeGreaterThan(0);
+      // a mark on no tile keeps its keyline with it, as before
+      const loose = all.filter((s) => (s.kind === 'mark' || s.kind === 'key') && !tiled.has(cellAt(s)));
+      for (const s of loose.filter((x) => x.kind === 'mark')) {
+        const key = loose.filter((x) => x.kind === 'key' && x.x === s.x && x.y === s.y && x.at < s.at).at(-1);
+        if (key) expect(all.filter((x) => x.at > key.at && x.at < s.at && x.kind !== 'key'), `${where}: the mark at ${s.x}, ${s.y}`).toEqual([]);
+      }
+    }
   });
 });

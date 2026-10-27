@@ -709,7 +709,10 @@ for (const [name, size] of [
       await expect(tiles).toHaveCount(2);
       await expect(tabs).toHaveCount(2);
       await expect(tabs.locator('text')).toHaveText(['A', 'A']);
-      await expect(tabs.first().locator('rect').nth(1)).toHaveAttribute('fill', 'var(--hint-set-1-ink)');
+      // the tab: one rect in the set's ink, its keyline drawn apart, under the tile's outline
+      await expect(tabs.first().locator('rect')).toHaveCount(1);
+      await expect(tabs.first().locator('rect')).toHaveAttribute('fill', 'var(--hint-set-1-ink)');
+      await expect(page.locator('svg.board g.hint-tab-key')).toHaveCount(2);
       // the outline drawn for the board's size: 2.5 units on a desktop, 4.5 on a phone, and the tab 26 units across there
       const shownOutline = tiles.first().locator(name === 'phone' ? 'rect.hint-tile-small' : 'rect.hint-tile-wide');
       await expect(shownOutline).toBeVisible();
@@ -718,6 +721,8 @@ for (const [name, size] of [
       const scale = await tabs.first().evaluate((el) => getComputedStyle(el).transform);
       if (name === 'phone') expect(scale).toMatch(/^matrix\(1\.444\d*, 0, 0, 1\.444\d*, 0, 0\)$/);
       else expect(scale).toBe('none');
+      // the tab's keyline grows with it
+      expect(await page.locator('svg.board g.hint-tab-key').first().evaluate((el) => getComputedStyle(el).transform)).toBe(scale);
       // four of its five links drawn: the one inside the set draws nothing
       await expect(page.locator('svg.board .chain-shaft')).toHaveCount(4);
       await expect(page.locator('.hint-legend li', { hasText: 'lettered cells' }).locator('i.swatch-set-1')).toHaveCount(1);

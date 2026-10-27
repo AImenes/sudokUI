@@ -229,12 +229,15 @@ const MARK_FILL: Record<string, { fill: string; ink: string }> = {
  * placement; a ring for a removal, tinted inside, or filled with the colour
  * a colouring gave it (the bar over its digit is drawn later, on top)
  */
-function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; inside?: string }) {
+function HintMark({ x, y, kind, inside, part }: { x: number; y: number; kind: string; inside?: string; part?: 'key' | 'body' }) {
   const s = SIZE;
-  // the keyline: a thin ring in the board's colour round the whole mark
-  const keyOf = (outer: number, width = MARK.keyline, className?: string) => (
-    <circle className={className} cx={x} cy={y} r={(outer + width / 2) * s} fill="none" stroke="var(--cell-bg)" strokeWidth={width * s} />
-  );
+  // the keyline: a thin ring in the board's colour round the whole mark;
+  // `part` draws the keyline alone, or the mark without it, for a mark on
+  // a set's tile, whose outline goes between the two (Grid, below)
+  const key = part !== 'body';
+  const body = part !== 'key';
+  const keyOf = (outer: number, width = MARK.keyline, className?: string) =>
+    key && <circle className={className} cx={x} cy={y} r={(outer + width / 2) * s} fill="none" stroke="var(--cell-bg)" strokeWidth={width * s} />;
   const keyline = keyOf(MARK.disc);
   // an almost locked set's member: no shape, its digit bold in the ring's
   // ink on the set's tile (docs/hint-drawing-sets.md, decision 10)
@@ -245,16 +248,18 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
     return (
       <g>
         {keyline}
-        <circle
-          className="hint-ring"
-          cx={x}
-          cy={y}
-          r={MARK.ring * s}
-          fill="var(--hint-false)"
-          style={{ fillOpacity: 'var(--hint-ring-tint)' }}
-          stroke="var(--hint-false)"
-          strokeWidth={MARK.ringStroke * s}
-        />
+        {body && (
+          <circle
+            className="hint-ring"
+            cx={x}
+            cy={y}
+            r={MARK.ring * s}
+            fill="var(--hint-false)"
+            style={{ fillOpacity: 'var(--hint-ring-tint)' }}
+            stroke="var(--hint-false)"
+            strokeWidth={MARK.ringStroke * s}
+          />
+        )}
       </g>
     );
   }
@@ -266,34 +271,37 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
     const half = MARK.oneOf * s;
     const round = MARK.oneOfRadius * s;
     const edge = MARK.oneOfEdge * s;
-    const squareKey = (width: number, className: string) => (
-      <rect
-        className={className}
-        x={x - half - (width * s) / 2}
-        y={y - half - (width * s) / 2}
-        width={2 * half + width * s}
-        height={2 * half + width * s}
-        rx={round + (width * s) / 2}
-        fill="none"
-        stroke="var(--cell-bg)"
-        strokeWidth={width * s}
-      />
-    );
+    const squareKey = (width: number, className: string) =>
+      key && (
+        <rect
+          className={className}
+          x={x - half - (width * s) / 2}
+          y={y - half - (width * s) / 2}
+          width={2 * half + width * s}
+          height={2 * half + width * s}
+          rx={round + (width * s) / 2}
+          fill="none"
+          stroke="var(--cell-bg)"
+          strokeWidth={width * s}
+        />
+      );
     return (
       <g>
         {squareKey(MARK.keyline, 'hint-one-of-wide')}
         {squareKey(MARK.keylineSmall, 'hint-one-of-small')}
-        <rect
-          className="hint-one-of"
-          x={x - half + edge / 2}
-          y={y - half + edge / 2}
-          width={2 * half - edge}
-          height={2 * half - edge}
-          rx={round - edge / 2}
-          fill="var(--hint-one-of)"
-          stroke="var(--hint-place-ink)"
-          strokeWidth={edge}
-        />
+        {body && (
+          <rect
+            className="hint-one-of"
+            x={x - half + edge / 2}
+            y={y - half + edge / 2}
+            width={2 * half - edge}
+            height={2 * half - edge}
+            rx={round - edge / 2}
+            fill="var(--hint-one-of)"
+            stroke="var(--hint-place-ink)"
+            strokeWidth={edge}
+          />
+        )}
       </g>
     );
   }
@@ -303,7 +311,7 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
     return (
       <g>
         {keyline}
-        <circle className="hint-node" cx={x} cy={y} r={MARK.ring * s} fill="none" stroke="var(--hint-arrow)" strokeWidth={MARK.ringStroke * s} />
+        {body && <circle className="hint-node" cx={x} cy={y} r={MARK.ring * s} fill="none" stroke="var(--hint-arrow)" strokeWidth={MARK.ringStroke * s} />}
       </g>
     );
   }
@@ -311,13 +319,13 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
     return inside ? (
       <g>
         {keyline}
-        <circle className="hint-ring" cx={x} cy={y} r={MARK.ring * s} fill={MARK_FILL[inside].fill} stroke="var(--hint-elim)" strokeWidth={MARK.ringStroke * s} />
+        {body && <circle className="hint-ring" cx={x} cy={y} r={MARK.ring * s} fill={MARK_FILL[inside].fill} stroke="var(--hint-elim)" strokeWidth={MARK.ringStroke * s} />}
       </g>
     ) : (
       <g>
         {keyline}
-        <circle cx={x} cy={y} r={MARK.ring * s} fill="var(--hint-elim)" style={{ fillOpacity: 'var(--hint-ring-tint)' }} />
-        <circle className="hint-ring" cx={x} cy={y} r={MARK.ring * s} fill="none" stroke="var(--hint-elim)" strokeWidth={MARK.ringStroke * s} />
+        {body && <circle cx={x} cy={y} r={MARK.ring * s} fill="var(--hint-elim)" style={{ fillOpacity: 'var(--hint-ring-tint)' }} />}
+        {body && <circle className="hint-ring" cx={x} cy={y} r={MARK.ring * s} fill="none" stroke="var(--hint-elim)" strokeWidth={MARK.ringStroke * s} />}
       </g>
     );
   }
@@ -336,10 +344,10 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
         ].map(([cls, r, w]) => (
           <g key={cls as string} className={cls as string}>
             {keyOf((r as number) + (w as number) / 2)}
-            <circle cx={x} cy={y} r={(r as number) * s} fill="none" stroke={ring} strokeWidth={(w as number) * s} />
+            {body && <circle cx={x} cy={y} r={(r as number) * s} fill="none" stroke={ring} strokeWidth={(w as number) * s} />}
           </g>
         ))}
-        <circle cx={x} cy={y} r={(MARK.disc - MARK.edge / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.edge * s} />
+        {body && <circle cx={x} cy={y} r={(MARK.disc - MARK.edge / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.edge * s} />}
       </g>
     );
   }
@@ -355,14 +363,14 @@ function HintMark({ x, y, kind, inside }: { x: number; y: number; kind: string; 
       <g>
         {keyOf(MARK.disc, MARK.keyline, 'hint-shade-wide')}
         {keyOf(MARK.disc, MARK.keylineSmall, 'hint-shade-small')}
-        <circle className="hint-shade" cx={x} cy={y} r={(MARK.disc - MARK.shadeEdge / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.shadeEdge * s} />
+        {body && <circle className="hint-shade" cx={x} cy={y} r={(MARK.disc - MARK.shadeEdge / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.shadeEdge * s} />}
       </g>
     );
   }
   return (
     <g>
       {keyline}
-      <circle cx={x} cy={y} r={(MARK.disc - MARK.edge / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.edge * s} />
+      {body && <circle cx={x} cy={y} r={(MARK.disc - MARK.edge / 2) * s} fill={fill} stroke={ink} strokeWidth={MARK.edge * s} />}
     </g>
   );
 }
@@ -1292,6 +1300,7 @@ export function Grid() {
   // (docs/hint-drawing-sets.md, decisions 5-8)
   const tints = new Map((drawn?.sets ?? []).flatMap((m) => (m.tint ? [[m.set, m.tint] as const] : [])));
   const setTiles = drawing && hint && (!paused || won) ? tilesIn(hint, drawing.sets, tints.keys()) : [];
+  const tiled = new Set(setTiles.map((t) => t.cell));
   const setTabs = drawing && (!paused || won) ? drawing.sets.tabs.filter((t) => tints.has(t.set)) : [];
   // the mask that cuts the digits out of the bars and the arrows: before
   // the bars when any is drawn, else where the arrows are
@@ -1430,26 +1439,95 @@ export function Grid() {
         {/* an almost locked set's tiles (G11, docs/hint-drawing-sets.md
             decisions 5 and 6): over the bands and under everything else, a
             tile round each cell's candidates in the set's tint at half
-            strength, outlined inwards in its ink, each width a drawing of
-            its own for its board's size (styles.css .hint-tile-wide,
-            -small, -tiny); a cell in two sets draws the other set's
-            outline dashed, one outline width inside, with no fill */}
-        {setTiles.map((tile) => {
-          const tint = tints.get(tile.set)!;
-          const rx = MARK.tileRadius * SIZE;
-          return (
-            <g key={`tile-${tile.set}-${tile.cell}`} className="hint-tile">
-              {tile.inset === 0 && (
+            strength; its outline is drawn over its marks' keylines, below */}
+        {setTiles.map(
+          (tile) =>
+            tile.inset === 0 && (
+              <g key={`tile-${tile.set}-${tile.cell}`} className="hint-tile-fill">
                 <rect
                   x={tile.x0}
                   y={tile.y0}
                   width={tile.x1 - tile.x0}
                   height={tile.y1 - tile.y0}
-                  rx={rx}
-                  fill={`var(--hint-set-${tint})`}
+                  rx={MARK.tileRadius * SIZE}
+                  fill={`var(--hint-set-${tints.get(tile.set)!})`}
                   style={{ fillOpacity: 'var(--hint-set-alpha)' }}
                 />
-              )}
+              </g>
+            )
+        )}
+
+        {/* a group's bar (G11, docs/hint-drawing-sets.md decision 2): a
+            straight line in the gutter beside its members, in their mark's
+            ink, under the marks, whose keylines part them from it, with the
+            digits cut out of it as out of the arrows */}
+        {groupBars.length > 0 && knockout}
+        {groupBars.length > 0 && (
+          <g className="hint-group-bars" mask={`url(#${maskId})`}>
+            {groupBars.map(({ bar, style }) => (
+              <line
+                key={`gb-${bar.set}`}
+                className="hint-group-bar"
+                x1={bar.a.x}
+                y1={bar.a.y}
+                x2={bar.b.x}
+                y2={bar.b.y}
+                stroke={BAR_INK[style]}
+                strokeWidth={MARK.groupBarStroke * SIZE}
+                strokeLinecap="round"
+              />
+            ))}
+          </g>
+        )}
+
+        {/* the keylines of the marks on a set's tiles, then the tiles'
+            outlines over them, in the set's ink, stroked inwards, each width
+            a drawing of its own for its board's size (styles.css
+            .hint-tile-wide, -small, -tiny), then the marks: a mark in a
+            tile's edge row reaches its outer edge, keyline and all, on a
+            small board, and its keyline would hide the outline there
+            (docs/hint-drawing-sets.md, decision 5); a cell in two sets
+            draws the other set's outline dashed, one outline width inside */}
+        {(!paused || won) &&
+          [...hintMarks].flatMap(([i, m]) =>
+            cells[i].value || !tiled.has(i)
+              ? []
+              : [...m.entries()].map(([d, kind]) => (
+                  <HintMark
+                    key={`k-${i}-${d}`}
+                    x={M + (i % 9) * SIZE + candX(d)}
+                    y={M + Math.floor(i / 9) * SIZE + candY(d) - 7}
+                    kind={kind}
+                    inside={hintRings.get(i)?.get(d)}
+                    part="key"
+                  />
+                ))
+          )}
+        {setTabs.map((tab) => {
+          const half = (MARK.tab * SIZE) / 2;
+          const k = MARK.keyline * SIZE;
+          return (
+            <g key={`tab-key-${tab.set}-${tab.cell}`} transform={`translate(${tab.p.x} ${tab.p.y})`}>
+              <g className="hint-tab-key">
+                <rect
+                  x={-half - k / 2}
+                  y={-half - k / 2}
+                  width={2 * half + k}
+                  height={2 * half + k}
+                  rx={MARK.tabRadius * SIZE + k / 2}
+                  fill="none"
+                  stroke="var(--cell-bg)"
+                  strokeWidth={k}
+                />
+              </g>
+            </g>
+          );
+        })}
+        {setTiles.map((tile) => {
+          const tint = tints.get(tile.set)!;
+          const rx = MARK.tileRadius * SIZE;
+          return (
+            <g key={`edge-${tile.set}-${tile.cell}`} className="hint-tile">
               {(
                 [
                   ['wide', MARK.tileStroke],
@@ -1479,29 +1557,6 @@ export function Grid() {
           );
         })}
 
-        {/* a group's bar (G11, docs/hint-drawing-sets.md decision 2): a
-            straight line in the gutter beside its members, in their mark's
-            ink, under the marks, whose keylines part them from it, with the
-            digits cut out of it as out of the arrows */}
-        {groupBars.length > 0 && knockout}
-        {groupBars.length > 0 && (
-          <g className="hint-group-bars" mask={`url(#${maskId})`}>
-            {groupBars.map(({ bar, style }) => (
-              <line
-                key={`gb-${bar.set}`}
-                className="hint-group-bar"
-                x1={bar.a.x}
-                y1={bar.a.y}
-                x2={bar.b.x}
-                y2={bar.b.y}
-                stroke={BAR_INK[style]}
-                strokeWidth={MARK.groupBarStroke * SIZE}
-                strokeLinecap="round"
-              />
-            ))}
-          </g>
-        )}
-
         {/* a hint's marks, under the grid lines, the arrows and the digits */}
         {(!paused || won) &&
           [...hintMarks].flatMap(([i, m]) =>
@@ -1514,6 +1569,7 @@ export function Grid() {
                     y={M + Math.floor(i / 9) * SIZE + candY(d) - 7}
                     kind={kind}
                     inside={hintRings.get(i)?.get(d)}
+                    part={tiled.has(i) ? 'body' : undefined}
                   />
                 ))
           )}
@@ -1601,26 +1657,16 @@ export function Grid() {
 
         {/* a set's letter tabs (G11, docs/hint-drawing-sets.md decision 7):
             over the digits and the removal bars, under the start dots and
-            the walk's numbers; a rounded square in the set's ink with a
-            keyline, the letter bold in the board's colour, drawn about its
-            place's centre in a group moved there, which a small board
-            enlarges (styles.css .hint-tab) */}
+            the walk's numbers; a rounded square in the set's ink (its
+            keyline drawn apart, under the tile's outline, above), the
+            letter bold in the board's colour, drawn about its place's
+            centre in a group moved there, which a small board enlarges
+            (styles.css .hint-tab) */}
         {setTabs.map((tab) => {
           const half = (MARK.tab * SIZE) / 2;
-          const k = MARK.keyline * SIZE;
           return (
             <g key={`tab-${tab.set}-${tab.cell}`} transform={`translate(${tab.p.x} ${tab.p.y})`}>
               <g className="hint-tab">
-                <rect
-                  x={-half - k / 2}
-                  y={-half - k / 2}
-                  width={2 * half + k}
-                  height={2 * half + k}
-                  rx={MARK.tabRadius * SIZE + k / 2}
-                  fill="none"
-                  stroke="var(--cell-bg)"
-                  strokeWidth={k}
-                />
                 <rect x={-half} y={-half} width={2 * half} height={2 * half} rx={MARK.tabRadius * SIZE} fill={`var(--hint-set-${tints.get(tab.set)}-ink)`} />
                 <text y={4.5} textAnchor="middle" fontSize={MARK.tabLetter * SIZE} fontWeight={700} fill="var(--cell-bg)">
                   {tab.letter}

@@ -252,12 +252,16 @@ const besideCell = (a: number, b: number) =>
 
 /**
  * Each almost locked set's tint (docs/hint-drawing-sets.md, decision 8), by
- * its index into Step.sets: up to three sets take one each, in letter
- * order; four or more take, in letter order, the lowest tint no set they
- * conflict with has already (a link between the two, a cell they share, or
- * a cell side), and where none is free the lowest no set linked to them
- * has, so a tint is reused but never on two linked sets. Sets that share a
- * tint are told apart by their letters
+ * its index into Step.sets. Of every way to give the three tints to the
+ * sets, in letter order, the one that puts one tint on the fewest pairs of
+ * linked sets (none: a chain's links join its sets in a line, or a loop,
+ * which three tints always part), then on the fewest pairs of sets that
+ * conflict (a link between the two, a cell they share, or a cell side),
+ * then uses the tints most evenly (the fewest pairs alike), and of those
+ * the first in letter order, A's tint the lowest, then B's: so up to three
+ * sets take one each in letter order, and a chain of four shows all three,
+ * one tint on two sets that do not conflict where the sets allow it. Sets
+ * that share a tint are told apart by their letters
  */
 export function setTints(step: Step): Map<number, Tint> {
   const sets = step.sets ?? [];
@@ -265,22 +269,37 @@ export function setTints(step: Step): Map<number, Tint> {
     .map((_, k) => k)
     .filter((k) => sets[k].kind === 'als')
     .sort((a, b) => (sets[a].letter ?? '').localeCompare(sets[b].letter ?? '') || a - b);
-  const out = new Map<number, Tint>();
   const TINTS: Tint[] = [1, 2, 3];
-  if (order.length <= TINTS.length) {
-    order.forEach((k, i) => out.set(k, TINTS[i]));
-    return out;
-  }
   const linked = (a: number, b: number) =>
     (step.links ?? []).some((l) => (l.fromSet === a && l.toSet === b) || (l.fromSet === b && l.toSet === a));
   const touch = (a: number, b: number) => sets[a].cells.some((x) => sets[b].cells.some((y) => x === y || besideCell(x, y)));
-  for (const k of order) {
-    const taken = (near: (a: number, b: number) => boolean) => new Set([...out].filter(([o]) => near(k, o)).map(([, t]) => t));
-    const conflicts = taken((a, b) => linked(a, b) || touch(a, b));
-    const links = taken(linked);
-    out.set(k, TINTS.find((t) => !conflicts.has(t)) ?? TINTS.find((t) => !links.has(t)) ?? 1);
-  }
-  return out;
+  // what one more set's tint adds, against the sets before it in letter
+  // order: linked pairs alike, conflicting pairs alike, pairs alike
+  const near = order.map((k, i) => order.slice(0, i).map((o) => ({ linked: linked(k, o), conflict: linked(k, o) || touch(k, o) })));
+  const costOf = (given: Tint[], t: Tint): number[] => {
+    const i = given.length;
+    const alike = given.map((x, j) => (x === t ? near[i][j] : null)).filter((x) => x !== null);
+    return [alike.filter((x) => x.linked).length, alike.filter((x) => x.conflict).length, alike.length];
+  };
+  const add = (a: number[], b: number[]) => a.map((x, k) => x + b[k]);
+  const below = (a: number[], b: number[]) => {
+    const k = a.findIndex((x, j) => x !== b[j]);
+    return k >= 0 && a[k] < b[k];
+  };
+  // a search in letter order, each tint in turn, lowest first, keeping the
+  // first way of the least cost; a cost only grows as sets are added, so a
+  // way already no better than the best is left there
+  let best: { tints: Tint[]; cost: number[] } | undefined;
+  const search = (given: Tint[], cost: number[]) => {
+    if (best && !below(cost, best.cost)) return;
+    if (given.length === order.length) {
+      best = { tints: given, cost };
+      return;
+    }
+    for (const t of TINTS) search([...given, t], add(cost, costOf(given, t)));
+  };
+  search([], [0, 0, 0]);
+  return new Map(order.map((k, i) => [k, best!.tints[i]]));
 }
 
 /**

@@ -303,8 +303,8 @@ const playerOn = (theme: Theme) => PALETTE.map((c) => over(c, PLAYER_ALPHA, BOAR
 const SET_FIGURES: Record<Theme, { tiles: string[]; apart: number[]; fromBoard: number[]; hintInk?: number[]; overPlayer: number; inks: number[] }> = {
   light: { tiles: ['#fdf59b', '#dfaac0', '#c6abff'], apart: [15.6, 16.1, 15.3], fromBoard: [9.4, 15.3, 15.8], hintInk: [14.14, 8.05, 8.06], overPlayer: 5.25, inks: [6.04, 6.13, 6.12] },
   rose: { tiles: ['#fdf39a', '#dfa8bf', '#c6a9fe'], apart: [15.5, 16.0, 15.3], fromBoard: [8.3, 15.0, 15.7], hintInk: [13.95, 7.93, 7.94], overPlayer: 5.25, inks: [6.04, 6.13, 6.12] },
-  dark: { tiles: ['#323418', '#683a55', '#2e207f'], apart: [16.4, 17.7, 14.0], fromBoard: [9.3, 11.0, 11.1], hintInk: [11.32, 7.99, 11.4], overPlayer: 4.01, inks: [9.6, 7.27, 6.03] },
-  forest: { tiles: ['#2f360e', '#653c4b', '#2b2275'], apart: [16.5, 13.9, 18.2], fromBoard: [8.1, 14.2, 9.6], overPlayer: 4.01, inks: [9.6, 7.27, 6.03] }
+  dark: { tiles: ['#323418', '#683a55', '#171e6c'], apart: [16.4, 16.8, 14.0], fromBoard: [9.3, 11.0, 9.4], hintInk: [11.32, 7.99, 12.91], overPlayer: 4.01, inks: [9.6, 7.27, 6.03] },
+  forest: { tiles: ['#2f360e', '#653c4b', '#142062'], apart: [16.5, 14.0, 17.9], fromBoard: [8.1, 14.2, 8.5], overPlayer: 4.01, inks: [9.6, 7.27, 6.03] }
 };
 
 describe('a "one of these" square (docs/hint-drawing-sets.md, decision 1)', () => {
@@ -334,8 +334,8 @@ describe('a "one of these" square (docs/hint-drawing-sets.md, decision 1)', () =
     const FIGURES: Record<Theme, { trueDisc: number; falseInside: number; pattern: number; board: number; tiles: number[]; player: number }> = {
       light: { trueDisc: 11.6, falseInside: 10.6, pattern: 20.8, board: 13.5, tiles: [12.1, 12.1, 12.1], player: 2.4 },
       rose: { trueDisc: 11.6, falseInside: 10.6, pattern: 20.8, board: 13.4, tiles: [12.1, 12.1, 12.1], player: 2.4 },
-      dark: { trueDisc: 22.9, falseInside: 11.3, pattern: 22.8, board: 19.8, tiles: [12.2, 12.2, 12.2], player: 1.9 },
-      forest: { trueDisc: 22.9, falseInside: 11.3, pattern: 22.8, board: 17.7, tiles: [12.2, 8.4, 12.2], player: 2.8 }
+      dark: { trueDisc: 22.9, falseInside: 11.3, pattern: 22.8, board: 19.8, tiles: [12.2, 12.2, 14.5], player: 1.9 },
+      forest: { trueDisc: 22.9, falseInside: 11.3, pattern: 22.8, board: 17.7, tiles: [12.2, 8.4, 15.1], player: 2.8 }
     };
     for (const theme of THEMES) {
       const { palette: p, cell } = BOARDS[theme];
@@ -432,7 +432,7 @@ describe("an almost locked set's tints (docs/hint-drawing-sets.md, decisions 5, 
     for (const theme of ['dark', 'forest'] as const) {
       const { cell, panel } = BOARDS[theme];
       atLeast(Math.min(contrast(violet, cell), contrast(violet, panel)), 6.03, 2, `${theme}: on the board and the panel`);
-      atLeast(contrast(violet, tileOn(theme, 2)), 5.35, 2, `${theme}: on its own tile`);
+      atLeast(contrast(violet, tileOn(theme, 2)), 6.05, 2, `${theme}: on its own tile`);
     }
   });
 
@@ -598,5 +598,44 @@ describe("phase 4's sets in the stylesheet and their sizes (docs/hint-drawing-se
     for (const [sw, ink] of Object.entries(bars)) expect(decl(`.hint-legend .swatch-${sw}`, '--bar'), sw).toBe(`var(${ink})`);
     for (const sw of ['one-of-bar', 'false-bar']) expect(decl(`.hint-legend .swatch-${sw}`, 'background'), sw).toMatch(/^linear-gradient\(var\(--bar\), var\(--bar\)\) /);
     for (const sw of ['bar-primary', 'bar-elim']) expect(decl(`.hint-legend .swatch-${sw}::before`, 'background'), sw).toBe('var(--bar)');
+  });
+});
+
+describe('the dark violet tile, review round 1 of phase 4 (docs/hint-drawing-sets.md, Colours)', () => {
+  /** a colour's CIELAB chroma, as seen with normal vision */
+  const chroma = (hex: string) => {
+    const [, a, b] = seen(hex, 'normal');
+    return Math.hypot(a, b);
+  };
+
+  it("is drawn no more saturated than the separations need: chroma 53 on the dark board and 46 on forest's (62 and 55 before), keeping the design's worst-model floors", () => {
+    // sand and rose, as drawn, for comparison: 18 and 26 on the dark board
+    expect(chroma(tileOn('dark', 0))).toBeLessThan(19);
+    expect(chroma(tileOn('dark', 1))).toBeLessThan(26);
+    expect(chroma(tileOn('dark', 2))).toBeLessThanOrEqual(53.5);
+    expect(chroma(tileOn('forest', 2))).toBeLessThanOrEqual(46);
+    // what holds it there: the rose tile 14.0 off under Machado protan
+    // vision, the board 9.4 off (forest's 8.5); a violet of chroma 31
+    // would be 10.7 from rose. The floors are the design's lowest: the
+    // tints 13.9 apart and the dark boards' sand 9.3 and 8.1 off the board
+    for (const [theme, board] of [
+      ['dark', 9.3],
+      ['forest', 8.1]
+    ] as const) {
+      const violet = tileOn(theme, 2);
+      for (const t of [0, 1]) atLeast(worstDE(violet, tileOn(theme, t)).de, 13.9, 1, `${theme}: violet and ${TINTS[t].name}`);
+      atLeast(worstDE(violet, BOARDS[theme].cell).de, board, 1, `${theme}: violet and the board`);
+    }
+  });
+});
+
+describe("a tab's keyline in the stylesheet, review round 1 of phase 4 (docs/hint-drawing-sets.md, decision 5)", () => {
+  it("grows with its tab on a small board, with container queries or without, drawn apart under the tile's outline", () => {
+    for (const header of ['@container (max-width: 600px) {', '@media (max-width: 600px), (max-width: 1000px) and (max-height: 520px) and (orientation: landscape) {']) {
+      const [rules] = atRules(header);
+      const tab = declared(rules, '.board .hint-tab', 'transform');
+      expect(tab, header).toMatch(/^scale\(/);
+      expect(declared(rules, '.board .hint-tab-key', 'transform'), header).toBe(tab);
+    }
   });
 });

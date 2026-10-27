@@ -192,28 +192,6 @@ export function boardSvg(example: Example, title: string): string {
   // the groups' bars and the sets' tiles and tabs, then the arrows and
   // the start dots, which keep off them, as the app's board works them out
   const { sets, shapes: all, dots } = hintDrawing(step, layout, marked);
-  // the almost locked sets the full view draws (docs/hint-drawing-sets.md,
-  // decisions 5-8): a tile round each cell's candidates in the set's tint
-  // at half strength, outlined inwards in its ink, a cell in two sets the
-  // smaller set's tile and the other's outline dashed inside it; over the
-  // bands, under everything else
-  const tints = new Map(drawn.sets.flatMap((m) => (m.tint ? [[m.set, m.tint] as const] : [])));
-  for (const tile of tilesIn(step, sets, tints.keys())) {
-    const { fill, ink } = tintOf(tints.get(tile.set)!);
-    const w = MARK.tileStroke * s * TILE;
-    const k = tile.inset * w + w / 2;
-    const rx = MARK.tileRadius * s;
-    if (!tile.inset) {
-      parts.push(
-        `<rect class="tl" x="${f(tile.x0)}" y="${f(tile.y0)}" width="${f(tile.x1 - tile.x0)}" height="${f(tile.y1 - tile.y0)}" rx="${f(rx)}" fill="${fill}" fill-opacity="${P.setAlpha}"/>`
-      );
-    }
-    parts.push(
-      `<rect class="to" x="${f(tile.x0 + k)}" y="${f(tile.y0 + k)}" width="${f(tile.x1 - tile.x0 - 2 * k)}" height="${f(tile.y1 - tile.y0 - 2 * k)}" rx="${f(Math.max(rx - k, 0))}" fill="none" stroke="${ink}" stroke-width="${f(w)}"${
-        tile.inset ? ` stroke-dasharray="${MARK.tileDash.map((d) => f(d * s)).join(' ')}"` : ''
-      }/>`
-    );
-  }
   // the groups the full view draws, each bar in its members' mark's ink
   // (docs/hint-drawing-sets.md, decisions 2 and 3); their members' marks
   // keep a keyline in the board's colour, which parts them from the bar
@@ -222,6 +200,53 @@ export function boardSvg(example: Example, title: string): string {
     return bar ? [{ bar, style }] : [];
   });
   const onBar = new Set(groupBars.flatMap(({ bar }) => bar.members.map((cd) => `${cd.cell}:${cd.digit}`)));
+  /** the keyline round a group member's mark, a square's or a disc's */
+  const keylineOf = (cd: CellDigit, kind: string) => {
+    const k = MARK.keylineSmall * s;
+    return kind === 'oneOf'
+      ? `<rect class="kl" x="${f(candX(cd) - MARK.oneOf * s - k / 2)}" y="${f(candY(cd) - MARK.oneOf * s - k / 2)}" width="${f(2 * MARK.oneOf * s + k)}" height="${f(2 * MARK.oneOf * s + k)}" rx="${f(MARK.oneOfRadius * s + k / 2)}" fill="none" stroke="#ffffff" stroke-width="${f(k)}"/>`
+      : `<circle class="kl" cx="${f(candX(cd))}" cy="${f(candY(cd))}" r="${f(MARK.disc * s + k / 2)}" fill="none" stroke="#ffffff" stroke-width="${f(k)}"/>`;
+  };
+  // the almost locked sets the full view draws (docs/hint-drawing-sets.md,
+  // decisions 5-8): a tile round each cell's candidates in the set's tint
+  // at half strength, outlined inwards in its ink, a cell in two sets the
+  // smaller set's tile and the other's outline dashed inside it; over the
+  // bands, under everything else. The keylines of the marks and the tabs
+  // on a tile go between its fill and its outline, as on the app's board
+  // (decision 5), so a mark or a tab in its edge row sits on the outline
+  const tints = new Map(drawn.sets.flatMap((m) => (m.tint ? [[m.set, m.tint] as const] : [])));
+  const tiles = tilesIn(step, sets, tints.keys());
+  const tiled = new Set(tiles.map((t) => t.cell));
+  const tabs = sets.tabs.filter((t) => tints.has(t.set));
+  const scale = MARK.tabLarge / MARK.tab;
+  const rx = MARK.tileRadius * s;
+  for (const tile of tiles) {
+    if (tile.inset) continue;
+    parts.push(
+      `<rect class="tl" x="${f(tile.x0)}" y="${f(tile.y0)}" width="${f(tile.x1 - tile.x0)}" height="${f(tile.y1 - tile.y0)}" rx="${f(rx)}" fill="${tintOf(tints.get(tile.set)!).fill}" fill-opacity="${P.setAlpha}"/>`
+    );
+  }
+  for (const key of onBar) {
+    const [cell, digit] = key.split(':').map(Number);
+    const kind = drawn.cands.get(cell)?.get(digit);
+    if (tiled.has(cell) && kind && kind !== 'member' && !solved(cell) && example.cands[cell] & (1 << (digit - 1))) parts.push(keylineOf({ cell, digit }, kind));
+  }
+  for (const tab of tabs) {
+    const half = (MARK.tabLarge / 2) * s;
+    const k = MARK.keyline * scale * s;
+    parts.push(
+      `<rect class="tk" x="${f(tab.p.x - half - k / 2)}" y="${f(tab.p.y - half - k / 2)}" width="${f(2 * half + k)}" height="${f(2 * half + k)}" rx="${f(MARK.tabRadius * scale * s + k / 2)}" fill="none" stroke="#ffffff" stroke-width="${f(k)}"/>`
+    );
+  }
+  for (const tile of tiles) {
+    const w = MARK.tileStroke * s * TILE;
+    const k = tile.inset * w + w / 2;
+    parts.push(
+      `<rect class="to" x="${f(tile.x0 + k)}" y="${f(tile.y0 + k)}" width="${f(tile.x1 - tile.x0 - 2 * k)}" height="${f(tile.y1 - tile.y0 - 2 * k)}" rx="${f(Math.max(rx - k, 0))}" fill="none" stroke="${tintOf(tints.get(tile.set)!).ink}" stroke-width="${f(w)}"${
+        tile.inset ? ` stroke-dasharray="${MARK.tileDash.map((d) => f(d * s)).join(' ')}"` : ''
+      }/>`
+    );
+  }
   // the bars go under the marks, here, once the digits that cut them are known
   const barsAt = parts.length;
 
@@ -264,15 +289,9 @@ export function boardSvg(example: Example, title: string): string {
         texts.push(`<text x="${x}" y="${ty}" class="rm">${digit}</text>`);
         continue;
       }
-      if (onBar.has(`${cell}:${digit}`)) {
-        // a group's member on its bar: a keyline in the board's colour round its mark
-        const k = MARK.keylineSmall * s;
-        parts.push(
-          kind === 'oneOf'
-            ? `<rect class="kl" x="${f(candX(cd) - MARK.oneOf * s - k / 2)}" y="${f(candY(cd) - MARK.oneOf * s - k / 2)}" width="${f(2 * MARK.oneOf * s + k)}" height="${f(2 * MARK.oneOf * s + k)}" rx="${f(MARK.oneOfRadius * s + k / 2)}" fill="none" stroke="#ffffff" stroke-width="${f(k)}"/>`
-            : `<circle class="kl" cx="${x}" cy="${y}" r="${f(MARK.disc * s + k / 2)}" fill="none" stroke="#ffffff" stroke-width="${f(k)}"/>`
-        );
-      }
+      // a group's member on its bar: a keyline in the board's colour round
+      // its mark (on a tile, drawn above under the tile's outline)
+      if (onBar.has(`${cell}:${digit}`) && !tiled.has(cell)) parts.push(keylineOf(cd, kind));
       if (kind === 'oneOf') {
         // one of several candidates read as one node is true: a pale "one
         // of these" square edged inside in the true ink, never a true disc
@@ -409,14 +428,10 @@ export function boardSvg(example: Example, title: string): string {
   // tabs (decision 7), then the start dots, the tabs and the dots at the
   // size a small board draws them
   parts.push(...texts, ...bars);
-  const scale = MARK.tabLarge / MARK.tab;
-  for (const tab of sets.tabs.filter((t) => tints.has(t.set))) {
+  for (const tab of tabs) {
     const half = (MARK.tabLarge / 2) * s;
-    const k = MARK.keyline * scale * s;
-    const rx = MARK.tabRadius * scale * s;
     parts.push(
-      `<rect class="tk" x="${f(tab.p.x - half - k / 2)}" y="${f(tab.p.y - half - k / 2)}" width="${f(2 * half + k)}" height="${f(2 * half + k)}" rx="${f(rx + k / 2)}" fill="none" stroke="#ffffff" stroke-width="${f(k)}"/>`,
-      `<rect class="tb" x="${f(tab.p.x - half)}" y="${f(tab.p.y - half)}" width="${f(2 * half)}" height="${f(2 * half)}" rx="${f(rx)}" fill="${tintOf(tints.get(tab.set)!).ink}"/>`,
+      `<rect class="tb" x="${f(tab.p.x - half)}" y="${f(tab.p.y - half)}" width="${f(2 * half)}" height="${f(2 * half)}" rx="${f(MARK.tabRadius * scale * s)}" fill="${tintOf(tints.get(tab.set)!).ink}"/>`,
       `<text x="${f(tab.p.x)}" y="${f(tab.p.y + 0.35 * MARK.tabLetter * scale * s)}" class="tab">${esc(tab.letter)}</text>`
     );
   }

@@ -143,7 +143,7 @@ export const DARK: HintPalette = {
   set1Ink: '#e6d27a',
   set2: '#b4537b',
   set2Ink: '#f0a0c0',
-  set3: '#4020d0',
+  set3: '#111ba9',
   set3Ink: '#c896ce',
   setAlpha: 0.5,
   onFill: '#10131c',

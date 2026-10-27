@@ -51,7 +51,7 @@
   --hint-set-1-ink: #e6d27a;
   --hint-set-2: #b4537b;
   --hint-set-2-ink: #f0a0c0;
-  --hint-set-3: #4020d0;
+  --hint-set-3: #111ba9;
   --hint-set-3-ink: #c896ce;
   --hint-set-alpha: 0.5;
   --hint-on-fill: #10131c;
@@ -675,7 +675,8 @@ button {
     .board .hint-tile-small {
       display: inline;
     }
-    .board .hint-tab {
+    .board .hint-tab,
+    .board .hint-tab-key {
       transform: scale(1.4444);
     }
   }
@@ -768,7 +769,8 @@ button {
   .board .hint-tile-small {
     display: inline;
   }
-  .board .hint-tab {
+  .board .hint-tab,
+  .board .hint-tab-key {
     transform: scale(1.4444);
   }
 }

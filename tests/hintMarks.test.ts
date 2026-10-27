@@ -575,14 +575,14 @@ describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 
     expect(clashes).toBe(9);
   });
 
-  it('gives the tints by decision 8: one each in letter order up to three, then the lowest no conflicting set has, never one linked set\'s on another', () => {
+  it('gives the tints by decision 8: one each in letter order up to three, then the way that parts the most conflicting sets, never two linked ones, and uses all three', () => {
     const tints = (s: Step) => [...setTints(s)].sort((a, b) => a[0] - b[0]).map(([, t]) => t);
     expect(tints(EXAMPLES.ALS_XY_WING!.step)).toEqual([1, 2, 3]);
     expect(tints(EXAMPLES.DEATH_BLOSSOM!.step)).toEqual([1, 2, 3]);
-    // four sets in a chain, none touching another but its neighbours by its link: sand and rose take turns
-    expect(tints(EXAMPLES.ALS_XY_CHAIN!.step)).toEqual([1, 2, 1, 2]);
-    // A-B-C-D, C beside A, D beside A and B: C takes violet; D, every tint taken by a set it conflicts with, the lowest
-    // no set linked to it has, A's sand
+    // four sets in a chain, none touching another but its neighbours by its link: all three tints, A and C sand
+    expect(tints(EXAMPLES.ALS_XY_CHAIN!.step)).toEqual([1, 2, 1, 3]);
+    // A-B-C-D, C beside A, D beside A and B: every pair conflicts, so one pair not linked shares a tint, the
+    // first way in letter order: C takes A's sand, D violet
     const set = (letter: string, cells: number[]): ChainSet => ({ kind: 'als', cells, digits: [1, 2, 3], members: [], unit: 0, letter });
     const chain = step({
       tech: 'ALS_XY_CHAIN',
@@ -593,7 +593,7 @@ describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 
         { from: [], to: [], strong: false, fromSet: 2, toSet: 3 }
       ]
     });
-    expect(tints(chain)).toEqual([1, 2, 3, 1]);
+    expect(tints(chain)).toEqual([1, 2, 1, 3]);
     // letter order, not the order the step lists them in; a group takes none
     expect([...setTints(step({ sets: [set('B', [0]), set('A', [40]), { ...groupSet([60, 61], 4) }] }))]).toEqual([
       [1, 1],
@@ -814,11 +814,12 @@ describe('the Learn diagrams', () => {
       // a group's bar, under its members' marks (docs/hint-drawing-sets.md, decision 2)
       const groupBars = at(svg, /<line class="gb" /);
       if (groupBars.length) grouped++;
-      // an almost locked set's tiles, over the bands, and its letter tabs, over the removal bars (decisions 5 and 7)
-      const tiles = at(svg, /<rect class="(?:tl|to)" /);
-      const tabs = at(svg, /<(?:rect class="(?:tb|tk)"|text [^>]*class="tab")/);
+      // an almost locked set's tiles, over the bands, the keylines of its letter tabs under their outlines,
+      // and its letter tabs, over the removal bars (decisions 5 and 7)
+      const tiles = at(svg, /<rect class="(?:tl|tk|to)" /);
+      const tabs = at(svg, /<(?:rect class="tb"|text [^>]*class="tab")/);
       if (tiles.length) tiled++;
-      expect(tabs.length, tech).toBe(tiles.length ? 3 * at(svg, /<rect class="tb"/).length : 0);
+      expect(tabs.length, tech).toBe(tiles.length ? 2 * at(svg, /<rect class="tk"/).length : 0);
       const marks = at(svg, /<(?:circle|rect class="(?:sq|kl)") /).filter((i) => !dot.test(svg.slice(i, svg.indexOf('>', i) + 1)));
       const grid = at(svg, /<line [^>]*stroke="#(?:b4bac8|23293a)"/);
       const arrows = at(svg, /<(?:path|polygon) /);
@@ -1165,3 +1166,84 @@ describe('the swatches of review round 1 (docs/hint-drawing-sets.md, the legend 
   });
 });
 
+describe("the sets' tints, review round 1 of phase 4 (docs/hint-drawing-sets.md, decision 8)", () => {
+  const set = (letter: string, cells: number[]): ChainSet => ({ kind: 'als', cells, digits: [1, 2, 3], members: [], unit: 0, letter });
+  const chainOf = (sets: ChainSet[]) =>
+    step({
+      tech: 'ALS_XY_CHAIN',
+      sets,
+      links: sets.slice(1).map((_, k) => ({ from: [], to: [], strong: false, fromSet: k, toSet: k + 1 }))
+    });
+  const tints = (s: Step) => [...setTints(s)].sort((a, b) => a[0] - b[0]).map(([, t]) => t);
+  const besideCell = (a: number, b: number) =>
+    (Math.floor(a / 9) === Math.floor(b / 9) && Math.abs(a - b) === 1) || (a % 9 === b % 9 && Math.abs(a - b) === 9);
+
+  it('gives a chain of four sets all three tints, so no two of its sets look alike but one pair that does not conflict', () => {
+    // four sets apart: the lowest tint free for each would take turns, sand and rose, and leave violet out
+    expect(tints(chainOf([set('A', [0]), set('B', [40]), set('C', [80]), set('D', [44])]))).toEqual([1, 2, 1, 3]);
+    expect(new Set(tints(EXAMPLES.ALS_XY_CHAIN!.step)).size).toBe(3);
+  });
+
+  it('never puts one tint on two conflicting sets where a way of giving them parts every pair, as taking the least used tint free for each in turn would', () => {
+    // A-B-C-D with D on A's cell and beside B: A sand and B rose, then the
+    // least used tint free for C, violet, leaves none free for D; C sand
+    // leaves D violet
+    const shared = chainOf([set('A', [0]), set('B', [20]), set('C', [40]), set('D', [0, 21])]);
+    expect(tints(shared)).toEqual([1, 2, 1, 3]);
+  });
+
+  it('over every set step the repository keeps, parts the conflicting sets wherever any way does, never two linked ones, and uses all three tints wherever that costs no conflict', () => {
+    const ALS: Tech[] = ['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'];
+    const steps: { where: string; step: Step }[] = ALS.map((tech) => ({ where: tech, step: EXAMPLES[tech]!.step }));
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    for (const section of ['paths', 'named']) {
+      for (const [id, d] of Object.entries<{ position: { puzzle: string; values: string; cands: number[] } }>(fx[section])) {
+        const tech = id.split(', ').at(-1) as Tech;
+        if (!ALS.includes(tech)) continue;
+        const g = parseGrid(d.position.puzzle)!;
+        for (let i = 0; i < 81; i++) {
+          g.values[i] = Number(d.position.values[i]);
+          g.cands[i] = d.position.cands[i];
+        }
+        const s = findStep(tech, g);
+        if (s?.tech === tech) steps.push({ where: id, step: s });
+      }
+    }
+    let four = 0;
+    for (const { where, step: s } of steps) {
+      const sets = s.sets ?? [];
+      const ks = sets.flatMap((x, k) => (x.kind === 'als' ? [k] : []));
+      const linked = (a: number, b: number) => (s.links ?? []).some((l) => (l.fromSet === a && l.toSet === b) || (l.fromSet === b && l.toSet === a));
+      const conflict = (a: number, b: number) => linked(a, b) || sets[a].cells.some((x) => sets[b].cells.some((y) => x === y || besideCell(x, y)));
+      const pairs = ks.flatMap((a, i) => ks.slice(i + 1).map((b) => [a, b]));
+      // every way of giving the three tints to the sets
+      const ways: Map<number, number>[] = [new Map()];
+      for (const k of ks) ways.splice(0, ways.length, ...ways.flatMap((w) => [1, 2, 3].map((t) => new Map([...w, [k, t]]))));
+      const clashes = (w: Map<number, number>) => pairs.filter(([a, b]) => conflict(a, b) && w.get(a) === w.get(b)).length;
+      const least = Math.min(...ways.map(clashes));
+      const t = setTints(s);
+      for (const [a, b] of pairs) if (linked(a, b)) expect(t.get(a), `${where}: linked sets ${a} and ${b}`).not.toBe(t.get(b));
+      expect(clashes(t), where).toBe(least);
+      const wide = ways.filter((w) => clashes(w) === least).some((w) => new Set(w.values()).size === Math.min(3, ks.length));
+      if (wide) expect(new Set(t.values()).size, where).toBe(Math.min(3, ks.length));
+      if (ks.length >= 4) four++;
+    }
+    // the stored ALS-XY-Chain and the set fixture's four-set chains
+    expect(four).toBeGreaterThan(10);
+  });
+});
+
+describe("the Learn diagrams' tiles, review round 1 of phase 4 (docs/hint-drawing-sets.md, decision 5)", () => {
+  it("draw a tile's fill, then the keylines of the tabs on it, then its outline, so a tab in its edge row sits on the outline, as on the app's board", () => {
+    for (const tech of ['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'] as Tech[]) {
+      const svg = boardSvg(EXAMPLES[tech]!, TECHS[tech].name);
+      const at = (re: RegExp) => [...svg.matchAll(new RegExp(re.source, 'g'))].map((m) => m.index!);
+      const [fills, keys, outlines, tabs] = [/<rect class="tl" /, /<rect class="tk" /, /<rect class="to" /, /<rect class="tb" /].map(at);
+      expect(keys.length, tech).toBe(tabs.length);
+      expect(keys.length, tech).toBeGreaterThan(0);
+      expect(Math.max(...fills), tech).toBeLessThan(Math.min(...keys));
+      expect(Math.max(...keys), tech).toBeLessThan(Math.min(...outlines));
+      expect(Math.max(...outlines), tech).toBeLessThan(Math.min(...tabs));
+    }
+  });
+});

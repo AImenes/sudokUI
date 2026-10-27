@@ -177,10 +177,12 @@ Every rule is numbered so a commit, a test or a review can cite it.
   is laid out exactly as before
   ([hint-drawing-sets.md](hint-drawing-sets.md), As built).
 - **G11. Over the lines and marks, under the digits.** The layers, from
-  the bottom: the player's own layers, bands, set tiles (fill, then
-  outline; a shared cell's dashed inner outline), group bars (cut out by
-  the digits, as arrows are), marks (each keyline parting its mark from a
-  bar under it), solved-digit outlines, grid lines (a thin cell line
+  the bottom: the player's own layers, bands, set tiles' fill, group bars
+  (cut out by the digits, as arrows are), the keylines of the marks and
+  tabs on a set's tile, then the tile's outline over them (a shared
+  cell's dashed inner outline), so a mark in a tile's edge row sits on
+  it, marks (each keyline parting its mark from a bar under it),
+  solved-digit outlines, grid lines (a thin cell line
   crosses a gapped group's bar; a group never crosses a box line), arrows
   and ties (every halo before any line), digits (a set's members bold, in
   the ring's ink), removal bars, letter tabs, start markers and walk
@@ -590,7 +592,7 @@ dark ones. Arrows are the only achromatic mark.
 | `--hint-orange` (dark orange) | #ed6907 / #ed6907 | #ed6907, edge = fill | disc r 13, digit at 5.85:1; Multi Colors' second cluster only |
 | `--hint-orange-light` (light orange) | #fcd2b1 / #ed6907 | #fcd2b1, edge = fill | disc r 13, digit at 13.24:1 |
 | `--hint-one-of` ("one of these"; since phase 4) | #abe1ba (true at 0.5 over white), edge #006c2f | #296243, edge #35a458 | rounded square 26×26, rx 7, edge 2 inside, keyline 1.5 (2 on a small board), digit `--hint-in-ring` (10.74:1; 6.36:1) |
-| `--hint-set-1..3` (fill / ink; since phase 4) | sand #faea37 / #6b6000, rose #bf5481 / #a3365f, violet #8c56ff / #6a40d0 | #474801 / #e6d27a, #b4537b / #f0a0c0, #4020d0 / #c896ce | a tile per cell round its candidates, 15 out, rx 10, fill at `--hint-set-alpha` 0.5, outline in the ink stroked inwards 2.5 (4.5 under 600 CSS px, 5 under 330; in Learn 1.65 times, 1.5 CSS px on a phone's diagram); a shared cell's other outline dashed "6 4", one outline width inside, no fill; a tab in the ink, 18×18 rx 4 (26 on a small board and in Learn), letter in `--cell-bg` |
+| `--hint-set-1..3` (fill / ink; since phase 4) | sand #faea37 / #6b6000, rose #bf5481 / #a3365f, violet #8c56ff / #6a40d0 | #474801 / #e6d27a, #b4537b / #f0a0c0, #111ba9 / #c896ce | a tile per cell round its candidates, 15 out, rx 10, fill at `--hint-set-alpha` 0.5, outline in the ink stroked inwards 2.5 (4.5 under 600 CSS px, 5 under 330; in Learn 1.65 times, 1.5 CSS px on a phone's diagram); a shared cell's other outline dashed "6 4", one outline width inside, no fill; a tab in the ink, 18×18 rx 4 (26 on a small board and in Learn), letter in `--cell-bg` |
 | group bar (since phase 4) | the members' ink: true #006c2f, false #175bb7, pattern #175bb7, removal #bc072a | #35a458, #7fbbff, #498de5, #fe9696 | stroke 3 (4.5, 5.5), round caps, 15 off the members' line, under the marks, cut out by the digits |
 | `--hint-arrow` (arrows, ties, start dot, walk badges) | #151a24 | #f2f4f9 | stroke 3; weak dash "8 6" with butt caps; head 14 long × 11 wide; tail and tip 3 units outside the marks' rims |
 | halo | `--cell-bg`, arrow width + 2 (`SIZES.halo`), opacity 0.75, the head outlined 2 wide | same | drawn after the grid lines, with the arrow; on a small board 6.5 round a 4.5 shaft |
