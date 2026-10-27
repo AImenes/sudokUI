@@ -1,7 +1,8 @@
 /**
  * Colour science for the hint palette's tests (tests/hintPalette.test.ts;
- * docs/hint-drawing-colouring.md, Colours): WCAG 2 contrast, CIELAB,
- * CIEDE2000, and three models of colour vision deficiency. Not a test file
+ * docs/hint-drawing-colouring.md and docs/hint-drawing-sets.md, Colours):
+ * WCAG 2 contrast, a browser's compositing, CIELAB, CIEDE2000, and three
+ * models of colour vision deficiency. Not a test file
  * itself, standard library only; the palette test checks CIEDE2000 on
  * Sharma's published test pairs and every simulation on the greys before
  * it uses them.
@@ -45,6 +46,18 @@ export function luminance(hex: string): number {
 export function contrast(a: string, b: string): number {
   const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
   return (x + 0.05) / (y + 0.05);
+}
+
+/**
+ * a colour drawn at an alpha over a background, as a browser composites
+ * it: in sRGB as encoded, each channel rounded to 8 bits (a set's tile at
+ * its alpha over a cell, the player's own cell colour at 0.55, a tint over
+ * the hint panel)
+ */
+export function over(fg: string, alpha: number, bg: string): string {
+  const bytes = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const [f, b] = [bytes(fg), bytes(bg)];
+  return '#' + f.map((c, i) => Math.round(alpha * c + (1 - alpha) * b[i]).toString(16).padStart(2, '0')).join('');
 }
 
 const clamp = (l: RGB): RGB => l.map((c) => Math.min(1, Math.max(0, c))) as RGB;

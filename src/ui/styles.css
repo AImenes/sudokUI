@@ -42,6 +42,18 @@
   --hint-orange-ink: #ed6907;
   --hint-orange-light: #fcd2b1;
   --hint-orange-light-ink: #fcd2b1;
+  /* phase 4's sets (docs/hint-drawing-sets.md, Colours): the "one of
+     these" square, the true fill at half strength over this board, drawn
+     opaque; and the almost locked sets' tints, sand, rose and violet, each
+     a tile's fill at the set alpha, with the ink of its outline and tab */
+  --hint-one-of: #296243;
+  --hint-set-1: #474801;
+  --hint-set-1-ink: #e6d27a;
+  --hint-set-2: #b4537b;
+  --hint-set-2-ink: #f0a0c0;
+  --hint-set-3: #4020d0;
+  --hint-set-3-ink: #c896ce;
+  --hint-set-alpha: 0.5;
   --hint-on-fill: #10131c;
   --hint-in-ring: #eef1f8;
   --hint-ring-tint: 0.16;
@@ -92,6 +104,16 @@
   --hint-orange-ink: #ed6907;
   --hint-orange-light: #fcd2b1;
   --hint-orange-light-ink: #ed6907;
+  /* the "one of these" square is the true fill at half strength over
+     white; the sets' inks are darker here, and their tints mostly lighter */
+  --hint-one-of: #abe1ba;
+  --hint-set-1: #faea37;
+  --hint-set-1-ink: #6b6000;
+  --hint-set-2: #bf5481;
+  --hint-set-2-ink: #a3365f;
+  --hint-set-3: #8c56ff;
+  --hint-set-3-ink: #6a40d0;
+  --hint-set-alpha: 0.5;
   --hint-on-fill: #10131c;
   --hint-in-ring: #1b2233;
   --hint-ring-tint: 0.1;
@@ -569,6 +591,17 @@ button {
   display: none;
 }
 
+/* phase 4's sets on a small board (docs/hint-drawing-sets.md, Colours;
+   src/content/hintPalette.ts MARK): a "one of these" square's keyline is
+   the second drawing, wider, as a shade's; a set tile's outline is
+   stroked inwards, so each width is a drawing of its own and the tile's
+   outer edge stays where it is: 600 CSS px and up, under 600, under 330 */
+.board .hint-one-of-small,
+.board .hint-tile-small,
+.board .hint-tile-tiny {
+  display: none;
+}
+
 /* a hint's lines on a small board (docs/hint-drawing.md G14a): measured
    by the board's own width, not the window's, so a phone on its side or a
    small window counts too. A board of about 360 CSS px holds 908 units, so
@@ -631,6 +664,20 @@ button {
     .board .walk-badge-body {
       transform: scale(1.6);
     }
+    .board .hint-group-bar {
+      stroke-width: 4.5px;
+    }
+    .board .hint-one-of-wide,
+    .board .hint-tile-wide {
+      display: none;
+    }
+    .board .hint-one-of-small,
+    .board .hint-tile-small {
+      display: inline;
+    }
+    .board .hint-tab {
+      transform: scale(1.4444);
+    }
   }
   @media (max-width: 350px), (max-width: 1000px) and (max-height: 401px) and (orientation: landscape) {
     .board .chain-shaft {
@@ -647,6 +694,15 @@ button {
     }
     .board .hint-node {
       stroke-width: 4px;
+    }
+    .board .hint-group-bar {
+      stroke-width: 5.5px;
+    }
+    .board .hint-tile-small {
+      display: none;
+    }
+    .board .hint-tile-tiny {
+      display: inline;
     }
   }
 }
@@ -697,6 +753,24 @@ button {
   .board .walk-badge-body {
     transform: scale(1.6);
   }
+  /* phase 4's sets: a group's bar wider, as the arrows; a "one of these"
+     square's wider keyline and a tile's outline for this width; a set's
+     letter tab 26 units across (18 on a wide board), drawn about its
+     place's centre in a group moved there, as the start dots are */
+  .board .hint-group-bar {
+    stroke-width: 4.5px;
+  }
+  .board .hint-one-of-wide,
+  .board .hint-tile-wide {
+    display: none;
+  }
+  .board .hint-one-of-small,
+  .board .hint-tile-small {
+    display: inline;
+  }
+  .board .hint-tab {
+    transform: scale(1.4444);
+  }
 }
 @container (max-width: 330px) {
   .board .chain-shaft {
@@ -713,6 +787,15 @@ button {
   }
   .board .hint-node {
     stroke-width: 4px;
+  }
+  .board .hint-group-bar {
+    stroke-width: 5.5px;
+  }
+  .board .hint-tile-small {
+    display: none;
+  }
+  .board .hint-tile-tiny {
+    display: inline;
   }
 }
 
@@ -1314,6 +1397,154 @@ button {
 .hint-legend .swatch-node {
   background: transparent;
   border: 1.5px solid var(--hint-arrow);
+}
+
+/* phase 4's sets in the legend (docs/hint-drawing-sets.md, "The legend"
+   and Colours), each drawn as it looks: two "one of these" squares edged
+   in the true ink, alone (in a set, whose tiles carry them) or on a bar in
+   the true ink (a group); two false rings on a bar in the false ink; a bar
+   alone, in the pattern's or the removal's ink; and a set's small tile,
+   its tint at the set alpha over the panel, outlined in its ink, with its
+   tab in a corner. Every mark keeps a keyline in the panel's colour, as
+   on the board */
+.hint-legend .swatch-one-of,
+.hint-legend .swatch-one-of-bar,
+.hint-legend .swatch-false-bar,
+.hint-legend .swatch-bar-primary,
+.hint-legend .swatch-bar-elim {
+  position: relative;
+  width: 20px;
+  border-radius: 0;
+  background: transparent;
+}
+
+.hint-legend .swatch-one-of::before,
+.hint-legend .swatch-one-of::after,
+.hint-legend .swatch-one-of-bar::before,
+.hint-legend .swatch-one-of-bar::after,
+.hint-legend .swatch-false-bar::before,
+.hint-legend .swatch-false-bar::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  box-shadow: 0 0 0 1px var(--panel);
+}
+
+.hint-legend .swatch-one-of::after,
+.hint-legend .swatch-one-of-bar::after,
+.hint-legend .swatch-false-bar::after {
+  left: 11px;
+}
+
+.hint-legend .swatch-one-of::before,
+.hint-legend .swatch-one-of::after,
+.hint-legend .swatch-one-of-bar::before,
+.hint-legend .swatch-one-of-bar::after {
+  border-radius: 2.5px;
+  background: var(--hint-one-of);
+  border: 1px solid var(--hint-place-ink);
+}
+
+.hint-legend .swatch-false-bar::before,
+.hint-legend .swatch-false-bar::after {
+  border-radius: 50%;
+  border: 1.5px solid var(--hint-false);
+}
+
+/* on a bar, the marks sit higher and the bar runs under them from the
+   first one's centre to the second's */
+.hint-legend .swatch-one-of-bar::before,
+.hint-legend .swatch-one-of-bar::after,
+.hint-legend .swatch-false-bar::before,
+.hint-legend .swatch-false-bar::after {
+  top: -1.5px;
+}
+
+.hint-legend .swatch-one-of-bar {
+  --bar: var(--hint-place-ink);
+}
+
+.hint-legend .swatch-false-bar {
+  --bar: var(--hint-false);
+}
+
+.hint-legend .swatch-one-of-bar,
+.hint-legend .swatch-false-bar {
+  background: linear-gradient(var(--bar), var(--bar)) 4px 7.5px / 12px 2px no-repeat;
+}
+
+.hint-legend .swatch-bar-primary {
+  --bar: var(--hint-primary-ink);
+}
+
+.hint-legend .swatch-bar-elim {
+  --bar: var(--hint-elim);
+}
+
+.hint-legend .swatch-bar-primary::before,
+.hint-legend .swatch-bar-elim::before {
+  content: '';
+  position: absolute;
+  top: 3.5px;
+  left: 2px;
+  right: 2px;
+  height: 3px;
+  border-radius: 1.5px;
+  background: var(--bar);
+}
+
+.hint-legend .swatch-set-1 {
+  --sw: var(--hint-set-1);
+  --sw-ink: var(--hint-set-1-ink);
+}
+
+.hint-legend .swatch-set-2 {
+  --sw: var(--hint-set-2);
+  --sw-ink: var(--hint-set-2-ink);
+}
+
+.hint-legend .swatch-set-3 {
+  --sw: var(--hint-set-3);
+  --sw-ink: var(--hint-set-3-ink);
+}
+
+.hint-legend .swatch-set-1,
+.hint-legend .swatch-set-2,
+.hint-legend .swatch-set-3 {
+  position: relative;
+  width: 14px;
+  border-radius: 3px;
+  border: 1.5px solid var(--sw-ink);
+  background: transparent;
+}
+
+.hint-legend .swatch-set-1::before,
+.hint-legend .swatch-set-2::before,
+.hint-legend .swatch-set-3::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1.5px;
+  background: var(--sw);
+  opacity: var(--hint-set-alpha);
+}
+
+.hint-legend .swatch-set-1::after,
+.hint-legend .swatch-set-2::after,
+.hint-legend .swatch-set-3::after {
+  content: '';
+  position: absolute;
+  top: 0.5px;
+  left: 0.5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--sw-ink);
+  box-shadow: 0 0 0 1px var(--panel);
 }
 
 .hint-actions {
