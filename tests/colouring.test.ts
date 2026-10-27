@@ -563,15 +563,18 @@ describe('the drawing of a colouring the finders give', () => {
     expect(toLine(p[p.length - 1], q)).toBeGreaterThanOrEqual(layout.r + SIZES.gap * SIZE);
   });
 
-  it('keeps clear of the end of another weak tie: a Multi Colors bridge goes round the end of its witness into r7c2', () => {
-    // where the bridge into r7c9 this was found at became a colour seeing both (decision 13), the same bridge a column over
-    const g = positionAt('6.85..31.....37....3....6..2...51.4...........4.72...8..5....2....37.....26..59.3', 24).grid;
+  it('keeps clear of the end of another weak tie: a Multi Colors bridge goes round the end of its witness into r3c3', () => {
+    // where the bridge into r7c9 this was found at became a colour seeing both (decision 13), a daily's bridge down
+    // column 3 past the removal in r3c3, where the witness from r3c8 ends: without that end as an obstacle it bends
+    // into it, through the witness
+    const g = positionAt('8..6.2.5....89..6.67...5.......4.1.9.1.5.8.3.3.4.2.......7...92.3..89....9.2.4..6', 21).grid;
     const s = findStep('MULTI_COLORS', g)!;
+    expect(s.colouring!.rule).toBe('bridge');
     const { shapes } = drawingOf(s, g.values, g.cands);
-    const [down, witness] = ['8r4c2-8r8c2', '8r8c1-8r7c2'].map((n) => s.links!.findIndex((l) => named(l) === n));
+    const [down, witness] = ['2r2c3-2r5c3', '2r3c8-2r3c3'].map((n) => s.links!.findIndex((l) => named(l) === n));
     expect(down).toBeGreaterThanOrEqual(0);
     expect(witness).toBeGreaterThanOrEqual(0);
-    // round the 8s of r5c2 and r7c2 on its line, on the side away from the witness's end
+    // round the 2 of r3c3 on its line, on the side away from the witness's end
     const [p, q] = [lineOf(shapes[down]), lineOf(shapes[witness])];
     expect(cross(p, q)).toBe(false);
     expect(toLine(q[q.length - 1], p)).toBeGreaterThanOrEqual(((SIZES.headWidth / 2 + SIZES.clearance) * SIZE) - 0.5);
@@ -1049,7 +1052,7 @@ function colourTwiceInAHouse(g: Grid): CellDigit | null {
 
 describe("Multi Colors' search order (docs/hint-drawing-colouring.md, decision 13): a colour seeing both colours of another cluster, on any digit, before any bridge", () => {
   it('on a solve path: an isomorph of a saved Multi Colors practice puzzle, as the worker serves one, proves a colour false where a bridge stood', () => {
-    // the first saved Multi Colors puzzle, .263...4.4...6....537.9......45..., through an isomorphism
+    // the fifth saved Multi Colors puzzle, .263...4.4...6....537.9......45..., through an isomorphism
     const r = ratePuzzle('.......93.3...126.....3.58.8.2......76...5...91..6.3.....79.6..3.9....15.8.1.4...')!;
     const at = r.steps.findIndex((s) => s.tech === 'MULTI_COLORS');
     const s = r.steps[at];
@@ -1060,12 +1063,14 @@ describe("Multi Colors' search order (docs/hint-drawing-colouring.md, decision 1
     expect([r.score, r.level]).toEqual([1072, 'Hard']);
   });
 
-  it("off the paths, where a bridge hid it: of the same two clusters, of another pair of the digit's clusters, on a later digit", () => {
+  it("off the paths, where a bridge hid it: of the same two clusters either way, of another pair of the digit's clusters, on a later digit", () => {
     const HIDDEN: [string, number, string, string[]][] = [
       // before decision 13 a bridge removed 9r5c4; HoDoKu's order, both colours of a pair of clusters before its bridges, finds this one
       ['3.....68.....13...5.64...3....75..6..27...54..5..41....9...43.8...58.....84.....6', 32, 'the same two clusters', ['9r1c4', '9r3c9', '9r4c6', '9r5c5', '9r6c8']],
-      // a bridge removed 5r8c1, 5r8c2 and 5r8c3
-      ['.4.7..953.........9.386.1.46..34...8.........7...21..61.8.943.2.........497..3.6.', 24, 'another pair of clusters', ['5r5c5', '5r7c4', '5r9c7']],
+      // a bridge removed 5r8c1, 5r8c2 and 5r8c3; the same two clusters, the other one leaving (HoDoKu's pairs are ordered)
+      ['.4.7..953.........9.386.1.46..34...8.........7...21..61.8.943.2.........497..3.6.', 24, 'the same two clusters, the other leaving', ['5r5c5', '5r7c4', '5r9c7']],
+      // a bridge with orange 8r1c3, 8r9c1 against the purple cluster of r8c5; the colour seeing both is in another cluster
+      ['4..1.27.......3..45.7.9...3..45..62..8.....4..25..43..7...4.9.12..3.......67.9..2', 17, 'another pair of clusters', ['8r2c4', '8r3c8', '8r7c6']],
       // a bridge on 2 removed 2r5c8
       ['..8..6..29.4....8.2....9.3.....35.6.5...4...8.4.69.....9.7....6.1....5.97..9..3..', 16, 'a later digit', ['4r8c4', '4r9c6']]
     ];
