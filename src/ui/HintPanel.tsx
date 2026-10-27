@@ -434,6 +434,15 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                   {t("bar: a group (one digit's cells in one box and one row or column), read as one node")}
                 </li>
               )}
+              {/* an almost locked set's lettered tiles, the swatch a small tile in the first tint drawn, with its tab (docs/hint-drawing-sets.md, decision 18) */}
+              {legend.tiles.length > 0 && (
+                <li>
+                  <i className={`swatch-set-${legend.tiles[0]}`} />
+                  {hint.tech === 'DEATH_BLOSSOM'
+                    ? t("lettered cells: a petal, an almost locked set for one of the stem's digits")
+                    : t('lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells')}
+                </li>
+              )}
             </ul>
           )}
           <div className="hint-actions">

@@ -670,6 +670,70 @@ for (const [name, size] of [
   });
 }
 
+/**
+ * An almost locked set on the board (docs/hint-drawing-sets.md, stage 6):
+ * the stored AIC with ALS, loaded as a pencil-mark grid at its position,
+ * goes through set A, r7c8 and r8c8: a tile in each cell in its tint,
+ * outlined in its ink, wider on a phone, with a lettered tab, drawn from
+ * the walk frame of the link that reaches it; the link inside A draws no
+ * arrow
+ */
+async function showAlsChain(page: Page) {
+  const examples = JSON.parse(new TextDecoder().decode(readFileSync('src/content/examples.json')));
+  const ex = examples.AIC_ALS as { values: string; cands: number[] };
+  await open(page);
+  const cells = Array.from({ length: 81 }, (_, i) => ({ value: Number(ex.values[i]), corner: 0, center: Number(ex.values[i]) ? 0 : ex.cands[i], excluded: 0 }));
+  await page.locator('.menu-row button', { hasText: 'Import' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Import a puzzle' });
+  await dialog.locator('textarea').fill(formatPencilGrid(cells, false, 'exhaustive'));
+  await dialog.getByRole('button', { name: 'Load puzzle' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: /Hint/ }).first().click();
+  const use = page.getByRole('button', { name: 'Use Hint' });
+  if (await use.count()) await use.click();
+  await page.getByRole('button', { name: 'Show me' }).click();
+  await expect(page.locator('.hint-tech strong')).toHaveText('AIC with ALSs');
+}
+
+for (const [name, size] of [
+  ['desktop', { viewport: { width: 1280, height: 1000 } }],
+  ['phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }]
+] as const) {
+  test.describe(`an almost locked set, ${name}`, () => {
+    test.use(size);
+
+    test('draws a lettered tile in each cell of the set, from the frame that reaches it, and no arrow inside it', async ({ page }) => {
+      await showAlsChain(page);
+      const tiles = page.locator('svg.board g.hint-tile');
+      const tabs = page.locator('svg.board g.hint-tab');
+      await expect(tiles).toHaveCount(2);
+      await expect(tabs).toHaveCount(2);
+      await expect(tabs.locator('text')).toHaveText(['A', 'A']);
+      await expect(tabs.first().locator('rect').nth(1)).toHaveAttribute('fill', 'var(--hint-set-1-ink)');
+      // the outline drawn for the board's size: 2.5 units on a desktop, 4.5 on a phone, and the tab 26 units across there
+      const shownOutline = tiles.first().locator(name === 'phone' ? 'rect.hint-tile-small' : 'rect.hint-tile-wide');
+      await expect(shownOutline).toBeVisible();
+      await expect(tiles.first().locator(name === 'phone' ? 'rect.hint-tile-wide' : 'rect.hint-tile-small')).toBeHidden();
+      expect(await shownOutline.evaluate((el) => getComputedStyle(el).strokeWidth)).toBe(name === 'phone' ? '4.5px' : '2.5px');
+      const scale = await tabs.first().evaluate((el) => getComputedStyle(el).transform);
+      if (name === 'phone') expect(scale).toMatch(/^matrix\(1\.444\d*, 0, 0, 1\.444\d*, 0, 0\)$/);
+      else expect(scale).toBe('none');
+      // four of its five links drawn: the one inside the set draws nothing
+      await expect(page.locator('svg.board .chain-shaft')).toHaveCount(4);
+      await expect(page.locator('.hint-legend li', { hasText: 'lettered cells' }).locator('i.swatch-set-1')).toHaveCount(1);
+      // the walk: no tile until the link that reaches the set, then its tiles and tabs
+      await page.getByRole('button', { name: 'Walk through it' }).click();
+      await expect(page.locator('.hint-walk-count')).toContainText('1 of 6');
+      await expect(tiles).toHaveCount(0);
+      await expect(tabs).toHaveCount(0);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-count')).toContainText('2 of 6');
+      await expect(tiles).toHaveCount(2);
+      await expect(tabs).toHaveCount(2);
+    });
+  });
+}
+
 test.describe('phone, 390 x 844', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 

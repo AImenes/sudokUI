@@ -25,12 +25,16 @@ const { Grid } = await import('../src/ui/Grid');
 
 /** the board at an example's position, with a step shown in full */
 function board(tech: Tech, step?: Step): string {
-  const ex = EXAMPLES[tech]!;
+  return boardAt(EXAMPLES[tech]!, step ?? EXAMPLES[tech]!.step);
+}
+
+/** the board at a position (the puzzle's givens, the board's digits, every cell's candidates), with a step shown in full */
+function boardAt(ex: { puzzle: string; values: string; cands: number[] }, step: Step): string {
   const cells = Array.from({ length: 81 }, (_, i) => {
     const value = Number(ex.values[i]);
     return { given: ex.puzzle[i] >= '1' && ex.puzzle[i] <= '9', value, corner: 0, center: 0, excluded: value ? 0 : 0x1ff & ~ex.cands[i], colors: [] };
   });
-  useGame.setState({ cells, autoCandidates: true, hint: step ?? ex.step, hintStage: 'full', walkIndex: 0, paused: false, won: false, chain: null });
+  useGame.setState({ cells, autoCandidates: true, hint: step, hintStage: 'full', walkIndex: 0, paused: false, won: false, chain: null });
   // a server render reads the store's initial state: give it the one set here
   // (as tests/setsReader.ts does)
   const init = useGame.getInitialState() as unknown as Record<string, unknown>;
@@ -118,10 +122,10 @@ describe("the app board and its panels draw a chain's truth (phase 2b)", () => {
       expect((html.match(/<rect class="hint-one-of"[^>]*fill="var\(--hint-one-of\)" stroke="var\(--hint-place-ink\)"/g) ?? []).length, tech).toBe(squares);
       expect((html.match(/class="hint-one-of-wide"/g) ?? []).length, tech).toBe(squares);
       expect((html.match(/class="hint-one-of-small"/g) ?? []).length, tech).toBe(squares);
-      // one bar per group, in its members' mark's ink, under the marks and cut out by the digits
+      // one bar per group, in its members' mark's ink, under the marks and cut out by the digits (an almost locked set has none)
       const ink = { oneOf: 'var(--hint-place-ink)', false: 'var(--hint-false)', primary: 'var(--hint-primary-ink)', elim: 'var(--hint-elim)' };
       const bars = [...html.matchAll(/<line class="hint-group-bar"[^>]*stroke="([^"]+)"[^>]*stroke-width="3"[^>]*stroke-linecap="round"/g)].map((x) => x[1]);
-      expect(bars, tech).toEqual(m.sets.map((x) => ink[x.style]));
+      expect(bars, tech).toEqual(m.sets.flatMap((x) => (x.style === 'als' ? [] : [ink[x.style]])));
       if (bars.length) {
         expect(html.indexOf('class="hint-group-bars" mask="url(#'), tech).toBeGreaterThan(html.indexOf('<mask id='));
         expect(html.indexOf('class="hint-group-bars"'), tech).toBeLessThan(html.indexOf('<rect class="hint-one-of"') === -1 ? html.indexOf('class="hint-ring"') : html.indexOf('<rect class="hint-one-of"'));
@@ -192,5 +196,118 @@ describe("the app board and its panels draw a chain's truth (phase 2b)", () => {
     Object.assign(useGame.getInitialState() as unknown as Record<string, unknown>, useGame.getState());
     expect(renderToStaticMarkup(React.createElement(ChainPanel))).not.toContain('removed by it');
     useGame.setState({ chain: null });
+  });
+});
+
+const { parseGrid } = await import('../src/engine/board');
+const { findStep } = await import('../src/engine/humanSolver');
+
+describe("the app board draws an almost locked set's tiles and letter tabs (docs/hint-drawing-sets.md, decisions 5-10)", () => {
+  const ALS: Tech[] = ['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'];
+  /** the tiles and tabs a full view draws, from the markup */
+  const parts = (html: string) => ({
+    tiles: [...html.matchAll(/<g class="hint-tile">([\s\S]*?)<\/g>/g)].map((m) => m[1]),
+    tabs: [...html.matchAll(/<g class="hint-tab">([\s\S]*?)<\/g>/g)].map((m) => m[1])
+  });
+
+  it('a tile in each cell of each set, in its tint at the set alpha, outlined in its ink at each board size, and a tab on each with its letter', () => {
+    for (const tech of ALS) {
+      const ex = EXAMPLES[tech]!;
+      const html = board(tech);
+      const m = frameMarks(ex.step, null, (c) => ex.values[c] !== '0');
+      const tint = new Map(m.sets.filter((x) => x.tint).map((x) => [x.set, x.tint!]));
+      const { tiles, tabs } = parts(html);
+      const lettered = ex.step.sets!.flatMap((x, k) => (tint.has(k) ? x.cells.map(() => k) : []));
+      expect(tiles.length, tech).toBe(lettered.length);
+      expect(tabs.length, tech).toBe(lettered.length);
+      for (const [k, set] of ex.step.sets!.entries()) {
+        const t = tint.get(k)!;
+        const own = tiles.filter((x) => x.includes(`var(--hint-set-${t}-ink)`));
+        expect(own.length, `${tech}: set ${set.letter}`).toBeGreaterThanOrEqual(set.cells.length);
+        // filled at the set alpha, outlined inwards three times, one for each board size, wider on a small board
+        for (const x of own) {
+          expect(x, tech).toContain(`fill="var(--hint-set-${t})" style="fill-opacity:var(--hint-set-alpha)"`);
+          expect([...x.matchAll(/class="hint-tile-(wide|small|tiny)"[^>]*stroke-width="([\d.]+)"/g)].map((y) => [y[1], y[2]]), tech).toEqual([
+            ['wide', '2.5'],
+            ['small', '4.5'],
+            ['tiny', '5']
+          ]);
+        }
+        // the tab: the set's ink, the letter bold in the board's colour, a keyline round it
+        const letters = tabs.filter((x) => x.includes(`fill="var(--hint-set-${t}-ink)"`)).map((x) => x.match(/<text[^>]*font-weight="700" fill="var\(--cell-bg\)">([A-D])<\/text>/)?.[1]);
+        expect(letters.filter((x) => x === set.letter).length, `${tech}: set ${set.letter}`).toBe(set.cells.length);
+      }
+      // the layers (G11): the tiles over the bands, under the groups' bars and the marks; the tabs over the
+      // removal bars, under the start dots and the walk's numbers
+      const at = (re: RegExp) => [...html.matchAll(new RegExp(re.source, 'g'))].map((x) => x.index!);
+      const tileAt = at(/<g class="hint-tile">/);
+      const marks = at(/class="hint-(?:ring|one-of)"|<circle[^>]*fill="var\(--hint-(?:primary|secondary|fin|place)\)"/);
+      expect(Math.max(...tileAt), tech).toBeLessThan(Math.min(...marks));
+      const tabAt = at(/<g class="hint-tab">/);
+      expect(Math.min(...tabAt), tech).toBeGreaterThan(Math.max(...at(/class="hint-bar"/), ...at(/class="knockout"/)));
+      expect(Math.max(...tabAt), tech).toBeLessThan(html.indexOf('class="chain-labels"'));
+    }
+  });
+
+  it("a set's members as their digits alone, bold in the ring's ink, with no mark", () => {
+    const html = board('AIC_ALS');
+    // the 4s of r7c8 and r8c8, set A's members
+    for (const cell of [61, 70]) {
+      // the 4's place: the left column, the middle row
+      const x = 4 + (cell % 9) * 100 + 22;
+      const y = 4 + Math.floor(cell / 9) * 100 + 58;
+      expect(html).toMatch(new RegExp(`<text x="${x}" y="${y}"[^>]*font-weight="700" fill="var\\(--hint-in-ring\\)">4</text>`));
+      expect(html).not.toMatch(new RegExp(`<circle[^>]*cx="${x}" cy="${y - 7}"`));
+    }
+  });
+
+  it("a cell in two sets as the smaller set's tile and the other's outline dashed inside it, no fill, both tabs", () => {
+    // the set fixture's ALS-XY-Chain whose A, r7c7, lies inside D, r7c5 and r7c7
+    const puzzle = '.37.4......67.8...........972.....61..91.54..14.....856...........9.28......8.23.';
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    const position = fx.named['shared cells that derive, step 25, ALS_XY_CHAIN'].position as { puzzle: string; values: string; cands: number[] };
+    expect(position.puzzle).toBe(puzzle);
+    const g = parseGrid(puzzle)!;
+    for (let i = 0; i < 81; i++) {
+      g.values[i] = Number(position.values[i]);
+      g.cands[i] = position.cands[i];
+    }
+    const step = findStep('ALS_XY_CHAIN', g)!;
+    const html = boardAt(position, step);
+    const { tiles, tabs } = parts(html);
+    const m = frameMarks(step, null, (c) => position.values[c] !== '0');
+    const tintOf = (k: number) => m.sets.find((x) => x.set === k)!.tint!;
+    // r7c7: A's tile, filled, and D's outline dashed one width inside it at each size, with no fill
+    const [left, top] = [4 + 6 * 100, 4 + 6 * 100];
+    const inCell = (x: string) => {
+      const [, px, py] = x.match(/x="([\d.]+)" y="([\d.]+)"/)!;
+      return Number(px) > left && Number(px) < left + 100 && Number(py) > top && Number(py) < top + 100;
+    };
+    const here = tiles.filter(inCell);
+    expect(here).toHaveLength(2);
+    expect(here[0]).toContain(`fill="var(--hint-set-${tintOf(0)})"`);
+    expect(here[1]).not.toContain('fill-opacity');
+    expect((here[1].match(/stroke-dasharray="6 4"/g) ?? []).length).toBe(3);
+    expect(here[1]).toContain(`stroke="var(--hint-set-${tintOf(3)}-ink)"`);
+    // inside A's outline by one outline width, at each size
+    const xs = (x: string) => [...x.matchAll(/class="hint-tile-\w+" x="([\d.]+)"/g)].map((y) => Number(y[1]));
+    expect(xs(here[1]).map((x, k) => x - xs(here[0])[k])).toEqual([2.5, 4.5, 5]);
+    // both tabs on the shared cell, A's and D's, and a tab on each tile
+    expect(tabs.length).toBe(tiles.length);
+    const tabCells = [...html.matchAll(/<g transform="translate\(([\d.]+) ([\d.]+)\)"><g class="hint-tab">[\s\S]*?>([A-D])<\/text>/g)].filter((x) => Number(x[1]) > left && Number(x[1]) < left + 100 && Number(x[2]) > top && Number(x[2]) < top + 100).map((x) => x[3]);
+    expect(tabCells.sort()).toEqual(['A', 'D']);
+  });
+
+  it("the hint panel names the tiles as lettered cells, the swatch a small tile in the first tint drawn", () => {
+    const panel = (tech: Tech) => {
+      board(tech);
+      useGame.setState({ info: { puzzle: EXAMPLES[tech]!.puzzle, score: 1000, level: 'hard' } as any });
+      Object.assign(useGame.getInitialState() as unknown as Record<string, unknown>, useGame.getState());
+      return renderToStaticMarkup(React.createElement(HintPanel, { onLearn: () => {} }));
+    };
+    expect(panel('ALS_XZ')).toContain('<i class="swatch-set-1"></i>lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells');
+    expect(panel('AIC_ALS')).toContain('<i class="swatch-set-1"></i>lettered cells: an almost locked set');
+    expect(panel('DEATH_BLOSSOM')).toContain("<i class=\"swatch-set-1\"></i>lettered cells: a petal, an almost locked set for one of the stem&#x27;s digits");
+    expect(panel('AIC_GROUPED')).not.toContain('lettered cells');
   });
 });

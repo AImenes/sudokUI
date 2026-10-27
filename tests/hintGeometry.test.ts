@@ -7,11 +7,11 @@
  * side by side; the start marker on each branch's first arrow.
  */
 import { describe, it, expect } from 'vitest';
-import { arrowShapes, startMarkers, badgePoints, insideOneCell, setShapes, squareReach, Layout, Point, SIZES, ArrowShape } from '../src/content/hintGeometry';
-import type { GroupBar } from '../src/content/hintGeometry';
-import type { CellDigit, ChainLink, Step } from '../src/engine/steps';
+import { arrowShapes, startMarkers, badgePoints, insideOneCell, setShapes, squareReach, hintDrawing, tilesIn, Layout, Point, SIZES, ArrowShape } from '../src/content/hintGeometry';
+import type { GroupBar, SetShapes } from '../src/content/hintGeometry';
+import type { CellDigit, ChainLink, ChainSet, Step } from '../src/engine/steps';
 import { alternatingLinks, groupSet } from '../src/engine/steps';
-import { boardLayout, digitShown, squareReachOf } from '../src/ui/boardLayout';
+import { boardLayout, digitShown, squareReachOf, M } from '../src/ui/boardLayout';
 import { MARK } from '../src/content/hintPalette';
 import { hintMarks, frameMarks, markedCandidates, placedKeys, squareKeys } from '../src/content/hintMarks';
 import { EXAMPLES } from '../src/content/examples';
@@ -940,19 +940,22 @@ describe("a group's bar and a square (docs/hint-drawing-sets.md, decisions 1, 2 
     expect(toSegment(number(true), under.a, under.b)).toBeGreaterThanOrEqual(SIZES.badgeLarge * 100 + half);
   });
 
-  it('is laid out exactly as before for a step with no groups: the same arrows, dots and numbers, no bar', () => {
+  it('is laid out exactly as before for a step with no sets: the same arrows, dots and numbers, no bar, tile or tab', () => {
     for (const [tech, ex] of Object.entries(EXAMPLES)) {
       const step = ex!.step;
-      if (!step.links?.length || step.sets?.some((x) => x.kind === 'group')) continue;
+      if (!step.links?.length || step.sets?.length) continue;
       const solved = (c: number) => ex!.values[c] !== '0';
       const full = frameMarks(step, null, solved);
       const marks = markedCandidates(full);
       const l = boardLayout(placedKeys(full), undefined, solved, squareKeys(step, solved));
       const sets = setShapes(step, l, marks);
-      expect(sets.bars, tech).toEqual([]);
+      expect(sets, tech).toEqual({ bars: [], tiles: [], tabs: [] });
       const shapes = arrowShapes(step.links, l, marks);
       expect(arrowShapes(step.links, l, marks, sets), tech).toEqual(shapes);
-      expect(startMarkers(step.links, l, marks, shapes, sets), tech).toEqual(startMarkers(step.links, l, marks, shapes));
+      const dots = startMarkers(step.links, l, marks, shapes);
+      expect(startMarkers(step.links, l, marks, shapes, sets), tech).toEqual(dots);
+      // and the whole drawing, worked out at once, is the four calls'
+      expect(hintDrawing(step, l, marks), tech).toEqual({ sets, shapes, dots, badges: badgePoints(shapes, l, marks, dots) });
     }
   });
 
@@ -994,10 +997,8 @@ describe("a group's bar and a square (docs/hint-drawing-sets.md, decisions 1, 2 
       const marks = markedCandidates(full);
       const shown = (x: CellDigit) => digitShown({ value: Number(values[x.cell]), corner: 0, center: 0 }, x.digit, cands[x.cell], full.cands.get(x.cell));
       const l = boardLayout(placedKeys(full), shown, solved, squareKeys(step, solved));
-      const sets = setShapes(step, l, marks);
-      const shapes = arrowShapes(step.links!, l, marks, sets);
-      const dots = startMarkers(step.links!, l, marks, shapes, sets);
-      const badges = badgePoints(shapes, l, marks, dots, sets);
+      // the drawing as the board works it out, the sets' tabs and all
+      const { sets, shapes, dots, badges } = hintDrawing(step, l, marks);
       for (const bar of sets.bars) {
         bars++;
         const own = new Set(bar.members.map(key));
@@ -1032,5 +1033,314 @@ describe("a group's bar and a square (docs/hint-drawing-sets.md, decisions 1, 2 
     expect(corpus.length).toBeGreaterThan(50);
     expect(bars).toBeGreaterThan(70);
     expect(pairs).toBeGreaterThan(300);
+  });
+});
+
+describe("an almost locked set's tiles and letter tabs (docs/hint-drawing-sets.md, decisions 4-7)", () => {
+  const key = (x: CellDigit) => `${x.cell}:${x.digit}`;
+  /** an almost locked set: each cell with its candidates */
+  const als = (cells: [CellDigit[], number][], letter = 'A', unit = 0): ChainSet => {
+    const members = cells.flatMap(([cds]) => cds);
+    return { kind: 'als', cells: cells.map(([, cell]) => cell).sort((a, b) => a - b), digits: [...new Set(members.map((x) => x.digit))].sort(), members, unit, letter };
+  };
+  /** a cell's candidates, as the set lists them */
+  const at = (r: number, c: number, digits: number[]): [CellDigit[], number] => [digits.map((d) => cd(r, c, d)), (r - 1) * 9 + c - 1];
+  const stepOf = (sets: ChainSet[], links: ChainLink[]): Step => ({ tech: 'AIC_ALS', placements: [], eliminations: [], description: '', truth: 'derived', sets, links }) as Step;
+  /** a board showing only the candidates a step names */
+  const boardOf = (step: Step) => {
+    const named = new Set([...step.sets!.flatMap((x) => x.members), ...step.links!.flatMap((l) => [...l.from, ...l.to])].map(key));
+    return boardLayout(new Set(), (x) => named.has(key(x)));
+  };
+  const marksOf = (step: Step) => [...new Map([...step.sets!.flatMap((x) => x.members), ...step.links!.flatMap((l) => [...l.from, ...l.to])].map((x) => [key(x), x])).values()];
+  /** which candidate place of its cell a point is */
+  const placeOf = (p: Point, cell: number) => [1, 2, 3, 4, 5, 6, 7, 8, 9].find((d) => dist(p, layout.centre({ cell, digit: d })) < 0.5);
+  const tabHalf = (MARK.tabLarge / 2) * 100;
+  const tabReach = (dir: Point) => squareReach(dir, tabHalf, MARK.tabRadius * (MARK.tabLarge / MARK.tab) * 100);
+  const tabRadius = tabHalf * Math.SQRT2;
+
+  it("draws a tile round each cell's own candidates, 15 units out, kept 6 inside its cell", () => {
+    // the stored ALS-XZ: A r8c2 {159}, r9c1 {59}; B r7c8 {59}, r8c9 {19}
+    const ex = EXAMPLES.ALS_XZ!;
+    const { tiles } = setShapes(ex.step, layout, []);
+    const corner = (r: number, c: number) => ({ x: M + (c - 1) * 100, y: M + (r - 1) * 100 });
+    const tileAt = (r: number, c: number) => tiles.find((t) => t.cell === (r - 1) * 9 + c - 1)!;
+    // r8c2 holds 1, 5 and 9, round the whole 3×3; r9c1 holds 5 and 9, the lower right four places
+    expect(tileAt(8, 2)).toEqual({ set: 0, cell: 64, x0: corner(8, 2).x + 7, y0: corner(8, 2).y + 8, x1: corner(8, 2).x + 93, y1: corner(8, 2).y + 94 });
+    expect(tileAt(9, 1)).toEqual({ set: 0, cell: 72, x0: corner(9, 1).x + 35, y0: corner(9, 1).y + 36, x1: corner(9, 1).x + 93, y1: corner(9, 1).y + 94 });
+    // r8c9 holds 1 and 9, the top left and bottom right places
+    expect(tileAt(8, 9)).toEqual({ set: 1, cell: 71, x0: corner(8, 9).x + 7, y0: corner(8, 9).y + 8, x1: corner(8, 9).x + 93, y1: corner(8, 9).y + 94 });
+    expect(tiles.map((t) => t.cell)).toEqual([64, 72, 61, 71]);
+    // a single candidate's tile, 30 across; no set, no tile
+    expect(setShapes(stepOf([als([at(5, 5, [5])])], []), layout, []).tiles[0]).toMatchObject({ x0: corner(5, 5).x + 35, x1: corner(5, 5).x + 65, y0: corner(5, 5).y + 36, y1: corner(5, 5).y + 66 });
+    expect(setShapes(EXAMPLES.AIC!.step, layout, [])).toEqual({ bars: [], tiles: [], tabs: [] });
+  });
+
+  it("puts a letter tab on every tile, on a place of its cell that shows no digit: inside the tile first, then beside it, the nearest first, the corners first", () => {
+    const tabOf = (step: Step) => {
+      const l = boardOf(step);
+      const { sets } = hintDrawing(step, l, marksOf(step));
+      return sets.tabs.map((t) => [t.letter, placeOf(t.p, t.cell)]);
+    };
+    // 4 and 6 of r5c5: the middle row, whose one free place inside the tile is 5, between them
+    expect(tabOf(stepOf([als([at(5, 5, [4, 6])])], [link(cd(5, 5, 4), cd(5, 2, 4), false)]))).toEqual([['A', 5]]);
+    // 1 and 2: no free place inside, so the first corner beside it, 3
+    expect(tabOf(stepOf([als([at(5, 5, [1, 2])])], [link(cd(5, 5, 1), cd(9, 5, 1), false)]))).toEqual([['A', 3]]);
+    // 1 and 4, the left column: beside it the nearest first, the corner 7 below the 4, not 3, two places off
+    expect(tabOf(stepOf([als([at(5, 5, [1, 4])])], [link(cd(5, 5, 1), cd(5, 1, 1), false)]))).toEqual([['A', 7]]);
+    // 2 and 4: inside, the corner 1 before the middle
+    expect(tabOf(stepOf([als([at(5, 5, [2, 4])])], [link(cd(5, 5, 2), cd(1, 5, 2), false)]))).toEqual([['A', 1]]);
+    // 1 and 9: the whole 3×3 inside, the first free corner, 3, before the side 2
+    expect(tabOf(stepOf([als([at(5, 5, [1, 9])])], [link(cd(5, 5, 9), cd(9, 5, 9), false)]))).toEqual([['A', 3]]);
+    // 2 and 9, the 2 placed, its outer ring reaching 18.75: the corner 3 beside it is too near, the side 6 is not
+    const placed = stepOf([als([at(5, 5, [2, 9])])], [link(cd(9, 5, 9), cd(5, 5, 9), false)]);
+    const ring = boardLayout(new Set([key(cd(5, 5, 2))]), boardOf(placed).shown);
+    expect(hintDrawing(placed, ring, marksOf(placed)).sets.tabs.map((t) => placeOf(t.p, t.cell))).toEqual([6]);
+    expect(hintDrawing(placed, boardOf(placed), marksOf(placed)).sets.tabs.map((t) => placeOf(t.p, t.cell))).toEqual([3]);
+    // a set of two cells, a tab on each, lettered: r5c6 holds 2, 4 and 7, so its corner 1 is inside its tile and free
+    const two = stepOf([als([at(5, 5, [2, 4]), at(5, 6, [2, 4, 7])], 'C')], [link(cd(5, 6, 7), cd(5, 9, 7), false)]);
+    expect(tabOf(two)).toEqual([
+      ['C', 1],
+      ['C', 1]
+    ]);
+  });
+
+  it('keeps a tab off the line an arrow would take without it, where a place allows, so the arrow stays straight', () => {
+    // 2 and 4 of r5c5, an arrow left from the 2 along the top row of places: the corner 1 is on its line, so the middle
+    const step = stepOf([als([at(5, 5, [2, 4])])], [{ ...link(cd(5, 5, 2), cd(5, 1, 2), false), fromSet: 0 }]);
+    const l = boardOf(step);
+    const { sets, shapes } = hintDrawing(step, l, marksOf(step));
+    expect(placeOf(sets.tabs[0].p, sets.tabs[0].cell)).toBe(5);
+    expect(arrow(shapes[0]).d).toMatch(/^M [\d.]+ [\d.]+ L /);
+    // with the tab on the corner, the arrow bends round it
+    const onLine: SetShapes = { ...sets, tabs: [{ ...sets.tabs[0], p: l.centre(cd(5, 5, 1)) }] };
+    expect(arrow(arrowShapes(step.links!, l, marksOf(step), onLine)[0]).d).toMatch(/ [QC] /);
+  });
+
+  it('keeps every arrow, start dot and walk number off a tab, a disc of 18.4 round it', () => {
+    const tabAt = (p: Point): SetShapes => ({ bars: [], tiles: [], tabs: [{ set: 0, cell: 40, letter: 'A', p }] });
+    // an arrow straight along the middle row of r5's places, through the middle of r5c5, bends round a tab there
+    const across = [link(cd(5, 3, 5), cd(5, 7, 5))];
+    const marks = [cd(5, 3, 5), cd(5, 7, 5)];
+    const tab = tabAt(layout.centre(cd(5, 5, 5)));
+    expect(arrow(arrowShapes(across, layout, marks)[0]).d).toMatch(/^M [\d.]+ [\d.]+ L /);
+    const bent = arrow(arrowShapes(across, layout, marks, tab)[0]);
+    expect(Math.min(...samples(bent.d).map((p) => dist(p, tab.tabs[0].p)))).toBeGreaterThanOrEqual(tabRadius + SIZES.clearance * 100 - 0.5);
+    // a walk number on an arrow down column 5, a tab 28 units beside it, far enough off the shaft to leave it
+    // straight: the number moves off the tab
+    const down = [link(cd(2, 5, 5), cd(8, 5, 5))];
+    const downMarks = [cd(2, 5, 5), cd(8, 5, 5)];
+    const number = badgePoints(arrowShapes(down, layout, downMarks), layout, downMarks).get(0)!;
+    const beside = tabAt({ x: number.x - 28, y: number.y });
+    const shapes = arrowShapes(down, layout, downMarks, beside);
+    expect(arrow(shapes[0]).d).toMatch(/^M [\d.]+ [\d.]+ L /);
+    expect(badgePoints(shapes, layout, downMarks).get(0)).toEqual(number);
+    expect(dist(badgePoints(shapes, layout, downMarks, [], beside).get(0)!, beside.tabs[0].p)).toBeGreaterThanOrEqual(tabRadius + SIZES.badgeLarge * 100);
+    // a start dot by the 5 of r5c5, whose first place, upper left, is on a tab at its place 1
+    const from = [link(cd(5, 5, 5), cd(5, 9, 5))];
+    const fromMarks = [cd(5, 5, 5), cd(5, 9, 5)];
+    const corner = tabAt(layout.centre(cd(5, 5, 1)));
+    const [bare] = startMarkers(from, layout, fromMarks);
+    const [dot] = startMarkers(from, layout, fromMarks, arrowShapes(from, layout, fromMarks, corner), corner);
+    expect(dist(bare, corner.tabs[0].p)).toBeLessThan(tabRadius + SIZES.dotLarge * 100);
+    expect(dist(dot, corner.tabs[0].p)).toBeGreaterThanOrEqual(tabRadius + SIZES.dotLarge * 100);
+  });
+
+  it("draws no arrow for a link between two digits of one set, wherever they lie, and starts a chain that opens inside a set by the candidate nearest the first line drawn", () => {
+    // set A in box 1: the 1s of r1c2 and r1c3, the 3 and 4 of r3c1; (1)A = (3)A - 3r3c9 = 3r9c9, its first link
+    // inside A, on no shared cell
+    const A = als([at(1, 2, [1, 2]), at(1, 3, [1, 2]), at(3, 1, [3, 4])], 'A', 18);
+    const links: ChainLink[] = [
+      { from: [cd(1, 2, 1), cd(1, 3, 1)], to: [cd(3, 1, 3)], strong: true, fromSet: 0, toSet: 0 },
+      { from: [cd(3, 1, 3)], to: [cd(3, 9, 3)], strong: false, fromSet: 0 },
+      link(cd(3, 9, 3), cd(9, 9, 3))
+    ];
+    const marks = [...A.members, cd(3, 9, 3), cd(9, 9, 3)];
+    expect(insideOneCell(links[0])).toBe(false);
+    const shapes = arrowShapes(links, layout, marks);
+    expect(shapes.map((s) => s.kind)).toEqual(['none', 'arrow', 'arrow']);
+    // the dot by the 1 of r1c3, the first node's candidate nearest the 3 of r3c9 the first line goes to, not the
+    // 1 of r1c2 nearest the set's own 3
+    const [dot] = startMarkers(links, layout, marks, shapes);
+    expect(dot.at).toEqual(cd(1, 3, 1));
+    expect(Math.floor((dot.x - M) / 100)).toBe(2);
+    // a step's every link inside a set, in every set step kept, draws nothing
+    for (const { where, step: s } of corpus) {
+      const kinds = arrowShapes(s.links!, layout, s.links!.flatMap((l) => [...l.from, ...l.to])).map((x) => x.kind);
+      s.links!.forEach((l, i) => {
+        if (l.fromSet !== undefined && l.fromSet === l.toSet) expect(kinds[i], `${where}: link ${i}`).toBe('none');
+      });
+    }
+  });
+
+  /** the almost locked set steps the repository keeps: the stored examples, and the set fixture's at the positions it keeps */
+  const corpus = (() => {
+    const ALS: Tech[] = ['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'];
+    const out: { where: string; step: Step; values: string; cands: number[] }[] = ALS.map((tech) => ({ where: tech, step: EXAMPLES[tech]!.step, values: EXAMPLES[tech]!.values, cands: EXAMPLES[tech]!.cands }));
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    for (const section of ['paths', 'named']) {
+      for (const [id, d] of Object.entries<{ position: { puzzle: string; values: string; cands: number[] } }>(fx[section])) {
+        const tech = id.split(', ').at(-1) as Tech;
+        if (!ALS.includes(tech)) continue;
+        const g = parseGrid(d.position.puzzle)!;
+        for (let i = 0; i < 81; i++) {
+          g.values[i] = Number(d.position.values[i]);
+          g.cands[i] = d.position.cands[i];
+        }
+        const step = findStep(tech, g);
+        if (step?.tech === tech) out.push({ where: id, step, values: d.position.values, cands: d.position.cands });
+      }
+    }
+    return out;
+  })();
+
+  /** a set step's drawing as the board works it out */
+  const drawingOf = ({ step, values, cands }: (typeof corpus)[number]) => {
+    const solved = (c: number) => values[c] !== '0';
+    const full = frameMarks(step, null, solved);
+    const marks = markedCandidates(full);
+    const shown = (x: CellDigit) => digitShown({ value: Number(values[x.cell]), corner: 0, center: 0 }, x.digit, cands[x.cell], full.cands.get(x.cell));
+    const l = boardLayout(placedKeys(full), shown, solved, squareKeys(step, solved));
+    return { full, marks, shown, l, ...hintDrawing(step, l, marks) };
+  };
+
+  it('keeps every tile inside its cell, 3 units clear of a box line, round its cell\'s candidates only, in every set step kept', () => {
+    let tiles = 0;
+    for (const entry of corpus) {
+      const { sets } = drawingOf(entry);
+      const { step, where } = entry;
+      const lettered = step.sets!.filter((x) => x.kind === 'als');
+      expect(sets.tiles.length, where).toBe(lettered.reduce((n, x) => n + x.cells.length, 0));
+      for (const t of sets.tiles) {
+        tiles++;
+        const x = M + (t.cell % 9) * 100;
+        const y = M + Math.floor(t.cell / 9) * 100;
+        // 6 off each side of its cell: a box line's half width (3) and 3 more
+        expect(Math.min(t.x0 - x, t.y0 - y, x + 100 - t.x1, y + 100 - t.y1), `${where}: the tile on cell ${t.cell}`).toBeGreaterThanOrEqual(MARK.tileMargin * 100 - 1e-9);
+        // round the centres of the cell's candidates, 15 out
+        const own = step.sets![t.set].members.filter((m) => m.cell === t.cell).map((m) => layout.centre(m));
+        expect(t.x0, where).toBeCloseTo(Math.min(...own.map((p) => p.x)) - 15, 9);
+        expect(t.y1, where).toBeCloseTo(Math.max(...own.map((p) => p.y)) + 15, 9);
+        expect(own.length, where).toBeGreaterThan(0);
+      }
+    }
+    expect(corpus.length).toBeGreaterThan(60);
+    expect(tiles).toBeGreaterThan(400);
+  });
+
+  it('puts every tab on a free place of its cell, with the room two neighbouring discs keep, at a phone\'s size, from every mark, tab, start dot, walk number and head, and every arrow clear of it, in every set step kept (strict)', () => {
+    let tabs = 0;
+    const keep = 2 - 1e-6;
+    const gap = (p: Point, q: Point, beyond: number) => {
+      const d = dist(p, q);
+      return d - tabReach({ x: (q.x - p.x) / d, y: (q.y - p.y) / d }) - beyond;
+    };
+    const nearestOn = (p: Point, a: Point, b: Point) => {
+      const ab = { x: b.x - a.x, y: b.y - a.y };
+      const t = Math.max(0, Math.min(1, ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / (ab.x * ab.x + ab.y * ab.y || 1)));
+      return { x: a.x + ab.x * t, y: a.y + ab.y * t };
+    };
+    for (const entry of corpus) {
+      const { marks, shown, l, sets, shapes, dots, badges } = drawingOf(entry);
+      const { where, step } = entry;
+      expect(sets.tabs.map((t) => `${t.set}:${t.cell}`), where).toEqual(sets.tiles.map((t) => `${t.set}:${t.cell}`));
+      for (const tab of sets.tabs) {
+        tabs++;
+        const what = `${where}: the tab ${tab.letter} on cell ${tab.cell}`;
+        expect(tab.letter, what).toBe(step.sets![tab.set].letter);
+        const place = placeOf(tab.p, tab.cell);
+        expect(place, what).toBeDefined();
+        const cdAt = { cell: tab.cell, digit: place! };
+        expect(shown(cdAt) || marks.some((m) => key(m) === key(cdAt)), what).toBe(false);
+        for (const m of marks) {
+          const p = l.centre(m);
+          const d = dist(tab.p, p);
+          expect(gap(tab.p, p, l.reach ? l.reach(m, { x: (tab.p.x - p.x) / d, y: (tab.p.y - p.y) / d }) : l.radiusOf!(m)), `${what} and the mark of ${key(m)}`).toBeGreaterThanOrEqual(keep);
+        }
+        for (const o of sets.tabs) if (o !== tab) expect(dist(tab.p, o.p) - 2 * tabReach({ x: (o.p.x - tab.p.x) / dist(tab.p, o.p), y: (o.p.y - tab.p.y) / dist(tab.p, o.p) }), what).toBeGreaterThanOrEqual(keep);
+        for (const p of dots) expect(gap(tab.p, p, SIZES.dotLarge * 100), `${what} and a start dot`).toBeGreaterThanOrEqual(keep);
+        for (const [, p] of badges) expect(gap(tab.p, p, SIZES.badgeLarge * 100), `${what} and a walk number`).toBeGreaterThanOrEqual(keep);
+        for (const s of shapes) {
+          if (s.kind !== 'arrow') continue;
+          for (let k = 0; k < s.head.length; k++) expect(gap(tab.p, nearestOn(tab.p, s.head[k], s.head[(k + 1) % 3]), 0), `${what} and the head of link ${s.link}`).toBeGreaterThanOrEqual(keep);
+          // the shaft, at a phone's width, never under the tab
+          const line = samples(s.d);
+          for (let k = 0; k + 1 < line.length; k++) expect(gap(tab.p, nearestOn(tab.p, line[k], line[k + 1]), 2.25), `${what} and link ${s.link}`).toBeGreaterThanOrEqual(keep);
+        }
+      }
+    }
+    expect(tabs).toBeGreaterThan(400);
+  });
+
+  it('draws a cell in two sets as the smaller set\'s tile and the other\'s outline dashed inside it, never three, and leaves every set a filled tile', () => {
+    // the named ALS-XY-Chain whose A, the cell r7c7, lies inside D, r7c5 and r7c7
+    const shared = corpus.find((x) => x.where.startsWith('shared cells that derive'))!;
+    const { sets } = drawingOf(shared);
+    const [A, D] = [0, 3];
+    expect(shared.step.sets![A].cells).toEqual([60]);
+    expect(shared.step.sets![D].cells).toEqual([58, 60]);
+    const view = (drawn: number[]) => tilesIn(shared.step, sets, drawn).map((t) => [t.set, t.cell, t.inset]);
+    expect(view([0, 1, 2, 3])).toEqual([
+      [0, 60, 0],
+      [1, 15, 0],
+      [1, 17, 0],
+      [2, 40, 0],
+      [2, 44, 0],
+      [3, 58, 0],
+      [3, 60, 1]
+    ]);
+    // a view that draws D alone draws its own tile on r7c7
+    expect(view([3])).toEqual([
+      [3, 58, 0],
+      [3, 60, 0]
+    ]);
+    // the clash: D, r4c4 and r6c4, inside A, r1c4, r4c4, r5c4 and r6c4: D's tiles there, A's outline dashed inside them
+    const clash = corpus.find((x) => x.where.startsWith('shared cells that clash'))!;
+    const both = tilesIn(clash.step, drawingOf(clash).sets, [0, 1, 2, 3]).filter((t) => t.set === 0 || t.set === 3);
+    expect(both.map((t) => [t.set, t.cell, t.inset])).toEqual([
+      [0, 3, 0],
+      [0, 39, 0],
+      [3, 30, 0],
+      [3, 48, 0],
+      [0, 30, 1],
+      [0, 48, 1]
+    ]);
+    // every set step kept: no cell in three, every set a filled tile on some cell, the dashed one a tab of its own
+    let sharing = 0;
+    const crowded: string[] = [];
+    for (const entry of corpus) {
+      const { sets: shapes } = drawingOf(entry);
+      const lettered = entry.step.sets!.flatMap((x, k) => (x.kind === 'als' ? [k] : []));
+      const tiles = tilesIn(entry.step, shapes, lettered);
+      for (const t of tiles) expect(t.inset, `${entry.where}: cell ${t.cell}`).toBeLessThan(2);
+      // (a chain of more sets than cells cannot give each a tile of its own: an ALS-XY-Chain of four sets on three cells)
+      const cells = new Set(lettered.flatMap((k) => entry.step.sets![k].cells));
+      if (cells.size >= lettered.length) for (const k of lettered) expect(tiles.some((t) => t.set === k && t.inset === 0), `${entry.where}: set ${k}`).toBe(true);
+      else crowded.push(entry.where);
+      for (const t of tiles.filter((x) => x.inset === 1)) {
+        sharing++;
+        const owner = tiles.find((x) => x.cell === t.cell && x.inset === 0)!;
+        const size = (k: number) => entry.step.sets![k].cells.length;
+        // the smaller set's tile, of two alike the earlier's; or the tile of a set that has no other, the other set keeping one
+        const own = (k: number) => tiles.filter((x) => x.set === k && x.inset === 0).length;
+        if (!(size(owner.set) < size(t.set) || (size(owner.set) === size(t.set) && owner.set < t.set))) {
+          expect([own(owner.set), own(t.set) > 0], `${entry.where}: cell ${t.cell}`).toEqual([1, true]);
+        }
+        expect(shapes.tabs.filter((x) => x.cell === t.cell).map((x) => x.set).sort(), entry.where).toEqual([owner.set, t.set].sort());
+      }
+    }
+    expect(sharing).toBeGreaterThan(5);
+    expect(crowded).toEqual(['hard 0, step 3, ALS_XY_CHAIN']);
+    // where the smaller set's tile alone leaves a set none, it takes a cell from a set that keeps another:
+    // A (four cells) lies in C (r7c1, r7c3) and D (three cells), so it takes r7c1 from C, which keeps r7c3
+    const lent = corpus.find((x) => x.where === 'hard 1, step 3, ALS_XY_CHAIN')!;
+    const filled = (drawn: number[]) => tilesIn(lent.step, drawingOf(lent).sets, drawn).filter((t) => t.inset === 0).map((t) => [t.set, t.cell]);
+    expect(lent.step.sets!.map((x) => x.cells)).toEqual([[54, 56, 64, 73], [55], [54, 56], [55, 64, 73]]);
+    expect(filled([0, 1, 2, 3])).toEqual([
+      [0, 54],
+      [1, 55],
+      [2, 56],
+      [3, 64],
+      [3, 73]
+    ]);
   });
 });

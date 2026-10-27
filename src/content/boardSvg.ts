@@ -7,11 +7,12 @@
 // page, a light page and in an image search result.
 import { CellDigit, Step } from '../engine/steps';
 import { tr } from '../engine/text';
-import { arrowShapes, startMarkers, setShapes, squareReach, pointsOf, SIZES } from './hintGeometry';
+import { hintDrawing, tilesIn, squareReach, pointsOf, SIZES } from './hintGeometry';
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
+import type { HintPalette } from './hintPalette';
 import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, premiseOf, isParity, isShade, parityLegend } from './hintMarks';
-import type { Premise, Role, SetStyle } from './hintMarks';
+import type { BarStyle, Premise, Role, Tint } from './hintMarks';
 import type { Frame } from '../engine/hintFrames';
 import { drawnLinks } from '../engine/hintFrames';
 
@@ -110,9 +111,19 @@ const f = (n: number) => n.toFixed(1);
 const LINE = 1.5;
 /** the removal bar, thinner than a ring by design, a little more: about 1.5 CSS px on a phone's 350 px diagram */
 const BAR = 1.85;
+/** a set tile's outline, half again as thick as the app's and a little more: 1.5 CSS px on a phone's 350 px diagram */
+const TILE = 1.65;
 
 /** a group's bar takes its members' mark's ink (docs/hint-drawing-sets.md, decisions 2 and 3) */
-const BAR_INK: Record<SetStyle, string> = { oneOf: P.placeInk, false: P.false, primary: P.primaryInk, elim: P.elim };
+const BAR_INK: Record<BarStyle, string> = { oneOf: P.placeInk, false: P.false, primary: P.primaryInk, elim: P.elim };
+
+/** an almost locked set's tint and its ink, sand, rose and violet (docs/hint-drawing-sets.md, decision 8) */
+const TINT: Record<Tint, { fill: keyof HintPalette; ink: keyof HintPalette }> = {
+  1: { fill: 'set1', ink: 'set1Ink' },
+  2: { fill: 'set2', ink: 'set2Ink' },
+  3: { fill: 'set3', ink: 'set3Ink' }
+};
+const tintOf = (t: Tint) => ({ fill: P[TINT[t].fill] as string, ink: P[TINT[t].ink] as string });
 
 /**
  * The example as an SVG document. `title` becomes the image's accessible
@@ -178,12 +189,36 @@ export function boardSvg(example: Example, title: string): string {
       ? { reach: (cd, dir) => (squares.has(`${cd.cell}:${cd.digit}`) ? squareReach(dir, MARK.oneOf * S, MARK.oneOfRadius * S) : radiusOf(cd)) }
       : {})
   };
-  const sets = setShapes(step, layout, marked);
+  // the groups' bars and the sets' tiles and tabs, then the arrows and
+  // the start dots, which keep off them, as the app's board works them out
+  const { sets, shapes: all, dots } = hintDrawing(step, layout, marked);
+  // the almost locked sets the full view draws (docs/hint-drawing-sets.md,
+  // decisions 5-8): a tile round each cell's candidates in the set's tint
+  // at half strength, outlined inwards in its ink, a cell in two sets the
+  // smaller set's tile and the other's outline dashed inside it; over the
+  // bands, under everything else
+  const tints = new Map(drawn.sets.flatMap((m) => (m.tint ? [[m.set, m.tint] as const] : [])));
+  for (const tile of tilesIn(step, sets, tints.keys())) {
+    const { fill, ink } = tintOf(tints.get(tile.set)!);
+    const w = MARK.tileStroke * s * TILE;
+    const k = tile.inset * w + w / 2;
+    const rx = MARK.tileRadius * s;
+    if (!tile.inset) {
+      parts.push(
+        `<rect class="tl" x="${f(tile.x0)}" y="${f(tile.y0)}" width="${f(tile.x1 - tile.x0)}" height="${f(tile.y1 - tile.y0)}" rx="${f(rx)}" fill="${fill}" fill-opacity="${P.setAlpha}"/>`
+      );
+    }
+    parts.push(
+      `<rect class="to" x="${f(tile.x0 + k)}" y="${f(tile.y0 + k)}" width="${f(tile.x1 - tile.x0 - 2 * k)}" height="${f(tile.y1 - tile.y0 - 2 * k)}" rx="${f(Math.max(rx - k, 0))}" fill="none" stroke="${ink}" stroke-width="${f(w)}"${
+        tile.inset ? ` stroke-dasharray="${MARK.tileDash.map((d) => f(d * s)).join(' ')}"` : ''
+      }/>`
+    );
+  }
   // the groups the full view draws, each bar in its members' mark's ink
   // (docs/hint-drawing-sets.md, decisions 2 and 3); their members' marks
   // keep a keyline in the board's colour, which parts them from the bar
   const groupBars = drawn.sets.flatMap(({ set, style }) => {
-    const bar = sets.bars.find((b) => b.set === set);
+    const bar = style !== 'als' && sets.bars.find((b) => b.set === set);
     return bar ? [{ bar, style }] : [];
   });
   const onBar = new Set(groupBars.flatMap(({ bar }) => bar.members.map((cd) => `${cd.cell}:${cd.digit}`)));
@@ -202,7 +237,7 @@ export function boardSvg(example: Example, title: string): string {
     if (value) {
       const kind = drawn.values.get(cell);
       let fill = '';
-      if (kind && kind !== 'node' && kind !== 'true' && kind !== 'false' && kind !== 'oneOf') {
+      if (kind && kind !== 'node' && kind !== 'true' && kind !== 'false' && kind !== 'oneOf' && kind !== 'member') {
         const ink = kind === 'elim' || kind === 'elimOn' ? P.elim : fillOf(P, kind === 'placeOn' ? 'place' : kind).ink;
         // a style, not an attribute, so the class's own fill cannot win
         fill = ` style="fill:${ink}"`;
@@ -222,6 +257,11 @@ export function boardSvg(example: Example, title: string): string {
       const ty = f(candY(cd) + 4.4);
       if (!kind) {
         texts.push(`<text x="${x}" y="${ty}" class="cd">${digit}</text>`);
+        continue;
+      }
+      if (kind === 'member') {
+        // an almost locked set's member: no shape, its digit bold in the ring's ink on the set's tile (decision 10)
+        texts.push(`<text x="${x}" y="${ty}" class="rm">${digit}</text>`);
         continue;
       }
       if (onBar.has(`${cell}:${digit}`)) {
@@ -310,7 +350,7 @@ export function boardSvg(example: Example, title: string): string {
   // link, as the app's board does, and drawn as its full view draws them:
   // a colouring's argument, without its ties
   const shown = drawnLinks(step, null);
-  const shapes = arrowShapes(step.links ?? [], layout, marked, sets).filter((sh) => shown.has(sh.link));
+  const shapes = all.filter((sh) => shown.has(sh.link));
   const w = SIZES.stroke * s * LINE;
   // the mask's name, unique to this diagram where several share a page
   const mask = `knockout-${hash(`${example.puzzle}:${example.stepIndex}:${title}`)}`;
@@ -365,16 +405,28 @@ export function boardSvg(example: Example, title: string): string {
     parts.push(`<path d="${sh.d}" fill="none" stroke="${P.arrow}" stroke-width="${f(w)}" stroke-linecap="round" stroke-linejoin="round"/>`);
   }
   if (shapes.some((sh) => sh.kind !== 'none')) parts.push('</g>');
-  // the digits, then the bars over the removed ones, then the start dots,
-  // at the size a small board draws them
+  // the digits, then the bars over the removed ones, then the sets' letter
+  // tabs (decision 7), then the start dots, the tabs and the dots at the
+  // size a small board draws them
   parts.push(...texts, ...bars);
-  for (const p of startMarkers(step.links ?? [], layout, marked, shapes, sets)) {
+  const scale = MARK.tabLarge / MARK.tab;
+  for (const tab of sets.tabs.filter((t) => tints.has(t.set))) {
+    const half = (MARK.tabLarge / 2) * s;
+    const k = MARK.keyline * scale * s;
+    const rx = MARK.tabRadius * scale * s;
+    parts.push(
+      `<rect class="tk" x="${f(tab.p.x - half - k / 2)}" y="${f(tab.p.y - half - k / 2)}" width="${f(2 * half + k)}" height="${f(2 * half + k)}" rx="${f(rx + k / 2)}" fill="none" stroke="#ffffff" stroke-width="${f(k)}"/>`,
+      `<rect class="tb" x="${f(tab.p.x - half)}" y="${f(tab.p.y - half)}" width="${f(2 * half)}" height="${f(2 * half)}" rx="${f(rx)}" fill="${tintOf(tints.get(tab.set)!).ink}"/>`,
+      `<text x="${f(tab.p.x)}" y="${f(tab.p.y + 0.35 * MARK.tabLetter * scale * s)}" class="tab">${esc(tab.letter)}</text>`
+    );
+  }
+  for (const p of dots) {
     parts.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(SIZES.dotLarge * s)}" fill="${P.arrow}" stroke="#ffffff" stroke-width="${f(0.02 * s)}"/>`);
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOARD_SIZE} ${BOARD_SIZE}" role="img" aria-label="${esc(title)}">
 <title>${esc(title)}</title>
-<style>text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-anchor:middle}.giv{font-size:34px;font-weight:700;fill:#1b2233}.ent{font-size:34px;font-weight:600;fill:#2f6fd0}.cd{font-size:13px;fill:#5d6577}.mk{font-size:12.5px;font-weight:700;fill:${P.onFill}}.rm{font-size:12.5px;font-weight:700;fill:${P.inRing}}.lab{font-size:12px;fill:#7a8294}.ko text{fill:#000!important;stroke:#000;stroke-width:max(.12em,2.4px);stroke-linejoin:round}</style>
+<style>text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-anchor:middle}.giv{font-size:34px;font-weight:700;fill:#1b2233}.ent{font-size:34px;font-weight:600;fill:#2f6fd0}.cd{font-size:13px;fill:#5d6577}.mk{font-size:12.5px;font-weight:700;fill:${P.onFill}}.rm{font-size:12.5px;font-weight:700;fill:${P.inRing}}.lab{font-size:12px;fill:#7a8294}.tab{font-size:${f(MARK.tabLetter * (MARK.tabLarge / MARK.tab) * S)}px;font-weight:700;fill:#ffffff}.ko text{fill:#000!important;stroke:#000;stroke-width:max(.12em,2.4px);stroke-linejoin:round}</style>
 <rect width="${BOARD_SIZE}" height="${BOARD_SIZE}" rx="8" fill="#f5f6fa"/>
 ${parts.join('\n')}
 </svg>
@@ -436,7 +488,8 @@ export interface LegendEntry {
    * and the plain ring of the cell a colour would empty ('node'); a set's
    * (docs/hint-drawing-sets.md, decision 18) "one of these" squares on a
    * bar ('oneOfBar'), false rings on a bar ('falseBar'), squares in a set
-   * ('oneOf') and a bar alone, in the pattern's or the removal's ink ('bar')
+   * ('oneOf') and a bar alone, in the pattern's or the removal's ink
+   * ('bar'); an almost locked set's lettered tile ('tile')
    */
   kind:
     | 'place'
@@ -447,6 +500,7 @@ export interface LegendEntry {
     | 'oneOfBar'
     | 'falseBar'
     | 'bar'
+    | 'tile'
     | 'primary'
     | 'secondary'
     | 'fin'
@@ -491,7 +545,7 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
       return { kind: e.kind, label: e.label, colour: '#ffffff', ink: P.arrow };
     });
   }
-  const { shown, onValue, onBand, intoRemove, intoPlace, refuted, bars, setSquares } = legendKinds(step, drawn);
+  const { shown, onValue, onBand, intoRemove, intoPlace, refuted, bars, setSquares, tiles } = legendKinds(step, drawn);
   const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
@@ -518,6 +572,15 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
   if (bars.has('primary') || bars.has('elim')) {
     const ink = bars.has('primary') ? P.primaryInk : P.elim;
     out.push({ kind: 'bar', label: tr`bar: a group (one digit's cells in one box and one row or column), read as one node`, colour: ink, ink });
+  }
+  // an almost locked set's lettered tiles (decision 18), the swatch in the first tint drawn: a Death Blossom's are its petals
+  if (tiles.length) {
+    const { fill, ink } = tintOf(tiles[0]);
+    const label =
+      step.tech === 'DEATH_BLOSSOM'
+        ? tr`lettered cells: a petal, an almost locked set for one of the stem's digits`
+        : tr`lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells`;
+    out.push({ kind: 'tile', label, colour: fill, ink });
   }
   return out;
 }
@@ -596,6 +659,17 @@ export function swatchStyle(l: LegendEntry): { background: string; border: strin
   if (l.kind === 'falseBar') return { background: [ring(1), ring(11), bar, '#ffffff'].join(','), border: 'none', boxShadow: chip, borderRadius: '0', width: '20px' };
   if (l.kind === 'bar') {
     return { background: `linear-gradient(${l.ink},${l.ink}) 2px 3.5px/16px 3px no-repeat,#ffffff`, border: 'none', boxShadow: chip, borderRadius: '0', width: '20px' };
+  }
+  // a set's small tile, its tint at half strength over the chip's white,
+  // outlined in its ink, with its tab in the corner, a keyline round it
+  if (l.kind === 'tile') {
+    return {
+      background: `linear-gradient(${l.ink},${l.ink}) 1px 1px/4px 4px no-repeat,linear-gradient(#ffffff,#ffffff) 0 0/6px 6px no-repeat,linear-gradient(${l.colour}80,${l.colour}80),#ffffff`,
+      border: `1.5px solid ${l.ink}`,
+      boxShadow: chip,
+      borderRadius: '3px',
+      width: '14px'
+    };
   }
   if (l.kind === 'node') return { background: '#ffffff', border: `1.5px solid ${l.ink}`, boxShadow: chip };
   if (l.kind === 'false') return { background: '#ffffff', border: `2px solid ${l.ink}`, boxShadow: chip };

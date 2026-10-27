@@ -184,12 +184,38 @@ describe('worked examples', () => {
       const full = frameMarks(ex.step, null, (c) => ex.values[c] !== '0');
       const kindOf = (k: string) => full.cands.get(Number(k.split(':')[0]))?.get(Number(k.split(':')[1]));
       const squares = [...marked].filter((k) => kindOf(k) === 'oneOf');
-      const onBar = new Set(full.sets.flatMap(({ set }) => ex.step.sets![set].members.map(key)));
+      const groups = full.sets.filter((x) => x.style !== 'als');
+      const onBar = new Set(groups.flatMap(({ set }) => ex.step.sets![set].members.map(key)));
       expect((svg.match(/<rect class="sq" /g) ?? []).length, tech).toBe(squares.length);
       expect((svg.match(/<rect class="kl" /g) ?? []).length, tech).toBe(squares.filter((k) => onBar.has(k)).length);
       expect((svg.match(/<circle class="kl" /g) ?? []).length, tech).toBe([...onBar].filter((k) => kindOf(k) !== 'oneOf').length);
       // one bar per group the full view draws
-      expect((svg.match(/<line class="gb" /g) ?? []).length, tech).toBe(full.sets.length);
+      expect((svg.match(/<line class="gb" /g) ?? []).length, tech).toBe(groups.length);
+      // an almost locked set: a tile in each of its cells, filled and
+      // outlined, a cell in two sets the smaller's tile and the other's
+      // outline dashed; a tab with its keyline and its letter on each
+      // (docs/hint-drawing-sets.md, decisions 5-7); its members drawn as
+      // their digits alone, bold in the ring's ink
+      const lettered = full.sets.filter((x) => x.style === 'als').map(({ set }) => ex.step.sets![set]);
+      const tiles = lettered.flatMap((set) => set.cells);
+      expect((svg.match(/<rect class="to" /g) ?? []).length, tech).toBe(tiles.length);
+      expect((svg.match(/<rect class="tl" /g) ?? []).length, tech).toBe(new Set(tiles).size);
+      expect((svg.match(/<rect class="tb" /g) ?? []).length, tech).toBe(tiles.length);
+      expect((svg.match(/<rect class="tk" /g) ?? []).length, tech).toBe(tiles.length);
+      expect([...svg.matchAll(/<text [^>]*class="tab">([A-D])<\/text>/g)].map((m) => m[1]).sort(), tech).toEqual(lettered.flatMap((set) => set.cells.map(() => set.letter!)).sort());
+      // each tile inside its cell on the diagram's board too, 6 units of a 100-unit cell off its edges, 3 clear of a box line
+      for (const t of svg.matchAll(/<rect class="tl" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g)) {
+        const [x, y, w, h] = t.slice(1).map(Number);
+        const [col, row] = [Math.floor((x - 24) / 60), Math.floor((y - 24) / 60)];
+        const margin = Math.min(x - (24 + col * 60), y - (24 + row * 60), 24 + (col + 1) * 60 - (x + w), 24 + (row + 1) * 60 - (y + h));
+        expect(margin, `${tech}: a tile`).toBeGreaterThanOrEqual(0.06 * 60 - 0.05);
+      }
+      const members = [...full.cands].flatMap(([cell, m]) => [...m].filter(([, k]) => k === 'member').map(([digit]) => ({ cell, digit })));
+      for (const { cell, digit } of members) {
+        const x = (24 + (cell % 9) * 60 + (0.22 + ((digit - 1) % 3) * 0.28) * 60).toFixed(1);
+        const y = (24 + Math.floor(cell / 9) * 60 + (0.23 + Math.floor((digit - 1) / 3) * 0.28) * 60 + 4.4).toFixed(1);
+        expect(svg, `${tech}: the member ${digit} of cell ${cell}`).toContain(`<text x="${x}" y="${y}" class="rm">${digit}</text>`);
+      }
       // the arrows: none for a link whose ends share a cell and differ in
       // digit (a switch inside a cell, or a set's change of digit: its
       // marks say it), but a colouring's weak tie there is corner brackets;
@@ -199,7 +225,7 @@ describe('worked examples', () => {
       // another digit of a set it reached)
       const share = (a: { cell: number }[], b: { cell: number }[]) => a.some((x) => b.some((y) => y.cell === x.cell));
       const digits = (node: { digit: number }[]) => [...new Set(node.map((cd) => cd.digit))].sort().join(',');
-      const silent = (l: (typeof links)[number]) => !parity && share(l.from, l.to) && digits(l.from) !== digits(l.to);
+      const silent = (l: (typeof links)[number]) => !parity && ((share(l.from, l.to) && digits(l.from) !== digits(l.to)) || (l.fromSet !== undefined && l.fromSet === l.toSet));
       const drawn = links.filter((l) => !silent(l));
       let starts = 0;
       let counted = false;

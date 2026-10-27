@@ -27,6 +27,11 @@
 // members' mark in each view: "one of these" squares while one of them is
 // true, false rings, the pattern's discs in a proof-only view, removals
 // (decisions 2 and 3); the geometry puts it (src/content/hintGeometry.ts).
+// An almost locked set (Step.sets of kind 'als') is drawn as a tile in each
+// of its cells, in one of three tints, with its letter on a tab, from the
+// frame that first reaches it (decisions 5-8); its candidates the view
+// gives no other mark are its members, no shape, the digit bold on the
+// tile (decision 10), the last mark of all (G5).
 // A removed or placed node is the removal or the placement, its truth
 // plain from the mark.
 // A colouring whose truth is its parity (docs/hint-drawing-colouring.md)
@@ -57,7 +62,7 @@ import type { Shade } from './hintPalette';
 export { isParity };
 export type { Shade };
 export type Role = 'primary' | 'secondary' | 'fin';
-export type CandMark = Role | Shade | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node' | 'true' | 'false' | 'oneOf';
+export type CandMark = Role | Shade | 'place' | 'placeOn' | 'elim' | 'elimOn' | 'node' | 'true' | 'false' | 'oneOf' | 'member';
 
 /**
  * How a view draws a group's bar, by its members' mark: "one of these"
@@ -65,12 +70,19 @@ export type CandMark = Role | Shade | 'place' | 'placeOn' | 'elim' | 'elimOn' | 
  * proof-only view ('primary'), or removals ('elim')
  * (docs/hint-drawing-sets.md, decisions 2 and 3)
  */
-export type SetStyle = 'oneOf' | 'false' | 'primary' | 'elim';
+export type BarStyle = 'oneOf' | 'false' | 'primary' | 'elim';
 
-/** a set a view draws (an index into Step.sets), and how */
+/** how a view draws a set: a group on its bar, by its members' mark, or an almost locked set as its tiles ('als') */
+export type SetStyle = BarStyle | 'als';
+
+/** an almost locked set's tint: 1 sand, 2 rose, 3 violet (docs/hint-drawing-sets.md, decision 8; src/content/hintPalette.ts set1-set3) */
+export type Tint = 1 | 2 | 3;
+
+/** a set a view draws (an index into Step.sets), and how; an almost locked set with its tint */
 export interface SetMark {
   set: number;
   style: SetStyle;
+  tint?: Tint;
 }
 
 /**
@@ -107,7 +119,7 @@ export interface HintMarks {
   refuted: boolean;
   /** the kinds of line a colouring draws, for its legend; none for any other step */
   lines: Set<LineKind>;
-  /** the groups the view draws on their bars, each with its members' mark; none for a step without groups */
+  /** the groups the view draws on their bars, each with its members' mark, and the almost locked sets it draws as tiles, each with its tint; none for a step without sets */
   sets: SetMark[];
 }
 
@@ -204,26 +216,66 @@ function parityMarks(step: Step, opts: MarkOptions): HintMarks {
 }
 
 /** a group mark's style, by its members' marks: removed over false over "one of these" over the pattern's */
-const STYLES: [SetStyle, (kind: CandMark | undefined) => boolean][] = [
+const STYLES: [BarStyle, (kind: CandMark | undefined) => boolean][] = [
   ['elim', (k) => k === 'elim' || k === 'elimOn'],
   ['false', (k) => k === 'false'],
   ['oneOf', (k) => k === 'oneOf'],
   ['primary', (k) => k === 'primary']
 ];
 
+/** whether two cells lie side by side, sharing a side */
+const besideCell = (a: number, b: number) =>
+  (Math.floor(a / 9) === Math.floor(b / 9) && Math.abs(a - b) === 1) || (a % 9 === b % 9 && Math.abs(a - b) === 9);
+
 /**
- * The groups a view draws (docs/hint-drawing-sets.md, decisions 2 and 3):
- * each group node of a link drawn, its bar in its members' mark. A group's
- * members take one mark in every view a chain draws (a node's truth, the
- * pattern's disc, a removal), and where a removal takes some of them, the
- * bar is the removal's
+ * Each almost locked set's tint (docs/hint-drawing-sets.md, decision 8), by
+ * its index into Step.sets: up to three sets take one each, in letter
+ * order; four or more take, in letter order, the lowest tint no set they
+ * conflict with has already (a link between the two, a cell they share, or
+ * a cell side), and where none is free the lowest no set linked to them
+ * has, so a tint is reused but never on two linked sets. Sets that share a
+ * tint are told apart by their letters
  */
-function groupMarks(step: Step, links: ChainLink[], cands: Map<number, Map<number, CandMark>>): SetMark[] {
+export function setTints(step: Step): Map<number, Tint> {
   const sets = step.sets ?? [];
-  const drawn = new Set(links.flatMap((l) => [l.fromSet, l.toSet]).filter((k): k is number => k !== undefined && sets[k]?.kind === 'group'));
+  const order = sets
+    .map((_, k) => k)
+    .filter((k) => sets[k].kind === 'als')
+    .sort((a, b) => (sets[a].letter ?? '').localeCompare(sets[b].letter ?? '') || a - b);
+  const out = new Map<number, Tint>();
+  const TINTS: Tint[] = [1, 2, 3];
+  if (order.length <= TINTS.length) {
+    order.forEach((k, i) => out.set(k, TINTS[i]));
+    return out;
+  }
+  const linked = (a: number, b: number) =>
+    (step.links ?? []).some((l) => (l.fromSet === a && l.toSet === b) || (l.fromSet === b && l.toSet === a));
+  const touch = (a: number, b: number) => sets[a].cells.some((x) => sets[b].cells.some((y) => x === y || besideCell(x, y)));
+  for (const k of order) {
+    const taken = (near: (a: number, b: number) => boolean) => new Set([...out].filter(([o]) => near(k, o)).map(([, t]) => t));
+    const conflicts = taken((a, b) => linked(a, b) || touch(a, b));
+    const links = taken(linked);
+    out.set(k, TINTS.find((t) => !conflicts.has(t)) ?? TINTS.find((t) => !links.has(t)) ?? 1);
+  }
+  return out;
+}
+
+/**
+ * The sets a view draws (docs/hint-drawing-sets.md, decisions 2, 3 and
+ * 5-8): each set a link drawn reaches, from the frame of the first such
+ * link. A group's bar takes its members' mark: they take one mark in
+ * every view a chain draws (a node's truth, the pattern's disc, a
+ * removal), and where a removal takes some of them, the bar is the
+ * removal's. An almost locked set is drawn as its tiles, in its tint
+ */
+function setMarks(step: Step, links: ChainLink[], cands: Map<number, Map<number, CandMark>>): SetMark[] {
+  const sets = step.sets ?? [];
+  const drawn = new Set(links.flatMap((l) => [l.fromSet, l.toSet]).filter((k): k is number => k !== undefined && !!sets[k]));
+  const tints = setTints(step);
   return [...drawn]
     .sort((a, b) => a - b)
-    .flatMap((set) => {
+    .flatMap((set): SetMark[] => {
+      if (sets[set].kind === 'als') return [{ set, style: 'als', tint: tints.get(set)! }];
       const kinds = sets[set].members.map((cd) => cands.get(cd.cell)?.get(cd.digit));
       const style = STYLES.find(([, is]) => kinds.some(is))?.[0];
       return style ? [{ set, style }] : [];
@@ -240,8 +292,8 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const links = opts.links ?? step.links ?? [];
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
-      // a solved digit shows a colour the step names, and nothing for a chain's truth
-      if (kind !== 'true' && kind !== 'false' && kind !== 'oneOf' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
+      // a solved digit shows a colour the step names, and nothing for a chain's truth or a set's member
+      if (kind !== 'true' && kind !== 'false' && kind !== 'oneOf' && kind !== 'member' && (!values.has(cd.cell) || kind === 'elim')) values.set(cd.cell, kind);
       return;
     }
     if (!cands.has(cd.cell)) cands.set(cd.cell, new Map());
@@ -311,11 +363,16 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
       }
     }
   }
+  // the sets the view draws; an almost locked set's candidates the view
+  // gives no other mark are its members, the last mark of all (G5): no
+  // shape, the digit bold on its tile (docs/hint-drawing-sets.md, decision 10)
+  const sets = setMarks(step, links, cands);
+  for (const { set, style } of sets) if (style === 'als') for (const cd of step.sets![set].members) mark(cd, 'member');
   // two true candidates that cannot both be: the premise is impossible
   const trues = [...cands].flatMap(([cell, m]) => [...m].filter(([, k]) => k === 'true').map(([digit]) => ({ cell, digit })));
   const clash = trues.some((a, i) => trues.slice(i + 1).some((b) => a.cell === b.cell || (a.digit === b.digit && sees(a.cell, b.cell))));
   const refuted = !!truth && ((!!truth.closure && closed) || clash);
-  return { cands, inside, values, bands, refuted, lines: new Set(), sets: groupMarks(step, links, cands) };
+  return { cands, inside, values, bands, refuted, lines: new Set(), sets };
 }
 
 /**
@@ -392,9 +449,11 @@ export function legendKinds(
    * rings on a bar, a bar in the pattern's or the removal's ink
    * (docs/hint-drawing-sets.md, decision 18)
    */
-  bars: Set<SetStyle>;
+  bars: Set<BarStyle>;
   /** "one of these" squares drawn on no bar: the true digit of an almost locked set, several candidates read as one */
   setSquares: boolean;
+  /** the tints of the almost locked sets drawn as lettered tiles, lowest first, for the swatch of "lettered cells" (decision 18) */
+  tiles: Tint[];
 } {
   const shown = new Set<CandMark>();
   const parity = isParity(step);
@@ -428,11 +487,13 @@ export function legendKinds(
     true: darkFalse !== undefined && step.colouring!.clusters[darkFalse].light.some((cd) => kindOf(cd) === 'true'),
     otherRemoved: removals.some((cd) => !has(provenDark, cd))
   };
-  const bars = new Set(marks.sets.map((m) => m.style));
+  const groups = marks.sets.filter((m): m is SetMark & { style: BarStyle } => m.style !== 'als');
+  const bars = new Set(groups.map((m) => m.style));
   const sets = step.sets ?? [];
-  const onBar = new Set(marks.sets.flatMap((m) => sets[m.set].members.map((cd) => `${cd.cell}:${cd.digit}`)));
+  const onBar = new Set(groups.flatMap((m) => sets[m.set].members.map((cd) => `${cd.cell}:${cd.digit}`)));
   const setSquares = [...marks.cands].some(([cell, m]) => [...m].some(([digit, k]) => k === 'oneOf' && !onBar.has(`${cell}:${digit}`)));
-  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted, clusters, lines: marks.lines, proven, bars, setSquares };
+  const tiles = [...new Set(marks.sets.flatMap((m) => (m.tint ? [m.tint] : [])))].sort((a, b) => a - b);
+  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted, clusters, lines: marks.lines, proven, bars, setSquares, tiles };
 }
 
 /** an entry of a colouring's legend: what its swatch draws, and its words */

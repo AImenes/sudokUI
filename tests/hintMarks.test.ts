@@ -7,16 +7,17 @@
  */
 import { describe, it, expect } from 'vitest';
 import type { CellDigit, Step } from '../src/engine/steps';
-import { hintMarks, legendKinds, frameMarks, premiseOf } from '../src/content/hintMarks';
+import { hintMarks, legendKinds, frameMarks, premiseOf, setTints, isParity } from '../src/content/hintMarks';
 import { deriveTruth } from '../src/engine/truth';
 import { alternatingLinks, groupSet } from '../src/engine/steps';
-import type { ChainLink } from '../src/engine/steps';
+import type { ChainLink, ChainSet } from '../src/engine/steps';
 import { walkFrames } from '../src/engine/hintFrames';
 import type { Frame } from '../src/engine/hintFrames';
 import { readFileSync } from 'node:fs';
 import { parseGrid } from '../src/engine/board';
-import { findNextStep, findStep, applyStep } from '../src/engine/humanSolver';
-import { boardSvg, legendOf } from '../src/content/boardSvg';
+import { findNextStep, findStep, findAllSteps, applyStep } from '../src/engine/humanSolver';
+import { boardSvg, legendOf, swatchStyle } from '../src/content/boardSvg';
+import { PARITY_FIXTURES, positionOf } from './parityFixtures';
 import { LIGHT } from '../src/content/hintPalette';
 import { EXAMPLES } from '../src/content/examples';
 import { TECHS, Tech } from '../src/engine/ratings';
@@ -344,8 +345,10 @@ describe("groups on the board (docs/hint-drawing-sets.md, decisions 1-3 and 18)"
             .flatMap((l) => [l.fromSet, l.toSet])
             .filter((k): k is number => k !== undefined && s.sets![k].kind === 'group')
         );
-        expect(m.sets.map((x) => x.set).sort(), `${where}, frame ${fr?.links}`).toEqual([...reached].sort());
-        for (const { set, style } of m.sets) {
+        // (an almost locked set is drawn as its tiles, not on a bar)
+        const groups = m.sets.filter((x) => x.style !== 'als');
+        expect(groups.map((x) => x.set).sort(), `${where}, frame ${fr?.links}`).toEqual([...reached].sort());
+        for (const { set, style } of groups) {
           styles.add(style);
           // every member wears the bar's mark: a square, a ring, the pattern's disc, a removal
           for (const cd of s.sets![set].members) expect(styleOf(kindAt(m, cd)), `${where}, frame ${fr?.links}: ${cd.digit} in cell ${cd.cell}`).toBe(style);
@@ -396,6 +399,164 @@ describe("groups on the board (docs/hint-drawing-sets.md, decisions 1-3 and 18)"
   });
 });
 
+
+describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 5-10 and 18)", () => {
+  const ALS: Tech[] = ['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'];
+  const key = (x: CellDigit) => `${x.cell}:${x.digit}`;
+  /** the almost locked set steps the repository keeps: every set example, and the set fixture's at the positions it keeps */
+  const corpus = (() => {
+    const out: { where: string; step: Step; values: string }[] = ALS.map((tech) => ({ where: tech, step: EXAMPLES[tech]!.step, values: EXAMPLES[tech]!.values }));
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    for (const section of ['paths', 'named']) {
+      for (const [id, d] of Object.entries<{ position: { puzzle: string; values: string; cands: number[] } }>(fx[section])) {
+        const tech = id.split(', ').at(-1) as Tech;
+        if (!ALS.includes(tech)) continue;
+        const g = parseGrid(d.position.puzzle)!;
+        for (let i = 0; i < 81; i++) {
+          g.values[i] = Number(d.position.values[i]);
+          g.cands[i] = d.position.cands[i];
+        }
+        const s = findStep(tech, g);
+        if (s?.tech === tech) out.push({ where: id, step: s, values: d.position.values });
+      }
+    }
+    return out;
+  })();
+  const kindAt = (m: ReturnType<typeof hintMarks>, cd: CellDigit) => m.cands.get(cd.cell)?.get(cd.digit);
+
+  it("draws each set from the frame of the first link that reaches it, in its tint, its candidates no other mark takes its members", () => {
+    let members = 0;
+    expect(corpus.length).toBeGreaterThan(60);
+    for (const { where, step: s, values } of corpus) {
+      const tints = setTints(s);
+      for (const fr of [null, ...walkFrames(s)]) {
+        const m = frameMarks(s, fr, (c) => values[c] !== '0');
+        const reached = new Set(
+          (s.links ?? [])
+            .slice(0, fr ? fr.links : undefined)
+            .flatMap((l) => [l.fromSet, l.toSet])
+            .filter((k): k is number => k !== undefined && s.sets![k].kind === 'als')
+        );
+        const drawn = m.sets.filter((x) => x.style === 'als');
+        expect(drawn.map((x) => x.set).sort(), `${where}, frame ${fr?.links}`).toEqual([...reached].sort());
+        for (const x of drawn) expect(x.tint, `${where}, set ${x.set}`).toBe(tints.get(x.set));
+        // a member is a drawn set's candidate, and only where no other mark took it
+        const own = new Set(drawn.flatMap((x) => s.sets![x.set].members.map(key)));
+        for (const [cell, ds] of m.cands)
+          for (const [digit, kind] of ds) {
+            if (kind !== 'member') continue;
+            members++;
+            expect(own.has(key({ cell, digit })), `${where}, frame ${fr?.links}: ${digit} in cell ${cell}`).toBe(true);
+          }
+        for (const x of drawn) for (const cd of s.sets![x.set].members) expect(kindAt(m, cd), `${where}, frame ${fr?.links}: ${key(cd)}`).toBeDefined();
+      }
+    }
+    expect(members).toBeGreaterThan(100);
+  });
+
+  it('marks a member last of all (G5): the stored AIC with ALS draws its 4s as members beside the 8s and 9s it makes false and true', () => {
+    const ex = EXAMPLES.AIC_ALS!;
+    const m = frameMarks(ex.step, null, (c) => ex.values[c] !== '0');
+    // set A, r7c8 and r8c8, holds only 4, 8 and 9: its 8s false rings, its 9s "one of these" squares, its 4s members
+    expect([4, 8, 9].map((d) => [kindAt(m, { cell: 61, digit: d }), kindAt(m, { cell: 70, digit: d })])).toEqual([
+      ['member', 'member'],
+      ['false', 'false'],
+      ['oneOf', 'oneOf']
+    ]);
+    expect(m.sets).toEqual([{ set: 0, style: 'als', tint: 1 }]);
+    // not before the link that reaches A
+    expect(frameMarks(ex.step, walkFrames(ex.step)[0], (c) => ex.values[c] !== '0').sets).toEqual([]);
+    // a pattern's roles come before its members: the ALS-XZ's conclusion is its roles, its first frame the
+    // restricted common's candidates and the sets' other candidates as members
+    const xz = EXAMPLES.ALS_XZ!;
+    const frames = walkFrames(xz.step);
+    const kinds = (fr: Frame | null) => new Set([...frameMarks(xz.step, fr, (c) => xz.values[c] !== '0').cands.values()].flatMap((x) => [...x.values()]));
+    expect([...kinds(frames[0])].sort()).toEqual(['member', 'primary', 'secondary']);
+    expect(kinds(frames[frames.length - 1]).has('member')).toBe(false);
+    expect(kinds(null).has('member')).toBe(false);
+  });
+
+  it('gives the tints by decision 8: one each in letter order up to three, then the lowest no conflicting set has, never one linked set\'s on another', () => {
+    const tints = (s: Step) => [...setTints(s)].sort((a, b) => a[0] - b[0]).map(([, t]) => t);
+    expect(tints(EXAMPLES.ALS_XY_WING!.step)).toEqual([1, 2, 3]);
+    expect(tints(EXAMPLES.DEATH_BLOSSOM!.step)).toEqual([1, 2, 3]);
+    // four sets in a chain, none touching another but its neighbours by its link: sand and rose take turns
+    expect(tints(EXAMPLES.ALS_XY_CHAIN!.step)).toEqual([1, 2, 1, 2]);
+    // A-B-C-D, C beside A, D beside A and B: C takes violet; D, every tint taken by a set it conflicts with, the lowest
+    // no set linked to it has, A's sand
+    const set = (letter: string, cells: number[]): ChainSet => ({ kind: 'als', cells, digits: [1, 2, 3], members: [], unit: 0, letter });
+    const chain = step({
+      tech: 'ALS_XY_CHAIN',
+      sets: [set('A', [0]), set('B', [20]), set('C', [1]), set('D', [9, 21])],
+      links: [
+        { from: [], to: [], strong: false, fromSet: 0, toSet: 1 },
+        { from: [], to: [], strong: false, fromSet: 1, toSet: 2 },
+        { from: [], to: [], strong: false, fromSet: 2, toSet: 3 }
+      ]
+    });
+    expect(tints(chain)).toEqual([1, 2, 3, 1]);
+    // letter order, not the order the step lists them in; a group takes none
+    expect([...setTints(step({ sets: [set('B', [0]), set('A', [40]), { ...groupSet([60, 61], 4) }] }))]).toEqual([
+      [1, 1],
+      [0, 2]
+    ]);
+    // every set step kept: no two linked sets share a tint, nor two that share a cell or a side while a tint was free
+    for (const { where, step: s } of corpus) {
+      const t = setTints(s);
+      const links = (s.links ?? []).filter((l) => l.fromSet !== undefined && l.toSet !== undefined && l.fromSet !== l.toSet);
+      for (const l of links) if (t.has(l.fromSet!) && t.has(l.toSet!)) expect(t.get(l.fromSet!), `${where}: sets ${l.fromSet} and ${l.toSet}`).not.toBe(t.get(l.toSet!));
+    }
+  });
+
+  it("names the tiles in the legend as lettered cells, a Death Blossom's as its petals, the swatch in the first tint drawn", () => {
+    const xz = EXAMPLES.ALS_XZ!;
+    expect(legendKinds(xz.step, frameMarks(xz.step, null, (c) => xz.values[c] !== '0')).tiles).toEqual([1, 2]);
+    expect(legendOf(xz.step, xz.values).at(-1)).toEqual({
+      kind: 'tile',
+      label: 'lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells',
+      colour: LIGHT.set1,
+      ink: LIGHT.set1Ink
+    });
+    const db = EXAMPLES.DEATH_BLOSSOM!;
+    expect(legendOf(db.step, db.values).find((l) => l.kind === 'tile')?.label).toBe("lettered cells: a petal, an almost locked set for one of the stem's digits");
+    // a frame that draws no set names none; the group chains, none
+    expect(legendOf(EXAMPLES.AIC_ALS!.step, EXAMPLES.AIC_ALS!.values, walkFrames(EXAMPLES.AIC_ALS!.step)[0]).some((l) => l.kind === 'tile')).toBe(false);
+    for (const tech of ['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES'] as Tech[]) expect(legendOf(EXAMPLES[tech]!.step, EXAMPLES[tech]!.values).some((l) => l.kind === 'tile'), tech).toBe(false);
+    // the swatch: a small tile in the tint at half strength over white, outlined in the ink, its tab in the corner
+    expect(swatchStyle(legendOf(xz.step, xz.values).at(-1)!)).toMatchObject({ border: `1.5px solid ${LIGHT.set1Ink}`, width: '14px' });
+    expect(swatchStyle(legendOf(xz.step, xz.values).at(-1)!).background).toContain(`${LIGHT.set1}80`);
+  });
+
+  it('never draws a set and a colouring in one step: the violet tile and the purple shades are 3.0 apart as areas', () => {
+    const COLOURING: Tech[] = ['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D', 'REMOTE_PAIR'];
+    // every stored example and every set step kept
+    for (const [tech, ex] of Object.entries(EXAMPLES)) {
+      if (ex!.step.sets?.length) expect(isParity(ex!.step), tech).toBe(false);
+      if (isParity(ex!.step)) expect(ex!.step.sets, tech).toBeUndefined();
+    }
+    for (const { where, step: s } of corpus) expect([s.truth, s.colouring], where).not.toContain('parity');
+    // every step on offer at the colouring fixtures' positions: a colouring has no sets, a set step no colouring
+    let colourings = 0;
+    for (const f of PARITY_FIXTURES) {
+      for (const s of findAllSteps(positionOf(f).grid)) {
+        if (COLOURING.includes(s.tech)) {
+          colourings++;
+          expect(s.sets, `${f.name}: ${s.tech}`).toBeUndefined();
+        }
+        if (s.sets?.length) expect(s.colouring, `${f.name}: ${s.tech}`).toBeUndefined();
+      }
+    }
+    expect(colourings).toBeGreaterThan(5);
+    // and a colouring's marks draw no set, though its step should name one
+    const c = PARITY_FIXTURES[0].step;
+    const handed = { ...c, sets: EXAMPLES.ALS_XZ!.step.sets, links: c.links!.map((l) => ({ ...l, fromSet: 0, toSet: 1 })) };
+    for (const fr of [null, ...walkFrames(handed)]) {
+      const m = frameMarks(handed, fr, () => false);
+      expect(m.sets).toEqual([]);
+      expect([...m.cands.values()].flatMap((x) => [...x.values()])).not.toContain('member');
+    }
+  });
+});
 
 describe('a colouring', () => {
   /**
@@ -504,8 +665,9 @@ describe('the Learn diagrams', () => {
   const last = (xs: number[]) => (xs.length ? Math.max(...xs) : -1);
   const first = (xs: number[]) => (xs.length ? Math.min(...xs) : Infinity);
 
-  it('draw in the spec’s order: groups\' bars, marks, grid lines, arrows, digits, bars, start dots (G11)', () => {
+  it('draw in the spec’s order: set tiles, groups\' bars, marks, grid lines, arrows, digits, bars, letter tabs, start dots (G11)', () => {
     let grouped = 0;
+    let tiled = 0;
     for (const tech of techs) {
       // the digits cut out of the arrows are drawn in the mask too, before them
       const svg = boardSvg(EXAMPLES[tech]!, TECHS[tech].name).replace(/<mask [\s\S]*?<\/mask>/, '');
@@ -513,21 +675,30 @@ describe('the Learn diagrams', () => {
       // a group's bar, under its members' marks (docs/hint-drawing-sets.md, decision 2)
       const groupBars = at(svg, /<line class="gb" /);
       if (groupBars.length) grouped++;
+      // an almost locked set's tiles, over the bands, and its letter tabs, over the removal bars (decisions 5 and 7)
+      const tiles = at(svg, /<rect class="(?:tl|to)" /);
+      const tabs = at(svg, /<(?:rect class="(?:tb|tk)"|text [^>]*class="tab")/);
+      if (tiles.length) tiled++;
+      expect(tabs.length, tech).toBe(tiles.length ? 3 * at(svg, /<rect class="tb"/).length : 0);
       const marks = at(svg, /<(?:circle|rect class="(?:sq|kl)") /).filter((i) => !dot.test(svg.slice(i, svg.indexOf('>', i) + 1)));
       const grid = at(svg, /<line [^>]*stroke="#(?:b4bac8|23293a)"/);
       const arrows = at(svg, /<(?:path|polygon) /);
       const digits = at(svg, /<text [^>]*class="(?:cd|mk|rm|giv|ent)"/);
       const bars = at(svg, new RegExp(`<line (?!class="gb")[^>]*stroke="${LIGHT.elim}"`));
       const dots = at(svg, dot);
+      expect(last(tiles), tech).toBeLessThan(Math.min(first(groupBars), first(marks)));
       expect(last(groupBars), tech).toBeLessThan(first(marks));
       expect(last(marks), tech).toBeLessThan(first(grid));
       expect(last(grid), tech).toBeLessThan(first(arrows));
       expect(last(arrows), tech).toBeLessThan(first(digits));
       expect(last(digits), tech).toBeLessThan(first(bars));
-      expect(last(bars), tech).toBeLessThan(first(dots));
+      expect(last(bars), tech).toBeLessThan(first(tabs));
+      expect(Math.max(last(bars), last(tabs)), tech).toBeLessThan(first(dots));
     }
     // the four grouped chains: AIC with Groups, Grouped Nice Loop and X-Cycles, and AIC with ALS, whose set is no group
     expect(grouped).toBe(3);
+    // AIC with ALS, the three ALS patterns and Death Blossom
+    expect(tiled).toBe(5);
   });
 
   it('colour a solved digit the step names through its style, with a rounded outline as the shape cue', () => {
