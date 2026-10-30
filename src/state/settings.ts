@@ -72,6 +72,10 @@ interface Settings {
   setTracker: boolean;
   /** the palette indices of the two sets (0..8; key n paints index n - 1) */
   setColors: [number, number];
+  /** a vertical swipe over the board on a phone scrolls the page (the
+   *  board reads each touch, src/ui/touchIntent.ts); off, every move on the
+   *  board selects, as on a tablet, and the page scrolls from beside it */
+  scrollOverBoard: boolean;
   /** the first assist in a clean game asks first: it says what the button
    *  does (touch screens have no hover) and guards against a stray tap */
   confirmAssist: boolean;
@@ -119,6 +123,7 @@ export const useSettings = create<Settings>()(
       setTracker: false,
       // blue and orange: keys 6 and 2 in Colour mode
       setColors: [5, 1],
+      scrollOverBoard: true,
       confirmAssist: true,
       useUniqueness: true,
       digitTints: false,

@@ -1249,7 +1249,11 @@ button {
   padding: 20px;
   width: min(480px, calc(100vw - 32px));
   max-height: 80vh;
-  overflow: auto;
+  /* up and down only: a phone's close button reaches into the padding
+     (its 44 px target, below), which Safari counts as width to scroll to,
+     and a dialog that wobbles sideways under a vertical swipe feels loose */
+  overflow-x: hidden;
+  overflow-y: auto;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
 }
 
@@ -3306,10 +3310,15 @@ html:not([lang='en']) .zone-note {
   border-radius: 6px;
 }
 
-/* multi-select on (the Multi button, M): no finger pans from the board,
+/* "Scroll over the board" off (Settings), or multi-select on (the Multi
+   button, M): no finger pans from the board,
    as on a tablet, so a drag selects whichever way it goes and the page
    scrolls from beside the board; a pinch still zooms. The dashed ring
    says the mode is on, in a pattern and not only a colour */
+.board[data-noscroll] {
+  touch-action: pinch-zoom;
+}
+
 .board[data-multiselect] {
   touch-action: pinch-zoom;
   outline: 3px dashed var(--accent);

@@ -136,6 +136,14 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
       <Toggle
+        label={t('Scroll by swiping over the board')}
+        hint={t(
+          'On a phone, a swipe up or down over the board scrolls the page and a sideways or resting drag selects. Off, every drag on the board selects, and you scroll from below or beside the board'
+        )}
+        value={s.scrollOverBoard}
+        onChange={(v) => s.set({ scrollOverBoard: v })}
+      />
+      <Toggle
         label={t('Highlight row, column and box')}
         hint={t('Shows which cells share a row, column or box with the selected cell')}
         value={s.highlightPeers}

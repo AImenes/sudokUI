@@ -483,7 +483,8 @@ export function Grid() {
     digitTints,
     tintStrength,
     setTracker,
-    setColors
+    setColors,
+    scrollOverBoard
   } = useSettings();
   const t = useT();
   /**
@@ -1071,7 +1072,7 @@ export function Grid() {
     // a drag too, on a tablet as well, and the mode would change nothing
     if (tc && tc.intent === 'drag' && !tc.chain && (tc.pans.up || tc.pans.down) && !useGame.getState().multiSelect && !dragTipShown) {
       dragTipShown = true;
-      useGame.setState({ notice: t('Tip: Multi-select (M) lets you drag without the page scrolling') });
+      useGame.setState({ notice: t('Tip: turn off “{setting}” in Settings, or use Multi-select (M), to drag without the page scrolling', { setting: t('Scroll by swiping over the board') }) });
     }
     endPointer();
   };
@@ -1208,6 +1209,7 @@ export function Grid() {
         onDoubleClick={onDoubleClick}
         onContextMenu={onContextMenu}
         data-multiselect={multiSelect ? 'true' : undefined}
+        data-noscroll={scrollOverBoard ? undefined : 'true'}
         tabIndex={0}
         role="application"
         aria-label={t('Sudoku board. Arrow keys move between cells, digits enter, Backspace erases.')}
