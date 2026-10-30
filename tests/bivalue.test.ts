@@ -31,7 +31,7 @@ describe('bivalue cells', () => {
     expect(bivalueCells(struck, true, 'unknown')).not.toContain(i);
   });
 
-  it('are the corner and centre marks together under the exhaustive contract, and nothing under notes', () => {
+  it('are the corner and centre marks together under the exhaustive contract, and the centre marks alone under notes', () => {
     const cells = cellsOf(EASY);
     const empties = cells.map((c, i) => (c.value ? -1 : i)).filter((i) => i >= 0);
     const [a, b, c] = empties;
@@ -44,9 +44,30 @@ describe('bivalue cells', () => {
       [a, [1, 6]],
       [b, [2, 7]]
     ]);
-    // notes, or marks never declared: two marks are not two candidates
-    expect(bivalueCells(cells, false, 'open')).toEqual([]);
-    expect(bivalueCells(cells, false, 'unknown')).toEqual([]);
+    // notes, or marks never declared: the centre marks alone are a cell's
+    // candidates (Snyder style), so b's corner 2 does not make 7 a pair
+    expect(bivalueCells(cells, false, 'open')).toEqual([a]);
+    expect(bivalueCells(cells, false, 'unknown')).toEqual([a]);
+  });
+
+  it("read Snyder-style marks as their writer means them: a cell's centre marks are its candidates, its corner marks notes on a box", () => {
+    const cells = cellsOf(EASY);
+    const empties = cells.map((c, i) => (c.value ? -1 : i)).filter((i) => i >= 0);
+    const [pair, corners, both, three] = empties;
+    cells[pair].center = bit(1) | bit(2);
+    // 4 and 7 each sit in one of two places in the box: not this cell's only candidates
+    cells[corners].corner = bit(4) | bit(7);
+    cells[both].corner = bit(5);
+    cells[both].center = bit(3) | bit(8);
+    cells[three].center = bit(2) | bit(6) | bit(9);
+    for (const contract of ['open', 'unknown'] as const) {
+      expect([...bivaluePairs(cells, false, contract)], contract).toEqual([
+        [pair, [1, 2]],
+        [both, [3, 8]]
+      ]);
+    }
+    // declared complete, both layers count: the corners' 4 and 7 are a pair, and 5 makes three
+    expect(bivalueCells(cells, false, 'exhaustive')).toEqual([pair, corners]);
   });
 
   it('never name a solved cell', () => {

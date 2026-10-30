@@ -87,8 +87,8 @@ export function engineGrid(cells: CellState[]): Grid {
  */
 export type MarkContract = 'unknown' | 'exhaustive' | 'open';
 
-/** what the ring around bivalue cells says when the marks are notes */
-const NOTES_RING_NOTHING = msg('Cells with two candidates show only while your marks are complete; yours are notes for now. Fill candidates completes them');
+/** what the ring around bivalue cells says when the marks are notes: it reads the centre marks alone */
+const NOTES_RING_CENTRE = msg('Your marks are notes for now, so the rings read your centre marks alone, as each cell’s candidates; corner marks do not count');
 
 /** any pencil marks on empty cells? (the contract question is pointless
  *  on a bare board) */
@@ -1305,7 +1305,7 @@ export const useGame = create<GameStore>()(
         // still being typed in (custom entry) is no game yet
         if (!s.info || s.autoCandidates || !hasManualMarks(s.cells)) return;
         if (s.markContract === 'unknown') set({ contractPrompt: true, contractFor: 'highlight' });
-        else if (s.markContract === 'open') set({ notice: translator()(NOTES_RING_NOTHING) });
+        else if (s.markContract === 'open') set({ notice: translator()(NOTES_RING_CENTRE) });
       },
 
       answerContract: (contract) => {
@@ -1313,9 +1313,10 @@ export const useGame = create<GameStore>()(
         set({ markContract: contract, contractPrompt: false });
         // raised on the way to a hint, the hint goes on; raised by the ring
         // around bivalue cells, the answer is all it needed, and "notes"
-        // means nothing will show, which the player should hear
+        // means the ring reads the centre marks alone, which the player
+        // should hear
         if (asked === 'hint') get().requestHint();
-        else if (contract === 'open') set({ notice: translator()(NOTES_RING_NOTHING) });
+        else if (contract === 'open') set({ notice: translator()(NOTES_RING_CENTRE) });
       },
 
       // the ring's question closed unanswered is a "no": the setting goes

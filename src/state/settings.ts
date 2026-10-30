@@ -62,8 +62,8 @@ interface Settings {
   /** ring every unsolved cell whose marks leave exactly two candidates:
    *  where wings, chains and remote pairs begin, what a stuck player scans
    *  for. A view of the player's own marks (or of the auto candidates),
-   *  never of the solution, so it never counts as help; drawn only while
-   *  the marks are complete (src/state/bivalue.ts) */
+   *  never of the solution, so it never counts as help; under marks not
+   *  declared complete it reads the centre marks alone (src/state/bivalue.ts) */
   highlightBivalue: boolean;
   /** two palette colours are two sets of cells, and a line under the board
    *  counts them, says what each still needs and whether they must hold the
