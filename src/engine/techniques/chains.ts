@@ -6,11 +6,11 @@ import {
   digitsOf,
   popcount,
   sees,
-  cellName,
-  cellNames
+  cellName
 } from '../board';
 import { Step, CellDigit, ChainLink, alternatingLinks } from '../steps';
-import { tr, joinAnd } from '../text';
+import { tr, listAnd } from '../text';
+import { spanningTies, tieLinks, weakTie, nearest, firstParity, shades } from './colourTree';
 
 /**
  * Candidate-level links for a chain of bivalue cells where each cell is
@@ -29,8 +29,16 @@ function bivalueCellLinks(g: Grid, path: number[], entry: number): ChainLink[] {
   return alternatingLinks(nodes);
 }
 
-/** Remote Pairs: chain of identical bivalue cells; both digits fall in cells
- *  seeing two opposite-parity chain cells. */
+/**
+ * Remote Pair: cells holding the same two digits only, joined by seeing
+ * one another. Two of them that see each other cannot hold the same digit,
+ * so the cells alternate, and a cell seeing two of opposite parity loses
+ * the pair's digits. Drawn as a colouring over the two digits (docs/hint-drawing-
+ * colouring.md): one purple cluster, each cell one dark and one light
+ * candidate, the lower digit taking the cell's parity, dark the parity of
+ * the first cell's lower digit; ties on the lower digit along the shortest
+ * drawn tree, and the first removal's two nearest witnesses.
+ */
 export function findRemotePair(g: Grid): Step | null {
   const byMask = new Map<number, number[]>();
   for (let c = 0; c < 81; c++) {
@@ -78,47 +86,56 @@ export function findRemotePair(g: Grid): Step | null {
         }
       }
       if (!elims.length) continue;
-      // order the component into a simple path for the arrows; when it
-      // branches (rare), fall back to highlights only
-      const path = orderAsPath(component, sees);
-      return {
-        tech: 'REMOTE_PAIR',
-        labels: { primary: tr`the chain of ${digits.join('')} pairs` },
-        placements: [],
-        eliminations: elims,
-        primary: component.flatMap((cell) =>
-          digits.map((digit) => ({ cell, digit }))
-        ),
-        links: path ? bivalueCellLinks(g, path, digits[0]) : undefined,
-        description: tr`Remote Pair: the cells ${cellNames(component)} form a chain of ${digits.join('')} pairs; cells seeing both "colors" of the chain lose ${joinAnd(digits)}.`
-      };
+      return remotePairStep(component, color, digits as [number, number], elims);
     }
   }
   return null;
 }
 
-/**
- * Order a connected cell set into a simple path along the `sees` relation,
- * or null when it isn't one (a branching component). Greedy walk from a
- * degree-1 endpoint.
- */
-function orderAsPath(
-  component: number[],
-  seesFn: (a: number, b: number) => boolean
-): number[] | null {
-  const degree = (c: number) => component.filter((o) => o !== c && seesFn(c, o)).length;
-  const start = component.find((c) => degree(c) === 1);
-  if (start === undefined) return null;
-  const path = [start];
-  const used = new Set([start]);
-  while (path.length < component.length) {
-    const cur = path[path.length - 1];
-    const nexts = component.filter((c) => !used.has(c) && seesFn(cur, c));
-    if (nexts.length !== 1) return null;
-    path.push(nexts[0]);
-    used.add(nexts[0]);
-  }
-  return path;
+function remotePairStep(component: number[], color: Map<number, number>, [lo, hi]: [number, number], elims: CellDigit[]): Step {
+  const cells = [...component].sort((a, b) => a - b);
+  const cands = cells.flatMap((cell) => [lo, hi].map((digit) => ({ cell, digit })));
+  // a candidate's parity: the lower digit takes its cell's, the higher the other
+  const parity = (x: CellDigit) => (x.digit === lo ? color.get(x.cell)! : 1 - color.get(x.cell)!);
+  const cluster = shades(cands, parity, firstParity(cands, parity));
+  const isDark = (x: CellDigit) => cluster.dark.some((o) => o.cell === x.cell && o.digit === x.digit);
+  // the ties: each cell's own two candidates, which draw nothing, and the
+  // lower digits of two cells that see each other
+  const relations: [CellDigit, CellDigit][] = [
+    ...cells.map((cell): [CellDigit, CellDigit] => [{ cell, digit: lo }, { cell, digit: hi }]),
+    ...cells.flatMap((a, i) => cells.slice(i + 1).filter((b) => sees(a, b)).map((b): [CellDigit, CellDigit] => [{ cell: a, digit: lo }, { cell: b, digit: lo }]))
+  ];
+  const ties = spanningTies(cands, relations, [...cands, ...elims]);
+  // the first removal, between its nearest dark and light candidate of its digit
+  const target = elims[0];
+  const seen = cands.filter((x) => x.digit === target.digit && sees(x.cell, target.cell));
+  const x = nearest(target, seen.filter(isDark));
+  const y = nearest(target, seen.filter((o) => !isDark(o)));
+  const n = elims.length - 1;
+  const tail = n <= 0 ? '' : n === 1 ? tr`; one more candidate falls the same way` : tr`; ${n} more candidates fall the same way`;
+  const d = target.digit;
+  const here = cellName(target.cell);
+  const there = cellName(x.cell);
+  const other = cellName(y.cell);
+  const named = listAnd(cells.map(cellName));
+  return {
+    tech: 'REMOTE_PAIR',
+    placements: [],
+    eliminations: elims,
+    links: [
+      ...tieLinks(
+        ties,
+        tr`The cells ${named} hold only ${lo} and ${hi}. Each line joins two of them that see each other: they cannot hold the same digit, so their ${lo}s take opposite shades, and so do their ${hi}s.`
+      ),
+      weakTie([x], [target], tr`If dark purple is true, the ${d} in ${there} is true, and the ${d} in ${here} goes.`),
+      weakTie([y], [target], tr`If light purple is true, the ${d} in ${other} is true, and the ${d} in ${here} goes. Either way it is false` + tail + '.')
+    ],
+    truth: 'parity',
+    colouring: { rule: 'remotePair', clusters: [cluster] },
+    description: `${tr`Remote Pair: the cells ${named} hold only ${lo} and ${hi}. Two of them that see each other cannot hold the same digit, so their ${lo}s take opposite shades of purple, and so do their ${hi}s: either every dark purple candidate is true, or every light purple one is.`} ${
+      tr`The ${d} in ${here} sees a dark purple ${d} in ${there} and a light purple ${d} in ${other}, so it is false either way` + tail
+    }.`
+  };
 }
 
 /** X-Chain: alternating strong/weak links on one digit, strong at both ends. */

@@ -2,7 +2,7 @@ import { Grid, bit, boxOf, cellNames } from '../board';
 import { Step, CellDigit } from '../steps';
 import { Tech } from '../ratings';
 import { combinations } from './subsets';
-import { tr } from '../text';
+import { aDigit, tr } from '../text';
 
 const FISH_NAMES = ['', '', 'X-Wing', 'Swordfish', 'Jellyfish', 'Squirmbag', 'Whale', 'Leviathan'];
 
@@ -167,11 +167,11 @@ export function findFinnedFish(g: Grid, size: number, sashimi: boolean): Step | 
             },
             description: rows
               ? many
-                ? tr`${name} on ${d}: in rows ${bases}, ${d} sits in columns ${covers} (${base}) except for the fins ${fins}. Either the fins are false and the fish holds, or a fin is true; a ${d} that sees every fin and lies in the cover columns outside the base is false both ways.`
-                : tr`${name} on ${d}: in rows ${bases}, ${d} sits in columns ${covers} (${base}) except for the fin ${fins}. Either the fin is false and the fish holds, or the fin is true; a ${d} that sees every fin and lies in the cover columns outside the base is false both ways.`
+                ? tr`${name} on ${d}: in rows ${bases}, ${d} sits in columns ${covers} (${base}) except for the fins ${fins}. Either the fins are false and the fish holds, or a fin is true; ${aDigit(d)} that sees every fin and lies in the cover columns outside the base is false both ways.`
+                : tr`${name} on ${d}: in rows ${bases}, ${d} sits in columns ${covers} (${base}) except for the fin ${fins}. Either the fin is false and the fish holds, or the fin is true; ${aDigit(d)} that sees every fin and lies in the cover columns outside the base is false both ways.`
               : many
-                ? tr`${name} on ${d}: in columns ${bases}, ${d} sits in rows ${covers} (${base}) except for the fins ${fins}. Either the fins are false and the fish holds, or a fin is true; a ${d} that sees every fin and lies in the cover rows outside the base is false both ways.`
-                : tr`${name} on ${d}: in columns ${bases}, ${d} sits in rows ${covers} (${base}) except for the fin ${fins}. Either the fin is false and the fish holds, or the fin is true; a ${d} that sees every fin and lies in the cover rows outside the base is false both ways.`
+                ? tr`${name} on ${d}: in columns ${bases}, ${d} sits in rows ${covers} (${base}) except for the fins ${fins}. Either the fins are false and the fish holds, or a fin is true; ${aDigit(d)} that sees every fin and lies in the cover rows outside the base is false both ways.`
+                : tr`${name} on ${d}: in columns ${bases}, ${d} sits in rows ${covers} (${base}) except for the fin ${fins}. Either the fin is false and the fish holds, or the fin is true; ${aDigit(d)} that sees every fin and lies in the cover rows outside the base is false both ways.`
           };
         }
       }

@@ -538,22 +538,380 @@ test.describe('the walk', () => {
     const use = page.getByRole('button', { name: 'Use Hint' });
     if (await use.count()) await use.click();
     await page.getByRole('button', { name: 'Show me' }).click();
-    const all = await page.locator('svg.board .chain-arrows path').count();
+    // a colouring (docs/hint-drawing-colouring.md): the full view draws its
+    // argument, dashed lines with no head and no start dot, and no tie
+    const shafts = page.locator('svg.board .chain-arrows .chain-shaft');
+    const ties = page.locator('svg.board .chain-arrows .chain-tie');
+    const heads = page.locator('svg.board .chain-arrows polygon');
+    const all = await shafts.count();
+    expect(all).toBeGreaterThanOrEqual(1);
+    expect(all).toBeLessThanOrEqual(3);
+    await expect(page.locator('svg.board .chain-arrows .chain-shaft.weak-tie')).toHaveCount(all);
+    await expect(heads).toHaveCount(0);
+    await expect(ties).toHaveCount(0);
+    await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
+    await expect(page.locator('svg.board .walk-badge')).toHaveCount(0);
     await page.getByRole('button', { name: 'Walk through it' }).click();
     await expect(page.locator('.hint-walk-count')).toContainText('1 of');
     const first = await page.locator('.hint-walk-text').innerText();
     expect(first.length).toBeGreaterThan(10);
-    const shown = await page.locator('svg.board .chain-arrows path').count();
-    expect(shown).toBeLessThan(all);
+    // the cluster's frame: its ties, and no line of the argument yet
+    expect(await ties.count()).toBeGreaterThan(0);
+    await expect(shafts).toHaveCount(0);
     await page.keyboard.press('ArrowRight');
     await expect(page.locator('.hint-walk-count')).toContainText('2 of');
+    // the argument's first line, wearing its frame's number, and the ties gone
+    await expect(shafts).toHaveCount(1);
+    await expect(ties).toHaveCount(0);
+    await expect(heads).toHaveCount(0);
+    await expect(page.locator('svg.board .walk-badge')).toHaveText(['2']);
     await page.keyboard.press('ArrowLeft');
     await expect(page.locator('.hint-walk-count')).toContainText('1 of');
     await page.getByRole('button', { name: 'Show all' }).click();
     await expect(page.locator('.hint-walk-count')).toHaveCount(0);
-    expect(await page.locator('svg.board .chain-arrows path').count()).toBe(all);
+    await expect(shafts).toHaveCount(all);
+  });
+
+  test('walks a directed chain: each frame adds its arrow and its number, and Show all keeps every arrow', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudokui-welcomed', '1');
+    });
+    await page.goto('/#practice=X_CHAIN');
+    await expect(page.locator('.practice-bar')).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: /Hint/ }).first().click();
+    const use = page.getByRole('button', { name: 'Use Hint' });
+    if (await use.count()) await use.click();
+    await page.getByRole('button', { name: 'Show me' }).click();
+    const shafts = page.locator('svg.board .chain-arrows .chain-shaft');
+    // a head is drawn in the arrow's ink, over a halo of its own
+    const heads = page.locator('svg.board .chain-arrows polygon[fill="var(--hint-arrow)"]');
+    const badges = page.locator('svg.board .walk-badge');
+    // the full view: every arrow, a head on all but the shortest, one start
+    // dot, and no walk numbers
+    const all = await shafts.count();
+    expect(all).toBeGreaterThan(1);
+    const allHeads = await heads.count();
+    expect(allHeads).toBeGreaterThan(0);
+    await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
+    await expect(badges).toHaveCount(0);
+    await page.getByRole('button', { name: 'Walk through it' }).click();
+    // frame by frame, one more arrow and its number; the dot stays
+    for (let k = 1; k <= all; k++) {
+      await expect(page.locator('.hint-walk-count')).toContainText(`${k} of`);
+      await expect(shafts).toHaveCount(k);
+      await expect(badges).toHaveText(Array.from({ length: k }, (_, i) => String(i + 1)));
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
+      expect(await heads.count()).toBeLessThanOrEqual(k);
+      await page.keyboard.press('ArrowRight');
+    }
+    await page.getByRole('button', { name: 'Show all' }).click();
+    await expect(shafts).toHaveCount(all);
+    await expect(heads).toHaveCount(allHeads);
+    await expect(badges).toHaveCount(0);
   });
 });
+
+/**
+ * A grouped chain on the board (docs/hint-drawing-sets.md, stage 5): the
+ * stored AIC with Groups, loaded as a pencil-mark grid at its position, ends
+ * at a TRUE group, its two members pale "one of these" squares on a bar in
+ * the true ink, drawn from the walk frame of the link that reaches it
+ */
+async function showGroupedChain(page: Page) {
+  const examples = JSON.parse(new TextDecoder().decode(readFileSync('src/content/examples.json')));
+  const ex = examples.AIC_GROUPED as { values: string; cands: number[] };
+  await open(page);
+  const cells = Array.from({ length: 81 }, (_, i) => ({ value: Number(ex.values[i]), corner: 0, center: Number(ex.values[i]) ? 0 : ex.cands[i], excluded: 0 }));
+  await page.locator('.menu-row button', { hasText: 'Import' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Import a puzzle' });
+  await dialog.locator('textarea').fill(formatPencilGrid(cells, false, 'exhaustive'));
+  await dialog.getByRole('button', { name: 'Load puzzle' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: /Hint/ }).first().click();
+  const use = page.getByRole('button', { name: 'Use Hint' });
+  if (await use.count()) await use.click();
+  await page.getByRole('button', { name: 'Show me' }).click();
+  await expect(page.locator('.hint-tech strong')).toHaveText('AIC with Groups');
+}
+
+for (const [name, size] of [
+  ['desktop', { viewport: { width: 1280, height: 1000 } }],
+  ['phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }]
+] as const) {
+  test.describe(`a grouped chain, ${name}`, () => {
+    test.use(size);
+
+    test("draws its TRUE group as squares on a bar in the true ink, from the frame that reaches it", async ({ page }) => {
+      await showGroupedChain(page);
+      const squares = page.locator('svg.board rect.hint-one-of');
+      const bars = page.locator('svg.board .hint-group-bar');
+      await expect(squares).toHaveCount(2);
+      await expect(bars).toHaveCount(1);
+      await expect(bars).toHaveAttribute('stroke', 'var(--hint-place-ink)');
+      // under the marks, cut out by the digits as the arrows are, and wider on a phone (G14a)
+      await expect(page.locator('svg.board g.hint-group-bars')).toHaveAttribute('mask', /^url\(#/);
+      expect(await bars.evaluate((el) => getComputedStyle(el).strokeWidth)).toBe(name === 'phone' ? '4.5px' : '3px');
+      // never a true disc: the squares' fill is the pale "one of these" one, and the legend names them by shape
+      await expect(squares.first()).toHaveAttribute('fill', 'var(--hint-one-of)');
+      await expect(page.locator('.hint-legend li', { hasText: 'squares joined by a bar' }).locator('i.swatch-one-of-bar')).toHaveCount(1);
+      await expect(page.locator('.hint-legend')).toContainText('squares joined by a bar: one of them is true, if the first candidate (by the small dot) is false');
+      await expect(page.locator('.hint-legend')).not.toContainText('each group');
+      // the walk: no bar until the last link reaches the group, then the squares on their bar
+      await page.getByRole('button', { name: 'Walk through it' }).click();
+      await expect(page.locator('.hint-walk-count')).toContainText('1 of 8');
+      await expect(bars).toHaveCount(0);
+      await expect(squares).toHaveCount(0);
+      for (let k = 2; k <= 7; k++) await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-count')).toContainText('7 of 8');
+      await expect(bars).toHaveCount(1);
+      await expect(squares).toHaveCount(2);
+      await expect(page.locator('.hint-walk-text')).toContainText('one of r8c6, r9c6 must be 8');
+    });
+  });
+}
+
+/**
+ * An almost locked set on the board (docs/hint-drawing-sets.md, stages 6
+ * and 7): the stored AIC with ALS, loaded as a pencil-mark grid at its
+ * position, goes through set A, r7c8 and r8c8: a tile in each cell in its
+ * tint, outlined in its ink, wider on a phone, with a lettered tab, drawn
+ * from the walk frame that introduces the set, before the link that reaches
+ * it; the link inside A draws no arrow
+ */
+async function showAlsChain(page: Page) {
+  const examples = JSON.parse(new TextDecoder().decode(readFileSync('src/content/examples.json')));
+  const ex = examples.AIC_ALS as { values: string; cands: number[] };
+  await open(page);
+  const cells = Array.from({ length: 81 }, (_, i) => ({ value: Number(ex.values[i]), corner: 0, center: Number(ex.values[i]) ? 0 : ex.cands[i], excluded: 0 }));
+  await page.locator('.menu-row button', { hasText: 'Import' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Import a puzzle' });
+  await dialog.locator('textarea').fill(formatPencilGrid(cells, false, 'exhaustive'));
+  await dialog.getByRole('button', { name: 'Load puzzle' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: /Hint/ }).first().click();
+  const use = page.getByRole('button', { name: 'Use Hint' });
+  if (await use.count()) await use.click();
+  await page.getByRole('button', { name: 'Show me' }).click();
+  await expect(page.locator('.hint-tech strong')).toHaveText('AIC with ALSs');
+}
+
+for (const [name, size] of [
+  ['desktop', { viewport: { width: 1280, height: 1000 } }],
+  ['phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }]
+] as const) {
+  test.describe(`an almost locked set, ${name}`, () => {
+    test.use(size);
+
+    test('draws a lettered tile in each cell of the set, from the frame that introduces it, and no arrow inside it', async ({ page }) => {
+      await showAlsChain(page);
+      const tiles = page.locator('svg.board g.hint-tile');
+      const tabs = page.locator('svg.board g.hint-tab');
+      await expect(tiles).toHaveCount(2);
+      await expect(tabs).toHaveCount(2);
+      await expect(tabs.locator('text')).toHaveText(['A', 'A']);
+      // the tab: one rect in the set's ink, its keyline drawn apart, under the tile's outline
+      await expect(tabs.first().locator('rect')).toHaveCount(1);
+      await expect(tabs.first().locator('rect')).toHaveAttribute('fill', 'var(--hint-set-1-ink)');
+      await expect(page.locator('svg.board g.hint-tab-key')).toHaveCount(2);
+      // the outline drawn for the board's size: 2.5 units on a desktop, 4.5 on a phone, and the tab 26 units across there
+      const shownOutline = tiles.first().locator(name === 'phone' ? 'rect.hint-tile-small' : 'rect.hint-tile-wide');
+      await expect(shownOutline).toBeVisible();
+      await expect(tiles.first().locator(name === 'phone' ? 'rect.hint-tile-wide' : 'rect.hint-tile-small')).toBeHidden();
+      expect(await shownOutline.evaluate((el) => getComputedStyle(el).strokeWidth)).toBe(name === 'phone' ? '4.5px' : '2.5px');
+      const scale = await tabs.first().evaluate((el) => getComputedStyle(el).transform);
+      if (name === 'phone') expect(scale).toMatch(/^matrix\(1\.444\d*, 0, 0, 1\.444\d*, 0, 0\)$/);
+      else expect(scale).toBe('none');
+      // the tab's keyline grows with it
+      expect(await page.locator('svg.board g.hint-tab-key').first().evaluate((el) => getComputedStyle(el).transform)).toBe(scale);
+      // four of its five links drawn: the one inside the set draws nothing
+      await expect(page.locator('svg.board .chain-shaft')).toHaveCount(4);
+      await expect(page.locator('.hint-legend li', { hasText: 'lettered cells' }).locator('i.swatch-set-1')).toHaveCount(1);
+      // the walk: no tile until set A's own frame, which introduces it before the link that reaches it, then its tiles and tabs
+      await page.getByRole('button', { name: 'Walk through it' }).click();
+      await expect(page.locator('.hint-walk-count')).toContainText('1 of 7');
+      await expect(tiles).toHaveCount(0);
+      await expect(tabs).toHaveCount(0);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-count')).toContainText('2 of 7');
+      await expect(page.locator('.hint-walk-text')).toHaveText(
+        'Set A: the 2 cells r7c8, r8c8 of column 8 hold only 4, 8 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.'
+      );
+      await expect(tiles).toHaveCount(2);
+      await expect(tabs).toHaveCount(2);
+      // no link added: only the first arrow, with its number; the next frame adds the link into the set, numbered 3
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['1']);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-text')).toHaveText('If r2c8 is 8, set A holds no 8: every 8 of A sees r2c8.');
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['1', '3']);
+    });
+  });
+}
+
+/**
+ * The ALS patterns as chains, and Death Blossom (docs/hint-drawing-sets.md,
+ * stage 8), each loaded as a pencil-mark grid at its position: the stored
+ * ALS-XZ and Death Blossom, and the set fixture's two ALS-XY-Chains whose
+ * sets share a cell, the one that derives and the one that clashes
+ */
+async function showAt(page: Page, at: { values: string; cands: number[] }, name: string) {
+  await open(page);
+  const cells = Array.from({ length: 81 }, (_, i) => ({ value: Number(at.values[i]), corner: 0, center: Number(at.values[i]) ? 0 : at.cands[i], excluded: 0 }));
+  await page.locator('.menu-row button', { hasText: 'Import' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Import a puzzle' });
+  await dialog.locator('textarea').fill(formatPencilGrid(cells, false, 'exhaustive'));
+  await dialog.getByRole('button', { name: 'Load puzzle' }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: /Hint/ }).first().click();
+  const use = page.getByRole('button', { name: 'Use Hint' });
+  if (await use.count()) await use.click();
+  await page.getByRole('button', { name: 'Show me' }).click();
+  await expect(page.locator('.hint-tech strong')).toHaveText(name);
+}
+
+const storedExample = (tech: string) => JSON.parse(new TextDecoder().decode(readFileSync('src/content/examples.json')))[tech] as { values: string; cands: number[] };
+const namedPosition = (id: string) =>
+  JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json'))).named[id].position as { values: string; cands: number[] };
+
+/** the letters of the tabs drawn in a cell of the board */
+const tabsIn = (page: Page, cell: number) =>
+  page.locator('svg.board g.hint-tab').evaluateAll((tabs, cell) => {
+    const out: string[] = [];
+    for (const tab of tabs) {
+      const m = /translate\(([\d.]+) ([\d.]+)\)/.exec(tab.parentElement?.getAttribute('transform') ?? '');
+      if (!m) continue;
+      const [col, row] = [Math.floor((Number(m[1]) - 4) / 100), Math.floor((Number(m[2]) - 4) / 100)];
+      if (row * 9 + col === cell) out.push(tab.querySelector('text')?.textContent ?? '');
+    }
+    return out.sort();
+  }, cell);
+
+for (const [name, size] of [
+  ['desktop', { viewport: { width: 1280, height: 1000 } }],
+  ['phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }]
+] as const) {
+  test.describe(`the ALS patterns as chains, and Death Blossom, ${name}`, () => {
+    test.use(size);
+    const shafts = (page: Page) => page.locator('svg.board .chain-shaft');
+    const heads = (page: Page) => page.locator('svg.board .chain-arrows polygon[fill="var(--hint-arrow)"]');
+    const trueDiscs = (page: Page) => page.locator('svg.board circle[fill="var(--hint-place)"]');
+    const falseRings = (page: Page) => page.locator('svg.board circle.hint-ring[stroke="var(--hint-false)"]');
+    const squares = (page: Page) => page.locator('svg.board rect.hint-one-of');
+
+    test('walks an ALS-XZ in six frames: two lettered sets, one dashed arrow between them, a start dot, no arrow inside a set', async ({ page }) => {
+      await showAt(page, storedExample('ALS_XZ'), 'ALS-XZ');
+      const tiles = page.locator('svg.board g.hint-tile');
+      const tabs = page.locator('svg.board g.hint-tab');
+      // sets A and B, a tile and a tab in each of their two cells
+      await expect(tiles).toHaveCount(4);
+      await expect(tabs).toHaveCount(4);
+      expect((await tabs.locator('text').allTextContents()).sort()).toEqual(['A', 'A', 'B', 'B']);
+      // one arrow, the restricted common, dashed with its head; the locks inside A and B draw nothing
+      await expect(shafts(page)).toHaveCount(1);
+      await expect(shafts(page)).toHaveClass('chain-shaft weak');
+      await expect(heads(page)).toHaveCount(1);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
+      // A's 5s false, its 1 and B's 5 true, B's 1 false; no role
+      await expect(falseRings(page)).toHaveCount(3);
+      await expect(trueDiscs(page)).toHaveCount(2);
+      await expect(page.locator('svg.board circle[fill="var(--hint-primary)"], svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(0);
+      await expect(page.locator('.hint-legend')).toContainText('true, if set A holds no 5 (by the small dot)');
+      // the walk: set A, its lock, set B, the restricted common, B's lock, the conclusion
+      await page.getByRole('button', { name: 'Walk through it' }).click();
+      await expect(page.locator('.hint-walk-count')).toContainText('1 of 6');
+      await expect(page.locator('.hint-walk-text')).toHaveText(
+        'Set A: the 2 cells r8c2, r9c1 of box 7 hold only 1, 5 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.'
+      );
+      await expect(tiles).toHaveCount(2);
+      await expect(shafts(page)).toHaveCount(0);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-text')).toHaveText('If set A holds no 5, its other 2 digits fill its 2 cells, so r8c2 must be 1.');
+      await expect(shafts(page)).toHaveCount(0);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
+      await page.keyboard.press('ArrowRight');
+      await expect(tiles).toHaveCount(4);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-text')).toHaveText('Every 1 of set A sees every 1 of set B: if r8c2 is 1, r8c9 cannot be 1.');
+      await expect(shafts(page)).toHaveCount(1);
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['4']);
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-count')).toContainText('6 of 6');
+      await expect(page.locator('.hint-walk-text')).toHaveText(
+        'Set A or set B holds a 5: if A holds none, B holds one. Each removed 5 sees every 5 of both. So 5 is removed from r7c1.'
+      );
+    });
+
+    test("draws a Death Blossom with three headless dashed ties from its stem, no start dot and no truth, and walks it branch by branch", async ({ page }) => {
+      await showAt(page, storedExample('DEATH_BLOSSOM'), 'Death Blossom');
+      const ties = page.locator('svg.board .chain-shaft.weak-tie');
+      await expect(ties).toHaveCount(3);
+      await expect(shafts(page)).toHaveCount(3);
+      await expect(heads(page)).toHaveCount(0);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
+      await expect(trueDiscs(page)).toHaveCount(0);
+      await expect(falseRings(page)).toHaveCount(0);
+      await expect(squares(page)).toHaveCount(0);
+      // the stem and each petal's stem digit gold, every petal's 4 blue; the petals lettered, the stem not
+      await expect(page.locator('svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(6);
+      await expect(page.locator('svg.board circle[fill="var(--hint-primary)"]')).toHaveCount(3);
+      expect(await tabsIn(page, 7 * 9 + 8)).toEqual([]);
+      expect((await page.locator('svg.board g.hint-tab text').allTextContents()).sort()).toEqual(['A', 'B', 'B', 'C']);
+      await expect(page.locator('.hint-legend li', { hasText: 'dashed line' }).locator('i.swatch-weak-tie')).toHaveCount(1);
+      await expect(page.locator('.hint-legend')).not.toContainText('small dot');
+      // the walk: the stem alone, then a tie a branch, numbered by its frame
+      await page.getByRole('button', { name: 'Walk through it' }).click();
+      await expect(page.locator('.hint-walk-count')).toContainText('1 of 6');
+      await expect(page.locator('.hint-walk-text')).toHaveText('The stem r8c9 holds 2, 5 and 7: one of them is true, and each has a petal.');
+      await expect(ties).toHaveCount(0);
+      await expect(page.locator('svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(3);
+      await page.keyboard.press('ArrowRight');
+      await expect(ties).toHaveCount(1);
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['2']);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('.hint-walk-text')).toContainText("Petal B, for the stem's 5:");
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['2', '4']);
+      await page.keyboard.press('ArrowRight');
+      await expect(page.locator('svg.board .walk-badge')).toHaveText(['2', '4', '5']);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
+    });
+
+    test("draws an ALS-XY-Chain whose set A lies inside its set D as the chain it derives: A's tile and D's dashed outline on r7c7, both tabs", async ({ page }) => {
+      await showAt(page, namedPosition('shared cells that derive, step 25, ALS_XY_CHAIN'), 'ALS-XY-Chain');
+      const r7c7 = 6 * 9 + 6;
+      expect(await tabsIn(page, r7c7)).toEqual(['A', 'D']);
+      // seven tiles for four sets on seven cells, one of them D's dashed outline inside A's on r7c7
+      await expect(page.locator('svg.board g.hint-tile')).toHaveCount(7);
+      await expect(page.locator('svg.board g.hint-tile').filter({ has: page.locator('rect[stroke-dasharray="6 4"]') })).toHaveCount(1);
+      // its truth drawn: three dashed arrows between the sets, a start dot, true discs, false rings and r7c5's 1 a square
+      await expect(shafts(page)).toHaveCount(3);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
+      await expect(trueDiscs(page)).toHaveCount(3);
+      await expect(falseRings(page)).toHaveCount(4);
+      await expect(squares(page)).toHaveCount(1);
+      await expect(page.locator('.hint-legend')).toContainText('true, if set A holds no 1 (by the small dot)');
+    });
+
+    test('draws an ALS-XY-Chain whose sets share cells and whose chain clashes with no truth: tiles, tabs, arrows and the removal, a legend naming none', async ({ page }) => {
+      await showAt(page, namedPosition('shared cells that clash, step 15, ALS_XY_CHAIN'), 'ALS-XY-Chain');
+      // D (r4c4, r6c4) inside A (r1c4, r4c4, r5c4, r6c4): both tabs on each shared cell
+      expect(await tabsIn(page, 3 * 9 + 3)).toEqual(['A', 'D']);
+      expect(await tabsIn(page, 5 * 9 + 3)).toEqual(['A', 'D']);
+      await expect(page.locator('svg.board g.hint-tile')).toHaveCount(9);
+      await expect(shafts(page)).toHaveCount(3);
+      await expect(page.locator('svg.board circle.hint-ring[stroke="var(--hint-elim)"]')).toHaveCount(1);
+      // no truth mark, no role, no start dot, and a legend that names no truth
+      await expect(trueDiscs(page)).toHaveCount(0);
+      await expect(falseRings(page)).toHaveCount(0);
+      await expect(squares(page)).toHaveCount(0);
+      await expect(page.locator('svg.board circle[fill="var(--hint-primary)"], svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(0);
+      await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
+      // and the dashed outline of a cell of two sets, drawn like it
+      await expect(page.locator('.hint-legend li')).toHaveText([/^remove/, /^lettered cells/, /^dashed outline/]);
+      await expect(page.locator('.hint-legend li', { hasText: 'dashed outline' }).locator('i.swatch-shared')).toHaveCount(1);
+    });
+  });
+}
 
 test.describe('phone, 390 x 844', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -2161,6 +2519,10 @@ test.describe('the HoDoKu rating in the top bar', () => {
     });
   const twoFrames = (page: Page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   const shown = (page: Page, sel: string) => page.locator(sel).evaluate((e) => e.getBoundingClientRect().width > 0);
+
+  // GitHub's runner draws these in DejaVu Sans, wider than the Inter a
+  // developer's machine may have: run them with
+  // FONTCONFIG_FILE=$PWD/tests/e2e/ci-fonts.conf to see the bar as CI does
 
   /** every width from a phone to a wide laptop: the bar fits, the level and the rating always show */
   async function sweep(page: Page, label: string) {

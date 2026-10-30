@@ -1462,7 +1462,7 @@ export const useGame = create<GameStore>()(
           chain: EMPTY_CHAIN,
           chainGoal: goal?.length ? goal : null,
           chainNote: goal?.length
-            ? `${t('Goal: remove {list} (circled purple).', { list: list! })} ${t(CHAIN_INTRO)}`
+            ? `${t('Goal: remove {list} (marked on the board as you build).', { list: list! })} ${t(CHAIN_INTRO)}`
             : t(CHAIN_INTRO),
           hint: null,
           hintStage: 'hidden',

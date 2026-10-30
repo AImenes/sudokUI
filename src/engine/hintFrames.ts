@@ -1,24 +1,68 @@
 /**
  * The walk: a hint's drawing revealed one idea at a time, with a sentence
  * for each. For a chain the ideas are its links, in order, then the
- * conclusion. For a pattern they are its colours, in the order the
- * explanation introduces them (the legend labels supply the words), then
- * the conclusion. A step whose walk has a single frame has nothing to
- * walk through, and the panel offers no walk for it.
+ * conclusion; an almost locked set of several cells a derived chain passes
+ * through is introduced in a frame of its own before the first link that
+ * reaches it (docs/hint-drawing-sets.md, decision 17). For a pattern they
+ * are its colours, in the order the explanation introduces them (the
+ * legend labels supply the words), then the conclusion. For a colouring
+ * (docs/hint-drawing-colouring.md) they are each cluster with its ties,
+ * then each link of the argument, then, where a colour is proven, the
+ * proof, then the conclusion. For a Death Blossom they are its stem, then
+ * each petal's branch, a petal of several cells introduced first, then the
+ * conclusion. A step whose walk has a single frame has nothing to walk
+ * through, and the panel offers no walk for it.
  */
 import { cellName, cellNames } from './board';
-import { CellDigit, ChainLink, Step } from './steps';
-import { tr } from './text';
+import { CellDigit, ChainLink, ChainSet, Step, insideSet, isParity, isTie } from './steps';
+import { aDigit, listAnd, tr, unitName } from './text';
+import { alsClash, deriveTruth, isAlsChain } from './truth';
 
-export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'conclusion';
+/**
+ * A part of the drawing a frame shows: a pattern's bands and roles; a
+ * colouring's clusters in their shades, and its proof (the colour proven
+ * false as false rings, its partner as true discs); a Death Blossom's stem,
+ * its candidates before any branch is drawn; the conclusion.
+ */
+export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'cluster0' | 'cluster1' | 'proof' | 'stem' | 'conclusion';
 
 export interface Frame {
   /** the sentence for this frame */
   text: string;
-  /** how many links are drawn, from the first */
+  /**
+   * how many links the walk has reached, from the first: a line wears the
+   * number of the frame that reaches it, and a loop is closed once its last
+   * link is reached
+   */
   links: number;
+  /**
+   * the links this frame draws, where that is not every link reached (a
+   * colouring: a cluster's ties only in its own frame); absent, every link
+   * reached is drawn
+   */
+  drawn?: number[];
+  /**
+   * the almost locked sets this frame introduces, as indices into
+   * Step.sets: a set of several cells has a frame of its own before the
+   * first link that reaches it, which draws the set and adds no link
+   */
+  sets?: number[];
   /** which parts of the drawing are shown */
   show: Set<Part>;
+}
+
+/**
+ * The links a frame draws, or the full view when there is no frame: every
+ * link reached, or the frame's own list. A colouring's full view draws its
+ * argument (its weak ties: the reason, 1-3 lines) and none of its ties,
+ * which are drawn only in their cluster's frame. Every board, legend and
+ * mark goes through this, so a line is drawn where the frame says.
+ */
+export function drawnLinks(step: Step, frame: Frame | null): Set<number> {
+  const links = step.links ?? [];
+  if (frame) return new Set(frame.drawn ?? links.map((_, i) => i).slice(0, frame.links));
+  if (isParity(step)) return new Set(links.flatMap((l, i) => (isTie(l) ? [] : [i])));
+  return new Set(links.map((_, i) => i));
 }
 
 const uniq = <T>(xs: T[]) => [...new Set(xs)];
@@ -34,9 +78,119 @@ function nodeDigits(node: CellDigit[]): string {
     .join('/');
 }
 
-/** One link, read as an inference: what the chain argues at that point. */
-export function linkText(link: ChainLink): string {
+/**
+ * The almost locked set a link end is a node of, along a derived chain,
+ * whose words then say what the set does at that point (docs/hint-drawing-sets.md,
+ * "The walk and its words"); none for a lone candidate or a group, whose
+ * sentences are the chain's own, and none in a step whose truth is not
+ * derived (a Death Blossom's links claim no truth, and its walk is its own)
+ */
+function alsAt(step: Step, index: number | undefined): ChainSet | undefined {
+  if (step.truth !== 'derived' || index === undefined) return undefined;
+  const set = step.sets?.[index];
+  return set?.kind === 'als' ? set : undefined;
+}
+
+/** the ALS-XY-Wing's hinge, its set C, which its sentences name so (decision 16) */
+const isHinge = (step: Step, set: ChainSet) => step.tech === 'ALS_XY_WING' && set.letter === 'C';
+
+/**
+ * A set frame's sentence: what an almost locked set of several cells is,
+ * before the chain uses it, in the house the finder found it in
+ */
+function setText(step: Step, set: ChainSet): string {
+  const L = set.letter;
+  const n = set.cells.length;
+  const cells = cellNames(set.cells);
+  const house = unitName(set.unit);
+  const digits = listAnd(set.digits);
+  return isHinge(step, set)
+    ? tr`Set ${L}, the hinge: the ${n} cells ${cells} of ${house} hold only ${digits}: one digit more than cells. Without any one of these digits, the others fill the cells.`
+    : tr`Set ${L}: the ${n} cells ${cells} of ${house} hold only ${digits}: one digit more than cells. Without any one of these digits, the others fill the cells.`;
+}
+
+/**
+ * A link's sentence where an end is a node of an almost locked set, from
+ * the step's sets (decision 17): the set's lock, a one-cell set's folded
+ * into it; a restricted common between two sets; a link into a set or out
+ * of it, from or to a candidate or a group, each naming the drawn
+ * candidates, and from or to another digit of the set's only cell holding
+ * its digit, a candidate's or another set's. Null where neither end is a
+ * set's node, and for a link checkSets refuses (a weak link inside a set,
+ * a strong one out of it), whose plain sentence then stands.
+ */
+function setLinkText(link: ChainLink, step: Step): string | null {
+  const from = alsAt(step, link.fromSet);
+  const to = alsAt(step, link.toSet);
+  if (!from && !to) return null;
+  const fd = link.from[0].digit;
+  const td = link.to[0].digit;
+  const fromCells = uniq(link.from.map((cd) => cd.cell));
+  const toCells = uniq(link.to.map((cd) => cd.cell));
+  if (insideSet(link)) {
+    if (!link.strong || fd === td) return null;
+    const L = from!.letter;
+    const n = from!.cells.length;
+    // a set of one cell is introduced by its lock: it holds just its two digits
+    if (n === 1) {
+      const cell = cellName(from!.cells[0]);
+      const [a, b] = from!.digits;
+      return isHinge(step, from!)
+        ? tr`Set ${L}, the hinge, is the cell ${cell}, which holds only ${a} and ${b}: if it is not ${fd}, it must be ${td}.`
+        : tr`Set ${L} is the cell ${cell}, which holds only ${a} and ${b}: if it is not ${fd}, it must be ${td}.`;
+    }
+    const exit = cellNames(toCells);
+    return toCells.length === 1
+      ? tr`If set ${L} holds no ${fd}, its other ${n} digits fill its ${n} cells, so ${exit} must be ${td}.`
+      : tr`If set ${L} holds no ${fd}, its other ${n} digits fill its ${n} cells, so one of ${exit} must be ${td}.`;
+  }
+  if (link.strong) return null;
+  if (fd !== td) {
+    // two digits of one cell, each end a set's only cell holding its digit or a candidate
+    const oneCell = fromCells.length === 1 && toCells.length === 1 && fromCells[0] === toCells[0];
+    if (!oneCell) return null;
+    const cell = cellName(fromCells[0]);
+    if (from && to) return tr`If set ${from.letter} holds ${aDigit(fd)}, set ${to.letter} holds no ${td}: the only ${fd} of ${from.letter} and the only ${td} of ${to.letter} are both in ${cell}.`;
+    return from
+      ? tr`If set ${from.letter} holds ${aDigit(fd)}, ${cell} cannot be ${td}: the only ${fd} of ${from.letter} is in ${cell}.`
+      : tr`If ${cell} is ${fd}, set ${to!.letter} holds no ${td}: the only ${td} of ${to!.letter} is in ${cell}.`;
+  }
+  const x = fd;
+  const one = (cells: number[]) => cells.length === 1;
+  if (from && to) {
+    // a restricted common: every x of one set sees every x of the other
+    const [L, M] = [from.letter, to.letter];
+    const [f, t] = [cellNames(fromCells), cellNames(toCells)];
+    if (one(fromCells) && one(toCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if ${f} is ${x}, ${t} cannot be ${x}.`;
+    if (one(toCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if one of ${f} is ${x}, ${t} cannot be ${x}.`;
+    if (one(fromCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if ${f} is ${x}, none of ${t} can be ${x}.`;
+    return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if one of ${f} is ${x}, none of ${t} can be ${x}.`;
+  }
+  if (from) {
+    const L = from.letter;
+    const cells = cellNames(toCells);
+    return one(toCells)
+      ? tr`If set ${L} holds ${aDigit(x)}, ${cells} cannot be ${x}: it sees every ${x} of ${L}.`
+      : tr`If set ${L} holds ${aDigit(x)}, none of ${cells} can be ${x}: they see every ${x} of ${L}.`;
+  }
+  const L = to!.letter;
+  const cells = cellNames(fromCells);
+  return one(fromCells)
+    ? tr`If ${cells} is ${x}, set ${L} holds no ${x}: every ${x} of ${L} sees ${cells}.`
+    : tr`If one of ${cells} is ${x}, set ${L} holds no ${x}: every ${x} of ${L} sees all of them.`;
+}
+
+/**
+ * One link, read as an inference: what the chain argues at that point. A
+ * link with an end in an almost locked set of a derived chain is told from
+ * the step's sets, never by the plain sentences below, which would read
+ * the set's cells as a group, or two of its digits as a link between
+ * single candidates.
+ */
+export function linkText(link: ChainLink, step: Step): string {
   if (link.text) return link.text;
+  const set = setLinkText(link, step);
+  if (set) return set;
   const fromCells = uniq(link.from.map((cd) => cd.cell));
   const toCells = uniq(link.to.map((cd) => cd.cell));
   const fd = nodeDigits(link.from);
@@ -51,9 +205,20 @@ export function linkText(link: ChainLink): string {
   const from = nodeCells(link.from);
   const to = nodeCells(link.to);
   if (fd === td) {
-    return link.strong
-      ? tr`Strong link on ${fd}: if ${from} is not ${fd}, ${to} must be ${fd} (nowhere else for it).`
-      : tr`Weak link on ${fd}: if ${from} is ${fd}, ${to} cannot be ${fd} (they see each other).`;
+    // a group of cells holds the digit in at most one of them (they share
+    // a house): "one of" them is true, or "none of" them
+    const fromGroup = fromCells.length > 1;
+    const toGroup = toCells.length > 1;
+    if (link.strong) {
+      if (fromGroup && toGroup) return tr`Strong link on ${fd}: if none of ${from} is ${fd}, one of ${to} must be ${fd} (nowhere else for it).`;
+      if (fromGroup) return tr`Strong link on ${fd}: if none of ${from} is ${fd}, ${to} must be ${fd} (nowhere else for it).`;
+      if (toGroup) return tr`Strong link on ${fd}: if ${from} is not ${fd}, one of ${to} must be ${fd} (nowhere else for it).`;
+      return tr`Strong link on ${fd}: if ${from} is not ${fd}, ${to} must be ${fd} (nowhere else for it).`;
+    }
+    if (fromGroup && toGroup) return tr`Weak link on ${fd}: if one of ${from} is ${fd}, none of ${to} can be ${fd} (they see each other).`;
+    if (fromGroup) return tr`Weak link on ${fd}: if one of ${from} is ${fd}, ${to} cannot be ${fd} (they see each other).`;
+    if (toGroup) return tr`Weak link on ${fd}: if ${from} is ${fd}, none of ${to} can be ${fd} (they see each other).`;
+    return tr`Weak link on ${fd}: if ${from} is ${fd}, ${to} cannot be ${fd} (they see each other).`;
   }
   return link.strong
     ? tr`Strong link: if ${from} is not ${fd}, ${to} must be ${td}.`
@@ -70,6 +235,9 @@ export function conclusionText(step: Step): string {
   }
   const byDigit = new Map<number, number[]>();
   for (const { cell, digit } of step.eliminations) (byDigit.get(digit) ?? byDigit.set(digit, []).get(digit)!).push(cell);
+  // a colouring's removals come in the order its cluster grew, up to a
+  // dozen cells of one digit: they are named in reading order
+  if (isParity(step)) for (const cells of byDigit.values()) cells.sort((a, b) => a - b);
   for (const [digit, cells] of [...byDigit].sort((a, b) => a[0] - b[0])) {
     parts.push(parts.length ? tr`${digit} is removed from ${cellNames(cells)}` : tr`So ${digit} is removed from ${cellNames(cells)}`);
   }
@@ -79,40 +247,259 @@ export function conclusionText(step: Step): string {
 /**
  * The explanation as shown: the finder's sentence, followed by the
  * conclusion in cell names when the sentence does not already name every
- * cell it places in or removes from.
+ * cell it places in or removes from. A colouring's sentence argues for one
+ * removal, or for a colour, and counts or sums up the rest, so a cell it
+ * names may lose a candidate it does not name: its conclusion follows
+ * whenever it removes more than one candidate.
  */
 export function describe(step: Step): string {
   const cells = [...step.placements, ...step.eliminations].map((cd) => cellName(cd.cell));
-  const named = cells.every((name) => step.description.includes(name));
+  const counted = isParity(step) && step.eliminations.length > 1;
+  const named = !counted && cells.every((name) => step.description.includes(name));
   if (named || !cells.length) return step.description;
   return `${step.description} ${conclusionText(step)}`;
 }
 
+/**
+ * What the link that closes a discontinuous loop shows: the chain came
+ * back to its start the other way, so the assumption it began with is
+ * impossible (docs/hint-drawing.md G18); empty for any other chain
+ */
+export function closureText(step: Step): string {
+  const d = deriveTruth(step);
+  // an ALS pattern's chain that comes back to its first set proves no more than the pattern (decision 13)
+  if (!d?.closure || d.problems.length || alsClash(step)) return '';
+  const node = d.closure.node;
+  const cells = nodeCells(node);
+  const digit = nodeDigits(node);
+  if (uniq(node.map((cd) => cd.cell)).length > 1) {
+    return d.closure.assumed
+      ? tr`So assuming one of ${cells} is ${digit} rules them all out: that is impossible, so none of them is ${digit}.`
+      : tr`So assuming none of ${cells} is ${digit} makes one of them ${digit}: that is impossible, so one of them is ${digit}.`;
+  }
+  return d.closure.assumed
+    ? tr`So assuming ${cells} is ${digit} rules it out: that is impossible, so ${cells} is not ${digit}.`
+    : tr`So assuming ${cells} is not ${digit} makes it ${digit}: that is impossible, so ${cells} is ${digit}.`;
+}
+
+/** the one digit a colouring's clusters are all of (Simple and Multi Colors), or null (3D Medusa, Remote Pair) */
+export function colouringDigit(step: Step): number | null {
+  const digits = new Set((step.colouring?.clusters ?? []).flatMap((cl) => [...cl.dark, ...cl.light].map((cd) => cd.digit)));
+  return digits.size === 1 ? [...digits][0] : null;
+}
+
+/**
+ * What the proof frame says: the colour proven false (dark, by the rule
+ * that makes the argument try it first) and its partner true, which once
+ * the false colour is removed is a single each (every true candidate is
+ * tied to a removed one, in its cell or its house)
+ */
+function proofText(step: Step): string {
+  const d = colouringDigit(step);
+  if (step.colouring?.darkFalse === 1) {
+    return d
+      ? tr`So dark orange is false and light orange is true: once dark orange is removed, every light orange ${d} is a single.`
+      : tr`So dark orange is false and light orange is true: once dark orange is removed, every light orange candidate is a single.`;
+  }
+  return d
+    ? tr`So dark purple is false and light purple is true: once dark purple is removed, every light purple ${d} is a single.`
+    : tr`So dark purple is false and light purple is true: once dark purple is removed, every light purple candidate is a single.`;
+}
+
+/** what the conclusion adds where a colour is proven: its partner's candidates are true, though the step only removes */
+function provenText(step: Step): string {
+  const d = colouringDigit(step);
+  if (step.colouring?.darkFalse === 1) {
+    return d
+      ? tr`Every light orange ${d} is true; this step only removes, and each is then a single.`
+      : tr`Every light orange candidate is true; this step only removes, and each is then a single.`;
+  }
+  return d
+    ? tr`Every light purple ${d} is true; this step only removes, and each is then a single.`
+    : tr`Every light purple candidate is true; this step only removes, and each is then a single.`;
+}
+
+/**
+ * A colouring's walk (docs/hint-drawing-colouring.md): one frame per
+ * cluster, its shades and its ties, the ties drawn in that frame only, its
+ * sentence from its first tie; one frame per link of the argument, each
+ * weak tie drawn from its frame on; where a colour is proven, the proof
+ * frame, that colour as false rings and its partner as true discs; and the
+ * conclusion, which is the full view
+ */
+function parityFrames(step: Step): Frame[] {
+  const links = step.links ?? [];
+  const { clusters, darkFalse } = step.colouring!;
+  // a tie's cluster: the one its first end is coloured in
+  const clusterOf = (l: ChainLink) =>
+    clusters.findIndex((cl) => [...cl.dark, ...cl.light].some((cd) => cd.cell === l.from[0]?.cell && cd.digit === l.from[0]?.digit));
+  const frames: Frame[] = [];
+  const shown = new Set<Part>(['units']);
+  let reached = 0;
+  clusters.forEach((_, k) => {
+    shown.add(k === 0 ? 'cluster0' : 'cluster1');
+    const ties = links.flatMap((l, i) => (isTie(l) && clusterOf(l) === k ? [i] : []));
+    reached = Math.max(reached, ...ties.map((i) => i + 1));
+    const text =
+      ties.map((i) => links[i].text).find((x) => !!x) ??
+      tr`The cluster: each line joins two candidates of which exactly one is true (a conjugate pair, or the two candidates of a bivalue cell), so the two ends take opposite colours, and the colours spread along the lines.`;
+    frames.push({ text, links: reached, drawn: ties, show: new Set(shown) });
+  });
+  const argument: number[] = [];
+  links.forEach((l, i) => {
+    if (isTie(l)) return;
+    argument.push(i);
+    frames.push({ text: linkText(l, step), links: i + 1, drawn: [...argument], show: new Set(shown) });
+  });
+  if (darkFalse !== undefined) {
+    shown.add('proof');
+    frames.push({ text: proofText(step), links: links.length, drawn: [...argument], show: new Set(shown) });
+  }
+  shown.add('conclusion');
+  const conclusion = conclusionText(step);
+  frames.push({
+    text: darkFalse !== undefined ? `${conclusion} ${provenText(step)}` : conclusion,
+    links: links.length,
+    drawn: [...argument],
+    show: new Set(shown)
+  });
+  return frames;
+}
+
+/**
+ * What an ALS pattern's conclusion says before its removals
+ * (docs/hint-drawing-sets.md, "The walk and its words"): its two end sets,
+ * one of which holds z, and why each removal goes; for a chain that clashes,
+ * why its first set holds z (clashText); empty for any other step
+ */
+function endsText(step: Step): string {
+  if (!isAlsChain(step)) return '';
+  const links = step.links!;
+  const first = step.sets?.[links[0].fromSet!];
+  const last = step.sets?.[links[links.length - 1].toSet!];
+  const [F, L] = [first?.letter, last?.letter];
+  const z = step.eliminations[0]?.digit;
+  if (!F || !L || z === undefined) return '';
+  const clash = alsClash(step) ? clashText(step, first!, last!, z) : '';
+  return clash || tr`Set ${F} or set ${L} holds ${aDigit(z)}: if ${F} holds none, ${L} holds one. Each removed ${z} sees every ${z} of both.`;
+}
+
+/**
+ * Why an ALS-XY-Chain whose sets share cells and whose chain clashes
+ * (src/engine/truth.ts alsClash; docs/hint-drawing-sets.md, decision 13)
+ * removes what it does: its last set holds z only in cells of its first,
+ * so the premise that the first set holds no z gives it one after all. The
+ * first set cannot lack z: it holds z, and each removal sees every z of
+ * it. Worded by what the derivation meets: the last set's z the first's
+ * very own (a closure, the chain back at its start), several of the
+ * first's z (a TRUE node left no candidate, 'emptyTrue'), or one
+ * ('inFalseGroup', a true candidate in the first set's false node). Empty
+ * where the last set holds z outside the first, which no chain the
+ * corpora keep does: the plain ending then stands
+ */
+function clashText(step: Step, first: ChainSet, last: ChainSet, z: number): string {
+  const holding = (set: ChainSet) => set.members.filter((m) => m.digit === z).map((m) => m.cell);
+  const [inFirst, inLast] = [holding(first), holding(last)];
+  if (!inLast.length || !inLast.every((c) => inFirst.includes(c))) return '';
+  const [F, L] = [first.letter, last.letter];
+  if (inLast.length === 1) {
+    const cell = cellName(inLast[0]);
+    return tr`Set ${L} holds ${z} only in ${cell}, a cell of set ${F}: if ${F} holds no ${z}, ${cell} must be ${z}, and ${F} holds one after all. ${F} cannot lack ${aDigit(z)}, so set ${F} holds ${aDigit(z)}. Each removed ${z} sees every ${z} of ${F}.`;
+  }
+  const cells = cellNames(inLast);
+  return deriveTruth(step)?.closure
+    ? tr`Set ${L} holds ${z} only in ${cells}, the very cells set ${F} holds it in, so the chain comes back to ${F}: if ${F} holds no ${z}, one of these cells must be ${z}, and ${F} holds one after all. ${F} cannot lack ${aDigit(z)}, so set ${F} holds ${aDigit(z)}. Each removed ${z} sees every ${z} of ${F}.`
+    : tr`Set ${L} holds ${z} only in ${cells}, cells of set ${F}: if ${F} holds no ${z}, one of these cells must be ${z}, and ${F} holds one after all. ${F} cannot lack ${aDigit(z)}, so set ${F} holds ${aDigit(z)}. Each removed ${z} sees every ${z} of ${F}.`;
+}
+
+/**
+ * A Death Blossom's walk (docs/hint-drawing-sets.md, decision 15): no truth
+ * until phase 5 draws its branches, so each branch is told in words. The
+ * stem first, its candidates shown; then for each of its digits, in order,
+ * the petal's branch, the weak tie from the stem into the petal and the
+ * petal's lock, a petal of several cells introduced in a frame of its own
+ * before it, a one-cell petal in its branch's frame; then the conclusion,
+ * which is the full view
+ */
+function blossomFrames(step: Step): Frame[] {
+  const links = step.links ?? [];
+  const sets = step.sets ?? [];
+  const z = step.eliminations[0]?.digit;
+  // the ties from the stem, each starting a branch
+  const ties = links.flatMap((l, i) => (l.undirected && l.fromSet === undefined && l.toSet !== undefined ? [i] : []));
+  const show = new Set<Part>(['units', 'stem']);
+  const stem = cellName(links[ties[0]].from[0].cell);
+  const frames: Frame[] = [
+    { text: tr`The stem ${stem} holds ${listAnd(ties.map((i) => links[i].from[0].digit))}: one of them is true, and each has a petal.`, links: 0, show }
+  ];
+  ties.forEach((i, t) => {
+    const end = ties[t + 1] ?? links.length;
+    const k = links[i].toSet!;
+    const petal = sets[k];
+    const p = links[i].from[0].digit;
+    const L = petal.letter;
+    const n = petal.cells.length;
+    // the cells the petal holds z in, which the branch makes one of true
+    const lock = links.slice(i + 1, end).find((l) => insideSet(l) && l.fromSet === k);
+    const exits = uniq((lock?.to ?? petal.members.filter((m) => m.digit === z)).map((cd) => cd.cell));
+    let text: string;
+    if (n === 1) {
+      // a one-cell petal holds just the stem's digit and z, named in order as a one-cell set's are
+      const cell = cellName(petal.cells[0]);
+      const [a, b] = petal.digits;
+      text = tr`Petal ${L} is the cell ${cell}, which holds only ${a} and ${b}, and its ${p} sees the stem: if the stem is ${p}, ${cell} must be ${z}.`;
+    } else {
+      const cells = cellNames(petal.cells);
+      const house = unitName(petal.unit);
+      const digits = listAnd(petal.digits);
+      frames.push({
+        text: tr`Petal ${L}, for the stem's ${p}: the ${n} cells ${cells} of ${house} hold only ${digits}: one digit more than cells, and every ${p} of it sees the stem.`,
+        links: i,
+        sets: [k],
+        show
+      });
+      const exit = cellNames(exits);
+      text =
+        exits.length === 1
+          ? tr`If the stem is ${p}, petal ${L} holds no ${p}, so its other ${n} digits fill its ${n} cells: ${exit} must be ${z}.`
+          : tr`If the stem is ${p}, petal ${L} holds no ${p}, so its other ${n} digits fill its ${n} cells: one of ${exit} must be ${z}.`;
+    }
+    frames.push({ text, links: end, show });
+  });
+  frames.push({
+    text: `${tr`Whichever digit the stem takes, a petal holds ${aDigit(z)}. Each removed ${z} sees every ${z} of every petal.`} ${conclusionText(step)}`,
+    links: links.length,
+    show: new Set<Part>(['units', 'stem', 'primary', 'secondary', 'fins', 'conclusion'])
+  });
+  return frames;
+}
+
 export function walkFrames(step: Step): Frame[] {
+  if (isParity(step)) return parityFrames(step);
+  if (step.tech === 'DEATH_BLOSSOM' && step.links?.some((l) => l.undirected)) return blossomFrames(step);
   const frames: Frame[] = [];
   const base = new Set<Part>(['units']);
   if (step.links && step.links.length > 0) {
-    // a run of ties is one idea: the cluster, coloured; every inference
-    // after it is a frame of its own
-    let i = 0;
-    while (i < step.links.length) {
-      const link = step.links[i];
-      if (link.undirected) {
-        let j = i;
-        while (j < step.links.length && step.links[j].undirected) j++;
-        const text =
-          j - i === 1
-            ? tr`${nodeCells(link.from)} and ${nodeCells(link.to)}: exactly one of them is true, so they take opposite colours.`
-            : tr`The cluster: each line joins two candidates of which exactly one is true (a conjugate pair, or the two candidates of a bivalue cell), so the two ends take opposite colours, and the colours spread along the lines.`;
-        frames.push({ text, links: j, show: new Set(base) });
-        i = j;
-      } else {
-        frames.push({ text: linkText(link), links: i + 1, show: new Set(base) });
-        i++;
+    const closing = closureText(step);
+    const introduced = new Set<number>();
+    // every inference is a frame of its own; the link that closes a
+    // discontinuous loop says what it proves. An almost locked set of
+    // several cells comes first in a frame of its own, the locking idea
+    // before the chain uses it; a one-cell set is told in its lock's frame
+    step.links.forEach((link, i) => {
+      for (const k of [link.fromSet, link.toSet]) {
+        const set = alsAt(step, k);
+        if (k === undefined || !set || set.cells.length < 2 || introduced.has(k)) continue;
+        introduced.add(k);
+        frames.push({ text: setText(step, set), links: i, sets: [k], show: new Set(base) });
       }
-    }
+      const text = closing && i === step.links!.length - 1 ? `${linkText(link, step)} ${closing}` : linkText(link, step);
+      frames.push({ text, links: i + 1, show: new Set(base) });
+    });
+    // an ALS pattern names its two end sets first, and why each removal goes
+    const ends = endsText(step);
     frames.push({
-      text: conclusionText(step),
+      text: ends ? `${ends} ${conclusionText(step)}` : conclusionText(step),
       links: step.links.length,
       show: new Set<Part>(['units', 'primary', 'secondary', 'fins', 'conclusion'])
     });

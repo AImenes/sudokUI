@@ -83,7 +83,7 @@ function WorkedExample({
         <span className="learn-legend">
           {legendOf(step, example.values).map((l) => (
             <span key={l.label}>
-              <i style={swatchStyle(l)} />
+              {l.kind !== 'note' && <i style={swatchStyle(l)} />}
               {l.label}
             </span>
           ))}

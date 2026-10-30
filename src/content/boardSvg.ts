@@ -6,12 +6,25 @@
 // The board is always drawn light: a diagram has to read the same on a dark
 // page, a light page and in an image search result.
 import { CellDigit, Step } from '../engine/steps';
-import { tr } from '../engine/text';
-import { arrowShapes, startMarkers, pointsOf, SIZES } from './hintGeometry';
+import { aDigit, tr } from '../engine/text';
+import { hintDrawing, tilesIn, squareReach, pointsOf, SIZES } from './hintGeometry';
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
-import { hintMarks, markedCandidates, legendKinds, placedKeys, premiseOf, COLOURING } from './hintMarks';
-import type { Role } from './hintMarks';
+import type { HintPalette } from './hintPalette';
+import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, premiseOf, isParity, isShade, parityLegend, stemAlone, sharedTile } from './hintMarks';
+import type { BarStyle, Premise, Role, Tint } from './hintMarks';
+import type { Frame } from '../engine/hintFrames';
+import { drawnLinks } from '../engine/hintFrames';
+
+interface TruthWords {
+  isTrue: string;
+  isFalse: string;
+  /** a TRUE group, a FALSE group, and a set's true digit of several candidates (docs/hint-drawing-sets.md, decision 18) */
+  squaresOnBar: string;
+  ringsOnBar: string;
+  squaresInSet: string;
+  refuted: string;
+}
 
 export interface Example {
   puzzle: string;
@@ -98,6 +111,19 @@ const f = (n: number) => n.toFixed(1);
 const LINE = 1.5;
 /** the removal bar, thinner than a ring by design, a little more: about 1.5 CSS px on a phone's 350 px diagram */
 const BAR = 1.85;
+/** a set tile's outline, half again as thick as the app's and a little more: 1.5 CSS px on a phone's 350 px diagram */
+const TILE = 1.65;
+
+/** a group's bar takes its members' mark's ink (docs/hint-drawing-sets.md, decisions 2 and 3) */
+const BAR_INK: Record<BarStyle, string> = { oneOf: P.placeInk, false: P.false, primary: P.primaryInk, elim: P.elim };
+
+/** an almost locked set's tint and its ink, sand, rose and violet (docs/hint-drawing-sets.md, decision 8) */
+const TINT: Record<Tint, { fill: keyof HintPalette; ink: keyof HintPalette }> = {
+  1: { fill: 'set1', ink: 'set1Ink' },
+  2: { fill: 'set2', ink: 'set2Ink' },
+  3: { fill: 'set3', ink: 'set3Ink' }
+};
+const tintOf = (t: Tint) => ({ fill: P[TINT[t].fill] as string, ink: P[TINT[t].ink] as string });
 
 /**
  * The example as an SVG document. `title` becomes the image's accessible
@@ -107,8 +133,8 @@ export function boardSvg(example: Example, title: string): string {
   const { step } = example;
   const given = example.puzzle.split('').map((ch) => ch >= '1' && ch <= '9');
   const solved = (cell: number) => Number(example.values[cell]) > 0;
-  // what is marked where, as the app's board marks it (src/content/hintMarks.ts)
-  const drawn = hintMarks(step, { solved });
+  // what is marked where, as the app's board marks it in full (src/content/hintMarks.ts)
+  const drawn = frameMarks(step, null, solved);
   const s = S;
   const parts: string[] = [];
 
@@ -141,10 +167,94 @@ export function boardSvg(example: Example, title: string): string {
     );
   }
 
+  // where the diagram draws the hint: its marks, the placements' outer
+  // rings and the squares any view draws, which reach further than a disc,
+  // and the candidates it shows; the groups' bars are worked out from these
+  // first, and the arrows keep off them, as on the app's board
+  const marked = markedCandidates(drawn);
+  const placed = placedKeys(drawn);
+  const squares = squareKeys(step, solved);
+  const radiusOf = (cd: CellDigit) =>
+    placed.has(`${cd.cell}:${cd.digit}`)
+      ? (MARK.placeRingSmall + MARK.placeRingSmallStroke / 2) * S
+      : squares.has(`${cd.cell}:${cd.digit}`)
+        ? squareReach({ x: Math.SQRT1_2, y: Math.SQRT1_2 }, MARK.oneOf * S, MARK.oneOfRadius * S)
+        : LAYOUT.r;
+  const layout: Layout = {
+    ...LAYOUT,
+    shown: (cd) => !Number(example.values[cd.cell]) && (example.cands[cd.cell] & (1 << (cd.digit - 1))) !== 0,
+    solved,
+    radiusOf,
+    ...(squares.size
+      ? { reach: (cd, dir) => (squares.has(`${cd.cell}:${cd.digit}`) ? squareReach(dir, MARK.oneOf * S, MARK.oneOfRadius * S) : radiusOf(cd)) }
+      : {})
+  };
+  // the groups' bars and the sets' tiles and tabs, then the arrows and
+  // the start dots, which keep off them, as the app's board works them out
+  const { sets, shapes: all, dots } = hintDrawing(step, layout, marked);
+  // the groups the full view draws, each bar in its members' mark's ink
+  // (docs/hint-drawing-sets.md, decisions 2 and 3); their members' marks
+  // keep a keyline in the board's colour, which parts them from the bar
+  const groupBars = drawn.sets.flatMap(({ set, style }) => {
+    const bar = style !== 'als' && sets.bars.find((b) => b.set === set);
+    return bar ? [{ bar, style }] : [];
+  });
+  const onBar = new Set(groupBars.flatMap(({ bar }) => bar.members.map((cd) => `${cd.cell}:${cd.digit}`)));
+  /** the keyline round a group member's mark, a square's or a disc's */
+  const keylineOf = (cd: CellDigit, kind: string) => {
+    const k = MARK.keylineSmall * s;
+    return kind === 'oneOf'
+      ? `<rect class="kl" x="${f(candX(cd) - MARK.oneOf * s - k / 2)}" y="${f(candY(cd) - MARK.oneOf * s - k / 2)}" width="${f(2 * MARK.oneOf * s + k)}" height="${f(2 * MARK.oneOf * s + k)}" rx="${f(MARK.oneOfRadius * s + k / 2)}" fill="none" stroke="#ffffff" stroke-width="${f(k)}"/>`
+      : `<circle class="kl" cx="${f(candX(cd))}" cy="${f(candY(cd))}" r="${f(MARK.disc * s + k / 2)}" fill="none" stroke="#ffffff" stroke-width="${f(k)}"/>`;
+  };
+  // the almost locked sets the full view draws (docs/hint-drawing-sets.md,
+  // decisions 5-8): a tile round each cell's candidates in the set's tint
+  // at half strength, outlined inwards in its ink, a cell in two sets the
+  // smaller set's tile and the other's outline dashed inside it; over the
+  // bands, under everything else. The keylines of the marks and the tabs
+  // on a tile go between its fill and its outline, as on the app's board
+  // (decision 5), so a mark or a tab in its edge row sits on the outline
+  const tints = new Map(drawn.sets.flatMap((m) => (m.tint ? [[m.set, m.tint] as const] : [])));
+  const tiles = tilesIn(step, sets, tints.keys());
+  const tiled = new Set(tiles.map((t) => t.cell));
+  const tabs = sets.tabs.filter((t) => tints.has(t.set));
+  const scale = MARK.tabLarge / MARK.tab;
+  const rx = MARK.tileRadius * s;
+  for (const tile of tiles) {
+    if (tile.inset) continue;
+    parts.push(
+      `<rect class="tl" x="${f(tile.x0)}" y="${f(tile.y0)}" width="${f(tile.x1 - tile.x0)}" height="${f(tile.y1 - tile.y0)}" rx="${f(rx)}" fill="${tintOf(tints.get(tile.set)!).fill}" fill-opacity="${P.setAlpha}"/>`
+    );
+  }
+  for (const key of onBar) {
+    const [cell, digit] = key.split(':').map(Number);
+    const kind = drawn.cands.get(cell)?.get(digit);
+    if (tiled.has(cell) && kind && kind !== 'member' && !solved(cell) && example.cands[cell] & (1 << (digit - 1))) parts.push(keylineOf({ cell, digit }, kind));
+  }
+  for (const tab of tabs) {
+    const half = (MARK.tabLarge / 2) * s;
+    const k = MARK.keyline * scale * s;
+    parts.push(
+      `<rect class="tk" x="${f(tab.p.x - half - k / 2)}" y="${f(tab.p.y - half - k / 2)}" width="${f(2 * half + k)}" height="${f(2 * half + k)}" rx="${f(MARK.tabRadius * scale * s + k / 2)}" fill="none" stroke="#ffffff" stroke-width="${f(k)}"/>`
+    );
+  }
+  for (const tile of tiles) {
+    const w = MARK.tileStroke * s * TILE;
+    const k = tile.inset * w + w / 2;
+    parts.push(
+      `<rect class="to" x="${f(tile.x0 + k)}" y="${f(tile.y0 + k)}" width="${f(tile.x1 - tile.x0 - 2 * k)}" height="${f(tile.y1 - tile.y0 - 2 * k)}" rx="${f(Math.max(rx - k, 0))}" fill="none" stroke="${tintOf(tints.get(tile.set)!).ink}" stroke-width="${f(w)}"${
+        tile.inset ? ` stroke-dasharray="${MARK.tileDash.map((d) => f(d * s)).join(' ')}"` : ''
+      }/>`
+    );
+  }
+  // the bars go under the marks, here, once the digits that cut them are known
+  const barsAt = parts.length;
+
   // a hint's marks (G1-G5), under the grid lines, the arrows and the
   // digits: a filled disc with an edge for a role, a disc with an outer
-  // ring for a placement, a tinted ring for a removal; and a rounded
-  // square round a solved digit the step names, a shape as well as a colour
+  // ring for a placement, a tinted ring for a removal, a pale square for one
+  // of several candidates; and a rounded square round a solved digit the
+  // step names, a shape as well as a colour
   const texts: string[] = [];
   const bars: string[] = [];
   for (let cell = 0; cell < 81; cell++) {
@@ -152,7 +262,7 @@ export function boardSvg(example: Example, title: string): string {
     if (value) {
       const kind = drawn.values.get(cell);
       let fill = '';
-      if (kind && kind !== 'node' && kind !== 'true' && kind !== 'false') {
+      if (kind && kind !== 'node' && kind !== 'true' && kind !== 'false' && kind !== 'oneOf' && kind !== 'member') {
         const ink = kind === 'elim' || kind === 'elimOn' ? P.elim : fillOf(P, kind === 'placeOn' ? 'place' : kind).ink;
         // a style, not an attribute, so the class's own fill cannot win
         fill = ` style="fill:${ink}"`;
@@ -172,6 +282,26 @@ export function boardSvg(example: Example, title: string): string {
       const ty = f(candY(cd) + 4.4);
       if (!kind) {
         texts.push(`<text x="${x}" y="${ty}" class="cd">${digit}</text>`);
+        continue;
+      }
+      if (kind === 'member') {
+        // an almost locked set's member: no shape, its digit bold in the ring's ink on the set's tile (decision 10)
+        texts.push(`<text x="${x}" y="${ty}" class="rm">${digit}</text>`);
+        continue;
+      }
+      // a group's member on its bar: a keyline in the board's colour round
+      // its mark (on a tile, drawn above under the tile's outline)
+      if (onBar.has(`${cell}:${digit}`) && !tiled.has(cell)) parts.push(keylineOf(cd, kind));
+      if (kind === 'oneOf') {
+        // one of several candidates read as one node is true: a pale "one
+        // of these" square edged inside in the true ink, never a true disc
+        // (docs/hint-drawing-sets.md, decision 1); its digit in the ring's ink
+        const half = MARK.oneOf * s;
+        const edge = MARK.oneOfEdge * s * LINE;
+        parts.push(
+          `<rect class="sq" x="${f(candX(cd) - half + edge / 2)}" y="${f(candY(cd) - half + edge / 2)}" width="${f(2 * half - edge)}" height="${f(2 * half - edge)}" rx="${f(MARK.oneOfRadius * s - edge / 2)}" fill="${P.oneOf}" stroke="${P.placeInk}" stroke-width="${f(edge)}"/>`
+        );
+        texts.push(`<text x="${x}" y="${ty}" class="rm">${digit}</text>`);
         continue;
       }
       if (kind === 'false') {
@@ -203,8 +333,12 @@ export function boardSvg(example: Example, title: string): string {
       // a placed chain node keeps the colour the step names for it inside the placement's ring (G5)
       const inside = kind === 'placeOn' ? drawn.inside.get(cell)?.get(digit) : undefined;
       const { fill, ink } = fillOf(P, inside ?? (kind === 'placeOn' || kind === 'true' ? 'place' : kind));
+      // a colouring's shade takes the app's thin rim, so its light shade
+      // keeps its fill and the diagram's small discs do not mix it into
+      // the dark one
+      const edge = isShade(kind) ? MARK.shadeEdge : MARK.edge;
       parts.push(
-        `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - MARK.edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(MARK.edge * s)}"/>`
+        `<circle cx="${x}" cy="${y}" r="${f((MARK.disc - edge / 2) * s)}" fill="${fill}" stroke="${ink}" stroke-width="${f(edge * s)}"/>`
       );
       if (kind === 'place' || kind === 'placeOn') {
         // the ring a small board draws (G3, G14a): thick, and moved out so the gap to the disc stays
@@ -231,28 +365,35 @@ export function boardSvg(example: Example, title: string): string {
   // digits, with every digit cut out of them (the mask holds the same
   // digits, black and thickened), so a digit an arrow crosses stays whole:
   // straight, in the one neutral ink, bent only round the hint's own
-  // marks; every halo first
-  const marked = markedCandidates(drawn);
-  const placed = placedKeys(drawn);
-  const layout: Layout = {
-    ...LAYOUT,
-    shown: (cd) => !Number(example.values[cd.cell]) && (example.cands[cd.cell] & (1 << (cd.digit - 1))) !== 0,
-    solved,
-    radiusOf: (cd) => (placed.has(`${cd.cell}:${cd.digit}`) ? (MARK.placeRingSmall + MARK.placeRingSmallStroke / 2) * S : LAYOUT.r)
-  };
-  const shapes = arrowShapes(step.links ?? [], layout, marked);
+  // marks and its groups' bars; every halo first. Worked out from every
+  // link, as the app's board does, and drawn as its full view draws them:
+  // a colouring's argument, without its ties
+  const shown = drawnLinks(step, null);
+  const shapes = all.filter((sh) => shown.has(sh.link));
   const w = SIZES.stroke * s * LINE;
   // the mask's name, unique to this diagram where several share a page
   const mask = `knockout-${hash(`${example.puzzle}:${example.stepIndex}:${title}`)}`;
-  if (shapes.some((sh) => sh.kind !== 'none')) {
-    parts.push(
-      // a head is never cut: where no approach keeps it off a digit, the digit is drawn over it
-      `<mask id="${mask}" maskUnits="userSpaceOnUse" x="0" y="0" width="${BOARD_SIZE}" height="${BOARD_SIZE}"><rect width="${BOARD_SIZE}" height="${BOARD_SIZE}" fill="#ffffff"/><g class="ko">${texts.join('')}</g>${shapes
-        .map((sh) => (sh.kind === 'arrow' && sh.head.length ? `<polygon points="${pointsOf(sh.head)}" fill="#ffffff" stroke="#ffffff" stroke-width="${f(SIZES.halo * s * 2)}" stroke-linejoin="round"/>` : ''))
-        .join('')}</mask>`,
-      `<g mask="url(#${mask})">`
+  // a head is never cut: where no approach keeps it off a digit, the digit is drawn over it
+  const maskEl = `<mask id="${mask}" maskUnits="userSpaceOnUse" x="0" y="0" width="${BOARD_SIZE}" height="${BOARD_SIZE}"><rect width="${BOARD_SIZE}" height="${BOARD_SIZE}" fill="#ffffff"/><g class="ko">${texts.join('')}</g>${shapes
+    .map((sh) => (sh.kind === 'arrow' && sh.head.length ? `<polygon points="${pointsOf(sh.head)}" fill="#ffffff" stroke="#ffffff" stroke-width="${f(SIZES.halo * s * 2)}" stroke-linejoin="round"/>` : ''))
+    .join('')}</mask>`;
+  // a group's bar (docs/hint-drawing-sets.md, decision 2): a straight line
+  // in the gutter beside its members, under their marks, cut out by the
+  // digits as the arrows are, so the mask comes before it
+  if (groupBars.length) {
+    parts.splice(
+      barsAt,
+      0,
+      maskEl,
+      `<g mask="url(#${mask})">`,
+      ...groupBars.map(
+        ({ bar, style }) =>
+          `<line class="gb" x1="${f(bar.a.x)}" y1="${f(bar.a.y)}" x2="${f(bar.b.x)}" y2="${f(bar.b.y)}" stroke="${BAR_INK[style]}" stroke-width="${f(MARK.groupBarStroke * s * LINE)}" stroke-linecap="round"/>`
+      ),
+      '</g>'
     );
   }
+  if (shapes.some((sh) => sh.kind !== 'none')) parts.push(...(groupBars.length ? [] : [maskEl]), `<g mask="url(#${mask})">`);
   for (const sh of shapes) {
     if (sh.kind === 'tie') {
       parts.push(
@@ -266,6 +407,11 @@ export function boardSvg(example: Example, title: string): string {
     parts.push(`<path d="${sh.d}" fill="none" stroke="#ffffff" stroke-width="${f(w + SIZES.halo * s)}" stroke-linecap="round" opacity="0.75"/>`);
     if (sh.head.length) parts.push(`<polygon points="${pointsOf(sh.head)}" fill="#ffffff" stroke="#ffffff" stroke-width="${f(SIZES.halo * s)}" stroke-linejoin="round" opacity="0.75"/>`);
   }
+  // a colouring's weak tie inside one cell: corner brackets round it, haloed like an arrow
+  const brackets = shapes.filter((sh): sh is Extract<ArrowShape, { kind: 'cell' }> => sh.kind === 'cell');
+  for (const sh of brackets) {
+    parts.push(`<path d="${sh.d}" fill="none" stroke="#ffffff" stroke-width="${f(w + SIZES.halo * s)}" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>`);
+  }
   for (const sh of arrows) {
     parts.push(
       `<path d="${sh.d}" fill="none" stroke="${P.arrow}" stroke-width="${f(w)}" stroke-linecap="${sh.strong ? 'round' : 'butt'}"${
@@ -274,65 +420,226 @@ export function boardSvg(example: Example, title: string): string {
     );
     if (sh.head.length) parts.push(`<polygon points="${pointsOf(sh.head)}" fill="${P.arrow}"/>`);
   }
+  for (const sh of brackets) {
+    parts.push(`<path d="${sh.d}" fill="none" stroke="${P.arrow}" stroke-width="${f(w)}" stroke-linecap="round" stroke-linejoin="round"/>`);
+  }
   if (shapes.some((sh) => sh.kind !== 'none')) parts.push('</g>');
-  // the digits, then the bars over the removed ones, then the start dots,
-  // at the size a small board draws them
+  // the digits, then the bars over the removed ones, then the sets' letter
+  // tabs (decision 7), then the start dots, the tabs and the dots at the
+  // size a small board draws them
   parts.push(...texts, ...bars);
-  for (const p of startMarkers(step.links ?? [], layout, marked, shapes)) {
+  for (const tab of tabs) {
+    const half = (MARK.tabLarge / 2) * s;
+    parts.push(
+      `<rect class="tb" x="${f(tab.p.x - half)}" y="${f(tab.p.y - half)}" width="${f(2 * half)}" height="${f(2 * half)}" rx="${f(MARK.tabRadius * scale * s)}" fill="${tintOf(tints.get(tab.set)!).ink}"/>`,
+      `<text x="${f(tab.p.x)}" y="${f(tab.p.y + 0.35 * MARK.tabLetter * scale * s)}" class="tab">${esc(tab.letter)}</text>`
+    );
+  }
+  for (const p of dots) {
     parts.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(SIZES.dotLarge * s)}" fill="${P.arrow}" stroke="#ffffff" stroke-width="${f(0.02 * s)}"/>`);
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOARD_SIZE} ${BOARD_SIZE}" role="img" aria-label="${esc(title)}">
 <title>${esc(title)}</title>
-<style>text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-anchor:middle}.giv{font-size:34px;font-weight:700;fill:#1b2233}.ent{font-size:34px;font-weight:600;fill:#2f6fd0}.cd{font-size:13px;fill:#5d6577}.mk{font-size:12.5px;font-weight:700;fill:${P.onFill}}.rm{font-size:12.5px;font-weight:700;fill:${P.inRing}}.lab{font-size:12px;fill:#7a8294}.ko text{fill:#000!important;stroke:#000;stroke-width:max(.12em,2.4px);stroke-linejoin:round}</style>
+<style>text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-anchor:middle}.giv{font-size:34px;font-weight:700;fill:#1b2233}.ent{font-size:34px;font-weight:600;fill:#2f6fd0}.cd{font-size:13px;fill:#5d6577}.mk{font-size:12.5px;font-weight:700;fill:${P.onFill}}.rm{font-size:12.5px;font-weight:700;fill:${P.inRing}}.lab{font-size:12px;fill:#7a8294}${sets.tabs.some((t) => tints.has(t.set)) ? `.tab{font-size:${f(MARK.tabLetter * (MARK.tabLarge / MARK.tab) * S)}px;font-weight:700;fill:#ffffff}` : ''}.ko text{fill:#000!important;stroke:#000;stroke-width:max(.12em,2.4px);stroke-linejoin:round}</style>
 <rect width="${BOARD_SIZE}" height="${BOARD_SIZE}" rx="8" fill="#f5f6fa"/>
 ${parts.join('\n')}
 </svg>
 `;
 }
 
+/**
+ * The legend's words for a chain's true discs and false rings, and for its
+ * groups and sets drawn as shapes ("squares joined by a bar", "rings joined
+ * by a bar", "squares in a set"; docs/hint-drawing-sets.md, decision 18),
+ * under the premise of its first node, the one with the small start dot, a
+ * group worded as a group (true: one of its candidates; false: none), a
+ * digit of an almost locked set as the set's (true: the set holds it;
+ * false: it holds none); and the line that says so when the drawing shows
+ * that premise impossible
+ */
+function truthWords(p: Premise): TruthWords {
+  if (p.kind === 'set') {
+    const [L, a] = [p.letter, p.digit];
+    return p.assumed
+      ? {
+          isTrue: tr`true, if set ${L} holds ${aDigit(a)} (by the small dot)`,
+          isFalse: tr`false, if set ${L} holds ${aDigit(a)} (by the small dot)`,
+          squaresOnBar: tr`squares joined by a bar: one of them is true, if set ${L} holds ${aDigit(a)} (by the small dot)`,
+          ringsOnBar: tr`rings joined by a bar: none of them is true, if set ${L} holds ${aDigit(a)} (by the small dot)`,
+          squaresInSet: tr`squares in a set: one of them is true, if set ${L} holds ${aDigit(a)} (by the small dot)`,
+          refuted: tr`the chain shows that premise is impossible: set ${L} holds no ${a} (by the small dot)`
+        }
+      : {
+          isTrue: tr`true, if set ${L} holds no ${a} (by the small dot)`,
+          isFalse: tr`false, if set ${L} holds no ${a} (by the small dot)`,
+          squaresOnBar: tr`squares joined by a bar: one of them is true, if set ${L} holds no ${a} (by the small dot)`,
+          ringsOnBar: tr`rings joined by a bar: none of them is true, if set ${L} holds no ${a} (by the small dot)`,
+          squaresInSet: tr`squares in a set: one of them is true, if set ${L} holds no ${a} (by the small dot)`,
+          refuted: tr`the chain shows that premise is impossible: set ${L} holds ${aDigit(a)} (by the small dot)`
+        };
+  }
+  if (p.kind === 'group') {
+    return p.assumed
+      ? {
+          isTrue: tr`true, if one candidate of the first group (by the small dot) is true`,
+          isFalse: tr`false, if one candidate of the first group (by the small dot) is true`,
+          squaresOnBar: tr`squares joined by a bar: one of them is true, if one candidate of the first group (by the small dot) is true`,
+          ringsOnBar: tr`rings joined by a bar: none of them is true, if one candidate of the first group (by the small dot) is true`,
+          squaresInSet: tr`squares in a set: one of them is true, if one candidate of the first group (by the small dot) is true`,
+          refuted: tr`the chain shows that premise is impossible: no candidate of the first group (by the small dot) is true`
+        }
+      : {
+          isTrue: tr`true, if no candidate of the first group (by the small dot) is true`,
+          isFalse: tr`false, if no candidate of the first group (by the small dot) is true`,
+          squaresOnBar: tr`squares joined by a bar: one of them is true, if no candidate of the first group (by the small dot) is true`,
+          ringsOnBar: tr`rings joined by a bar: none of them is true, if no candidate of the first group (by the small dot) is true`,
+          squaresInSet: tr`squares in a set: one of them is true, if no candidate of the first group (by the small dot) is true`,
+          refuted: tr`the chain shows that premise is impossible: one candidate of the first group (by the small dot) is true`
+        };
+  }
+  return p.assumed
+    ? {
+        isTrue: tr`true, if the first candidate (by the small dot) is true`,
+        isFalse: tr`false, if the first candidate (by the small dot) is true`,
+        squaresOnBar: tr`squares joined by a bar: one of them is true, if the first candidate (by the small dot) is true`,
+        ringsOnBar: tr`rings joined by a bar: none of them is true, if the first candidate (by the small dot) is true`,
+        squaresInSet: tr`squares in a set: one of them is true, if the first candidate (by the small dot) is true`,
+        refuted: tr`the chain shows that premise is impossible: the first candidate (by the small dot) is false`
+      }
+    : {
+        isTrue: tr`true, if the first candidate (by the small dot) is false`,
+        isFalse: tr`false, if the first candidate (by the small dot) is false`,
+        squaresOnBar: tr`squares joined by a bar: one of them is true, if the first candidate (by the small dot) is false`,
+        ringsOnBar: tr`rings joined by a bar: none of them is true, if the first candidate (by the small dot) is false`,
+        squaresInSet: tr`squares in a set: one of them is true, if the first candidate (by the small dot) is false`,
+        refuted: tr`the chain shows that premise is impossible: the first candidate (by the small dot) is true`
+      };
+}
+
 /** a legend entry: the kind of mark (its swatch is drawn like the mark, src/ui/styles.css .swatch-*) and its words */
 export interface LegendEntry {
-  kind: 'place' | 'elim' | 'true' | 'false' | 'primary' | 'secondary' | 'fin';
+  /**
+   * 'note' is a line of words with no swatch; a colouring's are a
+   * cluster's two shades ('pair'), its lines ('tie', 'weakTie', 'corners')
+   * and the plain ring of the cell a colour would empty ('node'); a set's
+   * (docs/hint-drawing-sets.md, decision 18) "one of these" squares on a
+   * bar ('oneOfBar'), false rings on a bar ('falseBar'), squares in a set
+   * ('oneOf') and a bar alone, in the pattern's or the removal's ink
+   * ('bar'), or one in each where a view draws both ('bars'); an almost
+   * locked set's lettered tile ('tile'), and a cell of two sets, one's
+   * tile with the other's outline dashed inside it ('shared')
+   */
+  kind:
+    | 'place'
+    | 'elim'
+    | 'true'
+    | 'false'
+    | 'oneOf'
+    | 'oneOfBar'
+    | 'falseBar'
+    | 'bar'
+    | 'bars'
+    | 'tile'
+    | 'shared'
+    | 'primary'
+    | 'secondary'
+    | 'fin'
+    | 'note'
+    | 'pair'
+    | 'tie'
+    | 'weakTie'
+    | 'corners'
+    | 'node';
   label: string;
-  /** the mark's fill and edge on the diagram, for a swatch drawn inline */
+  /** the mark's fill and edge on the diagram, for a swatch drawn inline (a pair's dark shade) */
   colour: string;
   ink: string;
+  /** a pair's light shade and its rim */
+  light?: string;
+  lightInk?: string;
   /** drawn only on solved digits, as their rounded outline */
   onValue?: boolean;
   /** drawn only as a house band */
   onBand?: boolean;
+  /** a cell of two sets: the ink of the set whose outline is dashed inside the other's tile */
+  dash?: string;
 }
 
 /**
- * What the legend under a diagram names: the kinds the diagram draws, and
+ * What the legend under a diagram names (or under a walk frame, given one): the kinds the diagram draws, and
  * nothing it does not (G22). A role whose every candidate was drawn as a
- * removal or a placement lends its words to that entry. The colouring
- * techniques name their own colours in the explanation (blue and gold are
- * the two parities there), so only the removals and placements are listed.
+ * removal or a placement lends its words to that entry. A colouring names
+ * its shades, lines and proven colours as the app's legend does
+ * (src/content/hintMarks.ts parityLegend).
  */
-export function legendOf(step: Step, values?: string): LegendEntry[] {
-  const drawn = hintMarks(step, { solved: (cell) => !!values && Number(values[cell]) > 0 });
-  const { shown, onValue, onBand, intoRemove, intoPlace } = legendKinds(step, drawn);
+export function legendOf(step: Step, values?: string, frame: Frame | null = null): LegendEntry[] {
+  const drawn = frameMarks(step, frame, (cell) => !!values && Number(values[cell]) > 0);
+  if (isParity(step)) {
+    return parityLegend(step, drawn).map((e): LegendEntry => {
+      if (e.kind === 'pair') {
+        const dark = fillOf(P, e.cluster === 1 ? 'orangeDark' : 'purpleDark');
+        const light = fillOf(P, e.cluster === 1 ? 'orangeLight' : 'purpleLight');
+        return { kind: 'pair', label: e.label, colour: dark.fill, ink: dark.ink, light: light.fill, lightInk: light.ink };
+      }
+      if (e.kind === 'true') return { kind: 'true', label: e.label, colour: P.place, ink: P.placeInk };
+      if (e.kind === 'false') return { kind: 'false', label: e.label, colour: '#ffffff', ink: P.false };
+      if (e.kind === 'elim') return { kind: 'elim', label: e.label, colour: '#ffffff', ink: P.elim };
+      return { kind: e.kind, label: e.label, colour: '#ffffff', ink: P.arrow };
+    });
+  }
+  const { shown, onValue, onBand, intoRemove, intoPlace, refuted, bars, setSquares, tiles, lines } = legendKinds(step, drawn);
   const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
   if (shown.has('place')) out.push({ kind: 'place', label: [tr`place`, ...lent(intoPlace)].join(': '), colour: P.place, ink: P.placeInk });
   if (shown.has('elim')) out.push({ kind: 'elim', label: [tr`remove`, ...lent(intoRemove)].join(': '), colour: '#ffffff', ink: P.elim });
-  if (COLOURING.has(step.tech)) return out;
   // a derived chain's truth, worded by its first node's premise
   const premise = premiseOf(step);
-  if (shown.has('true')) {
-    out.push({ kind: 'true', label: premise ? tr`true, if the first candidate (by the dot) is true` : tr`true, if the first candidate (by the dot) is false`, colour: P.place, ink: P.placeInk });
-  }
-  if (shown.has('false')) {
-    out.push({ kind: 'false', label: premise ? tr`false, if the first candidate (by the dot) is true` : tr`false, if the first candidate (by the dot) is false`, colour: '#ffffff', ink: P.false });
+  if (premise) {
+    const w = truthWords(premise);
+    if (shown.has('true')) out.push({ kind: 'true', label: w.isTrue, colour: P.place, ink: P.placeInk });
+    if (shown.has('false')) out.push({ kind: 'false', label: w.isFalse, colour: '#ffffff', ink: P.false });
+    if (bars.has('oneOf')) out.push({ kind: 'oneOfBar', label: w.squaresOnBar, colour: P.oneOf, ink: P.placeInk });
+    if (bars.has('false')) out.push({ kind: 'falseBar', label: w.ringsOnBar, colour: '#ffffff', ink: P.false });
+    if (setSquares) out.push({ kind: 'oneOf', label: w.squaresInSet, colour: P.oneOf, ink: P.placeInk });
+    // a line of words, no swatch: the premise the marks are drawn under is shown impossible
+    if (refuted) out.push({ kind: 'note', label: w.refuted, colour: '', ink: '' });
   }
   const role = (kind: Role, label: string, colour: string, ink: string) =>
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });
   if (shown.has('primary')) role('primary', step.labels?.primary ?? tr`the pattern`, P.primary, P.primaryInk);
-  if (shown.has('secondary')) role('secondary', step.labels?.secondary ?? tr`supporting cells`, P.secondary, P.secondaryInk);
+  // a Death Blossom's gold before any petal's digit is drawn: the stem's candidates alone
+  if (shown.has('secondary')) role('secondary', stemAlone(step, drawn) ? tr`the stem's candidates` : (step.labels?.secondary ?? tr`supporting cells`), P.secondary, P.secondaryInk);
   if (shown.has('fin')) role('fin', step.labels?.fins ?? tr`fin`, P.fin, P.finInk);
+  // a bar in the pattern's ink (a proof-only view) or the removal's: what a
+  // bar is, its swatch in the ink drawn, or one bar in each where both are
+  // (Grouped X-Cycles rule 3's full view: the removed start and the proof)
+  if (bars.has('primary') || bars.has('elim')) {
+    const label = tr`bar: a group (one digit's cells in one box and one row or column), read as one node`;
+    if (bars.has('primary') && bars.has('elim')) out.push({ kind: 'bars', label, colour: P.primaryInk, ink: P.elim });
+    else {
+      const ink = bars.has('primary') ? P.primaryInk : P.elim;
+      out.push({ kind: 'bar', label, colour: ink, ink });
+    }
+  }
+  // an almost locked set's lettered tiles (decision 18), the swatch in the first tint drawn: a Death Blossom's are its petals
+  if (tiles.length) {
+    const { fill, ink } = tintOf(tiles[0]);
+    const label =
+      step.tech === 'DEATH_BLOSSOM'
+        ? tr`lettered cells: a petal, an almost locked set for one of the stem's digits`
+        : tr`lettered cells: an almost locked set, one digit more than cells; without any one of its digits, the others fill its cells`;
+    out.push({ kind: 'tile', label, colour: fill, ink });
+  }
+  // a cell of two sets drawn (decision 6): one set's tile, the other's outline dashed inside it, in their tints
+  const shared = sharedTile(step, drawn);
+  if (shared) {
+    const [tile, dashed] = [tintOf(shared.tile), tintOf(shared.dashed)];
+    out.push({ kind: 'shared', label: tr`dashed outline: a cell of two sets; each tab names one`, colour: tile.fill, ink: tile.ink, dash: dashed.ink });
+  }
+  // a Death Blossom's weak ties from its stem to its petals, dashed with no head (decision 15)
+  if (lines.has('weakTie')) out.push({ kind: 'weakTie', label: tr`dashed line: its two ends see each other, so at most one is true`, colour: '#ffffff', ink: P.arrow });
   return out;
 }
 
@@ -356,6 +663,103 @@ export function swatchStyle(l: LegendEntry): { background: string; border: strin
       width: '16px'
     };
   }
+  // a colouring's: a cluster's two shades side by side, rimmed as on the
+  // diagram (a rim about a thirteenth of the disc's radius,
+  // MARK.shadeEdge; tests/shadeRender.test.ts); a tie's line, faint as
+  // drawn; a weak tie's dashes; the corner brackets; the plain ring of the
+  // cell a colour would empty
+  if (l.kind === 'pair') {
+    const disc = (x: number, fill: string, ink: string) => `radial-gradient(circle at ${x}px 50%,${fill} 4.35px,${ink} 4.45px 4.6px,transparent 4.9px)`;
+    return {
+      background: `${disc(5.5, l.colour, l.ink)},${disc(16.5, l.light ?? l.colour, l.lightInk ?? l.ink)},#ffffff`,
+      border: 'none',
+      boxShadow: chip,
+      borderRadius: '5px',
+      width: '22px'
+    };
+  }
+  if (l.kind === 'tie') {
+    return { background: `linear-gradient(#ffffff 40%,${l.ink}80 40% 60%,#ffffff 60%)`, border: 'none', boxShadow: chip, borderRadius: '0', width: '18px' };
+  }
+  if (l.kind === 'weakTie') {
+    return {
+      background: `linear-gradient(#ffffff 40%,transparent 40% 60%,#ffffff 60%),repeating-linear-gradient(90deg,${l.ink} 0 4px,#ffffff 4px 7px)`,
+      border: 'none',
+      boxShadow: chip,
+      borderRadius: '0',
+      width: '18px'
+    };
+  }
+  if (l.kind === 'corners') {
+    const arm = (at: string, w: string, h: string) => `linear-gradient(${l.ink},${l.ink}) ${at}/${w} ${h} no-repeat`;
+    return {
+      background: [
+        ...['top left', 'top right', 'bottom left', 'bottom right'].flatMap((at) => [arm(at, '4px', '1.5px'), arm(at, '1.5px', '4px')]),
+        '#ffffff'
+      ].join(','),
+      border: 'none',
+      boxShadow: chip,
+      borderRadius: '0'
+    };
+  }
+  // a set's (docs/hint-drawing-sets.md, decision 18): two "one of these"
+  // squares, edged in the true ink, alone or on a bar in that ink; two
+  // false rings on a bar; a bar alone, in its ink. Each square or ring keeps
+  // a gap of the chip's white from the bar under it
+  const square = (x: number) => [
+    `linear-gradient(${l.colour},${l.colour}) ${x + 1}px 1px/5px 5px no-repeat`,
+    `linear-gradient(${l.ink},${l.ink}) ${x}px 0/7px 7px no-repeat`
+  ];
+  const ring = (x: number) => `radial-gradient(circle at ${x + 3.5}px 3.5px,transparent 2.4px,${l.ink} 2.6px 3.4px,transparent 3.6px)`;
+  const bar = `linear-gradient(${l.ink},${l.ink}) 4px 8px/12px 2px no-repeat`;
+  if (l.kind === 'oneOfBar') return { background: [...square(1), ...square(11), bar, '#ffffff'].join(','), border: 'none', boxShadow: chip, borderRadius: '0', width: '20px' };
+  if (l.kind === 'oneOf') return { background: [...square(1), ...square(11), '#ffffff'].join(','), border: 'none', boxShadow: chip, borderRadius: '0', width: '20px' };
+  if (l.kind === 'falseBar') return { background: [ring(1), ring(11), bar, '#ffffff'].join(','), border: 'none', boxShadow: chip, borderRadius: '0', width: '20px' };
+  if (l.kind === 'bar') {
+    return { background: `linear-gradient(${l.ink},${l.ink}) 2px 3.5px/16px 3px no-repeat,#ffffff`, border: 'none', boxShadow: chip, borderRadius: '0', width: '20px' };
+  }
+  // a bar in the pattern's ink above one in the removal's
+  if (l.kind === 'bars') {
+    return {
+      background: `linear-gradient(${l.colour},${l.colour}) 2px 1px/16px 3px no-repeat,linear-gradient(${l.ink},${l.ink}) 2px 6px/16px 3px no-repeat,#ffffff`,
+      border: 'none',
+      boxShadow: chip,
+      borderRadius: '0',
+      width: '20px'
+    };
+  }
+  // a set's small tile, its tint at half strength over the chip's white,
+  // outlined in its ink, with its tab in the corner, a keyline round it
+  if (l.kind === 'tile') {
+    return {
+      background: `linear-gradient(${l.ink},${l.ink}) 1px 1px/4px 4px no-repeat,linear-gradient(#ffffff,#ffffff) 0 0/6px 6px no-repeat,linear-gradient(${l.colour}80,${l.colour}80),#ffffff`,
+      border: `1.5px solid ${l.ink}`,
+      boxShadow: chip,
+      borderRadius: '3px',
+      width: '14px'
+    };
+  }
+  // a cell of two sets: the small tile of one, its outline dashed inside it in the other's ink
+  if (l.kind === 'shared') {
+    const dash = l.dash ?? l.ink;
+    const edge = (dir: string, at: string) =>
+      `repeating-linear-gradient(${dir},${dash} 0 2.5px,transparent 2.5px 4px) ${at} no-repeat`;
+    return {
+      background: [
+        edge('90deg', '0 0/100% 1.5px'),
+        edge('90deg', '0 100%/100% 1.5px'),
+        edge('180deg', '0 0/1.5px 100%'),
+        edge('180deg', '100% 0/1.5px 100%'),
+        `linear-gradient(${l.colour}80,${l.colour}80)`,
+        '#ffffff'
+      ].join(','),
+      border: `1.5px solid ${l.ink}`,
+      boxShadow: chip,
+      borderRadius: '3px',
+      width: '14px'
+    };
+  }
+  if (l.kind === 'node') return { background: '#ffffff', border: `1.5px solid ${l.ink}`, boxShadow: chip };
   if (l.kind === 'false') return { background: '#ffffff', border: `2px solid ${l.ink}`, boxShadow: chip };
   if (l.kind === 'elim') {
     return {

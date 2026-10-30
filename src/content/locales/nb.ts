@@ -1858,7 +1858,7 @@ const nb: LearnLocale = {
           "Start i én kandidat for et tall, følg de sterke lenkene utover fra den, og fargelegg vekselvis i to farger. Alt du når fram til, er én klynge, og i den er den ene fargen helt sann og den andre helt usann; du vet bare ikke hvilken ennå. Hvis en farge ville satt tallet to ganger i en enhet, er den fargen usann. Hvis en rute ser begge fargene, mister den tallet uansett hvilken farge som vinner. En egen klynge trenger egne farger.",
           "Simple Colors ser på én hel klynge av sterke lenker på en gang, og finner derfor hver X-Chain som bare er bygd av lenkene i den klyngen. Multi Colors kobler sammen to klynger, og 3D Medusa fargelegger på tvers av alle tallene samtidig."
         ],
-        "eli12": "Velg én plass der en 7-er kan stå, og mal den blå. Hver gang en rad, kolonne eller boks bare har to plasser for 7 og den ene er malt, maler du den andre i motsatt farge, så blått og gult bytter på. Fortsett til ingenting mer kan males. Da er enten alle de blå plassene 7 og ingen av de gule, eller omvendt. Enhver annen plass som kan se en blå og en gul, er ikke 7 uansett."
+        "eli12": "Velg én plass der en 7-er kan stå, og mal den mørkelilla. Hver gang en rad, kolonne eller boks bare har to plasser for 7 og den ene er malt, maler du den andre i motsatt nyanse, så mørkelilla og lyselilla bytter på. Fortsett til ingenting mer kan males. Da er enten alle de mørkelilla plassene 7 og ingen av de lyselilla, eller omvendt. Enhver annen plass som ser begge nyansene, er ikke 7 uansett."
       },
       "pairs": {
         "heading": "Kjeder av par",

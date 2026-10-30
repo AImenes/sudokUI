@@ -1,22 +1,27 @@
 import { Grid, UNITS, bit, sees, cellName } from '../board';
-import { Step, CellDigit, ChainLink } from '../steps';
+import { Step, CellDigit, ChainLink, ColourCluster } from '../steps';
 import { tr, unitName } from '../text';
+import { spanningTies, tieLinks, weakTie, nearest, firstParity, shades } from './colourTree';
 
-// The on-screen hue of each parity: colour 0 renders blue, colour 1 gold.
-// A sentence that names a colour is written once per colour, so every
-// language can agree its words with it.
+// A colouring says its parity (docs/hint-drawing-colouring.md): each
+// cluster's two colours are two shades of one hue, purple for the cluster
+// every hint has and orange for Multi Colors' second, and dark is the
+// colour the argument tries first. A sentence names each shade whole,
+// never as a hole, so every language can write it its own way.
 
 interface Cluster {
   cells: number[];
-  color: Map<number, number>; // 0 | 1
-  /** BFS spanning tree (parent -> child): why each cell has its colour */
-  edges: [number, number][];
+  /** the colour the search gave each cell, 0 or 1: which is dark is the step's to say */
+  color: Map<number, number>;
+  /** its conjugate pairs, the strong relations its ties are drawn from */
+  pairs: [number, number][];
 }
 
-/** Conjugate-pair clusters for a digit, 2-colored, with their link trees. */
+/** Conjugate-pair clusters for a digit, 2-colored. */
 function clusters(g: Grid, d: number): Cluster[] {
   const mask = bit(d);
   const adj = new Map<number, Set<number>>();
+  const pairs: [number, number][] = [];
   for (const unit of UNITS) {
     const uc = unit.filter((c) => g.values[c] === 0 && g.cands[c] & mask);
     if (uc.length === 2) {
@@ -24,6 +29,7 @@ function clusters(g: Grid, d: number): Cluster[] {
       if (!adj.has(uc[1])) adj.set(uc[1], new Set());
       adj.get(uc[0])!.add(uc[1]);
       adj.get(uc[1])!.add(uc[0]);
+      pairs.push([uc[0], uc[1]]);
     }
   }
   const out: Cluster[] = [];
@@ -35,7 +41,6 @@ function clusters(g: Grid, d: number): Cluster[] {
     color.set(start, 0);
     visited.add(start);
     const cells: number[] = [];
-    const edges: [number, number][] = [];
     while (queue.length) {
       const cur = queue.shift()!;
       cells.push(cur);
@@ -43,134 +48,193 @@ function clusters(g: Grid, d: number): Cluster[] {
         if (!color.has(next)) {
           color.set(next, 1 - color.get(cur)!);
           visited.add(next);
-          edges.push([cur, next]);
           queue.push(next);
         }
       }
     }
-    if (cells.length >= 3) out.push({ cells, color, edges });
+    if (cells.length >= 3) out.push({ cells, color, pairs: pairs.filter(([a]) => color.has(a)) });
   }
   return out;
 }
 
-const treeLinks = (cl: Cluster, d: number): ChainLink[] =>
-  cl.edges.map(([a, b]) => ({
-    from: [{ cell: a, digit: d }],
-    to: [{ cell: b, digit: d }],
-    strong: true,
-    undirected: true
-  }));
+/** the candidate of digit d in a cell */
+const at = (d: number) => (cell: number): CellDigit => ({ cell, digit: d });
 
-/** a weak link from a witness to the candidate it helps rule out, with
- *  the sentence the walk reads for it */
-const witness = (from: number, to: number, d: number, text: string): ChainLink => ({
-  from: [{ cell: from, digit: d }],
-  to: [{ cell: to, digit: d }],
-  strong: false,
-  text
-});
+/** a cluster's two shades, dark the colour given */
+const shadesOf = (cl: Cluster, d: number, dark: number): ColourCluster => shades(cl.cells.map(at(d)), (x) => cl.color.get(x.cell)!, dark);
+
+/** a cluster's ties along its shortest drawn tree, the first with its frame's sentence */
+function clusterTies(cl: Cluster, d: number, marks: CellDigit[], text: string): ChainLink[] {
+  const relations = cl.pairs.map(([a, b]): [CellDigit, CellDigit] => [at(d)(a), at(d)(b)]);
+  return tieLinks(spanningTies(cl.cells.map(at(d)), relations, marks), text);
+}
+
+/** the removals after the first, which the walk draws only at its conclusion */
+function more(n: number, d: number): string {
+  if (n <= 0) return '';
+  return n === 1 ? tr`; one more ${d} falls the same way` : tr`; ${n} more ${d}s fall the same way`;
+}
 
 function simpleColorsStep(
   cl: Cluster,
   d: number,
+  rule: 'trap' | 'wrap',
+  dark: number,
   eliminations: CellDigit[],
   reason: string,
-  witnesses: ChainLink[] = []
+  argument: ChainLink[]
 ): Step {
+  const cluster = shadesOf(cl, d, dark);
+  const marks = [...cluster.dark, ...cluster.light, ...eliminations];
   return {
     tech: 'SIMPLE_COLORS',
     placements: [],
     eliminations,
-    primary: cl.cells.filter((c) => cl.color.get(c) === 0).map((cell) => ({ cell, digit: d })),
-    secondary: cl.cells.filter((c) => cl.color.get(c) === 1).map((cell) => ({ cell, digit: d })),
-    labels: {
-      primary: tr`blue: one colour of the conjugate pairs on ${d}, all true or all false together`,
-      secondary: tr`gold: the other colour, true exactly when blue is false`
-    },
-    links: [...treeLinks(cl, d), ...witnesses],
-    description: tr`Simple Colors on ${d}: its conjugate pairs (the solid links) are coloured blue and gold, and either every blue ${d} is true or every gold one is. ${reason}.`
+    links: [
+      ...clusterTies(
+        cl,
+        d,
+        marks,
+        tr`Each line joins the only two ${d}s of a house: exactly one of them is true, so they take opposite shades. Either every dark purple ${d} is true, or every light purple one is.`
+      ),
+      ...argument
+    ],
+    truth: 'parity',
+    colouring: { rule, clusters: [cluster], ...(rule === 'wrap' ? { darkFalse: 0 as const } : {}) },
+    description: tr`Simple Colors on ${d}: where a row, column or box has only two ${d}s, they take opposite shades of purple, so either every dark purple ${d} is true or every light purple one is. ${reason}.`
   };
 }
 
-/** Simple Colors: color wrap (same color twice in a unit) and color trap
- *  (uncolored cell sees both colors). */
+/**
+ * Simple Colors: color wrap (same color twice in a unit) and color trap
+ * (uncolored cell sees both colors). A wrap proves its colour false, the
+ * stronger and clearer step, so it comes before any trap, on every digit:
+ * the first trap is given only where no digit has a wrap
+ * (docs/hint-drawing-colouring.md, decision 13).
+ */
 export function findSimpleColors(g: Grid): Step | null {
+  let trap: Step | null = null;
   for (let d = 1; d <= 9; d++) {
     const mask = bit(d);
     for (const cl of clusters(g, d)) {
-      // color wrap
+      // color wrap: the colour twice in a house is dark, and false
       for (let u = 0; u < 27; u++) {
         const colored = UNITS[u].filter((c) => cl.color.has(c));
         for (const col of [0, 1]) {
           const same = colored.filter((c) => cl.color.get(c) === col);
           if (same.length >= 2) {
-            const elims: CellDigit[] = cl.cells
-              .filter((c) => cl.color.get(c) === col)
-              .map((cell) => ({ cell, digit: d }));
+            const elims: CellDigit[] = cl.cells.filter((c) => cl.color.get(c) === col).map(at(d));
             const unit = unitName(u);
             const a = cellName(same[0]);
             const b = cellName(same[1]);
             return simpleColorsStep(
               cl,
               d,
+              'wrap',
+              col,
               elims,
-              col === 0
-                ? tr`Blue puts ${d} twice in ${unit} (${a} and ${b}), so blue is false: all its ${d}s are removed (circled red) and every gold ${d} is true`
-                : tr`Gold puts ${d} twice in ${unit} (${a} and ${b}), so gold is false: all its ${d}s are removed (circled red) and every blue ${d} is true`,
+              tr`Dark purple puts ${d} twice in ${unit} (${a} and ${b}), so dark purple is false: every dark purple ${d} is removed, and every light purple ${d} is true`,
               [
-                witness(
-                  same[0],
-                  same[1],
-                  d,
-                  col === 0
-                    ? tr`Blue puts ${d} in both ${a} and ${b} of ${unit}. A digit appears once per house, so blue cannot be true.`
-                    : tr`Gold puts ${d} in both ${a} and ${b} of ${unit}. A digit appears once per house, so gold cannot be true.`
+                weakTie(
+                  [at(d)(same[0])],
+                  [at(d)(same[1])],
+                  tr`Dark purple puts ${d} in both ${a} and ${b} of ${unit} (the dashed line). A digit appears once per house, so dark purple cannot be true.`
                 )
               ]
             );
           }
         }
       }
-      // color trap
+      // the first trap waits while the search looks on for a wrap; any
+      // later trap is not needed
+      if (trap) continue;
+      // color trap: dark is the colour of the cluster's first candidate,
+      // and the first removal's witnesses are the nearest of each shade
+      const dark = firstParity(cl.cells.map(at(d)), (x) => cl.color.get(x.cell)!);
       const elims: CellDigit[] = [];
-      let why = '';
-      const witnesses: ChainLink[] = [];
+      let first: { c: number; x: number; y: number } | null = null;
       for (let c = 0; c < 81; c++) {
         if (g.values[c] !== 0 || cl.color.has(c) || !(g.cands[c] & mask)) continue;
-        const seen: (number | undefined)[] = [undefined, undefined];
-        for (const cc of cl.cells) if (sees(c, cc)) seen[cl.color.get(cc)!] ??= cc;
-        if (seen[0] !== undefined && seen[1] !== undefined) {
+        const seen: number[][] = [[], []];
+        for (const cc of cl.cells) if (sees(c, cc)) seen[cl.color.get(cc)!].push(cc);
+        if (seen[0].length && seen[1].length) {
           elims.push({ cell: c, digit: d });
-          if (!why) {
-            why = tr`The ${d} in ${cellName(c)} sees a blue ${d} in ${cellName(seen[0])} and a gold ${d} in ${cellName(seen[1])}, so it is false either way`;
-            witnesses.push(
-              witness(seen[0], c, d, tr`If blue is true, the ${d} in ${cellName(seen[0])} is placed, and the ${d} in ${cellName(c)} goes.`),
-              witness(
-                seen[1],
-                c,
-                d,
-                tr`If gold is true, the ${d} in ${cellName(seen[1])} is placed, and the ${d} in ${cellName(c)} goes. Either way it is false.`
-              )
-            );
-          }
+          first ??= { c, x: nearest(at(d)(c), seen[dark].map(at(d))).cell, y: nearest(at(d)(c), seen[1 - dark].map(at(d))).cell };
         }
       }
-      if (elims.length) {
-        return simpleColorsStep(
+      if (first) {
+        const tail = more(elims.length - 1, d);
+        const target = cellName(first.c);
+        const x = cellName(first.x);
+        const y = cellName(first.y);
+        trap = simpleColorsStep(
           cl,
           d,
+          'trap',
+          dark,
           elims,
-          why + (elims.length > 1 ? tr`; ${elims.length} ${d}s fall this way` : ''),
-          witnesses
+          tr`The ${d} in ${target} sees a dark purple ${d} in ${x} and a light purple ${d} in ${y}, so it is false either way` + tail,
+          [
+            weakTie([at(d)(first.x)], [at(d)(first.c)], tr`If dark purple is true, the ${d} in ${x} is true, and the ${d} in ${target} goes.`),
+            weakTie(
+              [at(d)(first.y)],
+              [at(d)(first.c)],
+              tr`If light purple is true, the ${d} in ${y} is true, and the ${d} in ${target} goes. Either way it is false` + tail + '.'
+            )
+          ]
         );
       }
     }
   }
-  return null;
+  return trap;
 }
 
-/** Multi Colors: interactions between two clusters of the same digit. */
+/**
+ * A Multi Colors step: the cluster the bridge reaches in purple (cluster
+ * 0), the cluster it leaves in orange (cluster 1), each with its ties, then
+ * the argument
+ */
+function multiColorsStep(
+  d: number,
+  reached: Cluster,
+  left: Cluster,
+  purple: ColourCluster,
+  orange: ColourCluster,
+  eliminations: CellDigit[],
+  argument: ChainLink[],
+  description: string,
+  proven: boolean
+): Step {
+  const marks = [...purple.dark, ...purple.light, ...orange.dark, ...orange.light, ...eliminations];
+  return {
+    tech: 'MULTI_COLORS',
+    placements: [],
+    eliminations,
+    links: [
+      ...clusterTies(
+        reached,
+        d,
+        marks,
+        tr`Each line joins the only two ${d}s of a house: exactly one of them is true, so they take opposite shades. Either every dark purple ${d} is true, or every light purple one is.`
+      ),
+      ...clusterTies(left, d, marks, tr`Another cluster of ${d}s, shaded the same way in orange: either every dark orange ${d} is true, or every light orange one is.`),
+      ...argument
+    ],
+    truth: 'parity',
+    colouring: { rule: proven ? 'seesBoth' : 'bridge', clusters: [purple, orange], ...(proven ? { darkFalse: 1 as const } : {}) },
+    description
+  };
+}
+
+/**
+ * Multi Colors: interactions between two clusters of the same digit. A
+ * colour that sees both colours of another cluster proves itself false,
+ * the stronger and clearer step, so it comes before any bridge, on every
+ * digit: the first bridge is given only where no digit has such a colour
+ * (docs/hint-drawing-colouring.md, decision 13).
+ */
 export function findMultiColors(g: Grid): Step | null {
+  let bridge: Step | null = null;
   for (let d = 1; d <= 9; d++) {
     const mask = bit(d);
     const cls = clusters(g, d);
@@ -199,14 +263,17 @@ export function findMultiColors(g: Grid): Step | null {
             if (bridgeA < 0) continue;
             const aOther = c1.cells.filter((c) => c1.color.get(c) === 1 - colA);
             const bOther = c2.cells.filter((c) => c2.color.get(c) === 1 - colB);
-            const bridge: ChainLink = {
-              from: [{ cell: bridgeA, digit: d }],
-              to: [{ cell: bridgeB, digit: d }],
-              strong: false
-            };
-            // rule 1: colA sees both colors of cluster 2 -> colA is false.
-            // colA true would kill the seen bCell, making bOther entirely
-            // true, yet colA also sees a bOther cell: contradiction.
+            // the bridge's ends are dark: B of the cluster it reaches, in
+            // purple, and A of the cluster it leaves, in orange
+            const purple = shadesOf(c2, d, colB);
+            const orange = shadesOf(c1, d, colA);
+            const A = cellName(bridgeA);
+            const B = cellName(bridgeB);
+            const intro = tr`Multi Colors on ${d}: two clusters of ${d}s are shaded, one purple and one orange; in each, where a row, column or box has only two ${d}s, they take opposite shades.`;
+            // a colour sees both colours of the other cluster (HoDoKu's
+            // Multi Colors 2): colA true would kill the seen bCell, making
+            // bOther entirely true, yet colA also sees a bOther cell, so
+            // dark orange is false and light orange true
             let bridgeA2 = -1;
             let bridgeB2 = -1;
             for (const a of aCells) {
@@ -220,75 +287,86 @@ export function findMultiColors(g: Grid): Step | null {
               if (bridgeA2 >= 0) break;
             }
             if (bridgeA2 >= 0) {
-              return {
-                tech: 'MULTI_COLORS',
-                placements: [],
-                eliminations: aCells.map((cell) => ({ cell, digit: d })),
-                primary: bCells.map((cell) => ({ cell, digit: d })),
-                secondary: bOther.map((cell) => ({ cell, digit: d })),
-                fins: aOther.map((cell) => ({ cell, digit: d })),
-                labels: {
-                  primary: tr`blue: one colour of the second cluster`,
-                  secondary: tr`gold: its partner colour`,
-                  fins: tr`purple: the partner colour of the red one, in the first cluster`
-                },
-                links: [
-                  ...treeLinks(c1, d),
-                  ...treeLinks(c2, d),
-                  bridge,
-                  {
-                    from: [{ cell: bridgeA2, digit: d }],
-                    to: [{ cell: bridgeB2, digit: d }],
-                    strong: false
-                  }
+              const A2 = cellName(bridgeA2);
+              const B2 = cellName(bridgeB2);
+              return multiColorsStep(
+                d,
+                c2,
+                c1,
+                purple,
+                orange,
+                aCells.map(at(d)),
+                [
+                  weakTie(
+                    [at(d)(bridgeA)],
+                    [at(d)(bridgeB)],
+                    tr`The dark orange ${d} in ${A} sees the dark purple ${d} in ${B} (the dashed line): if dark orange were true, dark purple would be false, and light purple true.`
+                  ),
+                  weakTie(
+                    [at(d)(bridgeA2)],
+                    [at(d)(bridgeB2)],
+                    bridgeA2 === bridgeA
+                      ? tr`The same ${d} in ${A2} also sees the light purple ${d} in ${B2}: dark orange would make both purple shades false, and one of them must be true.`
+                      : tr`The dark orange ${d} in ${A2} also sees the light purple ${d} in ${B2}: dark orange would make both purple shades false, and one of them must be true.`
+                  )
                 ],
-                description: tr`Multi Colors on ${d}: two conjugate-pair clusters of ${d}, one coloured blue and gold. If the red ${d}s were all true, ${cellName(bridgeA)} would kill the blue ${d} in ${cellName(bridgeB)}, making gold entirely true; but ${cellName(bridgeA2)} also sees the gold ${d} in ${cellName(bridgeB2)}. So the red colour is false and every purple ${d} (its partner colour) is true.`
-              };
+                `${intro} ${tr`The dark orange ${d}s see a dark purple ${d} (${A} sees ${B}) and a light purple ${d} (${A2} sees ${B2}): if dark orange were true, neither purple shade could be, which is impossible. So dark orange is false: every dark orange ${d} is removed, and every light orange ${d} is true.`}`,
+                true
+              );
             }
-            // rule 2: colA and colB cannot both be true (the bridge cells see
-            // each other), so at least one of their partner colours is
-            // entirely true; cells seeing both partner colours lose d
+            // the first bridge waits while the search looks on for a colour
+            // seeing both; any later bridge is not needed
+            if (bridge) continue;
+            // the bridge (HoDoKu's Multi Colors 1): dark orange and dark
+            // purple cannot both be true, so light orange or light purple
+            // is; a candidate seeing both light colours is false
             const elims: CellDigit[] = [];
-            let why = '';
-            const witnesses: ChainLink[] = [];
+            let first: { c: number; x: number; y: number } | null = null;
             for (let c = 0; c < 81; c++) {
               if (g.values[c] !== 0 || !(g.cands[c] & mask)) continue;
               if (c1.color.has(c) || c2.color.has(c)) continue;
-              const x = aOther.find((a) => sees(c, a));
-              const y = bOther.find((b) => sees(c, b));
-              if (x !== undefined && y !== undefined) {
+              const xs = aOther.filter((a) => sees(c, a));
+              const ys = bOther.filter((b) => sees(c, b));
+              if (xs.length && ys.length) {
                 elims.push({ cell: c, digit: d });
-                if (!why) {
-                  why = tr`The ${d} in ${cellName(c)} sees the blue ${d} in ${cellName(x)} and the gold ${d} in ${cellName(y)}, so it is false either way`;
-                  witnesses.push(
-                    witness(x, c, d, tr`If blue is true, the ${d} in ${cellName(x)} is placed, and the ${d} in ${cellName(c)} goes.`),
-                    witness(y, c, d, tr`If gold is true, the ${d} in ${cellName(y)} is placed, and the ${d} in ${cellName(c)} goes. Either way it is false.`)
-                  );
-                }
+                first ??= { c, x: nearest(at(d)(c), xs.map(at(d))).cell, y: nearest(at(d)(c), ys.map(at(d))).cell };
               }
             }
-            if (elims.length) {
-              const reason = why + (elims.length > 1 ? tr`; ${elims.length} ${d}s fall this way` : '');
-              return {
-                tech: 'MULTI_COLORS',
-                placements: [],
-                eliminations: elims,
-                primary: aOther.map((cell) => ({ cell, digit: d })),
-                secondary: bOther.map((cell) => ({ cell, digit: d })),
-                fins: aCells.concat(bCells).map((cell) => ({ cell, digit: d })),
-                labels: {
-                  primary: tr`blue: a colour of the first cluster`,
-                  secondary: tr`gold: a colour of the second cluster`,
-                  fins: tr`purple: the two colours that see each other across the bridge; at most one is true`
-                },
-                links: [...treeLinks(c1, d), ...treeLinks(c2, d), bridge, ...witnesses],
-                description: tr`Multi Colors on ${d}: two conjugate-pair clusters of ${d}. The purple ${d}s in ${cellName(bridgeA)} and ${cellName(bridgeB)} see each other (the dashed link), so they cannot both be true, and at least one of blue and gold is entirely true. ${reason}.`
-              };
+            if (first) {
+              const tail = more(elims.length - 1, d);
+              const target = cellName(first.c);
+              const x = cellName(first.x);
+              const y = cellName(first.y);
+              bridge = multiColorsStep(
+                d,
+                c2,
+                c1,
+                purple,
+                orange,
+                elims,
+                [
+                  weakTie(
+                    [at(d)(bridgeA)],
+                    [at(d)(bridgeB)],
+                    tr`The dark orange ${d} in ${A} and the dark purple ${d} in ${B} see each other (the dashed line), so they cannot both be true: light orange or light purple is true.`
+                  ),
+                  weakTie([at(d)(first.y)], [at(d)(first.c)], tr`If light purple is true, the ${d} in ${y} is true, and the ${d} in ${target} goes.`),
+                  weakTie(
+                    [at(d)(first.x)],
+                    [at(d)(first.c)],
+                    tr`If light orange is true, the ${d} in ${x} is true, and the ${d} in ${target} goes. Light orange or light purple is true, so it is false either way` + tail + '.'
+                  )
+                ],
+                `${intro} ${tr`The dark orange ${d} in ${A} and the dark purple ${d} in ${B} see each other, so they cannot both be true: light orange or light purple is true.`} ${
+                  tr`The ${d} in ${target} sees a light purple ${d} in ${y} and a light orange ${d} in ${x}, so it is false either way` + tail
+                }.`,
+                false
+              );
             }
           }
         }
       }
     }
   }
-  return null;
+  return bridge;
 }
