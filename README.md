@@ -363,6 +363,14 @@ Toward the best open-source sudoku tool anywhere:
   never accounts
 - **Curated library** — classic named puzzles (Escargot, Golden Nugget…) and
   a daily puzzle per difficulty level, next to today's shared daily
+- **Your marking style, remembered** — one setting, chosen once: "How I
+  mark" is Snyder (centre marks are a cell's candidates, corner marks are
+  notes), all marks are candidates, or notes only. It replaces the question
+  each game asks about manual marks (`MarkContract` in
+  `src/state/gameStore.ts`), lets hints, Scan and Check use a Snyder
+  player's centre marks as candidates (today they reason from every
+  possibility under notes), and keeps the two-candidate rings reading the
+  marks the same way (`src/state/bivalue.ts`)
 - **Custom solve-order editor** — reorder/disable techniques and see how
   ratings change; export your own rating profile
 - **Accessibility & i18n** — full screen-reader support, colour-blind-safe
