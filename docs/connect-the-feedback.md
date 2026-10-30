@@ -89,7 +89,9 @@ Open https://sudokui.app, scroll to the footer, press **Send feedback**,
 write a line and press **Send**. The dialog says "Your report is on its
 way", and the e-mail arrives from `sudokUI feedback
 <feedback@sudokui.app>` with the subject `[sudokUI] Something is not
-working`. When the player gave an address, replying answers them (the
+working #3f9a2c`, the number the report's own, so that each report is a
+conversation of its own in a mail client that groups by subject (Proton
+Mail does). When the player gave an address, replying answers them (the
 e-mail's Reply-To is theirs), from your inbox's own address.
 
 Then ask for a hint, press **Show me**, then **Looks wrong?**, and send

@@ -139,7 +139,7 @@ describe('the e-mail', () => {
     expect(header(raw, 'From')).toBe(`From: sudokUI feedback <${FEEDBACK_FROM}>`);
     expect(header(raw, 'To')).toBe(`To: <${TO}>`);
     expect(header(raw, 'Reply-To')).toBe('Reply-To: <player@example.org>');
-    expect(header(raw, 'Subject')).toBe('Subject: [sudokUI] A hint looks wrong: X_WING');
+    expect(header(raw, 'Subject')).toBe('Subject: [sudokUI] A hint looks wrong: X_WING #id1');
     expect(header(raw, 'Message-ID')).toBe('Message-ID: <id-1@sudokui.app>');
     expect(header(raw, 'Date')).toBe('Date: Fri, 23 Oct 2026 12:00:00 +0000');
     expect(header(raw, 'Content-Type')).toBe('Content-Type: text/plain; charset=utf-8');
@@ -265,3 +265,15 @@ describe('the route', () => {
 });
 
 export type { FeedbackBody };
+
+describe("the e-mail's subject", () => {
+  it('differs from report to report, so a mail client that groups by subject keeps each report its own conversation', () => {
+    const c = checkFeedback(problem({ message: 'Something odd' }));
+    if (!c.ok) throw new Error(c.reason);
+    const ids = ['3f9a2c41-7b0e-4c55-9d1e-0a6b2f8e7c13', 'b71e09d2-55aa-4f3e-8c21-6d4e9a0f1b77'];
+    const subjects = ids.map((id) => header(rawMessage(c.report, TO, NOW(), id), 'Subject'));
+    expect(subjects).toEqual(['Subject: [sudokUI] Something is not working #3f9a2c', 'Subject: [sudokUI] Something is not working #b71e09']);
+    // the player's words stay out of the headers
+    expect(subjects.join('')).not.toContain('Something odd');
+  });
+});

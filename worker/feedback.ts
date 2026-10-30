@@ -164,9 +164,17 @@ const KIND_NAMES: Record<FeedbackKind, string> = {
 /** the board as a link that opens it exactly as it stood, on the site */
 export const positionLink = (board: { puzzle: string; position: string }) => `https://sudokui.app/p/${board.puzzle}#s=${board.position}`;
 
-/** the e-mail's subject: the kind, and for a hint its technique */
-export function subjectOf(report: FeedbackBody): string {
-  return `[sudokUI] ${KIND_NAMES[report.kind]}${report.hint ? `: ${report.hint.tech}` : ''}`;
+/** a report's short number, from its message id: six letters and digits */
+export const reportRef = (id: string) => id.replace(/[^0-9a-z]/gi, '').slice(0, 6);
+
+/**
+ * the e-mail's subject: the kind, for a hint its technique, and the
+ * report's short number, so that no two reports share a subject and a mail
+ * client that groups by subject (Proton Mail does) keeps each report its
+ * own conversation. The player's words stay in the body, out of the headers
+ */
+export function subjectOf(report: FeedbackBody, id: string): string {
+  return `[sudokUI] ${KIND_NAMES[report.kind]}${report.hint ? `: ${report.hint.tech}` : ''} #${reportRef(id)}`;
 }
 
 /** the e-mail's text: what the player wrote first, then what came with it */
@@ -216,7 +224,7 @@ export function rawMessage(report: FeedbackBody, to: string, date: Date, id: str
     `From: sudokUI feedback <${FEEDBACK_FROM}>`,
     `To: <${to}>`,
     ...(report.reply ? [`Reply-To: <${report.reply}>`] : []),
-    `Subject: ${headerText(subjectOf(report))}`,
+    `Subject: ${headerText(subjectOf(report, id))}`,
     `Message-ID: <${id}@sudokui.app>`,
     `Date: ${date.toUTCString().replace('GMT', '+0000')}`,
     'MIME-Version: 1.0',
