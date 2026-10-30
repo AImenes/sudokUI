@@ -166,7 +166,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <Toggle
         label={t('Track two sets of cells')}
         hint={t(
-          'Paint two groups of cells in two colours, and a line under the board counts the cells and digits in each, says what each still needs, and tells you whether they must hold the same digits, proved by counting rows, columns and boxes the way Phistomefel’s ring is proved. A cell in both colours counts in neither and shows no colour, so four rows against four columns needs no cleanup. It reads only your own board, never the solution, so it does not count as help'
+          'Paint two groups of cells in two colours (Colour mode), and a line under the board counts the cells and the placed digits in each, says which digits placed in one the other still needs, and tells you whether they must hold the same digits, proved by counting rows, columns and boxes the way Phistomefel’s ring is proved. Only placed digits count, not corner or centre marks. A cell in both colours counts in neither and shows no colour, so four rows against four columns needs no cleanup. It reads only your own board, never the solution, so it does not count as help'
         )}
         value={s.setTracker}
         onChange={(v) => s.set({ setTracker: v })}
