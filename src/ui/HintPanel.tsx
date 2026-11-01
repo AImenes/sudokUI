@@ -11,7 +11,7 @@ import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 import { stepText } from '../content/eureka';
-import { frameMarks, legendKinds, premiseOf, parityLegend, isParity, stemAlone, sharedTile } from '../content/hintMarks';
+import { frameMarks, legendKinds, premiseOf, parityLegend, isParity, stemAlone, petalsPart, sharedTile } from '../content/hintMarks';
 import type { Premise, Role, ParityEntry } from '../content/hintMarks';
 
 interface TruthWords {
@@ -307,6 +307,8 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
   const parity = isParity(hint) ? parityLegend(hint, marks) : null;
   // a cell of two almost locked sets the view draws, as the board draws it (docs/hint-drawing-sets.md, decision 6)
   const shared = sharedTile(hint, marks);
+  // the digit a Death Blossom's petals hold, its blue
+  const blueDigit = hint.eliminations[0]?.digit ?? 0;
   const lent = (roles: Role[]) =>
     roles
       .map((r) => (r === 'primary' ? hint.labels?.primary : r === 'secondary' ? hint.labels?.secondary : hint.labels?.fins))
@@ -438,7 +440,10 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
               {legend.shown.has('primary') && (
                 <li>
                   <i className={swatch('primary')} />
-                  {hint.labels?.primary ?? t('the pattern')}
+                  {/* a Death Blossom's blue before every petal's z is drawn: a petal's, by its own branch */}
+                  {petalsPart(hint, marks)
+                    ? t("{z} in a petal: if the stem takes that petal's digit, the petal holds {aDigit}", { z: blueDigit, aDigit: t(blueDigit === 8 ? 'an {d}' : 'a {d}', { d: blueDigit }) })
+                    : (hint.labels?.primary ?? t('the pattern'))}
                 </li>
               )}
               {legend.shown.has('secondary') && (
@@ -478,7 +483,7 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
               {shared && (
                 <li>
                   <i className={`swatch-shared tile-${shared.tile} dash-${shared.dashed}`} />
-                  {t('dashed outline: a cell of two sets; each tab names one')}
+                  {t('dashed outline: a cell of two sets; each letter names one')}
                 </li>
               )}
               {/* a Death Blossom's weak ties from its stem to its petals, dashed with no head (docs/hint-drawing-sets.md, decision 15) */}

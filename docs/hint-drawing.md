@@ -373,7 +373,9 @@ Every rule is numbered so a commit, a test or a review can cite it.
   start's placement or removal beside the other nodes in the pattern's
   colour, as a forcing chain's full view does (G21). An open chain whose
   truths put two true candidates in one cell, or one digit twice in a
-  house, also proves its premise impossible; its legend says so (the
+  house, or rule out every candidate of a true group or set (each "one of
+  these" square beside a true disc it cannot share a cell or a house
+  with), also proves its premise impossible; its legend says so (the
   stronger conclusion this proves is the finder's to take, not the
   drawing's). A group node is worded as one: "one of r5c7, r6c7 must be
   2", never all of them.

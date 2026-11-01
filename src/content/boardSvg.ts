@@ -11,7 +11,7 @@ import { hintDrawing, tilesIn, squareReach, pointsOf, SIZES } from './hintGeomet
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
 import type { HintPalette } from './hintPalette';
-import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, premiseOf, isParity, isShade, parityLegend, stemAlone, sharedTile } from './hintMarks';
+import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, premiseOf, isParity, isShade, parityLegend, stemAlone, petalsPart, sharedTile } from './hintMarks';
 import type { BarStyle, Premise, Role, Tint } from './hintMarks';
 import type { Frame } from '../engine/hintFrames';
 import { drawnLinks } from '../engine/hintFrames';
@@ -608,7 +608,10 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
   }
   const role = (kind: Role, label: string, colour: string, ink: string) =>
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });
-  if (shown.has('primary')) role('primary', step.labels?.primary ?? tr`the pattern`, P.primary, P.primaryInk);
+  // a Death Blossom's blue before every petal's z is drawn: a petal's, by its own branch
+  const z = step.eliminations[0]?.digit;
+  const blue = petalsPart(step, drawn) ? tr`${z} in a petal: if the stem takes that petal's digit, the petal holds ${aDigit(z)}` : step.labels?.primary;
+  if (shown.has('primary')) role('primary', blue ?? tr`the pattern`, P.primary, P.primaryInk);
   // a Death Blossom's gold before any petal's digit is drawn: the stem's candidates alone
   if (shown.has('secondary')) role('secondary', stemAlone(step, drawn) ? tr`the stem's candidates` : (step.labels?.secondary ?? tr`supporting cells`), P.secondary, P.secondaryInk);
   if (shown.has('fin')) role('fin', step.labels?.fins ?? tr`fin`, P.fin, P.finInk);
@@ -636,7 +639,7 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
   const shared = sharedTile(step, drawn);
   if (shared) {
     const [tile, dashed] = [tintOf(shared.tile), tintOf(shared.dashed)];
-    out.push({ kind: 'shared', label: tr`dashed outline: a cell of two sets; each tab names one`, colour: tile.fill, ink: tile.ink, dash: dashed.ink });
+    out.push({ kind: 'shared', label: tr`dashed outline: a cell of two sets; each letter names one`, colour: tile.fill, ink: tile.ink, dash: dashed.ink });
   }
   // a Death Blossom's weak ties from its stem to its petals, dashed with no head (decision 15)
   if (lines.has('weakTie')) out.push({ kind: 'weakTie', label: tr`dashed line: its two ends see each other, so at most one is true`, colour: '#ffffff', ink: P.arrow });

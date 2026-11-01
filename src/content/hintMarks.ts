@@ -423,9 +423,19 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   // shape, the digit bold on its tile (docs/hint-drawing-sets.md, decision 10)
   const sets = setMarks(step, links, opts.sets ?? [], cands);
   for (const { set, style } of sets) if (style === 'als') for (const cd of step.sets![set].members) mark(cd, 'member');
-  // two true candidates that cannot both be: the premise is impossible
+  // two true candidates that cannot both be, or a true node of several
+  // candidates whose every "one of these" square a true disc rules out (the
+  // same cell, or the same digit in a cell that sees it), and whose other
+  // candidates are false: the premise is impossible (G18)
   const trues = [...cands].flatMap(([cell, m]) => [...m].filter(([, k]) => k === 'true').map(([digit]) => ({ cell, digit })));
-  const clashing = trues.some((a, i) => trues.slice(i + 1).some((b) => a.cell === b.cell || (a.digit === b.digit && sees(a.cell, b.cell))));
+  const ruledOut = (a: CellDigit) => trues.some((b) => (a.cell === b.cell && a.digit !== b.digit) || (a.digit === b.digit && a.cell !== b.cell && sees(a.cell, b.cell)));
+  const emptied = (proven?.nodes ?? []).some(({ node, truth: isTrue }) => {
+    if (!isTrue || node.length < 2) return false;
+    const kinds = node.map((cd) => cands.get(cd.cell)?.get(cd.digit));
+    const squares = node.filter((_, i) => kinds[i] === 'oneOf');
+    return squares.length > 0 && kinds.every((k) => k === 'oneOf' || k === 'false') && squares.every(ruledOut);
+  });
+  const clashing = emptied || trues.some((a, i) => trues.slice(i + 1).some((b) => a.cell === b.cell || (a.digit === b.digit && sees(a.cell, b.cell))));
   const refuted = !!truth && ((!!truth.closure && closed) || clashing);
   // a Death Blossom's weak ties, dashed lines with no head, for its legend
   const lines = new Set<LineKind>(links.some((l) => l.undirected && !l.strong && !insideOneCell(l)) ? ['weakTie'] : []);
@@ -631,6 +641,21 @@ export function stemAlone(step: Step, marks: HintMarks): boolean {
   const stem = step.links?.find((l) => l.undirected && l.fromSet === undefined)?.from[0]?.cell;
   const gold = [...marks.cands].filter(([, m]) => [...m.values()].includes('secondary')).map(([cell]) => cell);
   return gold.length > 0 && gold.every((cell) => cell === stem);
+}
+
+/**
+ * A Death Blossom's view whose blue marks the z of some petals and not yet
+ * of every one: its walk's frames from the first petal's branch until the
+ * last petal's. The legend then names the blue by what is drawn, a petal's
+ * z, which its own branch gives it; the whole step's claim, that whichever
+ * digit the stem takes a petal holds z, needs every petal drawn
+ * (docs/hint-drawing-sets.md, "The walk and its words", the legend lines)
+ */
+export function petalsPart(step: Step, marks: HintMarks): boolean {
+  if (step.tech !== 'DEATH_BLOSSOM') return false;
+  const z = step.primary ?? [];
+  const blue = z.filter((cd) => marks.cands.get(cd.cell)?.get(cd.digit) === 'primary');
+  return blue.length > 0 && blue.length < z.length;
 }
 
 /**

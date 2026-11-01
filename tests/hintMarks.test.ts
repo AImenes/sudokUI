@@ -1247,3 +1247,86 @@ describe("the Learn diagrams' tiles, review round 1 of phase 4 (docs/hint-drawin
     }
   });
 });
+
+describe("G18's note where a true disc rules out every square of a true node, review round 2 of phase 4 (docs/hint-drawing.md G18)", () => {
+  const at = (r: number, c: number, d: number): CellDigit => ({ cell: (r - 1) * 9 + c - 1, digit: d });
+  const kindAt = (m: ReturnType<typeof hintMarks>, cd: CellDigit) => m.cands.get(cd.cell)?.get(cd.digit);
+  /**
+   * The finding's repros, each on offer after the solver's first `at`
+   * steps: a true node of several candidates (`squares`) all of which a
+   * true disc sees, the premise the note then calls impossible, and the
+   * candidate the solution holds that says it is
+   */
+  const REFUTED = [
+    {
+      // (1=8)r5c3 - (8=1)r2c3 - (1=9){r2c48} - (9=1){r238c1}: D's 1s r2c1, r3c1 beside the disc 1r2c3 in box 1
+      puzzle: '6.3.......5..4...7..2.8...4.2.....8.......7.5..9....2..14.2...8..64..13.....71.9.',
+      at: 44,
+      tech: 'ALS_XY_CHAIN' as Tech,
+      disc: at(2, 3, 1),
+      squares: [at(2, 1, 1), at(3, 1, 1)],
+      note: 'the chain shows that premise is impossible: set A holds a 1 (by the small dot)',
+      truth: at(5, 3, 1)
+    },
+    {
+      // (3)r2c2 = (3)r2c45 - (3=6)r3c5 - (6=3)r3c6: the squares 3r2c4, 3r2c5 beside the disc 3r3c6 in box 2
+      puzzle: '.7.19.6.56....5.....2....7..5...42...6.....5...32...8..2....8.....6....93.4.27.6.',
+      at: 20,
+      tech: 'AIC_GROUPED' as Tech,
+      disc: at(3, 6, 3),
+      squares: [at(2, 4, 3), at(2, 5, 3)],
+      note: 'the chain shows that premise is impossible: the first candidate (by the small dot) is true',
+      truth: at(2, 2, 3)
+    }
+  ];
+
+  it('says the premise is impossible in every view that draws such a node, and only there, true in the solution', () => {
+    for (const r of REFUTED) {
+      const g = parseGrid(r.puzzle)!;
+      for (let i = 0; i < r.at; i++) applyStep(g, findNextStep(g)!);
+      const s = findStep(r.tech, g)!;
+      const values = Array.from(g.values).join('');
+      expect([s.tech, alsClash(s), deriveTruth(s)!.problems], r.puzzle).toEqual([r.tech, false, []]);
+      let shown = 0;
+      for (const f of [null, ...walkFrames(s)]) {
+        const where = `${r.puzzle}, ${f ? `frame ${f.links}` : 'full view'}`;
+        const m = frameMarks(s, f, (c) => g.values[c] > 0);
+        const drawn = kindAt(m, r.disc) === 'true' && r.squares.every((cd) => kindAt(m, cd) === 'oneOf');
+        if (drawn) shown++;
+        expect(m.refuted, where).toBe(drawn);
+        expect(legendOf(s, values, f).some((l) => l.kind === 'note' && l.label === r.note), where).toBe(drawn);
+      }
+      // the full view, the frame that draws the disc beside the squares and the conclusion
+      expect(shown, r.puzzle).toBeGreaterThanOrEqual(3);
+      expect(solve(parseGrid(r.puzzle)!)!.values[r.truth.cell], r.puzzle).toBe(r.truth.digit);
+    }
+  });
+
+  it('says it only where the premise is false in the solution, over every derived set step the repository keeps', () => {
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    let refuted = 0;
+    let steps = 0;
+    for (const section of ['paths', 'named']) {
+      for (const [id, d] of Object.entries<{ position: { puzzle: string; values: string; cands: number[] } }>(fx[section])) {
+        const tech = id.split(', ').at(-1) as Tech;
+        const g = parseGrid(d.position.puzzle)!;
+        for (let i = 0; i < 81; i++) {
+          g.values[i] = Number(d.position.values[i]);
+          g.cands[i] = d.position.cands[i];
+        }
+        const s = findStep(tech, g);
+        const t = s && deriveTruth(s);
+        if (!s || !t || !premiseOf(s)) continue;
+        steps++;
+        if (![null, ...walkFrames(s)].some((f) => frameMarks(s, f, (c) => g.values[c] > 0).refuted)) continue;
+        refuted++;
+        const first = t.closure ? t.closure.node : t.nodes[0].node;
+        const assumed = t.closure ? t.closure.assumed : t.nodes[0].truth;
+        const solution = solve(parseGrid(d.position.puzzle)!)!.values;
+        expect(first.some((cd) => solution[cd.cell] === cd.digit), id).toBe(!assumed);
+      }
+    }
+    expect(steps).toBeGreaterThan(80);
+    expect(refuted).toBeGreaterThanOrEqual(2);
+  });
+});

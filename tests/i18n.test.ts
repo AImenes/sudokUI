@@ -322,7 +322,7 @@ describe('the words of review round 1 in Norwegian and Spanish (docs/hint-drawin
       expect(makeTranslator(lang, loc)("the stem's candidates"), lang).toBe(w.stem);
       clashes.forEach(({ step: s }, i) => expect(walkFrames(s).at(-1)!.text.startsWith(`${w.ends[i]} `), `${lang}: ${walkFrames(s).at(-1)!.text}`).toBe(true));
       expect(legendOf(shared.step, shared.values).find((l) => l.kind === 'shared')?.label, lang).toBe(w.shared);
-      expect(makeTranslator(lang, loc)('dashed outline: a cell of two sets; each tab names one'), lang).toBe(w.shared);
+      expect(makeTranslator(lang, loc)('dashed outline: a cell of two sets; each letter names one'), lang).toBe(w.shared);
     }
   });
 });

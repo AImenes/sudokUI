@@ -496,6 +496,9 @@ language: en 8, un 8), so the sentence's template reads "holds {z}".
 | the conclusion of an ALS-XY-Chain whose chain clashes (decision 13; its last set {L} holds z only in cells of its first, {F}), one cell, as an `inFalseGroup` | Set {L} holds {z} only in {cell}, a cell of set {F}: if {F} holds no {z}, {cell} must be {z}, and {F} holds one after all. {F} cannot lack a {z}, so set {F} holds a {z}. Each removed {z} sees every {z} of {F}. | Mengde {L} har {z} bare i {cell}, og den ruten hører til mengde {F}: har {F} ingen {z}, må {cell} være {z}, og da har {F} likevel en. {F} kan ikke mangle en {z}, så mengde {F} har en {z}. Hvert {z}-tall som fjernes, ser alle {z}-tallene i {F}. | El conjunto {L} solo puede tener el {z} en {cell}, una casilla del conjunto {F}: si {F} no tiene ningún {z}, {cell} debe ser {z}, y {F} tiene uno después de todo. {F} no puede quedarse sin un {z}, así que el conjunto {F} tiene un {z}. Cada {z} eliminado ve todos los {z} de {F}. |
 | the same, several cells (`emptyTrue`) | Set {L} holds {z} only in {cells}, cells of set {F}: if {F} holds no {z}, one of these cells must be {z}, ... | Mengde {L} har {z} bare i {cells}, og de rutene hører til mengde {F}: har {F} ingen {z}, må en av disse rutene være {z}, ... | El conjunto {L} solo puede tener el {z} en {cells}, casillas del conjunto {F}: si {F} no tiene ningún {z}, una de esas casillas debe ser {z}, ... |
 | the same, all of the first set's (a closure) | Set {L} holds {z} only in {cells}, the very cells set {F} holds it in, so the chain comes back to {F}: if {F} holds no {z}, one of these cells must be {z}, ... | Mengde {L} har {z} bare i {cells}, akkurat der mengde {F} har {z}-tallene sine, så kjeden kommer tilbake til {F}: ... | El conjunto {L} solo puede tener el {z} en {cells}, justo donde puede tenerlo el conjunto {F}, así que la cadena vuelve a {F}: ... |
+| the same, the last set's z not all in the first (review round 2): the node the chain first makes true and then false, one cell (several: "one of {cells} must be {x}, and further along the chain none of them can be {x}") | If set {F} holds no {z}, {cell} must be {x}, and further along the chain it cannot be {x}: that is impossible. {F} cannot lack a {z}, so set {F} holds a {z}. Each removed {z} sees every {z} of {F}. | Har mengde {F} ingen {z}, må {cell} være {x}, og senere i kjeden kan den ikke være {x}: det er umulig. {F} kan ikke mangle en {z}, så mengde {F} har en {z}. Hvert {z}-tall som fjernes, ser alle {z}-tallene i {F}. | Si el conjunto {F} no tiene ningún {z}, {cell} debe ser {x}, y más adelante en la cadena no puede ser {x}: es imposible. {F} no puede quedarse sin un {z}, así que el conjunto {F} tiene un {z}. Cada {z} eliminado ve todos los {z} de {F}. |
+| the description of an ALS-XY-Chain whose chain clashes, after "... fills its cells." in place of "A or D holds a {z}, ...": its last set's z in its first | But D holds {z} only in cells of A, so A holds one after all. A cannot lack a {z}: it holds one, and {z} is removed from every cell that sees every {z} of A. | Men D har {z} bare i ruter som hører til A, så A har likevel en. A kan ikke mangle en {z}: A har en, og {z} fjernes fra hver rute som ser alle {z}-tallene i A. | Pero D solo puede tener el {z} en casillas de A, así que A tiene uno después de todo. A no puede quedarse sin un {z}: tiene uno, y el {z} se elimina de cada casilla que ve todos los {z} de A. |
+| the same, elsewhere (several cells as the conclusion words them) | But on the way {cell} must be {x}, and further along the chain it cannot be {x}. A cannot lack a {z}: ... | Men underveis må {cell} være {x}, og senere i kjeden kan den ikke være {x}. A kan ikke mangle en {z}: ... | Pero por el camino {cell} debe ser {x}, y más adelante en la cadena no puede ser {x}. A no puede quedarse sin un {z}: ... |
 | Death Blossom: the stem | The stem {cell} holds {digits}: one of them is true, and each has a petal. | Stammen {cell} har {digits}: ett av dem er sant, og hvert har et kronblad. | El tallo {cell} tiene {digits}: uno de ellos es verdadero, y cada uno tiene un pétalo. |
 | a petal of several cells | Petal {L}, for the stem's {p}: the {n} cells {cells} of {house} hold only {digits}: one digit more than cells, and every {p} of it sees the stem. | Kronblad {L}, for stammens {p}: de {n} rutene {cells} i {house} har bare {digits}: ett tall mer enn ruter, og hvert {p}-tall i kronbladet ser stammen. | Pétalo {L}, para el {p} del tallo: las {n} casillas {cells} de la {house} solo tienen {digits}: un número más que casillas, y cada {p} suyo ve el tallo. |
 | its branch, one exit (several: "one of {cells}") | If the stem is {p}, petal {L} holds no {p}, so its other {n} digits fill its {n} cells: {cell} must be {z}. | Hvis stammen er {p}, har kronblad {L} ingen {p}, så de {n} andre tallene fyller de {n} rutene: {cell} må være {z}. | Si el tallo es {p}, el pétalo {L} no tiene ningún {p}, así que sus otros {n} números llenan sus {n} casillas: {cell} debe ser {z}. |
@@ -515,8 +518,9 @@ Legend lines (each premise ending is today's, or the set's):
 | a set premise | true, if set {L} holds no {a} (by the small dot) | sann hvis mengde {L} ikke har noen {a} (ved den lille prikken) | verdadero si el conjunto {L} no tiene ningún {a} (junto al punto pequeño) |
 | Death Blossom, gold | the stem's candidates, and each petal's digit the stem sees | stammens kandidater, og tallet i hvert kronblad som stammen ser | los candidatos del tallo, y el número de cada pétalo que el tallo ve |
 | the same, where no petal's digit is drawn yet (the stem's frame) | the stem's candidates | stammens kandidater | los candidatos del tallo |
-| a cell of two sets (decision 6), where a view draws one | dashed outline: a cell of two sets; each tab names one | stiplet ramme: en rute i to mengder; hver bokstav står for én av dem | contorno discontinuo: una casilla de dos conjuntos; cada letra nombra uno de ellos |
+| a cell of two sets (decision 6), where a view draws one | dashed outline: a cell of two sets; each letter names one | stiplet ramme: en rute i to mengder; hver bokstav står for én av dem | contorno discontinuo: una casilla de dos conjuntos; cada letra nombra uno de ellos |
 | Death Blossom, blue | {z} in every petal: whichever digit the stem takes, a petal holds a {z} | {z} i hvert kronblad: uansett hvilket tall stammen får, har et kronblad en {z} | el {z} de cada pétalo: tome el tallo el número que tome, algún pétalo tiene un {z} |
+| the same, while only some petals' z are drawn (review round 2) | {z} in a petal: if the stem takes that petal's digit, the petal holds a {z} | {z} i et kronblad: får stammen tallet til det kronbladet, har kronbladet en {z} | el {z} de un pétalo: si el tallo toma el número de ese pétalo, el pétalo tiene un {z} |
 
 The bar is "bjelke" and "barra", never "strek" or "línea", which are phase
 3's tie line. The new descriptions follow the walk's words; the ALS-XZ one
@@ -899,6 +903,40 @@ hintMarks, i18n), and the decisions it refines point here.
   rating, and a Learn diagram that draws no letter tab keeps main's style
   block byte for byte, the tabs' rule written only where a tab is drawn
   (`boardSvg`).
+- **Words for every clash, a petal's blue, letters and the note**
+  (decisions 6, 13 and 15; review round 2, docs/hint-drawing-p4-round2.md
+  findings 1-6 and 10). A clashing ALS-XY-Chain whose last set's z are not
+  all in its first (4 of the 547 clashing chains the menus offer along the
+  pools', seeds' and dailies' paths, none the set fixture keeps) ends on
+  the node its chain first gives both truths (src/engine/truth.ts
+  `clashAt`, the derivation read link by link: a node reached with the
+  other truth, a true candidate inside a false node, a true node left
+  none), which there is always true first, as a node made false is a set's
+  link digit and the set before it shares no cell with it: "If set A holds
+  no 2, r9c5 must be 7, and further along the chain it cannot be 7: that
+  is impossible. A cannot lack a 2, so set A holds a 2. Each removed 2
+  sees every 2 of A." Every clash now ends on why A holds z, never on "if
+  A holds none, D holds one". A clashing chain's description, the first
+  text the full view shows, ends on the same reason in place of "A or D
+  holds a z": "But D holds 8 only in cells of A, so A holds one after all.
+  A cannot lack an 8: it holds one, and 8 is removed from every cell that
+  sees every 8 of A.", or "But on the way r9c5 must be 7, and further
+  along the chain it cannot be 7. ..."; a chain that derives cleanly reads
+  as before. Death Blossom's blue, while some petals' z are drawn and not
+  yet every one (petal A's branch to petal C's), names what is drawn: "4
+  in a petal: if the stem takes that petal's digit, the petal holds a 4"
+  (`petalsPart`), the whole claim from the last petal's branch on, as the
+  gold names the stem alone in the stem's frame. The shared cell's entry
+  says "each letter names one", as nb and es did. And a true node of
+  several candidates whose every "one of these" square a drawn true disc
+  rules out (the same cell, or the digit in a cell that sees it), its
+  other candidates false, shows its premise impossible as two true discs
+  that cannot both be do: the legend adds G18's note (`hintMarks`). Over
+  the same menus 1,313 set steps show the note in some view, the premise
+  false in the solution in every one; in the set fixture it is new only in
+  Grouped X-Cycles rule 3's frame 6, where 9r2c5 is drawn true beside the
+  start group's squares 9r1c4 and 9r1c5, one frame before the closing link
+  says it.
 - **A tile's outline over its marks' keylines** (decision 5; review round
   1). A mark in a tile's edge row reaches the tile's outer edge, keyline
   and all, on a small board (13 and a 2-unit keyline, 15 out), and a tab

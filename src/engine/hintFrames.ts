@@ -16,7 +16,7 @@
 import { cellName, cellNames } from './board';
 import { CellDigit, ChainLink, ChainSet, Step, insideSet, isParity, isTie } from './steps';
 import { aDigit, listAnd, tr, unitName } from './text';
-import { alsClash, deriveTruth, isAlsChain } from './truth';
+import { alsClash, clashAt, deriveTruth, isAlsChain } from './truth';
 
 /**
  * A part of the drawing a frame shows: a pattern's bands and roles; a
@@ -370,7 +370,8 @@ function parityFrames(step: Step): Frame[] {
  * What an ALS pattern's conclusion says before its removals
  * (docs/hint-drawing-sets.md, "The walk and its words"): its two end sets,
  * one of which holds z, and why each removal goes; for a chain that clashes,
- * why its first set holds z (clashText); empty for any other step
+ * why its first set holds z, whatever the clash (clashText, or else
+ * contradictionText), never the plain ending; empty for any other step
  */
 function endsText(step: Step): string {
   if (!isAlsChain(step)) return '';
@@ -380,7 +381,7 @@ function endsText(step: Step): string {
   const [F, L] = [first?.letter, last?.letter];
   const z = step.eliminations[0]?.digit;
   if (!F || !L || z === undefined) return '';
-  const clash = alsClash(step) ? clashText(step, first!, last!, z) : '';
+  const clash = alsClash(step) ? clashText(step, first!, last!, z) || contradictionText(step, F, z) : '';
   return clash || tr`Set ${F} or set ${L} holds ${aDigit(z)}: if ${F} holds none, ${L} holds one. Each removed ${z} sees every ${z} of both.`;
 }
 
@@ -394,8 +395,8 @@ function endsText(step: Step): string {
  * very own (a closure, the chain back at its start), several of the
  * first's z (a TRUE node left no candidate, 'emptyTrue'), or one
  * ('inFalseGroup', a true candidate in the first set's false node). Empty
- * where the last set holds z outside the first, which no chain the
- * corpora keep does: the plain ending then stands
+ * where the last set holds z outside the first, which a few chains on offer
+ * do (none the set fixture keeps): contradictionText then words their clash
  */
 function clashText(step: Step, first: ChainSet, last: ChainSet, z: number): string {
   const holding = (set: ChainSet) => set.members.filter((m) => m.digit === z).map((m) => m.cell);
@@ -410,6 +411,53 @@ function clashText(step: Step, first: ChainSet, last: ChainSet, z: number): stri
   return deriveTruth(step)?.closure
     ? tr`Set ${L} holds ${z} only in ${cells}, the very cells set ${F} holds it in, so the chain comes back to ${F}: if ${F} holds no ${z}, one of these cells must be ${z}, and ${F} holds one after all. ${F} cannot lack ${aDigit(z)}, so set ${F} holds ${aDigit(z)}. Each removed ${z} sees every ${z} of ${F}.`
     : tr`Set ${L} holds ${z} only in ${cells}, cells of set ${F}: if ${F} holds no ${z}, one of these cells must be ${z}, and ${F} holds one after all. ${F} cannot lack ${aDigit(z)}, so set ${F} holds ${aDigit(z)}. Each removed ${z} sees every ${z} of ${F}.`;
+}
+
+/**
+ * Why an ALS-XY-Chain that clashes with its last set's z not all in its
+ * first removes what it does: the premise that the first set holds no z
+ * makes a node true and, further along, false (src/engine/truth.ts
+ * clashAt), so the premise is impossible and the first set holds z, and
+ * each removal sees every z of it (checkSets' zNotSeen). Empty for a step
+ * that does not clash
+ */
+function contradictionText(step: Step, F: string, z: number): string {
+  const node = clashAt(step);
+  if (!node) return '';
+  const d = node[0].digit;
+  const cells = uniq(node.map((cd) => cd.cell));
+  const c = cellNames(cells);
+  return cells.length === 1
+    ? tr`If set ${F} holds no ${z}, ${c} must be ${d}, and further along the chain it cannot be ${d}: that is impossible. ${F} cannot lack ${aDigit(z)}, so set ${F} holds ${aDigit(z)}. Each removed ${z} sees every ${z} of ${F}.`
+    : tr`If set ${F} holds no ${z}, one of ${c} must be ${d}, and further along the chain none of them can be ${d}: that is impossible. ${F} cannot lack ${aDigit(z)}, so set ${F} holds ${aDigit(z)}. Each removed ${z} sees every ${z} of ${F}.`;
+}
+
+/**
+ * How an ALS-XY-Chain's description ends where its chain clashes
+ * (src/engine/techniques/als.ts), on the reason its walk's conclusion gives:
+ * D holds z only in cells of A, so A holds one after all (clashText's
+ * clashes); or, wherever else D's z lie, the node the premise makes true
+ * and then false (contradictionText's). Either way A cannot lack z, and z
+ * goes from every cell that sees every z of A. Empty for a step that does
+ * not clash
+ */
+export function clashReason(step: Step): string {
+  if (step.tech !== 'ALS_XY_CHAIN' || !alsClash(step)) return '';
+  const [A, D] = ['A', 'D'].map((L) => step.sets?.find((s) => s.letter === L));
+  const z = step.eliminations[0]?.digit;
+  if (!A || !D || z === undefined) return '';
+  const inD = D.members.filter((m) => m.digit === z).map((m) => m.cell);
+  if (inD.length && inD.every((c) => A.cells.includes(c))) {
+    return tr`But D holds ${z} only in cells of A, so A holds one after all. A cannot lack ${aDigit(z)}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+  }
+  const node = clashAt(step);
+  if (!node) return '';
+  const d = node[0].digit;
+  const cells = uniq(node.map((cd) => cd.cell));
+  const c = cellNames(cells);
+  return cells.length === 1
+    ? tr`But on the way ${c} must be ${d}, and further along the chain it cannot be ${d}. A cannot lack ${aDigit(z)}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`
+    : tr`But on the way one of ${c} must be ${d}, and further along the chain none of them can be ${d}. A cannot lack ${aDigit(z)}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
 }
 
 /**
