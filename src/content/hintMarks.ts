@@ -257,11 +257,15 @@ const besideCell = (a: number, b: number) =>
  * linked sets (none: a chain's links join its sets in a line, or a loop,
  * which three tints always part), then on the fewest pairs of sets that
  * conflict (a link between the two, a cell they share, or a cell side),
- * then uses the tints most evenly (the fewest pairs alike), and of those
- * the first in letter order, A's tint the lowest, then B's: so up to three
- * sets take one each in letter order, and a chain of four shows all three,
- * one tint on two sets that do not conflict where the sets allow it. Sets
- * that share a tint are told apart by their letters
+ * then uses the tints most evenly (the fewest pairs alike), then puts one
+ * tint on the fewest pairs that share a cell (where a tint must be on two
+ * that conflict, on two that only touch rather than two whose shared cell
+ * would carry one tile in it and the other's outline dashed inside it, in
+ * the same tint), and of those the first in letter order, A's tint the
+ * lowest, then B's: so up to three sets take one each in letter order, and
+ * a chain of four shows all three, one tint on two sets that do not
+ * conflict where the sets allow it. Sets that share a tint are told apart
+ * by their letters
  */
 export function setTints(step: Step): Map<number, Tint> {
   const sets = step.sets ?? [];
@@ -273,13 +277,15 @@ export function setTints(step: Step): Map<number, Tint> {
   const linked = (a: number, b: number) =>
     (step.links ?? []).some((l) => (l.fromSet === a && l.toSet === b) || (l.fromSet === b && l.toSet === a));
   const touch = (a: number, b: number) => sets[a].cells.some((x) => sets[b].cells.some((y) => x === y || besideCell(x, y)));
+  const share = (a: number, b: number) => sets[a].cells.some((x) => sets[b].cells.includes(x));
   // what one more set's tint adds, against the sets before it in letter
-  // order: linked pairs alike, conflicting pairs alike, pairs alike
-  const near = order.map((k, i) => order.slice(0, i).map((o) => ({ linked: linked(k, o), conflict: linked(k, o) || touch(k, o) })));
+  // order: linked pairs alike, conflicting pairs alike, pairs alike, pairs
+  // that share a cell alike
+  const near = order.map((k, i) => order.slice(0, i).map((o) => ({ linked: linked(k, o), conflict: linked(k, o) || touch(k, o), shared: share(k, o) })));
   const costOf = (given: Tint[], t: Tint): number[] => {
     const i = given.length;
     const alike = given.map((x, j) => (x === t ? near[i][j] : null)).filter((x) => x !== null);
-    return [alike.filter((x) => x.linked).length, alike.filter((x) => x.conflict).length, alike.length];
+    return [alike.filter((x) => x.linked).length, alike.filter((x) => x.conflict).length, alike.length, alike.filter((x) => x.shared).length];
   };
   const add = (a: number[], b: number[]) => a.map((x, k) => x + b[k]);
   const below = (a: number[], b: number[]) => {
@@ -298,7 +304,7 @@ export function setTints(step: Step): Map<number, Tint> {
     }
     for (const t of TINTS) search([...given, t], add(cost, costOf(given, t)));
   };
-  search([], [0, 0, 0]);
+  search([], [0, 0, 0, 0]);
   return new Map(order.map((k, i) => [k, best!.tints[i]]));
 }
 

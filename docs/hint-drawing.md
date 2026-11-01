@@ -152,7 +152,8 @@ Every rule is numbered so a commit, a test or a review can cite it.
   amount and is never checked against what it passes
   (`SudokuPanel.java:2693-2711`); ours chooses the side. Unrelated
   candidates and digits are crossed straight, readable through the halo
-  (G11). Two arrows joining the same two nodes are drawn side by side. A
+  (G11). Two arrows joining the same two nodes are drawn side by side,
+  apart from end to end, two heads, where they bend as well. A
   group or set node is anchored at its member nearest the other end of the
   link (a centroid can fall in a cell that is not one of its members;
   HoDoKu anchors at a group's first member only, so its other members get
@@ -161,12 +162,17 @@ Every rule is numbered so a commit, a test or a review can cite it.
   these" square reaches 13 on its axes and 15.5 at its corners), plus the
   gap. A link between other nodes that would so be anchored at the same
   two candidates as an earlier link (sets that share cells) is anchored at
-  the nearest two of its members still free, or, where none is, drawn
-  beside the earlier, so two links are never drawn as one arrow. Since
+  the nearest two of its members still free whose line does not run past
+  those two, along the earlier, or, where none is, drawn beside the
+  earlier, so two links are never drawn as one arrow. Since
   phase 4 a group's bar and a set's letter tabs are obstacles
   for every arrow, tie, start dot and walk number: an arrow is free of its
-  own group's bar only beside the member it anchors at, a start dot not at
-  all, so a dot never sits on the bar of the group it opens. No arrow
+  own group's bar only beside the member it anchors at (and of another
+  group's bar along its target's rim, coming in square-on), a start dot
+  not at all, so a dot never sits on the bar of the group it opens. An
+  arrow the bars or tabs push onto another, where without them the two
+  are apart, is drawn again counting its run along the others near its
+  ends too. No arrow
   crosses a bar except at its anchoring member, so none passes between a
   group's members (63 of 762 groups had one): over the stored examples and
   both drawing fixtures none does, and of the grouped steps on offer at

@@ -20,6 +20,7 @@ import { parseGrid } from '../src/engine/board';
 import { findNextStep, findAllSteps, findStep, applyStep } from '../src/engine/humanSolver';
 import type { Tech } from '../src/engine/ratings';
 import { readFileSync } from 'node:fs';
+import { linesAlong, shareWithin } from './linesAlong';
 
 /** the app board's layout: 100 units a cell, a 4-unit margin, candidates on a 28 pitch */
 const layout: Layout = boardLayout();
@@ -982,7 +983,7 @@ describe("a group's bar and a square (docs/hint-drawing-sets.md, decisions 1, 2 
     return out;
   })();
 
-  it('crosses no arrow over a bar but beside the member it is anchored at, and puts no glyph, start dot or walk number on a bar, in any grouped chain kept (strict)', () => {
+  it('crosses no arrow over a bar but beside the member it is anchored at (or square-on beside a target whose rim the bar runs along), and puts no glyph, start dot or walk number on a bar, in any grouped chain kept (strict)', () => {
     let bars = 0;
     let pairs = 0;
     // a bar's half width and an arrow's at the widest they are drawn, a phone's under 330 CSS px: their strokes never meet
@@ -1013,9 +1014,19 @@ describe("a group's bar and a square (docs/hint-drawing-sets.md, decisions 1, 2 
           const ends = [shaft[0], s.head[0] ?? shaft[shaft.length - 1]];
           const anchors = [...lk.from, ...lk.to].filter((x) => own.has(key(x)));
           const anchor = anchors.length ? anchors.reduce((b, x) => (Math.min(...ends.map((p) => dist(p, l.centre(x)))) < Math.min(...ends.map((p) => dist(p, l.centre(b)))) ? x : b)) : null;
+          // or the target its head comes into square-on (within 60 degrees of across the bar), where the bar runs
+          // along that target's rim (review round 2): its head ends against the bar as against the rim
+          const target = s.head.length ? lk.to.reduce((b, x) => (dist(s.head[0], l.centre(x)) < dist(s.head[0], l.centre(b)) ? x : b)) : null;
+          const way = s.head.length ? { x: s.head[0].x - (s.head[1].x + s.head[2].x) / 2, y: s.head[0].y - (s.head[1].y + s.head[2].y) / 2 } : { x: 0, y: 0 };
+          const along = { x: bar.b.x - bar.a.x, y: bar.b.y - bar.a.y };
+          const rim =
+            target && !own.has(key(target)) && toSegment(l.centre(target), bar.a, bar.b) <= (l.radiusOf?.(target) ?? l.r) + half && Math.abs(way.x * along.x + way.y * along.y) <= 0.5 * Math.hypot(way.x, way.y) * Math.hypot(along.x, along.y)
+              ? target
+              : null;
           for (let k = 0; k <= 200; k++) {
             const p = { x: bar.a.x + ((bar.b.x - bar.a.x) * k) / 200, y: bar.a.y + ((bar.b.y - bar.a.y) * k) / 200 };
             if (anchor && dist(p, l.centre(anchor)) < free) continue;
+            if (rim && dist(p, l.centre(rim)) < free) continue;
             expect(Math.min(toArrow(p, s), s.head.length ? toHead(p, s.head) : Infinity), `${where}: arrow ${s.link} and the bar of set ${bar.set}`).toBeGreaterThanOrEqual(apart);
           }
         }
@@ -1509,8 +1520,7 @@ describe("what the first review of phase 4 found: where the ties, the tabs and t
     // a practice puzzle's ALS-XY-Chain on offer: 3r1c4 to 3r1c5 (A to B) and the 3s of r1c4 and r1c6 to 3r1c5 (C to D)
     const pool = after('.71....49.3..915......87..........24..8.......1...9738257.......8..5.39.....6....', 2, 'ALS_XY_CHAIN');
     const dp = appDrawing(pool.step, pool.values, pool.cands);
-    const drawn = dp.shapes.filter((s) => s.kind === 'arrow').map((s) => (s.kind === 'arrow' ? s.d : ''));
-    expect(new Set(drawn).size).toBe(drawn.length);
+    expect(linesAlong(dp.shapes, 4.5)).toEqual([]);
     // nodes whose only members are those two candidates: the two are drawn side by side, as two links between the
     // same nodes are
     const x = cd(5, 2, 4);
@@ -1519,10 +1529,135 @@ describe("what the first review of phase 4 found: where the ties, the tabs and t
     const both = arrowShapes([link(x, [y, z], false), link(x, y, false)], layout, [x, y, z]).map((s) => samples(arrow(s).d));
     for (const line of both) expect(Math.abs(line[0].y - line[line.length - 1].y)).toBeLessThan(0.01);
     expect(Math.abs(both[0][0].y - both[1][0].y)).toBeCloseTo(SIZES.pair * 100, 6);
-    // and in every step kept, no two links drawn on one line, nor two links between other nodes from and to the same two candidates
-    for (const { where, drawing } of kept) {
-      const lines = drawing.shapes.flatMap((s) => (s.kind === 'arrow' || s.kind === 'tie' ? [s.d] : []));
-      expect(new Set(lines).size, where).toBe(lines.length);
+    // and in every step kept, no two links drawn as one line: none lies within a phone's arrow width (4.5 units) of
+    // another for more than half its length, measured on the lines, not on their paths' text (review round 2)
+    for (const { where, drawing } of kept) expect(linesAlong(drawing.shapes, 4.5), where).toEqual([]);
+  });
+});
+
+describe('what the second review of phase 4 found: an arrow a bar pushes onto another, and two links drawn as one', () => {
+  /** the position after `n` of the solver's steps, a technique's step there (or the solver's own), and its drawing on the app's board, as src/ui/Grid.tsx works it out */
+  const at = (puzzle: string, n: number, tech?: Tech) => {
+    const g = parseGrid(puzzle)!;
+    for (let i = 0; i < n; i++) applyStep(g, findNextStep(g)!);
+    const step = tech ? findStep(tech, g)! : findNextStep(g)!;
+    const [values, cands] = [Array.from(g.values), Array.from(g.cands)];
+    return { step, ...boardDrawing(step, (c) => ({ value: values[c], corner: 0, center: 0 }), (c) => cands[c]) };
+  };
+  /** a line as drawn: an arrow's shaft and head */
+  const lineOf = (s: ArrowShape) => (s.kind === 'arrow' || s.kind === 'tie' ? s.trace : []);
+  /** an arrow on a phone, 4.5 units wide (src/ui/styles.css) */
+  const PHONE = 4.5;
+  // the reviewers' rule: no arrow within 4 units of another for more than half its length
+  const along = (d: { shapes: ArrowShape[] }) => linesAlong(d.shapes, 4);
+
+  it("comes into a group's member straight, square-on over another group's bar along its rim, as before there were bars: link 6 of a Grouped Nice Loop on offer ran in along link 7", () => {
+    // (6)r1c4 = (6)r1c6 - (6=5)r9c6 - (5)r9c13 = (5-7)r7c3 = (7)r9c13 - (7=6)r9c4 - loop, where the solver takes a Locked Triple
+    const d = at('2...7........5.84...13...96....176.3.6.....1.1.356....34...29...26.3........9...4', 6, 'GROUPED_NICE_LOOP');
+    expect(d.step.tech).toBe('GROUPED_NICE_LOOP');
+    // the 5s' bar runs below r9c1 and r9c3's 5s, along the rim of the 7 of r9c3 (13 above its centre), which link 6 comes into
+    const five = d.sets.bars.find((b) => b.members.some((m) => m.digit === 5))!;
+    expect(Math.abs(d.layout.centre(cd(9, 3, 7)).y - five.a.y)).toBeCloseTo(13, 9);
+    // link 6, (7)r7c3 = (7)r9c13: straight down into the 7, its head against the bar, as main drew it; it swung out to
+    // the right and came in along row 9, M 236.0 695.5 Q 386.0 883.0 252.5 883.0, on top of link 7's start
+    expect(arrow(d.shapes[6]).d).toBe('M 226.0 699.0 L 226.0 856.5');
+    expect(shareWithin(lineOf(d.shapes[7]), lineOf(d.shapes[6]), PHONE)).toBe(0);
+    expect(along(d)).toEqual([]);
+    // and it reaches no nearer the bar than the gap beside the 7: the head's tip, square-on, a gap off the rim
+    const tip = arrow(d.shapes[6]).head[0];
+    expect(dist(tip, d.layout.centre(cd(9, 3, 7)))).toBeCloseTo(13 + SIZES.gap * 100, 6);
+  });
+
+  it('draws no arrow along another where a bar or a tab pushed it there and, drawn without them, the two are apart: three chains on offer and a solve path\'s Grouped Nice Loop', () => {
+    // AIC with Groups on offer at 13 positions: link 4, (2)r2c5 = (2)r23c4, ran back along link 3 above row 2, the
+    // group's own bar to the right of its members blocking the way below that main took; 66% of it within 4 units
+    const two = at('.5...612...9.....6....95...84..5...1..7...8..3...7..64...78....1.....9...359...8.', 19, 'AIC_GROUPED');
+    expect(two.step.tech).toBe('AIC_GROUPED');
+    expect(shareWithin(lineOf(two.shapes[4]), lineOf(two.shapes[3]), 4)).toBeLessThan(0.25);
+    expect(along(two)).toEqual([]);
+    // seed Extreme #45 after 8 steps, the solver's own Grouped Nice Loop: either side of the 2s' bar in row 3 blocks
+    // link 0, 9r2c2 = 9r6c2, which left along row 2 over the loop's closing weak link 9, 9r2c3 - 9r2c2 (60% of it
+    // within 4 units); link 0 has no clearer way round, and link 9 now comes into 9r2c2 apart from it
+    const loop = at('3.89........1..4...6...7.95.....9..74...5...95..8.....62.3...1...7..2........12.6', 8);
+    expect(loop.step.tech).toBe('GROUPED_NICE_LOOP');
+    expect(shareWithin(lineOf(loop.shapes[9]), lineOf(loop.shapes[0]), 4)).toBeLessThan(0.25);
+    expect(along(loop)).toEqual([]);
+    // and the other two the corpus held (PATH_DIGEST=menus walks them all): link 4 into the 8s' group of r3c78
+    // along link 3, and link 6 out of 7r8c5 along link 5, which the group's bar turned up and over row 8's 7s
+    const eight = at('....1.63..5.......2...73....9......8..7.......8..4...7.2..38..554.....9....92.7..', 14, 'AIC_GROUPED');
+    expect(along(eight)).toEqual([]);
+    const seven = at('.1298.....3....4..5....19..9.3..4.....7...2.....2..6.3..45....7..1....2.....1259.', 22, 'AIC_GROUPED');
+    expect(seven.step.tech).toBe('AIC_ALS');
+    expect(along(seven)).toEqual([]);
+    // each was drawn apart without the bars, as main drew it
+    for (const d of [two, loop, eight, seven]) expect(linesAlong(arrowShapes(d.step.links!, d.layout, d.marks), 4)).toEqual([]);
+  });
+
+  it("puts a bar on the side no straight arrow of the hint, head and the clearance the arrows keep, comes nearer than that: the hard path's Grouped X-Cycles whose link 1 leaves the 5s of r789c7", () => {
+    // in the set fixture: link 1, 5r8c7 to 5r7c9, straight, would cross the right gutter of r789c7 beside its member
+    // and pass 2 units off the bar beyond; its shaft never met the bar's centre line, which was all the side's
+    // score counted, so the bar went right, and the arrow bent for it
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    const { position } = fx.paths['hard 0, step 9, GROUPED_X_CYCLES'];
+    const g = parseGrid(position.puzzle)!;
+    for (let i = 0; i < 81; i++) {
+      g.values[i] = Number(position.values[i]);
+      g.cands[i] = position.cands[i];
     }
+    const step = findStep('GROUPED_X_CYCLES', g)!;
+    const d = boardDrawing(step, (c) => ({ value: g.values[c], corner: 0, center: 0 }), (c) => g.cands[c]);
+    const bar = d.sets.bars.find((b) => b.members.length === 3)!;
+    expect(bar.a.x).toBeCloseTo(d.layout.centre(cd(7, 7, 5)).x - MARK.groupBar * 100, 9);
+    // the right side's bar, beyond the member link 1 leaves, against link 1's straight line
+    const from = d.layout.centre(cd(8, 7, 5));
+    const to = d.layout.centre(cd(7, 9, 5));
+    const u = { x: (to.x - from.x) / dist(to, from), y: (to.y - from.y) / dist(to, from) };
+    const right = from.x + MARK.groupBar * 100;
+    const half = (MARK.groupBarStrokeTiny * 100) / 2;
+    const free = (SIZES.barFree + SIZES.gap) * 100 + half;
+    const tail = { x: from.x + u.x * (squareReachOf(u) + SIZES.gap * 100), y: from.y + u.y * (squareReachOf(u) + SIZES.gap * 100) };
+    const beyond = { x: right, y: from.y - Math.sqrt(free * free - (right - from.x) ** 2) };
+    expect(toSegment(beyond, tail, to) - half).toBeLessThan(SIZES.clearance * 100);
+  });
+
+  it('draws two links between the same two nodes apart from end to end when they bend, two heads: an ALS-XY-Chain on offer whose A-B and C-D both join 5r2c8 to 5r2c2', () => {
+    // (4=5){r2c8,r3c9} - (5=6){r2c2346} - (6=5)r2c8 - (5=4){r27c2}: links 1 and 5 bend under row 2's marks; only the
+    // control point was moved apart, so their tails were 0.4 units apart, their tips 0.7, their heads one
+    const d = at('9....3.2.....1.3.7...8..9...38.46........84...6.7.............8..9..5..11.5.9.7..', 31, 'ALS_XY_CHAIN');
+    const [one, five] = [arrow(d.shapes[1]), arrow(d.shapes[5])];
+    expect(one.d).toMatch(/ Q /);
+    expect(five.d).toMatch(/ Q /);
+    expect(dist(one.tail, five.tail)).toBeGreaterThan(0.85 * SIZES.pair * 100);
+    expect(dist(one.head[0], five.head[0])).toBeGreaterThan(0.85 * SIZES.pair * 100);
+    expect(linesAlong(d.shapes, PHONE)).toEqual([]);
+    // the hard path's ALS-XY-Chain whose 2s of r9c1 and r7c1 are joined twice: link 1 straight, beside the line,
+    // link 5 bent round the left of it; link 5's ends lie left of link 1's too, so the two never cross by their ends
+    const fx = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/setDrawings.json')));
+    const { position } = fx.paths['hard 0, step 8, ALS_XY_CHAIN'];
+    const g = parseGrid(position.puzzle)!;
+    for (let i = 0; i < 81; i++) {
+      g.values[i] = Number(position.values[i]);
+      g.cands[i] = position.cands[i];
+    }
+    const h = boardDrawing(findStep('ALS_XY_CHAIN', g)!, (c) => ({ value: g.values[c], corner: 0, center: 0 }), (c) => g.cands[c]);
+    const [straight, bent] = [arrow(h.shapes[1]), arrow(h.shapes[5])];
+    expect(straight.d).toMatch(/ L /);
+    expect(bent.d).toMatch(/ Q /);
+    expect(straight.tail.x - bent.tail.x).toBeGreaterThan(0.85 * SIZES.pair * 100 - 2);
+    expect(straight.head[0].x - bent.head[0].x).toBeGreaterThan(0.85 * SIZES.pair * 100 - 2);
+    expect(dist(straight.tail, bent.tail)).toBeGreaterThan(0.85 * SIZES.pair * 100);
+  });
+
+  it("joins a link at the same two candidates as an earlier one, beside it, rather than at two whose line runs past them along it: an ALS-XY-Chain on offer whose C-D 1s ran from r1c5 past r1c3", () => {
+    // (2=1){r13c3} - (1=2)r1c2 - (2=1){r1c35} - (1=2){r146c2}: A-B joins 1r1c3 to 1r1c2, and C-D, whose 1s are r1c3's and
+    // r1c5's, was joined at r1c5 instead, its line running past r1c3 and along A-B into 1r1c2 (66% of it within 4 units)
+    const d = at('...4.65377..9..6..........4......1.6.465.238.8.3......4..........9..5..22853.4...', 12, 'ALS_XY_CHAIN');
+    const [one, five] = [arrow(d.shapes[1]), arrow(d.shapes[5])];
+    const r1c3 = d.layout.centre(cd(1, 3, 1));
+    expect(dist(one.tail, r1c3)).toBeLessThan(0.2 * 100);
+    expect(dist(five.tail, r1c3)).toBeLessThan(0.2 * 100);
+    expect(dist(one.tail, five.tail)).toBeGreaterThan(0.85 * SIZES.pair * 100);
+    expect(dist(one.head[0], five.head[0])).toBeGreaterThan(0.85 * SIZES.pair * 100);
+    expect(linesAlong(d.shapes, PHONE)).toEqual([]);
   });
 });
