@@ -40,18 +40,18 @@ unverified. Nothing teaches anything false; every head lies on its own candidate
 
 - **Every drawing outside the eight, against main.** The Cell, Unit, Digit and Nishio Forcing Chains, AIC, Nice Loop,
   X-Cycles, X-Chain, XY-Chain, 3D Medusa, Multi and Simple Colors, Remote Pair and W-Wing finds on offer at every
-  position past the singles on the pools' and seeds' paths: 41,250 drawings, identical to main's path for path
-  (the scan before the last gate found one difference, the Digit Forcing Chain of 3, now identical). The hard
+  position past the singles on the pools' and seeds' paths: 41,250 drawings, identical to main's path for path, on
+  the final code (a first scan, before the last gate, found one difference, the Digit Forcing Chain of 3). The hard
   puzzles' forcing chains the regression lens named are pinned to main's paths in tests/hintGeometry.test.ts.
-- **The set techniques, against round 3's tree and main.** (the scan was running at this commit; its figures follow with the merge)
+- **The set techniques, against round 3's tree and main.** Every find of the eight on offer at every position past the singles on the pools' and seeds' paths, 28,219 finds, drawn on this tree, on 004d6e8 and on main: 55 drawings changed from 004d6e8, all ALS-XY-Chains on offer, none a solve path's step. Against 004d6e8, two heads within a head's width of each other went away in 19 and came in 2 (two links side by side, 9 units apart, two heads, as main draws such a pair); runs of one arrow along another shrank in 14 and grew in none; crossings fell in 7 and rose in 3, the 3 one chain: `.....6.7.3.5....8.......9..8.46....2.2.1..5.....2.8.4..4.5..7...7...2..6..1.7....` after 11, 12 and 13 steps, whose links 1 and 5 no longer cross each other twice but which link 3 now crosses between them (drawn and looked at: it reads no worse than 004d6e8, where link 3's head lay on link 1). At `...8..2...9..1..4..87......4..26..1...3..1.6.5.....8.42.....9...6.75...2...3.....` after 18 steps links 1 and 5 ran along each other into one head with one walk number (main the same, 73% within 4.5 units); now two heads, two numbers, apart and uncrossed. A drawing that crosses the other link of its pair is now chosen last (at `..49.3..81...8.........1.75.3..5.......4.2...26.1.......3.......826...54.......21` after 22 steps the angle measure first gave link 5 a flatter bend over link 1).
 - **The reviewers' named positions.** Of the 16 positions where ALS-XY-Chains drew two heads within 5 units that main
-  drew apart, (the scan was running at this commit; its figures follow with the merge)
+  drew apart, 11 of the 16 now have them as far apart as main, within half a unit, or further; the other five, at three chains, are under Known and accepted. Among them, and the other chains the skeptics named: `........214` after 18 steps 8.8 apart (main 9.0); `...936..2` after 13-19 steps and `9..64.5..` after 13, apart (main 22.6 and 28.5); `.....6.7.3.5` after 11 steps 8.6 apart with no crossing (round 3: 3.7 and two); `...8..2...9` after 18 and `7..8....4` after 16, 8.9 apart where main had 1.4.
 - The drawing snapshot (non-set) is unchanged; the set fixture changes only by under half a unit in its two
   ALS-XY-Chains of the hard path (`hard 0, step 8` and `step 9`), the angle measure.
 
 ## Known and accepted
 
-- (the scan was running at this commit; its figures follow with the merge)
+- **Three ALS-XY-Chain positions whose heads stay closer than main's** (from the design lens's scan; all on offer, none a solve path's step): `9..86....3` after 22 and 23 steps (link 1, 2r1c2 to 2r1c3, has only the way under r1c3's tabs, into link 5's head; main 7.4 apart), `...72..5.6` after 4 (3.4; main apart) and `.......2..3..1` after 14 and 15 (2.2; main 7.6). In each the tabs leave the arrow no free way in: redrawn, it either runs along the other arrow or keeps its head on it. Every head lies on its own candidate and each link has its own walk frame. For the readability pass: let a tab yield its place where it blocks the only clear way into a head.
 - **A bar moved by round 2's side rule now runs through an ALS tile** (low, logic lens, unverified). At
   `...86..3......3..7.13..7..94...5..2...6.3.1...7..4...81..6..39.5..2......6..95...` after 17 steps an AIC with ALS
   on offer has the 8s' bar of r7c23 above the 8s, through A's tile, and A's tab pushed out of it. Three finds of
