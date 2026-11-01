@@ -920,16 +920,32 @@ the values above are its final ones.
   violet (15dc6bb), and Death Blossom's ties, tabs by their own tiles and
   no two links drawn as one arrow (60edc72). The merge was checked by the
   whole suite, the digest with its menus, the browser tests in both font
-  setups and phone screenshots in light and dark; no second full review
-  round was run, to spare the week's budget. The relabelling of AIC with ALS steps
+  setups and phone screenshots in light and dark. Review round 2 (the same
+  five lenses on main at 0600b2e) found one medium, a regression: a
+  group's bar pushed an arrow onto the chain's next or previous one; it
+  and nine of the ten lows are fixed (words in 8e63f86, geometry in
+  004d6e8; [hint-drawing-p4-round2.md](hint-drawing-p4-round2.md)), the
+  violet against the false-ring blue for protan and deutan players in the
+  light themes kept as a known limit. Review round 3, on those two
+  commits, confirmed them and found four regressions in how two links
+  side by side are drawn, three medium: a bent link drawn before its
+  straight partner still had one head with it, and round 2's end moving,
+  `linkEnds` and the spreading of links joined alike reached forcing
+  chains and other steps with no sets. They are fixed: every drawing of a
+  step with no sets is main's again, byte for byte, over 41,250 drawings
+  on offer along the pools' and seeds' paths
+  ([hint-drawing-p4-round3.md](hint-drawing-p4-round3.md)). The relabelling of AIC with ALS steps
   whose only set is a bivalue cell is left to a later measured engine
   change.
 
   Left for later, low: over every grouped chain on offer along the solve
   paths of the pool, seed and hard puzzles, an arrow meets a bar away
   from its anchoring member in 44 chains, one of them a solve path's own
-  step (the design's As built names it); a second full review round of
-  the round 1 fixes; an ALS-XY-Chain of more sets than cells
+  step (the design's As built names it); round 3's two unverified lows
+  (a bar moved by round 2's side rule through an ALS tile in three finds,
+  and the plain ending of an ALS-XY-Chain whose legend says its premise is
+  impossible) and its accepted heads (hint-drawing-p4-round3.md), for the
+  readability pass; an ALS-XY-Chain of more sets than cells
   leaves one set no filled tile (four sets on three cells on a hard path),
   its tabs and dashed outlines carrying it; App.tsx's "a {tech} places it"
   and the share line's "a {level} sudoku" can read "a X-Wing" and "a

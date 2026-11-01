@@ -1522,11 +1522,11 @@ describe("what the first review of phase 4 found: where the ties, the tabs and t
     const dp = appDrawing(pool.step, pool.values, pool.cands);
     expect(linesAlong(dp.shapes, 4.5)).toEqual([]);
     // nodes whose only members are those two candidates: the two are drawn side by side, as two links between the
-    // same nodes are
+    // same nodes are, on a step with sets (one with none is drawn as before phase 4: review round 3)
     const x = cd(5, 2, 4);
     const y = cd(5, 8, 4);
     const z = cd(9, 8, 4);
-    const both = arrowShapes([link(x, [y, z], false), link(x, y, false)], layout, [x, y, z]).map((s) => samples(arrow(s).d));
+    const both = arrowShapes([link(x, [y, z], false), link(x, y, false)], layout, [x, y, z], { bars: [], tiles: [], tabs: [] }).map((s) => samples(arrow(s).d));
     for (const line of both) expect(Math.abs(line[0].y - line[line.length - 1].y)).toBeLessThan(0.01);
     expect(Math.abs(both[0][0].y - both[1][0].y)).toBeCloseTo(SIZES.pair * 100, 6);
     // and in every step kept, no two links drawn as one line: none lies within a phone's arrow width (4.5 units) of
@@ -1659,5 +1659,99 @@ describe('what the second review of phase 4 found: an arrow a bar pushes onto an
     expect(dist(one.tail, five.tail)).toBeGreaterThan(0.85 * SIZES.pair * 100);
     expect(dist(one.head[0], five.head[0])).toBeGreaterThan(0.85 * SIZES.pair * 100);
     expect(linesAlong(d.shapes, PHONE)).toEqual([]);
+  });
+});
+
+describe('what the third review of phase 4 found: steps with no sets drawn as before phase 4, and two links drawn side by side', () => {
+  /** the position after `n` of the solver's steps, a technique's step there, and its drawing on the app's board, as src/ui/Grid.tsx works it out */
+  const at = (puzzle: string, n: number, tech: Tech) => {
+    const g = parseGrid(puzzle)!;
+    for (let i = 0; i < n; i++) applyStep(g, findNextStep(g)!);
+    const step = findStep(tech, g)!;
+    const [values, cands] = [Array.from(g.values), Array.from(g.cands)];
+    return { step, ...boardDrawing(step, (c) => ({ value: values[c], corner: 0, center: 0 }), (c) => cands[c]) };
+  };
+  const paths = (d: { shapes: ArrowShape[] }) => d.shapes.map((s) => ('d' in s ? s.d : s.kind));
+  const tipGap = (a: ArrowShape, b: ArrowShape) => dist(arrow(a).head[0], arrow(b).head[0]);
+
+  it('draws a step with no sets as main drew it before phase 4, byte for byte: Cell, Unit and Digit Forcing Chains on offer', () => {
+    // a link repeated once per branch, 5r3c7=2r1c7 and 7r6c1=6r4c3, lay side by side; round 2 moved the ends of every
+    // bent pair round their marks, which braided them, and joined a link at other candidates than an earlier one's,
+    // and these drawings changed, though they have no sets (each list is main's, 99516ad)
+    expect(paths(at('..53.....8......2..7..1.5..4....53...1..7...6..32...8..6.5....9..4....3......97..', 2, 'CELL_FORCING_CHAIN'))).toEqual(
+      [
+        "M 811.1 532.9 Q 216.0 770.2 44.9 601.6",
+        "M 29.1 567.3 Q 68.2 372.7 255.6 357.2",
+        "none",
+        "M 810.7 559.8 Q 113.0 780.1 36.7 607.2",
+        "M 29.7 567.4 Q 74.2 379.4 255.7 358.1",
+        "none",
+        "M 858.8 539.7 C 901.4 403.3 -31.5 434.9 16.4 558.3",
+        "M 27.9 567.1 Q 53.6 356.2 255.5 355.1",
+        "none",
+        "M 810.2 580.7 Q 329.5 512.4 242.6 403.7",
+        "none"
+      ]
+    );
+    expect(paths(at('.2..5.7..4..1....68....3...2....8..3.4..2.5.....6...1...2.9.....9......57.4...9..', 0, 'CELL_FORCING_CHAIN'))).toEqual(
+      [
+        "M 336.6 343.0 Q 385.3 287.3 539.9 532.6",
+        "M 538.1 556.5 Q 43.6 603.0 48.8 629.0",
+        "M 69.9 653.1 Q 354.0 620.0 354.0 628.5",
+        "M 357.0 370.7 Q 398.0 589.0 368.7 633.0",
+        "M 338.8 392.6 L 532.8 539.0",
+        "M 538.0 555.1 Q 86.3 556.7 62.3 629.8",
+        "M 67.7 646.8 Q 204.0 565.0 331.3 641.4",
+        "M 393.3 394.3 L 535.3 536.3",
+        "M 538.0 555.4 Q 88.1 565.6 63.4 630.2",
+        "M 69.6 651.5 Q 288.0 602.0 333.3 638.4"
+      ]
+    );
+    expect(paths(at('.....7.....56..9......81.47.4....352.98....1..............6.4..8.1..57....4.28...', 6, 'UNIT_FORCING_CHAIN'))).toEqual(
+      [
+        "M 367.3 63.9 L 632.0 240.3",
+        "M 643.5 243.0 Q 498.5 77.2 628.8 35.1",
+        "M 670.0 31.5 L 727.5 31.5",
+        "M 461.0 69.4 Q 538.7 230.3 628.1 249.4",
+        "M 642.2 244.2 Q 529.5 141.0 634.5 44.9",
+        "M 670.0 22.5 L 727.5 22.5",
+        "M 654.0 71.0 L 654.0 200.5",
+        "M 665.2 214.7 L 746.2 52.7",
+        "M 845.8 68.7 Q 782.7 174.4 678.5 217.0",
+        "M 657.1 210.7 L 738.1 48.7"
+      ]
+    );
+    // link 1, 7r1c2 - {7r1c1, 7r3c1}: a short hop back to 7r1c1 beside link 0, not a long line to 7r3c1
+    expect(paths(at('...936..2.....8..7..5...83..3..4....1.7...4.6....9..2..28...1..4..5.....9..861...', 9, 'DIGIT_FORCING_CHAIN'))).toEqual(
+      [
+        "M 48.8 83.0 L 99.5 83.0",
+        "M 114.0 93.6 Q 76.0 127.0 51.0 105.0"
+      ]
+    );
+  });
+
+  it('draws a bent link of a pair again beside its straight partner when the bent one comes first: an ALS-XY-Chain on offer whose A-B and C-D both join 6r3c1 to 6r1c1', () => {
+    // link 1 bends for D's tab and was moved round its marks by its spread alone; link 5, straight, never looked at
+    // it: tails and tips 2.6 apart, one head, the two crossing near both ends (main drew two straight arrows 9 apart)
+    const d = at('........214....5......85......26...4.6......5..7..46..5.3....6.4....2..1..67...2.', 18, 'ALS_XY_CHAIN');
+    const [one, five] = [arrow(d.shapes[1]), arrow(d.shapes[5])];
+    expect(dist(one.tail, five.tail)).toBeGreaterThan(0.85 * SIZES.pair * 100);
+    expect(tipGap(d.shapes[1], d.shapes[5])).toBeGreaterThan(0.85 * SIZES.pair * 100);
+    expect(linesAlong(d.shapes, 4.5)).toEqual([]);
+    // and two bent ones, a pair's width of rim apart round their marks rather than along the tangent, which shrank
+    // once the end was put back on the rim: they began 3.7 apart and crossed twice
+    const e = at('.....6.7.3.5....8.......9..8.46....2.2.1..5.....2.8.4..4.5..7...7...2..6..1.7....', 11, 'ALS_XY_CHAIN');
+    expect(dist(arrow(e.shapes[1]).tail, arrow(e.shapes[5]).tail)).toBeGreaterThan(0.85 * SIZES.pair * 100);
+    expect(tipGap(e.shapes[1], e.shapes[5])).toBeGreaterThan(0.85 * SIZES.pair * 100);
+  });
+
+  it("draws an arrow the tabs bend onto another's head again, two heads: ALS-XY-Chains on offer whose links 1 and 5 end at one candidate", () => {
+    // link 1, 2r7c9 - 2r1c9, went round the right of 8r1c9 on main; D's tab there turned it left, along row 1 into
+    // link 5's head (tips 0.0 apart, main's 28.5)
+    const nine = at('9..64.5..1.............8.13....3...64.95....73...6..45...........2..9...65..8...4', 13, 'ALS_XY_CHAIN');
+    expect(tipGap(nine.shapes[1], nine.shapes[5])).toBeGreaterThan(SIZES.headWidth * 100);
+    // link 1, 4r6c3 - 4r1c3, and link 5 from 4r1c8 into the same 4 (2.8 apart, main's 22.6)
+    const four = at('...936..2.....8..7..5...83..3..4....1.7...4.6....9..2..28...1..4..5.....9..861...', 13, 'ALS_XY_CHAIN');
+    expect(tipGap(four.shapes[1], four.shapes[5])).toBeGreaterThan(SIZES.headWidth * 100);
   });
 });

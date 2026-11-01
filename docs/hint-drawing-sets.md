@@ -806,8 +806,17 @@ hintMarks, i18n), and the decisions it refines point here.
   B, C to D) under row 2's marks, the tails 0.4 units apart, the tips 0.7,
   one head. A bent line of such a pair now has its ends moved round its
   marks too: by its spread, or, the other drawn before it, a pair's width
-  (9 units) from that one's ends on the side its own middle lies, so the
-  two never cross by their ends (the set fixture's `hard 0, step 8` and
+  (9 units, measured round the mark, as an angle: along the tangent it
+  shrank once the end was put back on the rim; review round 3) from that
+  one's ends on the side its own middle lies, so the two never cross by
+  their ends; where the first of a pair is bent and its ends close up on
+  a later one, the first is drawn again knowing it (round 3: at
+  `........214....5......85......26...4.6......5..7..46..5.3....6.4....2..1..67...2.`
+  after 18 steps links 1 and 5 had one head; now 9.1 apart, as main's
+  two straight arrows are 9). All of this, and `linkEnds`, on a step with
+  sets alone: one with none is drawn as before phase 4, byte for byte
+  (round 3 found round 2's end moving in 352 Cell and Unit Forcing
+  Chains on offer) (the set fixture's `hard 0, step 8` and
   `step 9` ALS-XY-Chains, whose 2s of r9c1 and r7c1 are joined twice, one
   straight and one bent round its left, draw the bent one's ends left of
   the straight one's). And a later link is not joined elsewhere where its
@@ -902,6 +911,14 @@ hintMarks, i18n), and the decisions it refines point here.
   main before phase 4. `PATH_DIGEST=menus` holds it: the menus' walk
   draws every grouped find (tests/pathDigest.ts) and holds that no arrow
   lies so but where the step drawn without its bars and tabs has it too.
+  The same pass takes two heads within a head's width (11 units) of each
+  other, nearer than without the bars and tabs (review round 3: at
+  `9..64.5..1.............8.13....3...64.95....73...6..45...........2..9...65..8...4`
+  after 13 steps D's tab turned link 1 of an ALS-XY-Chain off main's way
+  round 8r1c9 and along row 1 into link 5's head, 0.0 apart, main 28.5):
+  the moved one is drawn again with the other heads into its target kept
+  off its own, kept only where the two are then as far apart as without
+  the tabs, up to a head's width, and it runs along neither.
 - **The path digest's menus** (decision 23, How it is checked). Dealt to
   four test files, the digest's walk took about 570 s of the unit suite's
   test time, near twice main's whole suite, most of it the seven set

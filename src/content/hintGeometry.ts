@@ -1090,10 +1090,11 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     return out;
   };
 
-  // where each link's ends lie, straight: the candidates it joins, never
-  // the two an earlier link between other nodes is joined at where its
-  // nodes have others
-  const ends = linkEnds(links, layout);
+  // where each link's ends lie, straight: the candidates it joins, never,
+  // on a step with sets, the two an earlier link between other nodes is
+  // joined at where its nodes have others. A step with no sets is drawn as
+  // before phase 4, byte for byte (docs/hint-drawing-sets.md, As built)
+  const ends = sets ? linkEnds(links, layout) : links.map((l) => straightEnds(l, layout));
 
   // links between the same two nodes, in either direction, are spread apart;
   // and so are two links between other nodes joined at the same two
@@ -1105,10 +1106,12 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
   const groupOf: number[][] = links.map((_, i) => [i]);
   links.forEach((l, i) => {
     if (silent(l)) return;
-    const group = pairs.get(pairKey(l)) ?? pairs.get(endsKey(i)) ?? [];
+    // (on a step with sets: one with none spreads the links between the
+    // same two nodes alone, as before phase 4)
+    const group = pairs.get(pairKey(l)) ?? (sets ? pairs.get(endsKey(i)) : undefined) ?? [];
     group.push(i);
     pairs.set(pairKey(l), group);
-    pairs.set(endsKey(i), group);
+    if (sets) pairs.set(endsKey(i), group);
     groupOf[i] = group;
   });
   // the one direction a group's sideways shift is measured in, so links
@@ -1228,7 +1231,11 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
         return { kind: 'tie', link: i, d: `M ${f(p0.x)} ${f(p0.y)} L ${f(p1.x)} ${f(p1.y)}`, trace: [p0, p1] };
       }
     }
-    const round = tie ? [] : digitsRound(toCd);
+    // and, drawn again by the along pass, the heads of the other arrows
+    // into its target, so the two heads read as two
+    const headsInto = (): Obstacle[] =>
+      links.flatMap((o, j) => (j !== i && chosen[j] && !o.undirected && key(ends[j].toCd) === key(toCd) ? [{ p: chosen[j]![chosen[j]!.length - 1], r: SIZES.headWidth * c * 0.75 }] : []));
+    const round = tie ? [] : [...digitsRound(toCd), ...(along ? headsInto() : [])];
     // everything but the bars and tabs
     const rest: Obstacle[] = tie
       ? []
@@ -1359,18 +1366,24 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       const across = perp(alongOf(i));
       const middle = controls.length === 2 ? cubic(a, controls[0], controls[1], b, 0.5) : controls.length ? quad(a, controls[0], b, 0.5) : a;
       const side = spread && besideMid ? Math.sign((middle.x - besideMid.x) * across.x + (middle.y - besideMid.y) * across.y) || Math.sign(spread) : 0;
+      // (a step with no sets keeps its ends where they were before phase 4)
       const rim = (p: Point, cd: CellDigit, way: Point) => {
-        if (!spread) return add(p, mul(way, reachAt(layout, cd, way) + gap));
+        const reach = reachAt(layout, cd, way) + gap;
+        if (!spread || !sets) return add(p, mul(way, reach));
         const round = perp(way);
-        // how far round the mark the end is moved, along the tangent there
-        let o = shift.x * round.x + shift.y * round.y;
+        // how far round the mark the end is moved, as an angle from `way`:
+        // by its spread along the tangent there, or a pair's width of rim
+        // from the other's end, measured round the mark, not along the
+        // tangent (which shrinks once the end is put back on the rim)
+        let turn = Math.atan2(shift.x * round.x + shift.y * round.y, reach);
         if (beside) {
           const other = len(sub(beside[0], p)) < len(sub(beside[beside.length - 1], p)) ? beside[0] : beside[beside.length - 1];
           const towards = round.x * across.x + round.y * across.y;
-          const at = (other.x - p.x) * round.x + (other.y - p.y) * round.y;
-          o = at + (Math.abs(towards) > 0.2 ? Math.sign(towards) * side : -Math.sign(at) || 1) * SIZES.pair * c;
+          const d = sub(other, p);
+          const at = Math.atan2(d.x * round.x + d.y * round.y, d.x * way.x + d.y * way.y);
+          turn = at + ((Math.abs(towards) > 0.2 ? Math.sign(towards) * side : -Math.sign(at) || 1) * SIZES.pair * c) / reach;
         }
-        const w = unit(add(mul(way, reachAt(layout, cd, way) + gap), mul(round, o)));
+        const w = add(mul(way, Math.cos(turn)), mul(round, Math.sin(turn)));
         return add(p, mul(w, reachAt(layout, cd, w) + gap));
       };
       const out = first && unit(sub(first, a));
@@ -1411,6 +1424,8 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
           fork,
           rail: 0,
           hidden: hiddenOf(shaft),
+          // how often it crosses the other of its pair drawn before it, side by side (review round 3)
+          pairX: sets && beside ? crossings(shaft, beside) : 0,
           path: undefined as string | undefined
         };
       }
@@ -1442,6 +1457,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
         mid: at(0.5),
         room,
         hidden: 0,
+        pairX: 0,
         path: undefined as string | undefined,
         get run() {
           return (run ??= runOf(
@@ -1491,7 +1507,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     // other into its candidates, after the marks
     const lining = 0.1 * c;
     const slight = FORK_SLIGHT * c;
-    const ok = (s: Shape) => s.room >= need && s.hidden === 0 && s.fork === 0 && s.rail <= 0.3 * c && s.run <= 0.3 * c && s.lined <= lining && s.headRoom >= 0;
+    const ok = (s: Shape) => s.room >= need && s.hidden === 0 && s.fork === 0 && s.rail <= 0.3 * c && s.run <= 0.3 * c && s.pairX === 0 && s.lined <= lining && s.headRoom >= 0;
     const better = (x: Shape, y: Shape) => {
       const [rx, ry] = [Math.min(x.room, need), Math.min(y.room, need)];
       if (Math.abs(rx - ry) > 0.01) return rx > ry;
@@ -1507,6 +1523,8 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       if (Math.abs(ax - ay) > 1) return ax < ay;
       const [ux, uy] = [Math.max(x.run, 0.3 * c), Math.max(y.run, 0.3 * c)];
       if (Math.abs(ux - uy) > 1) return ux < uy;
+      // (two links side by side, crossing, read as two that swap)
+      if (x.pairX !== y.pairX) return x.pairX < y.pairX;
       const [gx, gy] = [Math.max(x.lined, lining), Math.max(y.lined, lining)];
       if (Math.abs(gx - gy) > 1) return gx < gy;
       return Math.min(x.headRoom, 0) > Math.min(y.headRoom, 0) + 0.01;
@@ -1642,6 +1660,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
             fork: forks.length && forkOf(pts, boxOf(pts)).crossed ? FORK_CROSSED * c : 0,
             rail: 0,
             hidden: hiddenOf(pts),
+            pairX: 0,
             path: d.join(' ')
           });
         }
@@ -1775,6 +1794,32 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
   };
 
   const shapes = links.map((l, i) => draw(l, i));
+  // on a step with sets, two links spread side by side whose ends close up
+  // (the first bent, by a bar or a tab, and moved round its marks by its
+  // spread alone, the later straight, which never looks at it): the first
+  // is drawn again knowing the later, a pair's width of rim from its ends,
+  // so the two have two heads (G10). The new drawing is kept only where
+  // the ends are apart and it keeps as clear of the marks
+  if (sets) {
+    const apartAt = 0.85 * SIZES.pair * c;
+    const closeUp = (i: number, j: number) => {
+      const [p, q] = [chosen[i], chosen[j]];
+      if (!p || !q) return false;
+      return [p[0], p[p.length - 1]].some((e) => Math.min(len(sub(e, q[0])), len(sub(e, q[q.length - 1]))) < apartAt);
+    };
+    for (const group of new Set(groupOf)) {
+      if (group.length < 2) continue;
+      const [i, ...later] = group;
+      if (shapes[i].kind !== 'arrow' || !later.some((j) => closeUp(i, j))) continue;
+      const [was, then] = [chosen[i], kept[i]];
+      const again = draw(links[i], i);
+      if (!later.some((j) => closeUp(i, j)) && kept[i].room >= Math.min(then.room, need) - 0.01) shapes[i] = again;
+      else {
+        chosen[i] = was;
+        kept[i] = then;
+      }
+    }
+  }
   // two weak ties into one candidate that cross away from it, where they
   // would swap sides just before it: the earlier is drawn again knowing
   // the later, kept apart from it, or else the later knowing the earlier.
@@ -1821,29 +1866,39 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     };
     const alongIn = (lines: (Point[] | null)[], i: number, j: number) =>
       !!lines[i] && !!lines[j] && Math.max(runAlong(lines[i]!, lines[j]!), runAlong(lines[j]!, lines[i]!)) > 0.3 * c;
+    // or whose heads lie within a head's width of each other, one head
+    // seeming to end two arrows
+    const tipOf = (x: ArrowShape) => (x.kind === 'arrow' && x.head?.length ? x.head[0] : null);
+    const tipGap = (drawn: ArrowShape[], i: number, j: number) => {
+      const [p, q] = [tipOf(drawn[i]), tipOf(drawn[j])];
+      return p && q ? len(sub(p, q)) : Infinity;
+    };
+    const headWidth = SIZES.headWidth * c;
+    const together = (i: number, j: number) => alongIn(chosen, i, j) || tipGap(shapes, i, j) < headWidth;
     const pairs: [number, number][] = [];
     links.forEach((_, i) => {
-      for (let j = i + 1; j < links.length; j++) if (directed(i) && directed(j) && groupOf[j] !== groupOf[i] && alongIn(chosen, i, j)) pairs.push([i, j]);
+      for (let j = i + 1; j < links.length; j++) if (directed(i) && directed(j) && groupOf[j] !== groupOf[i] && together(i, j)) pairs.push([i, j]);
     });
     if (pairs.length) {
-      const plain = arrowShapes(links, layout, obstacles);
+      // (still a step with sets: its ends are joined and spread as its own)
+      const plain = arrowShapes(links, layout, obstacles, { bars: [], tiles: [], tabs: [] });
       const plainLines = plain.map((s) => (s.kind === 'arrow' ? partsOf(s).shaft : null));
       const moved = (k: number) => plain[k].kind !== shapes[k].kind || (plain[k] as { d?: string }).d !== (shapes[k] as { d?: string }).d;
-      const redrawAlong = (k: number) => {
-        const [was, then] = [chosen[k], kept[k]];
-        const again = draw(links[k], k, false, true);
-        if (kept[k].run <= 0.3 * c && kept[k].room >= Math.min(then.room, need) - 0.01) {
-          shapes[k] = again;
-          return true;
-        }
+      // (its head as far from the other's as the plain drawing has them, up to a head's width)
+      const redrawAlong = (k: number, other: number) => {
+        const [was, then, shape] = [chosen[k], kept[k], shapes[k]];
+        shapes[k] = draw(links[k], k, false, true);
+        const apart = tipGap(shapes, k, other) >= Math.min(tipGap(plain, k, other), headWidth) - 0.5;
+        if (kept[k].run <= 0.3 * c && apart && kept[k].room >= Math.min(then.room, need) - 0.01) return true;
         chosen[k] = was;
         kept[k] = then;
+        shapes[k] = shape;
         return false;
       };
       for (const [i, j] of pairs) {
-        if (!alongIn(chosen, i, j) || alongIn(plainLines, i, j)) continue;
+        if (!together(i, j) || alongIn(plainLines, i, j) || (!alongIn(chosen, i, j) && tipGap(plain, i, j) <= tipGap(shapes, i, j) + 1)) continue;
         const order = moved(i) && !moved(j) ? [i, j] : [j, i];
-        if (!redrawAlong(order[0])) redrawAlong(order[1]);
+        if (!redrawAlong(order[0], order[1])) redrawAlong(order[1], order[0]);
       }
     }
   }
@@ -2276,7 +2331,7 @@ export function hintDrawing(step: Step, layout: Layout, marks: CellDigit[]): Hin
   // no dot says where a reading starts (docs/hint-drawing-sets.md, decision 13)
   const clash = alsClash(step);
   const around = (sets: SetShapes): HintDrawing => {
-    const shapes = arrowShapes(links, layout, marks, sets);
+    const shapes = arrowShapes(links, layout, marks, step.sets?.length ? sets : undefined);
     const dots = clash ? [] : startMarkers(links, layout, marks, shapes, sets);
     return { sets, shapes, dots, badges: badgePoints(shapes, layout, marks, dots, sets) };
   };

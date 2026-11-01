@@ -65,17 +65,14 @@ Updated 2026-10-27, with phase 4 built and in review.
 
 ## Next
 
-Phase 4 is merged after one review round, its findings fixed (the
-Status in hint-drawing.md). A second full round on the round 1 fixes was
-not run, to spare the week's budget: worth one, as phases 1-3 had them
-(below), with the screenshots of every set example and of the set
-fixture's eleven named positions, in all four themes, desktop and phone,
-every walk frame and the hint panel, with and without the player's own
-cell colours (`WALK=1 PANEL=1 PLAYER=1`), and the Learn gallery. Then
+Phase 4 is finished: merged after review round 1, then two confirmation
+rounds, each one's findings fixed (the Status in hint-drawing.md;
+hint-drawing-p4-round2.md and hint-drawing-p4-round3.md). Next is the
+readability pass that docs/hint-readability-2026-11.md plans (its quick
+wins first, with round 3's two lows), then
 phase 5 (forcing chains per branch,
 which also draws Death Blossom's branches from the links phase 4 emits),
-phase 6 (words), phase 7 (polish), and a readability pass over every
-technique's hint against HoDoKu, in all four themes and on a phone. The
+phase 6 (words) and phase 7 (polish). The
 relabelling of AIC with ALS steps whose only set is a bivalue cell is a
 later measured engine change (the design's decision 14).
 
