@@ -50,6 +50,11 @@ export interface Frame {
   sets?: number[];
   /** which parts of the drawing are shown */
   show: Set<Part>;
+  /**
+   * the cells a pattern's walk frame draws its roles and their bands in,
+   * where its finder walks it cell by cell (Step.walk); absent, every cell
+   */
+  cells?: Set<number>;
 }
 
 /**
@@ -827,9 +832,12 @@ export function walkFrames(step: Step): Frame[] {
   const shown = new Set<Part>(hasBands && !whole ? [] : ['units']);
   // the finder's own sentences, when it writes them (step.walk)
   if (step.walk?.frames.length) {
+    // a frame that names cells adds them to those its roles are drawn in
+    let cells: Set<number> | undefined;
     for (const f of step.walk.frames) {
       for (const part of f.show) shown.add(part);
-      frames.push({ text: f.text, links: 0, show: new Set(shown) });
+      if (f.cells) cells = new Set([...(cells ?? []), ...f.cells]);
+      frames.push({ text: f.text, links: 0, show: new Set(shown), ...(cells && { cells: new Set(cells) }) });
     }
     for (const part of ['primary', 'secondary', 'fins', 'conclusion'] as const) shown.add(part);
     frames.push({ text: [step.walk.lead, conclusionText(step)].filter(Boolean).join(' '), links: 0, show: new Set(shown) });

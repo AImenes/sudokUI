@@ -310,7 +310,7 @@ export function hodokuLine(step: Step): string {
   }
 
   const parts: string[] = [];
-  const rect = rectangleGroups(step);
+  const rect = rectangleGroups(step) ?? wingGroups(step);
   if (rect) {
     const known = digitsIn(rect[0]).join(sep);
     return `${name}: ${rect.filter((g) => g.length).map((g, i) => (i ? group(g, sep, known) : group(g, sep))).join(' / ')} => ${done}`;
@@ -365,6 +365,41 @@ function rectangleGroups(step: Step): CellDigit[][] | null {
       // the extra digit first, then the solved corners
       const extra = cells(secondary);
       return [secondary, primary.filter((cd) => !extra.has(cd.cell))];
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * The wings' line, written from the pattern as it always was, not from the
+ * colours the hint draws: the readability report's M3 colours a wing by
+ * what each digit does (a pincer's shared digit with the pivot, every z in
+ * one colour), and the forum line stays the one players paste (null for
+ * any other step). XY- and XYZ-Wing: the pivot's digits, then z in the
+ * pincers; the pivot is the cell the pattern lists twice. WXYZ-Wing: the
+ * cells of the three whose x the bivalue cell sees, the others of the
+ * three, then the bivalue cell, which its pattern lists first.
+ */
+function wingGroups(step: Step): CellDigit[][] | null {
+  const primary = step.primary ?? [];
+  const secondary = step.secondary ?? [];
+  const inCell = (list: CellDigit[], cell: number) => list.filter((cd) => cd.cell === cell);
+  switch (step.tech) {
+    case 'XY_WING':
+    case 'XYZ_WING': {
+      const pivot = primary.find((cd, i) => primary.findIndex((o) => o.cell === cd.cell) !== i)?.cell;
+      if (pivot === undefined) return null;
+      return [[...inCell(primary, pivot), ...inCell(secondary, pivot)], secondary.filter((cd) => cd.cell !== pivot)];
+    }
+    case 'WXYZ_WING': {
+      const linked = primary[0]?.cell;
+      const z = secondary[0]?.digit;
+      if (linked === undefined || z === undefined) return null;
+      const x = inCell(primary, linked).find((cd) => cd.digit !== z)?.digit;
+      const three = [...new Set(primary.map((cd) => cd.cell))].filter((c) => c !== linked);
+      const holdsX = (c: number) => primary.some((cd) => cd.cell === c && cd.digit === x);
+      return [three.filter(holdsX).flatMap((c) => inCell(primary, c)), three.filter((c) => !holdsX(c)).flatMap((c) => inCell(primary, c)), inCell(primary, linked)];
     }
     default:
       return null;

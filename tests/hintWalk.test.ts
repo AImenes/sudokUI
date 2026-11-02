@@ -103,8 +103,10 @@ const candsIn = (tech: Tech, u: number, d: number): number[] => {
 describe('a walk', () => {
   it("walks a pattern in its finder's own sentences when the finder writes them (step.walk, H1)", () => {
     const ex = exampleOf('XY_WING');
+    // the XY-Wing without the walk its finder writes
+    const bare: Step = { ...ex.step, walk: undefined };
     const s: Step = {
-      ...ex.step,
+      ...bare,
       walk: {
         frames: [
           { text: 'The pivot holds only two digits.', show: ['primary'] },
@@ -117,13 +119,13 @@ describe('a walk', () => {
     expect(frames.map((f) => f.text)).toEqual([
       'The pivot holds only two digits.',
       'Each pincer shares one of them.',
-      `Either way a pincer holds the digit. ${walkFrames(ex.step).at(-1)!.text}`
+      `Either way a pincer holds the digit. ${walkFrames(bare).at(-1)!.text}`
     ]);
     expect([frames[0].show.has('primary'), frames[0].show.has('secondary')]).toEqual([true, false]);
     expect([frames[1].show.has('primary'), frames[1].show.has('secondary')]).toEqual([true, true]);
     expect(frames[2].show.has('conclusion')).toBe(true);
     // without it, the labels as before
-    expect(walkFrames(ex.step).length).toBe(3);
+    expect(walkFrames(bare).length).toBe(3);
   });
 
   it('draws something new in every frame: no two frames in a row draw the same (M1)', () => {
@@ -153,7 +155,10 @@ describe('a walk', () => {
       // a band that is the whole drawing (a Full House) is there from the first frame
       const whole = !k.step.primary?.length && !k.step.secondary?.length && !k.step.fins?.length;
       for (const [i, frame] of walkFrames(k.step).entries()) {
-        const want = units.filter((u) => whole || frame.show.has(u.role)).map((u) => `${u.unit}:${u.role}`);
+        // a pattern walked cell by cell (step.walk) bands a house once the walk has named every cell of the role in it
+        const named = (u: (typeof units)[number]) =>
+          !frame.cells || ((u.role === 'primary' ? k.step.primary : k.step.secondary) ?? []).every((cd) => !UNITS[u.unit].includes(cd.cell) || frame.cells!.has(cd.cell));
+        const want = units.filter((u) => whole || (frame.show.has(u.role) && named(u))).map((u) => `${u.unit}:${u.role}`);
         expect(bandsAt(k, frame).sort(), `${k.id}, frame ${i + 1}`).toEqual(want.sort());
       }
       banded++;

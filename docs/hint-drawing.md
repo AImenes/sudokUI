@@ -331,7 +331,12 @@ Every rule is numbered so a commit, a test or a review can cite it.
   house their argument locks a digit into, with that digit's candidates in
   the acts-through colour: the Hidden Rectangle's row and column, UR Type
   3's naked subset's house (with the roof's extras), UR Type 4's house of
-  the locked digit, UR Type 6's two lines.
+  the locked digit, UR Type 6's two lines. A pattern its finder walks cell
+  by cell (phase 6: the XY-, XYZ- and WXYZ-Wing, `Step.walk` with
+  `cells`) draws its roles only in the cells the walk has named so far,
+  and a band once the walk has named every cell of the band's role in that
+  house: a WXYZ-Wing's house comes with its three cells, not with the
+  bivalue cell before them.
 - **G16. Sets.** A group node (the 2-3 candidates of one digit in one box
   and one row or column) and an almost locked set are drawn as what they
   are, never as a hull round cells or candidates that are not theirs (a

@@ -238,7 +238,10 @@ describe('the HoDoKu line', () => {
   });
 
   it('writes wings, uniqueness and colouring one colour after another', () => {
+    // written from the pattern as it always was, not from the colours by function the hint draws (the readability report's M3)
     expect(stepText(step('XY_WING'))).toBe('XY-Wing: 7/9 in r7c7 / 6 in r7c6,r8c9 => r7c8<>6, r8c6<>6');
+    expect(stepText(step('XYZ_WING'))).toBe('XYZ-Wing: 4/5/9 in r2c5 / 4 in r3c6,r7c5 => r3c5<>4');
+    expect(stepText(step('WXYZ_WING'))).toBe('WXYZ-Wing: 1/9 in r4c4 / 1/4/7 in r56c5 / 4/9 in r4c3 => r4c6<>4, r5c3<>4');
     expect(stepText(step('UNIQUENESS_1'))).toBe('Unique Rectangle Type 1: 5/8 in r4c1,r5c18 => r4c8<>5, r4c8<>8');
     expect(stepText(step('UNIQUENESS_4'))).toBe('Unique Rectangle Type 4: 4/6 in r28c79 => r2c9<>4, r8c9<>4');
     expect(stepText(step('SIMPLE_COLORS'))).toBe('Simple Colors Trap: 4 (r1c5,r6c4,r8c6) / (r1c6,r5c5,r8c8) => r6c8<>4');

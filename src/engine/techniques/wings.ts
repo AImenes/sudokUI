@@ -1,7 +1,7 @@
 import { Grid, PEERS, bit, digitsOf, popcount, sees, cellName } from '../board';
 import { Step, CellDigit, alternatingLinks } from '../steps';
 import { strongLinks } from './singleDigit';
-import { tr } from '../text';
+import { tr, listAnd } from '../text';
 
 /**
  * Wings — small pivot-and-pincer patterns built on bivalue cells.
@@ -15,6 +15,15 @@ import { tr } from '../text';
  * - WXYZ-Wing: four cells, four digits, one non-restricted digit Z that must
  *   land inside the pattern — an ALS argument in miniature.
  */
+
+/** the removals' cells named, and whether there is one: a lead's verb agrees with them */
+const removed = (elims: CellDigit[]) => ({ cells: listAnd(elims.map((e) => cellName(e.cell))), one: elims.length === 1 });
+
+/** a pincer's frame: if the pivot takes the digit it shares, the pincer is left with z */
+const pincerText = (g: Grid, pivot: number, pincer: number, shared: number, z: number) => {
+  const [a, b] = digitsOf(g.cands[pincer]);
+  return tr`If ${cellName(pivot)} is ${shared}, the pincer ${cellName(pincer)} (only ${a} and ${b}) must be ${z}.`;
+};
 
 function collectZElims(
   g: Grid,
@@ -48,13 +57,27 @@ export function findXYWing(g: Grid): Step | null {
         if (g.cands[w2] !== (bit(y) | bit(z))) continue;
         const elims = collectZElims(g, z, [w1, w2], [pivot, w1, w2]);
         if (!elims.length) continue;
+        const out = removed(elims);
+        // coloured by what each digit does (the readability report's M3): the
+        // pivot's digits and the one each pincer shares with it, which tie
+        // the pincer to the pivot, and z in each pincer; walked cell by cell
+        // (H1). The Copy step line is written from the pivot and the pincers'
+        // z as it always was (src/content/eureka.ts wingGroups)
         return {
           tech: 'XY_WING',
           placements: [],
           eliminations: elims,
-          primary: [{ cell: pivot, digit: x }, { cell: pivot, digit: y }],
+          primary: [{ cell: pivot, digit: x }, { cell: pivot, digit: y }, { cell: w1, digit: x }, { cell: w2, digit: y }],
           secondary: [{ cell: w1, digit: z }, { cell: w2, digit: z }],
-          labels: { primary: tr`pivot`, secondary: tr`pincers` },
+          labels: { primary: tr`the pivot and the digit each pincer shares with it`, secondary: tr`${z} in each pincer` },
+          walk: {
+            frames: [
+              { text: tr`The pivot ${cellName(pivot)} holds only ${listAnd([x, y])}.`, show: ['primary'], cells: [pivot] },
+              { text: pincerText(g, pivot, w1, x, z), show: ['secondary'], cells: [w1] },
+              { text: pincerText(g, pivot, w2, y, z), show: [], cells: [w2] }
+            ],
+            lead: out.one ? tr`Either way a pincer is ${z}; ${out.cells} sees both.` : tr`Either way a pincer is ${z}; ${out.cells} see both.`
+          },
           description: tr`XY-Wing: pivot ${cellName(pivot)} (${digitsOf(g.cands[pivot]).join('/')}) with pincers ${cellName(w1)} (${digitsOf(g.cands[w1]).join('/')}) and ${cellName(w2)} (${digitsOf(g.cands[w2]).join('/')}); one pincer must be ${z}, so ${z} is removed from cells seeing both.`
         };
       }
@@ -81,16 +104,35 @@ export function findXYZWing(g: Grid): Step | null {
         const z = digitsOf(shared)[0];
         const elims = collectZElims(g, z, [pivot, wings[i], wings[j]], [pivot, wings[i], wings[j]]);
         if (!elims.length) continue;
+        const out = removed(elims);
+        // the pivot's other two digits, each with the pincer that shares it,
+        // in the order of the digits
+        const [x, y] = digitsOf(pivotMask & ~bit(z));
+        const [wx, wy] = [wings[i], wings[j]].sort((a, b) => (g.cands[a] & bit(x) ? -1 : 1) - (g.cands[b] & bit(x) ? -1 : 1));
+        // coloured by what each digit does (M3): z in all three cells, at
+        // least one of which is z whichever digit the pivot takes, and x and
+        // y, which tie each pincer to the pivot; walked cell by cell (H1)
         return {
           tech: 'XYZ_WING',
           placements: [],
           eliminations: elims,
-          primary: digitsOf(pivotMask).map((digit) => ({ cell: pivot, digit })),
+          primary: [{ cell: pivot, digit: x }, { cell: pivot, digit: y }, { cell: wx, digit: x }, { cell: wy, digit: y }],
           secondary: [
-            { cell: wings[i], digit: z },
-            { cell: wings[j], digit: z }
+            { cell: pivot, digit: z },
+            { cell: wx, digit: z },
+            { cell: wy, digit: z }
           ],
-          labels: { primary: tr`pivot`, secondary: tr`pincers` },
+          labels: { primary: tr`the pivot's ${x} and ${y}, and the one each pincer shares with it`, secondary: tr`${z} in all three cells` },
+          walk: {
+            frames: [
+              { text: tr`The pivot ${cellName(pivot)} holds only ${listAnd(digitsOf(pivotMask))}.`, show: ['primary', 'secondary'], cells: [pivot] },
+              { text: pincerText(g, pivot, wx, x, z), show: [], cells: [wx] },
+              { text: pincerText(g, pivot, wy, y, z), show: [], cells: [wy] }
+            ],
+            lead: out.one
+              ? tr`Or the pivot is ${z} itself. Whichever digit it takes, one of the three cells is ${z}; ${out.cells} sees all three.`
+              : tr`Or the pivot is ${z} itself. Whichever digit it takes, one of the three cells is ${z}; ${out.cells} see all three.`
+          },
           description: tr`XYZ-Wing: pivot ${cellName(pivot)} (${digitsOf(pivotMask).join('/')}) with pincers ${cellName(wings[i])} (${digitsOf(g.cands[wings[i]]).join('/')}) and ${cellName(wings[j])} (${digitsOf(g.cands[wings[j]]).join('/')}). Whichever digit the pivot takes, one of the three cells is ${z}, so ${z} is removed from every cell that sees all three.`
         };
       }

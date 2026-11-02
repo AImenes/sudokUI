@@ -3777,6 +3777,14 @@
     {
      "cell": 60,
      "digit": 9
+    },
+    {
+     "cell": 59,
+     "digit": 7
+    },
+    {
+     "cell": 71,
+     "digit": 9
     }
    ],
    "secondary": [
@@ -3790,8 +3798,38 @@
     }
    ],
    "labels": {
-    "primary": "pivot",
-    "secondary": "pincers"
+    "primary": "the pivot and the digit each pincer shares with it",
+    "secondary": "6 in each pincer"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "The pivot r7c7 holds only 7 and 9.",
+      "show": [
+       "primary"
+      ],
+      "cells": [
+       60
+      ]
+     },
+     {
+      "text": "If r7c7 is 7, the pincer r7c6 (only 6 and 7) must be 6.",
+      "show": [
+       "secondary"
+      ],
+      "cells": [
+       59
+      ]
+     },
+     {
+      "text": "If r7c7 is 9, the pincer r8c9 (only 6 and 9) must be 6.",
+      "show": [],
+      "cells": [
+       71
+      ]
+     }
+    ],
+    "lead": "Either way a pincer is 6; r7c8 and r8c6 see both."
    },
    "description": "XY-Wing: pivot r7c7 (7/9) with pincers r7c6 (6/7) and r8c9 (6/9); one pincer must be 6, so 6 is removed from cells seeing both."
   }
@@ -3895,18 +3933,26 @@
    "primary": [
     {
      "cell": 13,
-     "digit": 4
-    },
-    {
-     "cell": 13,
      "digit": 5
     },
     {
      "cell": 13,
      "digit": 9
+    },
+    {
+     "cell": 23,
+     "digit": 5
+    },
+    {
+     "cell": 58,
+     "digit": 9
     }
    ],
    "secondary": [
+    {
+     "cell": 13,
+     "digit": 4
+    },
     {
      "cell": 23,
      "digit": 4
@@ -3917,8 +3963,37 @@
     }
    ],
    "labels": {
-    "primary": "pivot",
-    "secondary": "pincers"
+    "primary": "the pivot's 5 and 9, and the one each pincer shares with it",
+    "secondary": "4 in all three cells"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "The pivot r2c5 holds only 4, 5 and 9.",
+      "show": [
+       "primary",
+       "secondary"
+      ],
+      "cells": [
+       13
+      ]
+     },
+     {
+      "text": "If r2c5 is 5, the pincer r3c6 (only 4 and 5) must be 4.",
+      "show": [],
+      "cells": [
+       23
+      ]
+     },
+     {
+      "text": "If r2c5 is 9, the pincer r7c5 (only 4 and 9) must be 4.",
+      "show": [],
+      "cells": [
+       58
+      ]
+     }
+    ],
+    "lead": "Or the pivot is 4 itself. Whichever digit it takes, one of the three cells is 4; r3c5 sees all three."
    },
    "description": "XYZ-Wing: pivot r2c5 (4/5/9) with pincers r3c6 (4/5) and r7c5 (4/9). Whichever digit the pivot takes, one of the three cells is 4, so 4 is removed from every cell that sees all three."
   }
@@ -4025,46 +4100,86 @@
    ],
    "primary": [
     {
+     "cell": 29,
+     "digit": 4
+    },
+    {
+     "cell": 29,
+     "digit": 9
+    },
+    {
      "cell": 30,
      "digit": 1
     },
     {
      "cell": 30,
      "digit": 9
+    },
+    {
+     "cell": 40,
+     "digit": 4
+    },
+    {
+     "cell": 40,
+     "digit": 7
+    },
+    {
+     "cell": 49,
+     "digit": 1
+    },
+    {
+     "cell": 49,
+     "digit": 7
     }
    ],
    "secondary": [
     {
-     "cell": 40,
+     "cell": 29,
      "digit": 4
     },
     {
      "cell": 40,
-     "digit": 7
-    },
-    {
-     "cell": 49,
-     "digit": 1
-    },
-    {
-     "cell": 49,
-     "digit": 7
+     "digit": 4
     }
    ],
-   "fins": [
+   "units": [
     {
-     "cell": 29,
-     "digit": 4
-    },
-    {
-     "cell": 29,
-     "digit": 9
+     "unit": 22,
+     "role": "primary"
     }
    ],
    "labels": {
-    "primary": "cell whose 9 the bivalue cell sees",
-    "secondary": "other cells of the three",
-    "fins": "bivalue cell"
+    "primary": "the bivalue cell and the three cells in box 5",
+    "secondary": "the 4s: at least one of them is true"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "The bivalue cell r4c3 holds only 4 and 9.",
+      "show": [
+       "primary"
+      ],
+      "cells": [
+       29
+      ]
+     },
+     {
+      "text": "The three cells r4c4, r5c5 and r6c5 in box 5 hold only 1, 4, 7 and 9 between them: one digit more than cells.",
+      "show": [],
+      "cells": [
+       30,
+       40,
+       49
+      ]
+     },
+     {
+      "text": "If r4c3 is 9, none of the three cells can be 9 (it sees the 9 in r4c4), so they must be 1, 4 and 7, and r5c5 is 4.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "Either way r4c3 or r5c5 is 4; r4c6 and r5c3 see both."
    },
    "description": "WXYZ-Wing: bivalue cell r4c3 (4/9) and the three cells r4c4, r5c5 and r6c5 in box 5, which hold 1/4/7/9 between them. The 9 in r4c3 sees every 9 in the three cells. Either r4c3 is 4, or it is 9 and the three cells in box 5 must be 1, 4 and 7. At least one of the four cells is therefore 4, so 4 is removed from every other cell that sees all the 4s among them."
   }

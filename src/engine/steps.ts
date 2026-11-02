@@ -212,10 +212,14 @@ export interface Step {
    * H1, phase 6): each frame's sentence, naming the cells and houses and
    * giving the argument, and the roles it draws from then on (a role's
    * bands with it); then the conclusion frame, opening with `lead` when
-   * given (a uniqueness pattern's why). A step without it walks its labels
-   * back, one frame a role (src/engine/hintFrames.ts walkFrames)
+   * given (a uniqueness pattern's why). A frame that names `cells` draws
+   * its roles, and their bands, only in the cells the walk has named so
+   * far, so a pattern can be walked cell by cell in the colours of its
+   * function (a wing's pivot, then each pincer); the conclusion frame draws
+   * every cell. A step without it walks its labels back, one frame a role
+   * (src/engine/hintFrames.ts walkFrames)
    */
-  walk?: { frames: { text: string; show: ('primary' | 'secondary' | 'fins')[] }[]; lead?: string };
+  walk?: { frames: { text: string; show: ('primary' | 'secondary' | 'fins')[]; cells?: number[] }[]; lead?: string };
   /** whole houses shaded as bands, under the candidate marks */
   units?: UnitBand[];
   /** ordered chain of cells — legacy centre-to-centre fallback drawing */

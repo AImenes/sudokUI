@@ -35,7 +35,7 @@ const techs = Object.keys(EXAMPLES) as Tech[];
 const plain = (step: Step | null) => JSON.parse(JSON.stringify(step));
 /** what a step does and draws, without its words (description, legend labels, the walk's sentences) */
 const deeds = (step: Step | null) =>
-  JSON.parse(JSON.stringify(step, (key, value) => (['description', 'labels', 'text'].includes(key) ? undefined : value)));
+  JSON.parse(JSON.stringify(step, (key, value) => (['description', 'labels', 'text', 'lead'].includes(key) ? undefined : value)));
 
 describe('worked examples', () => {
   it('cover most of the catalogue', () => {
