@@ -26,7 +26,29 @@ share the player's own marks is a possible later feature (below).
 
 ## Fixed (all low)
 
-<!-- FIXED -->
+In 0123ba2 (`git log` has each one's detail):
+1. A degenerate Sashimi X-Wing (a base row whose only digits lie in the fins' box: really Locked Candidates) said its
+   fin "stands in for" a corner in another box. The corner sentence is now written only when the corner lies in the
+   fins' box; the finder is unchanged. The scan checks the rule along the practice paths, where the case does occur.
+2. The sashimi line of a bigger fish names the cell and the digit: "..., in r8c2: the fins r8c7 and r8c9 stand in
+   for a second 2." (nb and es name the digit too.)
+3. A hidden subset's description says its cells "can hold nothing else", not that they hold nothing else while the
+   board still shows the digits about to go.
+4. The subset legends say the count in words ("the only two cells of column 8 where 2 and 8 can go").
+5. A finned fish's removal frame lists its cells in reading order, as the conclusion does, and two cells read
+   "neither of them".
+6. The privacy page says a picture is one kind, whether or not a hint is drawn, and that the line does not say which;
+   its heading names pictures; the nb and es descriptions are shorter than main's.
+7. When a phone's share sheet refuses and the picture is saved instead, the button says "✓ Saved"; a failed picture
+   no longer hides the buttons after a later one succeeds.
+8. The fins' box dots in the picture and the Learn diagrams keep the board's one dot, one gap.
+9. The picture of a walk frame leaves out the step numbers on its arrows, and the dialog, the spec (G25) and the
+   reach plan now say so.
+10. No-break spaces keep a level with its rating in the picture's footer, and a digit with its words in the fins'
+    box legend.
+
+The checks after the fix: tsc, the whole unit suite (1524 passed), the path digest unchanged, the build (270 pages)
+and the browser tests in both font setups (95 of 95).
 
 ## Left for later (low)
 
