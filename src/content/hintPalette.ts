@@ -244,6 +244,15 @@ export const MARK = {
   /** the dash of an acts-through (cover) band's outline, so base and cover differ by shape too */
   coverDash: [0.1, 0.06],
   /**
+   * a finned fish's fins' box outline: dots (round caps on no length), so
+   * the base, the cover and the fins' box differ by shape too, wider than a
+   * band's outline so a dot reads on a phone, and inset further, inside the
+   * outlines of the base and cover bands that run along the box's edges
+   */
+  finDots: [0, 0.09],
+  finWidth: 0.045,
+  finInset: 0.08,
+  /**
    * a "one of these" square (docs/hint-drawing-sets.md, decision 1): half
    * its side, its corners' radius, and its edge in the true ink, drawn
    * inwards. It is the same on every board and in the Learn diagrams; its

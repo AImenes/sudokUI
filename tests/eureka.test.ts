@@ -147,6 +147,18 @@ describe('the HoDoKu line', () => {
     expect(stepText(step('SWORDFISH'))).toBe('Swordfish: 9 c148 r345 => r5c2<>9');
     expect(stepText(step('FINNED_X_WING'))).toBe('Finned X-Wing: 8 c39 r58 fr4c3 => r5c1<>8');
     expect(stepText(step('SASHIMI_X_WING'))).toBe('Sashimi X-Wing: 1 c48 r69 fr78c4 => r9c6<>1');
+    // the other five as they were before phase 6 gave the fish their walks and their fins' box
+    expect(stepText(step('JELLYFISH'))).toBe('Jellyfish: 6 r2689 c5689 => r3c9<>6');
+    expect(stepText(step('FINNED_SWORDFISH'))).toBe('Finned Swordfish: 3 r237 c247 fr7c3 => r8c2<>3');
+    expect(stepText(step('SASHIMI_SWORDFISH'))).toBe('Sashimi Swordfish: 1 r568 c357 fr6c2 => r4c3<>1');
+    expect(stepText(step('FINNED_JELLYFISH'))).toBe('Finned Jellyfish: 1 r1478 c1348 fr4c7 => r5c8<>1');
+    expect(stepText(step('SASHIMI_JELLYFISH'))).toBe('Sashimi Jellyfish: 6 r3478 c1249 fr3c6 => r1c4<>6');
+    // the fins' box, a band of the fins' role, is no house of the line
+    for (const tech of ['FINNED_X_WING', 'SASHIMI_X_WING', 'FINNED_SWORDFISH', 'SASHIMI_SWORDFISH', 'FINNED_JELLYFISH', 'SASHIMI_JELLYFISH'] as Tech[]) {
+      const s = step(tech);
+      expect(s.units!.some((u) => u.role === 'fin'), tech).toBe(true);
+      expect(stepText({ ...s, units: s.units!.filter((u) => u.role !== 'fin') }), tech).toBe(stepText(s));
+    }
   });
 
   it('names a subset by its digits and cells, an intersection by its house', () => {

@@ -169,12 +169,15 @@ export function alternatingLinks(
 /**
  * A whole row, column or box shaded as a band: a fish's base and cover
  * lines, the house a locked set lives in, the house a single was found in.
- * Primary and secondary follow the step's colour grammar and its labels.
+ * Primary and secondary follow the step's colour grammar and its labels;
+ * 'fin' is the box a finned fish's fins lie in, which every removal shares
+ * (outlined dotted in the fin's colour, named by `labels.finBox`, and drawn
+ * in a walk from the frame that shows 'finBox')
  */
 export interface UnitBand {
   /** index into UNITS: rows 0-8, columns 9-17, boxes 18-26 */
   unit: number;
-  role: 'primary' | 'secondary';
+  role: 'primary' | 'secondary' | 'fin';
 }
 
 /**
@@ -254,7 +257,7 @@ export interface Step {
    * what each colour means in this step, for the legend; a colour without a
    * label here is named generically ("the pattern", "supporting cells", "fin")
    */
-  labels?: { primary?: string; secondary?: string; fins?: string };
+  labels?: { primary?: string; secondary?: string; fins?: string; finBox?: string };
   /**
    * A pattern's walk in its finder's own sentences (the readability report's
    * H1, phase 6): each frame's sentence, naming the cells and houses and
@@ -264,10 +267,12 @@ export interface Step {
    * its roles, and their bands, only in the cells the walk has named so
    * far, so a pattern can be walked cell by cell in the colours of its
    * function (a wing's pivot, then each pincer); the conclusion frame draws
-   * every cell. A step without it walks its labels back, one frame a role
+   * every cell. A finned fish shows its fins' box ('finBox', its band of
+   * role 'fin') in a frame of its own, after its cover lines. A step
+   * without it walks its labels back, one frame a role
    * (src/engine/hintFrames.ts walkFrames)
    */
-  walk?: { frames: { text: string; show: ('primary' | 'secondary' | 'fins')[]; cells?: number[] }[]; lead?: string };
+  walk?: { frames: { text: string; show: ('primary' | 'secondary' | 'fins' | 'finBox')[]; cells?: number[] }[]; lead?: string };
   /**
    * candidates the Copy step line names after the pattern though no view
    * draws them, as the line always named them (src/content/eureka.ts):

@@ -157,8 +157,12 @@ describe('a walk', () => {
       for (const [i, frame] of walkFrames(k.step).entries()) {
         // a pattern walked cell by cell (step.walk) bands a house once the walk has named every cell of the role in it
         const named = (u: (typeof units)[number]) =>
-          !frame.cells || ((u.role === 'primary' ? k.step.primary : k.step.secondary) ?? []).every((cd) => !UNITS[u.unit].includes(cd.cell) || frame.cells!.has(cd.cell));
-        const want = units.filter((u) => whole || (frame.show.has(u.role) && named(u))).map((u) => `${u.unit}:${u.role}`);
+          !frame.cells ||
+          ((u.role === 'primary' ? k.step.primary : u.role === 'secondary' ? k.step.secondary : k.step.fins) ?? []).every(
+            (cd) => !UNITS[u.unit].includes(cd.cell) || frame.cells!.has(cd.cell)
+          );
+        // a finned fish's fins' box comes with the frame that shows it
+        const want = units.filter((u) => whole || (frame.show.has(u.role === 'fin' ? 'finBox' : u.role) && named(u))).map((u) => `${u.unit}:${u.role}`);
         expect(bandsAt(k, frame).sort(), `${k.id}, frame ${i + 1}`).toEqual(want.sort());
       }
       banded++;

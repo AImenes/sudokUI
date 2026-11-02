@@ -367,14 +367,17 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   // a pattern walked cell by cell draws its roles only in the cells its
   // walk has named so far (Step.walk)
   const named = (cell: number) => !opts.cells || opts.cells.has(cell);
-  const roleIn = (u: UnitBand) => ((u.role === 'primary' ? step.primary : step.secondary) ?? []).filter((cd) => UNITS[u.unit].includes(cd.cell));
+  const roleIn = (u: UnitBand) =>
+    ((u.role === 'primary' ? step.primary : u.role === 'secondary' ? step.secondary : step.fins) ?? []).filter((cd) => UNITS[u.unit].includes(cd.cell));
   // a walk frame draws a band with its role: a house the pattern lives in
   // from the frame that shows the pattern, a house that loses from the frame
-  // that shows what acts on it, and in a walk cell by cell once the walk has
+  // that shows what acts on it, a finned fish's fins' box from the frame
+  // that shows it ('finBox'), and in a walk cell by cell once the walk has
   // named every cell of the role in it; 'units' draws every band at once (a
   // band that is the whole drawing, a forcing step's broken house from the
   // frame that reaches it: src/engine/hintFrames.ts)
-  const bands = (step.units ?? []).filter((u) => show('units') || (opts.walking && show(u.role) && roleIn(u).every((cd) => named(cd.cell))));
+  const partOf = (u: UnitBand): Part => (u.role === 'fin' ? 'finBox' : u.role);
+  const bands = (step.units ?? []).filter((u) => show('units') || (opts.walking && show(partOf(u)) && roleIn(u).every((cd) => named(cd.cell))));
   const links = opts.links ?? step.links ?? [];
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
@@ -551,6 +554,8 @@ export function legendKinds(
   shown: Set<CandMark>;
   onValue: Set<CandMark>;
   onBand: Set<CandMark>;
+  /** a finned fish's fins' box is drawn, a band dotted in the fins' colour (its own entry, labels.finBox) */
+  finBox: boolean;
   intoRemove: Role[];
   intoPlace: Role[];
   refuted: boolean;
@@ -586,8 +591,9 @@ export function legendKinds(
     const kind = k === 'elimOn' ? 'elim' : k;
     if (!shown.has(kind)) onValue.add(kind);
   }
+  // a fins' box is named on its own (finBox), whatever its fins are drawn as
   const onBand = new Set<CandMark>();
-  for (const u of marks.bands) if (!shown.has(u.role) && !onValue.has(u.role)) onBand.add(u.role);
+  for (const u of marks.bands) if (u.role !== 'fin' && !shown.has(u.role) && !onValue.has(u.role)) onBand.add(u.role);
   for (const k of [...onValue, ...onBand]) shown.add(k);
   const intoRemove: Role[] = [];
   const intoPlace: Role[] = [];
@@ -616,7 +622,8 @@ export function legendKinds(
   const setSquares = [...marks.cands].some(([cell, m]) => [...m].some(([digit, k]) => k === 'oneOf' && !onBar.has(`${cell}:${digit}`)));
   const tiles = [...new Set(marks.sets.flatMap((m) => (m.tint ? [m.tint] : [])))].sort((a, b) => a - b);
   const removeWords = shown.has('elim') ? alsRemoveWords(step) : null;
-  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted, clusters, lines: marks.lines, proven, bars, setSquares, tiles, removeWords };
+  const finBox = marks.bands.some((u) => u.role === 'fin');
+  return { shown, onValue, onBand, finBox, intoRemove, intoPlace, refuted: marks.refuted, clusters, lines: marks.lines, proven, bars, setSquares, tiles, removeWords };
 }
 
 /**

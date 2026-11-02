@@ -459,6 +459,13 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                   {hint.labels?.fins ?? t('fin')}
                 </li>
               )}
+              {/* a finned fish's fins' box: a small band, dotted, in the fins' colour */}
+              {legend.finBox && hint.labels?.finBox && (
+                <li>
+                  <i className="swatch-fin on-band fin-box" />
+                  {hint.labels.finBox}
+                </li>
+              )}
               {/* a bar in the pattern's ink (a proof-only view) or the removal's: what a bar is, its swatch in the ink drawn, or one bar in each where both are */}
               {(legend.bars.has('primary') || legend.bars.has('elim')) && (
                 <li>

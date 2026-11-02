@@ -20,12 +20,13 @@ import { alsClash, clashAt, deriveTruth, isAlsChain, refutation } from './truth'
 
 /**
  * A part of the drawing a frame shows: every band at once ('units'), a
- * pattern's roles, each with its bands in a walk frame; a colouring's
- * clusters in their shades, and its proof (the colour proven false as false
- * rings, its partner as true discs); a Death Blossom's stem, its candidates
- * before any branch is drawn; the conclusion.
+ * pattern's roles, each with its bands in a walk frame; a finned fish's
+ * fins' box, its band of role 'fin' ('finBox'); a colouring's clusters in
+ * their shades, and its proof (the colour proven false as false rings, its
+ * partner as true discs); a Death Blossom's stem, its candidates before any
+ * branch is drawn; the conclusion.
  */
-export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'cluster0' | 'cluster1' | 'proof' | 'stem' | 'conclusion';
+export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'finBox' | 'cluster0' | 'cluster1' | 'proof' | 'stem' | 'conclusion';
 
 export interface Frame {
   /** the sentence for this frame */
@@ -884,6 +885,8 @@ export function walkFrames(step: Step): Frame[] {
   // pattern, a house that loses with what acts on it; only a band that is
   // the whole drawing (a Full House's house) is there with every band
   const whole = hasBands && !step.primary?.length && !step.secondary?.length && !step.fins?.length;
+  // a finned fish's fins' box, banded in the fins' colour (its own part, 'finBox')
+  const finBand = !!step.units?.some((u) => u.role === 'fin');
   const shown = new Set<Part>(hasBands && !whole ? [] : ['units']);
   // the finder's own sentences, when it writes them (step.walk)
   if (step.walk?.frames.length) {
@@ -895,6 +898,7 @@ export function walkFrames(step: Step): Frame[] {
       frames.push({ text: f.text, links: 0, show: new Set(shown), ...(cells && { cells: new Set(cells) }) });
     }
     for (const part of ['primary', 'secondary', 'fins', 'conclusion'] as const) shown.add(part);
+    if (finBand) shown.add('finBox');
     frames.push({ text: [step.walk.lead, conclusionText(step)].filter(Boolean).join(' '), links: 0, show: new Set(shown) });
     return frames;
   }
@@ -906,6 +910,8 @@ export function walkFrames(step: Step): Frame[] {
   const banded = (role: 'primary' | 'secondary') => !!step.units?.some((u) => u.role === role);
   if (step.primary?.length || banded('primary')) add('primary', step.labels?.primary);
   if (step.secondary?.length || banded('secondary')) add('secondary', step.labels?.secondary);
+  // a fins' box comes with its fins in a walk its finder does not write
+  if (finBand) shown.add('finBox');
   if (step.fins?.length) add('fins', step.labels?.fins);
   shown.add('primary');
   shown.add('secondary');

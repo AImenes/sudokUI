@@ -141,7 +141,7 @@ export function boardSvg(example: Example, title: string): string {
   parts.push(`<rect x="${L}" y="${L}" width="${9 * S}" height="${9 * S}" fill="#ffffff"/>`);
   // the houses a pattern lives in (G15): a full-strength outline over a
   // barely-there fill, solid for the pattern and dashed for what it acts
-  // through, under everything else
+  // through, dotted for a finned fish's fins' box, under everything else
   for (const { unit, role } of step.units ?? []) {
     const r =
       unit < 9
@@ -151,10 +151,15 @@ export function boardSvg(example: Example, title: string): string {
           : { x: L + ((unit - 18) % 3) * 3 * S, y: L + Math.floor((unit - 18) / 3) * 3 * S, w: 3 * S, h: 3 * S };
     const { fill, ink } = fillOf(P, role);
     const k = S / 100;
+    const inset = role === 'fin' ? MARK.finInset * S : 3.5 * k;
     parts.push(
       `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${fill}" fill-opacity="${P.bandAlpha}"/>`,
-      `<rect x="${f(r.x + 3.5 * k)}" y="${f(r.y + 3.5 * k)}" width="${f(r.w - 7 * k)}" height="${f(r.h - 7 * k)}" rx="${f(8 * k)}" fill="none" stroke="${ink}" stroke-width="${f(3 * k * LINE)}"${
-        role === 'secondary' ? ` stroke-dasharray="${MARK.coverDash.map((d) => f(d * S)).join(' ')}"` : ''
+      `<rect x="${f(r.x + inset)}" y="${f(r.y + inset)}" width="${f(r.w - 2 * inset)}" height="${f(r.h - 2 * inset)}" rx="${f(8 * k)}" fill="none" stroke="${ink}" stroke-width="${f((role === 'fin' ? MARK.finWidth * S : 3 * k) * LINE)}"${
+        role === 'secondary'
+          ? ` stroke-dasharray="${MARK.coverDash.map((d) => f(d * S)).join(' ')}"`
+          : role === 'fin'
+            ? ` stroke-dasharray="${MARK.finDots.map((d) => f(d * S)).join(' ')}" stroke-linecap="round"`
+            : ''
       }/>`
     );
   }
@@ -545,6 +550,7 @@ export interface LegendEntry {
     | 'primary'
     | 'secondary'
     | 'fin'
+    | 'finBox'
     | 'note'
     | 'pair'
     | 'tie'
@@ -588,7 +594,7 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
       return { kind: e.kind, label: e.label, colour: '#ffffff', ink: P.arrow };
     });
   }
-  const { shown, onValue, onBand, intoRemove, intoPlace, refuted, bars, setSquares, tiles, lines, removeWords } = legendKinds(step, drawn);
+  const { shown, onValue, onBand, finBox, intoRemove, intoPlace, refuted, bars, setSquares, tiles, lines, removeWords } = legendKinds(step, drawn);
   const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
@@ -615,6 +621,8 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
   // a Death Blossom's gold before any petal's digit is drawn: the stem's candidates alone
   if (shown.has('secondary')) role('secondary', stemAlone(step, drawn) ? tr`the stem's candidates` : (step.labels?.secondary ?? tr`supporting cells`), P.secondary, P.secondaryInk);
   if (shown.has('fin')) role('fin', step.labels?.fins ?? tr`fin`, P.fin, P.finInk);
+  // a finned fish's fins' box: a small band, dotted, in the fins' colour
+  if (finBox && step.labels?.finBox) out.push({ kind: 'finBox', label: step.labels.finBox, colour: P.fin, ink: P.finInk, onBand: true });
   // a bar in the pattern's ink (a proof-only view) or the removal's: what a
   // bar is, its swatch in the ink drawn, or one bar in each where both are
   // (Grouped X-Cycles rule 3's full view: the removed start and the proof)
@@ -656,11 +664,12 @@ export function swatchStyle(l: LegendEntry): { background: string; border: strin
   const chip = '0 0 0 1.5px #ffffff';
   // a role drawn only on solved digits: the digit's rounded outline
   if (l.onValue) return { background: '#ffffff', border: `1.5px solid ${l.ink}`, boxShadow: chip, borderRadius: '3px' };
-  // a role drawn only as a house band: a small band, dashed for a cover
+  // a role drawn only as a house band: a small band, dashed for a cover,
+  // dotted for a fins' box
   if (l.onBand) {
     return {
       background: `linear-gradient(${l.colour}4d,${l.colour}4d),#ffffff`,
-      border: `1.5px ${l.kind === 'secondary' ? 'dashed' : 'solid'} ${l.ink}`,
+      border: `1.5px ${l.kind === 'secondary' ? 'dashed' : l.kind === 'finBox' ? 'dotted' : 'solid'} ${l.ink}`,
       boxShadow: chip,
       borderRadius: '2px',
       width: '16px'

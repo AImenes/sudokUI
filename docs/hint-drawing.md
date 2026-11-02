@@ -322,11 +322,15 @@ Every rule is numbered so a commit, a test or a review can cite it.
 ### Areas
 
 - **G15. Bands** shade a whole house under the marks: a fish's base and
-  cover lines, a subset's house, a single's house, Locked Candidates' box
-  and line. A pattern's band (base) has a solid outline, an acts-through
-  band (cover) a dashed one, so the two differ by shape and not only by
-  colour. In a walk a band comes with its role's frame, the pattern's
-  houses with the pattern and a house that loses with what acts on it, so
+  cover lines, a finned fish's fins' box, a subset's house, a single's
+  house, Locked Candidates' box and line. A pattern's band (base) has a
+  solid outline, an acts-through band (cover) a dashed one, so the two
+  differ by shape and not only by colour; a finned or sashimi fish's fins'
+  box, where every removal lies, is shaded in the fin's colour with a
+  dotted outline, inset inside the others (phase 6). In a walk a band
+  comes with its role's frame, the pattern's houses with the pattern and a
+  house that loses with what acts on it, the fins' box with the frame that
+  says what a true fin does, so
   no frame draws what the one before drew; only a band that is the whole
   drawing (a Full House's) is there from the first frame, and a forcing
   step's house with no place left comes with the link into the
@@ -490,7 +494,8 @@ Every rule is numbered so a commit, a test or a review can cite it.
   the hint uses, drawn like the mark: true disc, false ring, removed
   (a barred ring), placed (a disc with an outer ring), each role (a disc;
   the rounded outline where the role is drawn only on solved digits; a
-  small band, dashed for a cover, where it is drawn only as a house band),
+  small band, dashed for a cover, where it is drawn only as a house band;
+  a small dotted band for a fins' box, an entry of its own),
   solid and dashed arrow, tie, start marker; a colouring's pair of shades
   per cluster, its dashed weak tie and its corner brackets. It names only
   what the board draws: a role every candidate of which became a removal
@@ -669,7 +674,7 @@ dark ones. Arrows are the only achromatic mark.
 | group bar (since phase 4) | the members' ink: true #006c2f, false #175bb7, pattern #175bb7, removal #bc072a | #35a458, #7fbbff, #498de5, #fe9696 | stroke 3 (4.5, 5.5), round caps, 15 off the members' line, under the marks, cut out by the digits |
 | `--hint-arrow` (arrows, ties, start dot, walk badges) | #151a24 | #f2f4f9 | stroke 3; weak dash "8 6" with butt caps; head 14 long × 11 wide; tail and tip 3 units outside the marks' rims |
 | halo | `--cell-bg`, arrow width + 2 (`SIZES.halo`), opacity 0.75, the head outlined 2 wide | same | drawn after the grid lines, with the arrow; on a small board 6.5 round a 4.5 shaft |
-| band | role fill at alpha 0.07 | 0.10 | outline inset 3.5, stroke 3, rx 8, role ink at full opacity |
+| band | role fill at alpha 0.07 | 0.10 | outline inset 3.5, stroke 3, rx 8, role ink at full opacity; solid for a base, dashed "10 6" for a cover; a finned fish's fins' box in the fin colours, its outline dots ("0 9", round caps) inset 8, stroke 4.5 (since phase 6) |
 | `--hint-on-fill` / `--hint-in-ring` (digits) | #10131c / #1b2233 | #10131c / #eef1f8 | weight 700 |
 
 Shades: the light themes rim both shades of a cluster in its dark shade,
@@ -1038,6 +1043,15 @@ the values above are its final ones.
   player says them, their bands still come with their roles (M1), a Hidden
   Single keeps its band rule (M9), and their Copy step lines are the ones
   they always were.
+  Batch 2's fish: all nine walk in their finders' own sentences (H1's fish
+  part): a basic fish names its base houses and their cells, then its
+  cover houses and why each takes its digit from the base; a finned or
+  sashimi fish its base, its fins, its cover if every fin is false (a
+  sashimi fish first names the crossing its fins stand in for), its fins'
+  box if a fin is true, then each removal, in a cover house and the box,
+  false either way. The fins' box is drawn (M4's fish part, G15), and no
+  legend entry names a role its frame has not drawn. The Copy step lines
+  are unchanged (tests/fishWalks.test.ts, tests/eureka.test.ts).
 - [ ] Phase 7: polish
 
 Branch `claude/hint-drawings`. Research behind this spec (HoDoKu's source

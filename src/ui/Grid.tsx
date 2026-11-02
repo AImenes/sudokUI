@@ -1452,21 +1452,26 @@ export function Grid() {
         })}
 
         {/* house bands (G15): the houses a pattern lives in, under its marks,
-            carried by a full-strength outline over a barely-there fill */}
+            carried by a full-strength outline over a barely-there fill:
+            solid for the pattern, dashed for a cover, dotted for a fins' box */}
         {bands.map(({ unit, role }, k) => {
           const r = unitRect(unit);
+          const inset = role === 'fin' ? MARK.finInset * SIZE : 3.5;
           return (
             <g key={`band-${k}`} className="hint-band">
               <rect x={r.x} y={r.y} width={r.w} height={r.h} fill={hintFill(role)} style={{ fillOpacity: 'var(--hint-band-alpha)' }} />
               <rect
-                x={r.x + 3.5}
-                y={r.y + 3.5}
-                width={r.w - 7}
-                height={r.h - 7}
+                x={r.x + inset}
+                y={r.y + inset}
+                width={r.w - 2 * inset}
+                height={r.h - 2 * inset}
                 fill="none"
                 stroke={hintInk(role)}
-                strokeWidth={3}
-                strokeDasharray={role === 'secondary' ? MARK.coverDash.map((d) => d * SIZE).join(' ') : undefined}
+                strokeWidth={role === 'fin' ? MARK.finWidth * SIZE : 3}
+                strokeDasharray={
+                  role === 'secondary' ? MARK.coverDash.map((d) => d * SIZE).join(' ') : role === 'fin' ? MARK.finDots.map((d) => d * SIZE).join(' ') : undefined
+                }
+                strokeLinecap={role === 'fin' ? 'round' : undefined}
                 rx={8}
               />
             </g>

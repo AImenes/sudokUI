@@ -1265,7 +1265,7 @@ button {
    G23): a disc with an edge for a role, a disc with an outer ring for a
    placement, a barred ring for a removal; a role drawn only on solved
    digits, the digit's rounded outline; a role drawn only as a house band,
-   a small band, its outline dashed for a cover */
+   a small band, its outline dashed for a cover, dotted for a fins' box */
 .hint-legend .swatch-primary {
   --sw: var(--hint-primary);
   --sw-ink: var(--hint-primary-ink);
@@ -1337,6 +1337,11 @@ button {
 
 .hint-legend .swatch-secondary.on-band {
   border-style: dashed;
+}
+
+/* a finned fish's fins' box: dotted, as on the board */
+.hint-legend .on-band.fin-box {
+  border-style: dotted;
 }
 
 /* a colouring's legend (docs/hint-drawing-colouring.md, "The legend"): a
