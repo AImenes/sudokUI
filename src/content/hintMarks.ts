@@ -203,7 +203,8 @@ export function clashWords(step: Step): string | null {
   if (!zs.length) return null;
   const letter = step.sets![step.links![0].fromSet!].letter ?? '';
   const z = zs[0].digit;
-  return zs.length === 1 ? tr`the ${z} of set ${letter}: every removed ${z} sees it` : tr`the ${z}s of set ${letter}: every removed ${z} sees each of them`;
+  // the removal's entry says why they go (alsRemoveWords): these words only name the discs
+  return zs.length === 1 ? tr`the ${z} of set ${letter}` : tr`the ${z}s of set ${letter}`;
 }
 
 /** the colour the step names for a candidate, if any: the first of the lists the full view marks in order */

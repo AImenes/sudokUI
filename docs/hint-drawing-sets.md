@@ -845,8 +845,9 @@ hintMarks, i18n), and the decisions it refines point here.
   sees each z of it: the full view and the walk's last frame, which say
   so, now draw those z as the pattern's discs, claiming no truth, as a
   Death Blossom's z are drawn, and the legend names them ("the 8s of set
-  A: every removed 8 sees each of them"; `clashZ`, `clashWords` in
-  src/content/hintMarks.ts). The step itself still names no role
+  A"; `clashZ`, `clashWords` in src/content/hintMarks.ts), the removal's
+  entry saying why they go ("remove: sees every 8 of set A, which holds an
+  8"). The step itself still names no role
   (decision 10); in the set fixture's nine clashes the two views change
   so.
 - **Start dots and bars** (decision 4). A start dot keeps off every bar,

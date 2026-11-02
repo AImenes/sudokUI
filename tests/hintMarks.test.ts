@@ -596,7 +596,7 @@ describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 
         const concludes = fr === null || fr === frames.at(-1);
         expect(blue, `${where}, frame ${fr?.links ?? 'full'}`).toEqual(concludes ? reason.map(key).sort() : []);
         const label = legendOf(s, values, fr).find((l) => l.kind === 'primary')?.label;
-        const words = reason.length === 1 ? `the ${z} of set ${first.letter}: every removed ${z} sees it` : `the ${z}s of set ${first.letter}: every removed ${z} sees each of them`;
+        const words = reason.length === 1 ? `the ${z} of set ${first.letter}` : `the ${z}s of set ${first.letter}`;
         expect(label, `${where}, frame ${fr?.links ?? 'full'}`).toBe(concludes ? words : undefined);
       }
     }

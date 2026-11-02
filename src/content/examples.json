@@ -376,10 +376,6 @@
      "role": "secondary"
     },
     {
-     "unit": 13,
-     "role": "secondary"
-    },
-    {
      "unit": 19,
      "role": "secondary"
     },
@@ -4199,8 +4195,19 @@
      "digit": 8
     }
    ],
+   "secondary": [
+    {
+     "cell": 34,
+     "digit": 5
+    },
+    {
+     "cell": 34,
+     "digit": 8
+    }
+   ],
    "labels": {
-    "primary": "the three corners holding only 5/8: the fourth must not join them"
+    "primary": "the three corners holding only 5/8",
+    "secondary": "5 and 8 in the fourth corner: either would complete the deadly pattern"
    },
    "description": "Unique Rectangle Type 1: r4c1, r4c8, r5c1, r5c8 would form a deadly pattern on 5/8; r4c8 cannot be 5 or 8."
   }
@@ -4484,6 +4491,14 @@
    ],
    "secondary": [
     {
+     "cell": 57,
+     "digit": 1
+    },
+    {
+     "cell": 58,
+     "digit": 6
+    },
+    {
      "cell": 59,
      "digit": 1
     },
@@ -4492,11 +4507,17 @@
      "digit": 6
     }
    ],
+   "units": [
+    {
+     "unit": 6,
+     "role": "secondary"
+    }
+   ],
    "labels": {
     "primary": "the rectangle: 7/8 in all four corners",
-    "secondary": "the cells that form a locked set with the roof extras"
+    "secondary": "1 and 6: the roof's extras (r7c4, r7c5, read as one cell) and r7c6 hold only these in row 7, a naked pair"
    },
-   "description": "Unique Rectangle Type 3: the roof extras of r3c4, r3c5, r7c4, r7c5 act as one pseudo-cell and form a locked set with r7c6, clearing those digits from the rest of the unit."
+   "description": "Unique Rectangle Type 3: r3c4, r3c5, r7c4, r7c5 would form a deadly pattern on 7/8, so one of the roof cells r7c4, r7c5 must take an extra candidate. Read as one cell holding its extras (1 and 6), the roof makes a naked pair with r7c6 in row 7: 1 and 6 can only go in these cells, so they are removed from the rest of row 7."
   }
  },
  "UNIQUENESS_4": {
@@ -4613,10 +4634,6 @@
      "digit": 4
     },
     {
-     "cell": 17,
-     "digit": 6
-    },
-    {
      "cell": 69,
      "digit": 4
     },
@@ -4627,14 +4644,27 @@
     {
      "cell": 71,
      "digit": 4
+    }
+   ],
+   "secondary": [
+    {
+     "cell": 17,
+     "digit": 6
     },
     {
      "cell": 71,
      "digit": 6
     }
    ],
+   "units": [
+    {
+     "unit": 17,
+     "role": "secondary"
+    }
+   ],
    "labels": {
-    "primary": "the rectangle: 4/6 in all four corners, with 6 locked into the roof"
+    "primary": "the rectangle: 4/6 in all four corners",
+    "secondary": "6 in column 9: only in the roof, so one of r2c9, r8c9 is 6"
    },
    "description": "Unique Rectangle Type 4: 6 is locked into r2c9/r8c9; keeping 4 there would force the deadly pattern, so 4 is removed from both."
   }
@@ -4896,36 +4926,49 @@
      "digit": 5
     },
     {
+     "cell": 44,
+     "digit": 5
+    },
+    {
+     "cell": 50,
+     "digit": 5
+    },
+    {
+     "cell": 53,
+     "digit": 5
+    }
+   ],
+   "secondary": [
+    {
      "cell": 41,
      "digit": 6
     },
     {
      "cell": 44,
-     "digit": 5
-    },
-    {
-     "cell": 44,
      "digit": 6
     },
     {
      "cell": 50,
-     "digit": 5
-    },
-    {
-     "cell": 50,
      "digit": 6
-    },
-    {
-     "cell": 53,
-     "digit": 5
     },
     {
      "cell": 53,
      "digit": 6
     }
    ],
+   "units": [
+    {
+     "unit": 4,
+     "role": "secondary"
+    },
+    {
+     "unit": 5,
+     "role": "secondary"
+    }
+   ],
    "labels": {
-    "primary": "the rectangle: 5/6 in all four corners, with 6 confined to it in both rows"
+    "primary": "the rectangle: 5/6 in all four corners",
+    "secondary": "6 in rows 5 and 6: only in the rectangle, so on one diagonal"
    },
    "description": "Unique Rectangle Type 6: 6 is confined to the rectangle in both rows; placing it in a roof corner would force the deadly pattern, so 6 is removed from r5c9, r6c6."
   }
@@ -5032,24 +5075,12 @@
      "digit": 3
     },
     {
-     "cell": 49,
-     "digit": 5
-    },
-    {
      "cell": 50,
      "digit": 3
     },
     {
-     "cell": 50,
-     "digit": 5
-    },
-    {
      "cell": 76,
      "digit": 3
-    },
-    {
-     "cell": 76,
-     "digit": 5
     },
     {
      "cell": 77,
@@ -5062,13 +5093,31 @@
    ],
    "secondary": [
     {
-     "cell": 77,
+     "cell": 49,
      "digit": 5
+    },
+    {
+     "cell": 50,
+     "digit": 5
+    },
+    {
+     "cell": 76,
+     "digit": 5
+    }
+   ],
+   "units": [
+    {
+     "unit": 5,
+     "role": "secondary"
+    },
+    {
+     "unit": 13,
+     "role": "secondary"
     }
    ],
    "labels": {
     "primary": "the rectangle: 3/5 in all four corners",
-    "secondary": "5 in the bivalue corner: confined to the rectangle in r6c5's row and column"
+    "secondary": "5 in row 6 and in column 5: only in the rectangle"
    },
    "description": "Hidden Rectangle: r9c6 holds only 3/5, and 5 is confined to the rectangle in r6c5's row and column; r6c5 cannot be 3 or the deadly pattern appears."
   }
@@ -5294,6 +5343,24 @@
    ],
    "primary": [
     {
+     "cell": 47,
+     "digit": 5
+    },
+    {
+     "cell": 74,
+     "digit": 4
+    },
+    {
+     "cell": 46,
+     "digit": 4
+    },
+    {
+     "cell": 73,
+     "digit": 5
+    }
+   ],
+   "secondary": [
+    {
      "cell": 46,
      "digit": 3
     },
@@ -5302,19 +5369,9 @@
      "digit": 3
     }
    ],
-   "secondary": [
-    {
-     "cell": 47,
-     "digit": 5
-    },
-    {
-     "cell": 74,
-     "digit": 4
-    }
-   ],
    "labels": {
-    "primary": "3 in the two unsolved corners: one of them must be it",
-    "secondary": "the two solved corners, neither of them a given"
+    "primary": "the two solved corners, neither of them a given, and the 4 and 5 that would complete the rectangle",
+    "secondary": "3 in the two unsolved corners: one of them must be it"
    },
    "description": "Avoidable Rectangle Type 2: to avoid an interchangeable rectangle with the solved cells r6c3, r9c3, one of r6c2/r9c2 must be 3, so 3 is removed from cells seeing both."
   }
@@ -5461,8 +5518,19 @@
      "digit": 9
     }
    ],
+   "secondary": [
+    {
+     "cell": 76,
+     "digit": 4
+    },
+    {
+     "cell": 76,
+     "digit": 9
+    }
+   ],
    "labels": {
-    "primary": "the cells that would form a deadly 2/4/9 loop"
+    "primary": "the cells that would form a deadly 2/4/9 loop",
+    "secondary": "4 and 9 in r9c5: each would complete the deadly loop"
    },
    "description": "Extended Rectangle Type 1: r8c1, r9c1, r8c5, r9c5, r8c9, r9c9 would form a deadly 2/4/9 loop; r9c5 must take one of its extra candidates."
   }

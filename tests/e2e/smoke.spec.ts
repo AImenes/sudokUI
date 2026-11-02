@@ -909,7 +909,7 @@ for (const [name, size] of [
       await expect(page.locator('svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(0);
       await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
       // and the dashed outline of a cell of two sets, drawn like it
-      await expect(page.locator('.hint-legend li')).toHaveText([/^remove/, /^the 8s of set A: every removed 8 sees each of them$/, /^lettered cells/, /^dashed outline/]);
+      await expect(page.locator('.hint-legend li')).toHaveText([/^remove/, /^the 8s of set A$/, /^lettered cells/, /^dashed outline/]);
       await expect(page.locator('.hint-legend li', { hasText: 'dashed outline' }).locator('i.swatch-shared')).toHaveCount(1);
     });
   });
