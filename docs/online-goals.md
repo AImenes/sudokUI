@@ -565,8 +565,11 @@ before the launch:
   Share dialog's puzzle or position link, the win screen's challenge or
   daily line) and the share sheet took it or it was copied, the app sends
   a `shared` line: what (`puzzle`, `position`, `challenge`, `daily`), the
-  way (`sheet`, `copy`), the band, where it ran and the version. Never
-  the link, the text or where it went; a closed sheet, a failed copy, and
+  way (`sheet`, `copy`), the band, where it ran and the version. A picture
+  of the board (the Share dialog's image, or 'Share this hint' in the hint
+  panel; November 2026) is the kind `image`, and saving it as a file is
+  the way `save`; the picture is made on the device and never sent. Never
+  the link, the text, the picture or where it went; a closed sheet, a failed copy, and
   copying the puzzle string or the pencil-mark grid count nothing. Live
   only: never kept on the device, not even with the opt-in, so it
   carries none of its flags, and none goes from a device left out

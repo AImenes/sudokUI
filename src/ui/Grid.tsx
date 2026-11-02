@@ -24,21 +24,10 @@ import { useT, msg, translator } from '../content/i18n';
 import type { Translator } from '../content/i18n';
 import { touchIntent, cellsBetween, INTENT_MS, SLOP_PX } from './touchIntent';
 import type { TouchIntent, ScrollRoom } from './touchIntent';
+import { PALETTE, PALETTE_OPACITY } from '../content/playerColours';
 
 /** the tip that names multi-select has been shown once this session */
 let dragTipShown = false;
-
-const PALETTE = [
-  '#e05563',
-  '#e8934a',
-  '#e6c74c',
-  '#67b96a',
-  '#4fc1b0',
-  '#5b8fe0',
-  '#9b74d8',
-  '#d873b8',
-  '#9aa3b5'
-];
 
 /** a hint's arrows, start dots and walk numbers, its groups' bars and its sets' tiles and tabs, worked out once for the whole hint */
 type Drawing = HintDrawing;
@@ -1397,7 +1386,7 @@ export function Grid() {
                   width={SIZE / shown.length}
                   height={SIZE}
                   fill={PALETTE[col]}
-                  opacity={0.55}
+                  opacity={PALETTE_OPACITY}
                 />
               ))}
               {samePeer && (

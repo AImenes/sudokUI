@@ -223,7 +223,7 @@ export default function App() {
   }, []);
 
   const [dialog, setDialog] = useState<
-    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'why' | 'restart' | 'steps' | 'scan' | 'learn' | 'progress'
+    'none' | 'new' | 'practice' | 'io' | 'share' | 'shareHint' | 'settings' | 'info' | 'why' | 'restart' | 'steps' | 'scan' | 'learn' | 'progress'
   >('none');
   const [learnTarget, setLearnTarget] = useState<LearnTarget>({ tab: 'techniques' });
   // a technique the guide asked Scan to look for on the board
@@ -830,7 +830,11 @@ export default function App() {
           {chain ? (
             <ChainPanel />
           ) : (
-            <HintPanel onLearn={(tech) => openLearn({ tab: 'techniques', tech })} onReport={(hint) => setReport({ kind: 'hint', hint })} />
+            <HintPanel
+              onLearn={(tech) => openLearn({ tab: 'techniques', tech })}
+              onReport={(hint) => setReport({ kind: 'hint', hint })}
+              onShare={() => setDialog('shareHint')}
+            />
           )}
           {custom && (
             <div className="hint-panel">
@@ -1023,7 +1027,7 @@ export default function App() {
         </Suspense>
       )}
       {dialog === 'io' && <ImportDialog onClose={() => setDialog('none')} />}
-      {dialog === 'share' && <ShareDialog onClose={() => setDialog('none')} />}
+      {(dialog === 'share' || dialog === 'shareHint') && <ShareDialog onClose={() => setDialog('none')} withHint={dialog === 'shareHint'} />}
       {dialog === 'steps' && <SolutionPathDialog onClose={() => setDialog('none')} />}
       {dialog === 'scan' && (
         <ScanDialog

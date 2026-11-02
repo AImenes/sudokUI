@@ -16,9 +16,10 @@ as before. It is the companion of
   Worker adds the country and writes each line to **Workers Analytics
   Engine** (WAE), Cloudflare's store for exactly this kind of counting.
   Nothing identifies a player and no IP address is ever written; the
-  privacy page (`/privacy/`) says the same to players. A link shared
-  from the app (through the share menu or copied) sends one more line,
-  what was shared and which way, never the link. Since November 2026 a
+  privacy page (`/privacy/`) says the same to players. A link or a
+  picture of the board shared from the app (through the share menu,
+  copied, or for a picture saved as a file) sends one more line, what was
+  shared and which way, never the link or the picture. Since November 2026 a
   start or a solve also says what kind of game it was (the daily, a new
   puzzle, practice, or one from a share link) and the app's language.
   The share pages and the three home pages (`/`, `/nb/`, `/es/`) count a

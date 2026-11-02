@@ -11,6 +11,13 @@ export const DATASET = 'sudokui_events';
 export const DAYS_SHOWN = 30;
 
 /** one UTC day's counts */
+/** how the shares of one kind went: the share sheet, a copy, or a picture saved as a file (telemetry.ts, SHARE_VIAS) */
+export interface ShareWays {
+  sheet: number;
+  copy: number;
+  save: number;
+}
+
 export interface DayRow {
   /** 2026-10-13 */
   day: string;
@@ -40,11 +47,12 @@ export interface DayRow {
   completedBy: Record<string, number>;
   startsByLang: Record<string, number>;
   completedByLang: Record<string, number>;
-  /** links shared, and of them the ones the share sheet took (the rest were copied) */
+  /** links and pictures shared, and of them the ones the share sheet took and the pictures saved (the rest were copied) */
   shares: number;
   sharesSheet: number;
+  sharesSaved: number;
   /** shares by what was shared (telemetry.ts, SHARE_KINDS), each split by the way it went */
-  sharesBy: Record<string, { sheet: number; copy: number }>;
+  sharesBy: Record<string, ShareWays>;
 }
 
 /** the plan's numbers over some days */
@@ -73,8 +81,9 @@ export interface Totals {
   landingsFromHome: Record<string, number>;
   shares: number;
   sharesSheet: number;
-  sharesBy: Record<string, { sheet: number; copy: number }>;
-  /** the share pages' landings (the home pages' aside) over shares: how far a shared link travels; null without a share */
+  sharesSaved: number;
+  sharesBy: Record<string, ShareWays>;
+  /** the share pages' landings (the home pages' aside) over the links shared, pictures aside: how far a shared link travels; null without one */
   landingsPerShare: number | null;
   /** starts and solves by kind of game and by language, practice included */
   startsBy: Record<string, number>;

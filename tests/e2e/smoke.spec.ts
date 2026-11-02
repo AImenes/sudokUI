@@ -1525,6 +1525,11 @@ test.describe('the daily', () => {
     const share = page.getByRole('dialog', { name: 'Share this puzzle' });
     await expect(share.getByRole('button', { name: /Position link|Position as text/ })).toHaveCount(0);
     await expect(share).toContainText('A solved board has no position to share');
+    // and its picture is the puzzle from the start, its givens alone: the board as it stands is the solution
+    await expect(share).toContainText('A picture of the puzzle from the start');
+    const picture = decodeURIComponent((await share.locator('.share-image-preview').getAttribute('src'))!.replace(/^data:image\/svg\+xml;utf8,/, ''));
+    expect(picture.match(/class="giv"/g)?.length).toBe([...daily.puzzle].filter((ch) => ch !== '.' && ch !== '0').length);
+    expect(picture).not.toContain('class="ent"');
     await share.getByRole('button', { name: `Your result in Daily #${no}` }).click();
     expect(await copied(page)).toBe(text);
   });
@@ -1662,6 +1667,73 @@ test.describe('positions as text', () => {
     await page.locator('.menu-row button', { hasText: 'Share' }).click();
     await page.getByRole('dialog', { name: 'Share this puzzle' }).getByRole('button', { name: 'Position as text' }).click();
     expect(await copied(page)).toBe(text);
+  });
+});
+
+test.describe('a picture of the board', () => {
+  test.use({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+
+  /** a download's bytes, checked as a PNG: its signature, and its size in pixels from the header */
+  const pngOf = async (download: import('@playwright/test').Download) => {
+    const bytes = readFileSync((await download.path())!);
+    expect([...bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return { width: view.getUint32(16), height: view.getUint32(20) };
+  };
+
+  test('Save image saves the board as a PNG, made on the device, counted by kind and way only, and the ticks are remembered', async ({ page }) => {
+    const lines: Record<string, unknown>[] = [];
+    await page.route('**/api/t', async (route) => {
+      lines.push(...JSON.parse(route.request().postData() ?? '[]'));
+      await route.fulfill({ status: 204 });
+    });
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    await page.goto(`/#p=${HARD}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
+    // the preview, with the line under it shown beside its tick
+    await expect(dialog.getByRole('img', { name: 'The picture as it will be shared' })).toBeVisible();
+    await expect(dialog).toContainText(/sudokui\.app · (Easy|Medium|Hard|Unfair|Extreme) \d+/);
+    const [download] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: 'Save image' }).click()]);
+    expect(download.suggestedFilename()).toBe('sudokui-board.png');
+    // 570 units wide at 2 pixels a unit, with 40 more for the footer
+    expect(await pngOf(download)).toEqual({ width: 1140, height: 1220 });
+    await expect(dialog.getByRole('button', { name: /Saved/ })).toBeVisible();
+    await expect.poll(() => lines.filter((l) => l.event === 'shared').length).toBe(1);
+    expect(lines.filter((l) => l.event === 'shared').map((l) => `${l.what}/${l.via}`)).toEqual(['image/save']);
+    // the picture never leaves the device: nothing sent holds the puzzle or an image
+    expect(JSON.stringify(lines)).not.toContain(HARD);
+    expect(JSON.stringify(lines)).not.toMatch(/png|base64|svg/i);
+    // the footer off, remembered on this device the next time the dialog opens
+    await dialog.getByRole('checkbox', { name: 'Footer' }).uncheck();
+    const [bare] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: /Save image|Saved/ }).click()]);
+    expect(await pngOf(bare)).toEqual({ width: 1140, height: 1140 });
+    await page.keyboard.press('Escape');
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    await expect(dialog.getByRole('checkbox', { name: 'Footer' })).not.toBeChecked();
+    await expect(dialog.getByRole('checkbox', { name: 'Candidates' })).toBeChecked();
+  });
+
+  test('Share this hint saves the board with the hint drawn, and names no technique', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    await page.goto(`/#p=${HARD}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    await page.keyboard.press('KeyH');
+    await page.getByRole('button', { name: 'Use Hint' }).click();
+    await page.getByRole('button', { name: 'Show me' }).click();
+    const name = await page.locator('.hint-tech strong').innerText();
+    await page.getByRole('button', { name: 'Share this hint' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Share this hint' });
+    await expect(dialog.getByRole('img', { name: 'The picture as it will be shared' })).toBeVisible();
+    await expect(dialog).not.toContainText(name);
+    // the preview draws the hint's marks, and its words name no technique
+    const svg = decodeURIComponent((await dialog.locator('.share-image-preview').getAttribute('src'))!.replace(/^data:image\/svg\+xml;utf8,/, ''));
+    expect(svg).toMatch(/class="(mk|rm)"/);
+    expect(svg).not.toContain(name);
+    const [download] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: 'Save image' }).click()]);
+    expect(download.suggestedFilename()).toBe('sudokui-hint.png');
+    expect(await pngOf(download)).toEqual({ width: 1140, height: 1220 });
   });
 });
 

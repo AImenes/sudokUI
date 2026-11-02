@@ -2,13 +2,16 @@
 // screen's challenge and daily line): on a phone or a tablet, the device's
 // own share sheet (navigator.share), which puts it in a chat in one tap;
 // elsewhere, and wherever the sheet is missing or refuses, the clipboard,
-// as before. The text never goes to sudokui.app: the sheet hands it to the
-// app the player picks. What the caller makes of the outcome is its own:
-// the dialogs count a link that went as a share, by kind and way only
+// as before. A picture of the board (the Share dialog's image) goes the
+// same way as a file: the sheet on a phone or a tablet that shares files,
+// else the player copies it or saves it as a download. Nothing goes to
+// sudokui.app: the sheet hands it to the app the player picks. What the
+// caller makes of the outcome is its own: the dialogs count a link or a
+// picture that went as a share, by kind and way only
 // (src/state/telemetry.ts, shared).
 
-/** what became of the text */
-export type Sent = 'shared' | 'copied' | 'cancelled' | 'failed';
+/** what became of the text or the picture */
+export type Sent = 'shared' | 'copied' | 'saved' | 'cancelled' | 'failed';
 
 /** a touch screen is the main way in: a phone or a tablet, not a laptop with a touch screen */
 function touchFirst(): boolean {
@@ -47,6 +50,68 @@ export async function copyText(text: string): Promise<Sent> {
   if (!clipboard) return 'failed';
   try {
     await clipboard.writeText(text);
+    return 'copied';
+  } catch {
+    return 'failed';
+  }
+}
+
+/** a touch-first device whose share sheet takes this file */
+export function canShareFile(file: File): boolean {
+  const nav = typeof navigator !== 'undefined' ? navigator : undefined;
+  if (!nav || !touchFirst() || typeof nav.share !== 'function' || typeof nav.canShare !== 'function') return false;
+  try {
+    return nav.canShare({ files: [file] });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Hands a file on: the share sheet on a touch device that shares files,
+ * else a download. Called straight from a tap with the file already made:
+ * the sheet opens only while the browser still counts the tap, so nothing
+ * may be awaited before this. A closed sheet is the player's answer, and
+ * nothing is saved behind their back; a sheet that refuses saves it.
+ */
+export async function sendFile(file: File): Promise<Sent> {
+  if (canShareFile(file)) {
+    try {
+      await navigator.share({ files: [file] });
+      return 'shared';
+    } catch (e) {
+      if (e instanceof Error && (e.name === 'AbortError' || e.name === 'InvalidStateError')) return 'cancelled';
+    }
+  }
+  return saveFile(file);
+}
+
+/** saves the file where the browser puts downloads, under its own name */
+export function saveFile(file: File): Sent {
+  if (typeof document === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return 'failed';
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // the download has its own copy once it starts
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  return 'saved';
+}
+
+/** the clipboard can take a picture: a browser with ClipboardItem and clipboard.write */
+export function canCopyImage(): boolean {
+  return typeof ClipboardItem === 'function' && typeof navigator !== 'undefined' && typeof navigator.clipboard?.write === 'function';
+}
+
+/** puts a PNG on the clipboard, for pasting into a post or a chat on a computer */
+export async function copyImage(png: Blob): Promise<Sent> {
+  if (!canCopyImage()) return 'failed';
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
     return 'copied';
   } catch {
     return 'failed';

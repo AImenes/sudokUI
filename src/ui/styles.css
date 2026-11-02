@@ -1773,6 +1773,45 @@ button {
   cursor: pointer;
 }
 
+/* the Share dialog's picture of the board: the preview beside its ticks
+   and buttons; the picture is always light, so it keeps a hairline edge
+   on a light panel and reads as a card on a dark one */
+.share-image {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin: 10px 0 4px;
+}
+
+.share-image-preview {
+  flex: 0 0 auto;
+  width: min(200px, 46%);
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(128, 128, 160, 0.3);
+}
+
+.share-image-side {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.share-image-side .tick-row {
+  margin: 0 0 10px;
+}
+
+.share-image-side .setting-text small {
+  overflow-wrap: anywhere;
+}
+
+.share-image-side .hint-actions {
+  margin-top: 4px;
+}
+
+.share-image-note {
+  margin-top: 18px;
+}
+
 .practice-group h4 {
   margin: 12px 0 6px;
   color: var(--muted);

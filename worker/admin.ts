@@ -18,7 +18,7 @@
  * tests run them over rows of their own; only handleAdmin talks to the
  * API, through a fetch it is given.
  */
-import { DAYS_SHOWN, DATASET, type DayRow, type Metrics, type Totals } from './adminModel';
+import { DAYS_SHOWN, DATASET, type DayRow, type Metrics, type ShareWays, type Totals } from './adminModel';
 import { accessKeys, cameThroughAccess, type AccessEnv, type AccessKeys } from './access';
 import type { D1Like } from './daily';
 import { PLAY_KINDS, PLAY_LANGS, SHARE_KINDS, type LandingFrom, type PlayKind, type PlayLang, type ShareKind } from './telemetry';
@@ -115,12 +115,16 @@ const emptyDay = (day: string): DayRow => ({
   landingsFromHome: {},
   shares: 0,
   sharesSheet: 0,
+  sharesSaved: 0,
   sharesBy: {},
   startsBy: {},
   completedBy: {},
   startsByLang: {},
   completedByLang: {}
 });
+
+/** every share of one kind, whichever way it went */
+const waysOf = (by: ShareWays | undefined) => (by ? by.sheet + by.copy + by.save : 0);
 
 /** adds n to a count kept by name */
 const add = (counts: Record<string, number>, key: string, n: number) => {
@@ -166,10 +170,13 @@ export function daysOf(rows: Row[], now: Date): DayRow[] {
       }
     } else if (r.event === 'shared') {
       d.shares += r.n;
-      const by = (d.sharesBy[r.kind] ??= { sheet: 0, copy: 0 });
+      const by = (d.sharesBy[r.kind] ??= { sheet: 0, copy: 0, save: 0 });
       if (r.via === 'sheet') {
         d.sharesSheet += r.n;
         by.sheet += r.n;
+      } else if (r.via === 'save') {
+        d.sharesSaved += r.n;
+        by.save += r.n;
       } else by.copy += r.n;
     }
   }
@@ -207,7 +214,7 @@ export function totalsOf(days: DayRow[]): Totals {
   const completedBy: Record<string, number> = {};
   const startsByLang: Record<string, number> = {};
   const completedByLang: Record<string, number> = {};
-  const sharesBy: Record<string, { sheet: number; copy: number }> = {};
+  const sharesBy: Record<string, ShareWays> = {};
   for (const d of days) {
     for (const [from, n] of Object.entries(d.landingsFrom)) add(landingsFrom, from, n);
     for (const [from, n] of Object.entries(d.landingsFromHome)) add(landingsFromHome, from, n);
@@ -216,9 +223,10 @@ export function totalsOf(days: DayRow[]): Totals {
     for (const [lang, n] of Object.entries(d.startsByLang)) add(startsByLang, lang, n);
     for (const [lang, n] of Object.entries(d.completedByLang)) add(completedByLang, lang, n);
     for (const [what, n] of Object.entries(d.sharesBy)) {
-      const by = (sharesBy[what] ??= { sheet: 0, copy: 0 });
+      const by = (sharesBy[what] ??= { sheet: 0, copy: 0, save: 0 });
       by.sheet += n.sheet;
       by.copy += n.copy;
+      by.save += n.save;
     }
   }
   return {
@@ -240,8 +248,10 @@ export function totalsOf(days: DayRow[]): Totals {
     landingsFromHome,
     shares,
     sharesSheet: sum((d) => d.sharesSheet),
+    sharesSaved: sum((d) => d.sharesSaved),
     sharesBy,
-    landingsPerShare: ratio(landings - landingsHome, shares),
+    // a picture carries no link to land on
+    landingsPerShare: ratio(landings - landingsHome, shares - waysOf(sharesBy.image)),
     startsBy,
     completedBy,
     startsByLang,
@@ -279,7 +289,8 @@ const SHARE_LABELS: Record<ShareKind, string> & Record<string, string | undefine
   puzzle: 'Puzzle link (Share)',
   position: 'Position link (Share)',
   challenge: 'Challenge (win screen)',
-  daily: 'Daily line (win screen)'
+  daily: 'Daily line (win screen)',
+  image: 'Picture of the board (Share, or a hint)'
 };
 
 /** what kind of game, as a column of the page */
@@ -380,11 +391,15 @@ export function renderAdmin(m: Metrics): string {
     ),
     number('Landings yesterday', num(d.landings), `${num(d.landingsHome)} on a home page, ${num(d.landingsDaily)} on a daily's address`),
     number('Landings, last 7 days', num(w.landings), 'home pages and share pages opened from outside the site, by people'),
-    number('Shares, last 7 days', num(w.shares), `${num(w.sharesSheet)} through the share sheet, ${num(w.shares - w.sharesSheet)} copied`),
+    number(
+      'Shares, last 7 days',
+      num(w.shares),
+      `${num(w.sharesSheet)} through the share sheet, ${num(w.shares - w.sharesSheet - w.sharesSaved)} copied${w.sharesSaved ? `, ${num(w.sharesSaved)} saved as a picture` : ''}`
+    ),
     number(
       'Landings per share',
       w.landingsPerShare === null ? '—' : w.landingsPerShare.toFixed(2),
-      `${num(w.landings - w.landingsHome)} share-page landings over ${num(w.shares)} shares, 7 days`
+      `${num(w.landings - w.landingsHome)} share-page landings over ${num(w.shares - waysOf(w.sharesBy.image))} shares of a link, 7 days`
     ),
     number('New players', pct(w.newShare), `${num(w.startsNew)} of ${num(w.startsOptin)} opted-in starts, 7 days`),
     number(
@@ -407,8 +422,8 @@ export function renderAdmin(m: Metrics): string {
   const kinds = [...SHARE_KINDS, ...Object.keys(w.sharesBy).filter((k) => !(SHARE_KINDS as readonly string[]).includes(k))];
   const shareRows = kinds
     .map((k) => {
-      const by = w.sharesBy[k] ?? { sheet: 0, copy: 0 };
-      return `      <tr><td>${esc(SHARE_LABELS[k] ?? k)}</td><td>${num(by.sheet)}</td><td>${num(by.copy)}</td><td>${num(by.sheet + by.copy)}</td></tr>`;
+      const by = w.sharesBy[k] ?? { sheet: 0, copy: 0, save: 0 };
+      return `      <tr><td>${esc(SHARE_LABELS[k] ?? k)}</td><td>${num(by.sheet)}</td><td>${num(by.copy)}</td><td>${num(by.save)}</td><td>${num(waysOf(by))}</td></tr>`;
     })
     .join('\n');
   // where landings came from, the most first, on a home page and on a
@@ -442,7 +457,7 @@ ${numbers}
     <p class="meta">${DAYS_SHOWN} days: ${num(month.starts)} starts, ${num(month.completed)} completed (${num(month.offlineReported)} reported offline, ${num(month.offlineEstimate)} estimated), ${num(month.shares)} shares, ${num(month.landings)} landings, completion ${pct(month.completionRate)}, solved in the installed app ${pct(month.installedShare)}.</p>
     <h2>What was shared, last 7 days</h2>
     <div class="wide"><table>
-      <thead><tr><th>Shared</th><th>Share sheet</th><th>Copied</th><th>All</th></tr></thead>
+      <thead><tr><th>Shared</th><th>Share sheet</th><th>Copied</th><th>Saved</th><th>All</th></tr></thead>
       <tbody>
 ${shareRows}
       </tbody>

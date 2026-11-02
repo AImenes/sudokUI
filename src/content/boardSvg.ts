@@ -4,15 +4,19 @@
 // (written to image files at build time) and the in-app guide.
 //
 // The board is always drawn light: a diagram has to read the same on a dark
-// page, a light page and in an image search result.
+// page, a light page and in an image search result. The same drawing is the
+// picture a player shares of their own board (src/content/boardImage.ts):
+// with no hint, or a hint at the walk's frame shown, the player's colours
+// and a line under it naming the site.
 import { CellDigit, Step } from '../engine/steps';
 import { aDigit, tr } from '../engine/text';
 import { hintDrawing, tilesIn, squareReach, pointsOf, SIZES } from './hintGeometry';
-import type { ArrowShape, Layout } from './hintGeometry';
+import type { ArrowShape, HintDrawing, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
 import type { HintPalette } from './hintPalette';
 import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, premiseOf, isParity, isShade, parityLegend, stemAlone, petalsPart, sharedTile, clashWords } from './hintMarks';
-import type { BarStyle, Premise, Role, Tint } from './hintMarks';
+import type { BarStyle, HintMarks, Premise, Role, Tint } from './hintMarks';
+import { PALETTE, PALETTE_OPACITY } from './playerColours';
 import type { Frame } from '../engine/hintFrames';
 import { drawnLinks } from '../engine/hintFrames';
 
@@ -44,10 +48,29 @@ export interface Example {
   afterHarder?: boolean;
 }
 
+/** a board to draw: an example, or a player's position with no hint (no step) */
+export type BoardPicture = Omit<Example, 'step'> & { step?: Step | null };
+
+/** what a picture of the board adds to an example's diagram (src/content/boardImage.ts) */
+export interface BoardOptions {
+  /** the walk's frame to draw, as the app's board draws it (src/engine/hintFrames.ts); the full view when absent */
+  frame?: Frame | null;
+  /** the player's colours, cell by cell, as indices into the palette (src/content/playerColours.ts); none when absent */
+  colours?: readonly (readonly number[])[];
+  /** a line under the board, such as 'sudokui.app · Hard 1288'; none when absent */
+  footer?: string;
+}
+
 const S = 60; // cell size
 const L = 24; // room for the row and column labels
 const M = 6; // outer margin
 export const BOARD_SIZE = L + 9 * S + M;
+/** the room a footer takes under the board */
+export const FOOTER_SIZE = 40;
+
+/** what a board with no hint draws: nothing */
+const NO_MARKS: HintMarks = { cands: new Map(), inside: new Map(), values: new Map(), bands: [], refuted: false, lines: new Set(), sets: [] };
+const NO_DRAWING: HintDrawing = { sets: { bars: [], tiles: [], tabs: [] }, shapes: [], dots: [], badges: new Map() };
 
 /**
  * The colours the intuition diagrams still draw with (src/content/
@@ -127,22 +150,36 @@ const tintOf = (t: Tint) => ({ fill: P[TINT[t].fill] as string, ink: P[TINT[t].i
 
 /**
  * The example as an SVG document. `title` becomes the image's accessible
- * name, so it should say what the diagram shows.
+ * name, so it should say what the diagram shows. Given a frame, it draws
+ * the hint as the app's board draws that frame of the walk, worked out
+ * once for the whole hint as the board works it out; with no step, the
+ * board alone.
  */
-export function boardSvg(example: Example, title: string): string {
-  const { step } = example;
+export function boardSvg(example: BoardPicture, title: string, opts: BoardOptions = {}): string {
+  const step = example.step ?? null;
+  const frame = (step && opts.frame) || null;
   const given = example.puzzle.split('').map((ch) => ch >= '1' && ch <= '9');
   const solved = (cell: number) => Number(example.values[cell]) > 0;
-  // what is marked where, as the app's board marks it in full (src/content/hintMarks.ts)
-  const drawn = frameMarks(step, null, solved);
+  // what is marked where, as the app's board marks it in full
+  // (src/content/hintMarks.ts), and what the frame shown draws of it
+  const full = step ? frameMarks(step, null, solved) : NO_MARKS;
+  const drawn = step && frame ? frameMarks(step, frame, solved) : full;
   const s = S;
   const parts: string[] = [];
 
   parts.push(`<rect x="${L}" y="${L}" width="${9 * S}" height="${9 * S}" fill="#ffffff"/>`);
+  // the player's colours, as the board lays them over a cell: a little
+  // over half strength, side by side where a cell has several
+  opts.colours?.forEach((colours, cell) => {
+    colours.forEach((c, k) => {
+      const w = S / colours.length;
+      parts.push(`<rect x="${f(cellX(cell) + w * k)}" y="${cellY(cell)}" width="${f(w)}" height="${S}" fill="${PALETTE[c]}" fill-opacity="${PALETTE_OPACITY}"/>`);
+    });
+  });
   // the houses a pattern lives in (G15): a full-strength outline over a
   // barely-there fill, solid for the pattern and dashed for what it acts
   // through, dotted for a finned fish's fins' box, under everything else
-  for (const { unit, role } of step.units ?? []) {
+  for (const { unit, role } of drawn.bands) {
     const r =
       unit < 9
         ? { x: L, y: L + unit * S, w: 9 * S, h: S }
@@ -176,9 +213,9 @@ export function boardSvg(example: Example, title: string): string {
   // rings and the squares any view draws, which reach further than a disc,
   // and the candidates it shows; the groups' bars are worked out from these
   // first, and the arrows keep off them, as on the app's board
-  const marked = markedCandidates(drawn);
-  const placed = placedKeys(drawn);
-  const squares = squareKeys(step, solved);
+  const marked = markedCandidates(full);
+  const placed = placedKeys(full);
+  const squares = step ? squareKeys(step, solved) : new Set<string>();
   const radiusOf = (cd: CellDigit) =>
     placed.has(`${cd.cell}:${cd.digit}`)
       ? (MARK.placeRingSmall + MARK.placeRingSmallStroke / 2) * S
@@ -196,7 +233,7 @@ export function boardSvg(example: Example, title: string): string {
   };
   // the groups' bars and the sets' tiles and tabs, then the arrows and
   // the start dots, which keep off them, as the app's board works them out
-  const { sets, shapes: all, dots } = hintDrawing(step, layout, marked);
+  const { sets, shapes: all, dots } = step ? hintDrawing(step, layout, marked) : NO_DRAWING;
   // the groups the full view draws, each bar in its members' mark's ink
   // (docs/hint-drawing-sets.md, decisions 2 and 3); their members' marks
   // keep a keyline in the board's colour, which parts them from the bar
@@ -220,7 +257,7 @@ export function boardSvg(example: Example, title: string): string {
   // on a tile go between its fill and its outline, as on the app's board
   // (decision 5), so a mark or a tab in its edge row sits on the outline
   const tints = new Map(drawn.sets.flatMap((m) => (m.tint ? [[m.set, m.tint] as const] : [])));
-  const tiles = tilesIn(step, sets, tints.keys());
+  const tiles = step ? tilesIn(step, sets, tints.keys()) : [];
   const tiled = new Set(tiles.map((t) => t.cell));
   const tabs = sets.tabs.filter((t) => tints.has(t.set));
   const scale = MARK.tabLarge / MARK.tab;
@@ -373,7 +410,7 @@ export function boardSvg(example: Example, title: string): string {
   // marks and its groups' bars; every halo first. Worked out from every
   // link, as the app's board does, and drawn as its full view draws them:
   // a colouring's argument, without its ties
-  const shown = drawnLinks(step, null);
+  const shown = step ? drawnLinks(step, frame) : new Set<number>();
   const shapes = all.filter((sh) => shown.has(sh.link));
   const w = SIZES.stroke * s * LINE;
   // the mask's name, unique to this diagram where several share a page
@@ -440,14 +477,19 @@ export function boardSvg(example: Example, title: string): string {
       `<text x="${f(tab.p.x)}" y="${f(tab.p.y + 0.35 * MARK.tabLetter * scale * s)}" class="tab">${esc(tab.letter)}</text>`
     );
   }
-  for (const p of dots) {
+  // a frame's start dots are its own links' (the full view's are all of them)
+  for (const p of frame ? dots.filter((d) => shown.has(d.link)) : dots) {
     parts.push(`<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(SIZES.dotLarge * s)}" fill="${P.arrow}" stroke="#ffffff" stroke-width="${f(0.02 * s)}"/>`);
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOARD_SIZE} ${BOARD_SIZE}" role="img" aria-label="${esc(title)}">
+  // a line under the board, in the labels' grey, centred under the grid
+  const height = BOARD_SIZE + (opts.footer ? FOOTER_SIZE : 0);
+  if (opts.footer) parts.push(`<text x="${L + 4.5 * S}" y="${BOARD_SIZE + 22}" class="ft">${esc(opts.footer)}</text>`);
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOARD_SIZE} ${height}" role="img" aria-label="${esc(title)}">
 <title>${esc(title)}</title>
-<style>text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-anchor:middle}.giv{font-size:34px;font-weight:700;fill:#1b2233}.ent{font-size:34px;font-weight:600;fill:#2f6fd0}.cd{font-size:13px;fill:#5d6577}.mk{font-size:12.5px;font-weight:700;fill:${P.onFill}}.rm{font-size:12.5px;font-weight:700;fill:${P.inRing}}.lab{font-size:12px;fill:#7a8294}${sets.tabs.some((t) => tints.has(t.set)) ? `.tab{font-size:${f(MARK.tabLetter * (MARK.tabLarge / MARK.tab) * S)}px;font-weight:700;fill:#ffffff}` : ''}.ko text{fill:#000!important;stroke:#000;stroke-width:max(.12em,2.4px);stroke-linejoin:round}</style>
-<rect width="${BOARD_SIZE}" height="${BOARD_SIZE}" rx="8" fill="#f5f6fa"/>
+<style>text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-anchor:middle}.giv{font-size:34px;font-weight:700;fill:#1b2233}.ent{font-size:34px;font-weight:600;fill:#2f6fd0}.cd{font-size:13px;fill:#5d6577}.mk{font-size:12.5px;font-weight:700;fill:${P.onFill}}.rm{font-size:12.5px;font-weight:700;fill:${P.inRing}}.lab{font-size:12px;fill:#7a8294}${sets.tabs.some((t) => tints.has(t.set)) ? `.tab{font-size:${f(MARK.tabLetter * (MARK.tabLarge / MARK.tab) * S)}px;font-weight:700;fill:#ffffff}` : ''}.ko text{fill:#000!important;stroke:#000;stroke-width:max(.12em,2.4px);stroke-linejoin:round}${opts.footer ? '.ft{font-size:15px;font-weight:600;fill:#5d6577}' : ''}</style>
+<rect width="${BOARD_SIZE}" height="${height}" rx="8" fill="#f5f6fa"/>
 ${parts.join('\n')}
 </svg>
 `;

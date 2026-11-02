@@ -520,6 +520,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
   (`src/content/hintMarks.ts`), the geometry
   (`src/content/hintGeometry.ts`) and the palette
   (`src/content/hintPalette.ts`). The intuition diagrams join in phase 7.
+  The picture of the board a player shares (the Share dialog's image, and
+  'Share this hint' in the hint panel; `src/content/boardImage.ts`) is
+  the Learn diagrams' renderer, given the player's position, colours and
+  the walk's frame shown, so it draws what the board draws in that frame,
+  always light, and never prints the technique's name.
 
 ## Truth: where it comes from
 

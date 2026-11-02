@@ -29,10 +29,12 @@
 // any of this runs, when the request reaches it, so it cannot reach that.)
 //
 // A link shared from the app (src/ui/Dialogs.tsx: the Share dialog's two
-// links, the win screen's challenge and daily line) sends a `shared` line
-// once the share sheet took it or it was copied: what was shared, which
-// way, and the puzzle's band, with the version and where the app ran.
-// Never the link, the text or where it went. It goes live or not at all,
+// links, the win screen's challenge and daily line), or a picture of the
+// board (the Share dialog's image, also opened from a hint), sends a
+// `shared` line once the share sheet took it, it was copied or the picture
+// was saved: what was shared, which way, and the puzzle's band, with the
+// version and where the app ran. Never the link, the text, the picture or
+// where it went. It goes live or not at all,
 // and nothing is kept on the device for it: offline it is dropped, with
 // or without the opt-in, so it carries none of the opt-in's flags; a
 // device left out sends none. (The Worker writes it like the play lines,
@@ -56,10 +58,10 @@ export const STORAGE_KEY = 'sudokui-telemetry-v1';
 /** how long a live event waits for company before it goes, in ms */
 export const BATCH_DELAY = 1000;
 
-/** what a share was: the Share dialog's puzzle or position link, the win screen's challenge or daily line (worker/telemetry.ts, SHARE_KINDS) */
-export type ShareKind = 'puzzle' | 'position' | 'challenge' | 'daily';
-/** the share sheet took it, or it was copied (SHARE_VIAS) */
-export type ShareVia = 'sheet' | 'copy';
+/** what a share was: the Share dialog's puzzle or position link or picture of the board, the win screen's challenge or daily line (worker/telemetry.ts, SHARE_KINDS) */
+export type ShareKind = 'puzzle' | 'position' | 'challenge' | 'daily' | 'image';
+/** the share sheet took it, it was copied, or the picture was saved as a file (SHARE_VIAS) */
+export type ShareVia = 'sheet' | 'copy' | 'save';
 /** what kind of game a start or a solve is about (worker/telemetry.ts, PLAY_KINDS; gameStore.ts, kindOf) */
 export type PlayKind = 'daily' | 'new' | 'practice' | 'shared';
 
@@ -100,7 +102,7 @@ interface TelemetryState extends Kept {
   pending: PlayEvent[];
   /** a game of a kind began or was solved: sent now while online, kept with the opt-in while offline, dropped otherwise */
   track(event: 'started' | 'completed', band: Level, seconds: number, kind: PlayKind): void;
-  /** a link went to someone, through the share sheet or a copy: sent now while online, else dropped; never kept on the device */
+  /** a link or a picture went to someone, through the share sheet, a copy or a saved file: sent now while online, else dropped; never kept on the device */
   shared(what: ShareKind, via: ShareVia, band: Level): void;
   /** sends what waits: the live batch at once, then the kept queue while online and opted in */
   flush(): Promise<void>;
