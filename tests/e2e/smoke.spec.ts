@@ -696,7 +696,7 @@ for (const [name, size] of [
       await expect(page.locator('.hint-walk-count')).toContainText('7 of 8');
       await expect(bars).toHaveCount(1);
       await expect(squares).toHaveCount(2);
-      await expect(page.locator('.hint-walk-text')).toContainText('one of r8c6, r9c6 must be 8');
+      await expect(page.locator('.hint-walk-text')).toHaveText('Strong link on 8 in box 8: r8c5, r8c6 and r9c6 are its only 8s, so if r8c5 is not 8, one of r8c6, r9c6 is.');
     });
   });
 }
@@ -772,7 +772,7 @@ for (const [name, size] of [
       // no link added: only the first arrow, with its number; the next frame adds the link into the set, numbered 3
       await expect(page.locator('svg.board .walk-badge')).toHaveText(['1']);
       await page.keyboard.press('ArrowRight');
-      await expect(page.locator('.hint-walk-text')).toHaveText('If r2c8 is 8, set A holds no 8: every 8 of A sees r2c8.');
+      await expect(page.locator('.hint-walk-text')).toHaveText('If r2c8 is 8, set A holds no 8: every 8 of A sees r2c8 in column 8.');
       await expect(page.locator('svg.board .walk-badge')).toHaveText(['1', '3']);
     });
   });
@@ -861,7 +861,7 @@ for (const [name, size] of [
       await page.keyboard.press('ArrowRight');
       await expect(tiles).toHaveCount(4);
       await page.keyboard.press('ArrowRight');
-      await expect(page.locator('.hint-walk-text')).toHaveText('Every 1 of set A sees every 1 of set B: if r8c2 is 1, r8c9 cannot be 1.');
+      await expect(page.locator('.hint-walk-text')).toHaveText('In row 8, every 1 of set A sees every 1 of set B: if r8c2 is 1, r8c9 cannot be 1.');
       await expect(shafts(page)).toHaveCount(1);
       await expect(page.locator('svg.board .walk-badge')).toHaveText(['4']);
       await page.keyboard.press('ArrowRight');
