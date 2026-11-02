@@ -270,7 +270,7 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
     expect(walk(EXAMPLES.ALS_XY_WING!.step).map((f) => f.text)).toEqual([
       'Set A: the 2 cells r8c3, r8c8 of row 8 hold only 2, 4 and 7: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'If set A holds no 7, its other 2 digits fill its 2 cells, so r8c3 must be 4.',
-      'Every 4 of set A sees every 4 of set C: if r8c3 is 4, r6c3 cannot be 4.',
+      'Every 4 of set A sees every 4 of set C, the hinge r6c3: if r8c3 is 4, r6c3 cannot be 4.',
       'Set C, the hinge, is the cell r6c3, which holds only 4 and 6: if it is not 4, it must be 6.',
       'Set B: the 2 cells r4c9, r6c8 of box 6 hold only 4, 6 and 7: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'Every 6 of set C sees every 6 of set B: if r6c3 is 6, r6c8 cannot be 6.',
@@ -279,12 +279,12 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
     expect(walk(EXAMPLES.ALS_XY_CHAIN!.step).map((f) => f.text)).toEqual([
       'Set A: the 2 cells r4c2, r4c7 of row 4 hold only 4, 6 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'If set A holds no 4, its other 2 digits fill its 2 cells, so r4c7 must be 9.',
-      'Every 9 of set A sees every 9 of set B: if r4c7 is 9, r1c7 cannot be 9.',
+      'Every 9 of set A sees every 9 of set B, the cell r1c7: if r4c7 is 9, r1c7 cannot be 9.',
       'Set B is the cell r1c7, which holds only 3 and 9: if it is not 9, it must be 3.',
       'Set C: the 2 cells r1c5, r1c6 of row 1 hold only 2, 3 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'Every 3 of set B sees every 3 of set C: if r1c7 is 3, none of r1c5, r1c6 can be 3.',
       'If set C holds no 3, its other 2 digits fill its 2 cells, so r1c5 must be 9.',
-      'Every 9 of set C sees every 9 of set D: if r1c5 is 9, r7c5 cannot be 9.',
+      'Every 9 of set C sees every 9 of set D, the cell r7c5: if r1c5 is 9, r7c5 cannot be 9.',
       'Set D is the cell r7c5, which holds only 4 and 9: if it is not 9, it must be 4.'
     ]);
     // A, the cell r7c7, lies inside D: D's lock names both its 1s
@@ -349,6 +349,12 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
     const hinge = frames.findIndex((f) => f.text.startsWith('Set C, the hinge, is the cell'));
     const own: Frame = { text: 'Set C: the cell r6c3.', links: frames[hinge].links - 1, sets: [2], show: new Set(['units']) };
     expect(wordProblems(wing, [...frames.slice(0, hinge), own, ...frames.slice(hinge)])).toEqual(['set C: a one-cell set with a frame of its own']);
+    // the restricted common into the hinge, a frame before its lock, naming set C without its cell (review report L11)
+    const bare = 'Every 4 of set A sees every 4 of set C: if r8c3 is 4, r6c3 cannot be 4.';
+    expect(frames[hinge - 1].text).toBe('Every 4 of set A sees every 4 of set C, the hinge r6c3: if r8c3 is 4, r6c3 cannot be 4.');
+    expect(wordProblems(wing, frames.map((f, i) => (i === hinge - 1 ? { ...f, text: bare } : f)))).toEqual([
+      `frame ${hinge}: names the one-cell set C before its lock without its cell: ${bare}`
+    ]);
   });
 });
 

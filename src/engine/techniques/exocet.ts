@@ -157,10 +157,10 @@ export function findExocet(g: Grid): Step | null {
         digitsOf(g.cands[cell] & S).map((digit) => ({ cell, digit }))
       ),
       labels: {
-        primary: tr`the base cells, holding ${digitsOf(S).join('')}`,
+        primary: tr`the base cells, holding ${digitsOf(S).join('/')}`,
         secondary: tr`the target cells: the base digits must land here`
       },
-      description: tr`Exocet: base ${cellNames(base)} (${digitsOf(S).join('')}) with targets ${cellName(targets[0])} and ${cellName(targets[1])}: a complete placement analysis proves the base digits must land in the targets, so the targets keep only base candidates.`
+      description: tr`Exocet: base ${cellNames(base)} (${digitsOf(S).join('/')}) with targets ${cellName(targets[0])} and ${cellName(targets[1])}: a complete placement analysis proves the base digits must land in the targets, so the targets keep only base candidates.`
     };
   }
   return null;
@@ -204,7 +204,7 @@ export function findDoubleExocet(g: Grid): Step | null {
         secondary: [...a.targets, ...b.targets].flatMap((cell) =>
           digitsOf(g.cands[cell] & a.S).map((digit) => ({ cell, digit }))
         ),
-        description: tr`Double Exocet: two proven exocets on the same line share the base set ${digitsOf(a.S).join('')}: the four base cells ${cellNames([...baseCells])} must hold exactly those four digits, so they fall from the rest of the line.`
+        description: tr`Double Exocet: two proven exocets on the same line share the base set ${digitsOf(a.S).join('/')}: the four base cells ${cellNames([...baseCells])} must hold exactly those four digits, so they fall from the rest of the line.`
       };
     }
   }

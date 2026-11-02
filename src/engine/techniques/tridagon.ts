@@ -86,7 +86,7 @@ export function findTridagon(g: Grid): Step | null {
                         cell: guardian,
                         digit
                       })),
-                      description: tr`Tridagon: the cells ${cellNames(cells)} cannot all take digits from ${digitsOf(T).join('')} (proven by complete case analysis), so the guardian ${cellName(guardian)} must take one of its other candidates, so ${fallen} fall from it.`
+                      description: tr`Tridagon: the cells ${cellNames(cells)} cannot all take digits from ${digitsOf(T).join('/')} (proven by complete case analysis), so the guardian ${cellName(guardian)} must take one of its other candidates, so ${fallen} fall from it.`
                     };
                   }
                 }

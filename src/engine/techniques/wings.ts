@@ -55,7 +55,7 @@ export function findXYWing(g: Grid): Step | null {
           primary: [{ cell: pivot, digit: x }, { cell: pivot, digit: y }],
           secondary: [{ cell: w1, digit: z }, { cell: w2, digit: z }],
           labels: { primary: tr`pivot`, secondary: tr`pincers` },
-          description: tr`XY-Wing: pivot ${cellName(pivot)} (${x}${y}) with pincers ${cellName(w1)} (${x}${z}) and ${cellName(w2)} (${y}${z}); one pincer must be ${z}, so ${z} is removed from cells seeing both.`
+          description: tr`XY-Wing: pivot ${cellName(pivot)} (${digitsOf(g.cands[pivot]).join('/')}) with pincers ${cellName(w1)} (${digitsOf(g.cands[w1]).join('/')}) and ${cellName(w2)} (${digitsOf(g.cands[w2]).join('/')}); one pincer must be ${z}, so ${z} is removed from cells seeing both.`
         };
       }
     }
@@ -91,7 +91,7 @@ export function findXYZWing(g: Grid): Step | null {
             { cell: wings[j], digit: z }
           ],
           labels: { primary: tr`pivot`, secondary: tr`pincers` },
-          description: tr`XYZ-Wing: pivot ${cellName(pivot)} (${digitsOf(pivotMask).join('')}) with pincers ${cellName(wings[i])} (${digitsOf(g.cands[wings[i]]).join('')}) and ${cellName(wings[j])} (${digitsOf(g.cands[wings[j]]).join('')}). Whichever digit the pivot takes, one of the three cells is ${z}, so ${z} is removed from every cell that sees all three.`
+          description: tr`XYZ-Wing: pivot ${cellName(pivot)} (${digitsOf(pivotMask).join('/')}) with pincers ${cellName(wings[i])} (${digitsOf(g.cands[wings[i]]).join('/')}) and ${cellName(wings[j])} (${digitsOf(g.cands[wings[j]]).join('/')}). Whichever digit the pivot takes, one of the three cells is ${z}, so ${z} is removed from every cell that sees all three.`
         };
       }
     }
@@ -160,7 +160,7 @@ export function findWWing(g: Grid): Step | null {
                   ]
               ).map((cd) => [cd])
             ),
-            description: tr`W-Wing: ${cellName(A)} and ${cellName(B)} both hold ${x}${y}; the strong link on ${linkDigit} (${cellName(e1)}–${cellName(e2)}) forces one of them to be ${elimDigit}, removing ${elimDigit} from cells seeing both.`
+            description: tr`W-Wing: ${cellName(A)} and ${cellName(B)} both hold ${x}/${y}; the strong link on ${linkDigit} (${cellName(e1)}–${cellName(e2)}) forces one of them to be ${elimDigit}, removing ${elimDigit} from cells seeing both.`
           };
         }
       }

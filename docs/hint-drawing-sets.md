@@ -1033,3 +1033,12 @@ hintMarks, i18n), and the decisions it refines point here.
   row sitting on it, the keyline still parting the mark from the fill.
   The Learn diagrams draw their tabs' keylines (and a group member's on
   a tile) the same way; their marks have no keylines.
+- **A one-cell set reached by a restricted common** (the readability
+  check of November 2026, docs/hint-readability-2026-11.md L11). A
+  one-cell set is told by its lock, the frame after the restricted common
+  that reaches it, so that common's sentence names it with its cell: "Every
+  4 of set A sees every 4 of set C, the hinge r6c3: if r8c3 is 4, r6c3
+  cannot be 4.", and in an ALS-XZ or ALS-XY-Chain "Every 9 of set A sees
+  every 9 of set B, the cell r1c7: ...". The ALS-XY-Wing and ALS-XY-Chain
+  walks quoted under Per technique read so; tests/setWords.ts holds every
+  set step kept to it.

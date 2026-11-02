@@ -77,8 +77,8 @@ function checkFormation(g: Grid, cells: number[]): Step | null {
       primary: cells
         .filter((c) => c !== extrasCell)
         .flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))),
-      labels: { primary: tr`the cells that would form a deadly ${digitsOf(trio).join('')} loop` },
-      description: tr`Extended Rectangle Type 1: ${cellNames(cells)} would form a deadly ${digitsOf(trio).join('')} loop; ${cellName(extrasCell)} must take one of its extra candidates.`
+      labels: { primary: tr`the cells that would form a deadly ${digitsOf(trio).join('/')} loop` },
+      description: tr`Extended Rectangle Type 1: ${cellNames(cells)} would form a deadly ${digitsOf(trio).join('/')} loop; ${cellName(extrasCell)} must take one of its extra candidates.`
     };
   }
 
@@ -105,10 +105,10 @@ function checkFormation(g: Grid, cells: number[]): Step | null {
       ),
       secondary: zCells.map((cell) => ({ cell, digit: z })),
       labels: {
-        primary: tr`the cells that would form a deadly ${digitsOf(trio).join('')} loop`,
+        primary: tr`the cells that would form a deadly ${digitsOf(trio).join('/')} loop`,
         secondary: tr`${z}, the extra candidate: one of these cells must be it`
       },
-      description: tr`Extended Rectangle Type 2: to avoid a deadly ${digitsOf(trio).join('')} loop in ${cellNames(cells)}, one of ${cellNames(zCells)} must be ${z}, so ${z} is removed from cells seeing all of them.`
+      description: tr`Extended Rectangle Type 2: to avoid a deadly ${digitsOf(trio).join('/')} loop in ${cellNames(cells)}, one of ${cellNames(zCells)} must be ${z}, so ${z} is removed from cells seeing all of them.`
     };
   }
   return null;

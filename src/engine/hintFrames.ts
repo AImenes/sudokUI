@@ -110,6 +110,16 @@ function setText(step: Step, set: ChainSet): string {
 }
 
 /**
+ * Whether the walk has told a set before this link reaches it: a one-cell
+ * set is told by its lock, its link inside it
+ */
+function introducedBefore(step: Step, link: ChainLink, k: number): boolean {
+  const links = step.links ?? [];
+  const at = links.indexOf(link);
+  return at > 0 && links.slice(0, at).some((l) => insideSet(l) && l.fromSet === k);
+}
+
+/**
  * A link's sentence where an end is a node of an almost locked set, from
  * the step's sets (decision 17): the set's lock, a one-cell set's folded
  * into it; a restricted common between two sets; a link into a set or out
@@ -161,6 +171,19 @@ function setLinkText(link: ChainLink, step: Step): string | null {
     // a restricted common: every x of one set sees every x of the other
     const [L, M] = [from.letter, to.letter];
     const [f, t] = [cellNames(fromCells), cellNames(toCells)];
+    // a one-cell set is introduced by its lock, the frame after this one:
+    // until then it is named with its cell (review report L11)
+    if (to.cells.length === 1 && !introducedBefore(step, link, link.toSet!)) {
+      const hinge = isHinge(step, to);
+      if (one(fromCells)) {
+        return hinge
+          ? tr`Every ${x} of set ${L} sees every ${x} of set ${M}, the hinge ${t}: if ${f} is ${x}, ${t} cannot be ${x}.`
+          : tr`Every ${x} of set ${L} sees every ${x} of set ${M}, the cell ${t}: if ${f} is ${x}, ${t} cannot be ${x}.`;
+      }
+      return hinge
+        ? tr`Every ${x} of set ${L} sees every ${x} of set ${M}, the hinge ${t}: if one of ${f} is ${x}, ${t} cannot be ${x}.`
+        : tr`Every ${x} of set ${L} sees every ${x} of set ${M}, the cell ${t}: if one of ${f} is ${x}, ${t} cannot be ${x}.`;
+    }
     if (one(fromCells) && one(toCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if ${f} is ${x}, ${t} cannot be ${x}.`;
     if (one(toCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if one of ${f} is ${x}, ${t} cannot be ${x}.`;
     if (one(fromCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if ${f} is ${x}, none of ${t} can be ${x}.`;
@@ -225,39 +248,86 @@ export function linkText(link: ChainLink, step: Step): string {
     : tr`Weak link: if ${from} is ${fd}, ${to} cannot be ${td}.`;
 }
 
-/** What the step concludes, in words: the placements and removals. */
-export function conclusionText(step: Step): string {
-  // "So a; b; c.": the first clause carries the "So", so each language can
-  // open the sentence its own way
-  const parts: string[] = [];
-  for (const { cell, digit } of step.placements) {
-    parts.push(parts.length ? tr`${cellName(cell)} must be ${digit}` : tr`So ${cellName(cell)} must be ${digit}`);
+/**
+ * A step's removals as the conclusion says them: by cell, the cells that
+ * lose the same digits together ("5 and 8 are removed from r4c8"), each
+ * group where its first cell comes in reading order, its cells in reading
+ * order (a finder lists them as it found them, a colouring as its cluster
+ * grew)
+ */
+function removalGroups(step: Step): { digits: number[]; cells: number[] }[] {
+  const lost = new Map<number, number[]>();
+  for (const { cell, digit } of step.eliminations) (lost.get(cell) ?? lost.set(cell, []).get(cell)!).push(digit);
+  const groups = new Map<string, { digits: number[]; cells: number[] }>();
+  for (const cell of [...lost.keys()].sort((a, b) => a - b)) {
+    const digits = uniq(lost.get(cell)!).sort((a, b) => a - b);
+    const key = digits.join();
+    (groups.get(key) ?? groups.set(key, { digits, cells: [] }).get(key)!).cells.push(cell);
   }
-  const byDigit = new Map<number, number[]>();
-  for (const { cell, digit } of step.eliminations) (byDigit.get(digit) ?? byDigit.set(digit, []).get(digit)!).push(cell);
-  // a colouring's removals come in the order its cluster grew, up to a
-  // dozen cells of one digit: they are named in reading order
-  if (isParity(step)) for (const cells of byDigit.values()) cells.sort((a, b) => a - b);
-  for (const [digit, cells] of [...byDigit].sort((a, b) => a[0] - b[0])) {
-    parts.push(parts.length ? tr`${digit} is removed from ${cellNames(cells)}` : tr`So ${digit} is removed from ${cellNames(cells)}`);
+  return [...groups.values()];
+}
+
+/**
+ * What the step concludes, in words: the placements, then the removals,
+ * both in reading order, a cell that loses several digits named once. The
+ * walk's last frame opens it with "So"; the explanation the full view shows
+ * (describe) with "Here", as the finder's sentence before it often ends "so
+ * 6 is removed from cells seeing both". The first clause carries the
+ * opening word, so each language can open the sentence its own way.
+ */
+export function conclusionText(step: Step, opening: 'so' | 'here' = 'so'): string {
+  const so = opening === 'so';
+  const parts: string[] = [];
+  for (const { cell, digit } of [...step.placements].sort((a, b) => a.cell - b.cell)) {
+    const c = cellName(cell);
+    parts.push(parts.length ? tr`${c} must be ${digit}` : so ? tr`So ${c} must be ${digit}` : tr`Here, ${c} must be ${digit}`);
+  }
+  for (const { digits, cells } of removalGroups(step)) {
+    const names = cellNames(cells);
+    if (digits.length === 1) {
+      const d = digits[0];
+      parts.push(parts.length ? tr`${d} is removed from ${names}` : so ? tr`So ${d} is removed from ${names}` : tr`Here, ${d} is removed from ${names}`);
+    } else {
+      const ds = listAnd(digits);
+      parts.push(parts.length ? tr`${ds} are removed from ${names}` : so ? tr`So ${ds} are removed from ${names}` : tr`Here, ${ds} are removed from ${names}`);
+    }
   }
   return parts.length ? `${parts.join('; ')}.` : '';
 }
 
 /**
+ * Whether a finder's sentence names a candidate the step places or
+ * removes: one of its clauses (between full stops, colons and semicolons)
+ * names the cell, and the digit as a number of its own, not a house's
+ * ("row 4", in the language set), not a node of a chain's notation
+ * ("8@r1c6"), not one of the digits a cell or a pattern holds ("4/7/9"),
+ * not part of a cell's name. Naming the cell alone is not enough: Aligned
+ * Pair Exclusion names its pair cells, and Digit Forcing its premise cell,
+ * without saying what leaves them.
+ */
+export function namesCandidate(text: string, { cell, digit }: CellDigit): boolean {
+  let plain = text;
+  for (let u = 0; u < 27; u++) plain = plain.split(unitName(u)).join(' ');
+  const name = cellName(cell);
+  const number = new RegExp(`(?<![\\w./])${digit}(?![\\d@/])`);
+  return plain.split(/[.;:](?=\s|$)/).some((clause) => clause.includes(name) && number.test(clause.split(name).join(' ')));
+}
+
+/**
  * The explanation as shown: the finder's sentence, followed by the
- * conclusion in cell names when the sentence does not already name every
- * cell it places in or removes from. A colouring's sentence argues for one
- * removal, or for a colour, and counts or sums up the rest, so a cell it
- * names may lose a candidate it does not name: its conclusion follows
- * whenever it removes more than one candidate.
+ * conclusion ("Here, 6 is removed from r4c4.") unless the sentence already
+ * names every candidate it places or removes, each by its cell and its
+ * digit (namesCandidate). A colouring's sentence argues for one removal,
+ * or for a colour, and counts or sums up the rest, so a cell it names may
+ * lose a candidate it does not name: its conclusion follows whenever it
+ * removes more than one candidate.
  */
 export function describe(step: Step): string {
-  const cells = [...step.placements, ...step.eliminations].map((cd) => cellName(cd.cell));
+  const all = [...step.placements, ...step.eliminations];
   const counted = isParity(step) && step.eliminations.length > 1;
-  const named = !counted && cells.every((name) => step.description.includes(name));
-  if (named || !cells.length) return step.description;
-  return `${step.description} ${conclusionText(step)}`;
+  const named = !counted && all.every((cd) => namesCandidate(step.description, cd));
+  if (named || !all.length) return step.description;
+  return `${step.description} ${conclusionText(step, 'here')}`;
 }
 
 /**

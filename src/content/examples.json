@@ -1921,7 +1921,7 @@
     "primary": "base rows: the 7s of the fish, 2 rows with 7 only in the cover columns",
     "secondary": "cover columns: 2 of them take the base's 7s, so 7 goes nowhere else in them"
    },
-   "description": "X-Wing on 7: in rows 3, 8, 7 can only go in columns 3, 8 (r3c3, r3c8, r8c3, r8c8). Those 2 rows will use up 7 in those 2 columns, so 7 can go nowhere else in them."
+   "description": "X-Wing on 7: in rows 3 and 8, the 7s lie only in columns 3 and 8 (r3c3, r3c8, r8c3, r8c8). Those 2 rows will use up 7 in those 2 columns, so 7 can go nowhere else in them."
   }
  },
  "SWORDFISH": {
@@ -2076,7 +2076,7 @@
     "primary": "base columns: the 9s of the fish, 3 columns with 9 only in the cover rows",
     "secondary": "cover rows: 3 of them take the base's 9s, so 9 goes nowhere else in them"
    },
-   "description": "Swordfish on 9: in columns 1, 4, 8, 9 can only go in rows 3, 4, 5 (r3c1, r5c1, r4c4, r5c4, r3c8, r4c8). Those 3 columns will use up 9 in those 3 rows, so 9 can go nowhere else in them."
+   "description": "Swordfish on 9: in columns 1, 4 and 8, the 9s lie only in rows 3, 4 and 5 (r3c1, r5c1, r4c4, r5c4, r3c8, r4c8). Those 3 columns will use up 9 in those 3 rows, so 9 can go nowhere else in them."
   }
  },
  "JELLYFISH": {
@@ -2247,7 +2247,7 @@
     "primary": "base rows: the 6s of the fish, 4 rows with 6 only in the cover columns",
     "secondary": "cover columns: 4 of them take the base's 6s, so 6 goes nowhere else in them"
    },
-   "description": "Jellyfish on 6: in rows 2, 6, 8, 9, 6 can only go in columns 5, 6, 8, 9 (r2c5, r2c9, r6c5, r6c8, r8c6, r8c9, r9c6, r9c8). Those 4 rows will use up 6 in those 4 columns, so 6 can go nowhere else in them."
+   "description": "Jellyfish on 6: in rows 2, 6, 8 and 9, the 6s lie only in columns 5, 6, 8 and 9 (r2c5, r2c9, r6c5, r6c8, r8c6, r8c9, r9c6, r9c8). Those 4 rows will use up 6 in those 4 columns, so 6 can go nowhere else in them."
   }
  },
  "REMOTE_PAIR": {
@@ -2701,11 +2701,11 @@
     }
    ],
    "labels": {
-    "primary": "the pair: 56 in both cells, one chute apart",
+    "primary": "the pair: 5/6 in both cells, one chute apart",
     "secondary": "the third box's mini-line, where 6 is missing"
    },
    "secondary": [],
-   "description": "Chute Remote Pair: r4c6 and r5c8 both hold 56 in one chute; 6 appears nowhere in r6c1, r6c2, r6c3, so the chute's third box must place its 6 in a row shared with a pair cell, forcing that cell to 5. One pair cell is therefore 5, so 5 can be removed from cells seeing both pair cells."
+   "description": "Chute Remote Pair: r4c6 and r5c8 both hold 5/6 in one chute; 6 appears nowhere in r6c1, r6c2, r6c3, so the chute's third box must place its 6 in a row shared with a pair cell, forcing that cell to 5. One pair cell is therefore 5, so 5 can be removed from cells seeing both pair cells."
   }
  },
  "BUG_PLUS_1": {
@@ -3466,10 +3466,10 @@
     }
    ],
    "labels": {
-    "primary": "box 1: every 5 in it lies on one row and one column",
-    "secondary": "the conjugate pair on 5"
+    "primary": "box 1: its 5s all lie in row 1 or column 2",
+    "secondary": "column 5: its only 5s are r1c5 and r6c5"
    },
-   "description": "Empty Rectangle on 5: in box 1 every 5 lies on one row and one column, and r1c5, r6c5 are the only two places for 5 in their line. If r6c5 is 5, r6c2 in its row is not. If not, r1c5 is 5, so the box's 5 cannot share its row and must lie on the column through r6c2, which again is not 5. So 5 is removed from r6c2."
+   "description": "Empty Rectangle on 5: in box 1 every 5 lies in row 1 or column 2, and r1c5 and r6c5 are the only 5s in column 5. If r6c5 is 5, r6c2 is not: they share row 6. If not, r1c5 is 5, so box 1 has no 5 in row 1; its 5 lies in column 2, which runs through r6c2, so again r6c2 is not 5. So 5 is removed from r6c2."
   }
  },
  "W_WING": {
@@ -3670,7 +3670,7 @@
      "strong": true
     }
    ],
-   "description": "W-Wing: r3c7 and r9c5 both hold 46; the strong link on 4 (r8c5–r8c7) forces one of them to be 6, removing 6 from cells seeing both."
+   "description": "W-Wing: r3c7 and r9c5 both hold 4/6; the strong link on 4 (r8c5–r8c7) forces one of them to be 6, removing 6 from cells seeing both."
   }
  },
  "XY_WING": {
@@ -3797,7 +3797,7 @@
     "primary": "pivot",
     "secondary": "pincers"
    },
-   "description": "XY-Wing: pivot r7c7 (79) with pincers r7c6 (76) and r8c9 (96); one pincer must be 6, so 6 is removed from cells seeing both."
+   "description": "XY-Wing: pivot r7c7 (7/9) with pincers r7c6 (6/7) and r8c9 (6/9); one pincer must be 6, so 6 is removed from cells seeing both."
   }
  },
  "XYZ_WING": {
@@ -3924,7 +3924,7 @@
     "primary": "pivot",
     "secondary": "pincers"
    },
-   "description": "XYZ-Wing: pivot r2c5 (459) with pincers r3c6 (45) and r7c5 (49). Whichever digit the pivot takes, one of the three cells is 4, so 4 is removed from every cell that sees all three."
+   "description": "XYZ-Wing: pivot r2c5 (4/5/9) with pincers r3c6 (4/5) and r7c5 (4/9). Whichever digit the pivot takes, one of the three cells is 4, so 4 is removed from every cell that sees all three."
   }
  },
  "WXYZ_WING": {
@@ -4070,7 +4070,7 @@
     "secondary": "other cells of the three",
     "fins": "bivalue cell"
    },
-   "description": "WXYZ-Wing: bivalue cell r4c3 (49) and the three cells r4c4, r5c5 and r6c5 in box 5, which hold 1479 between them. The 9 in r4c3 sees every 9 in the three cells. Either r4c3 is 4, or it is 9 and the three cells in box 5 must be 1, 4 and 7. At least one of the four cells is therefore 4, so 4 is removed from every other cell that sees all the 4s among them."
+   "description": "WXYZ-Wing: bivalue cell r4c3 (4/9) and the three cells r4c4, r5c5 and r6c5 in box 5, which hold 1/4/7/9 between them. The 9 in r4c3 sees every 9 in the three cells. Either r4c3 is 4, or it is 9 and the three cells in box 5 must be 1, 4 and 7. At least one of the four cells is therefore 4, so 4 is removed from every other cell that sees all the 4s among them."
   }
  },
  "UNIQUENESS_1": {
@@ -5070,7 +5070,7 @@
     "primary": "the rectangle: 3/5 in all four corners",
     "secondary": "5 in the bivalue corner: confined to the rectangle in r6c5's row and column"
    },
-   "description": "Hidden Rectangle: r9c6 holds only 35, and 5 is confined to the rectangle in r6c5's row and column; r6c5 cannot be 3 or the deadly pattern appears."
+   "description": "Hidden Rectangle: r9c6 holds only 3/5, and 5 is confined to the rectangle in r6c5's row and column; r6c5 cannot be 3 or the deadly pattern appears."
   }
  },
  "AVOIDABLE_RECTANGLE_1": {
@@ -5462,9 +5462,9 @@
     }
    ],
    "labels": {
-    "primary": "the cells that would form a deadly 249 loop"
+    "primary": "the cells that would form a deadly 2/4/9 loop"
    },
-   "description": "Extended Rectangle Type 1: r8c1, r9c1, r8c5, r9c5, r8c9, r9c9 would form a deadly 249 loop; r9c5 must take one of its extra candidates."
+   "description": "Extended Rectangle Type 1: r8c1, r9c1, r8c5, r9c5, r8c9, r9c9 would form a deadly 2/4/9 loop; r9c5 must take one of its extra candidates."
   }
  },
  "FINNED_X_WING": {
@@ -5610,7 +5610,7 @@
     "secondary": "cover rows: where the base's 8s must land",
     "fins": "fin: 8s outside the fish, in one box; a removal must see every fin"
    },
-   "description": "Finned X-Wing on 8: in columns 3, 9, 8 sits in rows 5, 8 (r5c3, r8c3, r5c9, r8c9) except for the fin r4c3. Either the fin is false and the fish holds, or the fin is true; an 8 that sees every fin and lies in the cover rows outside the base is false both ways."
+   "description": "Finned X-Wing on 8: in columns 3 and 9, the 8s lie in rows 5 and 8 (r5c3, r8c3, r5c9, r8c9) except for the fin r4c3. Either the fin is false and the fish holds, or the fin is true; an 8 that sees every fin and lies in the cover rows outside the base is false both ways."
   }
  },
  "SASHIMI_X_WING": {
@@ -5756,7 +5756,7 @@
     "secondary": "cover rows: where the base's 1s must land",
     "fins": "fin: 1s outside the fish, in one box; a removal must see every fin"
    },
-   "description": "Sashimi X-Wing on 1: in columns 4, 8, 1 sits in rows 6, 9 (r6c4, r6c8, r9c8) except for the fins r7c4, r8c4. Either the fins are false and the fish holds, or a fin is true; a 1 that sees every fin and lies in the cover rows outside the base is false both ways."
+   "description": "Sashimi X-Wing on 1: in columns 4 and 8, the 1s lie in rows 6 and 9 (r6c4, r6c8, r9c8) except for the fins r7c4, r8c4. Either the fins are false and the fish holds, or a fin is true; a 1 that sees every fin and lies in the cover rows outside the base is false both ways."
   }
  },
  "FINNED_SWORDFISH": {
@@ -5918,7 +5918,7 @@
     "secondary": "cover columns: where the base's 3s must land",
     "fins": "fin: 3s outside the fish, in one box; a removal must see every fin"
    },
-   "description": "Finned Swordfish on 3: in rows 2, 3, 7, 3 sits in columns 2, 4, 7 (r2c2, r2c4, r3c4, r3c7, r7c4, r7c7) except for the fin r7c3. Either the fin is false and the fish holds, or the fin is true; a 3 that sees every fin and lies in the cover columns outside the base is false both ways."
+   "description": "Finned Swordfish on 3: in rows 2, 3 and 7, the 3s lie in columns 2, 4 and 7 (r2c2, r2c4, r3c4, r3c7, r7c4, r7c7) except for the fin r7c3. Either the fin is false and the fish holds, or the fin is true; a 3 that sees every fin and lies in the cover columns outside the base is false both ways."
   }
  },
  "SASHIMI_SWORDFISH": {
@@ -6076,7 +6076,7 @@
     "secondary": "cover columns: where the base's 1s must land",
     "fins": "fin: 1s outside the fish, in one box; a removal must see every fin"
    },
-   "description": "Sashimi Swordfish on 1: in rows 5, 6, 8, 1 sits in columns 3, 5, 7 (r5c3, r5c7, r6c5, r8c5, r8c7) except for the fin r6c2. Either the fin is false and the fish holds, or the fin is true; a 1 that sees every fin and lies in the cover columns outside the base is false both ways."
+   "description": "Sashimi Swordfish on 1: in rows 5, 6 and 8, the 1s lie in columns 3, 5 and 7 (r5c3, r5c7, r6c5, r8c5, r8c7) except for the fin r6c2. Either the fin is false and the fish holds, or the fin is true; a 1 that sees every fin and lies in the cover columns outside the base is false both ways."
   }
  },
  "FINNED_JELLYFISH": {
@@ -6254,7 +6254,7 @@
     "secondary": "cover columns: where the base's 1s must land",
     "fins": "fin: 1s outside the fish, in one box; a removal must see every fin"
    },
-   "description": "Finned Jellyfish on 1: in rows 1, 4, 7, 8, 1 sits in columns 1, 3, 4, 8 (r1c1, r1c4, r4c1, r4c8, r7c3, r7c4, r8c3, r8c8) except for the fin r4c7. Either the fin is false and the fish holds, or the fin is true; a 1 that sees every fin and lies in the cover columns outside the base is false both ways."
+   "description": "Finned Jellyfish on 1: in rows 1, 4, 7 and 8, the 1s lie in columns 1, 3, 4 and 8 (r1c1, r1c4, r4c1, r4c8, r7c3, r7c4, r8c3, r8c8) except for the fin r4c7. Either the fin is false and the fish holds, or the fin is true; a 1 that sees every fin and lies in the cover columns outside the base is false both ways."
   }
  },
  "SASHIMI_JELLYFISH": {
@@ -6428,7 +6428,7 @@
     "secondary": "cover columns: where the base's 6s must land",
     "fins": "fin: 6s outside the fish, in one box; a removal must see every fin"
    },
-   "description": "Sashimi Jellyfish on 6: in rows 3, 4, 7, 8, 6 sits in columns 1, 2, 4, 9 (r3c1, r4c2, r4c4, r7c2, r7c9, r8c1, r8c9) except for the fin r3c6. Either the fin is false and the fish holds, or the fin is true; a 6 that sees every fin and lies in the cover columns outside the base is false both ways."
+   "description": "Sashimi Jellyfish on 6: in rows 3, 4, 7 and 8, the 6s lie in columns 1, 2, 4 and 9 (r3c1, r4c2, r4c4, r7c2, r7c9, r8c1, r8c9) except for the fin r3c6. Either the fin is false and the fish holds, or the fin is true; a 6 that sees every fin and lies in the cover columns outside the base is false both ways."
   }
  },
  "SUE_DE_COQ": {
@@ -6584,10 +6584,10 @@
     }
    ],
    "labels": {
-    "primary": "the intersection cells, holding 24678",
+    "primary": "the intersection cells, holding 2/4/6/7/8",
     "secondary": "the line cell and the box cell that complete the locked set"
    },
-   "description": "Sue de Coq: r9c7, r9c8, r9c9 (24678) with r9c4 in the line and r7c7 in the box form a locked set; line digits are cleared from the rest of the line, box digits from the rest of the box."
+   "description": "Sue de Coq: r9c7, r9c8, r9c9 (2/4/6/7/8) with r9c4 in the line and r7c7 in the box form a locked set; line digits are cleared from the rest of the line, box digits from the rest of the box."
   }
  },
  "SIMPLE_COLORS": {
@@ -11106,10 +11106,10 @@
     }
    ],
    "labels": {
-    "primary": "the base cells, holding 256",
+    "primary": "the base cells, holding 2/5/6",
     "secondary": "the target cells: the base digits must land here"
    },
-   "description": "Exocet: base r9c8, r9c9 (256) with targets r7c3 and r8c5: a complete placement analysis proves the base digits must land in the targets, so the targets keep only base candidates."
+   "description": "Exocet: base r9c8, r9c9 (2/5/6) with targets r7c3 and r8c5: a complete placement analysis proves the base digits must land in the targets, so the targets keep only base candidates."
   },
   "credit": "sudokuwiki.org"
  },

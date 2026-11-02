@@ -354,7 +354,7 @@ export function findHiddenRectangle(g: Grid): Step | null {
             primary: tr`the rectangle: ${x}/${y} in all four corners`,
             secondary: tr`${strong} in the bivalue corner: confined to the rectangle in ${cellName(B)}'s row and column`
           },
-          description: tr`Hidden Rectangle: ${cellName(A)} holds only ${x}${y}, and ${strong} is confined to the rectangle in ${cellName(B)}'s row and column; ${cellName(B)} cannot be ${weak} or the deadly pattern appears.`
+          description: tr`Hidden Rectangle: ${cellName(A)} holds only ${x}/${y}, and ${strong} is confined to the rectangle in ${cellName(B)}'s row and column; ${cellName(B)} cannot be ${weak} or the deadly pattern appears.`
         };
       }
     }
