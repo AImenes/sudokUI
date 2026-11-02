@@ -1074,3 +1074,310 @@ Risk: Each new referrer word must stay a closed-list word, so no referrer is eve
 
 Evidence: /home/user/sudokUI/worker/telemetry.ts:279-336 (landingFrom words and hosts), :359-374 (Android packages) ; /home/user/sudokUI/docs/online-goals.md ('A landing is a person', 'A landing says where it came from') ; /home/user/sudokUI/dist/learn/x-wing/index.html (og:image og-card.png) ; /home/user/sudokUI/dist/manifest.webmanifest ; /home/user/sudokUI/src/content/home.ts:88,91,107 ; /home/user/sudokUI/docs/goals.md ('Practice mode for 65 techniques')
 
+
+## The critic's corrections, risks and gaps
+
+Critic's pass over the four reports. Most code claims hold up. Checked against the repo, these are confirmed:
+- the daily preview names its techniques (share.ts:101);
+- "faster than 0%" appears with two solvers (Dialogs.tsx:1211);
+- 64.7% of the 451 dailies end in '.';
+- the position decoder has no length check;
+- the band card is a full, solvable-looking board under the line "Can you solve this Hard sudoku?";
+- landings are counted only on /p/ and /daily/;
+- 205 of the 218 commits in the shallow clone carry a Claude co-author trailer.
+
+I also confirmed from Reddit's own snudown source that it strips only trailing ?!., from a bare link, never '_' or '-'. The r/sudoku "Rule 2" premise exists, but it rests on one chain: a rival developer's GitHub issue (#696, 27 Oct 2026) that read Reddit through a Redlib mirror and could not read the comments. Hodoku Revisited is real (GPL PWA with staged hints and "Why not?"), but it has 0 stars.
+
+I could not verify the Hacker News, r/opensource, r/WebGames and Reddit-composer claims. The web-search budget was used up, and every host other than github.com failed to resolve in this session. To read those pages directly, these hosts would have to be allowed in the session's network settings: news.ycombinator.com, www.linux-magazine.com and keydiscussions.com, plus www.reddit.com for the r/sudoku rules.
+
+Things that would break Reddit's rules or the app's principles:
+- **Asking Matt to "test" a sudokui.app link in r/sudoku** amounts to proxy posting for a banned developer.
+- **The proposed desktop reddit.com/submit?url= button** makes a link post. Its thumbnail would be the band card: a different board, under a promotional "No ads, no account" line.
+- **Templated titles and a fixed "Open this exact position in sudokUI" line** would make players' posts look like a campaign.
+- **Counting "Copy for Reddit" and "Copy for Discord" separately** would break the published privacy promise "not where it went".
+- **The appeal draft promises never to link sudokUI at all.** That rules out the one welcomed form of presence: answering help posts with a drawn hint, saying he made the app.
+
+Over-claims:
+- "267 Learn pages" is really 83 pages in three languages (249), plus 18 other static pages.
+- The home page says "61" practice techniques in nine strings, while goals.md says 65.
+- The rival facts (Good Sudoku not working offline, Enjoy Sudoku pulled from the store, sudoku.coach needing an account) are second-hand and partly doubtful.
+
+Gaps:
+- **Help posts are the least likely Reddit use,** because the app's own hints answer them. Answering other people's posts is weaker than claimed: Scan reads digits only, and the manifest has no share_target.
+- **Pasted markdown may show as raw text** in new Reddit's rich-text composer and in the Reddit apps.
+- **Image posts and typed "sudokui.app" visits are counted nowhere,** because "/" and the Learn pages run no Worker code.
+- **Play lines carry no daily flag or language.**
+- **The plan has no baseline and no one-channel-at-a-time sequence,** at about 10 games started a day.
+- **Several channels and formats are missing:** the already-planned RSS feed of dailies, printing with a QR code, an embed, a Spanish channel, and a press and screenshot kit.
+
+Taken together, the share kit's direct reach will be small at today's numbers. Its main value is the image export, which also supplies the owner's own launch posts.
+
+### Risk (ban evasion by proxy): do not ask Matt to post or 'test' a sudokui.app link in r/sudoku
+
+Two reports suggest asking Matt whether 'a comment of his with a sudokui.app link' stays visible when logged out, to find out whether the domain is filtered. Checking a comment he already made of his own accord is harmless. Asking him to post one so the banned developer can learn whether his domain gets through r/sudoku's filter is exactly the 'get a friend or player to post for him' case the reddit report itself warns about. It is also undisclosed coordinated promotion, and Reddit can count it as ban evasion through another person.
+
+What the owner should not do with Matt:
+- hand him drafted text;
+- suggest a subreddit or a thread;
+- tell him when to post.
+
+Ways to check the filter without anyone posting:
+1. Look logged out at reddit.com/domain/sudokui.app and at site search, for posts that already exist.
+2. Look at the owner's own pre-ban posts, logged out.
+3. If he appeals, ask the mods openly whether players' position links to sudokui.app in help and puzzle posts are acceptable under Rule 2.
+
+The only thing to tell Matt is the reddit report's own line: 'the Share button makes a Reddit-ready post if you ever want one'.
+
+Evidence: reddit report finding 'What the owner may and may not do while banned' (no friend or player posting for him); share-surface finding 'Etiquette and Reddit risk', last paragraph; share-surface finding 'Verification steps', item 4
+
+### Correction: the desktop 'Reddit' submit button and the band OG card make a player's link post look like a wrong board and an advert
+
+The reddit report proposes a desktop button that opens reddit.com/submit?url=<share link>&title=…. That creates a link post. Its only image would be the og:image, which the share-surface report and my own check show is the fixed band card (public/og/hard.png).
+
+What that card is:
+- a full, real-looking Hard board that is not the shared puzzle;
+- set next to the og:title 'Can you solve this Hard sudoku?', so readers will try to solve the thumbnail;
+- carrying the text 'Free, with hints that explain every step. Works offline. No ads, no account.'
+
+In r/sudoku, a player's link post whose thumbnail is the app's pitch is exactly what Rule 2 removes. The two reports contradict each other here: share-surface concludes that a link post is the wrong form for help and hint posts.
+
+Fixes:
+- Offer the submit link only for daily and challenge links, or as a text post (selftext). Image posts cannot be prefilled by URL, so for those, Save or Copy the image and copy the text.
+- Give each day its own static daily card. dailies.json is already public, so this spoils nothing, and PNGs are outside the Workbox precache, which only takes js, css, html and icon.svg.
+- Change the /p/ band cards so they cannot be mistaken for the puzzle: no full grid of givens, or a visible 'example' label, and no ad copy.
+
+Evidence: /home/user/sudokUI/public/og/hard.png (viewed: full board, the line 'Works offline. No ads, no account.'); src/content/share.ts:180 (ogTitle 'Can you solve this {level} sudoku?') and ogImage = ogShareCard(level); vite.config.ts:218-230 (includeAssets only icon.svg; globIgnores); reddit report finding 'In-app Reddit share kit', item 4
+
+### Risk: templated post text from many players, linking a banned developer's domain, will look like a campaign
+
+share-surface's postKit generates fixed text:
+- titles: 'Stuck on this {level} ({score}): what is the next step?' and 'A {technique} in a {level} puzzle';
+- a fixed body line: '[Open this exact position in sudokUI](…)'.
+
+The competitors report warns that mods could read templated sudokUI links as promotion. A run of identical-looking posts naming the app of a developer they banned for self-promotion is the easiest thing for them to filter. If AutoModerator filters the domain, every post that carries the link is silently removed, and the player's help request vanishes with it.
+
+What the kit should do:
+- No prefilled title for the Reddit target: an empty field with a hint, so the player writes it.
+- Neutral link text without the app name, such as 'playable link with candidates'.
+- Make the link an option the player ticks, and make the image plus the 81-character string enough for the post without it.
+- Never post in one tap.
+- Show the image footer in the preview so the player can see it, keep its toggle visible, and remember the player's choice per device.
+
+Evidence: share-surface finding 'Share kit, part 2' (title templates, body line); competitors finding 'r/sudoku is closed to promotion' (risk: 'if they look templated … keep the post text the player's own'); reddit finding 'What players may do on their own' (prefilled promotional titles)
+
+### Risk: 'Copy for Reddit' assumes markdown renders, but new Reddit's default composer and the apps may show it as raw text
+
+All three reports design the Reddit body as markdown:
+- the grid indented 4 spaces;
+- links as [text](url);
+- spoilers as >!…!<.
+
+That renders on old.reddit and in new Reddit's Markdown mode. New Reddit's default composer, though, is the rich-text editor, and most r/sudoku traffic comes from the apps. In both, pasted markdown may appear literally, or with its characters escaped. Nobody verified this, and it decides whether the kit works for most posters.
+
+To do:
+- Test on sh.reddit, new Reddit (rich text and Markdown mode), old.reddit, and the iOS and Android apps.
+- Consider writing text/html and text/plain together through ClipboardItem, so a rich-text editor gets a real link and a monospace grid. Spoilers have no HTML equivalent there, so the hint text may need a 'switch to Markdown mode' tip.
+- Also unverified: an image post with a body in the apps, and the Reddit app as a share target for images.
+
+Evidence: share-surface finding 'Share kit, part 2' (markdown body, test plan); reddit finding 'In-app Reddit share kit', item 3; no check of the Reddit composers in any report (reddit.com blocked)
+
+### Correction (priority): help posts are the least likely Reddit use by sudokUI players, and answering others' posts is weaker than claimed
+
+Both share-surface and competitors rank the 'I'm stuck' help post as the main gap. But a sudokUI player who is stuck taps Hint, which is the app's whole pitch. Help posts will mostly come from people who refuse hints.
+
+The forms that fit the app better:
+- a technique or hint image ('look at this chain');
+- a puzzle or challenge with image, string and playable link, which is what the weekly challenge thread asks for;
+- daily times;
+- answering other people's help posts with a drawn hint, which the reddit report calls the most welcome presence.
+
+The 'answer others' flow is weaker than share-surface says:
+- Scan a photo reads digits only. docs/scan.md says 'a sparse mark is an empty cell', so the poster's candidates are dropped.
+- It cannot tell the poster's entries from the givens, so a help post with a wrong entry does not import as a valid puzzle.
+- A hint computed from auto-candidates may be a step the poster has already taken.
+- Pasted pencil-mark grids do import (parsePencilGrid). Screenshot-only posts need the candidates entered by hand.
+- On phones the loop needs a Web Share Target. The manifest has none, so a screenshot cannot be sent from the Reddit app into sudokUI's Scan.
+
+Order for the kit: image export and 'Share this hint' first, then the challenge format, then the 'answer' flow (share_target, scanned digits as entries), and the help-post template last.
+
+Evidence: /home/user/sudokUI/docs/scan.md (step 5: 'a sparse mark is an empty cell'); src/content/textGrid.ts:180 (parsePencilGrid exists); dist/manifest.webmanifest and vite.config.ts (no share_target, screenshots, id or shortcuts); share-surface finding 'Help posts'; reddit finding 'What gets engagement'
+
+### Correction: what Reddit's autolinker strips (verified), and a real silent-corruption bug in position links
+
+Reddit's snudown autolink_delim (checked in its source) strips only trailing ?!., plus a ';' or HTML entity and one unbalanced closing bracket. It does not strip '_' or '-'.
+- The claim that a trailing '.' gets cut holds. I measured 64.7% of the 451 dailies ending in '.'. Daily links end in the date, so only bare /p/ links are hit. The trailing-slash fix is safe, since SHARE_PATH and APP_NAVIGATION already accept '/'.
+- The claim that a trailing '_' gets stripped is wrong for Reddit. It holds for GFM-style renderers (GitHub and similar), which strip _ * ~.
+
+The bug is real and matters more. decodePosition never checks the length of what it decodes: BitReader.read fills missing bits with 0. A truncated #s= therefore decodes to a different position, with the last cells' marks or values wiped, and no error. Fixes:
+- Compute the exact expected bit length while decoding.
+- Refuse a payload that is short or long, or show 'this link looks cut off'.
+- Add tests for a link cut by 1 and by 5 characters.
+
+Evidence: https://github.com/reddit/snudown/blob/master/src/autolink.c (autolink_delim: strchr("?!.,", c)); src/state/gameStore.ts:1958-1961 (read() uses `?? 0`), 1987-2012 (no length check); src/content/share.ts:51 (SHARE_PATH '\/?'), home.ts:54 (APP_NAVIGATION accepts '/'); node measurement over src/content/dailies.json: 0.6475
+
+### Correction: the daily-preview spoiler and the thin-crowd wording are confirmed; fix both before any launch
+
+Confirmed in code:
+- shareParamsOf gives a daily 'techs: daily.techs'.
+- descriptionDaily fills {techs}, so every chat unfurl of /daily/<date> names the techniques. That goes against the 14 October spoiler-free decision.
+- crowdPct appears once stats.count > 1. With two unassisted solvers, Matt's line reads 'faster than 0% today' or '100%'.
+- The daily's description also says 'One board for the whole world, with everyone's times to compare against'. That over-promises when one or two people submit a day.
+
+Fixes:
+- Drop the techniques from the daily branch.
+- Use rank or no-comparison wording below about 20 solvers.
+- Soften the 'everyone's times' line until the crowd exists.
+- Keep 'Daily #n' in the ?vs headline.
+
+These are hours of work and should come before any channel work, because a launch sends people straight to these previews and lines.
+
+Evidence: src/content/share.ts:101 ('techs: daily.techs'), :187 (descriptionDaily with {techs} and 'everyone's times'); src/ui/Dialogs.tsx:1211 (stats.count > 1); src/content/dailies.ts fasterThan (returns 0 when every other solver was faster); docs/online-goals.md, 'October 14, 2026' paragraph
+
+### Correction: public numbers are inflated or stale; HN and forum readers will check them
+
+Three numbers:
+- **'267 Learn pages'** in the pitch. The sitemap has 270 URLs: 249 Learn pages (83 pages per language: 80 techniques plus index, intuition and glossary) and 18 other static pages (6 per language), plus 3 homes. 267 counts translations and landing pages as Learn pages. Say '80 technique pages, in English, Norwegian and Spanish'.
+- **'61' practice techniques.** The home page uses it in description, ogDescription, appDescription and features in all three languages (nine strings). goals.md says practice covers 65, and the researchers report the stale 61 already showing in third-party search snippets.
+- **'77 machine-verified solving techniques'.** Have one sentence ready on what 'verified' means, such as the soundness harness and HoDoKu parity tests, because the enjoysudoku regulars will ask.
+
+Evidence: /home/user/sudokUI/dist/sitemap.xml (270 <loc>, 249 under learn, 0 lastmod); dist/learn has 84 entries (83 pages plus img); src/content/home.ts:88,91,94,99 (en), 122-133 (nb), 156-167 (es) say 61; docs/goals.md:86,91 (77 implemented, practice for 65)
+
+### Correction: rival facts are second-hand and partly doubtful; do not put them in comparison pages or launch posts
+
+What I checked:
+- GitHub issue #696 exists. vitalyiegorov opened it on 2026-10-27. It says it read Reddit through a Redlib mirror and that 'comment text was not readable'.
+- That issue is the only source for these claims:
+  - r/sudoku Rule 2 and the r/playsudoku game;
+  - 'Good Sudoku doesn't work offline', an unsourced line in a rival developer's notes (Good Sudoku is a native iOS app, so the claim is doubtful);
+  - 'Enjoy Sudoku has been pulled from the App Store', which the competitors report itself contradicts with a live listing.
+- The issue does not give r/sudoku's member count. That figure comes from third-party trackers.
+- 'sudoku.coach needs an account to keep progress' rests on one thread about sync problems.
+- Hodoku Revisited is real (GPL-3.0 TypeScript PWA, offline, four-stage 'Coach me', 'Why not?', a parity claim to HoDoKu 2.2.0), but it has 0 stars. It matters for positioning, not as an established rival, and should not be named publicly.
+
+What to do:
+- Comparison pages and AlternativeTo text may state only things the owner has checked first-hand, with a date.
+- Comparative advertising in the EEA must be objective and verifiable (Directive 2006/114/EC).
+- Do not put 'HoDoKu' in a store app name or title. Describe the app as compatible and credit Bernhard Hobiger, so a store listing does not read as the official HoDoKu.
+
+Evidence: https://github.com/vitalyiegorov/suuudokuuu/issues/696 (fetched: author, date, Redlib caveat, Good Sudoku and Enjoy Sudoku lines, no member count); https://github.com/ntropey/hodoku_revisited (fetched: GPL-3.0, PWA, 0 stars); competitors findings 'The gap sudokUI fills' and 'Enjoy Sudoku'; channels finding 'Microsoft Store via PWABuilder'
+
+### Risk: the appeal draft over-promises; and texts drafted in this workflow should be rewritten by the owner
+
+The draft modmail appeal promises: 'I won't post about sudokUI or link it in posts or comments'. If accepted, that rules out the one form of presence every report calls welcome: answering a help post with a drawn hint, saying he made the app. A promise that broad is easy to break later, and the reddit report notes that a broken promise 'ends the matter for good'.
+
+Better commitment: 'I'll follow Rule 2, won't announce or promote the app, and will say I made it whenever I link to it'.
+
+Authorship:
+- The channels report says HN has banned AI-generated or AI-edited comments since March 2026 and asks Show HN text to be hand-written (not verified this session).
+- Appeals and launch posts that read as templated do worse everywhere.
+- So the drafts and titles in these reports (appeal, Show HN title, first comment) are starting notes for the owner, not text to paste.
+
+Evidence: reddit finding 'Appealing through modmail' (draft text, 'a promise broken … ends the matter'); channels finding 'Show HN' (March 2026 rules, from search extracts only)
+
+### Risk: say the code is AI-assisted in every launch post, not only 'where a sub asks'
+
+The public repository's history shows the AI help. In this shallow clone, 205 of the 218 commits carry a 'Co-Authored-By: Claude' trailer, and anyone on the enjoysudoku forum or HN will see it in minutes. The reddit report advises mentioning AI help only where a subreddit asks. If readers find it themselves after a launch post that left it out, it reads as hiding, in exactly the audiences the plan picks for credibility.
+
+One honest line in every launch post costs little and takes the topic off the table, for example: 'built with AI assistance; the engine is checked against HoDoKu by tests'.
+
+These rule claims could not be verified this session (search budget used up, hosts blocked); the owner should read the live pages before posting:
+- r/opensource's 2026-10-24 rule;
+- r/selfhosted's rule;
+- HN's new-account limit on Show HN.
+
+Evidence: git -C /home/user/sudokUI log: 218 commits, 205 with 'Co-Authored-By: Claude'; git rev-parse --is-shallow-repository = true; reddit finding 'Not a fit: r/InternetIsBeautiful, r/opensource and r/selfhosted'; WebFetch of linux-magazine.com and keydiscussions.com failed (ENOTFOUND), WebSearch budget used up
+
+### Risk: kit telemetry must not record which platform a post was copied for (the privacy page promises it does not)
+
+The privacy page says a share line records 'Not the link, not the text, not where it went or to whom'. It also says that copying the puzzle string or the pencil-mark grid 'sends nothing'. The kit would add copy actions per target: Reddit, Discord, forum.
+- Counting those as separate kinds, or adding a target field, would record where the text went. That breaks a published promise in three languages.
+- Count one 'post' kind and one 'image' kind (and 'save' as a way), never the target, and change the 'sends nothing' sentence in the same commit.
+- Landings already show reddit, discord and enjoysudoku by referrer, so the dashboard learns which platform works anyway.
+
+A related point: share-surface suggests writing the post body to the clipboard and then opening the share sheet with the image, in the same tap. Overwriting the clipboard without an explicit 'Copy' surprises people. Label the button for what it does ('Copy text and share image') and confirm with a toast.
+
+Evidence: src/content/privacy.ts:75 ('Not the link, not the text, not where it went or to whom. Copying the puzzle string, or the position as text … sends nothing.'); docs/online-goals.md, 'A share is a line'; worker/telemetry.ts:63 (SHARE_KINDS closed list); share-surface finding 'Share kit, part 1', item 7, and part 2's phone order
+
+### Gap (measurement): image posts, the footer and the home page are counted nowhere
+
+Today only /p/*, /daily/*, /api/* and /admin run the Worker. Arrivals at '/', '/nb/', '/es/' and the Learn pages are static files, so nobody counts them. That leaves out:
+- someone who reads 'sudokui.app' in an image footer and types it;
+- a click from an image-post comment that links the home page;
+- most of AlternativeTo, the stores, kode24 and the newsletters.
+
+Those are exactly the kit's and the launch channels' traffic. The Reddit app on iOS sends no referrer either, so it reads as 'none'.
+
+Fixes:
+- Add the exact home paths ('/', '/nb/', '/es/') to run_worker_first, and write the same ID-less landing point there with a 'home' slot. The service worker answers returning visitors from cache, so this counts mostly first visits, and the cost is a few invocations per new visitor. Leave the Learn pages to Search Console, as planned.
+- Play lines carry no daily flag and no language. A Norwegian or Spanish push, or growth of the daily, can therefore be read only through the country or voluntary D1 time submissions. Add closed-list fields, such as kind (daily, new, practice, shared) and lang (en, nb, es), to started and completed, and update the privacy text.
+
+Evidence: /home/user/sudokUI/wrangler.jsonc:38 (run_worker_first list); worker/telemetry.ts:85-101 (event fields: band, bucket, standalone, version, source, flags; no daily flag or language); docs/online-goals.md ('A landing is a person', metric 2 'Daily participants'); src/content/privacy.ts:75
+
+### Gap (measurement design): no baseline, no success criteria, and channels launched together cannot be told apart
+
+Principle 5 says 'Measured, not asserted', but no report sets a baseline or a threshold. At about 10 games started and 5 completed a day, the day-to-day noise is as big as a small channel's effect. Most of the planned channels map to 'none' or 'other', so landings from several channels in one week cannot be separated.
+
+What the plan needs:
+1. Two weeks of baseline after the measurement fixes ship, on:
+   - completed games;
+   - daily participants (D1 submissions per day);
+   - landings by word;
+   - shares by kind.
+2. One channel per week: the forum, then AlternativeTo, then r/WebGames, then Show HN.
+3. A dated launch log in docs/, so dashboard jumps can be tied to actions.
+4. A pre-stated measure of success, for example the 7-day average of completions and of daily submissions two weeks after each action. Retention is measurable only in the opted-in cohort, and a spike that leaves no daily players behind is not reach.
+
+Add the missing landing words before the first launch: directory, fediverse, press, and sudoku covering menneske.no.
+
+Evidence: docs/online-goals.md principle 5 and the dashboard description; worker/telemetry.ts:279-336 (landingFrom words); channels finding 'Before any launch: make each channel measurable'; context: about 10 started and 5 completed a day
+
+### Correction (sizing): the share kit's direct reach is small today; its main value is the image export, which also feeds the launch
+
+With about 5 completions a day and roughly one regular sharer, a kit that turns a player's sharing into posts multiplies a very small number. The researchers' days of Reddit-specific formatting would delay channels that take hours:
+- the forum thread;
+- AlternativeTo (start the 7-day account wait now);
+- Search Console with real lastmod dates;
+- the GitHub topic.
+
+Most of the kit's value is shared with those launches. A drawn-chain PNG is the asset the owner's own posts need: Show HN, enjoysudoku, r/WebGames, Lemmy, AlternativeTo and store screenshots, newsletters and creators.
+
+Suggested order:
+1. The hours-sized fixes: daily spoiler, trailing slash, rank wording, re-sharing after closing the win dialog, the position length check, the 61/65 copy.
+2. Image export, plus 'Share this hint'.
+3. The one-channel-a-week launches.
+4. Post text per target, after testing in the composers.
+
+That still meets the owner's ask that players can post anything from the app, and it keeps the hint work first.
+
+Evidence: context (10 started and 5 completed a day, excluding the owner); share-surface findings 'Share kit, parts 1 and 2' (effort: days); channels findings 'AlternativeTo', 'SEO 1', 'GitHub as a quiet channel' (effort: hours)
+
+### Gap (channels and formats not covered): RSS feed of dailies, print with a QR code, embed, share target, Spanish, a press kit, iOS
+
+1. **RSS or Atom feed of dailies.** Already planned in online-goals phase 4 and not built. One static file lets people subscribe without an account, suits forum regulars and feed readers, and lets others' bots repost the daily. No report mentions it.
+2. **Print/PDF of a puzzle or Learn page, with a QR code** to the position link or the Learn page. It suits Norway's newspaper-driven sudoku habit, the school activity sheet (LAMIS), and older solvers. It works offline and needs no account.
+3. **Embed.** An iframe position viewer for teachers, newsletters and creators. The site sends no frame headers, so it can be framed today; a deliberate /embed route with a spoiler-safe default would be better.
+4. **Web Share Target** in the manifest, to receive a screenshot for Scan (see the 'answer others' finding).
+5. **Spanish.** /es/ has no channel in any report. Pick at least one Spanish creator or press outlet; Xataka was found and dropped.
+6. **A press and screenshot kit page.** Screenshots in three languages, the one-sentence pitch, contact. AlternativeTo, both stores, the PWA directories, kode24 and creators all need it, and the manifest also lacks screenshots and id.
+7. **The iOS App Store.** Not assessed at all. It costs $99 a year, and Apple's guideline 4.2 rejects bare web wrappers. Say so explicitly, so the gap is a decision.
+
+Evidence: docs/online-goals.md, Phase 4 ('An RSS or Atom feed of dailies. One static file'); public/_headers (no X-Frame-Options or CSP); dist/manifest.webmanifest (no share_target, screenshots or id); channels finding 'Norway 2 and schools'; competitors finding 'SudokuPad' (Xataka mentioned, not followed up)
+
+### Risk: several rules and platform behaviours the plan relies on were not verified this session
+
+Unverified, because search was used up and the hosts were blocked. The owner checks each before acting:
+- **Hacker News:** the Show HN limit on new accounts and the March 2026 ban on AI-generated or AI-edited comments.
+- **Subreddit rules:** r/opensource (2026-10-24), r/selfhosted, r/WebGames (title starts with the game's name; one post per 3 months), r/InternetIsBeautiful ('no web games'), and the r/sudoku Rule 2 wording, which comes from one secondary source.
+- **Reddit behaviour:** the reddit.com/submit parameters, the Reddit app as a share target for images, whether the #s= fragment survives in a link post, and how a 1200x630 card is cropped.
+- **Google:** that FAQ rich results were 'dropped 7 May 2026' (not load-bearing).
+
+The store rules match pre-2026 knowledge: Google Play's 12 testers for 14 days on personal accounts, and Microsoft Store's free individual registration since September 2025.
+
+Verified here:
+- snudown's link trimming;
+- that issue #696 exists, what it says, and its Redlib caveat;
+- what Hodoku Revisited is;
+- every code claim in the other findings.
+
+Evidence: WebSearch: 'this turn's web search budget is used up'; WebFetch: ENOTFOUND for www.linux-magazine.com and keydiscussions.com; github.com fetches succeeded (snudown autolink.c, suuudokuuu#696, hodoku_revisited)
+
