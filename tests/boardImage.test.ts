@@ -3,7 +3,8 @@
  * the Learn diagrams' renderer (src/content/boardSvg.ts) and shared from the
  * Share dialog and the hint panel (docs/reach-plan-2026-11.md, build item 3):
  * no hint marks without a step; with a step, the same drawing as the
- * example's diagram; at a walk frame, what the board draws in that frame;
+ * example's diagram; at a walk frame, what the board draws in that frame,
+ * but for the walk's numbers on the arrows, which it leaves out;
  * the candidates the pencil-mark grid writes; the player's colours and the
  * footer only when asked; never a technique's name; and nothing a canvas
  * would refuse to export (a link, an image, a foreign object).
@@ -75,7 +76,7 @@ describe('a picture of the board', () => {
     }
   });
 
-  it('at a walk frame, draws what the board draws in that frame, and the full view without one', () => {
+  it("at a walk frame, draws what the board draws in that frame but the walk's numbers, and the full view without one", () => {
     let frames = 0;
     let startDots = 0;
     for (const [tech, ex] of examples) {
@@ -136,7 +137,8 @@ describe('a picture of the board', () => {
     const without = positionSvg({ cells, autoCandidates: true, markContract: 'exhaustive' });
     expect(svgSize(without)).toEqual({ width: BOARD_SIZE, height: BOARD_SIZE });
     expect(without).not.toContain('class="ft"');
-    const footer = 'sudokui.app · Hard 1288';
+    // the level and the rating held together, as the Share dialog writes them
+    const footer = 'sudokui.app · Hard\u00a01288';
     const svg = positionSvg({ cells, autoCandidates: true, markContract: 'exhaustive', footer });
     expect(svgSize(svg)).toEqual({ width: BOARD_SIZE, height: BOARD_SIZE + FOOTER_SIZE });
     expect(svg).toContain(`class="ft">${footer}</text>`);
@@ -149,11 +151,11 @@ describe('a picture of the board', () => {
 
   it("never prints a technique's name, in any language", () => {
     for (const [tech, ex] of examples) {
-      const svg = positionSvg({ cells: cellsOf(ex), autoCandidates: false, markContract: 'exhaustive', step: ex.step, footer: 'sudokui.app · Hard 1288' });
+      const svg = positionSvg({ cells: cellsOf(ex), autoCandidates: false, markContract: 'exhaustive', step: ex.step, footer: 'sudokui.app · Hard\u00a01288' });
       const words = [...printed(svg), /<title>([^<]*)<\/title>/.exec(svg)![1], /aria-label="([^"]*)"/.exec(svg)![1]].join(' ');
       for (const name of [TECHS[tech].name, nbNames[tech], esNames[tech]]) if (name) expect(words, tech).not.toContain(name);
       // the words printed: digits, the sets' letters and the footer
-      for (const t of printed(svg)) expect(t, tech).toMatch(/^([1-9]|[A-Z]|sudokui\.app · Hard 1288)$/);
+      for (const t of printed(svg)) expect(t, tech).toMatch(/^([1-9]|[A-Z]|sudokui\.app · Hard\u00a01288)$/);
     }
   });
 

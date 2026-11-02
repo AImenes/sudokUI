@@ -6,8 +6,9 @@
  *   cover houses and why each takes its digit from the base, then the
  *   removals; a finned or sashimi fish its base, its fins (the base's only
  *   other cells), its cover if every fin is false (a sashimi fish first the
- *   crossing its fins stand in for), its fins' box if a fin is true, then
- *   each removal, in a cover house and in the fins' box, false either way;
+ *   crossing its fins stand in for, an X-Wing's corner only in the fins'
+ *   box), its fins' box if a fin is true, then each removal in reading
+ *   order, in a cover house and in the fins' box, false either way;
  * - each frame draws the cells it names (frame 1 nothing else) and
  *   something new; the fins' box is banded, dotted in the fins' colour,
  *   from the frame that names it; each frame's legend names only what the
@@ -76,11 +77,11 @@ const BL = /^No other cell of (rows|columns) ([\d, and]+) can be (\d)\. So /;
 const F1 = /^In (rows|columns) ([\d, and]+), the (\d)s lie in (.+?), and in (?:one more cell|(\d) more cells)\.$/;
 const F2 = /^The only other (\d)(s?) in (rows|columns) ([\d, and]+) (is|are) (.+?): the (fin|fins)\.$/;
 const CORNER = /^The fish's corner (r\dc\d) has no (\d): the (fin|fins) (.+?) (stands|stand) in for it\. /;
-const SECOND = /^(Row|Column) (\d) has only one (\d) in (rows|columns) ([\d, and]+), (r\dc\d): the (fin|fins) (.+?) (stands|stand) in for a second\. /;
+const SECOND = /^(Row|Column) (\d) has only one (\d) in (rows|columns) ([\d, and]+), in (r\dc\d): the (fin|fins) (.+?) (stands|stand) in for a second (\d)\. /;
 const F3 = /(?:^|\. )If (the fin is|every fin is) false, (rows|columns) ([\d, and]+) put their (\d)s in (rows|columns) ([\d, and]+), one in each, so no other cell of those (rows|columns) can be (\d)\.$/;
 const F4 = /^If (the fin|a fin) is true, it is the (\d) of box (\d), so no other cell of box \3 can be \2\.$/;
-const LEAD1 = /^(.+?) (is|are) in (row|column) (\d) and in box (\d), so (it cannot|none of them can) be (\d) either way\. So /;
-const LEADS = /^(.+?) are in box (\d), each in one of (rows|columns) ([\d, and]+), so none of them can be (\d) either way\. So /;
+const LEAD1 = /^(.+?) (is|are) in (row|column) (\d) and in box (\d), so (it cannot|neither of them can|none of them can) be (\d) either way\. So /;
+const LEADS = /^(.+?) are in box (\d), each in one of (rows|columns) ([\d, and]+), so (neither|none) of them can be (\d) either way\. So /;
 
 /**
  * What is wrong with a fish's English walk at its position, given the
@@ -144,11 +145,22 @@ function wrongIn(step: Step, g: Grid, sol: Grid): string[] {
   const sashimi = step.tech.startsWith('SASHIMI');
   const corner = CORNER.exec(texts[2]);
   const second = SECOND.exec(texts[2]);
-  ok(sashimi === !!(corner || second), `a sashimi fish's crossing named, and only a sashimi fish's: ${texts[2]}`);
+  // a sashimi X-Wing's corners: where a base line with one digit in the
+  // cover crosses the other cover line; one is named only in the fins' box,
+  // where its fins stand in for it
+  const corners = base.length === 2 ? base.flatMap((l) => {
+    const held = holding(g, rows, [l], d).filter((y) => cover.includes(lineOf(!rows, y)));
+    if (held.length !== 1) return [];
+    const other = cover.find((p) => p !== lineOf(!rows, held[0]))!;
+    return [rows ? l * 9 + other : other * 9 + l];
+  }) : [];
+  const crossing = sashimi && (base.length > 2 || corners.some((x) => boxOf(x) === box));
+  ok(crossing === !!(corner || second), `a sashimi fish's crossing named, and only a sashimi fish's, an X-Wing's corner only in the fins' box: ${texts[2]}`);
   if (corner) {
     const x = cellOf(corner[1]);
     const l = lineOf(rows, x);
     ok(base.length === 2 && base.includes(l) && cover.includes(lineOf(!rows, x)), `the corner is a crossing of base and cover: ${texts[2]}`);
+    ok(boxOf(x) === box, `the corner is in the fins' box: ${texts[2]}`);
     ok(!(g.values[x] === 0 && g.cands[x] & bit(d)) && sol.values[x] !== d && Number(corner[2]) === d, `the corner has no ${d}: ${texts[2]}`);
     ok(holding(g, rows, [l], d).filter((y) => cover.includes(lineOf(!rows, y))).length === 1, `the corner's line has one ${d} in the cover: ${texts[2]}`);
     const own = fins.filter((y) => lineOf(rows, y) === l);
@@ -158,7 +170,7 @@ function wrongIn(step: Step, g: Grid, sol: Grid): string[] {
     const l = Number(second[2]) - 1;
     const x = cellOf(second[6]);
     ok(base.length > 2 && second[1].toLowerCase() === baseNoun.slice(0, -1) && base.includes(l) && second[4] === coverNoun, `the sashimi line: ${texts[2]}`);
-    ok(Number(second[3]) === d && same(numbers(second[5]).map((n) => n - 1), cover), `the sashimi line's cover: ${texts[2]}`);
+    ok(Number(second[3]) === d && Number(second[10]) === d && same(numbers(second[5]).map((n) => n - 1), cover), `the sashimi line's cover and digit: ${texts[2]}`);
     ok(same(holding(g, rows, [l], d).filter((y) => cover.includes(lineOf(!rows, y))), [x]), `the line has one ${d} in the cover, at the cell named: ${texts[2]}`);
     const own = fins.filter((y) => lineOf(rows, y) === l);
     ok(same(cellsIn(second[8]), own) && own.length > 0 && (second[7] === 'fins') === own.length > 1 && (second[9] === 'stand') === own.length > 1, `the sashimi line's fins: ${texts[2]}`);
@@ -175,12 +187,15 @@ function wrongIn(step: Step, g: Grid, sol: Grid): string[] {
   const leads = LEADS.exec(texts[4]);
   const lines = [...new Set(elims.map((x) => lineOf(!rows, x)))];
   ok(elims.every((x) => boxOf(x) === box), 'a removal is not in the fins box');
+  // the removals in reading order, as the conclusion after them names them
+  const inOrder = (named: string) => JSON.stringify(cellsIn(named)) === JSON.stringify(sorted(elims));
   if (lead1) {
-    ok(same(cellsIn(lead1[1]), elims) && (lead1[2] === 'are') === elims.length > 1 && (lead1[6] === 'none of them can') === elims.length > 1, `the lead's removals: ${texts[4]}`);
+    const word = elims.length === 1 ? 'it cannot' : elims.length === 2 ? 'neither of them can' : 'none of them can';
+    ok(inOrder(lead1[1]) && (lead1[2] === 'are') === elims.length > 1 && lead1[6] === word, `the lead's removals: ${texts[4]}`);
     ok(lead1[3] === coverNoun.slice(0, -1) && lines.length === 1 && Number(lead1[4]) - 1 === lines[0], `the lead's cover line: ${texts[4]}`);
     ok(Number(lead1[5]) - 1 === box && Number(lead1[7]) === d, `the lead's box and digit: ${texts[4]}`);
   } else if (leads) {
-    ok(same(cellsIn(leads[1]), elims) && elims.length > 1 && Number(leads[2]) - 1 === box && Number(leads[5]) === d, `the lead's removals: ${texts[4]}`);
+    ok(inOrder(leads[1]) && elims.length > 1 && (leads[5] === 'neither') === (elims.length === 2) && Number(leads[2]) - 1 === box && Number(leads[6]) === d, `the lead's removals: ${texts[4]}`);
     ok(leads[3] === coverNoun && same(numbers(leads[4]).map((n) => n - 1), lines) && lines.length > 1, `the lead's cover lines: ${texts[4]}`);
   } else out.push(`not a finned fish's lead: ${texts[4]}`);
   return out;
@@ -297,7 +312,7 @@ describe('the fish walk in their own sentences (H1)', () => {
         SASHIMI_SWORDFISH: [
           'In rows 5, 6 and 8, the 1s lie in r5c3, r5c7, r6c5, r8c5 and r8c7, and in one more cell.',
           'The only other 1 in rows 5, 6 and 8 is r6c2: the fin.',
-          'Row 6 has only one 1 in columns 3, 5 and 7, r6c5: the fin r6c2 stands in for a second. If the fin is false, rows 5, 6 and 8 put their 1s in columns 3, 5 and 7, one in each, so no other cell of those columns can be 1.',
+          'Row 6 has only one 1 in columns 3, 5 and 7, in r6c5: the fin r6c2 stands in for a second 1. If the fin is false, rows 5, 6 and 8 put their 1s in columns 3, 5 and 7, one in each, so no other cell of those columns can be 1.',
           'If the fin is true, it is the 1 of box 4, so no other cell of box 4 can be 1.',
           'r4c3 is in column 3 and in box 4, so it cannot be 1 either way. So 1 is removed from r4c3.'
         ]
@@ -321,6 +336,13 @@ describe('the fish walk in their own sentences (H1)', () => {
           'Fiskens hjørne r9c4 har ingen 1-er: finnene r7c4 og r8c4 står i stedet for det. Hvis alle finnene er usanne, setter kolonnene 4 og 8 sine 1-ere i radene 6 og 9, én i hver, så ingen annen rute i disse radene kan være 1.',
           'Hvis en av finnene er sann, er den 1-eren i boks 8, så ingen annen rute i boks 8 kan være 1.',
           'r9c6 ligger i rad 9 og i boks 8, så den kan ikke være 1 uansett. Så fjernes 1 fra r9c6.'
+        ],
+        SASHIMI_SWORDFISH: [
+          'I radene 5, 6 og 8 står 1-erne i r5c3, r5c7, r6c5, r8c5 og r8c7, og i én rute til.',
+          'Den eneste andre 1-eren i radene 5, 6 og 8 er r6c2: finnen.',
+          'Rad 6 har bare én 1-er i kolonnene 3, 5 og 7, i r6c5: finnen r6c2 står i stedet for en 1-er til. Hvis finnen er usann, setter radene 5, 6 og 8 sine 1-ere i kolonnene 3, 5 og 7, én i hver, så ingen annen rute i disse kolonnene kan være 1.',
+          'Hvis finnen er sann, er den 1-eren i boks 4, så ingen annen rute i boks 4 kan være 1.',
+          'r4c3 ligger i kolonne 3 og i boks 4, så den kan ikke være 1 uansett. Så fjernes 1 fra r4c3.'
         ]
       },
       es: {
@@ -342,6 +364,13 @@ describe('the fish walk in their own sentences (H1)', () => {
           'La esquina r9c4 del pez no tiene ningún 1: las aletas r7c4 y r8c4 ocupan su lugar. Si todas las aletas son falsas, las columnas 4 y 8 ponen sus 1 en las filas 6 y 9, uno en cada una, así que ninguna otra casilla de esas filas puede ser 1.',
           'Si alguna aleta es verdadera, es el 1 de la caja 8, así que ninguna otra casilla de la caja 8 puede ser 1.',
           'r9c6 está en la fila 9 y en la caja 8, así que no puede ser 1 en ningún caso. Por tanto, se elimina el 1 de r9c6.'
+        ],
+        SASHIMI_SWORDFISH: [
+          'En las filas 5, 6 y 8, los 1 están en r5c3, r5c7, r6c5, r8c5 y r8c7, y en una casilla más.',
+          'El único otro 1 de las filas 5, 6 y 8 es r6c2: la aleta.',
+          'La fila 6 solo tiene un 1 en las columnas 3, 5 y 7, en r6c5: la aleta r6c2 hace las veces de un segundo 1. Si la aleta es falsa, las filas 5, 6 y 8 ponen sus 1 en las columnas 3, 5 y 7, uno en cada una, así que ninguna otra casilla de esas columnas puede ser 1.',
+          'Si la aleta es verdadera, es el 1 de la caja 4, así que ninguna otra casilla de la caja 4 puede ser 1.',
+          'r4c3 está en la columna 3 y en la caja 4, así que no puede ser 1 en ningún caso. Por tanto, se elimina el 1 de r4c3.'
         ]
       }
     };
@@ -352,6 +381,23 @@ describe('the fish walk in their own sentences (H1)', () => {
         expect(walkFrames(step).map((f) => f.text), `${lang} ${tech}`).toEqual(frames);
       }
     }
+  });
+
+  it("names a sashimi X-Wing's empty corner only where it lies in the fins' box", () => {
+    // rows 5 and 9 on 9: row 9's one 9 in the cover is r9c3, its fin r9c2 is
+    // in box 7, and the corner it lacks, r9c7, in box 9, where no fin stands
+    // in for it; the finder takes the fish all the same, and r7c3 goes
+    const g = parseGrid('..457...1.3796.....82.1.....2..5....76.....32....9..6.....3.42.....8519.4...268..')!;
+    const step = findStep('SASHIMI_X_WING', g)!;
+    expect([step.fins!.map((f) => f.cell), step.eliminations.map((e) => e.cell)]).toEqual([[73], [56]]);
+    expect(walkFrames(step)[2].text).toBe('If the fin is false, rows 5 and 9 put their 9s in columns 3 and 7, one in each, so no other cell of those columns can be 9.');
+    for (const [lang, table] of OTHER) {
+      setEngineText(lang, table);
+      expect(walkFrames(findStep('SASHIMI_X_WING', g)!)[2].text, lang).not.toMatch(/r9c7|hjørne|esquina/);
+    }
+    setEngineText('en', null);
+    // the stored example's corner, r9c4, lies in its fins' box, box 8
+    expect(walkFrames(found('SASHIMI_X_WING'))[2].text).toMatch(/^The fish's corner r9c4 has no 1: /);
   });
 
   it('names in each legend entry only what its frame draws, and the fins in the plural when there are two', () => {
@@ -366,14 +412,14 @@ describe('the fish walk in their own sentences (H1)', () => {
       'primary: base columns: the 8s of the fish',
       'secondary: cover rows: where the base columns put their 8s if the fin is false',
       'fin: fin: an 8 of the base columns outside the fish',
-      "finBox: the fin's box: if the fin is true, no other cell here can be 8"
+      "finBox: the fin's box: if the fin is true, no other cell here can be\u00a08"
     ]);
     expect(legend('SASHIMI_X_WING')).toEqual([
       'elim: remove',
       'primary: base columns: the 1s of the fish',
       'secondary: cover rows: where the base columns put their 1s if every fin is false',
       'fin: fins: 1s of the base columns outside the fish',
-      "finBox: the fins' box: if a fin is true, no other cell here can be 1"
+      "finBox: the fins' box: if a fin is true, no other cell here can be\u00a01"
     ]);
   });
 
@@ -442,7 +488,12 @@ describe('the fish walk in their own sentences (H1)', () => {
           rows ? 'rows' : 'columns',
           step.eliminations.length > 1 ? 'removals' : 'removal',
           (step.fins?.length ?? 0) > 1 ? 'fins' : '',
-          / each in one of /.test(texts.at(-1)!) ? 'lines' : ''
+          / each in one of /.test(texts.at(-1)!) ? 'lines' : '',
+          // a sashimi X-Wing whose fin lies in another box than its empty corner
+          step.tech === 'SASHIMI_X_WING' && !/corner/.test(texts[2]) ? 'cornerless' : '',
+          // two removals, and removals the finder lists out of reading order
+          step.eliminations.length === 2 ? 'two' : '',
+          step.eliminations.some((e, i, all) => i > 0 && all[i - 1].cell > e.cell) ? 'reordered' : ''
         ]
           .filter(Boolean)
           .join(' ')
@@ -461,7 +512,7 @@ describe('the fish walk in their own sentences (H1)', () => {
     // both orientations, one removal and several, one fin and several, removals in two cover lines
     const seen = [...shapes];
     for (const tech of FISH) for (const o of ['rows', 'columns']) expect(seen.some((s) => s.startsWith(`${tech} ${o}`)), `${tech} ${o}`).toBe(true);
-    for (const part of [' removals', ' fins', ' lines']) expect(seen.some((s) => s.includes(part)), part).toBe(true);
+    for (const part of [' removals', ' fins', ' lines', ' cornerless', ' two', ' reordered']) expect(seen.some((s) => s.includes(part)), part).toBe(true);
     expect(seen.some((s) => s.startsWith('SASHIMI_X_WING') && s.includes(' fins'))).toBe(true);
   });
 });

@@ -572,7 +572,7 @@
     }
    ],
    "labels": {
-    "primary": "2 cells that hold only 3 and 7 between them, in column 1 and box 1"
+    "primary": "two cells that hold only 3 and 7 between them, in column 1 and box 1"
    },
    "walk": {
     "frames": [
@@ -741,7 +741,7 @@
     }
    ],
    "labels": {
-    "primary": "3 cells that hold only 2, 3 and 7 between them, in row 8 and box 7"
+    "primary": "three cells that hold only 2, 3 and 7 between them, in row 8 and box 7"
    },
    "walk": {
     "frames": [
@@ -1156,7 +1156,7 @@
     }
    ],
    "labels": {
-    "primary": "2 cells that hold only 2 and 5 between them, in row 9"
+    "primary": "two cells that hold only 2 and 5 between them, in row 9"
    },
    "walk": {
     "frames": [
@@ -1305,7 +1305,7 @@
     }
    ],
    "labels": {
-    "primary": "3 cells that hold only 2, 6 and 7 between them, in box 8"
+    "primary": "three cells that hold only 2, 6 and 7 between them, in box 8"
    },
    "walk": {
     "frames": [
@@ -1446,7 +1446,7 @@
     }
    ],
    "labels": {
-    "primary": "the only 2 cells of row 4 where 6 and 8 can go"
+    "primary": "the only two cells of row 4 where 6 and 8 can go"
    },
    "walk": {
     "frames": [
@@ -1459,7 +1459,7 @@
     ],
     "lead": "They must be 6 and 8, one each, and hold nothing else: r4c3 and r4c7 keep only 6 and 8."
    },
-   "description": "Hidden Pair: in row 4, the digits 6 and 8 can go only in r4c3 and r4c7, so these cells hold nothing else."
+   "description": "Hidden Pair: in row 4, the digits 6 and 8 can go only in r4c3 and r4c7, so these cells can hold nothing else."
   }
  },
  "HIDDEN_TRIPLE": {
@@ -1603,7 +1603,7 @@
     }
    ],
    "labels": {
-    "primary": "the only 3 cells of row 8 where 3, 5 and 9 can go"
+    "primary": "the only three cells of row 8 where 3, 5 and 9 can go"
    },
    "walk": {
     "frames": [
@@ -1616,7 +1616,7 @@
     ],
     "lead": "They must be 3, 5 and 9, one each, and hold nothing else: r8c4 keeps only 3 and 5; r8c6 keeps only 3 and 9."
    },
-   "description": "Hidden Triple: in row 8, the digits 3, 5 and 9 can go only in r8c4, r8c6 and r8c9, so these cells hold nothing else."
+   "description": "Hidden Triple: in row 8, the digits 3, 5 and 9 can go only in r8c4, r8c6 and r8c9, so these cells can hold nothing else."
   }
  },
  "NAKED_QUADRUPLE": {
@@ -1764,7 +1764,7 @@
     }
    ],
    "labels": {
-    "primary": "4 cells that hold only 5, 6, 8 and 9 between them, in row 5"
+    "primary": "four cells that hold only 5, 6, 8 and 9 between them, in row 5"
    },
    "walk": {
     "frames": [
@@ -1925,7 +1925,7 @@
     }
    ],
    "labels": {
-    "primary": "the only 4 cells of box 5 where 1, 2, 5 and 8 can go"
+    "primary": "the only four cells of box 5 where 1, 2, 5 and 8 can go"
    },
    "walk": {
     "frames": [
@@ -1938,7 +1938,7 @@
     ],
     "lead": "They must be 1, 2, 5 and 8, one each, and hold nothing else: r4c5 keeps only 1 and 2; r4c6 keeps only 1 and 5; r5c5 keeps only 2 and 8."
    },
-   "description": "Hidden Quadruple: in box 5, the digits 1, 2, 5 and 8 can go only in r4c5, r4c6, r5c5 and r5c6, so these cells hold nothing else."
+   "description": "Hidden Quadruple: in box 5, the digits 1, 2, 5 and 8 can go only in r4c5, r4c6, r5c5 and r5c6, so these cells can hold nothing else."
   }
  },
  "X_WING": {
@@ -6292,7 +6292,7 @@
     "primary": "base columns: the 8s of the fish",
     "secondary": "cover rows: where the base columns put their 8s if the fin is false",
     "fins": "fin: an 8 of the base columns outside the fish",
-    "finBox": "the fin's box: if the fin is true, no other cell here can be 8"
+    "finBox": "the fin's box: if the fin is true, no other cell here can be 8"
    },
    "walk": {
     "frames": [
@@ -6472,7 +6472,7 @@
     "primary": "base columns: the 1s of the fish",
     "secondary": "cover rows: where the base columns put their 1s if every fin is false",
     "fins": "fins: 1s of the base columns outside the fish",
-    "finBox": "the fins' box: if a fin is true, no other cell here can be 1"
+    "finBox": "the fins' box: if a fin is true, no other cell here can be 1"
    },
    "walk": {
     "frames": [
@@ -6668,7 +6668,7 @@
     "primary": "base rows: the 3s of the fish",
     "secondary": "cover columns: where the base rows put their 3s if the fin is false",
     "fins": "fin: a 3 of the base rows outside the fish",
-    "finBox": "the fin's box: if the fin is true, no other cell here can be 3"
+    "finBox": "the fin's box: if the fin is true, no other cell here can be 3"
    },
    "walk": {
     "frames": [
@@ -6860,7 +6860,7 @@
     "primary": "base rows: the 1s of the fish",
     "secondary": "cover columns: where the base rows put their 1s if the fin is false",
     "fins": "fin: a 1 of the base rows outside the fish",
-    "finBox": "the fin's box: if the fin is true, no other cell here can be 1"
+    "finBox": "the fin's box: if the fin is true, no other cell here can be 1"
    },
    "walk": {
     "frames": [
@@ -6877,7 +6877,7 @@
       ]
      },
      {
-      "text": "Row 6 has only one 1 in columns 3, 5 and 7, r6c5: the fin r6c2 stands in for a second. If the fin is false, rows 5, 6 and 8 put their 1s in columns 3, 5 and 7, one in each, so no other cell of those columns can be 1.",
+      "text": "Row 6 has only one 1 in columns 3, 5 and 7, in r6c5: the fin r6c2 stands in for a second 1. If the fin is false, rows 5, 6 and 8 put their 1s in columns 3, 5 and 7, one in each, so no other cell of those columns can be 1.",
       "show": [
        "secondary"
       ]
@@ -7072,7 +7072,7 @@
     "primary": "base rows: the 1s of the fish",
     "secondary": "cover columns: where the base rows put their 1s if the fin is false",
     "fins": "fin: a 1 of the base rows outside the fish",
-    "finBox": "the fin's box: if the fin is true, no other cell here can be 1"
+    "finBox": "the fin's box: if the fin is true, no other cell here can be 1"
    },
    "walk": {
     "frames": [
@@ -7280,7 +7280,7 @@
     "primary": "base rows: the 6s of the fish",
     "secondary": "cover columns: where the base rows put their 6s if the fin is false",
     "fins": "fin: a 6 of the base rows outside the fish",
-    "finBox": "the fin's box: if the fin is true, no other cell here can be 6"
+    "finBox": "the fin's box: if the fin is true, no other cell here can be 6"
    },
    "walk": {
     "frames": [
@@ -7297,7 +7297,7 @@
       ]
      },
      {
-      "text": "Row 3 has only one 6 in columns 1, 2, 4 and 9, r3c1: the fin r3c6 stands in for a second. If the fin is false, rows 3, 4, 7 and 8 put their 6s in columns 1, 2, 4 and 9, one in each, so no other cell of those columns can be 6.",
+      "text": "Row 3 has only one 6 in columns 1, 2, 4 and 9, in r3c1: the fin r3c6 stands in for a second 6. If the fin is false, rows 3, 4, 7 and 8 put their 6s in columns 1, 2, 4 and 9, one in each, so no other cell of those columns can be 6.",
       "show": [
        "secondary"
       ]

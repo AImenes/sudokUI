@@ -178,7 +178,9 @@ export function boardSvg(example: BoardPicture, title: string, opts: BoardOption
   });
   // the houses a pattern lives in (G15): a full-strength outline over a
   // barely-there fill, solid for the pattern and dashed for what it acts
-  // through, dotted for a finned fish's fins' box, under everything else
+  // through, dotted for a finned fish's fins' box, under everything else;
+  // the dots' spacing grows with their width (LINE), so dot and gap keep
+  // the board's proportion (src/ui/Grid.tsx)
   for (const { unit, role } of drawn.bands) {
     const r =
       unit < 9
@@ -195,7 +197,7 @@ export function boardSvg(example: BoardPicture, title: string, opts: BoardOption
         role === 'secondary'
           ? ` stroke-dasharray="${MARK.coverDash.map((d) => f(d * S)).join(' ')}"`
           : role === 'fin'
-            ? ` stroke-dasharray="${MARK.finDots.map((d) => f(d * S)).join(' ')}" stroke-linecap="round"`
+            ? ` stroke-dasharray="${MARK.finDots.map((d) => f(d * S * LINE)).join(' ')}" stroke-linecap="round"`
             : ''
       }/>`
     );

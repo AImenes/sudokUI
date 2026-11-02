@@ -1051,14 +1051,21 @@ describe('the privacy page', () => {
     expect(SHARE_KINDS).toContain('image');
     expect(SHARE_VIAS).toContain('save');
     const WORDS = {
-      en: ['one per share, while online', 'a link or a picture you share (below)', 'or a picture of the board, with a hint drawn or without', 'was copied or was saved', 'not the picture', 'The picture is made on your device and is never sent to sudokui.app', 'is remembered on your device for the next picture'],
-      nb: ['én per delt lenke eller bilde', 'en lenke eller et bilde du deler (se under)', 'eller et bilde av brettet, med eller uten et hint tegnet inn', 'ble kopiert eller ble lagret', 'ikke bildet', 'Bildet lages på enheten din og sendes aldri til sudokui.app', 'huskes på enheten din til neste bilde'],
-      es: ['una por enlace o imagen compartidos', 'un enlace o una imagen que compartes (más abajo)', 'o una imagen del tablero, con una pista dibujada o sin ella', 'se copió o se guardó', 'ni la imagen', 'La imagen se crea en tu dispositivo y nunca se envía a sudokui.app', 'se recuerda en tu dispositivo para la próxima imagen']
+      en: ['one per share, while online', 'a link or a picture you share (below)', 'or a picture of the board: one kind, whether or not a hint is drawn on it, and the line does not say which', 'was copied or was saved', 'not the picture', 'The picture is made on your device and is never sent to sudokui.app', 'is remembered on your device for the next picture'],
+      nb: ['én per deling, bare på nett', 'en lenke eller et bilde du deler (se under)', 'eller et bilde av brettet: én type, enten det er tegnet inn et hint eller ikke, og linjen sier ikke hvilken av delene', 'ble kopiert eller ble lagret', 'ikke bildet', 'Bildet lages på enheten din og sendes aldri til sudokui.app', 'huskes på enheten din til neste bilde'],
+      es: ['una por enlace o imagen compartidos', 'un enlace o una imagen que compartes (más abajo)', 'o una imagen del tablero: un solo tipo, tenga o no una pista dibujada, y la línea no dice si la tiene', 'se copió o se guardó', 'ni la imagen', 'La imagen se crea en tu dispositivo y nunca se envía a sudokui.app', 'se recuerda en tu dispositivo para la próxima imagen']
+    };
+    // the section that says so names pictures in its heading
+    const HEADINGS = {
+      en: 'Share links and pictures, and visits from other sites',
+      nb: 'Delingslenker og bilder, og besøk fra andre nettsteder',
+      es: 'Enlaces e imágenes para compartir, y visitas desde otros sitios'
     };
     for (const lang of HOME_LANGS) {
       const c = PRIVACY[lang];
       const text = [c.description, ...c.sections.flatMap((s) => s.paragraphs)].join(' ');
       for (const words of WORDS[lang]) expect(text, lang).toContain(words);
+      expect(c.sections.map((s) => s.heading), lang).toContain(HEADINGS[lang]);
     }
   });
 

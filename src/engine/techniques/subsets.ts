@@ -9,7 +9,7 @@ import {
 } from '../board';
 import { Step, CellDigit } from '../steps';
 import { Tech } from '../ratings';
-import { tr, joinAnd, listAnd, unitName } from '../text';
+import { tr, countWord, joinAnd, listAnd, unitName } from '../text';
 
 export function combinations<T>(items: T[], k: number): T[][] {
   const out: T[][] = [];
@@ -128,10 +128,11 @@ export function findNakedSubset(g: Grid, size: number, locked: boolean): Step | 
         // the houses the set clears: both, for a locked set in an intersection
         units: [...unitsWithElims].map((unit) => ({ unit, role: 'primary' as const })),
         labels: {
+          // the count in a word, beside the digits (countWord)
           primary:
             houses.length === 2
-              ? tr`${size} cells that hold only ${digits} between them, in ${houses[0]} and ${houses[1]}`
-              : tr`${size} cells that hold only ${digits} between them, in ${joinAnd(houses)}`
+              ? tr`${countWord(size)} cells that hold only ${digits} between them, in ${houses[0]} and ${houses[1]}`
+              : tr`${countWord(size)} cells that hold only ${digits} between them, in ${joinAnd(houses)}`
         },
         walk: {
           frames: [{ text: first, show: ['primary'] }],
@@ -198,7 +199,7 @@ export function findHiddenSubset(g: Grid, size: number): Step | null {
         ),
         units: [{ unit: u, role: 'primary' }],
         labels: {
-          primary: tr`the only ${size} cells of ${house} where ${digits} can go`
+          primary: tr`the only ${countWord(size)} cells of ${house} where ${digits} can go`
         },
         // the walk in the finder's own words (H1): where the digits can go,
         // then what the cells keep; the digits as a player says them (L1)
@@ -206,7 +207,7 @@ export function findHiddenSubset(g: Grid, size: number): Step | null {
           frames: [{ text: tr`In ${house}, the digits ${digits} can go only in ${names}.`, show: ['primary'] }],
           lead: tr`They must be ${digits}, one each, and hold nothing else: ${kept.join('; ')}.`
         },
-        description: tr`${subsetName(tech)}: in ${house}, the digits ${digits} can go only in ${names}, so these cells hold nothing else.`
+        description: tr`${subsetName(tech)}: in ${house}, the digits ${digits} can go only in ${names}, so these cells can hold nothing else.`
       };
     }
   }

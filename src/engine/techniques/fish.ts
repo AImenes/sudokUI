@@ -32,6 +32,13 @@ const bitsOf = (m: number): number[] => {
 };
 const popcount9 = (m: number): number => bitsOf(m).length;
 
+/**
+ * A label that ends in its digit, the digit held to the word before it by
+ * a no-break space, so a narrow legend never leaves the digit alone on a
+ * line; every language ends the fins' box's label in its digit
+ */
+const digitHeld = (label: string): string => label.replace(/ (\d)$/, '\u00a0$1');
+
 export function findBasicFish(g: Grid, size: number): Step | null {
   for (const rows of [true, false]) {
     for (let d = 1; d <= 9; d++) {
@@ -113,9 +120,10 @@ export function findBasicFish(g: Grid, size: number): Step | null {
  * and its cells, then the fins, the base's only other cells; then the
  * cover, where the base puts its digits if every fin is false (a sashimi
  * fish first names the crossing of its base and cover that has no digit,
- * which its fins stand in for); then the fins' box, which a true fin
- * empties of the digit; then the removals, in a cover line and in the
- * fins' box, false either way.
+ * which its fins stand in for, an X-Wing's corner only when it lies in the
+ * fins' box); then the fins' box, which a true fin empties of the digit;
+ * then the removals in reading order, in a cover line and in the fins'
+ * box, false either way.
  */
 function finnedWalk(
   rows: boolean,
@@ -159,7 +167,12 @@ function finnedWalk(
     const own = finCells.filter((c) => (rows ? Math.floor(c / 9) : c % 9) === l);
     const its = listAnd(own.map(cellName));
     if (size === 2) {
-      const corner = cellName(cellAt(rows, l, coverPositions.find((p) => p !== inCover[0])!));
+      // the corner its fins stand in for, said only when it lies in the
+      // fins' box: a fin in another box stands in for no corner, though the
+      // finder takes the fish (and its removals hold)
+      const at = cellAt(rows, l, coverPositions.find((p) => p !== inCover[0])!);
+      if (boxOf(at) !== boxOf(finCells[0])) continue;
+      const corner = cellName(at);
       sashimi.push(
         own.length > 1
           ? tr`The fish's corner ${corner} has no ${d}: the fins ${its} stand in for it.`
@@ -170,11 +183,11 @@ function finnedWalk(
       sashimi.push(
         rows
           ? own.length > 1
-            ? tr`Row ${l + 1} has only one ${d} in columns ${covers}, ${only}: the fins ${its} stand in for a second.`
-            : tr`Row ${l + 1} has only one ${d} in columns ${covers}, ${only}: the fin ${its} stands in for a second.`
+            ? tr`Row ${l + 1} has only one ${d} in columns ${covers}, in ${only}: the fins ${its} stand in for a second ${d}.`
+            : tr`Row ${l + 1} has only one ${d} in columns ${covers}, in ${only}: the fin ${its} stands in for a second ${d}.`
           : own.length > 1
-            ? tr`Column ${l + 1} has only one ${d} in rows ${covers}, ${only}: the fins ${its} stand in for a second.`
-            : tr`Column ${l + 1} has only one ${d} in rows ${covers}, ${only}: the fin ${its} stands in for a second.`
+            ? tr`Column ${l + 1} has only one ${d} in rows ${covers}, in ${only}: the fins ${its} stand in for a second ${d}.`
+            : tr`Column ${l + 1} has only one ${d} in rows ${covers}, in ${only}: the fin ${its} stands in for a second ${d}.`
       );
     }
   }
@@ -188,19 +201,29 @@ function finnedWalk(
   const fourth = many
     ? tr`If a fin is true, it is the ${d} of ${box}, so no other cell of ${box} can be ${d}.`
     : tr`If the fin is true, it is the ${d} of ${box}, so no other cell of ${box} can be ${d}.`;
-  // the removals: each in a cover line and in the fins' box
+  // the removals: each in a cover line and in the fins' box, in reading
+  // order, as the conclusion after them names them (the finder lists them
+  // cover line by cover line)
   const lineOf = (c: number) => (rows ? c % 9 : Math.floor(c / 9));
   const lines = [...new Set(elims.map((e) => lineOf(e.cell)))].sort((a, b) => a - b);
-  const removed = listAnd(elims.map((e) => cellName(e.cell)));
+  const removedCells = elims.map((e) => e.cell).sort((a, b) => a - b);
+  const removed = listAnd(removedCells.map(cellName));
   const line = unitName(rows ? 9 + lines[0] : lines[0]);
+  const across = listAnd(lines.map((p) => p + 1));
   const lead =
-    elims.length === 1
+    removedCells.length === 1
       ? tr`${removed} is in ${line} and in ${box}, so it cannot be ${d} either way.`
-      : lines.length === 1
-        ? tr`${removed} are in ${line} and in ${box}, so none of them can be ${d} either way.`
-        : rows
-          ? tr`${removed} are in ${box}, each in one of columns ${listAnd(lines.map((p) => p + 1))}, so none of them can be ${d} either way.`
-          : tr`${removed} are in ${box}, each in one of rows ${listAnd(lines.map((p) => p + 1))}, so none of them can be ${d} either way.`;
+      : removedCells.length === 2
+        ? lines.length === 1
+          ? tr`${removed} are in ${line} and in ${box}, so neither of them can be ${d} either way.`
+          : rows
+            ? tr`${removed} are in ${box}, each in one of columns ${across}, so neither of them can be ${d} either way.`
+            : tr`${removed} are in ${box}, each in one of rows ${across}, so neither of them can be ${d} either way.`
+        : lines.length === 1
+          ? tr`${removed} are in ${line} and in ${box}, so none of them can be ${d} either way.`
+          : rows
+            ? tr`${removed} are in ${box}, each in one of columns ${across}, so none of them can be ${d} either way.`
+            : tr`${removed} are in ${box}, each in one of rows ${across}, so none of them can be ${d} either way.`;
   return {
     frames: [
       { text: first, show: ['primary'] },
@@ -303,9 +326,11 @@ export function findFinnedFish(g: Grid, size: number, sashimi: boolean): Step | 
                 : many
                   ? tr`fins: ${d}s of the base columns outside the fish`
                   : tr`fin: ${aDigit(d)} of the base columns outside the fish`,
-              finBox: many
-                ? tr`the fins' box: if a fin is true, no other cell here can be ${d}`
-                : tr`the fin's box: if the fin is true, no other cell here can be ${d}`
+              finBox: digitHeld(
+                many
+                  ? tr`the fins' box: if a fin is true, no other cell here can be ${d}`
+                  : tr`the fin's box: if the fin is true, no other cell here can be ${d}`
+              )
             },
             walk,
             description: rows

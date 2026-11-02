@@ -90,6 +90,21 @@ export function aDigit(d: number): string {
 }
 
 /**
+ * A count of cells as a sentence writes it beside the digits they hold,
+ * in a word, so the count never reads as one of them ("the only two cells
+ * of column 8 where 2 and 8 can go"): two, three or four, the sizes of a
+ * subset. None of the three languages bends these words to the noun after
+ * them (to, tre, fire; dos, tres, cuatro), so the word goes into a hole as
+ * `unitName` does; any other count stays a numeral.
+ */
+export function countWord(n: number): string {
+  if (n === 2) return tr`two`;
+  if (n === 3) return tr`three`;
+  if (n === 4) return tr`four`;
+  return String(n);
+}
+
+/**
  * A house by its index in UNITS (rows 0-8, columns 9-17, boxes 18-26):
  * "row 3", "column 5", "box 9". Every language writes it without an
  * article (rad 3, fila 3), so the sentence around it supplies one if it

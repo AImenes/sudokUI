@@ -1052,12 +1052,14 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
         : cells.map((c) => ({ given: c.given, value: c.given ? c.value : 0, corner: 0, center: 0, excluded: 0, colors: [] })),
     [cells, showPosition, setTracker, setA, setB]
   );
-  // the line under it names the site and, for a game it knows, the level and the rating
+  // the line under it names the site and, for a game it knows, the level
+  // and the rating, held together by a no-break space so a narrow dialog
+  // never parts them (the preview beside its tick and the PNG alike)
   const footer = !known
     ? 'sudokui.app'
     : daily
-      ? t('sudokui.app · Daily #{no} · {level} {score}', { no: daily.no, level: t.level(known.level), score: known.score })
-      : t('sudokui.app · {level} {score}', { level: t.level(known.level), score: known.score });
+      ? t('sudokui.app · Daily #{no} · {level}\u00a0{score}', { no: daily.no, level: t.level(known.level), score: known.score })
+      : t('sudokui.app · {level}\u00a0{score}', { level: t.level(known.level), score: known.score });
   const picture = (
     <ShareImage
       cells={pictureCells}
@@ -1123,7 +1125,7 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
     <Modal title={hint ? t('Share this hint') : t('Share this puzzle')} onClose={onClose}>
       {hint && (
         <>
-          <p className="dialog-note">{t('A picture of your board with the hint drawn as you see it, without the name of the technique.')}</p>
+          <p className="dialog-note">{t('A picture of your board with the hint drawn as you see it, without the step numbers on its arrows or the name of the technique.')}</p>
           {picture}
         </>
       )}

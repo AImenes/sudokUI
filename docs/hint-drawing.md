@@ -523,8 +523,9 @@ Every rule is numbered so a commit, a test or a review can cite it.
   The picture of the board a player shares (the Share dialog's image, and
   'Share this hint' in the hint panel; `src/content/boardImage.ts`) is
   the Learn diagrams' renderer, given the player's position, colours and
-  the walk's frame shown, so it draws what the board draws in that frame,
-  always light, and never prints the technique's name.
+  the walk's frame shown, so it draws what the board draws in that frame
+  but for the walk's numbers on the arrows, which it leaves out, always
+  light, and never prints the technique's name.
 
 ## Truth: where it comes from
 

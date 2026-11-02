@@ -2,7 +2,8 @@
 // position as it stands, its candidates as the board shows them (the same
 // candidates the pencil-mark grid writes, src/content/textGrid.ts), the
 // player's colours, and a hint drawn as the board draws it, in full or at
-// the walk's frame shown. Drawn by the Learn diagrams' renderer
+// the walk's frame shown (without the walk's numbers on the arrows, which
+// the board adds while walking). Drawn by the Learn diagrams' renderer
 // (src/content/boardSvg.ts), always light, with system fonts and nothing
 // fetched: the SVG holds no link, no image and no foreign object, so a
 // canvas turns it into a PNG on the device, offline (src/ui/boardPng.ts).

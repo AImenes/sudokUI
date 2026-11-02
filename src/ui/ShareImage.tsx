@@ -97,7 +97,9 @@ export function ShareImage({
   const [broken, setBroken] = useState(false);
   useEffect(() => {
     let live = true;
+    // a new picture: no file until it is made, and no failure until this one fails
     setFile(null);
+    setBroken(false);
     svgToPng(svg)
       .then((png) => live && setFile(new File([png], name, { type: 'image/png' })))
       .catch(() => live && setBroken(true));
@@ -155,8 +157,9 @@ export function ShareImage({
         ) : (
           <div className="hint-actions">
             {sheet ? (
+              // a sheet that refuses the file saves it instead (sendFile), and says so
               <button onClick={share} disabled={!file}>
-                🖼️ {t('Share image')}
+                {done === 'saved' ? `✓ ${t('Saved')}` : `🖼️ ${t('Share image')}`}
               </button>
             ) : (
               <>

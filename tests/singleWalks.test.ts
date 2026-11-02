@@ -410,18 +410,32 @@ describe('the singles, subsets and Locked Candidates walk in their own sentences
     expect(at('LOCKED_PAIR')).toEqual([
       'Locked Pair: in column 1 and box 1, r1c1 and r2c1 hold only 3 and 7, so these digits can go nowhere else in column 1 or box 1. Here, 7 is removed from r2c3, r3c1, r3c3, r5c1, r6c1.',
       'elim: remove',
-      'primary: 2 cells that hold only 3 and 7 between them, in column 1 and box 1'
+      'primary: two cells that hold only 3 and 7 between them, in column 1 and box 1'
     ]);
     expect(at('NAKED_TRIPLE')).toEqual([
       'Naked Triple: in box 8, r7c4, r8c6 and r9c4 hold only 2, 6 and 7 between them, so these digits can go nowhere else in box 8. Here, 6 is removed from r7c5; 2 is removed from r9c6.',
       'elim: remove',
-      'primary: 3 cells that hold only 2, 6 and 7 between them, in box 8'
+      'primary: three cells that hold only 2, 6 and 7 between them, in box 8'
     ]);
     expect(at('HIDDEN_TRIPLE')).toEqual([
-      'Hidden Triple: in row 8, the digits 3, 5 and 9 can go only in r8c4, r8c6 and r8c9, so these cells hold nothing else. Here, 2 and 7 are removed from r8c4; 4 and 8 are removed from r8c6.',
+      'Hidden Triple: in row 8, the digits 3, 5 and 9 can go only in r8c4, r8c6 and r8c9, so these cells can hold nothing else. Here, 2 and 7 are removed from r8c4; 4 and 8 are removed from r8c6.',
       'elim: remove',
-      'primary: the only 3 cells of row 8 where 3, 5 and 9 can go'
+      'primary: the only three cells of row 8 where 3, 5 and 9 can go'
     ]);
+    // the count of cells in a word beside the digits, in Norwegian and Spanish too
+    const counted = {
+      nb: ['to ruter som til sammen bare har 3 og 7, i kolonne 1 og boks 1', 'tre ruter som til sammen bare har 2, 6 og 7, i boks 8', 'de eneste tre rutene i rad 8 der 3, 5 og 9 kan stå'],
+      es: [
+        'dos casillas que entre ellas solo tienen 3 y 7, en la columna 1 y en la caja 1',
+        'tres casillas que entre ellas solo tienen 2, 6 y 7, en la caja 8',
+        'las únicas tres casillas de la fila 8 donde pueden ir los números 3, 5 y 9'
+      ]
+    };
+    for (const [lang, table] of OTHER) {
+      setEngineText(lang, table);
+      expect((['LOCKED_PAIR', 'NAKED_TRIPLE', 'HIDDEN_TRIPLE'] as Tech[]).map((tech) => at(tech).at(-1)), lang).toEqual(counted[lang].map((l) => `primary: ${l}`));
+    }
+    setEngineText('en', null);
     // no slash between digits in any language
     for (const [lang, table] of [['en', null], ...OTHER] as const) {
       setEngineText(lang, table);

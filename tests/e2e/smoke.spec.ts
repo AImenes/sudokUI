@@ -1692,9 +1692,10 @@ test.describe('a picture of the board', () => {
     await expect(page.locator('svg.board')).toBeVisible();
     await page.locator('.menu-row button', { hasText: 'Share' }).click();
     const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
-    // the preview, with the line under it shown beside its tick
+    // the preview, with the line under it shown beside its tick, the level
+    // and the rating held together by a no-break space
     await expect(dialog.getByRole('img', { name: 'The picture as it will be shared' })).toBeVisible();
-    await expect(dialog).toContainText(/sudokui\.app · (Easy|Medium|Hard|Unfair|Extreme) \d+/);
+    await expect(dialog).toContainText(/sudokui\.app · (Easy|Medium|Hard|Unfair|Extreme)\u00a0\d+/);
     const [download] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: 'Save image' }).click()]);
     expect(download.suggestedFilename()).toBe('sudokui-board.png');
     // 570 units wide at 2 pixels a unit, with 40 more for the footer
