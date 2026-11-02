@@ -4634,6 +4634,10 @@
      "digit": 4
     },
     {
+     "cell": 17,
+     "digit": 6
+    },
+    {
      "cell": 69,
      "digit": 4
     },
@@ -4644,6 +4648,10 @@
     {
      "cell": 71,
      "digit": 4
+    },
+    {
+     "cell": 71,
+     "digit": 6
     }
    ],
    "secondary": [
@@ -4926,16 +4934,32 @@
      "digit": 5
     },
     {
+     "cell": 41,
+     "digit": 6
+    },
+    {
      "cell": 44,
      "digit": 5
+    },
+    {
+     "cell": 44,
+     "digit": 6
     },
     {
      "cell": 50,
      "digit": 5
     },
     {
+     "cell": 50,
+     "digit": 6
+    },
+    {
      "cell": 53,
      "digit": 5
+    },
+    {
+     "cell": 53,
+     "digit": 6
     }
    ],
    "secondary": [
@@ -5075,12 +5099,24 @@
      "digit": 3
     },
     {
+     "cell": 49,
+     "digit": 5
+    },
+    {
      "cell": 50,
      "digit": 3
     },
     {
+     "cell": 50,
+     "digit": 5
+    },
+    {
      "cell": 76,
      "digit": 3
+    },
+    {
+     "cell": 76,
+     "digit": 5
     },
     {
      "cell": 77,

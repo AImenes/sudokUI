@@ -248,7 +248,6 @@ describe('the uniqueness patterns draw what their argument uses (H2, M4, L4)', (
     // the 5s of row 6 and column 5, all of them, are the rectangle's three
     expect(confined.sort((a, b) => a - b)).toEqual([49, 50, 76]);
     expect(same(s.secondary, confined.map((cell) => ({ cell, digit: strong })))).toBe(true);
-    expect(s.primary!.some((cd) => confined.includes(cd.cell) && cd.digit === strong)).toBe(false);
     expect(s.units).toEqual([
       { unit: rowOf(B), role: 'secondary' },
       { unit: 9 + colOf(B), role: 'secondary' }
@@ -293,7 +292,6 @@ describe('the uniqueness patterns draw what their argument uses (H2, M4, L4)', (
     expect(unit).toBe(17);
     expect(same(s.secondary, candsIn('UNIQUENESS_4', unit, keep).map((cell) => ({ cell, digit: keep })))).toBe(true);
     expect(same(s.secondary, s.eliminations.map((e) => ({ cell: e.cell, digit: keep })))).toBe(true);
-    expect(s.primary!.some((cd) => cd.digit === keep && s.secondary!.some((o) => o.cell === cd.cell))).toBe(false);
     expect(s.labels).toEqual({ primary: 'the rectangle: 4/6 in all four corners', secondary: '6 in column 9: only in the roof, so one of r2c9, r8c9 is 6' });
     expect(bandsAt(k, walkFrames(s)[1])).toEqual(['17:secondary']);
   });
@@ -310,6 +308,21 @@ describe('the uniqueness patterns draw what their argument uses (H2, M4, L4)', (
     expect(s.labels!.secondary).toBe('6 in rows 5 and 6: only in the rectangle, so on one diagonal');
   });
 
+  it('UR Type 4, UR Type 6 and Hidden Rectangle: frame 1 draws the whole rectangle its words name, frame 2 turns the key digit gold (G5)', () => {
+    for (const tech of ['UNIQUENESS_4', 'UNIQUENESS_6', 'HIDDEN_RECTANGLE'] as Tech[]) {
+      const k = exampleOf(tech);
+      const s = k.step;
+      const [one, two] = walkFrames(s);
+      const [x, y] = s.labels!.primary!.match(/(\d)\/(\d) in all four corners/)!.slice(1).map(Number);
+      const corners = [...new Set(s.primary!.map((cd) => cd.cell))];
+      expect(corners, tech).toHaveLength(4);
+      expect(one.text, tech).toBe(`The rectangle: ${x}/${y} in all four corners.`);
+      // every corner's x and y, blue, as the sentence says
+      for (const cell of corners) for (const digit of [x, y]) expect(kindAt(k, one, { cell, digit }), `${tech} frame 1 ${cell}:${digit}`).toBe('primary');
+      // then the key digit in its own colour
+      for (const cd of s.secondary!) expect(kindAt(k, two, cd), `${tech} frame 2 ${cd.cell}:${cd.digit}`).toBe('secondary');
+    }
+  });
   it("Avoidable Rectangle Type 2: the rectangle first, its solved corners and the candidates that would complete it, then the extra digit", () => {
     const k = exampleOf('AVOIDABLE_RECTANGLE_2');
     const s = k.step;

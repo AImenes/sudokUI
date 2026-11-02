@@ -160,11 +160,10 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
             tech: 'UNIQUENESS_4',
             placements: [],
             eliminations: elims,
-            // the rectangle, but for the roof's `keep`, which is drawn in
-            // its own colour with the house it is locked into
-            primary: cells.flatMap((cell) =>
-              [x, y].filter((digit) => digit !== keep || !extra.includes(cell)).map((digit) => ({ cell, digit }))
-            ),
+            // the rectangle; the roof's `keep` is also secondary, drawn in
+            // its own colour with the house it is locked into from the frame
+            // that shows that colour (src/content/hintMarks.ts)
+            primary: cells.flatMap((cell) => [x, y].map((digit) => ({ cell, digit }))),
             secondary: [e1, e2].map((cell) => ({ cell, digit: keep })),
             units: [{ unit: confined, role: 'secondary' }],
             labels: {
@@ -319,15 +318,15 @@ function uniqueness6(
       .filter((c) => g.cands[c] & bit(d))
       .map((cell) => ({ cell, digit: d }));
     if (!elims.length) continue;
-    // the rectangle's other digit, and its d in their own colour with the
-    // two lines it is confined to the rectangle in
+    // the rectangle, its d also in their own colour with the two lines it
+    // is confined to the rectangle in, from the frame that shows that colour
     const other = d === rect.x ? rect.y : rect.x;
     const [a, b] = rowsStrong ? rows : cols;
     return {
       tech: 'UNIQUENESS_6',
       placements: [],
       eliminations: elims,
-      primary: rect.cells.map((cell) => ({ cell, digit: other })),
+      primary: rect.cells.flatMap((cell) => [other, d].map((digit) => ({ cell, digit }))),
       secondary: rect.cells.map((cell) => ({ cell, digit: d })),
       units: (rowsStrong ? rows : cols.map((c) => 9 + c)).map((unit) => ({ unit, role: 'secondary' as const })),
       labels: {
@@ -377,16 +376,15 @@ export function findHiddenRectangle(g: Grid): Step | null {
         );
         if (!rowConfined || !colConfined) continue;
         if (!(g.cands[B] & bit(weak))) continue;
-        // the strong digit in B's row and column, which lies there only in
-        // the rectangle, in its own colour with that row and column
+        // the rectangle; the strong digit in B's row and column, which lies
+        // there only in the rectangle, also in its own colour with that row
+        // and column, from the frame that shows that colour
         const confined = [B, rowMate, colMate];
         return {
           tech: 'HIDDEN_RECTANGLE',
           placements: [],
           eliminations: [{ cell: B, digit: weak }],
-          primary: cells.flatMap((cell) =>
-            [x, y].filter((digit) => digit !== strong || !confined.includes(cell)).map((digit) => ({ cell, digit }))
-          ),
+          primary: cells.flatMap((cell) => [x, y].map((digit) => ({ cell, digit }))),
           secondary: confined.map((cell) => ({ cell, digit: strong })),
           units: [
             { unit: rowOf(B), role: 'secondary' },

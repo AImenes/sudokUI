@@ -44,7 +44,8 @@ const none = { solved: () => false };
 describe('the marks', () => {
   it('give each candidate one mark: a removal over everything, a placement over a role', () => {
     const m = hintMarks(step({ primary: [A, B], secondary: [A], fins: [C], placements: [B], eliminations: [C] }), none);
-    expect(m.cands.get(A.cell)?.get(A.digit)).toBe('primary'); // the first kind it was given
+    // in both lists: gold in a view that shows the secondary colour (G5; a uniqueness pattern's key digit)
+    expect(m.cands.get(A.cell)?.get(A.digit)).toBe('secondary');
     expect(m.cands.get(B.cell)?.get(B.digit)).toBe('place');
     expect(m.cands.get(C.cell)?.get(C.digit)).toBe('elim');
     const both = hintMarks(step({ placements: [A], eliminations: [A] }), none);
@@ -126,8 +127,8 @@ describe('the walk', () => {
     const links = [{ from: [A], to: [B], strong: true }];
     const s = step({ tech: 'DIGIT_FORCING_CHAIN', primary: [A, B], secondary: [B], links, eliminations: [C] });
     const frames = walkFrames(s);
-    expect(frameMarks(s, frames[0], () => false).cands.get(B.cell)?.get(B.digit)).toBe('primary');
-    expect(frameMarks(s, null, () => false).cands.get(B.cell)?.get(B.digit)).toBe('primary');
+    expect(frameMarks(s, frames[0], () => false).cands.get(B.cell)?.get(B.digit)).toBe('secondary');
+    expect(frameMarks(s, null, () => false).cands.get(B.cell)?.get(B.digit)).toBe('secondary');
   });
 
   it('gives the legend what the frame draws: a single\'s first frames show the pattern, not yet the placement', () => {

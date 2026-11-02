@@ -209,7 +209,7 @@ export function clashWords(step: Step): string | null {
 
 /** the colour the step names for a candidate, if any: the first of the lists the full view marks in order */
 export function namedRole(step: Step, cd: CellDigit): Role | null {
-  return has(step.primary, cd) ? 'primary' : has(step.secondary, cd) ? 'secondary' : has(step.fins, cd) ? 'fin' : null;
+  return has(step.secondary, cd) ? 'secondary' : has(step.primary, cd) ? 'primary' : has(step.fins, cd) ? 'fin' : null;
 }
 
 /**
@@ -420,8 +420,10 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   } else {
     // a chain's truth comes before the roles, which mark only what it leaves
     if (truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
-    if (show('primary')) for (const cd of step.primary ?? []) mark(cd, 'primary');
+    // a candidate in both lists (a uniqueness pattern's key digit) is the
+    // pattern's until the frame that shows the secondary colour, then gold
     if (show('secondary')) for (const cd of step.secondary ?? []) mark(cd, 'secondary');
+    if (show('primary')) for (const cd of step.primary ?? []) mark(cd, 'primary');
     // every chain node gets a mark, so arrows root on one
     if (!truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
     if (show('fins')) for (const cd of step.fins ?? []) mark(cd, 'fin');
@@ -429,8 +431,8 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   if (show('conclusion')) {
     if (opts.walking) {
       // the last frame of a walk: the whole pattern, then the conclusion
-      for (const cd of step.primary ?? []) mark(cd, 'primary');
       for (const cd of step.secondary ?? []) mark(cd, 'secondary');
+      for (const cd of step.primary ?? []) mark(cd, 'primary');
       for (const cd of step.fins ?? []) mark(cd, 'fin');
     }
     // a clashing ALS-XY-Chain's reason: its first set's z, which every removal sees

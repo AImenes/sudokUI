@@ -76,7 +76,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
 - **G5. Precedence.** One mark per candidate: removed > placed > chain
   truth (a true disc, a false ring, a "one of these" square) > a role > a
   set's member (its digit bold on the set's tile, no shape; since phase 4,
-  [hint-drawing-sets.md](hint-drawing-sets.md)). A view draws roles inside
+  [hint-drawing-sets.md](hint-drawing-sets.md)). A candidate a step lists
+  in the pattern and in the secondary role (a uniqueness pattern's key
+  digit in UR4, UR6 and the Hidden Rectangle) is the pattern's until the
+  walk frame that shows the secondary colour, and gold from then on, so
+  frame 1 draws the whole rectangle its words name. A view draws roles inside
   a set only in Death Blossom, which draws no truth until phase 5, so no
   role disc sits beside a truth mark; an ALS pattern whose chain clashes
   (its sets share cells, and its truths would claim more than the step
