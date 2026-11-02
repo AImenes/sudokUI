@@ -103,9 +103,14 @@ export function findTurbotFamily(
               eliminations: elims,
               primary: pattern.map((cell) => ({ cell, digit: d })),
               labels: { primary: tr`the two strong links on ${d}` },
-              links: alternatingLinks([a, p, q, b].map((cell) => [{ cell, digit: d }])),
-              // each link named by the house it is a conjugate pair in: a
-              // box link's two cells may share a line that holds more
+              // each strong link named by the house it is a conjugate pair
+              // in, in the walk (ChainLink.unit) as in the description: a
+              // box link's two cells may share a line that holds more, or
+              // one that holds no more, read as which the pattern would be
+              // another (two column links make a Skyscraper)
+              links: alternatingLinks([a, p, q, b].map((cell) => [{ cell, digit: d }])).map((link, k) =>
+                k === 0 ? { ...link, unit: linkUnit(l1) } : k === 2 ? { ...link, unit: linkUnit(l2) } : link
+              ),
               description: tr`${names[variant]} on ${d}: ${cellName(l1.a)} and ${cellName(l1.b)} are the only places for ${d} in ${unitName(linkUnit(l1))}, as are ${cellName(l2.a)} and ${cellName(l2.b)} in ${unitName(linkUnit(l2))}, and ${cellName(p)} sees ${cellName(q)}. If ${cellName(a)} is not ${d}, ${cellName(p)} is, so ${cellName(q)} is not, so ${cellName(b)} is: one of ${cellName(a)} and ${cellName(b)} is ${d}, and ${d} is removed from every cell that sees both.`
             };
           }

@@ -164,17 +164,17 @@ describe('the set walk in three languages (docs/hint-drawing-sets.md, "The walk 
     const want = {
       nb: {
         intro: 'Mengde A: de 2 rutene r7c8, r8c8 i kolonne 8 har bare 4, 8 og 9: ett tall mer enn ruter. Mangler ett av dem, uansett hvilket, fyller de andre tallene rutene.',
-        into: 'Hvis r2c8 er 8, har mengde A ingen 8: hvert 8-tall i A ser r2c8.',
+        into: 'Hvis r2c8 er 8, har mengde A ingen 8: hvert 8-tall i A ser r2c8 i kolonne 8.',
         lock: 'Hvis mengde A ikke har noen 8, fyller de 2 andre tallene de 2 rutene, så en av r7c8, r8c8 må være 9.',
-        common: 'Hvert 1-tall i mengde A ser hvert 1-tall i mengde B: hvis r8c2 er 1, kan r8c9 ikke være 1.',
+        common: 'I rad 8 ser hvert 1-tall i mengde A hvert 1-tall i mengde B: hvis r8c2 er 1, kan r8c9 ikke være 1.',
         premise: 'sann hvis mengde A ikke har noen 5 (ved den lille prikken)',
         group: /grupp/i
       },
       es: {
         intro: 'Conjunto A: las 2 casillas r7c8, r8c8 de la columna 8 solo tienen 4, 8 y 9: un número más que casillas. Sin uno cualquiera de ellos, los demás llenan las casillas.',
-        into: 'Si r2c8 es 8, el conjunto A no tiene ningún 8: cada 8 de A ve r2c8.',
+        into: 'Si r2c8 es 8, el conjunto A no tiene ningún 8: cada 8 de A ve r2c8 en la columna 8.',
         lock: 'Si el conjunto A no tiene ningún 8, sus otros 2 números llenan sus 2 casillas, así que una de r7c8, r8c8 debe ser 9.',
-        common: 'Cada 1 del conjunto A ve cada 1 del conjunto B: si r8c2 es 1, r8c9 no puede ser 1.',
+        common: 'En la fila 8, cada 1 del conjunto A ve cada 1 del conjunto B: si r8c2 es 1, r8c9 no puede ser 1.',
         premise: 'verdadero si el conjunto A no tiene ningún 5 (junto al punto pequeño)',
         group: /grupo/i
       }

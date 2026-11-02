@@ -1,5 +1,5 @@
 import { Tech } from './ratings';
-import { rowOf, colOf } from './board';
+import { Grid, CELL_UNITS, UNITS, bit, rowOf, colOf } from './board';
 
 export interface CellDigit {
   cell: number;
@@ -42,6 +42,54 @@ export interface ChainLink {
    */
   fromSet?: number;
   toSet?: number;
+  /**
+   * the house that makes a link between one digit's candidates in different
+   * cells (a UNITS index), which the link's sentence names
+   * (docs/hint-readability-2026-11.md M17): for a strong link, a house whose
+   * only places for the digit are the link's cells; for a weak link, a house
+   * every cell of it lies in, so they all see each other. A row or column
+   * before the box, so the box is named only where it alone makes the link.
+   * Named when a step is found (withHouses); absent where no one house makes
+   * the link, and on a link with a sentence of its own
+   */
+  unit?: number;
+}
+
+/**
+ * The house that makes a link on one digit between these cells, as
+ * ChainLink.unit names it: the first of the cells' row, column and box that
+ * holds them all and, for a strong link, holds the digit nowhere else; -1
+ * where none does
+ */
+export function linkHouse(g: Grid, cells: number[], digit: number, strong: boolean): number {
+  const b = bit(digit);
+  if (!cells.length || !cells.every((c) => !g.values[c] && g.cands[c] & b)) return -1;
+  for (const u of CELL_UNITS[cells[0]]) {
+    if (!cells.every((c) => CELL_UNITS[c].includes(u))) continue;
+    if (!strong || UNITS[u].filter((c) => !g.values[c] && g.cands[c] & b).length === new Set(cells).size) return u;
+  }
+  return -1;
+}
+
+/**
+ * A found step with the house of each of its links between one digit's
+ * candidates in different cells named (ChainLink.unit), from the position
+ * the step was found in; every finder's step passes through it
+ * (src/engine/humanSolver.ts). A link with a sentence of its own, a tie, a
+ * link inside a cell and one whose house its finder named are left as they
+ * are.
+ */
+export function withHouses<S extends Step | null>(step: S, g: Grid): S {
+  for (const link of step?.links ?? []) {
+    if (link.text || link.undirected || link.unit !== undefined) continue;
+    const digit = link.from[0]?.digit;
+    if (![...link.from, ...link.to].every((cd) => cd.digit === digit)) continue;
+    const [from, to] = [link.from, link.to].map((node) => [...new Set(node.map((cd) => cd.cell))]);
+    if (from.some((c) => to.includes(c))) continue;
+    const unit = linkHouse(g, [...from, ...to], digit, link.strong);
+    if (unit >= 0) link.unit = unit;
+  }
+  return step;
 }
 
 /** a link drawn as a tie: exactly one of its two ends is true, and it says nothing more */

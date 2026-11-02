@@ -427,8 +427,19 @@ Every rule is numbered so a commit, a test or a review can cite it.
   these" square beside a true disc it cannot share a cell or a house
   with), also proves its premise impossible; its legend says so (the
   stronger conclusion this proves is the finder's to take, not the
-  drawing's). A group node is worded as one: "one of r5c7, r6c7 must be
-  2", never all of them.
+  drawing's). Each link between cells names the house that makes it
+  (docs/hint-readability-2026-11.md M17), which a diagonal link's drawing
+  does not show: "Strong link on 2 in box 8: r9c5 and r7c6 are its only
+  2s, so if r9c5 is not 2, r7c6 is.", "Weak link on 1 in column 3: r2c3
+  and r9c3 see each other, so ..."; a row or column before the box, so the
+  box is named only where no line makes the link (a Turbot Fish names the
+  house its description does); a link into, out of or between almost
+  locked sets names the house all its candidates lie in, where one does
+  ("In row 8, every 1 of set A sees every 1 of set B: ..."); a link inside
+  a cell keeps its own words. The house is the step's (`ChainLink.unit`,
+  named from the position when the step is found), and the drawing is
+  unchanged. A group node is worded as one: "one of r5c7, r6c7 is", never
+  all of them.
 - **G19. Colouring** (Simple Colors, Multi Colors, 3D Medusa, Remote
   Pair): **hue per cluster, shade per parity**, designed in full in
   [hint-drawing-colouring.md](hint-drawing-colouring.md). In short: each
@@ -1011,7 +1022,7 @@ the values above are its final ones.
 - [ ] Phase 5: forcing
 - [ ] Phase 6: words. Batch 1 is done (phase6-batch1-review.md): `Step.walk`, so a finder writes its own walk;
   the XY-, XYZ- and WXYZ-Wing, Chute Remote Pair and Sue de Coq walked and coloured by function; and the uniqueness
-  family and BUG+1 saying why the pattern would be deadly. Next: every other pattern's walk, M17, L2 and L3.. Done so far: Chute Remote Pair and Sue de Coq
+  family and BUG+1 saying why the pattern would be deadly. Next: every other pattern's walk, L2 and L3. Done so far: M17 (every link between cells names the house that makes it, G18; the chain trainer's too), Chute Remote Pair and Sue de Coq
   (docs/hint-readability-2026-11.md H2's and M3's parts for them, H1,
   L2's "chute"): each draws what its argument uses (G15) and walks it in
   its finder's own sentences, and its Copy step line is the one it always

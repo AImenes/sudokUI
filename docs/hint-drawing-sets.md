@@ -260,8 +260,9 @@ walk, the numbers on arrows and ties those of the frame that adds them.
   from the first node's premise; the end group 8r89c6 is two "one of these"
   squares on a green bar down the gutter of column 6, the last solid arrow
   ending at r8c6's square, the member nearest r8c5; r1c6's 8 removed. Walk:
-  today's frames and sentences ("Strong link on 8: if r8c5 is not 8, one of
-  r8c6, r9c6 must be 8 (nowhere else for it)."), the squares and bar from
+  today's frames and sentences ("Strong link on 8 in box 8: r8c5, r8c6 and
+  r9c6 are its only 8s, so if r8c5 is not 8, one of r8c6, r9c6 is.", the
+  house named since phase 6's M17), the squares and bar from
   the frame of that link, the last. Legend: remove; true and false, if the
   first candidate (by the small dot) is false; squares joined by a bar;
   arrows; start dot. Copy: Eureka, unchanged.

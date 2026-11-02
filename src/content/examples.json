@@ -3030,7 +3030,8 @@
        "digit": 1
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 1
     },
     {
      "from": [
@@ -3045,7 +3046,8 @@
        "digit": 1
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 11
     },
     {
      "from": [
@@ -3060,7 +3062,8 @@
        "digit": 1
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 8
     }
    ],
    "description": "Skyscraper on 1: r2c3 and r2c7 are the only places for 1 in row 2, as are r9c3 and r9c9 in row 9, and r2c3 sees r9c3. If r2c7 is not 1, r2c3 is, so r9c3 is not, so r9c9 is: one of r2c7 and r9c9 is 1, and 1 is removed from every cell that sees both."
@@ -3198,7 +3201,8 @@
        "digit": 8
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 0
     },
     {
      "from": [
@@ -3213,7 +3217,8 @@
        "digit": 8
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 19
     },
     {
      "from": [
@@ -3228,7 +3233,8 @@
        "digit": 8
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 12
     }
    ],
    "description": "2-String Kite on 8: r1c6 and r1c8 are the only places for 8 in row 1, as are r3c4 and r7c4 in column 4, and r1c6 sees r3c4. If r1c8 is not 8, r1c6 is, so r3c4 is not, so r7c4 is: one of r1c8 and r7c4 is 8, and 8 is removed from every cell that sees both."
@@ -3366,7 +3372,8 @@
        "digit": 2
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 15
     },
     {
      "from": [
@@ -3381,7 +3388,8 @@
        "digit": 2
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 8
     },
     {
      "from": [
@@ -3396,7 +3404,8 @@
        "digit": 2
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 25
     }
    ],
    "description": "Turbot Fish on 2: r5c7 and r9c7 are the only places for 2 in column 7, as are r7c6 and r9c5 in box 8, and r9c7 sees r9c5. If r5c7 is not 2, r9c7 is, so r9c5 is not, so r7c6 is: one of r5c7 and r7c6 is 2, and 2 is removed from every cell that sees both."
@@ -3685,7 +3694,8 @@
        "digit": 4
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 15
     },
     {
      "from": [
@@ -3700,7 +3710,8 @@
        "digit": 4
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 7
     },
     {
      "from": [
@@ -3715,7 +3726,8 @@
        "digit": 4
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 13
     },
     {
      "from": [
@@ -8050,7 +8062,8 @@
        "digit": 1
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 7
     },
     {
      "from": [
@@ -8065,7 +8078,8 @@
        "digit": 1
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 14
     },
     {
      "from": [
@@ -8080,7 +8094,8 @@
        "digit": 1
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 5
     },
     {
      "from": [
@@ -8095,7 +8110,8 @@
        "digit": 1
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 23
     },
     {
      "from": [
@@ -8110,7 +8126,8 @@
        "digit": 1
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 16
     }
    ],
    "description": "X-Chain on 1: r8c3 → r8c6 → r6c6 → r6c7 → r4c8 → r9c8; one end must be 1, so 1 is removed from cells seeing both ends."
@@ -8268,7 +8285,8 @@
        "digit": 2
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 0
     },
     {
      "from": [
@@ -8288,7 +8306,8 @@
       }
      ],
      "strong": false,
-     "toSet": 0
+     "toSet": 0,
+     "unit": 19
     },
     {
      "from": [
@@ -8308,7 +8327,8 @@
       }
      ],
      "strong": true,
-     "fromSet": 0
+     "fromSet": 0,
+     "unit": 12
     },
     {
      "from": [
@@ -8323,7 +8343,8 @@
        "digit": 2
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 3
     },
     {
      "from": [
@@ -8338,7 +8359,8 @@
        "digit": 2
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 11
     },
     {
      "from": [
@@ -8353,7 +8375,8 @@
        "digit": 2
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 18
     }
    ],
    "sets": [
@@ -8521,7 +8544,8 @@
        "digit": 3
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 14
     },
     {
      "from": [
@@ -8551,7 +8575,8 @@
        "digit": 1
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 4
     },
     {
      "from": [
@@ -8581,7 +8606,8 @@
        "digit": 6
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 15
     },
     {
      "from": [
@@ -8773,7 +8799,8 @@
        "digit": 4
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 12
     },
     {
      "from": [
@@ -8788,7 +8815,8 @@
        "digit": 4
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 5
     },
     {
      "from": [
@@ -8818,7 +8846,8 @@
        "digit": 3
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 13
     },
     {
      "from": [
@@ -8833,7 +8862,8 @@
        "digit": 3
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 19
     }
    ],
    "description": "Nice Loop: the continuous loop 3@r1c4 → 4@r1c4 → 4@r6c4 → 4@r6c5 → 3@r6c5 → 3@r2c5 alternates perfectly; every weak link has exactly one true side, clearing other candidates along it."
@@ -9047,7 +9077,8 @@
       }
      ],
      "strong": false,
-     "toSet": 0
+     "toSet": 0,
+     "unit": 20
     },
     {
      "from": [
@@ -9071,7 +9102,8 @@
       }
      ],
      "strong": true,
-     "fromSet": 0
+     "fromSet": 0,
+     "unit": 17
     },
     {
      "from": [
@@ -9101,7 +9133,8 @@
        "digit": 8
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 17
     },
     {
      "from": [
@@ -9140,7 +9173,8 @@
       }
      ],
      "strong": true,
-     "toSet": 1
+     "toSet": 1,
+     "unit": 17
     },
     {
      "from": [
@@ -9164,7 +9198,8 @@
       }
      ],
      "strong": false,
-     "fromSet": 1
+     "fromSet": 1,
+     "unit": 20
     }
    ],
    "sets": [
@@ -9357,7 +9392,8 @@
      ],
      "strong": false,
      "fromSet": 0,
-     "toSet": 1
+     "toSet": 1,
+     "unit": 7
     },
     {
      "from": [
@@ -9580,7 +9616,8 @@
      ],
      "strong": false,
      "fromSet": 0,
-     "toSet": 2
+     "toSet": 2,
+     "unit": 11
     },
     {
      "from": [
@@ -9614,7 +9651,8 @@
      ],
      "strong": false,
      "fromSet": 2,
-     "toSet": 1
+     "toSet": 1,
+     "unit": 5
     },
     {
      "from": [
@@ -9863,7 +9901,8 @@
      ],
      "strong": false,
      "fromSet": 0,
-     "toSet": 1
+     "toSet": 1,
+     "unit": 15
     },
     {
      "from": [
@@ -9901,7 +9940,8 @@
      ],
      "strong": false,
      "fromSet": 1,
-     "toSet": 2
+     "toSet": 2,
+     "unit": 0
     },
     {
      "from": [
@@ -9939,7 +9979,8 @@
      ],
      "strong": false,
      "fromSet": 2,
-     "toSet": 3
+     "toSet": 3,
+     "unit": 13
     },
     {
      "from": [
@@ -10232,7 +10273,8 @@
        "digit": 4
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 14
     },
     {
      "from": [
@@ -10262,7 +10304,8 @@
        "digit": 2
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 4
     },
     {
      "from": [
@@ -10277,7 +10320,8 @@
        "digit": 2
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 17
     }
    ],
    "description": "AIC: 8@r1c6 → 4@r1c6 → 4@r5c6 → 2@r5c6 → 2@r5c9 → 2@r1c9; at least one of 8@r1c6 and 2@r1c9 is true, so candidates conflicting with both are removed."
@@ -10447,7 +10491,8 @@
        "digit": 4
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 0
     },
     {
      "from": [
@@ -10462,7 +10507,8 @@
        "digit": 4
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 9
     },
     {
      "from": [
@@ -10477,7 +10523,8 @@
        "digit": 4
       }
      ],
-     "strong": false
+     "strong": false,
+     "unit": 6
     },
     {
      "from": [
@@ -10492,7 +10539,8 @@
        "digit": 4
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 13
     },
     {
      "from": [
@@ -10527,7 +10575,8 @@
       }
      ],
      "strong": true,
-     "toSet": 0
+     "toSet": 0,
+     "unit": 25
     }
    ],
    "sets": [
@@ -10701,7 +10750,8 @@
        "digit": 8
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 1
     },
     {
      "from": [
@@ -10721,7 +10771,8 @@
       }
      ],
      "strong": false,
-     "toSet": 0
+     "toSet": 0,
+     "unit": 16
     },
     {
      "from": [
@@ -10766,7 +10817,8 @@
       }
      ],
      "strong": false,
-     "fromSet": 0
+     "fromSet": 0,
+     "unit": 16
     },
     {
      "from": [
@@ -10781,7 +10833,8 @@
        "digit": 9
       }
      ],
-     "strong": true
+     "strong": true,
+     "unit": 5
     }
    ],
    "sets": [
