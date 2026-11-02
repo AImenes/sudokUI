@@ -987,6 +987,13 @@ the values above are its final ones.
   its tabs and dashed outlines carrying it; App.tsx's "a {tech} places it"
   and the share line's "a {level} sudoku" can read "a X-Wing" and "a
   Extreme sudoku" in English (a name, not a digit: phase 6's words).
+- [x] The readability pass's quick wins (docs/hint-readability-2026-11.md
+  section 4: H3, M4's Empty Rectangle, M20, M21, L1, L11, M2, H4's closing
+  sentence, M1, H2's Hidden Rectangle and UR3, M4's UR4, UR6 and AR2, M9,
+  L4, M7, M11, M15, H6's real-size Medusa in the fixture and the shots),
+  with round 3's two lows. Review round 1 found two mediums and two
+  regressions, all fixed (hint-readability-round1.md, which also lists
+  the lows left for later).
 - [ ] Phase 5: forcing
 - [ ] Phase 6: words
 - [ ] Phase 7: polish
