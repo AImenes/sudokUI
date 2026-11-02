@@ -257,11 +257,15 @@ const besideCell = (a: number, b: number) =>
  * linked sets (none: a chain's links join its sets in a line, or a loop,
  * which three tints always part), then on the fewest pairs of sets that
  * conflict (a link between the two, a cell they share, or a cell side),
- * then uses the tints most evenly (the fewest pairs alike), and of those
- * the first in letter order, A's tint the lowest, then B's: so up to three
- * sets take one each in letter order, and a chain of four shows all three,
- * one tint on two sets that do not conflict where the sets allow it. Sets
- * that share a tint are told apart by their letters
+ * then uses the tints most evenly (the fewest pairs alike), then puts one
+ * tint on the fewest pairs that share a cell (where a tint must be on two
+ * that conflict, on two that only touch rather than two whose shared cell
+ * would carry one tile in it and the other's outline dashed inside it, in
+ * the same tint), and of those the first in letter order, A's tint the
+ * lowest, then B's: so up to three sets take one each in letter order, and
+ * a chain of four shows all three, one tint on two sets that do not
+ * conflict where the sets allow it. Sets that share a tint are told apart
+ * by their letters
  */
 export function setTints(step: Step): Map<number, Tint> {
   const sets = step.sets ?? [];
@@ -273,13 +277,15 @@ export function setTints(step: Step): Map<number, Tint> {
   const linked = (a: number, b: number) =>
     (step.links ?? []).some((l) => (l.fromSet === a && l.toSet === b) || (l.fromSet === b && l.toSet === a));
   const touch = (a: number, b: number) => sets[a].cells.some((x) => sets[b].cells.some((y) => x === y || besideCell(x, y)));
+  const share = (a: number, b: number) => sets[a].cells.some((x) => sets[b].cells.includes(x));
   // what one more set's tint adds, against the sets before it in letter
-  // order: linked pairs alike, conflicting pairs alike, pairs alike
-  const near = order.map((k, i) => order.slice(0, i).map((o) => ({ linked: linked(k, o), conflict: linked(k, o) || touch(k, o) })));
+  // order: linked pairs alike, conflicting pairs alike, pairs alike, pairs
+  // that share a cell alike
+  const near = order.map((k, i) => order.slice(0, i).map((o) => ({ linked: linked(k, o), conflict: linked(k, o) || touch(k, o), shared: share(k, o) })));
   const costOf = (given: Tint[], t: Tint): number[] => {
     const i = given.length;
     const alike = given.map((x, j) => (x === t ? near[i][j] : null)).filter((x) => x !== null);
-    return [alike.filter((x) => x.linked).length, alike.filter((x) => x.conflict).length, alike.length];
+    return [alike.filter((x) => x.linked).length, alike.filter((x) => x.conflict).length, alike.length, alike.filter((x) => x.shared).length];
   };
   const add = (a: number[], b: number[]) => a.map((x, k) => x + b[k]);
   const below = (a: number[], b: number[]) => {
@@ -298,7 +304,7 @@ export function setTints(step: Step): Map<number, Tint> {
     }
     for (const t of TINTS) search([...given, t], add(cost, costOf(given, t)));
   };
-  search([], [0, 0, 0]);
+  search([], [0, 0, 0, 0]);
   return new Map(order.map((k, i) => [k, best!.tints[i]]));
 }
 
@@ -423,9 +429,19 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   // shape, the digit bold on its tile (docs/hint-drawing-sets.md, decision 10)
   const sets = setMarks(step, links, opts.sets ?? [], cands);
   for (const { set, style } of sets) if (style === 'als') for (const cd of step.sets![set].members) mark(cd, 'member');
-  // two true candidates that cannot both be: the premise is impossible
+  // two true candidates that cannot both be, or a true node of several
+  // candidates whose every "one of these" square a true disc rules out (the
+  // same cell, or the same digit in a cell that sees it), and whose other
+  // candidates are false: the premise is impossible (G18)
   const trues = [...cands].flatMap(([cell, m]) => [...m].filter(([, k]) => k === 'true').map(([digit]) => ({ cell, digit })));
-  const clashing = trues.some((a, i) => trues.slice(i + 1).some((b) => a.cell === b.cell || (a.digit === b.digit && sees(a.cell, b.cell))));
+  const ruledOut = (a: CellDigit) => trues.some((b) => (a.cell === b.cell && a.digit !== b.digit) || (a.digit === b.digit && a.cell !== b.cell && sees(a.cell, b.cell)));
+  const emptied = (proven?.nodes ?? []).some(({ node, truth: isTrue }) => {
+    if (!isTrue || node.length < 2) return false;
+    const kinds = node.map((cd) => cands.get(cd.cell)?.get(cd.digit));
+    const squares = node.filter((_, i) => kinds[i] === 'oneOf');
+    return squares.length > 0 && kinds.every((k) => k === 'oneOf' || k === 'false') && squares.every(ruledOut);
+  });
+  const clashing = emptied || trues.some((a, i) => trues.slice(i + 1).some((b) => a.cell === b.cell || (a.digit === b.digit && sees(a.cell, b.cell))));
   const refuted = !!truth && ((!!truth.closure && closed) || clashing);
   // a Death Blossom's weak ties, dashed lines with no head, for its legend
   const lines = new Set<LineKind>(links.some((l) => l.undirected && !l.strong && !insideOneCell(l)) ? ['weakTie'] : []);
@@ -631,6 +647,21 @@ export function stemAlone(step: Step, marks: HintMarks): boolean {
   const stem = step.links?.find((l) => l.undirected && l.fromSet === undefined)?.from[0]?.cell;
   const gold = [...marks.cands].filter(([, m]) => [...m.values()].includes('secondary')).map(([cell]) => cell);
   return gold.length > 0 && gold.every((cell) => cell === stem);
+}
+
+/**
+ * A Death Blossom's view whose blue marks the z of some petals and not yet
+ * of every one: its walk's frames from the first petal's branch until the
+ * last petal's. The legend then names the blue by what is drawn, a petal's
+ * z, which its own branch gives it; the whole step's claim, that whichever
+ * digit the stem takes a petal holds z, needs every petal drawn
+ * (docs/hint-drawing-sets.md, "The walk and its words", the legend lines)
+ */
+export function petalsPart(step: Step, marks: HintMarks): boolean {
+  if (step.tech !== 'DEATH_BLOSSOM') return false;
+  const z = step.primary ?? [];
+  const blue = z.filter((cd) => marks.cands.get(cd.cell)?.get(cd.digit) === 'primary');
+  return blue.length > 0 && blue.length < z.length;
 }
 
 /**

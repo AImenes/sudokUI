@@ -24,7 +24,12 @@
  * twice; the ALS patterns' truth among them (an ALS-XZ, ALS-XY-Wing or
  * ALS-XY-Chain derives cleanly, or is an ALS-XY-Chain whose sets share a
  * cell drawn with no truth; a Death Blossom's branches derive), and it
- * counts how each pattern derives.
+ * counts how each pattern derives. With the menus it also draws every
+ * grouped chain found, as the app's board draws it, and holds that no
+ * arrow of it lies within 4 units of another for more than half its
+ * length but where the same step drawn without its bars and tabs, as
+ * before phase 4 drew any, has that too (review round 2 of phase 4: a
+ * group's bar pushed an arrow onto the next).
  *
  * Three ways to run it, by PATH_DIGEST:
  * - unset, as `npx vitest run` and CI run it: the solve paths alone, and
@@ -61,6 +66,9 @@ import { findNextStep, findStep, applyStep } from '../src/engine/humanSolver';
 import type { CellDigit, Step } from '../src/engine/steps';
 import type { Tech } from '../src/engine/ratings';
 import { setProblems, derivationOf } from './chainSets';
+import { boardDrawing } from '../src/ui/boardLayout';
+import { arrowShapes } from '../src/content/hintGeometry';
+import { linesAlong } from './linesAlong';
 
 const FIXTURE = 'tests/fixtures/pathDigest.json';
 
@@ -125,12 +133,32 @@ const PUZZLES = [...new Set([...POOLED, ...HARD, ...Object.values(EXAMPLES).map(
 /**
  * what the walk finds wrong with the sets of the steps it meets, how many of
  * them have sets, and how the ALS patterns among them derive, cleanly or
- * with a clash (decision 13), by technique
+ * with a clash (decision 13), by technique; and, with the menus, the
+ * grouped chains drawn, those with an arrow along another that the bars or
+ * tabs put there (`along`) and those drawn so without them too
  */
 interface SetsMet {
   problems: string[];
   withSets: number;
   derived: Record<string, number>;
+  grouped: number;
+  along: string[];
+  alongBefore: string[];
+}
+
+/** the grouped chains' finders, whose finds the menus' walk draws */
+const GROUPED_FINDERS = new Set<Tech>(['GROUPED_X_CYCLES', 'GROUPED_NICE_LOOP', 'AIC_GROUPED']);
+
+/**
+ * a grouped chain's arrows on the app's board, at a position, that lie
+ * along another (within 4 units of it for more than half their length),
+ * with the bars and tabs and without them
+ */
+function arrowsAlong(step: Step, values: ArrayLike<number>, cands: ArrayLike<number>): { now: string[]; before: string[] } {
+  const d = boardDrawing(step, (c) => ({ value: values[c], corner: 0, center: 0 }), (c) => cands[c]);
+  const pairs = (shapes: ReturnType<typeof arrowShapes>) => linesAlong(shapes.filter((x) => x.kind === 'arrow'), 4).map(({ a, b }) => `${a} along ${b}`);
+  const now = pairs(d.shapes);
+  return { now, before: now.length ? pairs(arrowShapes(step.links ?? [], d.layout, d.marks)) : [] };
 }
 
 /** a puzzle's solve path, and the set techniques' first finds along it; each step met held to its sets' rules */
@@ -156,6 +184,12 @@ function walk(puzzle: string, menus: boolean, met: SetsMet): { path: string[]; s
         if (s) {
           sets.push(`${k} ${said(s)}`);
           hold(s, k);
+          // a grouped chain with a group: drawn, its arrows apart (the top of this file)
+          if (GROUPED_FINDERS.has(tech) && (s.links ?? []).some((l) => l.from.length > 1 || l.to.length > 1)) {
+            met.grouped++;
+            const { now, before } = arrowsAlong(s, g.values, g.cands);
+            for (const pair of now) (before.includes(pair) ? met.alongBefore : met.along).push(`${puzzle}, step ${k}, ${s.tech}: arrow ${pair}`);
+          }
         }
       }
     }
@@ -167,7 +201,7 @@ function walk(puzzle: string, menus: boolean, met: SetsMet): { path: string[]; s
 /** the digest of some puzzles, as the code works them out now, the pools' and the seeds' menus with `menus`, and the sets met on the way */
 function digestFor(puzzles: string[], menus: boolean): { digest: Digest; met: SetsMet } {
   const d: Digest = { paths: {}, sets: {} };
-  const met: SetsMet = { problems: [], withSets: 0, derived: {} };
+  const met: SetsMet = { problems: [], withSets: 0, derived: {}, grouped: 0, along: [], alongBefore: [] };
   for (const puzzle of puzzles) {
     const pooled = menus && POOLED.includes(puzzle);
     const { path, sets } = walk(puzzle, pooled, met);
@@ -230,6 +264,14 @@ export function holdPathDigest(shard: number) {
     it.skipIf(!menus)("the set techniques' first finds along the pools' and the seeds' paths, where the solver needs more than a single", () => {
       const moved = mine.filter((p) => POOLED.includes(p) && now.sets[p] !== then.sets[p]);
       expect(moved).toEqual([]);
+    });
+
+    it.skipIf(!menus)("draws no grouped chain found along the way with an arrow along another but where it is drawn so without its bars and tabs, as before phase 4 drew any", () => {
+      expect(met.along).toEqual([]);
+      // thousands in every share; drawn so before the bars, a Grouped X-Cycles on offer in one of them (two positions)
+      expect(met.grouped).toBeGreaterThan(1000);
+      // eslint-disable-next-line no-console
+      if (met.alongBefore.length) console.info(`share ${shard + 1}: as before phase 4,`, met.alongBefore.join('; '));
     });
 
     it(`every step met on the way keeps its sets' rules (tests/chainSets.ts)${menus ? '' : ': the paths\' steps'}`, () => {

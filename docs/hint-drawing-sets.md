@@ -131,13 +131,13 @@ Death Blossom's HoDoKu line built from the step's own sets.
 | # | Question | Decision | Why |
 | --- | --- | --- | --- |
 | 1 | A TRUE group's members | A pale "one of these" rounded square per member (`--hint-one-of`, #abe1ba light, #296243 dark, opaque), 26 × 26, rx 7, a 2-unit edge drawn inside in the true ink (#006c2f; #35a458), the keyline in the board's colour (1.5 units, 2 on a small board, as the shades'), the digit bold in `--hint-in-ring`. Never a true disc, never the true green fill; same size on every board | 62% of groups are true (474 of 762); HoDoKu paints every member of a true group green, which teaches that each is placed. A square is not a disc, so shape says "one of" without colour; the square is 11.6 from the true disc (worst model, light themes) and 22.9 (dark), where its digit also flips to the light ink (near-black would be 2.58:1). The pattern disc it replaces was 4.1 from true under tritan vision in the dark theme |
-| 2 | What joins a group | A straight bar 15 units off the members' line in the glyph-free gutter, from the first member's centre to the last's, in the members' mark ink; width 3 (4.5 under 600 CSS px, 5.5 under 330), round caps; under the marks, whose keylines part them from it; cut out by the digits as arrows are. Its side by teaching's score: 1000 per shown non-member glyph crossed, 100 per other hint mark within 13 + keyline + half-width, 100 per earlier bar within its width + 2, 500 per straight arrow of the hint crossing it away from its anchoring member, 10 for an edge band, 1 per solved digit passed; the least wins, ties below, then right | Nothing joins the members today. A capsule round them would cover another candidate in 55% of groups (421 of 762) and a solved cell in 147 of 214 gapped groups; HoDoKu's rail along the members' own line strings non-members onto the group (the Grouped Nice Loop example's rails through 1r2c9, 1r3c9, 3r2c9, 6r3c9). Over 785 group nodes the gutter bar crossed no glyph: 590 clean, 146 behind a solved digit (cut out), 34 in an edge band (2.25 units or more off a box line on a tiny board), 20 touching another mark, drawn over it. Knowing earlier bars puts two groups on the same cells on two sides |
+| 2 | What joins a group | A straight bar 15 units off the members' line in the glyph-free gutter, from the first member's centre to the last's, in the members' mark ink; width 3 (4.5 under 600 CSS px, 5.5 under 330), round caps; under the marks, whose keylines part them from it; cut out by the digits as arrows are. Its side by teaching's score: 1000 per shown non-member glyph crossed, 100 per other hint mark within 13 + keyline + half-width, 100 per earlier bar within its width + 2, 500 per straight arrow of the hint, head and all, that it would come nearer than the arrows' clearance (0.05 of a cell past its half width) away from its anchoring member, so would bend (as decision 4 exempts it), 10 for an edge band, 1 per solved digit passed; the least wins, ties below, then right | Nothing joins the members today. A capsule round them would cover another candidate in 55% of groups (421 of 762) and a solved cell in 147 of 214 gapped groups; HoDoKu's rail along the members' own line strings non-members onto the group (the Grouped Nice Loop example's rails through 1r2c9, 1r3c9, 3r2c9, 6r3c9). Over 785 group nodes the gutter bar crossed no glyph: 590 clean, 146 behind a solved digit (cut out), 34 in an edge band (2.25 units or more off a box line on a tiny board), 20 touching another mark, drawn over it. Knowing earlier bars puts two groups on the same cells on two sides |
 | 3 | FALSE groups, rule 3, proof-only views | A FALSE group: its members' false rings on a blue bar. Rule 3's start: green squares on a green bar before the closing link, with the start dot by the member nearest the next node; blue rings on a blue bar at the closing link; red barred rings (the pattern colour inside, G5) on a red bar in the full view and the conclusion. A discontinuous loop's full view and conclusion: pattern discs on a pattern-ink bar. `oneTrue` and its pattern-disc exception are retired | Every member of a false group is false, so each ring is true. The bar takes its members' ink in every state, so rule 3 reads assumed, proven false, removed. 17 groups are rule-3 starts; 48 Grouped Nice Loops and 7 Grouped X-Cycles are placing loops |
-| 4 | Where arrows meet groups and sets | At the node's member nearest the other end, as today, never at a bar's or tile's edge; the tail or tip where the ray towards the other end (or the first or last control point) leaves that member's mark exactly (a square reaches 13 on its axes, 15.5 at its corners), plus the gap. Bars and tabs are obstacles for every arrow, tie, start dot and walk number; a group's own bar is exempt within 14 + gap + half-width of the anchoring member. A strict test: no arrow crosses a bar except at its anchoring member. Tiles are areas, crossed as bands are; a set's members are obstacles, as marks are. All through an optional argument, so a step with no sets is laid out byte for byte as today | Joining a hull's nearest point lands beside another digit's member at 57% of ALS ends and beside a foreign digit at 22% of group ends; the member keeps the head on its candidate (HoDoKu anchors at a group's first member only, so its other members get no arrow). Another arrow passes between a group's members in 63 groups today; the exact reach keeps the gap at every angle |
+| 4 | Where arrows meet groups and sets | At the node's member nearest the other end, as today, never at a bar's or tile's edge; the tail or tip where the ray towards the other end (or the first or last control point) leaves that member's mark exactly (a square reaches 13 on its axes, 15.5 at its corners), plus the gap. Bars and tabs are obstacles for every arrow, tie, start dot and walk number; a group's own bar is exempt within 14 + gap + half-width of the anchoring member; another group's bar that runs along the rim of an arrow's target (its centre line within the mark's radius and its half width: the gutter between two rows of places lies 13 from the row it does not join) is exempt as far round the target for an arrow whose head comes in square-on, within 60° of across the bar, and ends against it as against the rim (review round 2). A strict test: no arrow crosses a bar except at its anchoring member, or so at a target whose rim it runs along. Tiles are areas, crossed as bands are; a set's members are obstacles, as marks are. All through an optional argument, so a step with no sets is laid out byte for byte as today | Joining a hull's nearest point lands beside another digit's member at 57% of ALS ends and beside a foreign digit at 22% of group ends; the member keeps the head on its candidate (HoDoKu anchors at a group's first member only, so its other members get no arrow). Another arrow passes between a group's members in 63 groups today; the exact reach keeps the gap at every angle |
 | 5 | The ALS mark | One tile per cell of the set: the rectangle round the centres of that cell's candidates, 15 units out, corner radius 10; fill the set's tint at `--hint-set-alpha` 0.5; outline in the set's ink at full strength, stroked inwards, 2.5 units (4.5 under 600 CSS px, 5 under 330; Learn half again, built 1.65 times, As built), never under 1.5 CSS px on a phone, drawn over the keylines of the marks and tabs on the tile and under the marks and tabs themselves (As built). Its outer edge keeps 6 units from the cell's edge on every board (3 clear of a box line). No hull, no causeway, no whole-cell tint | 80-90% of multi-cell sets are not compact, and 68% have cells between their cells, 64% of them solved. A padded hull covers a foreign candidate in 43% of sets and a removal in 13% (the stored XY-Chain's 4r4c5); per-cell tiles round a cell's own candidates held no foreign candidate in 5,032 cases. A whole-cell tile is a cell tint (G1) and reads as the player's own colours (rose is 2.7 from their pink). Causeways hug a grid line in 17% of cases on a phone and cross another set's in about 3%. Outlines of 4.5 and 5 units are 1.6 CSS px at the smallest board of each step (G14a) |
 | 6 | A cell in two sets | The smaller set's tile (on equal sizes, the earlier set's); the other set's outline dashed "6 4", one outline width inside it, no fill; both tabs, each in its own free place. So a set lying wholly inside another's cells has a tile in each of its cells, and the set round it shows its tint on its other cells and its dashed outline and tab on the shared ones: at `.37.4......67.8...........972.....61..91.54..14.....856...........9.28......8.23.` step 25, A (the cell r7c7) lies inside D (r7c5, r7c7), so r7c7 is A's tile with D's dashed outline inside it and both tabs, and r7c5 is D's tile. As built: a set this leaves with no filled tile takes one of its cells from a set that keeps another; four sets on three cells leave one without (As built) | Common, since ALS-XY-Chain keeps HoDoKu's rule (decision 13): in the maps' scan of the practice pools, seeds and examples, 61 of 113 path XY-Chains put a cell in two sets (A and D in 57), and 32 put one set wholly inside another's cells, 29 of them A and D (124 and 64 of 211 over every corpus); AIC with ALS menu steps share a cell in 31 of 4,778, none on the paths. No cell is in three sets: only sets that are not neighbours share cells, and no three of A-D are (none in the scans). So a shared cell draws the same two outlines however the sets nest; nesting decides only whose tint shows. The earlier set's tile, as first decided, left a set with no filled tile in 19 of the 113 (31 of 211), a later set lying in earlier sets' cells (D inside A in 16), so its tint showed nowhere; the smaller set's tile leaves every set a filled tile in all 211. Stacked tints read as one (1.6-5.8 apart); a second filled tile inside the first does not fit a cell on a phone |
 | 7 | The letter | A tab on every tile: a rounded square in the set's ink (18 units, rx 4; 26 on a small board and in Learn) with a 1.5 keyline, the letter bold in the board's colour (13; 19). It is centred on a candidate place of the tile's cell that shows no digit: the places inside the tile's rectangle first, then those beside it, each in the order 1, 3, 7, 9, 2, 4, 6, 8, 5, taking the first where, at the phone's size, it keeps from every mark, start dot, walk number and head the 2 units two neighbouring discs keep; if none, the place with most room. Tabs are obstacles (radius 13; 18.4 on a small board). As built: placed against the drawing without them, never nearer another set's tile than its own, a place inside or beside the tile before one two places off, and among those a place off the arrows' lines first (As built) | Only a letter on every tile identifies every cell for a colour-blind player, on a phone, and over the player's own colours, where a tile's fill all but vanishes (sand on yellow 1.8, dark rose on teal 0.6). Drawn inverse, it cannot pass for a candidate, as a bare letter in a candidate place reads as an 8; it is 12.9 or more from the walk badge's fill. A grid-corner diamond sits on four cells and names the wrong one. An ALS cell shows at most 5 digits, so 4 places are free |
-| 8 | Tints and who takes which | Three: sand, rose, violet. Of every way of giving the three tints to the sets, the one that puts one tint on no two linked sets (linked by a restricted common), then on the fewest pairs of sets that conflict (linked, sharing a cell, or sharing a cell side), then uses the three most evenly; of those, the first in letter order (A's tint the lowest, then B's, and so on). So up to three sets take one each in letter order, and a chain of four shows all three, a tint reused on one pair that does not conflict where the sets allow (A and C of a chain of four separate sets). Sets that share a tint are told apart by their tabs | Three tints are 15.3 apart (light) and 14.0 (dark and forest) in the worst model, and keep linked, overlapping or touching sets apart in 555 of 556 path steps (in the one left, `......69......91.4...23......5.23.4.4..8.5..6.6.17.2......82...7.35......42......` after 20 steps, an ALS-XY-Chain whose sets share cells, A and C share a tint and the cell r1c2, parted there by the dashed outline and everywhere by their tabs); two tints fail in 41 (16 XY-Wings, 25 XY-Chains); four cannot hold digit contrast, the player's cells and the "one of these" square at once (palette map). As first built, each set in turn took the lowest tint free, which left violet out of 79 of the 104 path ALS-XY-Chains, A and C sand and B and D rose (review round 1); the least used tint free, taken set by set, shows all three in all 104 but leaves two conflicting sets alike in 9 path steps, where an early violet leaves a later set none free; the best way over all the sets shows all three in all 104 and parts conflicting sets as before |
+| 8 | Tints and who takes which | Three: sand, rose, violet. Of every way of giving the three tints to the sets, the one that puts one tint on no two linked sets (linked by a restricted common), then on the fewest pairs of sets that conflict (linked, sharing a cell, or sharing a cell side), then uses the three most evenly, then puts one tint on the fewest pairs that share a cell (a tint that must repeat on two conflicting sets goes to two that only touch, or are apart, before two whose shared cell would carry one's tile and the other's dashed outline in one tint: review round 2); of those, the first in letter order (A's tint the lowest, then B's, and so on). So up to three sets take one each in letter order, and a chain of four shows all three, a tint reused on one pair that does not conflict where the sets allow (A and C of a chain of four separate sets). Sets that share a tint are told apart by their tabs | Three tints are 15.3 apart (light) and 14.0 (dark and forest) in the worst model, and keep linked, overlapping or touching sets apart in 555 of 556 path steps (in the one left, `......69......91.4...23......5.23.4.4..8.5..6.6.17.2......82...7.35......42......` after 20 steps, an ALS-XY-Chain whose sets share cells, A and C share a tint and the cell r1c2, parted there by the dashed outline and everywhere by their tabs); two tints fail in 41 (16 XY-Wings, 25 XY-Chains); four cannot hold digit contrast, the player's cells and the "one of these" square at once (palette map). As first built, each set in turn took the lowest tint free, which left violet out of 79 of the 104 path ALS-XY-Chains, A and C sand and B and D rose (review round 1); the least used tint free, taken set by set, shows all three in all 104 but leaves two conflicting sets alike in 9 path steps, where an early violet leaves a later set none free; the best way over all the sets shows all three in all 104 and parts conflicting sets as before. Weighing a shared cell as a shared side, it put one tint on two sets that share a cell in 128 of the 5,148 ALS-XY-Chains on offer along the 480 pool and seed paths, in 43 of them where a way alike in the first three costs did not (review round 2); the fourth cost leaves 85, none of them so, 43 drawings changing |
 | 9 | The dark violet ink | #c896ce, in place of the teaching design's #d4a3f7 | Pushed as far from the false ring's blue as the numbers allow: 8.7 worst-model (#d4a3f7 is 2.7, the map's #b4a6ff 0.5), and no nearer any other dark-theme mark or set ink (the pattern 9.4, the rose ink 9.1, the removal 12.8), at 6.03:1 or more on every dark board and panel and 6.05:1 on its own tile. It costs some saturation (CIELAB chroma 36 against 48) and contrast (7.19:1 before). The light violet ink stays #6a40d0, 3.3 from the false blue: an outline round candidates and a filled tab never take a ring's shape; a measured #8400fc (8.5) is kept in reserve should the screenshots show an outline read as a false ring |
 | 10 | The mark of each candidate of a set | In a derived view a chain node takes its truth: a false node's candidates false rings, a true node of one candidate a true disc, of several "one of these" squares (no bar: the tile carries them), unless a node of one candidate already makes one of them true (an ALS-XY-Chain whose sets share a cell): that one is then its disc and the others, which see it, false rings, never squares beside the disc. A walk frame draws the truths the links it has drawn prove, never one a later set's lock adds. The set's other digits are the new `member` mark: no shape, the digit bold in `--hint-in-ring` on the tile. No primary, secondary or fin role in a derived ALS step. G5 becomes removed > placed > chain truth (disc, ring, square) > a role > a set member. Roles are drawn only where a view has no truth (Death Blossom) | G2-G5 forbid role discs beside truth marks (pattern blue against true 4.1, gold against true 8.3). The candidate ink `--cand` is 2.2-3.9:1 on a tint, so members are drawn in the ring ink, as G2 already asks of a digit a hint marks |
 | 11 | ALS-XZ, ALS-XY-Wing, ALS-XY-Chain | Derived chains (`truth: 'derived'`): the finder emits each set's internal strong link, digit node to digit node, and the restricted commons as weak links. The restricted common is a dashed arrow with a head into the false ring(s), numbered in the walk; nothing is drawn inside a set; a start dot; the conclusion frame equals the full view. The one orientation the derivation picks, the finder's A first, is labelled by the premise in the legend, as W-Wing's is | They derive cleanly on every path and menu step of the corpora (391 and 9,142 XZ, 376 and 9,418 XY-Wing), as do the 87 path XY-Chains of four separate sets (decision 13 for those whose sets share cells), and every removal conflicts with both ends. One grammar holds for the family: AIC with ALS draws the same relation the same way, and nothing changes kind on the last frame (HoDoKu's pattern full view would turn the walk's rings into blue discs). A headless tie would break a chain's reading order |
@@ -496,6 +496,9 @@ language: en 8, un 8), so the sentence's template reads "holds {z}".
 | the conclusion of an ALS-XY-Chain whose chain clashes (decision 13; its last set {L} holds z only in cells of its first, {F}), one cell, as an `inFalseGroup` | Set {L} holds {z} only in {cell}, a cell of set {F}: if {F} holds no {z}, {cell} must be {z}, and {F} holds one after all. {F} cannot lack a {z}, so set {F} holds a {z}. Each removed {z} sees every {z} of {F}. | Mengde {L} har {z} bare i {cell}, og den ruten hører til mengde {F}: har {F} ingen {z}, må {cell} være {z}, og da har {F} likevel en. {F} kan ikke mangle en {z}, så mengde {F} har en {z}. Hvert {z}-tall som fjernes, ser alle {z}-tallene i {F}. | El conjunto {L} solo puede tener el {z} en {cell}, una casilla del conjunto {F}: si {F} no tiene ningún {z}, {cell} debe ser {z}, y {F} tiene uno después de todo. {F} no puede quedarse sin un {z}, así que el conjunto {F} tiene un {z}. Cada {z} eliminado ve todos los {z} de {F}. |
 | the same, several cells (`emptyTrue`) | Set {L} holds {z} only in {cells}, cells of set {F}: if {F} holds no {z}, one of these cells must be {z}, ... | Mengde {L} har {z} bare i {cells}, og de rutene hører til mengde {F}: har {F} ingen {z}, må en av disse rutene være {z}, ... | El conjunto {L} solo puede tener el {z} en {cells}, casillas del conjunto {F}: si {F} no tiene ningún {z}, una de esas casillas debe ser {z}, ... |
 | the same, all of the first set's (a closure) | Set {L} holds {z} only in {cells}, the very cells set {F} holds it in, so the chain comes back to {F}: if {F} holds no {z}, one of these cells must be {z}, ... | Mengde {L} har {z} bare i {cells}, akkurat der mengde {F} har {z}-tallene sine, så kjeden kommer tilbake til {F}: ... | El conjunto {L} solo puede tener el {z} en {cells}, justo donde puede tenerlo el conjunto {F}, así que la cadena vuelve a {F}: ... |
+| the same, the last set's z not all in the first (review round 2): the node the chain first makes true and then false, one cell (several: "one of {cells} must be {x}, and further along the chain none of them can be {x}") | If set {F} holds no {z}, {cell} must be {x}, and further along the chain it cannot be {x}: that is impossible. {F} cannot lack a {z}, so set {F} holds a {z}. Each removed {z} sees every {z} of {F}. | Har mengde {F} ingen {z}, må {cell} være {x}, og senere i kjeden kan den ikke være {x}: det er umulig. {F} kan ikke mangle en {z}, så mengde {F} har en {z}. Hvert {z}-tall som fjernes, ser alle {z}-tallene i {F}. | Si el conjunto {F} no tiene ningún {z}, {cell} debe ser {x}, y más adelante en la cadena no puede ser {x}: es imposible. {F} no puede quedarse sin un {z}, así que el conjunto {F} tiene un {z}. Cada {z} eliminado ve todos los {z} de {F}. |
+| the description of an ALS-XY-Chain whose chain clashes, after "... fills its cells." in place of "A or D holds a {z}, ...": its last set's z in its first | But D holds {z} only in cells of A, so A holds one after all. A cannot lack a {z}: it holds one, and {z} is removed from every cell that sees every {z} of A. | Men D har {z} bare i ruter som hører til A, så A har likevel en. A kan ikke mangle en {z}: A har en, og {z} fjernes fra hver rute som ser alle {z}-tallene i A. | Pero D solo puede tener el {z} en casillas de A, así que A tiene uno después de todo. A no puede quedarse sin un {z}: tiene uno, y el {z} se elimina de cada casilla que ve todos los {z} de A. |
+| the same, elsewhere (several cells as the conclusion words them) | But on the way {cell} must be {x}, and further along the chain it cannot be {x}. A cannot lack a {z}: ... | Men underveis må {cell} være {x}, og senere i kjeden kan den ikke være {x}. A kan ikke mangle en {z}: ... | Pero por el camino {cell} debe ser {x}, y más adelante en la cadena no puede ser {x}. A no puede quedarse sin un {z}: ... |
 | Death Blossom: the stem | The stem {cell} holds {digits}: one of them is true, and each has a petal. | Stammen {cell} har {digits}: ett av dem er sant, og hvert har et kronblad. | El tallo {cell} tiene {digits}: uno de ellos es verdadero, y cada uno tiene un pétalo. |
 | a petal of several cells | Petal {L}, for the stem's {p}: the {n} cells {cells} of {house} hold only {digits}: one digit more than cells, and every {p} of it sees the stem. | Kronblad {L}, for stammens {p}: de {n} rutene {cells} i {house} har bare {digits}: ett tall mer enn ruter, og hvert {p}-tall i kronbladet ser stammen. | Pétalo {L}, para el {p} del tallo: las {n} casillas {cells} de la {house} solo tienen {digits}: un número más que casillas, y cada {p} suyo ve el tallo. |
 | its branch, one exit (several: "one of {cells}") | If the stem is {p}, petal {L} holds no {p}, so its other {n} digits fill its {n} cells: {cell} must be {z}. | Hvis stammen er {p}, har kronblad {L} ingen {p}, så de {n} andre tallene fyller de {n} rutene: {cell} må være {z}. | Si el tallo es {p}, el pétalo {L} no tiene ningún {p}, así que sus otros {n} números llenan sus {n} casillas: {cell} debe ser {z}. |
@@ -515,8 +518,9 @@ Legend lines (each premise ending is today's, or the set's):
 | a set premise | true, if set {L} holds no {a} (by the small dot) | sann hvis mengde {L} ikke har noen {a} (ved den lille prikken) | verdadero si el conjunto {L} no tiene ningún {a} (junto al punto pequeño) |
 | Death Blossom, gold | the stem's candidates, and each petal's digit the stem sees | stammens kandidater, og tallet i hvert kronblad som stammen ser | los candidatos del tallo, y el número de cada pétalo que el tallo ve |
 | the same, where no petal's digit is drawn yet (the stem's frame) | the stem's candidates | stammens kandidater | los candidatos del tallo |
-| a cell of two sets (decision 6), where a view draws one | dashed outline: a cell of two sets; each tab names one | stiplet ramme: en rute i to mengder; hver bokstav står for én av dem | contorno discontinuo: una casilla de dos conjuntos; cada letra nombra uno de ellos |
+| a cell of two sets (decision 6), where a view draws one | dashed outline: a cell of two sets; each letter names one | stiplet ramme: en rute i to mengder; hver bokstav står for én av dem | contorno discontinuo: una casilla de dos conjuntos; cada letra nombra uno de ellos |
 | Death Blossom, blue | {z} in every petal: whichever digit the stem takes, a petal holds a {z} | {z} i hvert kronblad: uansett hvilket tall stammen får, har et kronblad en {z} | el {z} de cada pétalo: tome el tallo el número que tome, algún pétalo tiene un {z} |
+| the same, while only some petals' z are drawn (review round 2) | {z} in a petal: if the stem takes that petal's digit, the petal holds a {z} | {z} i et kronblad: får stammen tallet til det kronbladet, har kronbladet en {z} | el {z} de un pétalo: si el tallo toma el número de ese pétalo, el pétalo tiene un {z} |
 
 The bar is "bjelke" and "barra", never "strek" or "línea", which are phase
 3's tie line. The new descriptions follow the walk's words; the ALS-XZ one
@@ -793,6 +797,38 @@ hintMarks, i18n), and the decisions it refines point here.
   is joined at (C's 8 in r7c3, C's 3 in r1c6), or, where its nodes have
   none, drawn beside the earlier, as two links between the same two
   nodes are (`linkEnds`).
+- **Two links drawn as one where they bend** (G10; review round 2). Two
+  links between the same two nodes, spread apart, moved only their
+  control point when they bent, their ends staying where the ray to it
+  leaves the mark: at
+  `9....3.2.....1.3.7...8..9...38.46........84...6.7.............8..9..5..11.5.9.7..`
+  after 31 steps an ALS-XY-Chain on offer joins 5r2c8 to 5r2c2 twice (A to
+  B, C to D) under row 2's marks, the tails 0.4 units apart, the tips 0.7,
+  one head. A bent line of such a pair now has its ends moved round its
+  marks too: by its spread, or, the other drawn before it, a pair's width
+  (9 units, measured round the mark, as an angle: along the tangent it
+  shrank once the end was put back on the rim; review round 3; never
+  more than 75 degrees round from its way, where it would turn to the far
+  side of its mark: review round 4) from that
+  one's ends on the side its own middle lies, so the two never cross by
+  their ends; where the first of a pair is bent and its ends close up on
+  a later one, the first is drawn again knowing it (round 3: at
+  `........214....5......85......26...4.6......5..7..46..5.3....6.4....2..1..67...2.`
+  after 18 steps links 1 and 5 had one head; now 9.1 apart, as main's
+  two straight arrows are 9). All of this, and `linkEnds`, on a step with
+  sets alone: one with none is drawn as before phase 4, byte for byte
+  (round 3 found round 2's end moving in 352 Cell and Unit Forcing
+  Chains on offer) (the set fixture's `hard 0, step 8` and
+  `step 9` ALS-XY-Chains, whose 2s of r9c1 and r7c1 are joined twice, one
+  straight and one bent round its left, draw the bent one's ends left of
+  the straight one's). And a later link is not joined elsewhere where its
+  line would run past the taken two along the earlier link: at
+  `...4.65377..9..6..........4......1.6.465.238.8.3......4..........9..5..22853.4...`
+  after 12 steps C's 1s were joined at r1c5 and ran past r1c3 into 1r1c2
+  along A to B, two thirds of them within 4 units of it; now at r1c3,
+  beside it (`linkEnds`). The test measures the lines, not their paths'
+  text: no line of a step the repository keeps lies within a phone's
+  arrow width (4.5 units) of another for more than half its length.
 - **The Learn tile's outline** (decision 5). Half again the app's is
   under 1.5 CSS px on a phone's 350 px diagram, so the Learn diagrams
   draw it 1.65 times the app's (`TILE` in src/content/boardSvg.ts), as
@@ -836,6 +872,55 @@ hintMarks, i18n), and the decisions it refines point here.
   `......12........568.1.....4.6.3...1.92.........4...5..3...5.76......6...2..419.3.`
   after 23 to 25 steps) and a walk number on a bar in two, none of them a
   solve path's step.
+- **An arrow a bar pushes onto another** (decisions 2 and 4; review
+  round 2). The bars, as obstacles, turned some arrows of grouped chains
+  onto the next or the previous arrow near the node the two share, where
+  the router does not count one arrow's run along another (G10 lets
+  arrows gather at a node). At
+  `2...7........5.84...13...96....176.3.6.....1.1.356....34...29...26.3........9...4`
+  after 6 steps, a Grouped Nice Loop on offer, link 6, (7)r7c3=(7)r9c13,
+  swung out to the right and came into 7r9c3 along row 9 over the start
+  of link 7: the bar of 5r9c13 runs along the rim of 7r9c3, 13 above it,
+  and the head straight down ended 0.25 units off it. On seed Extreme
+  #45's solve path
+  (`3.89........1..4...6...7.95.....9..74...5...95..8.....62.3...1...7..2........12.6`
+  after 8 steps), link 0 of the solver's own Grouped Nice Loop,
+  9r2c2=9r6c2, left along the loop's closing weak link 9r2c3-9r2c2, the
+  bar of the 2s in row 3 blocking column 2 on either side. Three changes
+  mend it. An arrow comes into its target square-on over another group's
+  bar along the target's rim, as over its own beside its member (decision
+  4): link 6 runs straight down again, as main drew it. A bar's side
+  counts each straight arrow it would bend, head and clearance, not only
+  each whose shaft it crosses (decision 2): the set fixture's
+  `hard 0, step 9, GROUPED_X_CYCLES` puts the bar of 5r789c7 on the left,
+  where link 1, 5r8c7 to 5r7c9, would pass 2 units off it on the right
+  beyond its member, and draws link 1 into 5r7c9 from the left. And two
+  arrows that run along each other for more than 0.3 of a cell within a
+  stroke and a halo, their ends counted, where the same hint without its
+  bars and tabs draws them apart, have the one the bars and tabs moved
+  (of two, the later) drawn again knowing the other, its run along every
+  other arrow counted from end to end, after the marks and before its
+  head's room (G10), or else the other, kept only where it runs along
+  none and keeps as clear of the marks (`arrowShapes`). In the solve
+  path's loop link 0 finds no clearer way round, so link 9 is drawn
+  again and comes into 9r2c2 from below, apart from it. Over every
+  grouped chain on offer at every position past the singles of the 480
+  pool and seed paths (the skeptics' scan, 8,135 grouped finds), five
+  chains at 16 positions had an arrow within 4 units of another for more
+  than half its length, against main's one, a Grouped X-Cycles at
+  `..4.....21.9.2....78...6....2.8..1..6...9...8..5..7.9....3...67....7.8.35.....2..`
+  after 6 and 7 steps; now the same scan finds that one alone, as on
+  main before phase 4. `PATH_DIGEST=menus` holds it: the menus' walk
+  draws every grouped find (tests/pathDigest.ts) and holds that no arrow
+  lies so but where the step drawn without its bars and tabs has it too.
+  The same pass takes two heads within a head's width (11 units) of each
+  other, nearer than without the bars and tabs (review round 3: at
+  `9..64.5..1.............8.13....3...64.95....73...6..45...........2..9...65..8...4`
+  after 13 steps D's tab turned link 1 of an ALS-XY-Chain off main's way
+  round 8r1c9 and along row 1 into link 5's head, 0.0 apart, main 28.5):
+  the moved one is drawn again with the other heads into its target kept
+  off its own, kept only where the two are then as far apart as without
+  the tabs, up to a head's width, and it runs along neither.
 - **The path digest's menus** (decision 23, How it is checked). Dealt to
   four test files, the digest's walk took about 570 s of the unit suite's
   test time, near twice main's whole suite, most of it the seven set
@@ -899,6 +984,40 @@ hintMarks, i18n), and the decisions it refines point here.
   rating, and a Learn diagram that draws no letter tab keeps main's style
   block byte for byte, the tabs' rule written only where a tab is drawn
   (`boardSvg`).
+- **Words for every clash, a petal's blue, letters and the note**
+  (decisions 6, 13 and 15; review round 2, docs/hint-drawing-p4-round2.md
+  findings 1-6 and 10). A clashing ALS-XY-Chain whose last set's z are not
+  all in its first (4 of the 547 clashing chains the menus offer along the
+  pools', seeds' and dailies' paths, none the set fixture keeps) ends on
+  the node its chain first gives both truths (src/engine/truth.ts
+  `clashAt`, the derivation read link by link: a node reached with the
+  other truth, a true candidate inside a false node, a true node left
+  none), which there is always true first, as a node made false is a set's
+  link digit and the set before it shares no cell with it: "If set A holds
+  no 2, r9c5 must be 7, and further along the chain it cannot be 7: that
+  is impossible. A cannot lack a 2, so set A holds a 2. Each removed 2
+  sees every 2 of A." Every clash now ends on why A holds z, never on "if
+  A holds none, D holds one". A clashing chain's description, the first
+  text the full view shows, ends on the same reason in place of "A or D
+  holds a z": "But D holds 8 only in cells of A, so A holds one after all.
+  A cannot lack an 8: it holds one, and 8 is removed from every cell that
+  sees every 8 of A.", or "But on the way r9c5 must be 7, and further
+  along the chain it cannot be 7. ..."; a chain that derives cleanly reads
+  as before. Death Blossom's blue, while some petals' z are drawn and not
+  yet every one (petal A's branch to petal C's), names what is drawn: "4
+  in a petal: if the stem takes that petal's digit, the petal holds a 4"
+  (`petalsPart`), the whole claim from the last petal's branch on, as the
+  gold names the stem alone in the stem's frame. The shared cell's entry
+  says "each letter names one", as nb and es did. And a true node of
+  several candidates whose every "one of these" square a drawn true disc
+  rules out (the same cell, or the digit in a cell that sees it), its
+  other candidates false, shows its premise impossible as two true discs
+  that cannot both be do: the legend adds G18's note (`hintMarks`). Over
+  the same menus 1,313 set steps show the note in some view, the premise
+  false in the solution in every one; in the set fixture it is new only in
+  Grouped X-Cycles rule 3's frame 6, where 9r2c5 is drawn true beside the
+  start group's squares 9r1c4 and 9r1c5, one frame before the closing link
+  says it.
 - **A tile's outline over its marks' keylines** (decision 5; review round
   1). A mark in a tile's edge row reaches the tile's outer edge, keyline
   and all, on a small board (13 and a 2-unit keyline, 15 out), and a tab

@@ -1,0 +1,94 @@
+# Phase 4, review round 3: the findings and the fix
+
+Round 3 (a confirmation round on round 2's two fix commits, 8e63f86 and 004d6e8; five lenses: logic, words, design,
+code, regression; two refuting skeptics on each blocking claim) ran on 1 November 2026. It confirmed every round 2
+finding fixed but one part of finding 9, and found four regressions against main before phase 4 (99516ad), all in how
+two links side by side are drawn: three medium, one low. Three other claims were refuted, and two lows stand
+unverified. Nothing teaches anything false; every head lies on its own candidate.
+
+## The regressions, and what was done
+
+1. **Two links between the same two nodes still drawn with one head where the bent one comes first** (medium, design
+   and code lenses, both skeptics). Round 2 moved a bent link's ends round its marks, a pair's width from the other's
+   ends, but only for the later link of a pair. The earlier, bent by a letter tab, was moved by its spread alone, and
+   a straight partner drawn after it never looked at it: at
+   `........214....5......85......26...4.6......5..7..46..5.3....6.4....2..1..67...2.` after 18 steps an
+   ALS-XY-Chain on offer drew links 1 and 5, both 6r3c1 to 6r1c1, with tails and tips 2.6 apart, one head, the two
+   crossing near both ends; main drew two straight arrows 9 apart. And the pair's width was measured along the tangent
+   of the line's own ray, which shrinks once the end is put back on the rim: at
+   `.....6.7.3.5....8.......9..8.46....2.2.1..5.....2.8.4..4.5..7...7...2..6..1.7....` after 11 steps two bent links
+   began 3.7 apart and crossed twice.
+   **Fix.** The width is measured round the mark, as an angle; and on a step with sets, the first link of a pair whose
+   ends close up is drawn again once the later is chosen, knowing it (kept only where the ends are then apart and it
+   keeps as clear of the marks). Now 9.1 apart, two heads, no crossing (main 9.0); the second 8.6 apart, no crossing.
+2. **Round 2's end moving reached Cell and Unit Forcing Chains** (medium, regression lens, both skeptics). It was not
+   gated on sets: 352 of 7,983 Cell and Unit Forcing Chains on offer changed, some braided (three repeats of
+   7r6c1=6r4c3 crossing each other twice), where the design promises every drawing outside the eight stays byte for
+   byte. **Fix.** The end moving, the re-anchoring of links joined alike (`linkEnds`) and the spreading of links
+   between other nodes joined at the same two candidates apply to steps with sets alone; `hintDrawing` passes no sets
+   for a step that has none.
+3. **A Digit Forcing Chain re-anchored since round 1's `linkEnds`** (low, regression lens). The same gate fixes it.
+4. **An arrow the tabs bend onto another's head** (part of 1, the design lens's scan). Two arrows into one candidate
+   from different nodes, which main drew apart, came together where a tab turned one of them: at
+   `9..64.5..1.............8.13....3...64.95....73...6..45...........2..9...65..8...4` after 13 steps link 1 went
+   along row 1 into link 5's head (tips 0.0 apart, main 28.5). **Fix.** The along pass of round 2 also takes two heads
+   within a head's width (11 units) of each other, nearer than the hint draws them without its bars and tabs, and
+   draws the moved one again, its head kept off the other heads into its target; kept only where the heads are then
+   as far apart as without the tabs (up to a head's width), it runs along neither and keeps as clear of the marks.
+
+## How it was checked
+
+- **Every drawing outside the eight, against main.** The Cell, Unit, Digit and Nishio Forcing Chains, AIC, Nice Loop,
+  X-Cycles, X-Chain, XY-Chain, 3D Medusa, Multi and Simple Colors, Remote Pair and W-Wing finds on offer at every
+  position past the singles on the pools' and seeds' paths: 41,250 drawings, identical to main's path for path, on
+  the final code (a first scan, before the last gate, found one difference, the Digit Forcing Chain of 3). The hard
+  puzzles' forcing chains the regression lens named are pinned to main's paths in tests/hintGeometry.test.ts.
+- **The set techniques, against round 3's tree and main.** Every find of the eight on offer at every position past the singles on the pools' and seeds' paths, 28,219 finds, drawn on this tree, on 004d6e8 and on main: 55 drawings changed from 004d6e8, all ALS-XY-Chains on offer, none a solve path's step. Against 004d6e8, two heads within a head's width of each other went away in 19 and came in 2 (two links side by side, 9 units apart, two heads, as main draws such a pair); runs of one arrow along another shrank in 14 and grew in none; crossings fell in 7 and rose in 3, the 3 one chain: `.....6.7.3.5....8.......9..8.46....2.2.1..5.....2.8.4..4.5..7...7...2..6..1.7....` after 11, 12 and 13 steps, whose links 1 and 5 no longer cross each other twice but which link 3 now crosses between them (drawn and looked at: it reads no worse than 004d6e8, where link 3's head lay on link 1). At `...8..2...9..1..4..87......4..26..1...3..1.6.5.....8.42.....9...6.75...2...3.....` after 18 steps links 1 and 5 ran along each other into one head with one walk number (main the same, 73% within 4.5 units); now two heads, two numbers, apart and uncrossed. A drawing that crosses the other link of its pair is now chosen last (at `..49.3..81...8.........1.75.3..5.......4.2...26.1.......3.......826...54.......21` after 22 steps the angle measure first gave link 5 a flatter bend over link 1).
+- **The reviewers' named positions.** Of the 16 positions where ALS-XY-Chains drew two heads within 5 units that main
+  drew apart, 11 of the 16 now have them as far apart as main, within half a unit, or further; the other five, at three chains, are under Known and accepted. Among them, and the other chains the skeptics named: `........214` after 18 steps 8.8 apart (main 9.0); `...936..2` after 13-19 steps and `9..64.5..` after 13, apart (main 22.6 and 28.5); `.....6.7.3.5` after 11 steps 8.6 apart with no crossing (round 3: 3.7 and two); `...8..2...9` after 18 and `7..8....4` after 16, 8.9 apart where main had 1.4.
+- The drawing snapshot (non-set) is unchanged; the set fixture changes only by under half a unit in its two
+  ALS-XY-Chains of the hard path (`hard 0, step 8` and `step 9`), the angle measure.
+
+## Known and accepted
+
+- **Three ALS-XY-Chain positions whose heads stay closer than main's** (from the design lens's scan; all on offer, none a solve path's step): `9..86....3` after 22 and 23 steps (link 1, 2r1c2 to 2r1c3, has only the way under r1c3's tabs, into link 5's head; main 7.4 apart), `...72..5.6` after 4 (3.4; main apart) and `.......2..3..1` after 14 and 15 (2.2; main 7.6). In each the tabs leave the arrow no free way in: redrawn, it either runs along the other arrow or keeps its head on it. Every head lies on its own candidate and each link has its own walk frame. For the readability pass: let a tab yield its place where it blocks the only clear way into a head.
+- **A bar moved by round 2's side rule now runs through an ALS tile** (low, logic lens, unverified). At
+  `...86..3......3..7.13..7..94...5..2...6.3.1...7..4...81..6..39.5..2......6..95...` after 17 steps an AIC with ALS
+  on offer has the 8s' bar of r7c23 above the 8s, through A's tile, and A's tab pushed out of it. Three finds of
+  27,579. For the readability pass: give a side whose bar runs under a square-on head or across another set's tile a
+  small cost rather than none.
+- **An ALS-XY-Chain whose legend says its premise is impossible still ends on 'if A holds none, D holds one'** (low,
+  words lens, unverified). 26 of 3,774 finds, all on offer, 18 of them since before round 2. Every sentence is true,
+  but the words conclude through the branch the legend has just called impossible. For the readability pass: word
+  such a chain as a clash (its true node's every candidate ruled out by a true candidate), in en, nb and es.
+
+## Refuted
+
+Three claims fell to both skeptics: that round 2's along pass only mends its own measure and leaves knots on a solve
+path; that the bars still send grouped chains' arrows on long detours across others where main drew them clear; and
+that the along pass can swap a short run along one arrow for a board-wide detour. Each was rated low, not a
+regression the merge rule counts, by both skeptics.
+
+## Review round 4
+
+A confirmation round on this fix (599e78a, de63f9d), with three lenses: design, code and regression. The code and
+regression lenses and the design finding's skeptics did not finish, because the account's usage limit was reached.
+The design lens finished. It confirmed round 3's three named regressions fixed. It confirmed that steps with no sets
+match main in two more views: 9,947 non-set chain, forcing and colouring finds, each drawn with the player's own
+marks and with pencil marks (shapes, heads, start dots and walk numbers), and every Learn diagram (`boardSvg`). Every
+set Learn diagram is byte-identical to 004d6e8. It found one regression, medium, which is now fixed:
+
+- **A pair's end turned round to the far side of its mark.** At
+  `.1.........7.....1.9...32.51..58...9......76....9......54.......2.81.5.......98.7` after 25 steps, an ALS-XY-Chain
+  on offer joins 5r2c6 to 5r1c6 twice. Link 1's end lay about 130 degrees round 5r1c6 from link 5's way in. The angle
+  rule added a pair's width to that and turned link 5's end about 160 degrees, and nothing bounds the angle rule (the
+  tangent rule it replaced could not pass 90 degrees). The result: link 5's tail sat on the left of 5r2c6 and left
+  heading right, back over its own candidate, and its head's base lay 5 units from 5r1c6's centre, across the 5. The
+  closeUp pass then drew link 1 as a wide loop round the left, and with link 3 the three lines formed a knot. Main,
+  and 004d6e8, drew two clean arrows. **Fix.** A pair's end now turns at most 75 degrees round its mark from the way
+  its line leaves or arrives. Beyond that it moves a pair's width along the tangent instead, which cannot pass 90
+  degrees (`TURN_MOST`). The chain now draws as 004d6e8 did, with two heads and no knot. tests/hintGeometry.test.ts
+  holds the reviewer's invariant on this position: every arrow leaves its mark outward, and its head's base lies
+  outside its target's mark and further out than its tip.
+- **Checked.** Every set find on offer along the pools' and seeds' paths was drawn on this tree and on de63f9d and
+  tested for the same invariant. Of 28,219 finds, none breaks it now. On de63f9d, two did: the reviewer's, and `....3.6.....1.8..3..` after 14 steps, whose link 5 left its mark backwards. Nine drawings changed from de63f9d, all ALS-XY-Chains on offer and none a solve path's step. In each, every pair of heads is at least 8.9 apart with no crossing between the pair, as far apart as main has them, or further. The drawing snapshot and the set fixture are unchanged.

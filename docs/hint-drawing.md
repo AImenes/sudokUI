@@ -152,7 +152,8 @@ Every rule is numbered so a commit, a test or a review can cite it.
   amount and is never checked against what it passes
   (`SudokuPanel.java:2693-2711`); ours chooses the side. Unrelated
   candidates and digits are crossed straight, readable through the halo
-  (G11). Two arrows joining the same two nodes are drawn side by side. A
+  (G11). Two arrows joining the same two nodes are drawn side by side,
+  apart from end to end, two heads, where they bend as well. A
   group or set node is anchored at its member nearest the other end of the
   link (a centroid can fall in a cell that is not one of its members;
   HoDoKu anchors at a group's first member only, so its other members get
@@ -161,12 +162,17 @@ Every rule is numbered so a commit, a test or a review can cite it.
   these" square reaches 13 on its axes and 15.5 at its corners), plus the
   gap. A link between other nodes that would so be anchored at the same
   two candidates as an earlier link (sets that share cells) is anchored at
-  the nearest two of its members still free, or, where none is, drawn
-  beside the earlier, so two links are never drawn as one arrow. Since
+  the nearest two of its members still free whose line does not run past
+  those two, along the earlier, or, where none is, drawn beside the
+  earlier, so two links are never drawn as one arrow. Since
   phase 4 a group's bar and a set's letter tabs are obstacles
   for every arrow, tie, start dot and walk number: an arrow is free of its
-  own group's bar only beside the member it anchors at, a start dot not at
-  all, so a dot never sits on the bar of the group it opens. No arrow
+  own group's bar only beside the member it anchors at (and of another
+  group's bar along its target's rim, coming in square-on), a start dot
+  not at all, so a dot never sits on the bar of the group it opens. An
+  arrow the bars or tabs push onto another, where without them the two
+  are apart, is drawn again counting its run along the others near its
+  ends too. No arrow
   crosses a bar except at its anchoring member, so none passes between a
   group's members (63 of 762 groups had one): over the stored examples and
   both drawing fixtures none does, and of the grouped steps on offer at
@@ -373,7 +379,9 @@ Every rule is numbered so a commit, a test or a review can cite it.
   start's placement or removal beside the other nodes in the pattern's
   colour, as a forcing chain's full view does (G21). An open chain whose
   truths put two true candidates in one cell, or one digit twice in a
-  house, also proves its premise impossible; its legend says so (the
+  house, or rule out every candidate of a true group or set (each "one of
+  these" square beside a true disc it cannot share a cell or a house
+  with), also proves its premise impossible; its legend says so (the
   stronger conclusion this proves is the finder's to take, not the
   drawing's). A group node is worded as one: "one of r5c7, r6c7 must be
   2", never all of them.
@@ -912,16 +920,38 @@ the values above are its final ones.
   violet (15dc6bb), and Death Blossom's ties, tabs by their own tiles and
   no two links drawn as one arrow (60edc72). The merge was checked by the
   whole suite, the digest with its menus, the browser tests in both font
-  setups and phone screenshots in light and dark; no second full review
-  round was run, to spare the week's budget. The relabelling of AIC with ALS steps
+  setups and phone screenshots in light and dark. Review round 2 (the same
+  five lenses on main at 0600b2e) found one medium, a regression: a
+  group's bar pushed an arrow onto the chain's next or previous one; it
+  and nine of the ten lows are fixed (words in 8e63f86, geometry in
+  004d6e8; [hint-drawing-p4-round2.md](hint-drawing-p4-round2.md)), the
+  violet against the false-ring blue for protan and deutan players in the
+  light themes kept as a known limit. Review round 3, on those two
+  commits, confirmed them and found four regressions in how two links
+  side by side are drawn, three medium: a bent link drawn before its
+  straight partner still had one head with it, and round 2's end moving,
+  `linkEnds` and the spreading of links joined alike reached forcing
+  chains and other steps with no sets. They are fixed: every drawing of a
+  step with no sets is main's again, byte for byte, over 41,250 drawings
+  on offer along the pools' and seeds' paths
+  ([hint-drawing-p4-round3.md](hint-drawing-p4-round3.md)). Review round 4
+  (design, code and regression on that fix; only the design lens finished
+  before the account's usage limit) confirmed it and found one medium
+  regression, a pair's end turned round to the far side of its mark in
+  one ALS-XY-Chain on offer; the turn is now bounded at 75 degrees, and
+  every set drawing along the paths is checked to leave its marks outward
+  with its heads off their digits (the same file). The relabelling of AIC with ALS steps
   whose only set is a bivalue cell is left to a later measured engine
   change.
 
   Left for later, low: over every grouped chain on offer along the solve
   paths of the pool, seed and hard puzzles, an arrow meets a bar away
   from its anchoring member in 44 chains, one of them a solve path's own
-  step (the design's As built names it); a second full review round of
-  the round 1 fixes; an ALS-XY-Chain of more sets than cells
+  step (the design's As built names it); round 3's two unverified lows
+  (a bar moved by round 2's side rule through an ALS tile in three finds,
+  and the plain ending of an ALS-XY-Chain whose legend says its premise is
+  impossible) and its accepted heads (hint-drawing-p4-round3.md), for the
+  readability pass; an ALS-XY-Chain of more sets than cells
   leaves one set no filled tile (four sets on three cells on a hard path),
   its tabs and dashed outlines carrying it; App.tsx's "a {tech} places it"
   and the share line's "a {level} sudoku" can read "a X-Wing" and "a

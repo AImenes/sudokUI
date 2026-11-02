@@ -16,16 +16,24 @@
 //   never checks); unrelated candidates and digits are crossed straight,
 //   readable through the halo the board draws, and cut out of the line;
 // - two links between the same two nodes are drawn side by side, not on top
-//   of each other, and so are two links joined at the same two candidates;
+//   of each other, and so are two links joined at the same two candidates,
+//   apart from end to end with two heads where they bend too; a link
+//   between other nodes than an earlier one's is joined elsewhere than at
+//   the same two candidates where its nodes allow, but never by a line that
+//   runs past those two, along the earlier one;
 // - a group node is joined at its member nearest the other end (a centroid
 //   can fall in a cell that is not one of its members), where the ray
 //   towards the other end leaves that member's mark, a "one of these"
 //   square's exactly;
 // - a group's bar (docs/hint-drawing-sets.md, decisions 2 and 4) runs in
 //   the glyph-free gutter beside its members, on the side that crosses the
-//   least, and every arrow, start dot and walk number keeps off it, an
-//   arrow passing only beside the member it is anchored at, so no arrow
-//   runs between a group's members;
+//   least and bends the fewest straight arrows, and every arrow, start dot
+//   and walk number keeps off it, an arrow passing only beside the member
+//   it is anchored at, so no arrow runs between a group's members, or
+//   beside its target where the bar runs along that target's rim and the
+//   arrow comes in square-on; an arrow the bars or the tabs push onto
+//   another, where without them the two are apart, is drawn again to keep
+//   off the other arrows near its ends too;
 // - an almost locked set (decisions 5-7) is a tight tile in each of its
 //   cells, round that cell's candidates, which arrows cross as they cross
 //   bands, with a lettered tab on a free place of the cell, inside or
@@ -294,9 +302,13 @@ function linkEnds(links: ChainLink[], layout: Layout): ReturnType<typeof straigh
     let out = ends;
     if (taken(ends.fromCd, ends.toCd)) {
       let near: { fromCd: CellDigit; toCd: CellDigit; d: number } | undefined;
+      // (two that would run past one of the taken two, along the earlier
+      // link's line, do not part them: the two are drawn side by side)
+      const past = (x: CellDigit, y: CellDigit) =>
+        [ends.fromCd, ends.toCd].some((t) => key(t) !== key(x) && key(t) !== key(y) && distToSegment(layout.centre(t), layout.centre(x), layout.centre(y)) < radius(layout, t));
       for (const fromCd of l.from)
         for (const toCd of l.to) {
-          if (key(fromCd) === key(toCd) || taken(fromCd, toCd)) continue;
+          if (key(fromCd) === key(toCd) || taken(fromCd, toCd) || past(fromCd, toCd)) continue;
           const d = len(sub(layout.centre(toCd), layout.centre(fromCd)));
           if (!near || d < near.d - 1e-9) near = { fromCd, toCd, d };
         }
@@ -381,16 +393,17 @@ const barHalf = (layout: Layout) => (MARK.groupBarStrokeTiny * layout.cell) / 2;
  * whole bar, or, where one of them is its member, the stretches of it
  * beyond SIZES.barFree, the gap and the bar's half width from that member,
  * so a line can leave the member it is anchored at across its own bar
- * (decision 4), and nowhere else
+ * (decision 4), and nowhere else; and as far from each of `beside`, a
+ * line's target along whose mark's rim the bar runs, the line coming
+ * square-on to it (alongRim)
  */
-function barStretches(bar: GroupBar, anchors: CellDigit[], layout: Layout): Obstacle[] {
+function barStretches(bar: GroupBar, anchors: CellDigit[], layout: Layout, beside: CellDigit[] = []): Obstacle[] {
   const r = barHalf(layout);
   const free = (SIZES.barFree + SIZES.gap) * layout.cell + r;
   const ab = sub(bar.b, bar.a);
   const l2 = ab.x * ab.x + ab.y * ab.y || 1;
   let pieces: [number, number][] = [[0, 1]];
-  for (const cd of anchors) {
-    if (!bar.members.some((m) => key(m) === key(cd))) continue;
+  for (const cd of [...anchors.filter((x) => bar.members.some((m) => key(m) === key(x))), ...beside]) {
     // the stretch within `free` of the member: |a + t (b - a) - m| < free
     const am = sub(bar.a, layout.centre(cd));
     const mid = (am.x * ab.x + am.y * ab.y) / l2;
@@ -404,6 +417,25 @@ function barStretches(bar: GroupBar, anchors: CellDigit[], layout: Layout): Obst
     pieces = pieces.filter(([u, v]) => v > u);
   }
   return pieces.map(([u, v]) => ({ p: add(bar.a, mul(ab, u)), q: add(bar.a, mul(ab, v)), r }));
+}
+
+/**
+ * Whether another group's bar runs along the rim of the mark a line ends
+ * at: its centre line within the mark's radius and the bar's half width
+ * (in the gutter between two rows of a cell's places it lies 13 from the
+ * row it does not join). A line that comes into the mark square-on to it
+ * (squareTo) ends its head against the bar as against the rim, seeming to
+ * join no other, and may cross it there as it may its own bar beside its
+ * member (decision 4)
+ */
+function alongRim(bar: GroupBar, target: CellDigit, layout: Layout): boolean {
+  return !bar.members.some((m) => key(m) === key(target)) && distToSegment(layout.centre(target), bar.a, bar.b) <= radius(layout, target) + barHalf(layout);
+}
+
+/** whether a line whose head points along `dir` comes square-on to a bar: within 60 degrees of straight across it */
+function squareTo(bar: GroupBar, dir: Point): boolean {
+  const along = unit(sub(bar.b, bar.a));
+  return Math.abs(dir.x * along.x + dir.y * along.y) <= 0.5;
 }
 
 /**
@@ -427,14 +459,18 @@ function groupBars(step: Step, layout: Layout, marks: CellDigit[]): GroupBar[] {
   const gap = SIZES.gap * c;
   const r = barHalf(layout);
   const marked = new Set(marks.map(key));
-  // the hint's arrows, straight, from just outside their marks, with the candidates they are anchored at
+  // the hint's arrows, straight, from just outside their marks, with their
+  // heads and the candidates they are anchored at
   const links = step.links ?? [];
   const ends = linkEnds(links, layout);
   const arrows = links
     .flatMap((l, i) => (!l.undirected && !silent(l) ? [ends[i]] : []))
     .map(({ fromCd, toCd, a, b }) => {
       const u = unit(sub(b, a));
-      return { anchors: [fromCd, toCd], tail: add(a, mul(u, reachAt(layout, fromCd, u) + gap)), tip: sub(b, mul(u, reachAt(layout, toCd, mul(u, -1)) + gap)) };
+      const tail = add(a, mul(u, reachAt(layout, fromCd, u) + gap));
+      const tip = sub(b, mul(u, reachAt(layout, toCd, mul(u, -1)) + gap));
+      const head = len(sub(tip, tail)) > SIZES.headLength * c * 1.4 ? headAt(tip, u, layout) : [];
+      return { anchors: [fromCd, toCd], target: toCd, u, tail, tip, head };
     });
   // whether the bar a-b, grown by its half width, meets a box
   const meets = (a: Point, b: Point, x0: number, x1: number, y0: number, y1: number) =>
@@ -473,8 +509,13 @@ function groupBars(step: Step, layout: Layout, marks: CellDigit[]): GroupBar[] {
         if (distToSegment(layout.centre(cd), bar.a, bar.b) < radius(layout, cd) + MARK.keylineSmall * c + r) score += 100;
       }
       for (const earlier of bars) if (segmentsApart(bar.a, bar.b, earlier.a, earlier.b) < 2 * r + 0.02 * c) score += 100;
-      for (const { anchors, tail, tip } of arrows) {
-        if (barStretches(bar, anchors, layout).some((o) => segmentsApart(tail, tip, o.p, o.q!) < r)) score += 500;
+      // an arrow the bar would bend: its shaft or its head nearer the bar
+      // than the clearance the arrows keep, as they keep it (but beside the
+      // member it is anchored at, or square-on into a target whose rim the
+      // bar runs along)
+      for (const { anchors, target, u, tail, tip, head } of arrows) {
+        const beside = alongRim(bar, target, layout) && squareTo(bar, u) ? [target] : [];
+        if (barStretches(bar, anchors, layout, beside).some((o) => apartFrom(o, [tail, tip], head) - o.r < SIZES.clearance * c)) score += 500;
       }
       return { bar, score };
     });
@@ -1049,10 +1090,11 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     return out;
   };
 
-  // where each link's ends lie, straight: the candidates it joins, never
-  // the two an earlier link between other nodes is joined at where its
-  // nodes have others
-  const ends = linkEnds(links, layout);
+  // where each link's ends lie, straight: the candidates it joins, never,
+  // on a step with sets, the two an earlier link between other nodes is
+  // joined at where its nodes have others. A step with no sets is drawn as
+  // before phase 4, byte for byte (docs/hint-drawing-sets.md, As built)
+  const ends = sets ? linkEnds(links, layout) : links.map((l) => straightEnds(l, layout));
 
   // links between the same two nodes, in either direction, are spread apart;
   // and so are two links between other nodes joined at the same two
@@ -1064,10 +1106,12 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
   const groupOf: number[][] = links.map((_, i) => [i]);
   links.forEach((l, i) => {
     if (silent(l)) return;
-    const group = pairs.get(pairKey(l)) ?? pairs.get(endsKey(i)) ?? [];
+    // (on a step with sets: one with none spreads the links between the
+    // same two nodes alone, as before phase 4)
+    const group = pairs.get(pairKey(l)) ?? (sets ? pairs.get(endsKey(i)) : undefined) ?? [];
     group.push(i);
     pairs.set(pairKey(l), group);
-    pairs.set(endsKey(i), group);
+    if (sets) pairs.set(endsKey(i), group);
     groupOf[i] = group;
   });
   // the one direction a group's sideways shift is measured in, so links
@@ -1099,7 +1143,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
   // straight line until then: an arrow keeps from running along another
   const chosen: (Point[] | null)[] = links.map(() => null);
   // and how clear of the marks it keeps, and its ends' room, once chosen
-  const kept: { room: number; headRoom: number }[] = links.map(() => ({ room: Infinity, headRoom: Infinity }));
+  const kept: { room: number; headRoom: number; run: number }[] = links.map(() => ({ room: Infinity, headRoom: Infinity, run: 0 }));
   const lineOf = (j: number): Point[] | null => {
     if (chosen[j]) return chosen[j];
     if (silent(links[j])) return null;
@@ -1134,7 +1178,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     });
   };
 
-  const draw = (l: ChainLink, i: number, apart = false): ArrowShape => {
+  const draw = (l: ChainLink, i: number, apart = false, along = false): ArrowShape => {
     if (insideSet(l)) return { kind: 'none', link: i };
     if (insideOneCell(l)) return weakTie(l) ? bracketsOf(l, i, layout) : { kind: 'none', link: i };
     const { fromCd, toCd, a, b } = ends[i];
@@ -1150,6 +1194,10 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     const group = groupOf[i];
     const spread = group.length > 1 ? (group.indexOf(i) - (group.length - 1) / 2) * SIZES.pair * c : 0;
     const shift = mul(perp(alongOf(i)), spread);
+    // another link of its group drawn before it: its line, and its middle
+    const before = group.find((j) => j !== i && chosen[j]);
+    const beside = before !== undefined ? chosen[before]! : undefined;
+    const besideMid = beside && halfway(beside);
 
     const own = new Set([...l.from, ...l.to].map(key));
     const tie = clusterTie(l);
@@ -1161,6 +1209,14 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     // is anchored at, and a set's letter tab for every line
     // (docs/hint-drawing-sets.md, decision 4); a colouring has no sets
     const bars = [...barObstacles(sets, [fromCd, toCd], layout), ...tabs];
+    // and another group's bar along the rim of the target's mark, but
+    // beside the target for a drawing whose head comes square-on to it
+    // (alongRim): the bars, by the way a drawing's head points
+    const rims = (sets?.bars ?? []).filter((bar) => alongRim(bar, toCd, layout));
+    const barsInto = (dir: Point) =>
+      rims.some((bar) => squareTo(bar, dir))
+        ? [...(sets?.bars ?? []).flatMap((bar) => barStretches(bar, [fromCd, toCd], layout, rims.includes(bar) && squareTo(bar, dir) ? [toCd] : [])), ...tabs]
+        : bars;
     // a tie: straight from end to end, unless another mark its frame draws,
     // or another candidate of its digit the board shows, lies within its
     // radius and a gap of the line, which it would seem to join; then it
@@ -1175,9 +1231,14 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
         return { kind: 'tie', link: i, d: `M ${f(p0.x)} ${f(p0.y)} L ${f(p1.x)} ${f(p1.y)}`, trace: [p0, p1] };
       }
     }
-    const round = tie ? [] : digitsRound(toCd);
-    const others: Obstacle[] = tie
-      ? seen
+    // and, drawn again by the along pass, the heads of the other arrows
+    // into its target, so the two heads read as two
+    const headsInto = (): Obstacle[] =>
+      links.flatMap((o, j) => (j !== i && chosen[j] && !o.undirected && key(ends[j].toCd) === key(toCd) ? [{ p: chosen[j]![chosen[j]!.length - 1], r: SIZES.headWidth * c * 0.75 }] : []));
+    const round = tie ? [] : [...digitsRound(toCd), ...(along ? headsInto() : [])];
+    // everything but the bars and tabs
+    const rest: Obstacle[] = tie
+      ? []
       : [
           ...marks.filter((m) => !own.has(key(m.cd))),
           // other arrows' ends, but not those that meet this one at its own
@@ -1187,9 +1248,11 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
           // board shows, so it never seems to run through a third one (a
           // wrap's house always has another place for its digit), and off
           // the ends of the other weak ties into its cells
-          ...(weakTie(l) ? [...sameDigit(l, own), ...besideEnds(i)] : []),
-          ...bars
+          ...(weakTie(l) ? [...sameDigit(l, own), ...besideEnds(i)] : [])
         ];
+    const others: Obstacle[] = tie ? seen : [...rest, ...bars];
+    // what a drawing keeps clear of, by the way its head points
+    const othersInto = (dir: Point) => (rims.length && !tie ? [...rest, ...barsInto(dir)] : others);
 
     // the other links' lines, but those joining the same two nodes, which are
     // drawn side by side on purpose, and those never drawn with this one: a
@@ -1202,12 +1265,13 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     const lineBoxes = tie ? lines.map((line) => boxOf(line)) : [];
     const near = (SIZES.stroke + SIZES.halo) * c + 1;
     // how far a shaft runs along another line, away from its own ends, where
-    // arrows into and out of a node always gather
+    // arrows into and out of a node always gather; an arrow drawn again to
+    // keep off the others there too (`along`, below) counts its ends as well
     const runOf = (shaft: Point[], lines: Point[][]) => {
       let run = 0;
       for (let k = 0; k + 1 < shaft.length; k++) {
         const m = mul(add(shaft[k], shaft[k + 1]), 0.5);
-        if (len(sub(m, a)) < 0.45 * c || len(sub(m, b)) < 0.45 * c) continue;
+        if (!along && (len(sub(m, a)) < 0.45 * c || len(sub(m, b)) < 0.45 * c)) continue;
         if (lines.some((line) => toPath(m, line) < near)) run += len(sub(shaft[k + 1], shaft[k]));
       }
       return run;
@@ -1293,11 +1357,46 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     const shape = (controls: Point[]) => {
       const first = controls[0];
       const last = controls[controls.length - 1];
-      // a bent line leaves and arrives along its first and last bends, where its mark reaches that way
+      // a bent line leaves and arrives along its first and last bends, where
+      // its mark reaches that way; spread beside another between the same
+      // two nodes, it leaves and arrives beside it as well, each end moved
+      // round its mark, so the two have two heads, apart: by its spread, or,
+      // another of them drawn before it, a pair's width from that one's end
+      // on the side of it its own middle lies, so the two never cross there
+      const across = perp(alongOf(i));
+      const middle = controls.length === 2 ? cubic(a, controls[0], controls[1], b, 0.5) : controls.length ? quad(a, controls[0], b, 0.5) : a;
+      const side = spread && besideMid ? Math.sign((middle.x - besideMid.x) * across.x + (middle.y - besideMid.y) * across.y) || Math.sign(spread) : 0;
+      // (a step with no sets keeps its ends where they were before phase 4)
+      const rim = (p: Point, cd: CellDigit, way: Point) => {
+        const reach = reachAt(layout, cd, way) + gap;
+        if (!spread || !sets) return add(p, mul(way, reach));
+        const round = perp(way);
+        // how far round the mark the end is moved, as an angle from `way`:
+        // by its spread along the tangent there, or a pair's width of rim
+        // from the other's end, measured round the mark, not along the
+        // tangent (which shrinks once the end is put back on the rim)
+        let turn = Math.atan2(shift.x * round.x + shift.y * round.y, reach);
+        if (beside) {
+          const other = len(sub(beside[0], p)) < len(sub(beside[beside.length - 1], p)) ? beside[0] : beside[beside.length - 1];
+          const towards = round.x * across.x + round.y * across.y;
+          const d = sub(other, p);
+          const at = Math.atan2(d.x * round.x + d.y * round.y, d.x * way.x + d.y * way.y);
+          const by = (Math.abs(towards) > 0.2 ? Math.sign(towards) * side : -Math.sign(at) || 1) * SIZES.pair * c;
+          turn = at + by / reach;
+          // but never round to the far side of its mark, where the line
+          // would leave back over its own candidate or lay its head on
+          // its target's digit (review round 4): beyond TURN_MOST of its
+          // way, a pair's width along the tangent, which cannot pass 90°
+          if (Math.abs(turn) > TURN_MOST) turn = Math.atan2(d.x * round.x + d.y * round.y + by, reach);
+          turn = Math.max(-TURN_MOST, Math.min(TURN_MOST, turn));
+        }
+        const w = add(mul(way, Math.cos(turn)), mul(round, Math.sin(turn)));
+        return add(p, mul(w, reachAt(layout, cd, w) + gap));
+      };
       const out = first && unit(sub(first, a));
       const into = last && unit(sub(last, b));
-      const tail = out ? add(a, mul(out, reachAt(layout, fromCd, out) + gap)) : add(add(a, mul(u, ra)), shift);
-      const tip = into ? add(b, mul(into, reachAt(layout, toCd, into) + gap)) : add(sub(b, mul(u, rb)), shift);
+      const tail = out ? rim(a, fromCd, out) : add(add(a, mul(u, ra)), shift);
+      const tip = into ? rim(b, toCd, into) : add(sub(b, mul(u, rb)), shift);
       const dir = unit(sub(tip, last ?? tail));
       const hasHead = !l.undirected && len(sub(tip, tail)) > headLength * 1.4;
       const head = hasHead ? headAt(tip, dir, layout) : [];
@@ -1324,7 +1423,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
           shaft,
           controls,
           mid: at(0.5),
-          room: clearanceOf(shaft, others, layout, inside, head),
+          room: clearanceOf(shaft, othersInto(dir), layout, inside, head),
           run: runOf(shaft, lines),
           headRoom,
           lined,
@@ -1332,6 +1431,8 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
           fork,
           rail: 0,
           hidden: hiddenOf(shaft),
+          // how often it crosses the other of its pair drawn before it, side by side (review round 3)
+          pairX: sets && beside ? crossings(shaft, beside) : 0,
           path: undefined as string | undefined
         };
       }
@@ -1363,6 +1464,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
         mid: at(0.5),
         room,
         hidden: 0,
+        pairX: 0,
         path: undefined as string | undefined,
         get run() {
           return (run ??= runOf(
@@ -1412,7 +1514,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     // other into its candidates, after the marks
     const lining = 0.1 * c;
     const slight = FORK_SLIGHT * c;
-    const ok = (s: Shape) => s.room >= need && s.hidden === 0 && s.fork === 0 && s.rail <= 0.3 * c && s.run <= 0.3 * c && s.lined <= lining && s.headRoom >= 0;
+    const ok = (s: Shape) => s.room >= need && s.hidden === 0 && s.fork === 0 && s.rail <= 0.3 * c && s.run <= 0.3 * c && s.pairX === 0 && s.lined <= lining && s.headRoom >= 0;
     const better = (x: Shape, y: Shape) => {
       const [rx, ry] = [Math.min(x.room, need), Math.min(y.room, need)];
       if (Math.abs(rx - ry) > 0.01) return rx > ry;
@@ -1428,6 +1530,8 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       if (Math.abs(ax - ay) > 1) return ax < ay;
       const [ux, uy] = [Math.max(x.run, 0.3 * c), Math.max(y.run, 0.3 * c)];
       if (Math.abs(ux - uy) > 1) return ux < uy;
+      // (two links side by side, crossing, read as two that swap)
+      if (x.pairX !== y.pairX) return x.pairX < y.pairX;
       const [gx, gy] = [Math.max(x.lined, lining), Math.max(y.lined, lining)];
       if (Math.abs(gx - gy) > 1) return gx < gy;
       return Math.min(x.headRoom, 0) > Math.min(y.headRoom, 0) + 0.01;
@@ -1563,6 +1667,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
             fork: forks.length && forkOf(pts, boxOf(pts)).crossed ? FORK_CROSSED * c : 0,
             rail: 0,
             hidden: hiddenOf(pts),
+            pairX: 0,
             path: d.join(' ')
           });
         }
@@ -1623,10 +1728,11 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       }
     }
     // what a bend off each end can mend: the marks, and a tie's fork, its
-    // run along another tie and its loop round one, a weak tie's crossing;
-    // not the grid lines alone, which a bend off each end escapes only to
-    // run beside the ties it then has to pass
-    const mend = (s: Shape) => s.room < need || s.hidden > 0 || s.fork > 0 || (tie && (s.rail > 0.3 * c || s.run > 0.3 * c));
+    // run along another tie and its loop round one, a weak tie's crossing,
+    // an arrow's run along another drawn again to keep off it; not the grid
+    // lines alone, which a bend off each end escapes only to run beside the
+    // ties it then has to pass
+    const mend = (s: Shape) => s.room < need || s.hidden > 0 || s.fork > 0 || ((tie || along) && (s.rail > 0.3 * c || s.run > 0.3 * c));
     if (mend(best)) {
       // marks beside both ends on the line: one arc cannot leave steeply and
       // arrive steeply too, so two control points, one off each end, on one
@@ -1679,7 +1785,7 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
 
     const { tail, tip, dir, head, trace, controls, mid } = best;
     chosen[i] = best.shaft;
-    kept[i] = { room: best.room, headRoom: best.headRoom };
+    kept[i] = { room: best.room, headRoom: best.headRoom, run: best.run };
     // the shaft runs a little under the head so no seam shows between them
     const end = head.length ? sub(tip, mul(dir, headLength * 0.75)) : tip;
     const pt = (q: Point) => `${f(q.x)} ${f(q.y)}`;
@@ -1695,6 +1801,32 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
   };
 
   const shapes = links.map((l, i) => draw(l, i));
+  // on a step with sets, two links spread side by side whose ends close up
+  // (the first bent, by a bar or a tab, and moved round its marks by its
+  // spread alone, the later straight, which never looks at it): the first
+  // is drawn again knowing the later, a pair's width of rim from its ends,
+  // so the two have two heads (G10). The new drawing is kept only where
+  // the ends are apart and it keeps as clear of the marks
+  if (sets) {
+    const apartAt = 0.85 * SIZES.pair * c;
+    const closeUp = (i: number, j: number) => {
+      const [p, q] = [chosen[i], chosen[j]];
+      if (!p || !q) return false;
+      return [p[0], p[p.length - 1]].some((e) => Math.min(len(sub(e, q[0])), len(sub(e, q[q.length - 1]))) < apartAt);
+    };
+    for (const group of new Set(groupOf)) {
+      if (group.length < 2) continue;
+      const [i, ...later] = group;
+      if (shapes[i].kind !== 'arrow' || !later.some((j) => closeUp(i, j))) continue;
+      const [was, then] = [chosen[i], kept[i]];
+      const again = draw(links[i], i);
+      if (!later.some((j) => closeUp(i, j)) && kept[i].room >= Math.min(then.room, need) - 0.01) shapes[i] = again;
+      else {
+        chosen[i] = was;
+        kept[i] = then;
+      }
+    }
+  }
   // two weak ties into one candidate that cross away from it, where they
   // would swap sides just before it: the earlier is drawn again knowing
   // the later, kept apart from it, or else the later knowing the earlier.
@@ -1722,6 +1854,61 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
   links.forEach((_, i) => {
     for (let j = i + 1; j < links.length; j++) if (crosses(i, j) && !redraw(i)) redraw(j);
   });
+  // two arrows that run along each other, near a node where arrows gather
+  // (where an arrow's run along another is not counted), as the hint would
+  // not draw them without its groups' bars and its sets' tabs: one of them
+  // bent for a bar or a tab, onto the other. The one the bars and tabs
+  // moved (of two, the later) is drawn again knowing the other, counting
+  // its run along every other arrow from end to end, after the marks and
+  // before its head's room (G10), or else the other; the new drawing is
+  // kept only where it runs along none and keeps as clear of the marks
+  if (sets && (sets.bars.length || sets.tabs.length)) {
+    const touch = (SIZES.stroke + SIZES.halo) * c + 1;
+    const directed = (k: number) => shapes[k].kind === 'arrow' && !links[k].undirected;
+    // how far one line runs within a stroke and a halo of another
+    const runAlong = (p: Point[], q: Point[]) => {
+      let run = 0;
+      for (let k = 0; k + 1 < p.length; k++) if (toPath(mul(add(p[k], p[k + 1]), 0.5), q) < touch) run += len(sub(p[k + 1], p[k]));
+      return run;
+    };
+    const alongIn = (lines: (Point[] | null)[], i: number, j: number) =>
+      !!lines[i] && !!lines[j] && Math.max(runAlong(lines[i]!, lines[j]!), runAlong(lines[j]!, lines[i]!)) > 0.3 * c;
+    // or whose heads lie within a head's width of each other, one head
+    // seeming to end two arrows
+    const tipOf = (x: ArrowShape) => (x.kind === 'arrow' && x.head?.length ? x.head[0] : null);
+    const tipGap = (drawn: ArrowShape[], i: number, j: number) => {
+      const [p, q] = [tipOf(drawn[i]), tipOf(drawn[j])];
+      return p && q ? len(sub(p, q)) : Infinity;
+    };
+    const headWidth = SIZES.headWidth * c;
+    const together = (i: number, j: number) => alongIn(chosen, i, j) || tipGap(shapes, i, j) < headWidth;
+    const pairs: [number, number][] = [];
+    links.forEach((_, i) => {
+      for (let j = i + 1; j < links.length; j++) if (directed(i) && directed(j) && groupOf[j] !== groupOf[i] && together(i, j)) pairs.push([i, j]);
+    });
+    if (pairs.length) {
+      // (still a step with sets: its ends are joined and spread as its own)
+      const plain = arrowShapes(links, layout, obstacles, { bars: [], tiles: [], tabs: [] });
+      const plainLines = plain.map((s) => (s.kind === 'arrow' ? partsOf(s).shaft : null));
+      const moved = (k: number) => plain[k].kind !== shapes[k].kind || (plain[k] as { d?: string }).d !== (shapes[k] as { d?: string }).d;
+      // (its head as far from the other's as the plain drawing has them, up to a head's width)
+      const redrawAlong = (k: number, other: number) => {
+        const [was, then, shape] = [chosen[k], kept[k], shapes[k]];
+        shapes[k] = draw(links[k], k, false, true);
+        const apart = tipGap(shapes, k, other) >= Math.min(tipGap(plain, k, other), headWidth) - 0.5;
+        if (kept[k].run <= 0.3 * c && apart && kept[k].room >= Math.min(then.room, need) - 0.01) return true;
+        chosen[k] = was;
+        kept[k] = then;
+        shapes[k] = shape;
+        return false;
+      };
+      for (const [i, j] of pairs) {
+        if (!together(i, j) || alongIn(plainLines, i, j) || (!alongIn(chosen, i, j) && tipGap(plain, i, j) <= tipGap(shapes, i, j) + 1)) continue;
+        const order = moved(i) && !moved(j) ? [i, j] : [j, i];
+        if (!redrawAlong(order[0], order[1])) redrawAlong(order[1], order[0]);
+      }
+    }
+  }
   return shapes;
 }
 
@@ -1829,6 +2016,8 @@ function cutUnderDigits(path: Point[], layout: Layout, marked: Set<string>): num
 
 /** the turns tried off a boxed-in weak tie's ends, in radians (0, 23, 46 and 69 degrees), and how far its control points reach, fractions of the line */
 const TURNS = [0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2];
+/** the furthest round its mark, from the way it leaves or arrives, a pair's end is moved: 75 degrees */
+const TURN_MOST = (75 * Math.PI) / 180;
 const REACH = [0.15, 0.3, 0.5];
 /** a direction turned by `t` radians */
 const rotate = (v: Point, t: number): Point => ({ x: v.x * Math.cos(t) - v.y * Math.sin(t), y: v.x * Math.sin(t) + v.y * Math.cos(t) });
@@ -2151,7 +2340,7 @@ export function hintDrawing(step: Step, layout: Layout, marks: CellDigit[]): Hin
   // no dot says where a reading starts (docs/hint-drawing-sets.md, decision 13)
   const clash = alsClash(step);
   const around = (sets: SetShapes): HintDrawing => {
-    const shapes = arrowShapes(links, layout, marks, sets);
+    const shapes = arrowShapes(links, layout, marks, step.sets?.length ? sets : undefined);
     const dots = clash ? [] : startMarkers(links, layout, marks, shapes, sets);
     return { sets, shapes, dots, badges: badgePoints(shapes, layout, marks, dots, sets) };
   };

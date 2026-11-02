@@ -103,6 +103,39 @@ export function alsClash(step: Step): boolean {
   return !!d && (d.problems.length > 0 || !!d.closure);
 }
 
+/**
+ * Where an ALS pattern's chain that clashes first contradicts itself, read
+ * link by link from its premise (its first set holds no z): the node the
+ * links so far give both truths (twoTruths, or a link back to the start), a
+ * candidate they make true inside a node they make false (inFalseGroup, the
+ * candidate alone), or a true node of several candidates they leave none of
+ * (emptyTrue). Every link before it is an inference the premise allows, so
+ * the premise is impossible. Where the last set's z lie outside the first,
+ * the chain makes that node true before it makes it false: a node it makes
+ * false is a set's link digit, entered from the set before, which shares no
+ * cell with it (checkSets' overlap), so only a set further back can have
+ * made it true. Null for a step that does not clash
+ */
+export function clashAt(step: Step): CellDigit[] | null {
+  if (!alsClash(step)) return null;
+  const links = step.links!.filter((l) => !l.undirected);
+  for (let n = 1; n <= links.length; n++) {
+    const d = deriveLinks(links.slice(0, n));
+    if (!d.problems.length && !d.closure) continue;
+    // the node this link reaches had the other truth
+    if (d.closure || d.problems.some((p) => p.issue === 'twoTruths')) return links[n - 1].to;
+    const truth = (cd: CellDigit) => d.candidates.get(keyOf(cd));
+    for (const { node, truth: isTrue } of d.nodes) {
+      if (node.length < 2) continue;
+      // a candidate true inside a false node, or a true node left none
+      const inside = isTrue ? undefined : node.find((cd) => truth(cd) === 'true');
+      if (inside) return [inside];
+      if (isTrue && node.every((cd) => truth(cd) === 'false')) return node;
+    }
+  }
+  return null;
+}
+
 /** the derivation itself, over a chain's directed links in reading order */
 export function deriveLinks(links: ChainLink[]): Derivation {
   const problems: Problem[] = [];

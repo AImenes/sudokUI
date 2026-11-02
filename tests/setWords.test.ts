@@ -482,7 +482,7 @@ describe('an 8: the article before a digit (src/engine/text.ts aDigit)', () => {
     // the conclusion of a chain whose sets share cells, about 8
     const clash = kept.find((k) => k.where === 'shared cells that clash, step 15, ALS_XY_CHAIN')!.step;
     expect(walkFrames(clash).at(-1)!.text).toMatch(/^Set D holds 8 only in r4c4, r6c4, cells of set A: .* A cannot lack an 8, so set A holds an 8\./);
-    expect(clash.description).toMatch(/A or D holds an 8, so 8 is removed/);
+    expect(clash.description).toMatch(/A cannot lack an 8: it holds one, and 8 is removed/);
   });
 
   it('words a premise that a set holds an 8 so in the hint panel and the Learn legend', () => {
@@ -629,7 +629,7 @@ describe('the words and the legends, review round 1 (docs/hint-drawing-sets.md, 
   });
 
   it('names the dashed outline of a cell of two sets, drawn like it, wherever a view draws one, in the panel and the Learn legend alike (decision 6)', () => {
-    const label = 'dashed outline: a cell of two sets; each tab names one';
+    const label = 'dashed outline: a cell of two sets; each letter names one';
     const tint = (n: string) => [LIGHT[`set${n}` as 'set1'], LIGHT[`set${n}Ink` as 'set1Ink']];
     const als = [
       ...(['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'] as Tech[]).map(stored),
@@ -694,5 +694,200 @@ describe("the hint panel's bar entry (docs/hint-drawing-sets.md, decision 18)", 
     expect(views).toBeGreaterThan(300);
     // rule 3's removed group, and a group whose loop a solved cell breaks, each in the full view and its conclusion
     expect(barred).toEqual(expect.arrayContaining(['rule 3, step 14, GROUPED_X_CYCLES, full view', 'the gapped group over a solved cell, step 20, GROUPED_X_CYCLES, full view']));
+  });
+});
+
+describe('the words and the legends, review round 2 (docs/hint-drawing-p4-round2.md, findings 1-6 and 10)', () => {
+  afterEach(() => setEngineText('en', null));
+  const LOCALES = [
+    ['nb', nb],
+    ['es', es]
+  ] as const;
+  /**
+   * The findings' ALS-XY-Chains whose chain clashes with their last set's z
+   * not all in their first (findings 1, 5 and 10): each on offer, the step
+   * findStep gives after the solver's first `at` steps, its conclusion, and
+   * how its description now ends (after "... fills its cells.")
+   */
+  const CLASHES = [
+    {
+      puzzle: '4.......3.28..6..4.....598.6..4..3.8...6.1...5.3..9..1.579.....2..8..74.1.......9',
+      at: 16,
+      end: 'If set A holds no 2, r9c5 must be 7, and further along the chain it cannot be 7: that is impossible. A cannot lack a 2, so set A holds a 2. Each removed 2 sees every 2 of A. So 2 is removed from r9c6.',
+      reason: 'But on the way r9c5 must be 7, and further along the chain it cannot be 7. A cannot lack a 2: it holds one, and 2 is removed from every cell that sees every 2 of A.'
+    },
+    {
+      puzzle: '.97.....1.2...8...8..4..92...3..2......561......9..5...38..9..7...2...5.5.....68.',
+      at: 10,
+      end: 'If set A holds no 6, one of r3c5, r3c6 must be 3, and further along the chain none of them can be 3: that is impossible. A cannot lack a 6, so set A holds a 6. Each removed 6 sees every 6 of A. So 6 is removed from r3c9.',
+      reason: 'But on the way one of r3c5, r3c6 must be 3, and further along the chain none of them can be 3. A cannot lack a 6: it holds one, and 6 is removed from every cell that sees every 6 of A.'
+    },
+    {
+      puzzle: '8.57.....7.....6.8.23........7.34..1..9....4.....687...1.6.3...4...1...79......2.',
+      at: 17,
+      end: 'If set A holds no 1, r3c6 must be 9, and further along the chain it cannot be 9: that is impossible. A cannot lack a 1, so set A holds a 1. Each removed 1 sees every 1 of A. So 1 is removed from r3c4.',
+      reason: 'But on the way r3c6 must be 9, and further along the chain it cannot be 9. A cannot lack a 1: it holds one, and 1 is removed from every cell that sees every 1 of A.'
+    },
+    {
+      puzzle: '7..8..5..9.8..3..2....4..8.6.2..7.....7.6.2.....1..9.6.6..9....3..7..6.5..4..8..9',
+      at: 10,
+      end: 'If set A holds no 5, r6c5 must be 2, and further along the chain it cannot be 2: that is impossible. A cannot lack a 5, so set A holds a 5. Each removed 5 sees every 5 of A. So 5 is removed from r6c6.',
+      reason: 'But on the way r6c5 must be 2, and further along the chain it cannot be 2. A cannot lack a 5: it holds one, and 5 is removed from every cell that sees every 5 of A.'
+    }
+  ];
+  /** a repro's step, found again in the language the engine writes now */
+  const reproStep = (c: (typeof CLASHES)[number]) => findStep('ALS_XY_CHAIN', after(c.puzzle, c.at))!;
+  /** a kept entry's step, found again in the language the engine writes now */
+  const keptStep = (k: (typeof kept)[number]) => {
+    const g = parseGrid(k.position.puzzle)!;
+    for (let i = 0; i < 81; i++) {
+      g.values[i] = Number(k.position.values[i]);
+      g.cands[i] = k.position.cands[i];
+    }
+    return findStep(k.step.tech, g)!;
+  };
+  /** every clashing chain: the set fixture's and the repros', each with its puzzle */
+  const clashing = () => [
+    ...kept.filter((k) => alsClash(k.step)).map((k) => ({ where: k.where, puzzle: k.position.puzzle, step: keptStep(k) })),
+    ...CLASHES.map((c) => ({ where: `${c.puzzle} after ${c.at}`, puzzle: c.puzzle, step: reproStep(c) }))
+  ];
+  const zOf = (step: Step, letter: string) => step.sets!.find((x) => x.letter === letter)!.members.filter((m) => m.digit === step.eliminations[0].digit).map((m) => m.cell);
+  const inFirst = (step: Step) => zOf(step, 'D').every((c) => step.sets!.find((x) => x.letter === 'A')!.cells.includes(c));
+
+  it('ends every ALS-XY-Chain whose chain clashes on why its first set holds z, wherever its last set holds z, never on "if A holds none, D holds one", and true in the solution (findings 1, 5 and 10)', () => {
+    for (const c of CLASHES) {
+      const step = reproStep(c);
+      expect([step.tech, alsClash(step), inFirst(step)], c.puzzle).toEqual(['ALS_XY_CHAIN', true, false]);
+      expect(walkFrames(step).at(-1)!.text, c.puzzle).toBe(c.end);
+    }
+    const all = clashing();
+    expect(all.length).toBeGreaterThanOrEqual(7);
+    for (const { where, puzzle, step } of all) {
+      const z = step.eliminations[0].digit;
+      const text = walkFrames(step).at(-1)!.text;
+      expect(text, where).not.toMatch(/holds one\. Each removed \d sees every \d of both/);
+      expect(text, where).toContain(`A cannot lack ${aDigit(z)}, so set A holds ${aDigit(z)}. Each removed ${z} sees every ${z} of A.`);
+      // in the puzzle's solution set A holds z, and each removal sees every z of A
+      const solution = solve(parseGrid(puzzle)!)!.values;
+      const A = step.sets!.find((x) => x.letter === 'A')!;
+      expect(A.cells.some((cell) => solution[cell] === z), where).toBe(true);
+      for (const e of step.eliminations) expect(zOf(step, 'A').every((cell) => sees(e.cell, cell)), where).toBe(true);
+    }
+    // Norwegian and Spanish: the same reason, never the plain ending
+    const first = {
+      nb: 'Har mengde A ingen 2, må r9c5 være 7, og senere i kjeden kan den ikke være 7: det er umulig. A kan ikke mangle en 2, så mengde A har en 2. Hvert 2-tall som fjernes, ser alle 2-tallene i A. ',
+      es: 'Si el conjunto A no tiene ningún 2, r9c5 debe ser 7, y más adelante en la cadena no puede ser 7: es imposible. A no puede quedarse sin un 2, así que el conjunto A tiene un 2. Cada 2 eliminado ve todos los 2 de A. '
+    };
+    const plain = { nb: /har A ingen, har D en/, es: /si A no tiene ninguno, D tiene uno/ };
+    for (const [lang, loc] of LOCALES) {
+      setEngineText(lang, loc.engine);
+      expect(walkFrames(reproStep(CLASHES[0])).at(-1)!.text.startsWith(first[lang]), lang).toBe(true);
+      for (const { where, step } of clashing()) expect(walkFrames(step).at(-1)!.text, `${lang}: ${where}`).not.toMatch(plain[lang]);
+    }
+  });
+
+  it("words a clashing ALS-XY-Chain's description by what its removal rests on, the reason its walk ends on, and every other ALS-XY-Chain's as before (finding 2)", () => {
+    const clash = kept.find((k) => k.where === 'shared cells that clash, step 15, ALS_XY_CHAIN')!;
+    expect(clash.step.description).toBe(
+      'ALS-XY-Chain: sets A (r1c4, r4c4, r5c4, r6c4), B (r1c1), C (r4c1, r4c3) and D (r4c4, r6c4) each hold one digit more than they have cells, linked by 9, 8 and 6: every 9 of A sees every 9 of B, every 8 of B every 8 of C, and every 6 of C every 6 of D. If A holds no 8, its other digits fill its cells, so it holds a 9; then B holds no 9 and holds an 8, C no 8 and a 6, and D no 6 and an 8: each set in turn loses its link digit and fills its cells. But D holds 8 only in cells of A, so A holds one after all. A cannot lack an 8: it holds one, and 8 is removed from every cell that sees every 8 of A.'
+    );
+    for (const c of CLASHES) expect(reproStep(c).description, c.puzzle).toMatch(new RegExp(`fills its cells\\. ${c.reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
+    // every clash: the description ends on the reason the walk's conclusion gives, A's alone
+    for (const { where, step } of clashing()) {
+      const z = step.eliminations[0].digit;
+      const [description, end] = [step.description, walkFrames(step).at(-1)!.text];
+      expect(description, where).not.toMatch(/A or D holds/);
+      expect(description, where).toMatch(new RegExp(`fills its cells\\. But .* A cannot lack ${aDigit(z)}: it holds one, and ${z} is removed from every cell that sees every ${z} of A\\.$`));
+      if (inFirst(step)) {
+        expect([description.includes(`But D holds ${z} only in cells of A, so A holds one after all.`), end.startsWith(`Set D holds ${z} only in `)], where).toEqual([true, true]);
+      } else {
+        // the same contradiction, in the same words
+        const said = /^If set A holds no \d, (.*): that is impossible\./.exec(end)?.[1];
+        expect(said, where).toBeTruthy();
+        expect(description, where).toContain(`But on the way ${said}.`);
+      }
+    }
+    // a chain that does not clash: as before, A or D
+    const plain = [{ where: 'ALS_XY_CHAIN', step: EXAMPLES.ALS_XY_CHAIN!.step }, ...kept.filter((k) => k.step.tech === 'ALS_XY_CHAIN' && !alsClash(k.step))];
+    expect(plain.length).toBeGreaterThan(10);
+    for (const { where, step } of plain) {
+      const z = step.eliminations[0].digit;
+      expect(step.description, where).toMatch(new RegExp(`fills its cells\\. A or D holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both\\.$`));
+    }
+    const ex = EXAMPLES.ALS_XY_CHAIN!;
+    const g = parseGrid(ex.puzzle)!;
+    for (let i = 0; i < 81; i++) {
+      g.values[i] = Number(ex.values[i]);
+      g.cands[i] = ex.cands[i];
+    }
+    expect(findStep('ALS_XY_CHAIN', g)!.description).toBe(ex.step.description);
+    // Norwegian and Spanish
+    const want = {
+      nb: {
+        clash: ': hver mengde mister i tur og orden lenketallet sitt og fyller rutene sine. Men D har 8 bare i ruter som hører til A, så A har likevel en. A kan ikke mangle en 8: A har en, og 8 fjernes fra hver rute som ser alle 8-tallene i A.',
+        repro: ' Men underveis må r9c5 være 7, og senere i kjeden kan den ikke være 7. A kan ikke mangle en 2: A har en, og 2 fjernes fra hver rute som ser alle 2-tallene i A.',
+        plain: ' A eller D har en 4, så 4 fjernes fra hver rute som ser alle 4-tallene i begge.'
+      },
+      es: {
+        clash: ': cada conjunto, por turno, pierde su número de enlace y llena sus casillas. Pero D solo puede tener el 8 en casillas de A, así que A tiene uno después de todo. A no puede quedarse sin un 8: tiene uno, y el 8 se elimina de cada casilla que ve todos los 8 de A.',
+        repro: ' Pero por el camino r9c5 debe ser 7, y más adelante en la cadena no puede ser 7. A no puede quedarse sin un 2: tiene uno, y el 2 se elimina de cada casilla que ve todos los 2 de A.',
+        plain: ' A o D tiene un 4, así que el 4 se elimina de cada casilla que ve todos los 4 de ambos.'
+      }
+    };
+    for (const [lang, loc] of LOCALES) {
+      setEngineText(lang, loc.engine);
+      const w = want[lang];
+      expect(keptStep(clash).description.endsWith(w.clash), lang).toBe(true);
+      expect(reproStep(CLASHES[0]).description.endsWith(w.repro), lang).toBe(true);
+      expect(findStep('ALS_XY_CHAIN', g)!.description.endsWith(w.plain), lang).toBe(true);
+    }
+  });
+
+  it("words a Death Blossom's blue by what its view draws: a petal's z while only some petals' are drawn, the whole claim once every petal's is, in the panel and the Learn legend alike (finding 3)", () => {
+    const part = (z: number) => `${z} in a petal: if the stem takes that petal's digit, the petal holds ${aDigit(z)}`;
+    const blue = (s: Step, position: Position, f: Frame | null) => legendOf(s, position.values, f).find((l) => l.kind === 'primary')?.label;
+    // the stored example: none in the stem's frame, a petal's from petal A's branch until petal C's, then the whole claim
+    const db = EXAMPLES.DEATH_BLOSSOM!;
+    const full = '4 in every petal: whichever digit the stem takes, a petal holds a 4';
+    expect([null, ...walkFrames(db.step)].map((f) => blue(db.step, db, f))).toEqual([full, undefined, part(4), part(4), part(4), full, full]);
+    // every Death Blossom the repository keeps, in the panel and the Learn legend alike
+    const blossoms = [{ where: 'DEATH_BLOSSOM', position: db as Position, step: db.step }, ...kept.filter((k) => k.step.tech === 'DEATH_BLOSSOM')];
+    let parts = 0;
+    for (const { where, position, step } of blossoms) {
+      const z = step.eliminations[0].digit;
+      for (const [i, f] of [null, ...walkFrames(step)].entries()) {
+        const at = `${where}, ${f ? `frame ${i}` : 'full view'}`;
+        const m = frameMarks(step, f, (c) => position.values[c] !== '0');
+        const drawn = step.primary!.filter((cd) => m.cands.get(cd.cell)?.get(cd.digit) === 'primary').length;
+        const want = drawn === 0 ? undefined : drawn < step.primary!.length ? part(z) : step.labels!.primary;
+        if (want === part(z)) parts++;
+        expect(blue(step, position, f), at).toBe(want);
+        expect(panelLegend(position, step, f ? i - 1 : null), at).toEqual(legendOf(step, position.values, f).map((l) => l.label));
+      }
+    }
+    expect(parts).toBeGreaterThanOrEqual(2 * blossoms.length);
+    // Norwegian and Spanish, the panel's words the Learn legend's
+    const want = {
+      nb: '4 i et kronblad: får stammen tallet til det kronbladet, har kronbladet en 4',
+      es: 'el 4 de un pétalo: si el tallo toma el número de ese pétalo, el pétalo tiene un 4'
+    };
+    for (const [lang, loc] of LOCALES) {
+      setEngineText(lang, loc.engine);
+      expect(blue(db.step, db, walkFrames(db.step)[1]), lang).toBe(want[lang]);
+      const t = makeTranslator(lang, loc);
+      expect(t("{z} in a petal: if the stem takes that petal's digit, the petal holds {aDigit}", { z: 4, aDigit: t('a {d}', { d: 4 }) }), lang).toBe(want[lang]);
+    }
+  });
+
+  it('names a cell of two sets by its letters, as the entry above it says "lettered cells", never by a word players never meet (finding 4)', () => {
+    const shared = kept.find((k) => k.where === 'shared cells that derive, step 25, ALS_XY_CHAIN')!;
+    const label = 'dashed outline: a cell of two sets; each letter names one';
+    expect(legendOf(shared.step, shared.position.values).find((l) => l.kind === 'shared')?.label).toBe(label);
+    expect(panelLegend(shared.position, shared.step, null)).toContain(label);
+    // no legend of any set step the repository keeps says "tab"
+    const steps = [...SETS.map((tech) => ({ where: tech as string, position: EXAMPLES[tech]! as Position, step: EXAMPLES[tech]!.step })), ...kept];
+    for (const { where, position, step } of steps) {
+      for (const f of [null, ...walkFrames(step)]) for (const l of legendOf(step, position.values, f)) expect(l.label, where).not.toMatch(/\btabs?\b/i);
+    }
   });
 });

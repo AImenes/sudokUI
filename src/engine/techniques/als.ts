@@ -2,6 +2,7 @@ import { Grid, UNITS, bit, digitsOf, popcount, sees, cellName, cellNames } from 
 import { Step, CellDigit, ChainLink, ChainSet } from '../steps';
 import { combinations } from './subsets';
 import { aDigit, tr, listAnd, unitName } from '../text';
+import { clashReason } from '../hintFrames';
 
 export interface Als {
   cells: number[];
@@ -321,7 +322,7 @@ export function findAlsXyChain(g: Grid): Step | null {
             const sets = [alsSet(g, A, 'A'), alsSet(g, B, 'B'), alsSet(g, C, 'C'), alsSet(g, D, 'D')];
             const [a, b, c, d] = sets.map((set) => cellNames(set.cells));
             const [x1, x2, x3] = [l1.x, l2.x, l3.x];
-            return {
+            const step: Step = {
               tech: 'ALS_XY_CHAIN',
               placements: [],
               eliminations: elims,
@@ -329,8 +330,14 @@ export function findAlsXyChain(g: Grid): Step | null {
               links: alsChain(sets, [0, 1, 2, 3], [x1, x2, x3], z),
               truth: 'derived',
               sets,
-              description: tr`ALS-XY-Chain: sets A (${a}), B (${b}), C (${c}) and D (${d}) each hold one digit more than they have cells, linked by ${x1}, ${x2} and ${x3}: every ${x1} of A sees every ${x1} of B, every ${x2} of B every ${x2} of C, and every ${x3} of C every ${x3} of D. If A holds no ${z}, its other digits fill its cells, so it holds ${aDigit(x1)}; then B holds no ${x1} and holds ${aDigit(x2)}, C no ${x2} and ${aDigit(x3)}, and D no ${x3} and ${aDigit(z)}: each set in turn loses its link digit and fills its cells. A or D holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`
+              description: ''
             };
+            const cascade = tr`ALS-XY-Chain: sets A (${a}), B (${b}), C (${c}) and D (${d}) each hold one digit more than they have cells, linked by ${x1}, ${x2} and ${x3}: every ${x1} of A sees every ${x1} of B, every ${x2} of B every ${x2} of C, and every ${x3} of C every ${x3} of D. If A holds no ${z}, its other digits fill its cells, so it holds ${aDigit(x1)}; then B holds no ${x1} and holds ${aDigit(x2)}, C no ${x2} and ${aDigit(x3)}, and D no ${x3} and ${aDigit(z)}: each set in turn loses its link digit and fills its cells.`;
+            // where the sets share cells the chain may clash (docs/hint-drawing-sets.md,
+            // decision 13): the premise is then impossible, and the removal rests on A alone
+            const ends = clashReason(step) || tr`A or D holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`;
+            step.description = `${cascade} ${ends}`;
+            return step;
           }
         }
       }
