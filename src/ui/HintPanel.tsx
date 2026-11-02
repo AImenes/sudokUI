@@ -403,7 +403,7 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
               {legend.shown.has('elim') && (
                 <li>
                   <i className="swatch-elim" />
-                  {[t('remove'), ...lent(legend.intoRemove)].join(': ')}
+                  {legend.removeWords ?? [t('remove'), ...lent(legend.intoRemove)].join(': ')}
                 </li>
               )}
               {premise && legend.shown.has('true') && (

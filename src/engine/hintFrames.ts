@@ -13,10 +13,10 @@
  * conclusion. A step whose walk has a single frame has nothing to walk
  * through, and the panel offers no walk for it.
  */
-import { cellName, cellNames } from './board';
+import { UNITS, cellName, cellNames, sees } from './board';
 import { CellDigit, ChainLink, ChainSet, Step, insideSet, isParity, isTie } from './steps';
 import { aDigit, listAnd, tr, unitName } from './text';
-import { alsClash, clashAt, deriveTruth, isAlsChain } from './truth';
+import { alsClash, clashAt, deriveTruth, isAlsChain, refutation } from './truth';
 
 /**
  * A part of the drawing a frame shows: a pattern's bands and roles; a
@@ -352,6 +352,48 @@ export function closureText(step: Step): string {
     : tr`So assuming ${cells} is not ${digit} makes it ${digit}: that is impossible, so ${cells} is ${digit}.`;
 }
 
+const nodeKey = (node: CellDigit[]) =>
+  node
+    .map((cd) => `${cd.cell}:${cd.digit}`)
+    .sort()
+    .join('+');
+/** a weak link between two digits of one cell, drawn as no arrow (G12) */
+const inOneCell = (l: ChainLink) => l.from.length === 1 && l.to.length === 1 && l.from[0].cell === l.to[0].cell;
+
+/**
+ * Whether a chain is a continuous loop: it derives cleanly and its last
+ * link comes back to its first node with the truth it began with (Nice
+ * Loop, X-Cycles and their grouped forms, rule 1; the chain trainer's
+ * closed loop)
+ */
+export function isContinuousLoop(step: Step): boolean {
+  const d = deriveTruth(step);
+  if (!d || d.problems.length || d.closure || isAlsChain(step)) return false;
+  const links = step.links!.filter((l) => !l.undirected);
+  return links.length > 2 && nodeKey(links[links.length - 1].to) === nodeKey(links[0].from);
+}
+
+/**
+ * What the link that closes a continuous loop shows (docs/hint-drawing.md
+ * G18; docs/hint-readability-2026-11.md H4): the chain is back at its
+ * start with the truth it began with, so it holds read either way round,
+ * and each weak link has exactly one true end, which is what every removal
+ * rests on. The dashed arrows are the weak links between cells; a weak link
+ * inside one cell draws none (G12). Empty for any other chain
+ */
+export function loopText(step: Step): string {
+  if (!isContinuousLoop(step)) return '';
+  const links = step.links!.filter((l) => !l.undirected);
+  const start = nodeCells(links[0].from);
+  const digits = uniq(links.flatMap((l) => [...l.from, ...l.to].map((cd) => cd.digit)));
+  if (digits.length === 1) {
+    return tr`The chain is back at ${start}, as it began: the loop holds whichever way round it is read, so each dashed link has exactly one end that is ${digits[0]}.`;
+  }
+  return links.some((l) => !l.strong && inOneCell(l))
+    ? tr`The chain is back at ${start}, as it began: the loop holds whichever way round it is read, so each weak link, dashed or inside a cell, has exactly one end that is true.`
+    : tr`The chain is back at ${start}, as it began: the loop holds whichever way round it is read, so each dashed link has exactly one end that is true.`;
+}
+
 /** the one digit a colouring's clusters are all of (Simple and Multi Colors), or null (3D Medusa, Remote Pair) */
 export function colouringDigit(step: Step): number | null {
   const digits = new Set((step.colouring?.clusters ?? []).flatMap((cl) => [...cl.dark, ...cl.light].map((cd) => cd.digit)));
@@ -437,11 +479,72 @@ function parityFrames(step: Step): Frame[] {
 }
 
 /**
+ * What an open chain's conclusion says before its removals
+ * (docs/hint-readability-2026-11.md M2): both its ends, one of which is
+ * true, since the chain makes its last node true wherever its first (by
+ * the start dot) is false; then why each removal goes. A removal that sees
+ * both ends, of their one digit; a removal in one end's cell, which sees
+ * the other: either way that cell is not its digit; two ends in one cell,
+ * which then holds one of their digits and nothing else. Worded for a
+ * chain that opens on one candidate (every finder's), else in general.
+ * Empty for a chain that is no open one from a strong link to a strong
+ * link: a loop, an ALS pattern (endsText), a pattern, a colouring, a chain
+ * the trainer has not finished
+ */
+function chainEndsText(step: Step): string {
+  if (step.truth !== 'derived' || isAlsChain(step) || isContinuousLoop(step)) return '';
+  const d = deriveTruth(step);
+  if (!d || d.problems.length || d.closure) return '';
+  const links = step.links!.filter((l) => !l.undirected);
+  const [first, last] = [links[0], links[links.length - 1]];
+  if (!first.strong || !last.strong) return '';
+  const [S, E] = [first.from, last.to];
+  const set = alsAt(step, last.toSet);
+  const lone = S.length === 1 && !alsAt(step, first.fromSet);
+  const [dS, dE] = [S[0].digit, E[0].digit];
+  const sameDigit = S.every((cd) => cd.digit === dS) && E.every((cd) => cd.digit === dS);
+  const s = lone ? cellName(S[0].cell) : '';
+  const e = nodeCells(E);
+  // both ends, one of which is true
+  const either = !lone
+    ? tr`One end of the chain is true: if the first (by the small dot) is false, the chain makes the last true.`
+    : set
+      ? tr`Either ${s} (by the small dot) is ${dS}, or the chain puts ${aDigit(dE)} in set ${set.letter}.`
+      : E.length > 1
+        ? tr`Either ${s} (by the small dot) is ${dS}, or the chain puts ${dE} in one of ${e}.`
+        : sameDigit
+          ? tr`Either ${s} (by the small dot) is ${dS}, or the chain makes ${e} ${dE}: one of them is ${dS}.`
+          : tr`Either ${s} (by the small dot) is ${dS}, or the chain makes ${e} ${dE}.`;
+  const removals = step.eliminations;
+  if (!removals.length || step.placements.length) return either;
+  // why each removal goes: a removal seeing every candidate of an end, of its digit, or in the cell of an end of one candidate
+  const seesAll = (r: CellDigit, node: CellDigit[]) => node.every((cd) => cd.digit === r.digit && cd.cell !== r.cell && sees(cd.cell, r.cell));
+  const inCell = (r: CellDigit, node: CellDigit[]) => node.length === 1 && node[0].cell === r.cell && node[0].digit !== r.digit;
+  let why = tr`Each removed candidate, if it were true, would make both ends false.`;
+  if (sameDigit && removals.every((r) => seesAll(r, S) && seesAll(r, E))) {
+    why = S.length === 1 && E.length === 1 && !set ? tr`Each removed ${dS} sees both.` : tr`Each removed ${dS} sees every ${dS} of both.`;
+  } else if (!sameDigit && lone) {
+    const inE = removals.filter((r) => inCell(r, E) && seesAll(r, S));
+    const inS = removals.filter((r) => inCell(r, S) && seesAll(r, E));
+    const both = removals.every((r) => inCell(r, S) && inCell(r, E));
+    if (both) why = tr`Either way ${s} is ${dS} or ${dE}, and nothing else.`;
+    else if (inE.length + inS.length === removals.length) {
+      const [x, y] = [inE[0], inS[0]];
+      if (x && y) why = tr`Either way ${cellName(x.cell)} is not ${x.digit}, and ${cellName(y.cell)} is not ${y.digit}.`;
+      else why = tr`Either way ${cellName((x ?? y).cell)} is not ${(x ?? y).digit}.`;
+    }
+  }
+  return `${either} ${why}`;
+}
+
+/**
  * What an ALS pattern's conclusion says before its removals
  * (docs/hint-drawing-sets.md, "The walk and its words"): its two end sets,
  * one of which holds z, and why each removal goes; for a chain that clashes,
  * why its first set holds z, whatever the clash (clashText, or else
- * contradictionText), never the plain ending; empty for any other step
+ * contradictionText), and for one that shows its premise impossible though
+ * it derives cleanly, what it meets (refutedText), never the plain ending;
+ * empty for any other step
  */
 function endsText(step: Step): string {
   if (!isAlsChain(step)) return '';
@@ -451,8 +554,70 @@ function endsText(step: Step): string {
   const [F, L] = [first?.letter, last?.letter];
   const z = step.eliminations[0]?.digit;
   if (!F || !L || z === undefined) return '';
-  const clash = alsClash(step) ? clashText(step, first!, last!, z) || contradictionText(step, F, z) : '';
+  const clash = alsClash(step) ? clashText(step, first!, last!, z) || contradictionText(step, F, z) : refutedText(step, F, z);
   return clash || tr`Set ${F} or set ${L} holds ${aDigit(z)}: if ${F} holds none, ${L} holds one. Each removed ${z} sees every ${z} of both.`;
+}
+
+/** the first house (a row, then a column, then a box) that holds every one of these cells, or -1 */
+const houseOf = (cells: number[]) => UNITS.findIndex((u) => cells.every((c) => u.includes(c)));
+
+/**
+ * What an ALS pattern that derives cleanly yet shows its premise impossible
+ * (src/engine/truth.ts refutation; the legend's note, G18) meets on the
+ * way, in the words its walk and its description share: two true
+ * candidates of one digit in one house ('twice'), one cell given two digits
+ * ('cell'), a true candidate and a "one of these" node of the same digit in
+ * one house, in the order the chain reaches them ('byFirst', 'nodeFirst'),
+ * or a node every candidate of which the chain rules out some other way
+ * ('ruledOut'). Null for any other step: one whose chain clashes is worded
+ * by clashText or contradictionText
+ */
+function refutedAt(step: Step):
+  | { kind: 'twice' | 'byFirst' | 'nodeFirst'; a: string; b: string; d: number; house: string }
+  | { kind: 'cell'; a: string; d: number; e: number }
+  | { kind: 'ruledOut'; a: string; d: number }
+  | null {
+  if (!isAlsChain(step) || alsClash(step)) return null;
+  const r = refutation(step);
+  if (!r) return null;
+  if (r.kind === 'pair') {
+    const [p, q] = [r.first, r.second];
+    if (p.cell === q.cell) return { kind: 'cell', a: cellName(p.cell), d: p.digit, e: q.digit };
+    return { kind: 'twice', a: cellName(p.cell), b: cellName(q.cell), d: p.digit, house: unitName(houseOf([p.cell, q.cell])) };
+  }
+  const node = nodeCells(r.node);
+  const d = r.node[0].digit;
+  const [t] = r.by;
+  // one true candidate rules out every candidate of the node: one digit, and (as it sees each of them) one house holds all
+  const house = r.by.length === 1 && !r.out.length && t.digit === d ? houseOf([t.cell, ...r.node.map((cd) => cd.cell)]) : -1;
+  if (house < 0) return { kind: 'ruledOut', a: node, d };
+  const [a, b] = r.first === 'by' ? [cellName(t.cell), node] : [node, cellName(t.cell)];
+  return { kind: r.first === 'by' ? 'byFirst' : 'nodeFirst', a, b, d, house: unitName(house) };
+}
+
+/**
+ * Why an ALS-XY-Chain that derives cleanly yet shows its premise impossible
+ * removes what it does (refutedAt): the premise that its first set holds
+ * no z makes the chain meet what cannot be, so the first set holds z, and
+ * each removal sees every z of it; never the plain ending through the
+ * branch the legend calls impossible. Empty for any other step
+ */
+function refutedText(step: Step, F: string, z: number): string {
+  const r = refutedAt(step);
+  if (!r) return '';
+  const Z = aDigit(z);
+  switch (r.kind) {
+    case 'twice':
+      return tr`If set ${F} holds no ${z}, ${r.a} must be ${r.d}, and so must ${r.b}: two ${r.d}s in ${r.house}, which is impossible. ${F} cannot lack ${Z}, so set ${F} holds ${Z}. Each removed ${z} sees every ${z} of ${F}.`;
+    case 'byFirst':
+      return tr`If set ${F} holds no ${z}, ${r.a} must be ${r.d}, and so must one of ${r.b}: two ${r.d}s in ${r.house}, which is impossible. ${F} cannot lack ${Z}, so set ${F} holds ${Z}. Each removed ${z} sees every ${z} of ${F}.`;
+    case 'nodeFirst':
+      return tr`If set ${F} holds no ${z}, one of ${r.a} must be ${r.d}, and so must ${r.b}: two ${r.d}s in ${r.house}, which is impossible. ${F} cannot lack ${Z}, so set ${F} holds ${Z}. Each removed ${z} sees every ${z} of ${F}.`;
+    case 'cell':
+      return tr`If set ${F} holds no ${z}, ${r.a} must be ${r.d}, and also ${r.e}: two digits in one cell, which is impossible. ${F} cannot lack ${Z}, so set ${F} holds ${Z}. Each removed ${z} sees every ${z} of ${F}.`;
+    case 'ruledOut':
+      return tr`If set ${F} holds no ${z}, one of ${r.a} must be ${r.d}, yet the chain rules out every one of them, which is impossible. ${F} cannot lack ${Z}, so set ${F} holds ${Z}. Each removed ${z} sees every ${z} of ${F}.`;
+  }
 }
 
 /**
@@ -507,15 +672,34 @@ function contradictionText(step: Step, F: string, z: number): string {
  * (src/engine/techniques/als.ts), on the reason its walk's conclusion gives:
  * D holds z only in cells of A, so A holds one after all (clashText's
  * clashes); or, wherever else D's z lie, the node the premise makes true
- * and then false (contradictionText's). Either way A cannot lack z, and z
- * goes from every cell that sees every z of A. Empty for a step that does
- * not clash
+ * and then false (contradictionText's); or, where the chain derives cleanly
+ * yet shows its premise impossible, what it meets on the way (refutedAt).
+ * Either way A cannot lack z, and z goes from every cell that sees every z
+ * of A. Empty for a step that does none of these
  */
 export function clashReason(step: Step): string {
-  if (step.tech !== 'ALS_XY_CHAIN' || !alsClash(step)) return '';
+  if (step.tech !== 'ALS_XY_CHAIN') return '';
   const [A, D] = ['A', 'D'].map((L) => step.sets?.find((s) => s.letter === L));
   const z = step.eliminations[0]?.digit;
   if (!A || !D || z === undefined) return '';
+  if (!alsClash(step)) {
+    // a chain that derives cleanly yet shows its premise impossible: what it meets on the way
+    const r = refutedAt(step);
+    if (!r) return '';
+    const Z = aDigit(z);
+    switch (r.kind) {
+      case 'twice':
+        return tr`But on the way ${r.a} must be ${r.d}, and so must ${r.b}: two ${r.d}s in ${r.house}. A cannot lack ${Z}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+      case 'byFirst':
+        return tr`But on the way ${r.a} must be ${r.d}, and so must one of ${r.b}: two ${r.d}s in ${r.house}. A cannot lack ${Z}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+      case 'nodeFirst':
+        return tr`But on the way one of ${r.a} must be ${r.d}, and so must ${r.b}: two ${r.d}s in ${r.house}. A cannot lack ${Z}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+      case 'cell':
+        return tr`But on the way ${r.a} must be ${r.d}, and also ${r.e}: two digits in one cell. A cannot lack ${Z}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+      case 'ruledOut':
+        return tr`But on the way one of ${r.a} must be ${r.d}, yet the chain rules out every one of them. A cannot lack ${Z}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+    }
+  }
   const inD = D.members.filter((m) => m.digit === z).map((m) => m.cell);
   if (inD.length && inD.every((c) => A.cells.includes(c))) {
     return tr`But D holds ${z} only in cells of A, so A holds one after all. A cannot lack ${aDigit(z)}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
@@ -598,7 +782,9 @@ export function walkFrames(step: Step): Frame[] {
   const frames: Frame[] = [];
   const base = new Set<Part>(['units']);
   if (step.links && step.links.length > 0) {
-    const closing = closureText(step);
+    // the link that closes a loop says what it shows: a discontinuous loop's
+    // premise impossible, a continuous loop holding either way round
+    const closing = closureText(step) || loopText(step);
     const introduced = new Set<number>();
     // every inference is a frame of its own; the link that closes a
     // discontinuous loop says what it proves. An almost locked set of
@@ -614,10 +800,11 @@ export function walkFrames(step: Step): Frame[] {
       const text = closing && i === step.links!.length - 1 ? `${linkText(link, step)} ${closing}` : linkText(link, step);
       frames.push({ text, links: i + 1, show: new Set(base) });
     });
-    // an ALS pattern names its two end sets first, and why each removal goes
-    const ends = endsText(step);
+    // an open chain names its two ends first, one of which is true, and an
+    // ALS pattern its two end sets, and why each removal goes
+    const ends = endsText(step) || chainEndsText(step);
     frames.push({
-      text: ends ? `${ends} ${conclusionText(step)}` : conclusionText(step),
+      text: [ends, conclusionText(step)].filter(Boolean).join(' '),
       links: step.links.length,
       show: new Set<Part>(['units', 'primary', 'secondary', 'fins', 'conclusion'])
     });

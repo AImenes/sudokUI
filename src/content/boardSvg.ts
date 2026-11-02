@@ -588,12 +588,12 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
       return { kind: e.kind, label: e.label, colour: '#ffffff', ink: P.arrow };
     });
   }
-  const { shown, onValue, onBand, intoRemove, intoPlace, refuted, bars, setSquares, tiles, lines } = legendKinds(step, drawn);
+  const { shown, onValue, onBand, intoRemove, intoPlace, refuted, bars, setSquares, tiles, lines, removeWords } = legendKinds(step, drawn);
   const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
   if (shown.has('place')) out.push({ kind: 'place', label: [tr`place`, ...lent(intoPlace)].join(': '), colour: P.place, ink: P.placeInk });
-  if (shown.has('elim')) out.push({ kind: 'elim', label: [tr`remove`, ...lent(intoRemove)].join(': '), colour: '#ffffff', ink: P.elim });
+  if (shown.has('elim')) out.push({ kind: 'elim', label: removeWords ?? [tr`remove`, ...lent(intoRemove)].join(': '), colour: '#ffffff', ink: P.elim });
   // a derived chain's truth, worded by its first node's premise
   const premise = premiseOf(step);
   if (premise) {

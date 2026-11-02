@@ -48,7 +48,7 @@ import { boardSvg } from '../src/content/boardSvg';
 import type { LegendEntry } from '../src/content/boardSvg';
 import { frameMarks as marksAt, legendKinds } from '../src/content/hintMarks';
 import { LIGHT } from '../src/content/hintPalette';
-import { alsClash, deriveTruth } from '../src/engine/truth';
+import { alsClash, deriveTruth, refutation } from '../src/engine/truth';
 import { solve } from '../src/engine/bruteForce';
 import { cellNames, sees } from '../src/engine/board';
 
@@ -222,7 +222,7 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
       { text: 'If set A holds no 8, its other 2 digits fill its 2 cells, so one of r7c8, r8c8 must be 9.', links: 3 },
       { text: 'If set A holds a 9, r6c8 cannot be 9: it sees every 9 of A.', links: 4 },
       { text: 'Strong link on 9: if r6c8 is not 9, r6c9 must be 9 (nowhere else for it).', links: 5 },
-      { text: 'So 8 is removed from r6c9.', links: 5 }
+      { text: 'Either r2c9 (by the small dot) is 8, or the chain makes r6c9 9. Either way r6c9 is not 8. So 8 is removed from r6c9.', links: 5 }
     ]);
     // the set frame draws set A, its candidates members, no truth yet; the link into it makes its 8s false
     const solved = (c: number) => EXAMPLES.AIC_ALS!.values[c] !== '0';
@@ -376,8 +376,8 @@ describe("an ALS pattern's conclusion and Death Blossom's walk (docs/hint-drawin
     expect(last(closes)).toBe(
       'Set D holds 7 only in r1c9, r7c9, the very cells set A holds it in, so the chain comes back to A: if A holds no 7, one of these cells must be 7, and A holds one after all. A cannot lack a 7, so set A holds a 7. Each removed 7 sees every 7 of A. So 7 is removed from r2c9.'
     );
-    // no other chain says it
-    expect(last(EXAMPLES.AIC_ALS!.step)).toBe('So 8 is removed from r6c9.');
+    // no other chain says it: an AIC with ALS ends on its own two ends (docs/hint-readability-2026-11.md M2)
+    expect(last(EXAMPLES.AIC_ALS!.step)).toBe('Either r2c9 (by the small dot) is 8, or the chain makes r6c9 9. Either way r6c9 is not 8. So 8 is removed from r6c9.');
   });
 
   it("walks the stored Death Blossom as the design tells it: the stem, each petal's branch in words, a petal of several cells introduced first, then the conclusion", () => {
@@ -895,5 +895,176 @@ describe('the words and the legends, review round 2 (docs/hint-drawing-p4-round2
     for (const { where, position, step } of steps) {
       for (const f of [null, ...walkFrames(step)]) for (const l of legendOf(step, position.values, f)) expect(l.label, where).not.toMatch(/\btabs?\b/i);
     }
+  });
+});
+
+describe("the words, readability pass (docs/hint-readability-2026-11.md M2; docs/hint-drawing-p4-round3.md, Known and accepted)", () => {
+  afterEach(() => setEngineText('en', null));
+  const LOCALES = [
+    ['nb', nb],
+    ['es', es]
+  ] as const;
+  /**
+   * Round 3's ALS-XY-Chains whose chain derives cleanly but whose legend
+   * says its premise is impossible (G18's note): two true candidates of one
+   * digit in one house, or a true node whose every candidate a true one
+   * rules out. Each on offer: the step findStep gives after the solver's
+   * first `at` steps (the words lens's scan, all 26 of its finds)
+   */
+  const NOTED: [string, number][] = [
+    ['1..5.8.........12..3..2....6.....9.8...4.5...8..3....7......6.39.......5.6.8.1.4.', 37],
+    ['.9...3...2.19.....7...281...42....7.5...8...9.3....64...987...3.....65.2...3...6.', 38],
+    ['6.3.......5..4...7..2.8...4.2.....8.......7.5..9....2..14.2...8..64..13.....71.9.', 30],
+    ['6.3.......5..4...7..2.8...4.2.....8.......7.5..9....2..14.2...8..64..13.....71.9.', 44],
+    ['...37...1.5......23...5.7..7..9...6...67.13...8...6..7..2.6...36......4.9...14...', 2],
+    ['.513....44...95.3.6......5.....74.8...........6.52.....2......3.9.63...88....276.', 14],
+    ['.3...9..49..1.8.75..65....1.9.8.5...............3.4.2.2....18..58.2.6..96..4...5.', 16],
+    ['58.3....2.6.1.......9..7....58.1.9..19.....46..4.6.52....2..3.......1.7.9....6.15', 9],
+    ['..5.67...937..8.....45.....57..8.36.6.......5.98.1..24.....95.....4..918...87.2..', 20],
+    ['...78.....56..194..4....1......26..3.3.....9.1..54......4....2..974..63.....69...', 14],
+    ['..84....66.7...85...35..27...5......8..3...6.4......9..96.35.......7.....2...4...', 14],
+    ['...8..2...9..1..4..87......4..26..1...3..1.6.5.....8.42.....9...6.75...2...3.....', 14],
+    ['....4.5.3.1.....7......1.2.8....41626...8...71236....8.6.2......5.....8.9.2.3....', 16],
+    ['.....9..2.2..5.4....43...8..3.6..9..7.8...2.6..1..4.7..8...15....3.7..2.6..4.....', 14],
+    ['..259...7..8.37.2..1...85...861.........5.6...2....1..3.....2...5.8..........57.9', 9],
+    ['79.1.5.......3..7...2..7.....63...499...6...383...47.....5..1...2..7.......9.2.34', 34],
+    ['7...235......8.1721.......3.2.476.1.....1.....6.235.9.6.......7498.6......754...6', 17],
+    ['9.78..5......9...28....1...2..9..1..75.....89..1..8..4...5....31...3......8..26.7', 36],
+    ['.529..1..6..2.5.4.........8.8.5..4...6..7..9...1..3.6.8.........4.8.1..7..9..238.', 31],
+    ['..5.3.........2.1..3.7.6..53..8..1..6..3.1..7..7..9..28..6.4.9..6.5.........8.4..', 28],
+    ['.....71..72..9.....6..8.....42.3.85..9.6..3.......5.92....43......25.....837.....', 21],
+    ['.8...96....9....2.1....285...61...4....384....5...71...132....7.9....2....89...6.', 29],
+    ['3.2.....8...52.7.....8..2.1......4895...4...3694......1.3..5.....5.84...4.....8.2', 35],
+    ['..8.72..5....8...9.9.1..2..24..1.5.............6.5..24..2..8.6.9...4....1..72.4..', 33],
+    ['7..24..8.15.8..9.2.....6..781..9..3...........7..2..589..4.....2.1..9.73.8..32..9', 52],
+    ['3...2.85.21.7...49..9....7..61.5.................4.29..9....4..73...2.65.25.9...3', 12]
+  ];
+  /** a noted position: its step, found again in the language the engine writes now, and its board */
+  const noted = ([puzzle, at]: [string, number]) => {
+    const g = after(puzzle, at);
+    return { step: findStep('ALS_XY_CHAIN', g)!, values: Array.from(g.values).join(''), puzzle };
+  };
+  const EXTREME_13 = NOTED.findIndex(([p, at]) => p.startsWith('6.3.......5') && at === 44);
+
+  it('ends an ALS-XY-Chain whose legend says its premise is impossible on why set A holds z, never on "if A holds none, D holds one", true in the solution', () => {
+    for (const n of NOTED) {
+      const { step, values, puzzle } = noted(n);
+      const where = `${puzzle} after ${n[1]}`;
+      const z = step.eliminations[0].digit;
+      // it derives cleanly, yet its full view's legend has G18's note
+      expect([step.tech, alsClash(step), deriveTruth(step)!.closure], where).toEqual(['ALS_XY_CHAIN', false, null]);
+      expect(legendOf(step, values).some((l) => /premise is impossible/.test(l.label)), where).toBe(true);
+      const end = walkFrames(step).at(-1)!.text;
+      expect(end, where).not.toMatch(/if A holds none, D holds one/);
+      expect(end, where).toMatch(new RegExp(`^If set A holds no ${z}, .*, which is impossible\\. A cannot lack ${aDigit(z)}, so set A holds ${aDigit(z)}\\. Each removed ${z} sees every ${z} of A\\. So `));
+      // the description ends on the same reason, A's alone
+      expect(step.description, where).not.toMatch(/A or D holds/);
+      expect(step.description, where).toMatch(new RegExp(`fills its cells\\. But on the way .* A cannot lack ${aDigit(z)}: it holds one, and ${z} is removed from every cell that sees every ${z} of A\\.$`));
+      // what the chain meets, in the same words
+      const said = /^If set A holds no \d, (.*), which is impossible\./.exec(end)![1];
+      expect(step.description, where).toContain(`But on the way ${said}.`);
+      // in the solution set A holds z, and each removal sees every z of A
+      const solution = solve(parseGrid(puzzle)!)!.values;
+      const A = step.sets!.find((x) => x.letter === 'A')!;
+      expect(A.cells.some((c) => solution[c] === z), where).toBe(true);
+      for (const e of step.eliminations) expect(A.members.filter((m) => m.digit === z).every((m) => sees(e.cell, m.cell)), where).toBe(true);
+    }
+  });
+
+  it('words each thing such a chain meets, in English, Norwegian and Spanish', () => {
+    const end = (i: number) => walkFrames(noted(NOTED[i]).step).at(-1)!.text;
+    // a true node whose every candidate the true one before it rules out, in one house (the reviewer's Extreme #13 after 44 steps)
+    expect(end(EXTREME_13)).toBe(
+      'If set A holds no 1, r2c3 must be 1, and so must one of r2c1, r3c1: two 1s in box 1, which is impossible. A cannot lack a 1, so set A holds a 1. Each removed 1 sees every 1 of A. So 1 is removed from r5c1.'
+    );
+    expect(noted(NOTED[EXTREME_13]).step.description).toMatch(
+      / fills its cells\. But on the way r2c3 must be 1, and so must one of r2c1, r3c1: two 1s in box 1\. A cannot lack a 1: it holds one, and 1 is removed from every cell that sees every 1 of A\.$/
+    );
+    // two true candidates of one digit in one house
+    expect(end(0)).toMatch(/^If set A holds no 9, r1c2 must be 9, and so must r3c3: two 9s in box 1, which is impossible\. /);
+    // the node first, then the true candidate that rules it out
+    expect(end(9)).toMatch(/^If set A holds no 7, one of r3c1, r3c3 must be 2, and so must r1c3: two 2s in box 1, which is impossible\. /);
+    // a node of which the chain rules out one candidate as a cell of A and the other by a true candidate
+    expect(end(23)).toMatch(/^If set A holds no 3, one of r1c7, r2c7 must be 3, yet the chain rules out every one of them, which is impossible\. /);
+    const want = {
+      nb: {
+        end: 'Har mengde A ingen 1, må r2c3 være 1, og en av r2c1, r3c1 må også være 1: to 1-tall i boks 1, og det er umulig. A kan ikke mangle en 1, så mengde A har en 1. Hvert 1-tall som fjernes, ser alle 1-tallene i A. ',
+        description: ' Men underveis må r2c3 være 1, og en av r2c1, r3c1 må også være 1: to 1-tall i boks 1. A kan ikke mangle en 1: A har en, og 1 fjernes fra hver rute som ser alle 1-tallene i A.',
+        plain: /har A ingen, har D en|A eller D har/
+      },
+      es: {
+        end: 'Si el conjunto A no tiene ningún 1, r2c3 debe ser 1, y una de r2c1, r3c1 también: dos 1 en la caja 1, lo cual es imposible. A no puede quedarse sin un 1, así que el conjunto A tiene un 1. Cada 1 eliminado ve todos los 1 de A. ',
+        description: ' Pero por el camino r2c3 debe ser 1, y una de r2c1, r3c1 también: dos 1 en la caja 1. A no puede quedarse sin un 1: tiene uno, y el 1 se elimina de cada casilla que ve todos los 1 de A.',
+        plain: /si A no tiene ninguno, D tiene uno|A o D tiene/
+      }
+    };
+    for (const [lang, loc] of LOCALES) {
+      setEngineText(lang, loc.engine);
+      const { step } = noted(NOTED[EXTREME_13]);
+      expect(walkFrames(step).at(-1)!.text.startsWith(want[lang].end), lang).toBe(true);
+      expect(step.description.endsWith(want[lang].description), lang).toBe(true);
+      for (const n of NOTED) {
+        const s = noted(n).step;
+        expect(`${walkFrames(s).at(-1)!.text} ${s.description}`, `${lang}: ${n[0]} after ${n[1]}`).not.toMatch(want[lang].plain);
+      }
+    }
+  });
+
+  it("gives an ALS pattern's removal entry the either/or its walk ends on, or set A's alone where the chain shows A holds z, in the panel and the Learn legend alike", () => {
+    const entry = (step: Step, values: string, frame: Frame | null) => legendOf(step, values, frame).find((l) => l.kind === 'elim')?.label;
+    const cases: { where: string; position: Position; step: Step; words: string }[] = [
+      { where: 'ALS_XZ', position: EXAMPLES.ALS_XZ! as Position, step: EXAMPLES.ALS_XZ!.step, words: 'remove: sees every 5 of set A and of set B, and one of the two holds a 5' },
+      { where: 'ALS_XY_WING', position: EXAMPLES.ALS_XY_WING! as Position, step: EXAMPLES.ALS_XY_WING!.step, words: 'remove: sees every 7 of set A and of set B, and one of the two holds a 7' },
+      { where: 'ALS_XY_CHAIN', position: EXAMPLES.ALS_XY_CHAIN! as Position, step: EXAMPLES.ALS_XY_CHAIN!.step, words: 'remove: sees every 4 of set A and of set D, and one of the two holds a 4' },
+      // a chain that clashes, and one whose legend says its premise is impossible: set A holds z
+      { ...kept.find((k) => k.where === 'shared cells that clash, step 15, ALS_XY_CHAIN')!, words: 'remove: sees every 8 of set A, which holds an 8' },
+      (() => {
+        const { step, values, puzzle } = noted(NOTED[EXTREME_13]);
+        const g = after(puzzle, NOTED[EXTREME_13][1]);
+        return { where: 'Extreme #13 after 44', position: { puzzle, values, cands: Array.from(g.cands) }, step, words: 'remove: sees every 1 of set A, which holds a 1' };
+      })()
+    ];
+    for (const { where, position, step, words } of cases) {
+      const frames = walkFrames(step);
+      // the full view and the conclusion, the frames that draw the removals
+      expect(entry(step, position.values, null), where).toBe(words);
+      expect(entry(step, position.values, frames.at(-1)!), where).toBe(words);
+      expect(panelLegend(position, step, null), where).toContain(words);
+      expect(panelLegend(position, step, frames.length - 1), where).toContain(words);
+      // every removal sees every z of set A, and of the other end set unless A alone is said to hold z
+      const z = step.eliminations[0].digit;
+      for (const L of words.includes('and of set') ? ['A', words.match(/and of set ([BD])/)![1]] : ['A']) {
+        const zs = step.sets!.find((x) => x.letter === L)!.members.filter((m) => m.digit === z);
+        for (const e of step.eliminations) expect(zs.every((m) => sees(e.cell, m.cell)), `${where}: set ${L}`).toBe(true);
+      }
+    }
+    // in Norwegian and Spanish
+    const want = {
+      nb: ['fjern: ser alle 5-tallene i mengde A og i mengde B, og en av de to har en 5', 'fjern: ser alle 8-tallene i mengde A, som har en 8'],
+      es: ['eliminar: ve todos los 5 del conjunto A y del conjunto B, y uno de los dos tiene un 5', 'eliminar: ve todos los 8 del conjunto A, que tiene un 8']
+    };
+    for (const [lang, loc] of LOCALES) {
+      setEngineText(lang, loc.engine);
+      expect([entry(cases[0].step, cases[0].position.values, null), entry(cases[3].step, cases[3].position.values, null)], lang).toEqual(want[lang]);
+    }
+    // a technique that is no ALS pattern keeps its plain entry
+    setEngineText('en', null);
+    expect(entry(EXAMPLES.AIC_ALS!.step, EXAMPLES.AIC_ALS!.values, null)).toBe('remove');
+  });
+
+  it('finds what the legend shows: refutation() names a clash wherever a cleanly derived chain the repository keeps shows G18\'s note, and nowhere else', () => {
+    const steps = [
+      ...kept.map((k) => ({ where: k.where, step: k.step, values: k.position.values })),
+      ...NOTED.map((n) => ({ where: `${n[0]} after ${n[1]}`, ...noted(n) }))
+    ];
+    let shown = 0;
+    for (const { where, step, values } of steps) {
+      const d = deriveTruth(step);
+      if (!d || d.problems.length || d.closure || alsClash(step)) continue;
+      const note = legendOf(step, values).some((l) => /premise is impossible/.test(l.label));
+      expect(!!refutation(step), where).toBe(note);
+      if (note) shown++;
+    }
+    expect(shown).toBeGreaterThanOrEqual(NOTED.length);
   });
 });

@@ -67,9 +67,9 @@ import type { CellDigit, ChainLink, Step, UnitBand } from '../engine/steps';
 import { isParity, isTie } from '../engine/steps';
 import type { Frame, Part } from '../engine/hintFrames';
 import { drawnLinks, colouringDigit, walkFrames } from '../engine/hintFrames';
-import { alsClash, deriveLinks, deriveTruth } from '../engine/truth';
+import { alsClash, deriveLinks, deriveTruth, isAlsChain, refutation } from '../engine/truth';
 import { sees } from '../engine/board';
-import { tr } from '../engine/text';
+import { aDigit, tr } from '../engine/text';
 import { insideOneCell, tilesIn } from './hintGeometry';
 import type { Shade } from './hintPalette';
 
@@ -528,6 +528,8 @@ export function legendKinds(
   setSquares: boolean;
   /** the tints of the almost locked sets drawn as lettered tiles, lowest first, for the swatch of "lettered cells" (decision 18) */
   tiles: Tint[];
+  /** the words of the removal's entry where they are the step's own (an ALS pattern's), or null for "remove" and the roles it lends */
+  removeWords: string | null;
 } {
   const shown = new Set<CandMark>();
   const parity = isParity(step);
@@ -567,7 +569,28 @@ export function legendKinds(
   const onBar = new Set(groups.flatMap((m) => sets[m.set].members.map((cd) => `${cd.cell}:${cd.digit}`)));
   const setSquares = [...marks.cands].some(([cell, m]) => [...m].some(([digit, k]) => k === 'oneOf' && !onBar.has(`${cell}:${digit}`)));
   const tiles = [...new Set(marks.sets.flatMap((m) => (m.tint ? [m.tint] : [])))].sort((a, b) => a - b);
-  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted, clusters, lines: marks.lines, proven, bars, setSquares, tiles };
+  const removeWords = shown.has('elim') ? alsRemoveWords(step) : null;
+  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted, clusters, lines: marks.lines, proven, bars, setSquares, tiles, removeWords };
+}
+
+/**
+ * The removal's entry of an ALS pattern (ALS-XZ, ALS-XY-Wing, ALS-XY-Chain;
+ * docs/hint-readability-2026-11.md M2): the either/or its walk ends on, as
+ * a removed candidate's reason. One end set or the other holds z, and each
+ * removal sees every z of both; where the chain shows its first set holds z
+ * (it clashes, or shows its premise impossible), every z of that set alone,
+ * as the walk then ends. Null for any other step
+ */
+function alsRemoveWords(step: Step): string | null {
+  if (!isAlsChain(step)) return null;
+  const links = step.links!;
+  const [first, last] = [step.sets?.[links[0].fromSet!], step.sets?.[links[links.length - 1].toSet!]];
+  const z = step.eliminations[0]?.digit;
+  if (!first?.letter || !last?.letter || z === undefined) return null;
+  const [F, L] = [first.letter, last.letter];
+  return alsClash(step) || refutation(step)
+    ? tr`remove: sees every ${z} of set ${F}, which holds ${aDigit(z)}`
+    : tr`remove: sees every ${z} of set ${F} and of set ${L}, and one of the two holds ${aDigit(z)}`;
 }
 
 /** an entry of a colouring's legend: what its swatch draws, and its words */

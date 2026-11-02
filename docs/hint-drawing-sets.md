@@ -1042,3 +1042,25 @@ hintMarks, i18n), and the decisions it refines point here.
   every 9 of set B, the cell r1c7: ...". The ALS-XY-Wing and ALS-XY-Chain
   walks quoted under Per technique read so; tests/setWords.ts holds every
   set step kept to it.
+- **The readability pass's words** (docs/hint-readability-2026-11.md M2
+  and H4; round 3's low on the plain ending, hint-drawing-p4-round3.md).
+  An ALS pattern's removal entry carries the either/or its walk ends on:
+  "remove: sees every 5 of set A and of set B, and one of the two holds a
+  5"; where the chain shows set A holds z (it clashes, or shows G18's
+  note), "remove: sees every 8 of set A, which holds an 8". An
+  ALS-XY-Chain that derives cleanly but whose legend shows the note (26 of
+  the 3,774 first finds along the pools', seeds' and dailies' paths, none
+  in the set fixture) is worded as a clash: `refutation` (src/engine/truth.ts)
+  finds what the legend's test finds on the marks, two true candidates
+  that cannot both be or a true node every candidate of which is ruled
+  out, and the walk ends "If set A holds no 1, r2c3 must be 1, and so must
+  one of r2c1, r3c1: two 1s in box 1, which is impossible. A cannot lack
+  a 1, so set A holds a 1. Each removed 1 sees every 1 of A.", the
+  description "But on the way r2c3 must be 1, and so must one of r2c1,
+  r3c1: two 1s in box 1. A cannot lack a 1: ...", never on "if A holds
+  none, D holds one". In every one set A holds z in the solution. An AIC
+  with ALS or with groups, as every open chain, ends on its two ends
+  before the removals ("Either r2c9 (by the small dot) is 8, or the chain
+  makes r6c9 9. Either way r6c9 is not 8."), and a grouped continuous loop
+  says at the link back to its start that it holds whichever way round it
+  is read.

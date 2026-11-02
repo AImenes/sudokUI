@@ -947,11 +947,12 @@ the values above are its final ones.
   Left for later, low: over every grouped chain on offer along the solve
   paths of the pool, seed and hard puzzles, an arrow meets a bar away
   from its anchoring member in 44 chains, one of them a solve path's own
-  step (the design's As built names it); round 3's two unverified lows
-  (a bar moved by round 2's side rule through an ALS tile in three finds,
-  and the plain ending of an ALS-XY-Chain whose legend says its premise is
-  impossible) and its accepted heads (hint-drawing-p4-round3.md), for the
-  readability pass; an ALS-XY-Chain of more sets than cells
+  step (the design's As built names it); round 3's unverified low (a bar
+  moved by round 2's side rule through an ALS tile in three finds) and its
+  accepted heads (hint-drawing-p4-round3.md), for the readability pass,
+  which has worded its other low, an ALS-XY-Chain whose legend says its
+  premise is impossible, as a clash (the design's As built); an
+  ALS-XY-Chain of more sets than cells
   leaves one set no filled tile (four sets on three cells on a hard path),
   its tabs and dashed outlines carrying it; App.tsx's "a {tech} places it"
   and the share line's "a {level} sudoku" can read "a X-Wing" and "a
