@@ -155,6 +155,12 @@ describe('the HoDoKu line', () => {
     expect(stepText(step('NAKED_TRIPLE'))).toBe('Naked Triple: 2,6,7 in r79c4,r8c6 => r7c5<>6, r9c6<>2');
     expect(stepText(step('LOCKED_CANDIDATES_1'))).toBe('Locked Candidates (Pointing): 3 in b4 => r5c4<>3');
     expect(stepText(step('LOCKED_CANDIDATES_2'))).toBe('Locked Candidates (Claiming): 5 in r1 => r2c5<>5');
+    // phase 6 walks them in their finders' sentences, with the digits as a player says them: the line keeps its notation
+    expect(stepText(step('NAKED_QUADRUPLE'))).toBe('Naked Quadruple: 5,6,8,9 in r5c4569 => r5c3<>9, r5c8<>9');
+    expect(stepText(step('LOCKED_PAIR'))).toBe('Locked Pair: 3,7 in r12c1 => r3c1<>7, r5c1<>7, r6c1<>7, r2c3<>7, r3c3<>7');
+    expect(stepText(step('LOCKED_TRIPLE'))).toBe('Locked Triple: 2,3,7 in r8c123 => r8c7<>7, r8c8<>2, r8c8<>7, r7c2<>2, r7c2<>7, r7c3<>7');
+    expect(stepText(step('HIDDEN_TRIPLE'))).toBe('Hidden Triple: 3,5,9 in r8c469 => r8c4<>2, r8c4<>7, r8c6<>4, r8c6<>8');
+    expect(stepText(step('HIDDEN_QUADRUPLE'))).toBe('Hidden Quadruple: 1,2,5,8 in r45c56 => r4c5<>9, r4c6<>9, r5c5<>7');
   });
 
   it('names a single by its cell, a hidden single by its house too', () => {

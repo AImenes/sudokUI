@@ -104,6 +104,14 @@
    "labels": {
     "primary": "row 4, with one cell left"
    },
+   "walk": {
+    "frames": [
+     {
+      "text": "Row 4 has one empty cell, r4c9, and lacks only 8.",
+      "show": []
+     }
+    ]
+   },
    "description": "Full House: r4c9 is the last empty cell in row 4, so it must be 8."
   }
  },
@@ -247,7 +255,23 @@
     "primary": "the cell with one candidate left",
     "secondary": "the other eight digits, each already in its row, column or box"
    },
-   "description": "Naked Single: r4c1 has only one candidate left, 1."
+   "walk": {
+    "frames": [
+     {
+      "text": "Only one candidate is left in r4c1: 1.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The row, column and box of r4c1 already hold the other eight digits.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ]
+   },
+   "description": "Naked Single: the row, column and box of r4c1 already hold the other eight digits, so r4c1 must be 1."
   }
  },
  "HIDDEN_SINGLE": {
@@ -387,6 +411,22 @@
    "labels": {
     "primary": "row 2: 1 has one place left in it",
     "secondary": "the 1s that rule out its other cells, shaded along their lines"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "In row 2, the 1 can go only in r2c2.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The 1s in r4c1, r1c5 and r7c9 rule out 1 in every other empty cell of row 2.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ]
    },
    "description": "Hidden Single: 1 fits only in r2c2 within row 2."
   }
@@ -532,9 +572,20 @@
     }
    ],
    "labels": {
-    "primary": "2 cells that hold only 3/7 between them, in column 1 and box 1"
+    "primary": "2 cells that hold only 3 and 7 between them, in column 1 and box 1"
    },
-   "description": "Locked Pair: cells r1c1, r2c1 contain only 3/7, removing those digits from the cells they all see."
+   "walk": {
+    "frames": [
+     {
+      "text": "In column 1 and box 1, r1c1 and r2c1 hold only 3 and 7.",
+      "show": [
+       "primary"
+      ]
+     }
+    ],
+    "lead": "They must be 3 and 7, one each: these digits can go nowhere else in column 1 or box 1."
+   },
+   "description": "Locked Pair: in column 1 and box 1, r1c1 and r2c1 hold only 3 and 7, so these digits can go nowhere else in column 1 or box 1."
   }
  },
  "LOCKED_TRIPLE": {
@@ -690,9 +741,20 @@
     }
    ],
    "labels": {
-    "primary": "3 cells that hold only 2/3/7 between them, in row 8 and box 7"
+    "primary": "3 cells that hold only 2, 3 and 7 between them, in row 8 and box 7"
    },
-   "description": "Locked Triple: cells r8c1, r8c2, r8c3 contain only 2/3/7, removing those digits from the cells they all see."
+   "walk": {
+    "frames": [
+     {
+      "text": "In row 8 and box 7, r8c1, r8c2 and r8c3 hold only 2, 3 and 7 between them.",
+      "show": [
+       "primary"
+      ]
+     }
+    ],
+    "lead": "They must be 2, 3 and 7, one each: these digits can go nowhere else in row 8 or box 7."
+   },
+   "description": "Locked Triple: in row 8 and box 7, r8c1, r8c2 and r8c3 hold only 2, 3 and 7 between them, so these digits can go nowhere else in row 8 or box 7."
   }
  },
  "LOCKED_CANDIDATES_1": {
@@ -813,9 +875,25 @@
    ],
    "labels": {
     "primary": "box 4: every 3 in it sits on one row",
-    "secondary": "the row, which loses 3 outside the box"
+    "secondary": "row 5, which loses 3 outside box 4"
    },
-   "description": "Locked Candidates (Pointing): in box 4, digit 3 is confined to r5c1, r5c3, so it can be removed from the rest of the row."
+   "walk": {
+    "frames": [
+     {
+      "text": "In box 4, the only cells that can take 3 are r5c1 and r5c3.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "One of them must be 3, and both lie in row 5, so no other cell of row 5 can be 3.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ]
+   },
+   "description": "Locked Candidates (Pointing): in box 4, every 3 lies in row 5, so no other cell of row 5 can be 3."
   }
  },
  "LOCKED_CANDIDATES_2": {
@@ -936,9 +1014,25 @@
    ],
    "labels": {
     "primary": "row 1: every 5 in it sits in one box",
-    "secondary": "box 2, which loses 5 outside the row"
+    "secondary": "box 2, which loses 5 outside row 1"
    },
-   "description": "Locked Candidates (Claiming): in row 1, digit 5 is confined to box 2, so it can be removed from the rest of the box."
+   "walk": {
+    "frames": [
+     {
+      "text": "In row 1, the only cells that can take 5 are r1c5 and r1c6.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "One of them must be 5, and both lie in box 2, so no other cell of box 2 can be 5.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ]
+   },
+   "description": "Locked Candidates (Claiming): in row 1, every 5 lies in box 2, so no other cell of box 2 can be 5."
   }
  },
  "NAKED_PAIR": {
@@ -1062,9 +1156,20 @@
     }
    ],
    "labels": {
-    "primary": "2 cells that hold only 2/5 between them, in row 9"
+    "primary": "2 cells that hold only 2 and 5 between them, in row 9"
    },
-   "description": "Naked Pair: cells r9c2, r9c7 contain only 2/5, removing those digits from the cells they all see."
+   "walk": {
+    "frames": [
+     {
+      "text": "In row 9, r9c2 and r9c7 hold only 2 and 5.",
+      "show": [
+       "primary"
+      ]
+     }
+    ],
+    "lead": "They must be 2 and 5, one each: these digits can go nowhere else in row 9."
+   },
+   "description": "Naked Pair: in row 9, r9c2 and r9c7 hold only 2 and 5, so these digits can go nowhere else in row 9."
   }
  },
  "NAKED_TRIPLE": {
@@ -1200,9 +1305,20 @@
     }
    ],
    "labels": {
-    "primary": "3 cells that hold only 2/6/7 between them, in box 8"
+    "primary": "3 cells that hold only 2, 6 and 7 between them, in box 8"
    },
-   "description": "Naked Triple: cells r7c4, r8c6, r9c4 contain only 2/6/7, removing those digits from the cells they all see."
+   "walk": {
+    "frames": [
+     {
+      "text": "In box 8, r7c4, r8c6 and r9c4 hold only 2, 6 and 7 between them.",
+      "show": [
+       "primary"
+      ]
+     }
+    ],
+    "lead": "They must be 2, 6 and 7, one each: these digits can go nowhere else in box 8."
+   },
+   "description": "Naked Triple: in box 8, r7c4, r8c6 and r9c4 hold only 2, 6 and 7 between them, so these digits can go nowhere else in box 8."
   }
  },
  "HIDDEN_PAIR": {
@@ -1330,9 +1446,20 @@
     }
    ],
    "labels": {
-    "primary": "the only 2 cells of row 4 that can take 6/8"
+    "primary": "the only 2 cells of row 4 where 6 and 8 can go"
    },
-   "description": "Hidden Pair: in row 4, digits 6/8 fit only in r4c3, r4c7, so all other candidates there can be removed."
+   "walk": {
+    "frames": [
+     {
+      "text": "In row 4, the digits 6 and 8 can go only in r4c3 and r4c7.",
+      "show": [
+       "primary"
+      ]
+     }
+    ],
+    "lead": "They must be 6 and 8, one each, and hold nothing else: r4c3 and r4c7 keep only 6 and 8."
+   },
+   "description": "Hidden Pair: in row 4, the digits 6 and 8 can go only in r4c3 and r4c7, so these cells hold nothing else."
   }
  },
  "HIDDEN_TRIPLE": {
@@ -1476,9 +1603,20 @@
     }
    ],
    "labels": {
-    "primary": "the only 3 cells of row 8 that can take 3/5/9"
+    "primary": "the only 3 cells of row 8 where 3, 5 and 9 can go"
    },
-   "description": "Hidden Triple: in row 8, digits 3/5/9 fit only in r8c4, r8c6, r8c9, so all other candidates there can be removed."
+   "walk": {
+    "frames": [
+     {
+      "text": "In row 8, the digits 3, 5 and 9 can go only in r8c4, r8c6 and r8c9.",
+      "show": [
+       "primary"
+      ]
+     }
+    ],
+    "lead": "They must be 3, 5 and 9, one each, and hold nothing else: r8c4 keeps only 3 and 5; r8c6 keeps only 3 and 9."
+   },
+   "description": "Hidden Triple: in row 8, the digits 3, 5 and 9 can go only in r8c4, r8c6 and r8c9, so these cells hold nothing else."
   }
  },
  "NAKED_QUADRUPLE": {
@@ -1626,9 +1764,20 @@
     }
    ],
    "labels": {
-    "primary": "4 cells that hold only 5/6/8/9 between them, in row 5"
+    "primary": "4 cells that hold only 5, 6, 8 and 9 between them, in row 5"
    },
-   "description": "Naked Quadruple: cells r5c4, r5c5, r5c6, r5c9 contain only 5/6/8/9, removing those digits from the cells they all see."
+   "walk": {
+    "frames": [
+     {
+      "text": "In row 5, r5c4, r5c5, r5c6 and r5c9 hold only 5, 6, 8 and 9 between them.",
+      "show": [
+       "primary"
+      ]
+     }
+    ],
+    "lead": "They must be 5, 6, 8 and 9, one each: these digits can go nowhere else in row 5."
+   },
+   "description": "Naked Quadruple: in row 5, r5c4, r5c5, r5c6 and r5c9 hold only 5, 6, 8 and 9 between them, so these digits can go nowhere else in row 5."
   }
  },
  "HIDDEN_QUADRUPLE": {
@@ -1776,9 +1925,20 @@
     }
    ],
    "labels": {
-    "primary": "the only 4 cells of box 5 that can take 1/2/5/8"
+    "primary": "the only 4 cells of box 5 where 1, 2, 5 and 8 can go"
    },
-   "description": "Hidden Quadruple: in box 5, digits 1/2/5/8 fit only in r4c5, r4c6, r5c5, r5c6, so all other candidates there can be removed."
+   "walk": {
+    "frames": [
+     {
+      "text": "In box 5, the digits 1, 2, 5 and 8 can go only in r4c5, r4c6, r5c5 and r5c6.",
+      "show": [
+       "primary"
+      ]
+     }
+    ],
+    "lead": "They must be 1, 2, 5 and 8, one each, and hold nothing else: r4c5 keeps only 1 and 2; r4c6 keeps only 1 and 5; r5c5 keeps only 2 and 8."
+   },
+   "description": "Hidden Quadruple: in box 5, the digits 1, 2, 5 and 8 can go only in r4c5, r4c6, r5c5 and r5c6, so these cells hold nothing else."
   }
  },
  "X_WING": {

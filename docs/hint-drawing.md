@@ -1026,7 +1026,18 @@ the values above are its final ones.
   (docs/hint-readability-2026-11.md H2's and M3's parts for them, H1,
   L2's "chute"): each draws what its argument uses (G15) and walks it in
   its finder's own sentences, and its Copy step line is the one it always
-  was.
+  was. The singles, the subsets and Locked Candidates (H1's part for them,
+  M20's hidden-subset wording, L1's "only 3 and 7") walk in their finders'
+  own sentences too: a Full House's house and the one digit it lacks; a
+  Naked Single's cell, then the digits its row, column and box hold; a
+  Hidden Single's one place, then the placed digits that rule out the rest
+  of its house, and any cell an earlier removal ruled out; Locked
+  Candidates' places, then the row, column or box they share, by name; a
+  subset's cells and digits, then why the digits can go nowhere else, or
+  what each cell keeps. Their legends and descriptions say the digits as a
+  player says them, their bands still come with their roles (M1), a Hidden
+  Single keeps its band rule (M9), and their Copy step lines are the ones
+  they always were.
 - [ ] Phase 7: polish
 
 Branch `claude/hint-drawings`. Research behind this spec (HoDoKu's source

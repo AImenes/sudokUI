@@ -5,14 +5,11 @@ import {
   bit,
   digitsOf,
   popcount,
-  cellNames,
-  rowOf,
-  colOf,
-  boxOf
+  cellName
 } from '../board';
 import { Step, CellDigit } from '../steps';
 import { Tech } from '../ratings';
-import { tr, joinAnd, unitName } from '../text';
+import { tr, joinAnd, listAnd, unitName } from '../text';
 
 export function combinations<T>(items: T[], k: number): T[][] {
   const out: T[][] = [];
@@ -104,8 +101,23 @@ export function findNakedSubset(g: Grid, size: number, locked: boolean): Step | 
           ? 'LOCKED_PAIR'
           : 'LOCKED_TRIPLE'
         : (`NAKED_${['', '', 'PAIR', 'TRIPLE', 'QUADRUPLE'][size]}` as Tech);
-      const digits = digitsOf(mask);
+      const digits = listAnd(digitsOf(mask));
       const houses = [...unitsWithElims].map(unitName);
+      const cells = listAnd(combo.map(cellName));
+      // each cell holds every digit of the set, or they hold them only between them (a triple where no cell holds all three)
+      const each = combo.every((c) => g.cands[c] === mask);
+      // the walk in the finder's own words (the readability report's H1): the
+      // cells and the digits they hold, then why the digits go elsewhere; the
+      // digits as a player says them (L1)
+      const [h1, h2] = houses;
+      const first =
+        houses.length === 2
+          ? each
+            ? tr`In ${h1} and ${h2}, ${cells} hold only ${digits}.`
+            : tr`In ${h1} and ${h2}, ${cells} hold only ${digits} between them.`
+          : each
+            ? tr`In ${h1}, ${cells} hold only ${digits}.`
+            : tr`In ${h1}, ${cells} hold only ${digits} between them.`;
       return {
         tech,
         placements: [],
@@ -118,10 +130,24 @@ export function findNakedSubset(g: Grid, size: number, locked: boolean): Step | 
         labels: {
           primary:
             houses.length === 2
-              ? tr`${size} cells that hold only ${digits.join('/')} between them, in ${houses[0]} and ${houses[1]}`
-              : tr`${size} cells that hold only ${digits.join('/')} between them, in ${joinAnd(houses)}`
+              ? tr`${size} cells that hold only ${digits} between them, in ${houses[0]} and ${houses[1]}`
+              : tr`${size} cells that hold only ${digits} between them, in ${joinAnd(houses)}`
         },
-        description: tr`${subsetName(tech)}: cells ${cellNames(combo)} contain only ${digits.join('/')}, removing those digits from the cells they all see.`
+        walk: {
+          frames: [{ text: first, show: ['primary'] }],
+          lead:
+            houses.length === 2
+              ? tr`They must be ${digits}, one each: these digits can go nowhere else in ${h1} or ${h2}.`
+              : tr`They must be ${digits}, one each: these digits can go nowhere else in ${h1}.`
+        },
+        description:
+          houses.length === 2
+            ? each
+              ? tr`${subsetName(tech)}: in ${h1} and ${h2}, ${cells} hold only ${digits}, so these digits can go nowhere else in ${h1} or ${h2}.`
+              : tr`${subsetName(tech)}: in ${h1} and ${h2}, ${cells} hold only ${digits} between them, so these digits can go nowhere else in ${h1} or ${h2}.`
+            : each
+              ? tr`${subsetName(tech)}: in ${h1}, ${cells} hold only ${digits}, so these digits can go nowhere else in ${h1}.`
+              : tr`${subsetName(tech)}: in ${h1}, ${cells} hold only ${digits} between them, so these digits can go nowhere else in ${h1}.`
       };
     }
   }
@@ -149,6 +175,20 @@ export function findHiddenSubset(g: Grid, size: number): Step | null {
       }
       if (!elims.length) continue;
       const tech = `HIDDEN_${['', '', 'PAIR', 'TRIPLE', 'QUADRUPLE'][size]}` as Tech;
+      const house = unitName(u);
+      const digits = listAnd(digitCombo);
+      const names = listAnd(cells.map(cellName));
+      // what each cell that loses a candidate keeps, cells that keep the same
+      // digits named together, in reading order (the readability report's M20)
+      const keeps = new Map<string, { kept: number[]; cells: number[] }>();
+      for (const c of cells) {
+        if (!(g.cands[c] & ~dmask)) continue;
+        const kept = digitsOf(g.cands[c] & dmask);
+        (keeps.get(kept.join()) ?? keeps.set(kept.join(), { kept, cells: [] }).get(kept.join())!).cells.push(c);
+      }
+      const kept = [...keeps.values()].map(({ kept: ds, cells: cs }) =>
+        cs.length === 1 ? tr`${cellName(cs[0])} keeps only ${listAnd(ds)}` : tr`${listAnd(cs.map(cellName))} keep only ${listAnd(ds)}`
+      );
       return {
         tech,
         placements: [],
@@ -158,9 +198,15 @@ export function findHiddenSubset(g: Grid, size: number): Step | null {
         ),
         units: [{ unit: u, role: 'primary' }],
         labels: {
-          primary: tr`the only ${size} cells of ${unitName(u)} that can take ${digitCombo.join('/')}`
+          primary: tr`the only ${size} cells of ${house} where ${digits} can go`
         },
-        description: tr`${subsetName(tech)}: in ${unitName(u)}, digits ${digitCombo.join('/')} fit only in ${cellNames(cells)}, so all other candidates there can be removed.`
+        // the walk in the finder's own words (H1): where the digits can go,
+        // then what the cells keep; the digits as a player says them (L1)
+        walk: {
+          frames: [{ text: tr`In ${house}, the digits ${digits} can go only in ${names}.`, show: ['primary'] }],
+          lead: tr`They must be ${digits}, one each, and hold nothing else: ${kept.join('; ')}.`
+        },
+        description: tr`${subsetName(tech)}: in ${house}, the digits ${digits} can go only in ${names}, so these cells hold nothing else.`
       };
     }
   }
