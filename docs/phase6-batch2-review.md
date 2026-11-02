@@ -26,7 +26,7 @@ share the player's own marks is a possible later feature (below).
 
 ## Fixed (all low)
 
-In 0123ba2 (`git log` has each one's detail):
+In c41d998 (`git log` has each one's detail):
 1. A degenerate Sashimi X-Wing (a base row whose only digits lie in the fins' box: really Locked Candidates) said its
    fin "stands in for" a corner in another box. The corner sentence is now written only when the corner lies in the
    fins' box; the finder is unchanged. The scan checks the rule along the practice paths, where the case does occur.
