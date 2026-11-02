@@ -123,7 +123,9 @@ export const useSettings = create<Settings>()(
       setTracker: false,
       // blue and orange: keys 6 and 2 in Colour mode
       setColors: [5, 1],
-      scrollOverBoard: true,
+      // off: the board takes every touch, which plays better on a phone or a
+      // tablet; the page scrolls from beside it (the owner's call, 2 November 2026)
+      scrollOverBoard: false,
       confirmAssist: true,
       useUniqueness: true,
       digitTints: false,

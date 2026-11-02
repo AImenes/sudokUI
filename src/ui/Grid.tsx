@@ -8,7 +8,7 @@
 // auto-candidate 3×3 view); the bars over removed candidates; the sets'
 // letter tabs; and last the start dots and the walk's numbers. Pointer
 // events implement drag multi-select.
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useGame, engineGrid, CellState } from '../state/gameStore';
 import { useSettings } from '../state/settings';
 import { bivaluePairs } from '../state/bivalue';
@@ -402,6 +402,70 @@ const PERIMETER: [number, number][] = [
  * - both layers → corner marks retreat to the cell perimeter and the centre
  *   line keeps the middle.
  */
+/**
+ * A line of centre marks. With "Frame highlighted digits" on, the held or
+ * selected digit gets the box a corner mark gets: a line is one text, so
+ * the box is measured on the drawn glyph (exact in every font, and again
+ * once the web fonts have loaded), and the digit is given a little room
+ */
+function CentreLine({ x, y, fontSize, fontWeight, ds, hlDigit, frame }: { x: number; y: number; fontSize: number; fontWeight?: number; ds: number[]; hlDigit: number; frame: boolean }) {
+  const ref = useRef<SVGTextElement>(null);
+  const font = useSettings((s) => s.font);
+  const k = frame ? ds.indexOf(hlDigit) : -1;
+  const [box, setBox] = useState<{ x: number; width: number } | null>(null);
+  const key = ds.join('');
+  useLayoutEffect(() => {
+    let live = true;
+    const measure = () => {
+      const el = ref.current;
+      if (!live) return;
+      if (k < 0 || !el || typeof el.getExtentOfChar !== 'function') return setBox(null);
+      try {
+        const r = el.getExtentOfChar(k);
+        setBox({ x: r.x, width: r.width });
+      } catch {
+        setBox(null);
+      }
+    };
+    measure();
+    if (k >= 0 && typeof document !== 'undefined') void document.fonts?.ready.then(measure);
+    return () => {
+      live = false;
+    };
+  }, [k, key, fontSize, font]);
+  const room = 3;
+  return (
+    <>
+      {box && k >= 0 && (
+        <rect
+          className="centre-frame"
+          x={box.x - 2}
+          y={y - fontSize * 0.81}
+          width={box.width + 4}
+          height={fontSize * 1.05}
+          rx={5}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth={1.6}
+        />
+      )}
+      <text ref={ref} x={x} y={y} textAnchor="middle" fontSize={fontSize} fontWeight={fontWeight} fill="var(--cand)">
+        {ds.map((d, i) =>
+          d === hlDigit ? (
+            <tspan key={d} fill="var(--accent)" fontWeight={700} dx={k >= 0 && i > 0 ? room : undefined}>
+              {d}
+            </tspan>
+          ) : (
+            <tspan key={d} dx={k >= 0 && i === k + 1 ? room : undefined}>
+              {d}
+            </tspan>
+          )
+        )}
+      </text>
+    </>
+  );
+}
+
 function renderMarks(
   cell: { corner: number; center: number },
   x: number,
@@ -449,18 +513,6 @@ function renderMarks(
     </React.Fragment>
   );
 
-  // joined digit runs keep their layout; a matching digit gets its own tspan
-  const lineTspans = (ds: number[]) =>
-    ds.map((d) =>
-      hl(d) ? (
-        <tspan key={d} fill="var(--accent)" fontWeight={700}>
-          {d}
-        </tspan>
-      ) : (
-        <tspan key={d}>{d}</tspan>
-      )
-    );
-
   // hint promotion: union of both layers on the 3×3 grid, and every digit
   // the hint marks, pencilled or not: a mark with no digit says nothing
   if ((marks && marks.size > 0) || promote) {
@@ -468,19 +520,11 @@ function renderMarks(
     return <>{union.map((d) => gridText(d, cell.corner ? (cell.corner & bit(d)) !== 0 : false))}</>;
   }
 
+  // (a hint's mark on a digit leaves the line's highlight off, as hl does)
+  const lineHl = hlDigit && !marks?.has(hlDigit) ? hlDigit : 0;
   const centerLine =
     centerDs.length > 0 && centerDs.length <= 4 ? (
-      <text
-        key="cl"
-        x={x + SIZE / 2}
-        y={y + SIZE / 2 + 8}
-        textAnchor="middle"
-        fontSize={26}
-        fontWeight={pair ? 600 : undefined}
-        fill="var(--cand)"
-      >
-        {lineTspans(centerDs)}
-      </text>
+      <CentreLine key="cl" x={x + SIZE / 2} y={y + SIZE / 2 + 8} fontSize={26} fontWeight={pair ? 600 : undefined} ds={centerDs} hlDigit={lineHl} frame={frame} />
     ) : null;
 
   if (cornerDs.length && centerDs.length) {
@@ -513,16 +557,7 @@ function renderMarks(
           </React.Fragment>
         ))}
         {centerLine ?? (
-          <text
-            key="cl2"
-            x={x + SIZE / 2}
-            y={y + SIZE / 2 + 7}
-            textAnchor="middle"
-            fontSize={Math.min(22, 118 / centerDs.length + 4)}
-            fill="var(--cand)"
-          >
-            {lineTspans(centerDs)}
-          </text>
+          <CentreLine key="cl2" x={x + SIZE / 2} y={y + SIZE / 2 + 7} fontSize={Math.min(22, 118 / centerDs.length + 4)} ds={centerDs} hlDigit={lineHl} frame={frame} />
         )}
       </>
     );

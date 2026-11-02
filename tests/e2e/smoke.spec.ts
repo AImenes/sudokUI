@@ -125,6 +125,37 @@ async function expectControlsFit(page: Page, width: number, height: number) {
 test.describe('desktop, 1280 x 800', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
+
+  test('frames a highlighted digit in a line of centre marks as it frames a corner mark', async ({ page }) => {
+    await open(page);
+    const given = [...EASY].findIndex((c) => c !== '.');
+    const d = EASY[given];
+    const other = d === '9' ? '8' : String(Number(d) + 1);
+    const [a, b] = [...EASY].flatMap((c, i) => (c === '.' ? [i] : [])).slice(0, 2);
+    // a line of centre marks in one empty cell, a corner mark of the same digit in another
+    const ca = await cellBox(page, a);
+    await page.mouse.click(ca.x, ca.y);
+    await page.keyboard.press(`Control+Digit${other}`);
+    await page.keyboard.press(`Control+Digit${d}`);
+    await expect(page.locator('#board-status')).toContainText('centre marks');
+    const cb = await cellBox(page, b);
+    await page.mouse.click(cb.x, cb.y);
+    await page.keyboard.press(`Shift+Digit${d}`);
+    // the given digit, selected, lights its pencilled twins: each framed
+    const cg = await cellBox(page, given);
+    await page.mouse.click(cg.x, cg.y);
+    const frame = page.locator('svg.board rect.centre-frame');
+    await expect(frame).toHaveCount(1);
+    // round the digit itself, not its neighbour in the line
+    const digit = page.locator('svg.board tspan', { hasText: new RegExp(`^${d}$`) }).first();
+    const [f, g] = [(await frame.boundingBox())!, (await digit.boundingBox())!];
+    expect(f.x).toBeLessThanOrEqual(g.x);
+    expect(f.x + f.width).toBeGreaterThanOrEqual(g.x + g.width);
+    expect(f.width).toBeLessThan(g.width * 2.2);
+    // and nothing framed once the digit is no longer selected
+    await page.keyboard.press('Escape');
+    await expect(frame).toHaveCount(0);
+  });
   test('a repeated digit shows in red, a right one does not', async ({ page }) => {
     await open(page);
     // r1c1 is empty; the row already holds a 3 at r1c3
@@ -982,6 +1013,8 @@ test.describe('phone, 390 x 844', () => {
   });
 
   test('a swipe over the board scrolls the page, a tap still selects', async ({ page }) => {
+    // with the setting on (off by default since 2 November 2026)
+    await page.addInitScript(() => localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { scrollOverBoard: true }, version: 0 })));
     await open(page);
     const scrolled = () =>
       page.evaluate(() => Math.max(window.scrollY, ...[...document.querySelectorAll('*')].map((el) => el.scrollTop)));
@@ -1103,6 +1136,8 @@ test.describe('phone, 390 x 844, multi-select', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
   test('Multi: a drag selects at once in any direction, a tap adds or removes, the page stays put', async ({ page }) => {
+    // with scrolling over the board on, which Multi turns off for itself
+    await page.addInitScript(() => localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { scrollOverBoard: true }, version: 0 })));
     await open(page);
     const status = page.locator('#board-status');
     const board = page.locator('svg.board');
@@ -1976,82 +2011,14 @@ test.describe('tablet', () => {
   });
 });
 
-test.describe('the welcome', () => {
-  test.use({ viewport: { width: 1280, height: 900 } });
-  const dialogOf = (page: Page) => page.getByRole('dialog', { name: 'Welcome to sudokUI' });
+test.describe('a first visit', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   /** the game on the board, as it was saved */
   const saved = (page: Page) =>
     page.evaluate(() => {
       const info = JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state?.info;
       return info ? { level: info.level as string, dailyKey: (info.dailyKey ?? null) as string | null } : null;
     });
-
-  test('on a day whose daily is Hard, a first visit starts with an easy puzzle, the daily a tap away', async ({ page }) => {
-    // the published daily for 2 November 2026 is Hard (src/content/dailies.json)
-    await page.clock.install({ time: new Date('2026-11-02T12:00:00') });
-    await page.goto('/');
-    const dialog = dialogOf(page);
-    const buttons = dialog.locator('.hint-actions button');
-    await expect(buttons.first()).toHaveText('Start with an easy puzzle');
-    await expect(buttons.nth(1)).toHaveText("Today's daily (Hard)");
-    await buttons.first().click();
-    await expect(dialog).toBeHidden();
-    await expect.poll(() => saved(page)).toEqual({ level: 'Easy', dailyKey: null });
-    // a game won after the welcome gets its win screen
-    await solveSaved(page);
-    await expect(page.getByRole('dialog', { name: 'Puzzle solved' })).toBeVisible();
-  });
-
-  test('the daily stays one tap away on that day, and stays when the first visit’s own game arrives after it', async ({ page }) => {
-    await slowMaker(page);
-    await page.clock.install({ time: new Date('2026-11-02T12:00:00') });
-    await page.goto('/');
-    await dialogOf(page).getByRole('button', { name: "Today's daily (Hard)" }).click();
-    await expect.poll(() => saved(page)).toEqual({ level: 'Hard', dailyKey: '2026-11-02' });
-    // the easy game the app was making for this first visit lands now, and is dropped
-    await page.waitForTimeout(3000);
-    expect(await saved(page)).toEqual({ level: 'Hard', dailyKey: '2026-11-02' });
-  });
-
-  /** a game saved on an earlier visit that never saw the welcome: Hard, with one digit placed, or won */
-  const seed = (o: { puzzle?: string; level?: string; state: 'untouched' | 'begun' | 'won'; dailyKey?: string }) => {
-    const puzzle = o.puzzle ?? HARD;
-    const won = o.state === 'won';
-    const solution = gridToString(solve(parseGrid(puzzle)!)!);
-    const cells = [...puzzle].map((ch, i) => ({
-      given: ch !== '.',
-      value: ch !== '.' ? Number(ch) : won || (o.state === 'begun' && i === puzzle.indexOf('.')) ? Number(solution[i]) : 0,
-      corner: 0,
-      center: 0,
-      excluded: 0,
-      colors: [] as number[]
-    }));
-    const state = {
-      info: { puzzle, solution, score: 1500, level: o.level ?? 'Hard', practiceTech: null, ...(o.dailyKey ? { dailyKey: o.dailyKey } : {}) },
-      cells,
-      custom: false,
-      autoCandidates: false,
-      elapsedBefore: 60_000,
-      won,
-      solved: won,
-      assisted: false,
-      markContract: 'unknown',
-      practiceTarget: null,
-      practiceFound: false
-    };
-    return JSON.stringify({ state, version: 0 });
-  };
-  const seedHard = (won: boolean) => seed({ state: won ? 'won' : 'begun' });
-  /** the digits placed on the saved board, givens aside */
-  const placed = (page: Page) =>
-    page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.cells.filter((c: any) => !c.given && c.value).length);
-  /** the puzzle maker, slowed so that a game started meanwhile is there first */
-  const slowMaker = (page: Page) =>
-    page.route('**/assets/worker-*.js', async (route) => {
-      await new Promise((r) => setTimeout(r, 1500));
-      await route.continue();
-    });
-  /** solves the game on the board from what was saved */
   const solveSaved = async (page: Page) => {
     const info = await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.info);
     const empties = [...(info.puzzle as string)].map((ch, i) => (ch === '.' ? i : -1)).filter((i) => i >= 0);
@@ -2063,104 +2030,18 @@ test.describe('the welcome', () => {
     }
   };
 
-  test('a game begun on an earlier visit stays: Just play keeps it, on a Hard day too', async ({ page }) => {
-    await page.clock.install({ time: new Date('2026-11-02T12:00:00') });
-    await page.addInitScript((saved) => localStorage.setItem('sudokui-game-v1', saved), seedHard(false));
+  test('opens straight on an easy board, nothing over it, the board taking every touch', async ({ page }) => {
     await page.goto('/');
-    const buttons = dialogOf(page).locator('.hint-actions button');
-    await expect(buttons.first()).toHaveText('Just play');
-    await expect(buttons.nth(1)).toHaveText("Today's daily (Hard)");
-    await buttons.first().click();
-    await expect(dialogOf(page)).toBeHidden();
-    expect(await saved(page)).toEqual({ level: 'Hard', dailyKey: null });
-    const placed = await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.cells.filter((c: any) => !c.given && c.value).length);
-    expect(placed).toBe(1);
-  });
-
-  test('a game already won makes way for an easy one, and its win screen does not come back', async ({ page }) => {
-    await slowMaker(page);
-    await page.clock.install({ time: new Date('2026-11-02T12:00:00') });
-    await page.addInitScript((saved) => {
-      localStorage.setItem('sudokui-game-v1', saved);
-      // whether the old win's screen ever shows, however briefly
-      (window as any).__sawWin = false;
-      new MutationObserver(() => {
-        if (document.querySelector('[aria-label="Puzzle solved"]')) (window as any).__sawWin = true;
-      }).observe(document, { subtree: true, childList: true });
-    }, seedHard(true));
-    await page.goto('/');
-    const buttons = dialogOf(page).locator('.hint-actions button');
-    await expect(buttons.first()).toHaveText('Start with an easy puzzle');
-    await buttons.first().click();
-    await expect.poll(() => saved(page), { timeout: 10_000 }).toEqual({ level: 'Easy', dailyKey: null });
-    expect(await page.evaluate(() => (window as any).__sawWin)).toBe(false);
-  });
-
-  test('an untouched game above Easy makes way for an easy one', async ({ page }) => {
-    await page.clock.install({ time: new Date('2026-11-02T12:00:00') });
-    await page.addInitScript((saved) => localStorage.setItem('sudokui-game-v1', saved), seed({ state: 'untouched' }));
-    await page.goto('/');
-    await dialogOf(page).getByRole('button', { name: 'Start with an easy puzzle' }).click();
+    await expect(page.locator('svg.board')).toBeVisible();
     await expect.poll(() => saved(page)).toEqual({ level: 'Easy', dailyKey: null });
-  });
-
-  test('a game begun on an earlier visit stays on a Medium day too', async ({ page }) => {
-    await page.clock.install({ time: new Date('2026-11-03T12:00:00') });
-    await page.addInitScript((saved) => localStorage.setItem('sudokui-game-v1', saved), seedHard(false));
-    await page.goto('/');
-    const buttons = dialogOf(page).locator('.hint-actions button');
-    await expect(buttons.first()).toHaveText('Just play');
-    await expect(buttons.nth(1)).toHaveText("Play today's daily");
-    await buttons.first().click();
-    expect(await saved(page)).toEqual({ level: 'Hard', dailyKey: null });
-    expect(await placed(page)).toBe(1);
-  });
-
-  test('today’s daily under way is kept, not restarted, by the daily button', async ({ page }) => {
-    const today = dailies.find((d) => d.date === '2026-11-03')!;
-    await page.clock.install({ time: new Date('2026-11-03T12:00:00') });
-    await page.addInitScript(
-      (saved) => localStorage.setItem('sudokui-game-v1', saved),
-      seed({ puzzle: today.puzzle, level: today.level, state: 'begun', dailyKey: today.date })
-    );
-    await page.goto('/');
-    await dialogOf(page).getByRole('button', { name: "Play today's daily" }).click();
-    await expect(dialogOf(page)).toBeHidden();
-    expect(await saved(page)).toEqual({ level: today.level, dailyKey: today.date });
-    expect(await placed(page)).toBe(1);
-  });
-
-  test('today’s daily already solved is kept by the daily button, and its win screen shows', async ({ page }) => {
-    const today = dailies.find((d) => d.date === '2026-11-03')!;
-    await page.clock.install({ time: new Date('2026-11-03T12:00:00') });
-    await page.addInitScript(
-      (saved) => localStorage.setItem('sudokui-game-v1', saved),
-      seed({ puzzle: today.puzzle, level: today.level, state: 'won', dailyKey: today.date })
-    );
-    await page.goto('/');
-    await dialogOf(page).getByRole('button', { name: "Play today's daily" }).click();
-    await expect(dialogOf(page)).toBeHidden();
+    await page.waitForTimeout(800);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    // a swipe over the board selects; the page scrolls from beside it
+    await expect(page.locator('svg.board')).toHaveAttribute('data-noscroll', 'true');
+    await expect(page.locator('svg.board')).toHaveCSS('touch-action', 'pinch-zoom');
+    // and a game won on it gets its win screen
+    await solveSaved(page);
     await expect(page.getByRole('dialog', { name: 'Puzzle solved' })).toBeVisible();
-    const won = await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.won);
-    expect(won).toBe(true);
-    expect(await saved(page)).toEqual({ level: today.level, dailyKey: today.date });
-  });
-
-  test("with Hide rating on, the welcome does not name the daily's band", async ({ page }) => {
-    await page.clock.install({ time: new Date('2026-11-02T12:00:00') });
-    await page.addInitScript(() => localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { hideRating: true }, version: 0 })));
-    await page.goto('/');
-    const buttons = dialogOf(page).locator('.hint-actions button');
-    await expect(buttons.first()).toHaveText('Start with an easy puzzle');
-    await expect(buttons.nth(1)).toHaveText("Play today's daily");
-  });
-
-  test('on a day whose daily is Medium, the welcome offers the daily first', async ({ page }) => {
-    await page.clock.install({ time: new Date('2026-11-03T12:00:00') });
-    await page.goto('/');
-    const buttons = dialogOf(page).locator('.hint-actions button');
-    await expect(buttons.first()).toHaveText("Play today's daily");
-    await expect(buttons.nth(1)).toHaveText('Just play');
   });
 });
 
@@ -2298,22 +2179,6 @@ test.describe('a puzzle being typed in', () => {
     await panel(page).getByRole('button', { name: 'Cancel' }).click();
     await expect(panel(page)).toHaveCount(0);
     expect(await savedPuzzle(page)).toBe(before);
-  });
-
-  test('is kept by the welcome that a reload shows a visitor who came by a link', async ({ page }) => {
-    // a Medium day, when the welcome would otherwise lead with the daily
-    await page.clock.install({ time: new Date('2026-11-03T12:00:00') });
-    // a first visit by a puzzle link: no welcome there, and none dismissed
-    await page.goto(`/p/${HARD}`);
-    await expect(page.locator('svg.board')).toBeVisible();
-    await typeIn(page, 4);
-    await page.reload();
-    const welcome = page.getByRole('dialog', { name: 'Welcome to sudokUI' });
-    const buttons = welcome.locator('.hint-actions button');
-    await expect(buttons.first()).toHaveText('Just play');
-    await buttons.first().click();
-    await expect(welcome).toBeHidden();
-    await expect(panel(page)).toContainText('(4 so far)');
   });
 
   test('survives a reload when it was begun over a puzzle link', async ({ page }) => {
