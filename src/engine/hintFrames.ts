@@ -825,6 +825,16 @@ export function walkFrames(step: Step): Frame[] {
   // the whole drawing (a Full House's house) is there with every band
   const whole = hasBands && !step.primary?.length && !step.secondary?.length && !step.fins?.length;
   const shown = new Set<Part>(hasBands && !whole ? [] : ['units']);
+  // the finder's own sentences, when it writes them (step.walk)
+  if (step.walk?.frames.length) {
+    for (const f of step.walk.frames) {
+      for (const part of f.show) shown.add(part);
+      frames.push({ text: f.text, links: 0, show: new Set(shown) });
+    }
+    for (const part of ['primary', 'secondary', 'fins', 'conclusion'] as const) shown.add(part);
+    frames.push({ text: [step.walk.lead, conclusionText(step)].filter(Boolean).join(' '), links: 0, show: new Set(shown) });
+    return frames;
+  }
   const add = (part: Part, text: string | undefined) => {
     if (!text) return;
     shown.add(part);

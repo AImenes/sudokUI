@@ -101,6 +101,31 @@ const candsIn = (tech: Tech, u: number, d: number): number[] => {
 };
 
 describe('a walk', () => {
+  it("walks a pattern in its finder's own sentences when the finder writes them (step.walk, H1)", () => {
+    const ex = exampleOf('XY_WING');
+    const s: Step = {
+      ...ex.step,
+      walk: {
+        frames: [
+          { text: 'The pivot holds only two digits.', show: ['primary'] },
+          { text: 'Each pincer shares one of them.', show: ['secondary'] }
+        ],
+        lead: 'Either way a pincer holds the digit.'
+      }
+    };
+    const frames = walkFrames(s);
+    expect(frames.map((f) => f.text)).toEqual([
+      'The pivot holds only two digits.',
+      'Each pincer shares one of them.',
+      `Either way a pincer holds the digit. ${walkFrames(ex.step).at(-1)!.text}`
+    ]);
+    expect([frames[0].show.has('primary'), frames[0].show.has('secondary')]).toEqual([true, false]);
+    expect([frames[1].show.has('primary'), frames[1].show.has('secondary')]).toEqual([true, true]);
+    expect(frames[2].show.has('conclusion')).toBe(true);
+    // without it, the labels as before
+    expect(walkFrames(ex.step).length).toBe(3);
+  });
+
   it('draws something new in every frame: no two frames in a row draw the same (M1)', () => {
     const repeats: string[] = [];
     let walks = 0;
