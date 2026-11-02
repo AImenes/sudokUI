@@ -1,5 +1,5 @@
 import { Tech } from './ratings';
-import { rowOf, colOf } from './board';
+import { Grid, CELL_UNITS, UNITS, bit, rowOf, colOf } from './board';
 
 export interface CellDigit {
   cell: number;
@@ -42,6 +42,54 @@ export interface ChainLink {
    */
   fromSet?: number;
   toSet?: number;
+  /**
+   * the house that makes a link between one digit's candidates in different
+   * cells (a UNITS index), which the link's sentence names
+   * (docs/hint-readability-2026-11.md M17): for a strong link, a house whose
+   * only places for the digit are the link's cells; for a weak link, a house
+   * every cell of it lies in, so they all see each other. A row or column
+   * before the box, so the box is named only where it alone makes the link.
+   * Named when a step is found (withHouses); absent where no one house makes
+   * the link, and on a link with a sentence of its own
+   */
+  unit?: number;
+}
+
+/**
+ * The house that makes a link on one digit between these cells, as
+ * ChainLink.unit names it: the first of the cells' row, column and box that
+ * holds them all and, for a strong link, holds the digit nowhere else; -1
+ * where none does
+ */
+export function linkHouse(g: Grid, cells: number[], digit: number, strong: boolean): number {
+  const b = bit(digit);
+  if (!cells.length || !cells.every((c) => !g.values[c] && g.cands[c] & b)) return -1;
+  for (const u of CELL_UNITS[cells[0]]) {
+    if (!cells.every((c) => CELL_UNITS[c].includes(u))) continue;
+    if (!strong || UNITS[u].filter((c) => !g.values[c] && g.cands[c] & b).length === new Set(cells).size) return u;
+  }
+  return -1;
+}
+
+/**
+ * A found step with the house of each of its links between one digit's
+ * candidates in different cells named (ChainLink.unit), from the position
+ * the step was found in; every finder's step passes through it
+ * (src/engine/humanSolver.ts). A link with a sentence of its own, a tie, a
+ * link inside a cell and one whose house its finder named are left as they
+ * are.
+ */
+export function withHouses<S extends Step | null>(step: S, g: Grid): S {
+  for (const link of step?.links ?? []) {
+    if (link.text || link.undirected || link.unit !== undefined) continue;
+    const digit = link.from[0]?.digit;
+    if (![...link.from, ...link.to].every((cd) => cd.digit === digit)) continue;
+    const [from, to] = [link.from, link.to].map((node) => [...new Set(node.map((cd) => cd.cell))]);
+    if (from.some((c) => to.includes(c))) continue;
+    const unit = linkHouse(g, [...from, ...to], digit, link.strong);
+    if (unit >= 0) link.unit = unit;
+  }
+  return step;
 }
 
 /** a link drawn as a tie: exactly one of its two ends is true, and it says nothing more */
@@ -121,12 +169,15 @@ export function alternatingLinks(
 /**
  * A whole row, column or box shaded as a band: a fish's base and cover
  * lines, the house a locked set lives in, the house a single was found in.
- * Primary and secondary follow the step's colour grammar and its labels.
+ * Primary and secondary follow the step's colour grammar and its labels;
+ * 'fin' is the box a finned fish's fins lie in, which every removal shares
+ * (outlined dotted in the fin's colour, named by `labels.finBox`, and drawn
+ * in a walk from the frame that shows 'finBox')
  */
 export interface UnitBand {
   /** index into UNITS: rows 0-8, columns 9-17, boxes 18-26 */
   unit: number;
-  role: 'primary' | 'secondary';
+  role: 'primary' | 'secondary' | 'fin';
 }
 
 /**
@@ -206,7 +257,7 @@ export interface Step {
    * what each colour means in this step, for the legend; a colour without a
    * label here is named generically ("the pattern", "supporting cells", "fin")
    */
-  labels?: { primary?: string; secondary?: string; fins?: string };
+  labels?: { primary?: string; secondary?: string; fins?: string; finBox?: string };
   /**
    * A pattern's walk in its finder's own sentences (the readability report's
    * H1, phase 6): each frame's sentence, naming the cells and houses and
@@ -216,10 +267,12 @@ export interface Step {
    * its roles, and their bands, only in the cells the walk has named so
    * far, so a pattern can be walked cell by cell in the colours of its
    * function (a wing's pivot, then each pincer); the conclusion frame draws
-   * every cell. A step without it walks its labels back, one frame a role
+   * every cell. A finned fish shows its fins' box ('finBox', its band of
+   * role 'fin') in a frame of its own, after its cover lines. A step
+   * without it walks its labels back, one frame a role
    * (src/engine/hintFrames.ts walkFrames)
    */
-  walk?: { frames: { text: string; show: ('primary' | 'secondary' | 'fins')[]; cells?: number[] }[]; lead?: string };
+  walk?: { frames: { text: string; show: ('primary' | 'secondary' | 'fins' | 'finBox')[]; cells?: number[] }[]; lead?: string };
   /**
    * candidates the Copy step line names after the pattern though no view
    * draws them, as the line always named them (src/content/eureka.ts):

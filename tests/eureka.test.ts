@@ -147,6 +147,18 @@ describe('the HoDoKu line', () => {
     expect(stepText(step('SWORDFISH'))).toBe('Swordfish: 9 c148 r345 => r5c2<>9');
     expect(stepText(step('FINNED_X_WING'))).toBe('Finned X-Wing: 8 c39 r58 fr4c3 => r5c1<>8');
     expect(stepText(step('SASHIMI_X_WING'))).toBe('Sashimi X-Wing: 1 c48 r69 fr78c4 => r9c6<>1');
+    // the other five as they were before phase 6 gave the fish their walks and their fins' box
+    expect(stepText(step('JELLYFISH'))).toBe('Jellyfish: 6 r2689 c5689 => r3c9<>6');
+    expect(stepText(step('FINNED_SWORDFISH'))).toBe('Finned Swordfish: 3 r237 c247 fr7c3 => r8c2<>3');
+    expect(stepText(step('SASHIMI_SWORDFISH'))).toBe('Sashimi Swordfish: 1 r568 c357 fr6c2 => r4c3<>1');
+    expect(stepText(step('FINNED_JELLYFISH'))).toBe('Finned Jellyfish: 1 r1478 c1348 fr4c7 => r5c8<>1');
+    expect(stepText(step('SASHIMI_JELLYFISH'))).toBe('Sashimi Jellyfish: 6 r3478 c1249 fr3c6 => r1c4<>6');
+    // the fins' box, a band of the fins' role, is no house of the line
+    for (const tech of ['FINNED_X_WING', 'SASHIMI_X_WING', 'FINNED_SWORDFISH', 'SASHIMI_SWORDFISH', 'FINNED_JELLYFISH', 'SASHIMI_JELLYFISH'] as Tech[]) {
+      const s = step(tech);
+      expect(s.units!.some((u) => u.role === 'fin'), tech).toBe(true);
+      expect(stepText({ ...s, units: s.units!.filter((u) => u.role !== 'fin') }), tech).toBe(stepText(s));
+    }
   });
 
   it('names a subset by its digits and cells, an intersection by its house', () => {
@@ -155,6 +167,12 @@ describe('the HoDoKu line', () => {
     expect(stepText(step('NAKED_TRIPLE'))).toBe('Naked Triple: 2,6,7 in r79c4,r8c6 => r7c5<>6, r9c6<>2');
     expect(stepText(step('LOCKED_CANDIDATES_1'))).toBe('Locked Candidates (Pointing): 3 in b4 => r5c4<>3');
     expect(stepText(step('LOCKED_CANDIDATES_2'))).toBe('Locked Candidates (Claiming): 5 in r1 => r2c5<>5');
+    // phase 6 walks them in their finders' sentences, with the digits as a player says them: the line keeps its notation
+    expect(stepText(step('NAKED_QUADRUPLE'))).toBe('Naked Quadruple: 5,6,8,9 in r5c4569 => r5c3<>9, r5c8<>9');
+    expect(stepText(step('LOCKED_PAIR'))).toBe('Locked Pair: 3,7 in r12c1 => r3c1<>7, r5c1<>7, r6c1<>7, r2c3<>7, r3c3<>7');
+    expect(stepText(step('LOCKED_TRIPLE'))).toBe('Locked Triple: 2,3,7 in r8c123 => r8c7<>7, r8c8<>2, r8c8<>7, r7c2<>2, r7c2<>7, r7c3<>7');
+    expect(stepText(step('HIDDEN_TRIPLE'))).toBe('Hidden Triple: 3,5,9 in r8c469 => r8c4<>2, r8c4<>7, r8c6<>4, r8c6<>8');
+    expect(stepText(step('HIDDEN_QUADRUPLE'))).toBe('Hidden Quadruple: 1,2,5,8 in r45c56 => r4c5<>9, r4c6<>9, r5c5<>7');
   });
 
   it('names a single by its cell, a hidden single by its house too', () => {

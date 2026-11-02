@@ -24,21 +24,10 @@ import { useT, msg, translator } from '../content/i18n';
 import type { Translator } from '../content/i18n';
 import { touchIntent, cellsBetween, INTENT_MS, SLOP_PX } from './touchIntent';
 import type { TouchIntent, ScrollRoom } from './touchIntent';
+import { PALETTE, PALETTE_OPACITY } from '../content/playerColours';
 
 /** the tip that names multi-select has been shown once this session */
 let dragTipShown = false;
-
-const PALETTE = [
-  '#e05563',
-  '#e8934a',
-  '#e6c74c',
-  '#67b96a',
-  '#4fc1b0',
-  '#5b8fe0',
-  '#9b74d8',
-  '#d873b8',
-  '#9aa3b5'
-];
 
 /** a hint's arrows, start dots and walk numbers, its groups' bars and its sets' tiles and tabs, worked out once for the whole hint */
 type Drawing = HintDrawing;
@@ -1397,7 +1386,7 @@ export function Grid() {
                   width={SIZE / shown.length}
                   height={SIZE}
                   fill={PALETTE[col]}
-                  opacity={0.55}
+                  opacity={PALETTE_OPACITY}
                 />
               ))}
               {samePeer && (
@@ -1452,21 +1441,26 @@ export function Grid() {
         })}
 
         {/* house bands (G15): the houses a pattern lives in, under its marks,
-            carried by a full-strength outline over a barely-there fill */}
+            carried by a full-strength outline over a barely-there fill:
+            solid for the pattern, dashed for a cover, dotted for a fins' box */}
         {bands.map(({ unit, role }, k) => {
           const r = unitRect(unit);
+          const inset = role === 'fin' ? MARK.finInset * SIZE : 3.5;
           return (
             <g key={`band-${k}`} className="hint-band">
               <rect x={r.x} y={r.y} width={r.w} height={r.h} fill={hintFill(role)} style={{ fillOpacity: 'var(--hint-band-alpha)' }} />
               <rect
-                x={r.x + 3.5}
-                y={r.y + 3.5}
-                width={r.w - 7}
-                height={r.h - 7}
+                x={r.x + inset}
+                y={r.y + inset}
+                width={r.w - 2 * inset}
+                height={r.h - 2 * inset}
                 fill="none"
                 stroke={hintInk(role)}
-                strokeWidth={3}
-                strokeDasharray={role === 'secondary' ? MARK.coverDash.map((d) => d * SIZE).join(' ') : undefined}
+                strokeWidth={role === 'fin' ? MARK.finWidth * SIZE : 3}
+                strokeDasharray={
+                  role === 'secondary' ? MARK.coverDash.map((d) => d * SIZE).join(' ') : role === 'fin' ? MARK.finDots.map((d) => d * SIZE).join(' ') : undefined
+                }
+                strokeLinecap={role === 'fin' ? 'round' : undefined}
                 rx={8}
               />
             </g>

@@ -708,7 +708,8 @@ describe('the dashboard', () => {
     // the shares, by kind and way, and where the landings came from
     expect(w.shares).toBe(4);
     expect(w.sharesSheet).toBe(2);
-    expect(w.sharesBy).toEqual({ challenge: { sheet: 2, copy: 1 }, position: { sheet: 0, copy: 1 } });
+    expect(w.sharesBy).toEqual({ challenge: { sheet: 2, copy: 1, save: 0 }, position: { sheet: 0, copy: 1, save: 0 } });
+    expect(w.sharesSaved).toBe(0);
     expect(w.landingsPerShare).toBeCloseTo(1.25);
     expect(w.landingsFrom).toEqual({ enjoysudoku: 3, none: 2 });
     expect(m.yesterday.shares).toBe(1);
@@ -723,6 +724,30 @@ describe('the dashboard', () => {
     expect(empty.week.sharesBy).toEqual({});
     expect(empty.week.total).toBe(0);
     expect(empty.generatedAt).toBe('2026-10-13 12:00 UTC');
+  });
+
+  it('counts a picture of the board as a share, saved as a file or not, and leaves it out of the landings per share', () => {
+    const m = metricsOf(
+      [
+        ...ROWS,
+        row('2026-10-12', 'shared', 'tab', { n: 3, kind: 'image', via: 'save' }),
+        row('2026-10-12', 'shared', 'tab', { n: 1, kind: 'image', via: 'sheet' }),
+        row('2026-10-12', 'shared', 'tab', { n: 2, kind: 'image', via: 'copy' })
+      ],
+      NOW()
+    );
+    const w = m.week;
+    expect(w.shares).toBe(10);
+    expect(w.sharesSheet).toBe(3);
+    expect(w.sharesSaved).toBe(3);
+    expect(w.sharesBy.image).toEqual({ sheet: 1, copy: 2, save: 3 });
+    // a picture carries no link: the five landings are over the four links shared, as before
+    expect(w.landingsPerShare).toBeCloseTo(1.25);
+    const html = renderAdmin(m);
+    expect(html).toContain('<dt>Shares, last 7 days</dt><dd>10</dd><small>3 through the share sheet, 4 copied, 3 saved as a picture</small>');
+    expect(html).toContain('<thead><tr><th>Shared</th><th>Share sheet</th><th>Copied</th><th>Saved</th><th>All</th></tr></thead>');
+    expect(html).toContain('<tr><td>Picture of the board (Share, or a hint)</td><td>1</td><td>2</td><td>3</td><td>6</td></tr>');
+    expect(html).toContain('<small>5 share-page landings over 4 shares of a link, 7 days</small>');
   });
 
   it('renders the numbers and a sparkline, in plain HTML without a script', () => {
@@ -750,8 +775,9 @@ describe('the dashboard', () => {
     expect(html).toContain('<th>Shares</th><th>Landings</th>');
     expect(html).toContain('<td>2026-10-12</td><td>10</td><td>5</td><td>1</td><td>3</td><td>1</td><td>5</td><td>0</td><td>3</td><td>1</td>');
     // what was shared, every kind in the list's order, and where landings came from, the most first
-    expect(html).toContain('<tr><td>Puzzle link (Share)</td><td>0</td><td>0</td><td>0</td></tr>');
-    expect(html).toContain('<tr><td>Challenge (win screen)</td><td>2</td><td>1</td><td>3</td></tr>');
+    expect(html).toContain('<tr><td>Puzzle link (Share)</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>');
+    expect(html).toContain('<tr><td>Challenge (win screen)</td><td>2</td><td>1</td><td>0</td><td>3</td></tr>');
+    expect(html).toContain('<tr><td>Picture of the board (Share, or a hint)</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>');
     expect(html.indexOf('Puzzle link (Share)')).toBeLessThan(html.indexOf('Daily line (win screen)'));
     expect(html).toContain('<tr><td>Enjoy Sudoku forum</td><td>0</td><td>3</td><td>3</td><td>60%</td></tr>');
     expect(html).toContain('<tr><td>No referrer: typed, a bookmark, most apps</td><td>0</td><td>2</td><td>2</td><td>40%</td></tr>');
@@ -802,7 +828,7 @@ describe('the dashboard', () => {
     expect(m.yesterday.landingsHome).toBe(5);
     const html = renderAdmin(m);
     expect(html).toContain("<dt>Landings yesterday</dt><dd>7</dd><small>5 on a home page, 0 on a daily's address</small>");
-    expect(html).toContain('<dt>Landings per share</dt><dd>1.50</dd><small>3 share-page landings over 2 shares, 7 days</small>');
+    expect(html).toContain('<dt>Landings per share</dt><dd>1.50</dd><small>3 share-page landings over 2 shares of a link, 7 days</small>');
     expect(html).toContain('<dt>Starts, last 7 days</dt><dd>10</dd>');
     // the games by kind and language: columns in the lists' order, then the older builds' lines
     expect(html).toContain(
@@ -1018,6 +1044,29 @@ describe('the privacy page', () => {
     // a practice puzzle is counted now, at the player's own first move
     expect(PRIVACY.en.sections[0].paragraphs[2]).toContain('A practice puzzle may open part-way through');
     expect(PRIVACY.en.sections[0].paragraphs[2]).not.toContain('practice puzzle sends nothing');
+  });
+
+  it('names a picture of the board among what is shared, saving it among the ways, and says the picture itself is never sent, in every language', () => {
+    // the closed lists the line is checked against carry the picture and the saved file (worker/telemetry.ts)
+    expect(SHARE_KINDS).toContain('image');
+    expect(SHARE_VIAS).toContain('save');
+    const WORDS = {
+      en: ['one per share, while online', 'a link or a picture you share (below)', 'or a picture of the board: one kind, whether or not a hint is drawn on it, and the line does not say which', 'was copied or was saved', 'not the picture', 'The picture is made on your device and is never sent to sudokui.app', 'is remembered on your device for the next picture'],
+      nb: ['én per deling, bare på nett', 'en lenke eller et bilde du deler (se under)', 'eller et bilde av brettet: én type, enten det er tegnet inn et hint eller ikke, og linjen sier ikke hvilken av delene', 'ble kopiert eller ble lagret', 'ikke bildet', 'Bildet lages på enheten din og sendes aldri til sudokui.app', 'huskes på enheten din til neste bilde'],
+      es: ['una por enlace o imagen compartidos', 'un enlace o una imagen que compartes (más abajo)', 'o una imagen del tablero: un solo tipo, tenga o no una pista dibujada, y la línea no dice si la tiene', 'se copió o se guardó', 'ni la imagen', 'La imagen se crea en tu dispositivo y nunca se envía a sudokui.app', 'se recuerda en tu dispositivo para la próxima imagen']
+    };
+    // the section that says so names pictures in its heading
+    const HEADINGS = {
+      en: 'Share links and pictures, and visits from other sites',
+      nb: 'Delingslenker og bilder, og besøk fra andre nettsteder',
+      es: 'Enlaces e imágenes para compartir, y visitas desde otros sitios'
+    };
+    for (const lang of HOME_LANGS) {
+      const c = PRIVACY[lang];
+      const text = [c.description, ...c.sections.flatMap((s) => s.paragraphs)].join(' ');
+      for (const words of WORDS[lang]) expect(text, lang).toContain(words);
+      expect(c.sections.map((s) => s.heading), lang).toContain(HEADINGS[lang]);
+    }
   });
 
   it('leaves no English in the Norwegian and Spanish copy', () => {

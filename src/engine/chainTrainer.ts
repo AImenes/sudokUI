@@ -13,8 +13,8 @@
  * and ends with a strong link proves that one of its two ends is true, so
  * every candidate that sees both ends is false.
  */
-import { Grid, CELL_UNITS, UNITS, bit, popcount, sees, cellName } from './board';
-import { CellDigit, ChainLink, Step } from './steps';
+import { Grid, bit, popcount, sees, cellName } from './board';
+import { CellDigit, ChainLink, Step, linkHouse } from './steps';
 import { tr, unitName } from './text';
 
 export type LinkKind = 'strong' | 'weak';
@@ -57,13 +57,13 @@ export function classifyLink(g: Grid, a: CellDigit, b: CellDigit): Verdict {
   if (!sees(a.cell, b.cell)) {
     return { kind: null, why: tr`${cellName(a.cell)} and ${cellName(b.cell)} do not see each other: no link on ${a.digit}` };
   }
-  const shared = CELL_UNITS[a.cell].filter((u) => CELL_UNITS[b.cell].includes(u));
-  const b1 = bit(a.digit);
-  const conjugate = shared.find((u) => UNITS[u].filter((c) => g.values[c] === 0 && g.cands[c] & b1).length === 2);
-  if (conjugate !== undefined) {
+  // the house that makes the link, as a hint's link names it: a row or column before the box
+  const conjugate = linkHouse(g, [a.cell, b.cell], a.digit, true);
+  if (conjugate >= 0) {
     return { kind: 'strong', why: tr`${cellName(a.cell)} and ${cellName(b.cell)} are the only places for ${a.digit} in ${unitName(conjugate)}, so one of them is true` };
   }
-  return { kind: 'weak', why: tr`${cellName(a.cell)} and ${cellName(b.cell)} see each other in ${unitName(shared[0])}, so they cannot both be ${a.digit}` };
+  const shared = linkHouse(g, [a.cell, b.cell], a.digit, false);
+  return { kind: 'weak', why: tr`${cellName(a.cell)} and ${cellName(b.cell)} see each other in ${unitName(shared)}, so they cannot both be ${a.digit}` };
 }
 
 /** the kind of link the chain needs next: strong at even positions */
@@ -221,18 +221,28 @@ export function chainStep(g: Grid, chain: Chain, opts: Drawing = {}): Step {
   // each link is drawn as the kind it is USED as, strong at the even links
   // and weak at the odd ones (docs/hint-drawing.md G8): solid into a true
   // node, dashed into a false one. A pair that is strong but used as a weak
-  // link is dashed, and its sentence says so
-  const drawn: ChainLink[] = links.map((kind, i) => ({
-    from: [nodes[i]],
-    to: [nodes[i + 1]],
-    strong: i % 2 === 0,
-    text:
-      i % 2 === 0
-        ? tr`If the ${nodes[i].digit} in ${cellName(nodes[i].cell)} is false, the ${nodes[i + 1].digit} in ${cellName(nodes[i + 1].cell)} is true (strong link).`
+  // link is dashed, and its sentence says so. A link between two cells names
+  // the house that makes it (docs/hint-readability-2026-11.md M17): the
+  // house whose only places for the digit they are, or where they see each
+  // other; a link inside a cell keeps its own words
+  const drawn: ChainLink[] = links.map((kind, i) => {
+    const [a, b] = [nodes[i], nodes[i + 1]];
+    const [d, e, p, q] = [a.digit, b.digit, cellName(a.cell), cellName(b.cell)];
+    const u = a.cell === b.cell ? -1 : linkHouse(g, [a.cell, b.cell], d, kind === 'strong');
+    const house = u < 0 ? null : unitName(u);
+    const text = house
+      ? i % 2 === 0
+        ? tr`If the ${d} in ${p} is false, the ${e} in ${q} is true (strong link: they are the only ${d}s in ${house}).`
         : kind === 'strong'
-          ? tr`If the ${nodes[i].digit} in ${cellName(nodes[i].cell)} is true, the ${nodes[i + 1].digit} in ${cellName(nodes[i + 1].cell)} is false (a strong link, used here as a weak one).`
-          : tr`If the ${nodes[i].digit} in ${cellName(nodes[i].cell)} is true, the ${nodes[i + 1].digit} in ${cellName(nodes[i + 1].cell)} is false (weak link).`
-  }));
+          ? tr`If the ${d} in ${p} is true, the ${e} in ${q} is false (a strong link in ${house}, used here as a weak one).`
+          : tr`If the ${d} in ${p} is true, the ${e} in ${q} is false (weak link: they see each other in ${house}).`
+      : i % 2 === 0
+        ? tr`If the ${d} in ${p} is false, the ${e} in ${q} is true (strong link).`
+        : kind === 'strong'
+          ? tr`If the ${d} in ${p} is true, the ${e} in ${q} is false (a strong link, used here as a weak one).`
+          : tr`If the ${d} in ${p} is true, the ${e} in ${q} is false (weak link).`;
+    return { from: [a], to: [b], strong: i % 2 === 0, text };
+  });
   const allSameDigit = nodes.every((n) => n.digit === nodes[0].digit);
   const ends = links.length && links.length % 2 === 1;
   // the removed candidates, as a list after a colon

@@ -14,9 +14,9 @@
  * and the three flags. A `started` or `completed` line from an app of
  * November 2026 or later adds two blobs: what kind of game it was and the
  * app's language (PLAY_KINDS, PLAY_LANGS); an older app's line keeps its
- * four. A `shared` line, sent when a player shares a link,
- * adds two blobs: what was shared and whether the share sheet took it or
- * it was copied (SHARE_KINDS, SHARE_VIAS). Identical events fold into one point with a count,
+ * four. A `shared` line, sent when a player shares a link or a picture of
+ * the board, adds two blobs: what was shared and whether the share sheet
+ * took it, it was copied or the picture was saved (SHARE_KINDS, SHARE_VIAS). Identical events fold into one point with a count,
  * because WAE takes at most POINTS_MAX writes per invocation: the app
  * never sends more than that many events at once (src/state/telemetry.ts),
  * and a batch from anywhere else is kept to its first POINTS_MAX points.
@@ -63,13 +63,14 @@ export type Source = (typeof SOURCES)[number];
 /**
  * What a `shared` line says was shared: the Share dialog's link to the
  * puzzle (a daily's own address for a daily) or to the position, the win
- * screen's challenge, or the daily's line (src/ui/Dialogs.tsx)
+ * screen's challenge, the daily's line, or a picture of the board, with a
+ * hint drawn or without (src/ui/Dialogs.tsx); never the picture itself
  */
-export const SHARE_KINDS = ['puzzle', 'position', 'challenge', 'daily'] as const;
+export const SHARE_KINDS = ['puzzle', 'position', 'challenge', 'daily', 'image'] as const;
 export type ShareKind = (typeof SHARE_KINDS)[number];
 
-/** how it went: the device's share sheet took it, or it was copied (src/ui/send.ts) */
-export const SHARE_VIAS = ['sheet', 'copy'] as const;
+/** how it went: the device's share sheet took it, it was copied, or the picture was saved as a file (src/ui/send.ts) */
+export const SHARE_VIAS = ['sheet', 'copy', 'save'] as const;
 export type ShareVia = (typeof SHARE_VIAS)[number];
 
 /**

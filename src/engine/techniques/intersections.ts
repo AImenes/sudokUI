@@ -1,6 +1,28 @@
-import { Grid, UNITS, bit, rowOf, colOf, boxOf, cellNames } from '../board';
+import { Grid, UNITS, bit, rowOf, colOf, boxOf, cellName } from '../board';
 import { Step, CellDigit } from '../steps';
-import { tr, unitName } from '../text';
+import { tr, unitName, listAnd } from '../text';
+
+/**
+ * Locked Candidates' walk in its finder's own words (the readability
+ * report's H1): the house where the digit has two or three places, then
+ * the house they share, which loses the digit everywhere else; each house
+ * is drawn with its frame (M1)
+ */
+function lockedWalk(house: number, cells: number[], d: number, shared: number): NonNullable<Step['walk']> {
+  const there = unitName(shared);
+  return {
+    frames: [
+      { text: tr`In ${unitName(house)}, the only cells that can take ${d} are ${listAnd(cells.map(cellName))}.`, show: ['primary'] },
+      {
+        text:
+          cells.length === 2
+            ? tr`One of them must be ${d}, and both lie in ${there}, so no other cell of ${there} can be ${d}.`
+            : tr`One of them must be ${d}, and all three lie in ${there}, so no other cell of ${there} can be ${d}.`,
+        show: ['secondary']
+      }
+    ]
+  };
+}
 
 /**
  * Locked Candidates Type 1 (Pointing): all candidates of a digit in a box
@@ -23,6 +45,8 @@ export function findLockedCandidates1(g: Grid): Step | null {
         if (elims.length) {
           const onRow = lineOf === rowOf;
           const box = unitName(18 + b);
+          const lineUnitIndex = onRow ? line : 9 + line;
+          const lineName = unitName(lineUnitIndex);
           return {
             tech: 'LOCKED_CANDIDATES_1',
             placements: [],
@@ -30,20 +54,14 @@ export function findLockedCandidates1(g: Grid): Step | null {
             primary: cells.map((cell) => ({ cell, digit: d })),
             units: [
               { unit: 18 + b, role: 'primary' },
-              { unit: lineOf === rowOf ? line : 9 + line, role: 'secondary' }
+              { unit: lineUnitIndex, role: 'secondary' }
             ],
-            labels: onRow
-              ? {
-                  primary: tr`${box}: every ${d} in it sits on one row`,
-                  secondary: tr`the row, which loses ${d} outside the box`
-                }
-              : {
-                  primary: tr`${box}: every ${d} in it sits on one column`,
-                  secondary: tr`the column, which loses ${d} outside the box`
-                },
-            description: onRow
-              ? tr`Locked Candidates (Pointing): in ${box}, digit ${d} is confined to ${cellNames(cells)}, so it can be removed from the rest of the row.`
-              : tr`Locked Candidates (Pointing): in ${box}, digit ${d} is confined to ${cellNames(cells)}, so it can be removed from the rest of the column.`
+            labels: {
+              primary: onRow ? tr`${box}: every ${d} in it sits on one row` : tr`${box}: every ${d} in it sits on one column`,
+              secondary: tr`${lineName}, which loses ${d} outside ${box}`
+            },
+            walk: lockedWalk(18 + b, cells, d, lineUnitIndex),
+            description: tr`Locked Candidates (Pointing): in ${box}, every ${d} lies in ${lineName}, so no other cell of ${lineName} can be ${d}.`
           };
         }
       }
@@ -82,9 +100,10 @@ export function findLockedCandidates2(g: Grid): Step | null {
           ],
           labels: {
             primary: tr`${lineName}: every ${d} in it sits in one box`,
-            secondary: u < 9 ? tr`${box}, which loses ${d} outside the row` : tr`${box}, which loses ${d} outside the column`
+            secondary: tr`${box}, which loses ${d} outside ${lineName}`
           },
-          description: tr`Locked Candidates (Claiming): in ${lineName}, digit ${d} is confined to ${box}, so it can be removed from the rest of the box.`
+          walk: lockedWalk(u, cells, d, 18 + b),
+          description: tr`Locked Candidates (Claiming): in ${lineName}, every ${d} lies in ${box}, so no other cell of ${box} can be ${d}.`
         };
       }
     }

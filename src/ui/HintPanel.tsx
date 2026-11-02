@@ -245,7 +245,16 @@ export function ChainPanel() {
 }
 const KEY_VIEWS = 8;
 
-export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void; onReport?: (hint: Step) => void }) {
+export function HintPanel({
+  onLearn,
+  onReport,
+  onShare
+}: {
+  onLearn: (tech: Tech) => void;
+  onReport?: (hint: Step) => void;
+  /** opens the Share dialog with this hint drawn on the picture, as the board shows it now */
+  onShare?: () => void;
+}) {
   const hint = useGame((s) => s.hint);
   const stage = useGame((s) => s.hintStage);
   const revealHint = useGame((s) => s.revealHint);
@@ -459,6 +468,13 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                   {hint.labels?.fins ?? t('fin')}
                 </li>
               )}
+              {/* a finned fish's fins' box: a small band, dotted, in the fins' colour */}
+              {legend.finBox && hint.labels?.finBox && (
+                <li>
+                  <i className="swatch-fin on-band fin-box" />
+                  {hint.labels.finBox}
+                </li>
+              )}
               {/* a bar in the pattern's ink (a proof-only view) or the removal's: what a bar is, its swatch in the ink drawn, or one bar in each where both are */}
               {(legend.bars.has('primary') || legend.bars.has('elim')) && (
                 <li>
@@ -514,6 +530,12 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
             >
               {copied ? `✓ ${t('Copied')}` : t('Copy step')}
             </button>
+            {/* a picture of the board with the hint drawn as shown now, the walk's frame or all of it; no technique named */}
+            {onShare && (
+              <button className="ghost" onClick={onShare} title={t('Share a picture of your board with this hint drawn, without the name of the technique')}>
+                {t('Share this hint')}
+              </button>
+            )}
             {/* a wrong hint teaches something false: the report carries it, the board and the settings it was found under */}
             {onReport && (
               <button className="ghost" onClick={() => onReport(hint)} title={t('Tell the developer this hint looks wrong; it goes with the board')}>

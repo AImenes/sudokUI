@@ -23,6 +23,7 @@
 import { describe, it, expect } from 'vitest';
 import { LIGHT, DARK, CSS_VARS, HintPalette, fillOf, MARK } from '../src/content/hintPalette';
 import { PALETTE } from '../src/ui/Grid';
+import { PALETTE_OPACITY } from '../src/content/playerColours';
 import { SIZE, M, candX, candY } from '../src/ui/boardLayout';
 import { readFileSync } from 'node:fs';
 import { contrast, de2000, seen, worstDE, MODELS, Lab, over } from './colourScience';
@@ -376,9 +377,12 @@ describe("an almost locked set's tints (docs/hint-drawing-sets.md, decisions 5, 
   });
 
   it("keep the hint's ink readable on every tile, and over the player's own colours never below today's or 4.5:1, whichever is less", () => {
-    // the player's colours as Grid.tsx draws them, under every hint mark
+    // the player's colours as Grid.tsx draws them, under every hint mark,
+    // at the strength the shared picture of the board draws them too
+    // (src/content/playerColours.ts)
     const grid = new TextDecoder().decode(readFileSync('src/ui/Grid.tsx'));
-    expect(grid).toMatch(new RegExp(`fill=\\{PALETTE\\[col\\]\\}\\s*opacity=\\{${String(PLAYER_ALPHA).replace('.', '\\.')}\\}`));
+    expect(grid).toMatch(/fill=\{PALETTE\[col\]\}\s*opacity=\{PALETTE_OPACITY\}/);
+    expect(PALETTE_OPACITY).toBe(PLAYER_ALPHA);
     for (const theme of THEMES) {
       const p = BOARDS[theme].palette;
       const f = SET_FIGURES[theme];

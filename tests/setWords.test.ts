@@ -121,42 +121,42 @@ const LINKS: { kind: string; puzzle: string; at: number; link: number; text: str
     puzzle: '.29....41..1..3.866...4.9....2.7........3..19.7...5..2.4......8...3...5....81....',
     at: 31,
     link: 6,
-    text: 'Every 9 of set A sees every 9 of set B: if r7c6 is 9, r8c6 cannot be 9.'
+    text: 'In column 6, every 9 of set A sees every 9 of set B: if r7c6 is 9, r8c6 cannot be 9.'
   },
   {
     kind: 'a restricted common from several candidates',
     puzzle: '...9.....216547....89.21..............2.93.61......4.3.41.7...98.....7....51...2.',
     at: 15,
     link: 4,
-    text: 'Every 7 of set A sees every 7 of set B: if one of r4c3, r5c1, r6c3 is 7, r5c2 cannot be 7.'
+    text: 'In box 4, every 7 of set A sees every 7 of set B: if one of r4c3, r5c1, r6c3 is 7, r5c2 cannot be 7.'
   },
   {
     kind: 'a restricted common into several candidates',
     puzzle: '......31..1..3.....5..6.4....9..658.6..4.9..2.245..9....2.9..7.....5..2..67......',
     at: 19,
     link: 8,
-    text: 'Every 3 of set A sees every 3 of set B: if r6c1 is 3, none of r7c1, r8c1, r9c1 can be 3.'
+    text: 'In column 1, every 3 of set A sees every 3 of set B: if r6c1 is 3, none of r7c1, r8c1, r9c1 can be 3.'
   },
   {
     kind: 'a restricted common, several candidates at each end',
     puzzle: '....1..28.4...9...8.243.............7.6....51......64...........24..53..19.....75',
     at: 35,
     link: 6,
-    text: 'Every 8 of set A sees every 8 of set B: if one of r6c4, r6c6 is 8, none of r5c4, r5c5, r5c6 can be 8.'
+    text: 'In box 5, every 8 of set A sees every 8 of set B: if one of r6c4, r6c6 is 8, none of r5c4, r5c5, r5c6 can be 8.'
   },
   {
     kind: 'into a set from a group',
     puzzle: '...9.....216547....89.21..............2.93.61......4.3.41.7...98.....7....51...2.',
     at: 15,
     link: 2,
-    text: 'If one of r4c2, r5c2, r6c2 is 5, set A holds no 5: every 5 of A sees all of them.'
+    text: 'If one of r4c2, r5c2, r6c2 is 5, set A holds no 5: every 5 of A sees all of them in box 4.'
   },
   {
     kind: 'out of a set into a group',
     puzzle: '7.4..68.2.89.5......63......9...3......7....5......1.9.3..8.2...6...2...5.2.....6',
     at: 22,
     link: 6,
-    text: 'If set A holds a 9, none of r7c6, r9c6 can be 9: they see every 9 of A.'
+    text: 'If set A holds a 9, none of r7c6, r9c6 can be 9: they see every 9 of A in box 8.'
   },
   {
     kind: "into a set from another digit of the set's only cell holding its digit",
@@ -212,16 +212,16 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
   it('walks the stored AIC with ALS as the design tells it: set A in a frame of its own before the link that reaches it, then a link a frame', () => {
     const s = EXAMPLES.AIC_ALS!.step;
     expect(walkFrames(s).map(told)).toEqual([
-      { text: 'Strong link on 8: if r2c9 is not 8, r2c8 must be 8 (nowhere else for it).', links: 1 },
+      { text: 'Strong link on 8 in row 2: r2c9 and r2c8 are its only 8s, so if r2c9 is not 8, r2c8 is.', links: 1 },
       {
         text: 'Set A: the 2 cells r7c8, r8c8 of column 8 hold only 4, 8 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.',
         links: 1,
         sets: [0]
       },
-      { text: 'If r2c8 is 8, set A holds no 8: every 8 of A sees r2c8.', links: 2 },
+      { text: 'If r2c8 is 8, set A holds no 8: every 8 of A sees r2c8 in column 8.', links: 2 },
       { text: 'If set A holds no 8, its other 2 digits fill its 2 cells, so one of r7c8, r8c8 must be 9.', links: 3 },
-      { text: 'If set A holds a 9, r6c8 cannot be 9: it sees every 9 of A.', links: 4 },
-      { text: 'Strong link on 9: if r6c8 is not 9, r6c9 must be 9 (nowhere else for it).', links: 5 },
+      { text: 'If set A holds a 9, r6c8 cannot be 9: it sees every 9 of A in column 8.', links: 4 },
+      { text: 'Strong link on 9 in row 6: r6c8 and r6c9 are its only 9s, so if r6c8 is not 9, r6c9 is.', links: 5 },
       { text: 'Either r2c9 (by the small dot) is 8, or the chain makes r6c9 9. Either way r6c9 is not 8. So 8 is removed from r6c9.', links: 5 }
     ]);
     // the set frame draws set A, its candidates members, no truth yet; the link into it makes its 8s false
@@ -252,7 +252,7 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
     const at = (r: number, c: number, digit: number) => ({ cell: (r - 1) * 9 + c - 1, digit });
     expect(EXAMPLES.ALS_XZ!.step.links).toEqual([
       { from: [at(8, 2, 5), at(9, 1, 5)], to: [at(8, 2, 1)], strong: true, fromSet: 0, toSet: 0 },
-      { from: [at(8, 2, 1)], to: [at(8, 9, 1)], strong: false, fromSet: 0, toSet: 1 },
+      { from: [at(8, 2, 1)], to: [at(8, 9, 1)], strong: false, fromSet: 0, toSet: 1, unit: 7 },
       { from: [at(8, 9, 1)], to: [at(7, 8, 5)], strong: true, fromSet: 1, toSet: 1 }
     ]);
   });
@@ -263,28 +263,28 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
       { text: 'Set A: the 2 cells r8c2, r9c1 of box 7 hold only 1, 5 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.', links: 0, sets: [0] },
       { text: 'If set A holds no 5, its other 2 digits fill its 2 cells, so r8c2 must be 1.', links: 1 },
       { text: 'Set B: the 2 cells r7c8, r8c9 of box 9 hold only 1, 5 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.', links: 1, sets: [1] },
-      { text: 'Every 1 of set A sees every 1 of set B: if r8c2 is 1, r8c9 cannot be 1.', links: 2 },
+      { text: 'In row 8, every 1 of set A sees every 1 of set B: if r8c2 is 1, r8c9 cannot be 1.', links: 2 },
       { text: 'If set B holds no 1, its other 2 digits fill its 2 cells, so r7c8 must be 5.', links: 3 }
     ]);
     // the hinge C, one cell, folded into its lock; A, C, B along the chain
     expect(walk(EXAMPLES.ALS_XY_WING!.step).map((f) => f.text)).toEqual([
       'Set A: the 2 cells r8c3, r8c8 of row 8 hold only 2, 4 and 7: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'If set A holds no 7, its other 2 digits fill its 2 cells, so r8c3 must be 4.',
-      'Every 4 of set A sees every 4 of set C, the hinge r6c3: if r8c3 is 4, r6c3 cannot be 4.',
+      'In column 3, every 4 of set A sees every 4 of set C, the hinge r6c3: if r8c3 is 4, r6c3 cannot be 4.',
       'Set C, the hinge, is the cell r6c3, which holds only 4 and 6: if it is not 4, it must be 6.',
       'Set B: the 2 cells r4c9, r6c8 of box 6 hold only 4, 6 and 7: one digit more than cells. Without any one of these digits, the others fill the cells.',
-      'Every 6 of set C sees every 6 of set B: if r6c3 is 6, r6c8 cannot be 6.',
+      'In row 6, every 6 of set C sees every 6 of set B: if r6c3 is 6, r6c8 cannot be 6.',
       'If set B holds no 6, its other 2 digits fill its 2 cells, so one of r4c9, r6c8 must be 7.'
     ]);
     expect(walk(EXAMPLES.ALS_XY_CHAIN!.step).map((f) => f.text)).toEqual([
       'Set A: the 2 cells r4c2, r4c7 of row 4 hold only 4, 6 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.',
       'If set A holds no 4, its other 2 digits fill its 2 cells, so r4c7 must be 9.',
-      'Every 9 of set A sees every 9 of set B, the cell r1c7: if r4c7 is 9, r1c7 cannot be 9.',
+      'In column 7, every 9 of set A sees every 9 of set B, the cell r1c7: if r4c7 is 9, r1c7 cannot be 9.',
       'Set B is the cell r1c7, which holds only 3 and 9: if it is not 9, it must be 3.',
       'Set C: the 2 cells r1c5, r1c6 of row 1 hold only 2, 3 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.',
-      'Every 3 of set B sees every 3 of set C: if r1c7 is 3, none of r1c5, r1c6 can be 3.',
+      'In row 1, every 3 of set B sees every 3 of set C: if r1c7 is 3, none of r1c5, r1c6 can be 3.',
       'If set C holds no 3, its other 2 digits fill its 2 cells, so r1c5 must be 9.',
-      'Every 9 of set C sees every 9 of set D, the cell r7c5: if r1c5 is 9, r7c5 cannot be 9.',
+      'In column 5, every 9 of set C sees every 9 of set D, the cell r7c5: if r1c5 is 9, r7c5 cannot be 9.',
       'Set D is the cell r7c5, which holds only 4 and 9: if it is not 9, it must be 4.'
     ]);
     // A, the cell r7c7, lies inside D: D's lock names both its 1s
@@ -292,13 +292,13 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
     expect(walk(shared).map((f) => f.text)).toEqual([
       'Set A is the cell r7c7, which holds only 1 and 5: if it is not 1, it must be 5.',
       'Set B: the 2 cells r2c7, r2c9 of row 2 hold only 2, 3 and 5: one digit more than cells. Without any one of these digits, the others fill the cells.',
-      'Every 5 of set A sees every 5 of set B: if r7c7 is 5, r2c7 cannot be 5.',
+      'In column 7, every 5 of set A sees every 5 of set B: if r7c7 is 5, r2c7 cannot be 5.',
       'If set B holds no 5, its other 2 digits fill its 2 cells, so r2c9 must be 2.',
       'Set C: the 2 cells r5c5, r5c9 of row 5 hold only 2, 3 and 7: one digit more than cells. Without any one of these digits, the others fill the cells.',
-      'Every 2 of set B sees every 2 of set C: if r2c9 is 2, r5c9 cannot be 2.',
+      'In column 9, every 2 of set B sees every 2 of set C: if r2c9 is 2, r5c9 cannot be 2.',
       'If set C holds no 2, its other 2 digits fill its 2 cells, so r5c5 must be 7.',
       'Set D: the 2 cells r7c5, r7c7 of row 7 hold only 1, 5 and 7: one digit more than cells. Without any one of these digits, the others fill the cells.',
-      'Every 7 of set C sees every 7 of set D: if r5c5 is 7, r7c5 cannot be 7.',
+      'In column 5, every 7 of set C sees every 7 of set D: if r5c5 is 7, r7c5 cannot be 7.',
       'If set D holds no 7, its other 2 digits fill its 2 cells, so one of r7c5, r7c7 must be 1.'
     ]);
     // a hinge of several cells is named so in its own frame
@@ -350,8 +350,8 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
     const own: Frame = { text: 'Set C: the cell r6c3.', links: frames[hinge].links - 1, sets: [2], show: new Set(['units']) };
     expect(wordProblems(wing, [...frames.slice(0, hinge), own, ...frames.slice(hinge)])).toEqual(['set C: a one-cell set with a frame of its own']);
     // the restricted common into the hinge, a frame before its lock, naming set C without its cell (review report L11)
-    const bare = 'Every 4 of set A sees every 4 of set C: if r8c3 is 4, r6c3 cannot be 4.';
-    expect(frames[hinge - 1].text).toBe('Every 4 of set A sees every 4 of set C, the hinge r6c3: if r8c3 is 4, r6c3 cannot be 4.');
+    const bare = 'In column 3, every 4 of set A sees every 4 of set C: if r8c3 is 4, r6c3 cannot be 4.';
+    expect(frames[hinge - 1].text).toBe('In column 3, every 4 of set A sees every 4 of set C, the hinge r6c3: if r8c3 is 4, r6c3 cannot be 4.');
     expect(wordProblems(wing, frames.map((f, i) => (i === hinge - 1 ? { ...f, text: bare } : f)))).toEqual([
       `frame ${hinge}: names the one-cell set C before its lock without its cell: ${bare}`
     ]);

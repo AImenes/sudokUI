@@ -30,6 +30,9 @@ import { dailyNumber, localDateKey, dailyClosed, standingOf } from '../content/d
 import { dailyLine, standingPhrase, asLine } from '../content/dailyLine';
 import { useDailyStats, SubmitOutcome } from '../state/dailyStats';
 import { sendText, copyText } from './send';
+import { ShareImage } from './ShareImage';
+import type { PictureCell } from '../content/boardImage';
+import { walkFrames } from '../engine/hintFrames';
 import type { Sent } from './send';
 import { useTelemetry } from '../state/telemetry';
 import type { ShareKind } from '../state/telemetry';
@@ -951,16 +954,23 @@ function useShareTechs(puzzle: string | undefined): () => Tech[] {
 }
 
 /**
- * A link that went to someone, through the share sheet or a copy, counts
- * as a share: its kind, the way and the band, never what it said
- * (src/state/telemetry.ts). A closed sheet or a failed copy is not one,
- * and nor is a board whose band is not known.
+ * A link or a picture that went to someone, through the share sheet, a
+ * copy or a saved file, counts as a share: its kind, the way and the band,
+ * never what it said or showed (src/state/telemetry.ts). A closed sheet or
+ * a failed copy is not one, and nor is a board whose band is not known.
  */
 function countShare(outcome: Sent, what: ShareKind, band: Level | undefined): void {
-  if (band && (outcome === 'shared' || outcome === 'copied')) useTelemetry.getState().shared(what, outcome === 'shared' ? 'sheet' : 'copy', band);
+  const via = outcome === 'shared' ? 'sheet' : outcome === 'copied' ? 'copy' : outcome === 'saved' ? 'save' : null;
+  if (band && via) useTelemetry.getState().shared(what, via, band);
 }
 
-export function ShareDialog({ onClose }: { onClose: () => void }) {
+/**
+ * The Share dialog: the puzzle's links, its string and its pencil-mark
+ * grid, and a picture of the board. Opened from the hint panel
+ * (`withHint`), it shares the hint: the picture draws it as the board does,
+ * at the walk's frame shown or in full, and names no technique.
+ */
+export function ShareDialog({ onClose, withHint = false }: { onClose: () => void; withHint?: boolean }) {
   const cells = useGame((s) => s.cells);
   const autoCandidates = useGame((s) => s.autoCandidates);
   const markContract = useGame((s) => s.markContract);
@@ -979,6 +989,14 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   const [nameTechs, setNameTechs] = useState(false);
   const t = useT();
   const shareTechs = useShareTechs(nameTechs ? info?.puzzle : undefined);
+  // the hint as the board shows it when the dialog opens: its step, and the
+  // walk's frame shown, or none for the full view
+  const [hint] = useState(() => {
+    const s = useGame.getState();
+    if (!withHint || !s.hint || (s.hintStage !== 'full' && s.hintStage !== 'walk')) return null;
+    const frames = s.hintStage === 'walk' ? walkFrames(s.hint) : [];
+    return { step: s.hint, frame: frames.length ? frames[Math.min(s.walkIndex, frames.length - 1)] : null };
+  });
 
   const currentAsString = () =>
     cells.map((c) => (c.given ? String(c.value) : '.')).join('');
@@ -1020,6 +1038,40 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   // candidates in every cell, as the board shows them
   const positionText = () => formatPencilGrid(cells, autoCandidates, markContract);
   const showPosition = !(known && solvedBoard);
+
+  // the picture of the board: as it stands, its colours as the board
+  // shows them (with the set tracker on, a cell in both sets' colours shows
+  // neither; src/ui/Grid.tsx), or a solved board from its start, its
+  // givens alone, since the board as it stands is the solution
+  const setTracker = useSettings((s) => s.setTracker);
+  const [setA, setB] = useSettings((s) => s.setColors);
+  const pictureCells = React.useMemo(
+    (): readonly PictureCell[] =>
+      showPosition
+        ? cells.map((c) => (setTracker && c.colors.includes(setA) && c.colors.includes(setB) ? { ...c, colors: c.colors.filter((k) => k !== setA && k !== setB) } : c))
+        : cells.map((c) => ({ given: c.given, value: c.given ? c.value : 0, corner: 0, center: 0, excluded: 0, colors: [] })),
+    [cells, showPosition, setTracker, setA, setB]
+  );
+  // the line under it names the site and, for a game it knows, the level
+  // and the rating, held together by a no-break space so a narrow dialog
+  // never parts them (the preview beside its tick and the PNG alike)
+  const footer = !known
+    ? 'sudokui.app'
+    : daily
+      ? t('sudokui.app · Daily #{no} · {level}\u00a0{score}', { no: daily.no, level: t.level(known.level), score: known.score })
+      : t('sudokui.app · {level}\u00a0{score}', { level: t.level(known.level), score: known.score });
+  const picture = (
+    <ShareImage
+      cells={pictureCells}
+      autoCandidates={showPosition && autoCandidates}
+      markContract={showPosition ? markContract : 'unknown'}
+      step={hint?.step}
+      frame={hint?.frame}
+      footer={footer}
+      name={hint ? 'sudokui-hint.png' : 'sudokui-board.png'}
+      onSent={(outcome) => countShare(outcome, 'image', known?.level)}
+    />
+  );
 
   // a daily solved on this device, its share line again after the win
   // screen has closed: the one on the board, else today's, from the solve
@@ -1070,7 +1122,13 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title={t('Share this puzzle')} onClose={onClose}>
+    <Modal title={hint ? t('Share this hint') : t('Share this puzzle')} onClose={onClose}>
+      {hint && (
+        <>
+          <p className="dialog-note">{t('A picture of your board with the hint drawn as you see it, without the step numbers on its arrows or the name of the technique.')}</p>
+          {picture}
+        </>
+      )}
       <p className="dialog-note">
         {showPosition
           ? rich(
@@ -1122,6 +1180,14 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
           </button>
         )}
       </div>
+      {!hint && (
+        <>
+          <p className="dialog-note share-image-note">
+            {showPosition ? t('A picture of the board as it stands, for a post or a chat.') : t('A picture of the puzzle from the start, for a post or a chat.')}
+          </p>
+          {picture}
+        </>
+      )}
     </Modal>
   );
 }

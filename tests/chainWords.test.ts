@@ -166,14 +166,14 @@ describe('a continuous loop says it closed, and that it holds either way round (
 
   it('in every stored continuous loop, at the link back to its start, worded by its digits and its weak links', () => {
     expect(closing(EXAMPLES.GROUPED_X_CYCLES!.step)).toBe(
-      'Weak link on 2: if r2c3 is 2, r1c1 cannot be 2 (they see each other). The chain is back at r1c1, as it began: the loop holds whichever way round it is read, so each dashed link has exactly one end that is 2.'
+      'Weak link on 2 in box 1: r2c3 and r1c1 see each other, so if r2c3 is 2, r1c1 is not. The chain is back at r1c1, as it began: the loop holds whichever way round it is read, so each dashed link has exactly one end that is 2.'
     );
     // several digits, and a weak link inside a cell, which draws no arrow
     expect(closing(EXAMPLES.NICE_LOOP!.step)).toBe(
-      'Weak link on 3: if r2c5 is 3, r1c4 cannot be 3 (they see each other). The chain is back at r1c4, as it began: the loop holds whichever way round it is read, so each weak link, dashed or inside a cell, has exactly one end that is true.'
+      'Weak link on 3 in box 2: r2c5 and r1c4 see each other, so if r2c5 is 3, r1c4 is not. The chain is back at r1c4, as it began: the loop holds whichever way round it is read, so each weak link, dashed or inside a cell, has exactly one end that is true.'
     );
     expect(closing(EXAMPLES.GROUPED_NICE_LOOP!.step)).toMatch(
-      /^Weak link on 7: if one of r1c9, r2c9, r3c9 is 7, r1c8 cannot be 7 \(they see each other\)\. The chain is back at r1c8, as it began: the loop holds whichever way round it is read, so each weak link, dashed or inside a cell, has exactly one end that is true\.$/
+      /^Weak link on 7 in box 3: r1c9, r2c9, r3c9 and r1c8 all see each other, so if one of r1c9, r2c9, r3c9 is 7, r1c8 is not\. The chain is back at r1c8, as it began: the loop holds whichever way round it is read, so each weak link, dashed or inside a cell, has exactly one end that is true\.$/
     );
     // said once, and the conclusion stays the removals
     for (const tech of ['GROUPED_X_CYCLES', 'NICE_LOOP', 'GROUPED_NICE_LOOP'] as const) {
@@ -207,7 +207,7 @@ describe('a continuous loop says it closed, and that it holds either way round (
 
   it('is not said of a discontinuous loop, which says what it proves', () => {
     expect(closing(stepAt('1..52.97.5.39.8.1.................53..2.1.6..45.................4.3.62.7.95.72..8', 23, 'NICE_LOOP'))).toBe(
-      'Strong link on 7: if r5c4 is not 7, r3c4 must be 7 (nowhere else for it). So assuming r3c4 is not 7 makes it 7: that is impossible, so r3c4 is 7.'
+      'Strong link on 7 in column 4: r5c4 and r3c4 are its only 7s, so if r5c4 is not 7, r3c4 is. So assuming r3c4 is not 7 makes it 7: that is impossible, so r3c4 is 7.'
     );
     expect(closing(stepAt('83.7.....6....3.1..2.861....1.5.....98.....27.....8.5....487.3..4.6....9.....9.72', 11, 'GROUPED_X_CYCLES'))).toMatch(/: that is impossible, so none of them is 5\.$/);
   });

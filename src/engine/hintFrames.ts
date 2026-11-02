@@ -20,12 +20,13 @@ import { alsClash, clashAt, deriveTruth, isAlsChain, refutation } from './truth'
 
 /**
  * A part of the drawing a frame shows: every band at once ('units'), a
- * pattern's roles, each with its bands in a walk frame; a colouring's
- * clusters in their shades, and its proof (the colour proven false as false
- * rings, its partner as true discs); a Death Blossom's stem, its candidates
- * before any branch is drawn; the conclusion.
+ * pattern's roles, each with its bands in a walk frame; a finned fish's
+ * fins' box, its band of role 'fin' ('finBox'); a colouring's clusters in
+ * their shades, and its proof (the colour proven false as false rings, its
+ * partner as true discs); a Death Blossom's stem, its candidates before any
+ * branch is drawn; the conclusion.
  */
-export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'cluster0' | 'cluster1' | 'proof' | 'stem' | 'conclusion';
+export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'finBox' | 'cluster0' | 'cluster1' | 'proof' | 'stem' | 'conclusion';
 
 export interface Frame {
   /** the sentence for this frame */
@@ -173,6 +174,8 @@ function setLinkText(link: ChainLink, step: Step): string | null {
   }
   const x = fd;
   const one = (cells: number[]) => cells.length === 1;
+  // the house every candidate of the link lies in, where one does (ChainLink.unit)
+  const house = link.unit === undefined ? null : unitName(link.unit);
   if (from && to) {
     // a restricted common: every x of one set sees every x of the other
     const [L, M] = [from.letter, to.letter];
@@ -181,6 +184,16 @@ function setLinkText(link: ChainLink, step: Step): string | null {
     // until then it is named with its cell (review report L11)
     if (to.cells.length === 1 && !introducedBefore(step, link, link.toSet!)) {
       const hinge = isHinge(step, to);
+      if (house) {
+        if (one(fromCells)) {
+          return hinge
+            ? tr`In ${house}, every ${x} of set ${L} sees every ${x} of set ${M}, the hinge ${t}: if ${f} is ${x}, ${t} cannot be ${x}.`
+            : tr`In ${house}, every ${x} of set ${L} sees every ${x} of set ${M}, the cell ${t}: if ${f} is ${x}, ${t} cannot be ${x}.`;
+        }
+        return hinge
+          ? tr`In ${house}, every ${x} of set ${L} sees every ${x} of set ${M}, the hinge ${t}: if one of ${f} is ${x}, ${t} cannot be ${x}.`
+          : tr`In ${house}, every ${x} of set ${L} sees every ${x} of set ${M}, the cell ${t}: if one of ${f} is ${x}, ${t} cannot be ${x}.`;
+      }
       if (one(fromCells)) {
         return hinge
           ? tr`Every ${x} of set ${L} sees every ${x} of set ${M}, the hinge ${t}: if ${f} is ${x}, ${t} cannot be ${x}.`
@@ -190,6 +203,12 @@ function setLinkText(link: ChainLink, step: Step): string | null {
         ? tr`Every ${x} of set ${L} sees every ${x} of set ${M}, the hinge ${t}: if one of ${f} is ${x}, ${t} cannot be ${x}.`
         : tr`Every ${x} of set ${L} sees every ${x} of set ${M}, the cell ${t}: if one of ${f} is ${x}, ${t} cannot be ${x}.`;
     }
+    if (house) {
+      if (one(fromCells) && one(toCells)) return tr`In ${house}, every ${x} of set ${L} sees every ${x} of set ${M}: if ${f} is ${x}, ${t} cannot be ${x}.`;
+      if (one(toCells)) return tr`In ${house}, every ${x} of set ${L} sees every ${x} of set ${M}: if one of ${f} is ${x}, ${t} cannot be ${x}.`;
+      if (one(fromCells)) return tr`In ${house}, every ${x} of set ${L} sees every ${x} of set ${M}: if ${f} is ${x}, none of ${t} can be ${x}.`;
+      return tr`In ${house}, every ${x} of set ${L} sees every ${x} of set ${M}: if one of ${f} is ${x}, none of ${t} can be ${x}.`;
+    }
     if (one(fromCells) && one(toCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if ${f} is ${x}, ${t} cannot be ${x}.`;
     if (one(toCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if one of ${f} is ${x}, ${t} cannot be ${x}.`;
     if (one(fromCells)) return tr`Every ${x} of set ${L} sees every ${x} of set ${M}: if ${f} is ${x}, none of ${t} can be ${x}.`;
@@ -198,15 +217,49 @@ function setLinkText(link: ChainLink, step: Step): string | null {
   if (from) {
     const L = from.letter;
     const cells = cellNames(toCells);
+    if (house) {
+      return one(toCells)
+        ? tr`If set ${L} holds ${aDigit(x)}, ${cells} cannot be ${x}: it sees every ${x} of ${L} in ${house}.`
+        : tr`If set ${L} holds ${aDigit(x)}, none of ${cells} can be ${x}: they see every ${x} of ${L} in ${house}.`;
+    }
     return one(toCells)
       ? tr`If set ${L} holds ${aDigit(x)}, ${cells} cannot be ${x}: it sees every ${x} of ${L}.`
       : tr`If set ${L} holds ${aDigit(x)}, none of ${cells} can be ${x}: they see every ${x} of ${L}.`;
   }
   const L = to!.letter;
   const cells = cellNames(fromCells);
+  if (house) {
+    return one(fromCells)
+      ? tr`If ${cells} is ${x}, set ${L} holds no ${x}: every ${x} of ${L} sees ${cells} in ${house}.`
+      : tr`If one of ${cells} is ${x}, set ${L} holds no ${x}: every ${x} of ${L} sees all of them in ${house}.`;
+  }
   return one(fromCells)
     ? tr`If ${cells} is ${x}, set ${L} holds no ${x}: every ${x} of ${L} sees ${cells}.`
     : tr`If one of ${cells} is ${x}, set ${L} holds no ${x}: every ${x} of ${L} sees all of them.`;
+}
+
+/**
+ * A link on one digit between cells, in the words of the house that makes
+ * it (ChainLink.unit; docs/hint-readability-2026-11.md M17): a strong
+ * link's cells are the house's only places for the digit, a weak link's all
+ * see each other there; then what the link argues, a group "one of" its
+ * cells when true, "none of" them when false
+ */
+function houseLinkText(link: ChainLink, d: number, fromCells: number[], toCells: number[]): string {
+  const house = unitName(link.unit!);
+  const all = listAnd([...fromCells, ...toCells].map(cellName));
+  const [f, t] = [cellNames(fromCells), cellNames(toCells)];
+  const [fromGroup, toGroup] = [fromCells.length > 1, toCells.length > 1];
+  if (link.strong) {
+    if (fromGroup && toGroup) return tr`Strong link on ${d} in ${house}: ${all} are its only ${d}s, so if none of ${f} is ${d}, one of ${t} is.`;
+    if (fromGroup) return tr`Strong link on ${d} in ${house}: ${all} are its only ${d}s, so if none of ${f} is ${d}, ${t} is.`;
+    if (toGroup) return tr`Strong link on ${d} in ${house}: ${all} are its only ${d}s, so if ${f} is not ${d}, one of ${t} is.`;
+    return tr`Strong link on ${d} in ${house}: ${all} are its only ${d}s, so if ${f} is not ${d}, ${t} is.`;
+  }
+  if (fromGroup && toGroup) return tr`Weak link on ${d} in ${house}: ${all} all see each other, so if one of ${f} is ${d}, none of ${t} is.`;
+  if (fromGroup) return tr`Weak link on ${d} in ${house}: ${all} all see each other, so if one of ${f} is ${d}, ${t} is not.`;
+  if (toGroup) return tr`Weak link on ${d} in ${house}: ${all} all see each other, so if ${f} is ${d}, none of ${t} is.`;
+  return tr`Weak link on ${d} in ${house}: ${all} see each other, so if ${f} is ${d}, ${t} is not.`;
 }
 
 /**
@@ -234,6 +287,9 @@ export function linkText(link: ChainLink, step: Step): string {
   const from = nodeCells(link.from);
   const to = nodeCells(link.to);
   if (fd === td) {
+    // the house that makes the link, where the step names it: every step a
+    // finder gives does (src/engine/steps.ts withHouses)
+    if (link.unit !== undefined) return houseLinkText(link, link.from[0].digit, fromCells, toCells);
     // a group of cells holds the digit in at most one of them (they share
     // a house): "one of" them is true, or "none of" them
     const fromGroup = fromCells.length > 1;
@@ -829,6 +885,8 @@ export function walkFrames(step: Step): Frame[] {
   // pattern, a house that loses with what acts on it; only a band that is
   // the whole drawing (a Full House's house) is there with every band
   const whole = hasBands && !step.primary?.length && !step.secondary?.length && !step.fins?.length;
+  // a finned fish's fins' box, banded in the fins' colour (its own part, 'finBox')
+  const finBand = !!step.units?.some((u) => u.role === 'fin');
   const shown = new Set<Part>(hasBands && !whole ? [] : ['units']);
   // the finder's own sentences, when it writes them (step.walk)
   if (step.walk?.frames.length) {
@@ -840,6 +898,7 @@ export function walkFrames(step: Step): Frame[] {
       frames.push({ text: f.text, links: 0, show: new Set(shown), ...(cells && { cells: new Set(cells) }) });
     }
     for (const part of ['primary', 'secondary', 'fins', 'conclusion'] as const) shown.add(part);
+    if (finBand) shown.add('finBox');
     frames.push({ text: [step.walk.lead, conclusionText(step)].filter(Boolean).join(' '), links: 0, show: new Set(shown) });
     return frames;
   }
@@ -851,6 +910,8 @@ export function walkFrames(step: Step): Frame[] {
   const banded = (role: 'primary' | 'secondary') => !!step.units?.some((u) => u.role === role);
   if (step.primary?.length || banded('primary')) add('primary', step.labels?.primary);
   if (step.secondary?.length || banded('secondary')) add('secondary', step.labels?.secondary);
+  // a fins' box comes with its fins in a walk its finder does not write
+  if (finBand) shown.add('finBox');
   if (step.fins?.length) add('fins', step.labels?.fins);
   shown.add('primary');
   shown.add('secondary');

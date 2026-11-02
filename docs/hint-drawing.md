@@ -322,11 +322,15 @@ Every rule is numbered so a commit, a test or a review can cite it.
 ### Areas
 
 - **G15. Bands** shade a whole house under the marks: a fish's base and
-  cover lines, a subset's house, a single's house, Locked Candidates' box
-  and line. A pattern's band (base) has a solid outline, an acts-through
-  band (cover) a dashed one, so the two differ by shape and not only by
-  colour. In a walk a band comes with its role's frame, the pattern's
-  houses with the pattern and a house that loses with what acts on it, so
+  cover lines, a finned fish's fins' box, a subset's house, a single's
+  house, Locked Candidates' box and line. A pattern's band (base) has a
+  solid outline, an acts-through band (cover) a dashed one, so the two
+  differ by shape and not only by colour; a finned or sashimi fish's fins'
+  box, where every removal lies, is shaded in the fin's colour with a
+  dotted outline, inset inside the others (phase 6). In a walk a band
+  comes with its role's frame, the pattern's houses with the pattern and a
+  house that loses with what acts on it, the fins' box with the frame that
+  says what a true fin does, so
   no frame draws what the one before drew; only a band that is the whole
   drawing (a Full House's) is there from the first frame, and a forcing
   step's house with no place left comes with the link into the
@@ -427,8 +431,19 @@ Every rule is numbered so a commit, a test or a review can cite it.
   these" square beside a true disc it cannot share a cell or a house
   with), also proves its premise impossible; its legend says so (the
   stronger conclusion this proves is the finder's to take, not the
-  drawing's). A group node is worded as one: "one of r5c7, r6c7 must be
-  2", never all of them.
+  drawing's). Each link between cells names the house that makes it
+  (docs/hint-readability-2026-11.md M17), which a diagonal link's drawing
+  does not show: "Strong link on 2 in box 8: r9c5 and r7c6 are its only
+  2s, so if r9c5 is not 2, r7c6 is.", "Weak link on 1 in column 3: r2c3
+  and r9c3 see each other, so ..."; a row or column before the box, so the
+  box is named only where no line makes the link (a Turbot Fish names the
+  house its description does); a link into, out of or between almost
+  locked sets names the house all its candidates lie in, where one does
+  ("In row 8, every 1 of set A sees every 1 of set B: ..."); a link inside
+  a cell keeps its own words. The house is the step's (`ChainLink.unit`,
+  named from the position when the step is found), and the drawing is
+  unchanged. A group node is worded as one: "one of r5c7, r6c7 is", never
+  all of them.
 - **G19. Colouring** (Simple Colors, Multi Colors, 3D Medusa, Remote
   Pair): **hue per cluster, shade per parity**, designed in full in
   [hint-drawing-colouring.md](hint-drawing-colouring.md). In short: each
@@ -479,7 +494,8 @@ Every rule is numbered so a commit, a test or a review can cite it.
   the hint uses, drawn like the mark: true disc, false ring, removed
   (a barred ring), placed (a disc with an outer ring), each role (a disc;
   the rounded outline where the role is drawn only on solved digits; a
-  small band, dashed for a cover, where it is drawn only as a house band),
+  small band, dashed for a cover, where it is drawn only as a house band;
+  a small dotted band for a fins' box, an entry of its own),
   solid and dashed arrow, tie, start marker; a colouring's pair of shades
   per cluster, its dashed weak tie and its corner brackets. It names only
   what the board draws: a role every candidate of which became a removal
@@ -504,6 +520,12 @@ Every rule is numbered so a commit, a test or a review can cite it.
   (`src/content/hintMarks.ts`), the geometry
   (`src/content/hintGeometry.ts`) and the palette
   (`src/content/hintPalette.ts`). The intuition diagrams join in phase 7.
+  The picture of the board a player shares (the Share dialog's image, and
+  'Share this hint' in the hint panel; `src/content/boardImage.ts`) is
+  the Learn diagrams' renderer, given the player's position, colours and
+  the walk's frame shown, so it draws what the board draws in that frame
+  but for the walk's numbers on the arrows, which it leaves out, always
+  light, and never prints the technique's name.
 
 ## Truth: where it comes from
 
@@ -658,7 +680,7 @@ dark ones. Arrows are the only achromatic mark.
 | group bar (since phase 4) | the members' ink: true #006c2f, false #175bb7, pattern #175bb7, removal #bc072a | #35a458, #7fbbff, #498de5, #fe9696 | stroke 3 (4.5, 5.5), round caps, 15 off the members' line, under the marks, cut out by the digits |
 | `--hint-arrow` (arrows, ties, start dot, walk badges) | #151a24 | #f2f4f9 | stroke 3; weak dash "8 6" with butt caps; head 14 long × 11 wide; tail and tip 3 units outside the marks' rims |
 | halo | `--cell-bg`, arrow width + 2 (`SIZES.halo`), opacity 0.75, the head outlined 2 wide | same | drawn after the grid lines, with the arrow; on a small board 6.5 round a 4.5 shaft |
-| band | role fill at alpha 0.07 | 0.10 | outline inset 3.5, stroke 3, rx 8, role ink at full opacity |
+| band | role fill at alpha 0.07 | 0.10 | outline inset 3.5, stroke 3, rx 8, role ink at full opacity; solid for a base, dashed "10 6" for a cover; a finned fish's fins' box in the fin colours, its outline dots ("0 9", round caps) inset 8, stroke 4.5 (since phase 6) |
 | `--hint-on-fill` / `--hint-in-ring` (digits) | #10131c / #1b2233 | #10131c / #eef1f8 | weight 700 |
 
 Shades: the light themes rim both shades of a cluster in its dark shade,
@@ -1011,11 +1033,31 @@ the values above are its final ones.
 - [ ] Phase 5: forcing
 - [ ] Phase 6: words. Batch 1 is done (phase6-batch1-review.md): `Step.walk`, so a finder writes its own walk;
   the XY-, XYZ- and WXYZ-Wing, Chute Remote Pair and Sue de Coq walked and coloured by function; and the uniqueness
-  family and BUG+1 saying why the pattern would be deadly. Next: every other pattern's walk, M17, L2 and L3.. Done so far: Chute Remote Pair and Sue de Coq
+  family and BUG+1 saying why the pattern would be deadly. Next: every other pattern's walk, L2 and L3. Done so far: M17 (every link between cells names the house that makes it, G18; the chain trainer's too), Chute Remote Pair and Sue de Coq
   (docs/hint-readability-2026-11.md H2's and M3's parts for them, H1,
   L2's "chute"): each draws what its argument uses (G15) and walks it in
   its finder's own sentences, and its Copy step line is the one it always
-  was.
+  was. The singles, the subsets and Locked Candidates (H1's part for them,
+  M20's hidden-subset wording, L1's "only 3 and 7") walk in their finders'
+  own sentences too: a Full House's house and the one digit it lacks; a
+  Naked Single's cell, then the digits its row, column and box hold; a
+  Hidden Single's one place, then the placed digits that rule out the rest
+  of its house, and any cell an earlier removal ruled out; Locked
+  Candidates' places, then the row, column or box they share, by name; a
+  subset's cells and digits, then why the digits can go nowhere else, or
+  what each cell keeps. Their legends and descriptions say the digits as a
+  player says them, their bands still come with their roles (M1), a Hidden
+  Single keeps its band rule (M9), and their Copy step lines are the ones
+  they always were.
+  Batch 2 (phase6-batch2-review.md) adds the singles, subsets and Locked Candidates above, M17, and the fish: all nine walk in their finders' own sentences (H1's fish
+  part): a basic fish names its base houses and their cells, then its
+  cover houses and why each takes its digit from the base; a finned or
+  sashimi fish its base, its fins, its cover if every fin is false (a
+  sashimi fish first names the crossing its fins stand in for), its fins'
+  box if a fin is true, then each removal, in a cover house and the box,
+  false either way. The fins' box is drawn (M4's fish part, G15), and no
+  legend entry names a role its frame has not drawn. The Copy step lines
+  are unchanged (tests/fishWalks.test.ts, tests/eureka.test.ts).
 - [ ] Phase 7: polish
 
 Branch `claude/hint-drawings`. Research behind this spec (HoDoKu's source

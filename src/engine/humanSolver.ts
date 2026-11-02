@@ -7,7 +7,7 @@
  */
 import { Grid, cloneGrid, setValue, bit, isSolved, isBroken, cellName, parseGrid } from './board';
 import { solve } from './bruteForce';
-import { Step } from './steps';
+import { Step, withHouses } from './steps';
 import { tr } from './text';
 import { Tech, TECHS, Level, LEVELS, LEVEL_MAX_SCORE, SOLVE_ORDER, maxLevel } from './ratings';
 import { findFullHouse, findNakedSingle, findHiddenSingle } from './techniques/singles';
@@ -134,7 +134,7 @@ export function findNextStep(g: Grid, order: Tech[] = SOLVE_ORDER): Step | null 
   for (const tech of order) {
     const finder = FINDERS[tech];
     if (!finder) continue;
-    const step = finder(g);
+    const step = withHouses(finder(g), g);
     if (step) return step;
   }
   return null;
@@ -147,7 +147,7 @@ export function findNextStep(g: Grid, order: Tech[] = SOLVE_ORDER): Step | null 
  */
 export function findStep(tech: Tech, g: Grid): Step | null {
   const finder = FINDERS[tech] ?? (tech === 'AIC_ALS' ? FINDERS.AIC_GROUPED : undefined);
-  return finder ? finder(g) : null;
+  return finder ? withHouses(finder(g), g) : null;
 }
 
 /**
@@ -162,7 +162,7 @@ export function findAllSteps(g: Grid, order: Tech[] = SOLVE_ORDER): Step[] {
   for (const tech of order) {
     const finder = FINDERS[tech];
     if (!finder) continue;
-    const step = finder(g);
+    const step = withHouses(finder(g), g);
     if (step) out.push(step);
   }
   return out;

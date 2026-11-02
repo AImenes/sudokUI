@@ -28,7 +28,7 @@
  */
 import type { ChainLink, Step } from '../src/engine/steps';
 import { insideSet } from '../src/engine/steps';
-import { cellNames } from '../src/engine/board';
+import { UNITS, cellNames } from '../src/engine/board';
 import { unitName } from '../src/engine/text';
 import { walkFrames } from '../src/engine/hintFrames';
 import type { Frame } from '../src/engine/hintFrames';
@@ -140,7 +140,10 @@ function blossomProblems(step: Step, frames: Frame[]): string[] {
  * those links take them, each set's lock a strong link inside it from the
  * digit the chain enters it by to the one it leaves by (z, the removals'
  * digit, at both ends), the restricted commons the weak links between
- * them, each end all the set's cells that hold its digit.
+ * them, each end all the set's cells that hold its digit, and each named
+ * by the first house, a row, then a column, then a box, that holds every
+ * one of their cells (docs/hint-readability-2026-11.md M17), where one
+ * does and the two ends share no cell.
  */
 export function patternChain(step: Step): ChainLink[] {
   const commons = step.links!.filter((l) => !insideSet(l));
@@ -152,6 +155,9 @@ export function patternChain(step: Step): ChainLink[] {
     const [enter, leave] = [i === 0 ? z : x[i - 1], i === order.length - 1 ? z : x[i]];
     const lock: ChainLink = { from: node(k, enter), to: node(k, leave), strong: true, fromSet: k, toSet: k };
     if (i === order.length - 1) return [lock];
-    return [lock, { from: node(k, leave), to: node(order[i + 1], leave), strong: false, fromSet: k, toSet: order[i + 1] }];
+    const [from, to] = [node(k, leave), node(order[i + 1], leave)];
+    const cells = [...from, ...to].map((m) => m.cell);
+    const unit = from.some((m) => to.some((n) => n.cell === m.cell)) ? -1 : UNITS.findIndex((u) => cells.every((c) => u.includes(c)));
+    return [lock, { from, to, strong: false, fromSet: k, toSet: order[i + 1], ...(unit >= 0 && { unit }) }];
   });
 }
