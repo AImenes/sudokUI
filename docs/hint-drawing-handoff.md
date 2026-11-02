@@ -76,6 +76,59 @@ phase 6 (words) and phase 7 (polish). The
 relabelling of AIC with ALS steps whose only set is a bivalue cell is a
 later measured engine change (the design's decision 14).
 
+### Paused 2 November 2026: the readability quick wins, before their merge
+
+On branch `claude/adoring-curie-nlizdj` (pushed), not yet on main (main is
+5147ebe). The 18 quick wins of docs/hint-readability-2026-11.md section 4
+and round 3's two lows are built by four fixers (commits 1bd6f7c words A,
+82f888a words B, 9ba1037 frames, c2ac200 geometry), brought together in
+1bb8216 (examples and both fixtures rewritten; every changed fixture part
+traced to a fixer's item; a clashing ALS-XY-Chain's blue entry now only
+names its discs, "the 8s of set A"). Full checks were green on 1bb8216
+(1,438 tests, the menus path digest, build, browser tests in both font
+setups; one practice-bar layout test failed once under load and passed
+9 of 9 alone), and CI was green.
+
+Review round (five lenses: truth, words, design, code, regression; two
+refuting skeptics per blocking claim) on 1bb8216:
+- design: one medium, fixed in 69cd0f5 (UR4, UR6 and the Hidden
+  Rectangle's frame 1 named the whole rectangle and drew part of it; the
+  key digit is now in both lists, gold from its own frame, G5). Lows,
+  for later: M7's bends cross solved digits where main's did not (rank
+  solved digits crossed before stray); Death Blossom's stored 5 tie runs
+  through the givens 6 and 3 and its 2 tie loops round the corner; M20's
+  long conclusions (a real-size Medusa) are hard to scan, order single
+  digit groups by digit; forest's gold bands hold gold entered digits
+  (M6).
+- words and one other lens: three lows, for later: a UR4 and a
+  one-removal Medusa say their conclusion twice (namesCandidate splits on
+  ';'); a grouped X-Cycle starting on a group says "back at r1c4, r1c5"
+  (name it "the group"); nb UR3 says a roof cell "må få en
+  ekstrakandidat" (say "må være en av ekstrakandidatene sine").
+- truth and regression: were still running at the pause. On resume,
+  re-run them on the branch's head (scratchpad's rd-review.js with
+  lenses ["truth","regression"]; tree a worktree at the head, base
+  5147ebe, mainTree a worktree at 5147ebe; shots under .vite/rd-shots,
+  remade with each side's own scripts/hint-shots.cjs, since the script
+  reads examples.json from its own checkout).
+
+To merge: fix anything they find that is high, medium, false or a
+regression; run the full checks; merge into main with a message naming
+the items; push; check CI; write the round's findings into a
+hint-drawing-rd-round1.md like the phase 4 rounds, and the Status.
+
+Also waiting (decided with the owner, 2 November): the reach plan (raw
+research in docs/reach-research-2026-11.md; the decisions go into
+online-goals.md as "Reach, November 2026"), a docs/README.md index, a
+"Why sudokUI?" page (the owner approves the English text first; lichess
+named as the model, no competitor named; the offline promise worded
+exactly: play, hints, ratings, practice and the in-app guide work
+offline after one visit, the Learn articles and the daily's global times
+need a connection), then the Reddit share kit (a board and hint image,
+a "copy for Reddit" text with the position link and a spoiler-tagged
+hint; players post their own content, the app never posts or asks them
+to post where the owner is banned).
+
 ## How the work has been run
 
 - **Checks**: `npx tsc -b`; `npx vitest run`; `npm run build`; before a
