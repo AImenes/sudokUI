@@ -54,10 +54,15 @@ push.
   the Worker runs, unless the path is listed under `run_worker_first` in
   `wrangler.jsonc`. The first check alone passed for a week while every
   real click on a share link opened "Page not found".
+- The home pages run the Worker first too, to count a visit from outside
+  the site (`worker/index.ts`, `HOME_PATHS`):
+  `curl -I -H 'Sec-Fetch-Mode: navigate' https://sudokui.app/nb/` must
+  answer 200 with the page as before (a HEAD request counts nothing).
 
 The free plan allows 100,000 Worker requests a day; static files are not
-counted. Only share landings and unknown paths reach the Worker, so the
-budget in [online-goals.md](online-goals.md) holds.
+counted. Only share landings, the three home pages and unknown paths
+reach the Worker, so the budget in [online-goals.md](online-goals.md)
+holds.
 
 ## Domain & TLS (one-time, already applicable)
 
@@ -116,8 +121,8 @@ answer the API over a store in memory (`vite.config.ts`).
 
 ## The analytics (phase 3: counting plays)
 
-The app's `started` and `completed` lines and the share pages' landings
-go to a Workers Analytics Engine dataset, `sudokui_events`, bound as
+The app's `started` and `completed` lines and the landings on the share
+pages and the home pages go to a Workers Analytics Engine dataset, `sudokui_events`, bound as
 `EVENTS` in [`wrangler.jsonc`](../wrangler.jsonc) and written by the same
 Worker (`worker/telemetry.ts`, `POST /api/t`). The dataset needs no
 creating. The dashboard, `/admin` (`worker/admin.ts`), reads it through

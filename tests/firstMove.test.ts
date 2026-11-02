@@ -1,8 +1,9 @@
 /**
  * A game is counted as begun the first time its board shows anything
  * beyond the givens, not when it opens (src/state/gameStore.ts,
- * countFirstMove): the app's own first game, a link opened and never
- * played, and a practice puzzle send no start; a digit, a mark, a colour,
+ * countFirstMove): the app's own first game and a link opened and never
+ * played send no start, and a practice puzzle, which opens with the app's
+ * own moves on it, none until the player's own first move; a digit, a mark, a colour,
  * the chain trainer's candidates, or a shared position or pasted grid
  * opening with any of these, counts one, once. A restart of a game under
  * way, or the same puzzle chosen again, is the same game until it is
@@ -12,7 +13,8 @@
  * a game it played on is counted when the switch goes off. A solve undone
  * and solved again is recorded and counted once, across a reload too: the
  * save holds whether the game was solved (the player's own record), never
- * whether it was counted.
+ * whether it was counted. Each start and solve says what kind of game it
+ * was (kindOf): the daily, practice, a share link's, or a new one.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 
@@ -23,7 +25,7 @@ const storage = new Map<string, string>();
   removeItem: (k: string) => void storage.delete(k)
 };
 
-const { useGame, encodePosition } = await import('../src/state/gameStore');
+const { useGame, encodePosition, kindOf } = await import('../src/state/gameStore');
 const { useTelemetry } = await import('../src/state/telemetry');
 const { useSettings } = await import('../src/state/settings');
 const { useStats } = await import('../src/state/stats');
@@ -31,20 +33,27 @@ const { useStats } = await import('../src/state/stats');
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
 const EMPTY = [...EASY].map((ch, i) => (ch === '.' ? i : -1)).filter((i) => i >= 0);
 
-/** what the counting saw: every call to track, in order */
+/** what the counting saw: every call to track, in order, and the kind of game each said */
 let tracked: string[] = [];
+let kinds: string[] = [];
 /** the solves that went into the band record */
 let solves = 0;
 
 beforeEach(() => {
   storage.clear();
   tracked = [];
+  kinds = [];
   useSettings.setState({ dontCount: false, countPlays: false, practiceFastForward: false });
   // each test starts with no game on the board, so no start carries over
   useGame.setState({ info: null, counted: false, solved: false, won: false, history: [], future: [] });
   solves = 0;
   useStats.setState({ recordSolve: () => void solves++ } as never);
-  useTelemetry.setState({ track: (event: string) => void tracked.push(event) } as never);
+  useTelemetry.setState({
+    track: (event: string, _band: string, _seconds: number, kind: string) => {
+      tracked.push(event);
+      kinds.push(kind);
+    }
+  } as never);
 });
 
 /** a digit in a cell, as the player enters it */
@@ -189,15 +198,18 @@ describe('a game begun', () => {
     expect(tracked).toEqual(['started', 'completed']);
   });
 
-  it('does not take a resumed practice game as counted, so the same puzzle played for real counts', async () => {
+  it('counts the same puzzle played for real after a resumed practice game as a game of its own', async () => {
     useSettings.setState({ practiceFastForward: true });
     useGame.getState().startGame(EASY, 196, 'Easy', 'HIDDEN_SINGLE');
     await reload();
-    expect(useGame.getState().counted).toBe(false);
+    // the app's own moves are on the board, so it is taken as begun: one
+    // gap, the other way from the rest (gameStore.ts, onRehydrateStorage)
+    expect(useGame.getState().counted).toBe(true);
     expect(useGame.getState().importPuzzle(EASY)).toBeNull();
     expect(useGame.getState().counted).toBe(false);
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     expect(tracked).toEqual(['started']);
+    expect(kinds).toEqual(['new']);
   });
 
   it('counts a game begun by opening the chain trainer, which switches candidates on, and not again after a reload', async () => {
@@ -233,10 +245,43 @@ describe('a game begun', () => {
     expect(tracked).toEqual(['started']);
   });
 
-  it('never counts a practice puzzle', () => {
+  it('counts a practice puzzle at the player’s own first move, as practice, and its solve once, outside the record', () => {
     useGame.getState().startGame(EASY, 196, 'Easy', 'HIDDEN_SINGLE');
-    play(EMPTY[0], Number(solution()[EMPTY[0]]));
     expect(tracked).toEqual([]);
+    useGame.getState().select([EMPTY[0]], false);
+    expect(tracked).toEqual([]);
+    play(EMPTY[0], Number(solution()[EMPTY[0]]));
+    expect(tracked).toEqual(['started']);
+    // a restart before the solve is the same practice game
+    useGame.getState().restart();
+    play(EMPTY[0], Number(solution()[EMPTY[0]]));
+    expect(tracked).toEqual(['started']);
+    for (const cell of EMPTY.slice(1)) play(cell, Number(solution()[cell]));
+    expect(useGame.getState().won).toBe(true);
+    expect(tracked).toEqual(['started', 'completed']);
+    expect(kinds).toEqual(['practice', 'practice']);
+    // practice starts part-way and compares with nothing: no band record
+    expect(solves).toBe(0);
+    // undone and solved again, it is the same solve
+    useGame.getState().undo();
+    useGame.getState().redo();
+    expect(tracked).toEqual(['started', 'completed']);
+  });
+
+  it('counts a practice puzzle that opens part-way through at the player’s first move, not at the app’s', () => {
+    useSettings.setState({ practiceFastForward: true });
+    // the sixth step of this puzzle's path is its first full house
+    useGame.getState().startGame(EASY, 196, 'Easy', 'FULL_HOUSE');
+    expect(useGame.getState().cells.filter((c) => !c.given && c.value)).toHaveLength(5);
+    // the app placed digits and showed the candidates: no move of the player's
+    expect(useGame.getState().autoCandidates).toBe(true);
+    useGame.getState().select([EMPTY[0]], false);
+    useGame.getState().clearNotice();
+    expect(tracked).toEqual([]);
+    const open = useGame.getState().cells.findIndex((c) => !c.value);
+    play(open, Number(solution()[open]));
+    expect(tracked).toEqual(['started']);
+    expect(kinds).toEqual(['practice']);
   });
 });
 
@@ -444,5 +489,49 @@ describe("a game saved before HoDoKu's five levels", () => {
     storage.set('sudokui-game-v1', JSON.stringify(saved));
     await reload();
     expect(useGame.getState().customBackup?.info?.level).toBe('Hard');
+  });
+});
+
+describe('the kind of game a start and a solve say', () => {
+  it('reads practice first, then the daily, then a share link, and else a new puzzle', () => {
+    const info = { puzzle: EASY, solution: '', score: 196, level: 'Easy' as const, practiceTech: null };
+    expect(kindOf(info)).toBe('new');
+    expect(kindOf({ ...info, fromLink: true })).toBe('shared');
+    expect(kindOf({ ...info, dailyKey: '2026-11-02', fromLink: true })).toBe('daily');
+    expect(kindOf({ ...info, practiceTech: 'X_WING', dailyKey: '2026-11-02', fromLink: true })).toBe('practice');
+    // a pasted position with digits on it starts part-way, and is still the player's own
+    expect(kindOf({ ...info, fromPosition: true })).toBe('new');
+  });
+
+  it('says daily for the daily, new for a puzzle begun in the app, shared for a position link, on the start and the solve alike', () => {
+    useGame.getState().startGame(EASY, 196, 'Easy', null, '2026-11-02');
+    for (const cell of EMPTY) play(cell, Number(solution()[cell]));
+    expect(kinds).toEqual(['daily', 'daily']);
+    kinds = [];
+    expect(useGame.getState().importPuzzle(EASY)).toBeNull();
+    play(EMPTY[0], Number(solution()[EMPTY[0]]));
+    expect(kinds).toEqual(['new']);
+    kinds = [];
+    // a position link, with a digit on it: counted as it opens, as a share link's game
+    const cells = useGame.getState().cells.map((c) => ({ ...c, colors: [...c.colors] }));
+    useGame.setState({ info: null, counted: false, history: [] });
+    expect(useGame.getState().loadPosition(encodePosition(cells, false))).toBe(true);
+    expect(kinds).toEqual(['shared']);
+    for (const cell of EMPTY.slice(1)) play(cell, Number(solution()[cell]));
+    expect(kinds).toEqual(['shared', 'shared']);
+  });
+
+  it('keeps a share link’s game one after a restart, and after a reload', async () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    // as the app marks a game opened from a share address (App.tsx, boot)
+    useGame.setState((s) => ({ info: s.info && { ...s.info, fromLink: true } }));
+    useGame.getState().restart();
+    expect(useGame.getState().info?.fromLink).toBe(true);
+    play(EMPTY[0], Number(solution()[EMPTY[0]]));
+    await reload();
+    expect(useGame.getState().info?.fromLink).toBe(true);
+    for (const cell of EMPTY.slice(1)) play(cell, Number(solution()[cell]));
+    expect(tracked).toEqual(['started', 'completed']);
+    expect(kinds).toEqual(['shared', 'shared']);
   });
 });

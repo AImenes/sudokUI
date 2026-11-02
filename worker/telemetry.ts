@@ -11,7 +11,10 @@
  * name, the blobs are the band, the source, the app's version and the
  * country the connection came from (request.cf, never the address), and
  * the doubles are the time bucket, how many events the point stands for
- * and the three flags. A `shared` line, sent when a player shares a link,
+ * and the three flags. A `started` or `completed` line from an app of
+ * November 2026 or later adds two blobs: what kind of game it was and the
+ * app's language (PLAY_KINDS, PLAY_LANGS); an older app's line keeps its
+ * four. A `shared` line, sent when a player shares a link,
  * adds two blobs: what was shared and whether the share sheet took it or
  * it was copied (SHARE_KINDS, SHARE_VIAS). Identical events fold into one point with a count,
  * because WAE takes at most POINTS_MAX writes per invocation: the app
@@ -28,7 +31,9 @@
  * a browser arrives at /p/<puzzle> or /daily/<date> from outside the site:
  * no referrer from the site itself, a navigation (the Sec-Fetch headers,
  * where the browser sends them), and not a crawler or a chat app's preview
- * fetcher. That is the research's "share-link landings" number. Its fifth
+ * fetcher. That is the research's "share-link landings" number. The home
+ * pages, /, /nb/ and /es/, count one the same way (worker/index.ts), with
+ * `home` where a share page says `p` or `daily` (LANDING_SLOTS). Its fifth
  * blob says where the link was opened from, as one word of a closed list
  * (landingFrom): the referrer the browser sends is read for that word and
  * never written.
@@ -67,6 +72,20 @@ export type ShareKind = (typeof SHARE_KINDS)[number];
 export const SHARE_VIAS = ['sheet', 'copy'] as const;
 export type ShareVia = (typeof SHARE_VIAS)[number];
 
+/**
+ * What kind of game a `started` or `completed` line is about
+ * (src/state/gameStore.ts, kindOf): the daily puzzle; a new puzzle (one
+ * by band, an import, a grid typed, pasted or scanned, or a Learn page's
+ * example); a practice puzzle; or one opened from a link someone shared,
+ * a puzzle's share address or a position link
+ */
+export const PLAY_KINDS = ['daily', 'new', 'practice', 'shared'] as const;
+export type PlayKind = (typeof PLAY_KINDS)[number];
+
+/** the language the app was set to when the line was made (src/state/settings.ts, Lang) */
+export const PLAY_LANGS = ['en', 'nb', 'es'] as const;
+export type PlayLang = (typeof PLAY_LANGS)[number];
+
 /** the most events one request may carry */
 export const BATCH_MAX = 250;
 /** the most points one invocation may write: WAE's limit on writeDataPoint */
@@ -98,9 +117,12 @@ export interface TelemetryEvent {
   /** a share's kind and way; on a `shared` line only, and always there */
   what?: ShareKind;
   via?: ShareVia;
+  /** a play line's kind of game and the app's language; both or neither (an app from before them sends neither), never on a share */
+  kind?: PlayKind;
+  lang?: PlayLang;
 }
 
-/** what goes to WAE: one index, four blobs (six for a share, five for a landing), six doubles (see the header) */
+/** what goes to WAE: one index, four blobs (six for a share or a play line with its kind and language, five for a landing), six doubles (see the header) */
 export interface DataPoint {
   indexes: string[];
   blobs: string[];
@@ -131,6 +153,14 @@ export function checkEvent(x: unknown): TelemetryEvent | null {
     if (e[flag] !== undefined && typeof e[flag] !== 'boolean') return null;
   }
   const shared = e.event === 'shared';
+  // a play line from an app of November 2026 on says what kind of game
+  // and which language, both from their lists; one from before says
+  // neither, and is still taken
+  const kinded = !shared && (e.kind !== undefined || e.lang !== undefined);
+  if (kinded) {
+    if (typeof e.kind !== 'string' || !(PLAY_KINDS as readonly string[]).includes(e.kind)) return null;
+    if (typeof e.lang !== 'string' || !(PLAY_LANGS as readonly string[]).includes(e.lang)) return null;
+  }
   if (shared) {
     // a share says what and how, and nothing a play line says besides:
     // no time, and never kept, so none of the opt-in's flags
@@ -140,7 +170,7 @@ export function checkEvent(x: unknown): TelemetryEvent | null {
   }
   // nothing else rides along: a field this list does not know is refused,
   // so the closed list stays closed
-  const fields = ['event', 'band', 'bucket', 'standalone', 'version', 'source', 'offline', 'optin', 'returning', ...(shared ? ['what', 'via'] : [])];
+  const fields = ['event', 'band', 'bucket', 'standalone', 'version', 'source', 'offline', 'optin', 'returning', ...(shared ? ['what', 'via'] : kinded ? ['kind', 'lang'] : [])];
   for (const key of Object.keys(e)) {
     if (!fields.includes(key)) return null;
   }
@@ -154,7 +184,8 @@ export function checkEvent(x: unknown): TelemetryEvent | null {
     offline: e.offline === true,
     optin: e.optin === true,
     returning: e.returning === true,
-    ...(shared ? { what: e.what as ShareKind, via: e.via as ShareVia } : {})
+    ...(shared ? { what: e.what as ShareKind, via: e.via as ShareVia } : {}),
+    ...(kinded ? { kind: e.kind as PlayKind, lang: e.lang as PlayLang } : {})
   };
 }
 
@@ -177,8 +208,10 @@ const flag = (b: boolean) => (b ? 1 : 0);
 /** the data point an event becomes, standing for `count` identical events */
 export function pointOf(e: TelemetryEvent, country: string, count = 1): DataPoint {
   const blobs = [e.band, e.source, e.version, country];
-  // a share's kind and way; a play line keeps its four blobs, as before
+  // a share's kind and way; a play line's kind of game and language, in
+  // the same two slots; an older app's play line keeps its four blobs
   if (e.event === 'shared') blobs.push(e.what ?? '', e.via ?? '');
+  else if (e.kind) blobs.push(e.kind, e.lang ?? '');
   return {
     indexes: [e.event],
     blobs,
@@ -190,7 +223,7 @@ export function pointOf(e: TelemetryEvent, country: string, count = 1): DataPoin
 export function fold(events: TelemetryEvent[], country: string): DataPoint[] {
   const points = new Map<string, DataPoint>();
   for (const e of events) {
-    const key = [e.event, e.band, e.bucket, e.standalone, e.version, e.source, e.offline, e.optin, e.returning, e.what ?? '', e.via ?? ''].join('|');
+    const key = [e.event, e.band, e.bucket, e.standalone, e.version, e.source, e.offline, e.optin, e.returning, e.what ?? '', e.via ?? '', e.kind ?? '', e.lang ?? ''].join('|');
     const p = points.get(key);
     if (p) p.doubles[1]++;
     else points.set(key, pointOf(e, country));
@@ -286,6 +319,9 @@ export const LANDING_FROM = [
   'mail',
   'github',
   'sudoku',
+  'directory',
+  'fediverse',
+  'press',
   'other'
 ] as const;
 export type LandingFrom = (typeof LANDING_FROM)[number];
@@ -324,7 +360,25 @@ const FROM_HOSTS: [LandingFrom, string[]][] = [
   ['discord', ['discord.com', 'discordapp.com', 'discord.gg']],
   [
     'social',
-    ['t.co', 'x.com', 'twitter.com', 'linkedin.com', 'lnkd.in', 'bsky.app', 'instagram.com', 'threads.net', 'threads.com', 'pinterest.com', 'tumblr.com', 'mastodon.social', 'youtube.com', 'tiktok.com', 'vk.com']
+    ['t.co', 'x.com', 'twitter.com', 'linkedin.com', 'lnkd.in', 'bsky.app', 'instagram.com', 'threads.net', 'threads.com', 'pinterest.com', 'tumblr.com', 'youtube.com', 'tiktok.com', 'vk.com']
+  ],
+  // Lemmy's two best-known instances and some common Mastodon servers,
+  // Norway's own among them; any other server reads as other
+  [
+    'fediverse',
+    [
+      'lemmy.world',
+      'lemmy.ml',
+      'mastodon.social',
+      'mastodon.online',
+      'mastodon.world',
+      'mstdn.social',
+      'mas.to',
+      'fosstodon.org',
+      'hachyderm.io',
+      'infosec.exchange',
+      'snabelen.no'
+    ]
   ],
   [
     'chat',
@@ -333,8 +387,23 @@ const FROM_HOSTS: [LandingFrom, string[]][] = [
   ['github', ['github.com']],
   [
     'sudoku',
-    ['sudokuwiki.org', 'sudoku.coach', 'sudokupad.app', 'f-puzzles.com', 'sudokuexchange.com', 'hodoku.sourceforge.net', 'logic-masters.de', 'sudoku-solutions.com', 'crackingthecryptic.com']
+    [
+      'sudokuwiki.org',
+      'sudoku.coach',
+      'sudokupad.app',
+      'f-puzzles.com',
+      'sudokuexchange.com',
+      'hodoku.sourceforge.net',
+      'logic-masters.de',
+      'sudoku-solutions.com',
+      'crackingthecryptic.com',
+      'menneske.no'
+    ]
   ],
+  // directories that list apps (docs/reach-plan-2026-11.md)
+  ['directory', ['alternativeto.net', 'saashub.com', 'producthunt.com', 'pwa.directory', 'pwastore.io', 'store.app']],
+  // the Norwegian news sites a pitch would go to (the same plan)
+  ['press', ['kode24.no', 'tu.no', 'aftenposten.no']],
   ['search', ['bing.com', 'duckduckgo.com', 'ecosia.org', 'startpage.com', 'search.brave.com', 'qwant.com', 'search.yahoo.com', 'm.baidu.com', 'kagi.com', 'ya.ru', 'search.naver.com', 'search.seznam.cz']]
 ];
 
@@ -370,10 +439,11 @@ const FROM_APPS: [LandingFrom, string[]][] = [
       'com.google.android.youtube',
       'com.zhiliaoapp.musically',
       'com.pinterest',
-      'com.tumblr',
-      'org.joinmastodon.android'
+      'com.tumblr'
     ]
   ],
+  // Mastodon's own app and Tusky; Jerboa, Lemmy's
+  ['fediverse', ['org.joinmastodon.android', 'com.keylesspalace.tusky', 'com.jerboa']],
   [
     'chat',
     [
@@ -416,18 +486,25 @@ export function landingFrom(referer: string | null): LandingFrom {
 }
 
 /**
- * Counts a landing on a share page when the request is one (isLanding):
- * a `landing` point with the band the page knows, which address it was
- * (a puzzle's or a daily's) in the source slot, the Worker's version, the
- * country and where it came from (landingFrom). True when a point was
- * written.
+ * Which page a landing was on, in the point's source slot: a puzzle's
+ * share address, a daily's, or one of the app's three home pages
  */
-export function countLanding(dataset: AnalyticsEngineLike | null | undefined, request: Request, share: { level?: Level; daily?: unknown }): boolean {
+export const LANDING_SLOTS = ['p', 'daily', 'home'] as const;
+export type LandingSlot = (typeof LANDING_SLOTS)[number];
+
+/**
+ * Counts a landing on a share page or a home page when the request is one
+ * (isLanding): a `landing` point with the band the page knows (a home
+ * page knows none), which page it was (LANDING_SLOTS) in the source slot,
+ * the Worker's version, the country and where it came from (landingFrom).
+ * True when a point was written.
+ */
+export function countLanding(dataset: AnalyticsEngineLike | null | undefined, request: Request, slot: LandingSlot, level?: Level): boolean {
   if (!dataset || !isLanding(request)) return false;
   try {
     dataset.writeDataPoint({
       indexes: ['landing'],
-      blobs: [share.level ?? '', share.daily ? 'daily' : 'p', WORKER_VERSION, countryOf(request), landingFrom(request.headers.get('referer'))],
+      blobs: [level ?? '', slot, WORKER_VERSION, countryOf(request), landingFrom(request.headers.get('referer'))],
       doubles: [0, 1, 0, 0, 0, 0]
     });
     return true;

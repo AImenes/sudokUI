@@ -18,7 +18,10 @@ as before. It is the companion of
   Nothing identifies a player and no IP address is ever written; the
   privacy page (`/privacy/`) says the same to players. A link shared
   from the app (through the share menu or copied) sends one more line,
-  what was shared and which way, never the link. The share pages count a
+  what was shared and which way, never the link. Since November 2026 a
+  start or a solve also says what kind of game it was (the daily, a new
+  puzzle, practice, or one from a share link) and the app's language.
+  The share pages and the three home pages (`/`, `/nb/`, `/es/`) count a
   landing there too when a person arrives from outside the site, with
   one word for where the link was opened from.
 - **The dataset** is called `sudokui_events`. It needs no creating: the
@@ -98,7 +101,8 @@ screen or desktop (it may keep its own settings), open **Settings →
 Counting plays** and turn on **Leave this device out of the counts**. Do
 the same on testers' devices. From then on the dashboard's starts and
 solves leave those devices out. Landings cannot be switched off: the
-server counts one from the request when a share or daily link is opened
+server counts one from the request when a share or daily link, or a
+home page, is opened
 from outside the site in a browser that does not hold the app yet (one
 that does answers the link itself, and counts nothing). A link you tap
 in a chat on your own phone, which opens in that app's own browser,
@@ -227,8 +231,9 @@ that. To see it:
 Open <https://sudokui.app/admin>. Access asks for your e-mail, sends a
 code, and shows the page: fourteen numbers, most over the last seven
 days and two for yesterday; a line of completed games per day over
-thirty days; what was shared and where landings came from over the
-week; and a table of every day.
+thirty days; what was shared, the games by kind and language, and where
+landings came from (on a home page or a share page) over the week; a
+table of every day; and the games begun each day by kind and language.
 On the first day it is mostly zeros and dashes; the **Offline, estimated**
 number reads "—" until some player has turned the opt-in on and finished
 a game online, because the estimate is the ratio of that cohort's offline
@@ -297,13 +302,18 @@ curl.exe -s -H "Authorization: Bearer $env:ADMIN_TOKEN" "https://api.cloudflare.
 
 What each column holds: `index1` the event (`started`, `completed`,
 `shared`, `landing`); `blob1` the band; `blob2` where it came from (`pwa`,
-`tab`, or for a landing `p` or `daily`); `blob3` the version; `blob4` the
+`tab`, or for a landing its page, `p`, `daily` or `home`); `blob3` the
+version; `blob4` the
 country; `blob5` for a share what was shared (`puzzle`, `position`,
 `challenge`, `daily`), for a landing where it came from as one word
 (`none`, `search`, `ai`, `reddit`, `enjoysudoku`, `hackernews`,
 `facebook`, `discord`, `social`, `chat`, `mail`, `github`, `sudoku`,
-`other`; empty for landings counted before the word was kept), empty on
-a play line; `blob6` for a share the way it went (`sheet`, `copy`);
+`directory`, `fediverse`, `press`,
+`other`; empty for landings counted before the word was kept), for a
+play line the kind of game (`daily`, `new`, `practice`, `shared`; empty
+from builds before November 2026); `blob6` for a share the way it went
+(`sheet`, `copy`), for a play line the app's language (`en`, `nb`, `es`;
+empty from those builds);
 `double1` the 15-second time bucket (0 for a start and a share);
 `double2` how many events the row stands for; `double3` installed;
 `double4` kept offline; `double5` the sender has the opt-in on;

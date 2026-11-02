@@ -10,7 +10,10 @@ place. It is not translated.
 
 Status: phases 1, 2 and 3 are built, October 2026 (share links that
 preview; the shared daily with global times; the plays counted, with the
-opt-in and the private dashboard); phase 4 is decided and not built.
+opt-in and the private dashboard); each channel was made measurable on
+2 November 2026 (landings on the home pages, more landing words, the
+kind of game and the language on every start and solve, practice counted;
+"Measured per channel" below); phase 4 is decided and not built.
 Dates and limits were checked in October 2026 and must be re-checked
 before each phase ships.
 
@@ -128,8 +131,9 @@ Facts a prompt can rely on, with the files that hold them:
   `sendBeacon` with `fetch` keepalive behind it, to `POST /api/t`
   (`worker/telemetry.ts`), which checks each line against a closed list
   and writes it to the Workers Analytics Engine dataset `sudokui_events`
-  (`wrangler.jsonc`, binding `EVENTS`). The share route counts a
-  `landing` point for a person arriving from outside the site. The
+  (`wrangler.jsonc`, binding `EVENTS`). The share route and the three
+  home pages count a `landing` point for a person arriving from outside
+  the site. The
   Settings switch `countPlays` (`src/state/settings.ts`) is the one
   opt-in: on, the app keeps offline lines and the day the switch went on
   in `localStorage` (`sudokui-telemetry-v1`) and sends them later; off,
@@ -149,7 +153,7 @@ recommended a v1 of three. Where each one stands, in the research's order:
 |---|---|---|---|
 | 1 | Daily + global stats + share card | **Built** (phase 2). One published puzzle per local day, D1 histogram of unassisted solves, the win screen's panel, the text share line; the tables were created by hand in October 2026 | `src/content/dailies.ts`, `worker/daily.ts`, `src/state/dailyStats.ts`, `migrations/` |
 | 2 | Path-based share links with OG previews (`/p/…`, `/daily/…`) | **Built** (phase 1), with the "challenge a friend" time (`?vs=`) from the research's note h | `src/content/share.ts`, `worker/index.ts`, `public/og/` |
-| 3 | ID-less telemetry to WAE, opt-in offline counter, private `/admin` | **Built** (phase 3). Two lines per game while online, nothing stored by default; the opt-in keeps offline lines; landings counted from the share route; the dashboard reads WAE; the secrets and Access are hand steps | `src/state/telemetry.ts`, `worker/telemetry.ts`, `worker/admin.ts`, `src/content/privacy.ts` |
+| 3 | ID-less telemetry to WAE, opt-in offline counter, private `/admin` | **Built** (phase 3). Two lines per game while online, nothing stored by default; the opt-in keeps offline lines; landings counted from the share route and, since November 2026, the home pages; the dashboard reads WAE; the secrets and Access are hand steps | `src/state/telemetry.ts`, `worker/telemetry.ts`, `worker/admin.ts`, `src/content/privacy.ts` |
 | 4 | Daily archive pages | **Not built.** Phase 4, after data. `/daily/<date>` today is the app with a preview, `noindex`, not an indexable page | — |
 | 5 | Crowd-calibrated solve times per band | **Not built.** Phase 4. The daily results that would feed it are being collected from the first accepted result on | `src/content/solveTimes.ts` keeps the model |
 | 6 | Anonymous daily leaderboard | **Not built**, by decision: the place (below twenty times) or the percentile on the win screen and in the share line carries the competitive pull | — |
@@ -411,7 +415,8 @@ Built, October 2026, with these decisions:
 
 - **Two lines per game, by default, while online.** `started` when a
   game begins (not a practice puzzle, which starts part-way through, and
-  not a restart of the puzzle in play) and `completed` when it is solved,
+  not a restart of the puzzle in play; practice is counted since
+  November 2026, see "Measured per channel") and `completed` when it is solved,
   each with the band, the time in the daily's 15-second buckets (0 for a
   start), whether `display-mode: standalone` matched, the app's version
   and `pwa` or `tab`. The Worker adds the country from `request.cf` and
@@ -570,7 +575,8 @@ before the launch:
 - **A landing says where it came from**, as one word of a closed list
   (`landingFrom` in worker/telemetry.ts): none, search, ai, reddit,
   enjoysudoku, hackernews, facebook, discord, social, chat, mail, github,
-  sudoku, other. The referrer is read for that word and never written.
+  sudoku, other; and since November 2026 directory, fediverse and
+  press. The referrer is read for that word and never written.
   Browsers usually send only another site's origin, though a site can
   choose to send its full address, query and all; only the host (or an
   Android app's package) is used, and nothing of it is written. Most apps
@@ -589,6 +595,53 @@ before the launch:
   before the word was kept show as not recorded.
 - **The privacy page** says both, in three languages; the Settings switch
   that leaves a device out names shares too.
+
+Measured per channel, 2 November 2026 (build item 2 of
+[reach-plan-2026-11.md](reach-plan-2026-11.md)), so that no channel is
+used before it can be read:
+
+- **The home pages count a landing.** `/`, `/nb/` and `/es/` are in
+  `run_worker_first` (wrangler.jsonc). The Worker writes the same ID-less
+  `landing` point as a share page, with `home` in the source slot and no
+  band, when the request is one (`isLanding`: a GET navigation, no
+  referrer from the site, a person's browser), and answers with the file
+  itself (`worker/index.ts`, `HOME_PATHS`). A browser that holds the app
+  answers these pages from its service worker and never asks, so this is
+  mostly first visits; the Learn pages still run no Worker code and are
+  read in Search Console.
+- **More landing words**: `directory` (AlternativeTo, SaaSHub, Product
+  Hunt, pwa.directory, PWA Store, store.app), `fediverse` (Lemmy's
+  lemmy.world and lemmy.ml, common Mastodon servers, snabelen.no among
+  them, and the Mastodon, Tusky and Jerboa apps; mastodon.social was
+  `social` before), `press` (kode24, Teknisk Ukeblad, Aftenposten), and
+  menneske.no under `sudoku`.
+- **Each start and solve says its kind and language**, each from a
+  closed list: `kind` is `daily`, `new` (by band, imported, typed,
+  pasted, scanned, or a Learn page's example), `practice` or `shared` (a
+  share address or a position link), from `kindOf` in
+  src/state/gameStore.ts; `lang` is the app's language, `en`, `nb` or
+  `es`. They are blobs 5 and 6 of a play point. A line from an older
+  build carries neither and is still taken; a line with one and not the
+  other, a value off the list, or either on a share is refused.
+- **Practice is counted.** The kind `practice` needs it: a practice
+  puzzle opens part-way through, often with the app's own digits and
+  candidates on it, so its start is the player's own first move (the
+  first entry in its history) and its solve is counted once, like any
+  other; it still stays out of the player's band record. A practice game
+  resumed from storage is taken as begun when its board shows anything
+  beyond the givens, so one opened part-way and reloaded before any move
+  is not counted as begun. `/admin` keeps practice out of its play
+  numbers (starts, completions, offline, installed, new and returning),
+  which read as before, and shows it in its own column.
+- **The dashboard** shows home landings (yesterday's, in the table of
+  every day, and per word beside the share pages'), the week's games by
+  kind and language, begun and completed, and the games begun each day
+  by kind and language. Landings per share counts the share pages'
+  landings only.
+- **The privacy page** says all of it, in three languages.
+- **The launch log**, [launch-log.md](launch-log.md): one dated line per
+  action the owner takes, with the link used and the landing word
+  expected, and the baseline's numbers.
 
 ### Phase 4, after four to eight weeks of data
 
@@ -638,7 +691,7 @@ before the launch:
 
 | Service | Free allowance | What binds first |
 |---|---|---|
-| Workers requests | 100,000 a day, 10 ms CPU per invocation; static assets free and unlimited | This. About four Worker calls per daily player (stats, submit, telemetry, share render) means roughly 20,000 to 25,000 daily players |
+| Workers requests | 100,000 a day, 10 ms CPU per invocation; static assets free and unlimited | This. About four Worker calls per daily player (stats, submit, telemetry, share render) means roughly 20,000 to 25,000 daily players. Since November 2026 the home pages add one call per visit the service worker does not answer (mostly a first visit) and up to three per device after a deploy, when its service worker fetches the three home pages again: with a deploy every day, about 14,000 daily players; the answer at the wall is the same |
 | D1 | 5M rows read a day, 100,000 rows written a day, 5 GB account, 500 MB per database, 50 queries per invocation | Hard failure past the cap since 1 September 2026. One unindexed query can take stats offline until midnight UTC |
 | Workers Analytics Engine | 100,000 data points written a day, 10,000 read queries a day, three months retention | About three events per player, so around 30,000 daily players |
 | Workers KV | 100,000 reads a day, 1,000 writes a day | Too few writes for counters. Not used in v1 |
@@ -647,8 +700,10 @@ before the launch:
 
 Expected load at 10,000 daily players, v1 scope: 35,000 to 50,000 Worker
 requests, about 20,000 D1 writes, under 1M D1 rows read with caching, about
-30,000 WAE points. At the request wall the answer is the five-dollar Paid
-plan with 10M requests a month, not a redesign.
+30,000 WAE points. The home pages (November 2026) add up to 30,000
+requests on a day with a deploy, still under the cap. At the request wall
+the answer is the five-dollar Paid plan with 10M requests a month, not a
+redesign.
 
 Operational rules that follow:
 

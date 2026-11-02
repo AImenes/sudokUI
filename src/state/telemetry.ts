@@ -7,7 +7,9 @@
 // game opened and never touched is not counted; gameStore.ts) and a
 // `completed` line when it is solved, each with the band, the time in
 // 15-second buckets, whether display-mode: standalone matched, the app's
-// version and where it ran (the installed app or a tab). Nothing is stored
+// version, where it ran (the installed app or a tab), what kind of game
+// it was (the daily, a new puzzle, practice, or one opened from a shared
+// link; gameStore.ts, kindOf) and the app's language. Nothing is stored
 // on the device for it, and offline nothing is sent and nothing is kept.
 //
 // With the Settings switch "Help count plays, including offline ones" on
@@ -42,7 +44,7 @@
 // points the Worker writes in one invocation.
 import { create } from 'zustand';
 import type { Level } from '../engine/ratings';
-import { useSettings } from './settings';
+import { useSettings, type Lang } from './settings';
 import { bucketOf, localDateKey } from '../content/dailies';
 import { playedFrom } from './dailyStats';
 
@@ -58,6 +60,8 @@ export const BATCH_DELAY = 1000;
 export type ShareKind = 'puzzle' | 'position' | 'challenge' | 'daily';
 /** the share sheet took it, or it was copied (SHARE_VIAS) */
 export type ShareVia = 'sheet' | 'copy';
+/** what kind of game a start or a solve is about (worker/telemetry.ts, PLAY_KINDS; gameStore.ts, kindOf) */
+export type PlayKind = 'daily' | 'new' | 'practice' | 'shared';
 
 /** one line, as the Worker checks it (worker/telemetry.ts, checkEvent) */
 export interface PlayEvent {
@@ -79,6 +83,9 @@ export interface PlayEvent {
   /** a share's kind and way: on a share only */
   what?: ShareKind;
   via?: ShareVia;
+  /** a start's or a solve's kind of game and the app's language, both on every one the app makes now (PLAY_KINDS, PLAY_LANGS); a line kept by an older version has neither */
+  kind?: PlayKind;
+  lang?: Lang;
 }
 
 /** what the opt-in keeps on the device */
@@ -91,8 +98,8 @@ interface Kept {
 interface TelemetryState extends Kept {
   /** live events waiting for the next send, a second at most */
   pending: PlayEvent[];
-  /** a game began or was solved: sent now while online, kept with the opt-in while offline, dropped otherwise */
-  track(event: 'started' | 'completed', band: Level, seconds: number): void;
+  /** a game of a kind began or was solved: sent now while online, kept with the opt-in while offline, dropped otherwise */
+  track(event: 'started' | 'completed', band: Level, seconds: number, kind: PlayKind): void;
   /** a link went to someone, through the share sheet or a copy: sent now while online, else dropped; never kept on the device */
   shared(what: ShareKind, via: ShareVia, band: Level): void;
   /** sends what waits: the live batch at once, then the kept queue while online and opted in */
@@ -180,11 +187,11 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
   ...(optedIn() ? kept() : nothing()),
   pending: [],
 
-  track: (event, band, seconds) => {
+  track: (event, band, seconds, kind) => {
     // a device left out of the counts sends nothing and keeps nothing
     if (leftOut()) return;
     const source = playedFrom();
-    const e: PlayEvent = { event, band, bucket: bucketOf(seconds), standalone: source === 'pwa', version: APP_VERSION, source };
+    const e: PlayEvent = { event, band, bucket: bucketOf(seconds), standalone: source === 'pwa', version: APP_VERSION, source, kind, lang: useSettings.getState().lang };
     const optin = optedIn();
     if (optin) {
       const today = localDateKey();

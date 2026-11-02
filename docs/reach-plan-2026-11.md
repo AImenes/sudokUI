@@ -65,6 +65,8 @@ Principle 5 ('Measured, not asserted') needs this before the first launch, and t
 
 **Principles.** No identifier, cookie or address is stored: each landing is one closed-list word, each field one closed-list value, as in the existing landing design ('A landing is a person'). The privacy page changes in the same commit, so it stays accurate. The few extra Worker invocations per new visitor are far below the free tier.
 
+**Built** on 2 November 2026, as above, with two additions: practice games are counted now, because the kind 'practice' needs them (they open part-way, so they count from the player's own first move, and /admin keeps them out of its other play numbers); and a bare '#p=' link, which is mostly the Learn pages' own, counts as 'new', so 'shared' means a share address or a position link. The home pages also cost up to three Worker calls per device after each deploy, when the service worker fetches them again; docs/online-goals.md, Budgets, has the numbers. Details in docs/online-goals.md, 'Measured per channel'.
+
 ### 3. Board and hint image export, plus 'Share this hint'
 
 Images are what puzzle communities post: help, challenge and technique posts on Reddit, Discord and the forum. Today the drawn chain, the app's selling point, can only leave as a screenshot of the whole app. The same images are what the owner's own outreach needs: the forum thread, AlternativeTo and store screenshots, creator emails, the press page. The prototype already renders sharp 1140 px PNGs offline from boardSvg (/home/user/sudokUI/.vite/reach/proto/*.png).

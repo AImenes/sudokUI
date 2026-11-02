@@ -1699,14 +1699,18 @@ test.describe('counting plays', () => {
     await expect.poll(() => batches.flat().filter((e) => e.event === 'started').length).toBe(1);
     await expect.poll(() => batches.flat().filter((e) => e.event === 'completed').length).toBe(1);
     const completed = batches.flat().find((e) => e.event === 'completed')!;
+    // a share address's game, in the app's language
     expect(completed).toEqual({
       event: 'completed',
       band: expect.stringMatching(/^(Easy|Medium|Hard|Unfair|Extreme)$/),
       bucket: 0,
       standalone: false,
       version: expect.stringMatching(/^\d+\.\d+\.\d+/),
-      source: 'tab'
+      source: 'tab',
+      kind: 'shared',
+      lang: 'en'
     });
+    expect(batches.flat().find((e) => e.event === 'started')).toMatchObject({ kind: 'shared', lang: 'en' });
     // one beacon for the solve, and nothing on the device for it
     expect(batches.filter((b) => b.some((e) => e.event === 'completed'))).toHaveLength(1);
     expect(await page.evaluate(() => localStorage.getItem('sudokui-telemetry-v1'))).toBeNull();
@@ -1717,6 +1721,23 @@ test.describe('counting plays', () => {
     await dialog.getByRole('button', { name: 'Settings' }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });
     await expect(settings.getByRole('switch', { name: 'Help count plays, including offline ones' })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  test('a Learn page’s #p= link begins a new game, counted in the language of the page it opens', async ({ page }) => {
+    const lines: Line[] = [];
+    await page.route('**/api/t', async (route) => {
+      lines.push(...JSON.parse(route.request().postData() ?? '[]'));
+      await route.fulfill({ status: 204 });
+    });
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    await page.goto(`/nb/#p=${EASY}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    const empty = [...EASY].indexOf('.');
+    const c = await cellBox(page, empty);
+    await page.mouse.click(c.x, c.y);
+    await page.keyboard.press('Shift+Digit1');
+    await expect.poll(() => lines.filter((e) => e.event === 'started').length).toBe(1);
+    expect(lines[0]).toMatchObject({ event: 'started', kind: 'new', lang: 'nb' });
   });
 
   test('offline with the switch off, nothing is sent and nothing is kept', async ({ page, context }) => {

@@ -20,7 +20,7 @@
  */
 import { DAYS_SHOWN, DATASET, type DayRow, type Metrics, type Totals } from './adminModel';
 import { accessKeys, cameThroughAccess, type AccessEnv, type AccessKeys } from './access';
-import { SHARE_KINDS, type LandingFrom, type ShareKind } from './telemetry';
+import { PLAY_KINDS, PLAY_LANGS, SHARE_KINDS, type LandingFrom, type PlayKind, type PlayLang, type ShareKind } from './telemetry';
 
 export { DAYS_SHOWN, DATASET };
 export type { DayRow, Metrics, Totals };
@@ -31,10 +31,11 @@ export const ADMIN_PATH = '/admin';
 export const sqlApi = (account: string) => `https://api.cloudflare.com/client/v4/accounts/${account}/analytics_engine/sql`;
 
 /**
- * Every point of the last days, summed per UTC day, event, source (the
- * share pages' landings are 'p' or 'daily' there), kind (what a share was,
- * where a landing came from) and way (a share's sheet or copy; empty for
- * the rest). `_sample_interval` weighs each row by the sampling WAE
+ * Every point of the last days, summed per UTC day, event, source (a
+ * landing's page is 'p', 'daily' or 'home' there), kind (what a share was,
+ * where a landing came from, what kind of game a start or a solve was)
+ * and way (a share's sheet or copy, a start's or a solve's language;
+ * empty for the rest, and for an older app's play lines). `_sample_interval` weighs each row by the sampling WAE
  * applies at volume. The flags ride in the doubles (telemetry.ts,
  * pointOf), so a product with the count picks out the events that carry
  * them.
@@ -58,7 +59,9 @@ export interface Row {
   day: string;
   event: string;
   source: string;
+  /** blob5: what a share was, where a landing came from, a play line's kind of game */
   kind: string;
+  /** blob6: a share's way, a play line's language */
   via: string;
   n: number;
   standalone: number;
@@ -106,10 +109,16 @@ const emptyDay = (day: string): DayRow => ({
   completedStandalone: 0,
   landings: 0,
   landingsDaily: 0,
+  landingsHome: 0,
   landingsFrom: {},
+  landingsFromHome: {},
   shares: 0,
   sharesSheet: 0,
-  sharesBy: {}
+  sharesBy: {},
+  startsBy: {},
+  completedBy: {},
+  startsByLang: {},
+  completedByLang: {}
 });
 
 /** adds n to a count kept by name */
@@ -125,11 +134,22 @@ export function daysOf(rows: Row[], now: Date): DayRow[] {
     // the API writes a day as 2026-10-12 00:00:00
     const d = days.get(r.day.slice(0, 10));
     if (!d) continue;
+    // every start and solve by kind and language; the play counts leave
+    // practice out, as they did before it was counted, so a week reads
+    // against the weeks before it, and practice has its own column
     if (r.event === 'started') {
+      add(d.startsBy, r.kind, r.n);
+      add(d.startsByLang, r.via, r.n);
+    } else if (r.event === 'completed') {
+      add(d.completedBy, r.kind, r.n);
+      add(d.completedByLang, r.via, r.n);
+    }
+    const practice = r.kind === 'practice';
+    if (r.event === 'started' && !practice) {
       d.starts += r.n;
       d.startsOptin += r.optin;
       d.startsReturning += r.optin_returning;
-    } else if (r.event === 'completed') {
+    } else if (r.event === 'completed' && !practice) {
       d.completed += r.n;
       d.completedOffline += r.offline;
       d.completedOptin += r.optin;
@@ -139,6 +159,10 @@ export function daysOf(rows: Row[], now: Date): DayRow[] {
       d.landings += r.n;
       if (r.source === 'daily') d.landingsDaily += r.n;
       add(d.landingsFrom, r.kind, r.n);
+      if (r.source === 'home') {
+        d.landingsHome += r.n;
+        add(d.landingsFromHome, r.kind, r.n);
+      }
     } else if (r.event === 'shared') {
       d.shares += r.n;
       const by = (d.sharesBy[r.kind] ??= { sheet: 0, copy: 0 });
@@ -174,11 +198,22 @@ export function totalsOf(days: DayRow[]): Totals {
   const startsReturning = sum((d) => d.startsReturning);
   const standalone = sum((d) => d.completedStandalone);
   const landings = sum((d) => d.landings);
+  const landingsHome = sum((d) => d.landingsHome);
   const shares = sum((d) => d.shares);
   const landingsFrom: Record<string, number> = {};
+  const landingsFromHome: Record<string, number> = {};
+  const startsBy: Record<string, number> = {};
+  const completedBy: Record<string, number> = {};
+  const startsByLang: Record<string, number> = {};
+  const completedByLang: Record<string, number> = {};
   const sharesBy: Record<string, { sheet: number; copy: number }> = {};
   for (const d of days) {
     for (const [from, n] of Object.entries(d.landingsFrom)) add(landingsFrom, from, n);
+    for (const [from, n] of Object.entries(d.landingsFromHome)) add(landingsFromHome, from, n);
+    for (const [kind, n] of Object.entries(d.startsBy)) add(startsBy, kind, n);
+    for (const [kind, n] of Object.entries(d.completedBy)) add(completedBy, kind, n);
+    for (const [lang, n] of Object.entries(d.startsByLang)) add(startsByLang, lang, n);
+    for (const [lang, n] of Object.entries(d.completedByLang)) add(completedByLang, lang, n);
     for (const [what, n] of Object.entries(d.sharesBy)) {
       const by = (sharesBy[what] ??= { sheet: 0, copy: 0 });
       by.sheet += n.sheet;
@@ -199,11 +234,17 @@ export function totalsOf(days: DayRow[]): Totals {
     optinOffline,
     landings,
     landingsDaily: sum((d) => d.landingsDaily),
+    landingsHome,
     landingsFrom,
+    landingsFromHome,
     shares,
     sharesSheet: sum((d) => d.sharesSheet),
     sharesBy,
-    landingsPerShare: ratio(landings, shares),
+    landingsPerShare: ratio(landings - landingsHome, shares),
+    startsBy,
+    completedBy,
+    startsByLang,
+    completedByLang,
     startsOptin,
     startsNew: startsOptin - startsReturning,
     startsReturning,
@@ -240,6 +281,21 @@ const SHARE_LABELS: Record<ShareKind, string> & Record<string, string | undefine
   daily: 'Daily line (win screen)'
 };
 
+/** what kind of game, as a column of the page */
+const KIND_LABELS: Record<PlayKind, string> = {
+  daily: 'Daily',
+  new: 'New',
+  shared: 'From a share link',
+  practice: 'Practice'
+};
+
+/** the app's language, as a column of the page */
+const LANG_LABELS: Record<PlayLang, string> = {
+  en: 'English',
+  nb: 'Norwegian',
+  es: 'Spanish'
+};
+
 /** each word a landing's referrer becomes (telemetry.ts, landingFrom) */
 const FROM_LABELS: Record<LandingFrom | '', string> & Record<string, string | undefined> = {
   none: 'No referrer: typed, a bookmark, most apps',
@@ -254,7 +310,10 @@ const FROM_LABELS: Record<LandingFrom | '', string> & Record<string, string | un
   chat: 'A chat app or site',
   mail: 'A mail app or webmail',
   github: 'GitHub',
-  sudoku: 'Another sudoku site',
+  sudoku: 'Another sudoku site (menneske.no among them)',
+  directory: 'An app directory (AlternativeTo, SaaSHub, Product Hunt and the like)',
+  fediverse: 'Lemmy or Mastodon',
+  press: 'A news site (kode24, Teknisk Ukeblad, Aftenposten)',
   other: 'Another site or app',
   '': 'Not recorded: counted before the word was kept'
 };
@@ -290,10 +349,16 @@ td,th{padding:5px 8px;border-bottom:1px solid #2a2e3f;text-align:right;white-spa
 td:first-child,th:first-child{text-align:left}
 tr.today td{color:#9aa0b3;font-style:italic}
 svg{display:block;max-width:100%;height:auto;margin:8px 0}
+.wide{overflow-x:auto}
 a{color:#8ab6f7}
 `.trim();
 
-/** the page: the fourteen numbers, the sparkline of the month, what was shared and where landings came from that week, and every day of the month */
+/** a row's cells by kind of game, then by language, then the lines an older app sent, which say neither */
+const playCells = (by: Record<string, number>, byLang: Record<string, number>) =>
+  [...PLAY_KINDS.map((k) => by[k] ?? 0), ...PLAY_LANGS.map((l) => byLang[l] ?? 0), by[''] ?? 0].map((n) => `<td>${num(n)}</td>`).join('');
+const PLAY_HEADS = [...PLAY_KINDS.map((k) => KIND_LABELS[k]), ...PLAY_LANGS.map((l) => LANG_LABELS[l]), 'Not recorded'].map((h) => `<th>${esc(h)}</th>`).join('');
+
+/** the page: the fourteen numbers, the sparkline of the month, what was shared, the games by kind and language, and where landings came from that week, and every day of the month */
 export function renderAdmin(m: Metrics): string {
   const w = m.week;
   const d = m.yesterday;
@@ -305,20 +370,20 @@ export function renderAdmin(m: Metrics): string {
     number('Offline, reported', num(w.offlineReported), 'kept by opted-in devices, 7 days'),
     number('Offline, estimated', num(w.offlineEstimate), w.offlineEstimate === null ? 'needs an opted-in device with online solves' : `others at the cohort's ratio, ${num(w.optinOffline)} to ${num(w.optinOnline)}`),
     number('Completed, total estimate', num(w.total), 'live + reported + estimated, 7 days'),
-    number('Starts, last 7 days', num(w.starts), 'games begun: counted at the first move'),
+    number('Starts, last 7 days', num(w.starts), 'games begun, counted at the first move; practice apart'),
     number('Completion rate', pct(w.completionRate), `${num(w.completed)} completed of ${num(w.starts)} begun, 7 days`),
     number(
       'Solved in installed app',
       pct(w.installedShare),
       `${num(w.standalone)} of ${num(w.completed)}, played from a home-screen or desktop icon; not a count of installs`
     ),
-    number('Landings yesterday', num(d.landings), `${num(d.landingsDaily)} on a daily's address`),
-    number('Landings, last 7 days', num(w.landings), 'share pages opened from outside the site, by people'),
+    number('Landings yesterday', num(d.landings), `${num(d.landingsHome)} on a home page, ${num(d.landingsDaily)} on a daily's address`),
+    number('Landings, last 7 days', num(w.landings), 'home pages and share pages opened from outside the site, by people'),
     number('Shares, last 7 days', num(w.shares), `${num(w.sharesSheet)} through the share sheet, ${num(w.shares - w.sharesSheet)} copied`),
     number(
       'Landings per share',
       w.landingsPerShare === null ? '—' : w.landingsPerShare.toFixed(2),
-      `${num(w.landings)} landings over ${num(w.shares)} shares, 7 days`
+      `${num(w.landings - w.landingsHome)} share-page landings over ${num(w.shares)} shares, 7 days`
     ),
     number('New players', pct(w.newShare), `${num(w.startsNew)} of ${num(w.startsOptin)} opted-in starts, 7 days`),
     number(
@@ -330,8 +395,12 @@ export function renderAdmin(m: Metrics): string {
   const rows = m.days
     .map(
       (day, i) =>
-        `      <tr${i === m.days.length - 1 ? ' class="today"' : ''}><td>${esc(day.day)}</td><td>${num(day.starts)}</td><td>${num(day.completed - day.completedOffline)}</td><td>${num(day.completedOffline)}</td><td>${num(day.completedStandalone)}</td><td>${num(day.shares)}</td><td>${num(day.landings)}</td><td>${num(day.startsOptin - day.startsReturning)}</td><td>${num(day.startsReturning)}</td></tr>`
+        `      <tr${i === m.days.length - 1 ? ' class="today"' : ''}><td>${esc(day.day)}</td><td>${num(day.starts)}</td><td>${num(day.completed - day.completedOffline)}</td><td>${num(day.completedOffline)}</td><td>${num(day.completedStandalone)}</td><td>${num(day.shares)}</td><td>${num(day.landings)}</td><td>${num(day.landingsHome)}</td><td>${num(day.startsOptin - day.startsReturning)}</td><td>${num(day.startsReturning)}</td></tr>`
     )
+    .join('\n');
+  // the games begun each day, by kind and by language, practice included
+  const playRows = m.days
+    .map((day, i) => `      <tr${i === m.days.length - 1 ? ' class="today"' : ''}><td>${esc(day.day)}</td>${playCells(day.startsBy, day.startsByLang)}</tr>`)
     .join('\n');
   // what was shared, in the list's order, then anything else the data holds
   const kinds = [...SHARE_KINDS, ...Object.keys(w.sharesBy).filter((k) => !(SHARE_KINDS as readonly string[]).includes(k))];
@@ -341,11 +410,15 @@ export function renderAdmin(m: Metrics): string {
       return `      <tr><td>${esc(SHARE_LABELS[k] ?? k)}</td><td>${num(by.sheet)}</td><td>${num(by.copy)}</td><td>${num(by.sheet + by.copy)}</td></tr>`;
     })
     .join('\n');
-  // where landings came from, the most first; a word with none is left out
+  // where landings came from, the most first, on a home page and on a
+  // share page; a word with none is left out
   const fromRows = Object.entries(w.landingsFrom)
     .filter(([, n]) => n > 0)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([from, n]) => `      <tr><td>${esc(FROM_LABELS[from] ?? from)}</td><td>${num(n)}</td><td>${pct(w.landings > 0 ? n / w.landings : null)}</td></tr>`)
+    .map(([from, n]) => {
+      const home = w.landingsFromHome[from] ?? 0;
+      return `      <tr><td>${esc(FROM_LABELS[from] ?? from)}</td><td>${num(home)}</td><td>${num(n - home)}</td><td>${num(n)}</td><td>${pct(w.landings > 0 ? n / w.landings : null)}</td></tr>`;
+    })
     .join('\n');
   const month = m.month;
   return `<!doctype html>
@@ -367,26 +440,43 @@ ${numbers}
     ${sparkline(m.days.slice(0, -1))}
     <p class="meta">${DAYS_SHOWN} days: ${num(month.starts)} starts, ${num(month.completed)} completed (${num(month.offlineReported)} reported offline, ${num(month.offlineEstimate)} estimated), ${num(month.shares)} shares, ${num(month.landings)} landings, completion ${pct(month.completionRate)}, solved in the installed app ${pct(month.installedShare)}.</p>
     <h2>What was shared, last 7 days</h2>
-    <table>
+    <div class="wide"><table>
       <thead><tr><th>Shared</th><th>Share sheet</th><th>Copied</th><th>All</th></tr></thead>
       <tbody>
 ${shareRows}
       </tbody>
-    </table>
-    <h2>Where landings came from, last 7 days</h2>
-    <table>
-      <thead><tr><th>From</th><th>Landings</th><th>Of all</th></tr></thead>
+    </table></div>
+    <h2>Games by kind and language, last 7 days</h2>
+    <div class="wide"><table>
+      <thead><tr><th>Games</th>${PLAY_HEADS}</tr></thead>
       <tbody>
-${fromRows || '      <tr><td>No landings</td><td>0</td><td>—</td></tr>'}
+      <tr><td>Begun</td>${playCells(w.startsBy, w.startsByLang)}</tr>
+      <tr><td>Completed</td>${playCells(w.completedBy, w.completedByLang)}</tr>
       </tbody>
-    </table>
+    </table></div>
+    <h2>Where landings came from, last 7 days</h2>
+    <div class="wide"><table>
+      <thead><tr><th>From</th><th>Home page</th><th>Share pages</th><th>Landings</th><th>Of all</th></tr></thead>
+      <tbody>
+${fromRows || '      <tr><td>No landings</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>'}
+      </tbody>
+    </table></div>
     <h2>Every day</h2>
-    <table>
-      <thead><tr><th>Day</th><th>Starts</th><th>Completed</th><th>Offline</th><th>In installed app</th><th>Shares</th><th>Landings</th><th>New</th><th>Returning</th></tr></thead>
+    <div class="wide"><table>
+      <thead><tr><th>Day</th><th>Starts</th><th>Completed</th><th>Offline</th><th>In installed app</th><th>Shares</th><th>Landings</th><th>On a home page</th><th>New</th><th>Returning</th></tr></thead>
       <tbody>
 ${rows}
       </tbody>
-    </table>
+    </table></div>
+    <h2>Games begun per day, by kind and language</h2>
+    <div class="wide"><table>
+      <thead><tr><th>Day</th>${PLAY_HEADS}</tr></thead>
+      <tbody>
+${playRows}
+      </tbody>
+    </table></div>
+    <p class="meta">Kind and language are what a start or a solve says about itself, from the builds of November 2026 on: Daily is the daily puzzle, From a share link a puzzle or position opened from a link someone shared, Practice a practice puzzle, and New any other (a new one by band, an import, a grid typed, pasted or scanned, a Learn page's example); the language is the one the app was set to. Lines from older builds say neither and are Not recorded. Practice puzzles are counted from November 2026, at the player's own first move since they open part-way through, and are left out of Starts, Completed, Offline, In installed app, New and Returning and the numbers above, so those read as they did before.</p>
+    <p class="meta">A home landing is a visit to /, /nb/ or /es/ from outside the site that the browser did not answer from the app it already holds: mostly a first visit. Landings per share counts the share pages' landings only.</p>
     <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge or the daily's line that the share sheet took or that was copied, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most apps send none (on Android some name themselves), so No referrer is mostly links opened from apps. The sixth metric of the plan, search clicks, is in Search Console.</p>
   </body>
 </html>

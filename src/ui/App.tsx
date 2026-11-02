@@ -328,11 +328,17 @@ export default function App() {
     };
     /** a game nobody has touched: its clock may have run, nothing else has happened */
     const untouched = () => game.cells.every((c) => c.given || (!c.value && !c.corner && !c.center && !c.colors.length));
+    /** the game on the board is now the one a share link opened, for the counts (gameStore.ts, kindOf) */
+    const fromLink = () => useGame.setState((s) => ({ info: s.info && { ...s.info, fromLink: true } }));
     /** the challenger's time over the game already on the board */
     const challengeCurrent = (vs: number) => {
       // a finished game, or one not yet begun, starts over against that
-      // time; one under way keeps its moves and takes the time on
-      if (game.won || untouched()) game.restart();
+      // time, as the link's game; one under way keeps its moves and takes
+      // the time on
+      if (game.won || untouched()) {
+        game.restart();
+        fromLink();
+      }
       challenge(vs);
     };
     // a daily's address, or #daily for today's: that day's board, unless it
@@ -362,6 +368,10 @@ export default function App() {
       const v = shared.length === 81 ? validatePuzzle(shared) : null;
       if (v && v.ok) {
         game.startGame(shared, v.score, v.level);
+        // a share address is someone's link; a bare #p= is mostly the
+        // Learn pages' own (their examples and their paste box), so its
+        // game is counted as a new one
+        if (share) fromLink();
         if (share?.vs) challenge(share.vs);
         positionRefused();
         return;

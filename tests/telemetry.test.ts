@@ -19,6 +19,9 @@ import {
   isPersonAgent,
   landingFrom,
   LANDING_FROM,
+  LANDING_SLOTS,
+  PLAY_KINDS,
+  PLAY_LANGS,
   SHARE_KINDS,
   SHARE_VIAS,
   BATCH_MAX,
@@ -28,7 +31,7 @@ import {
   TelemetryEvent
 } from '../worker/telemetry';
 import { handleAdmin, adminQuery, rowsOf, metricsOf, renderAdmin, sqlApi, DATASET, Row, ADMIN_PATH } from '../worker/admin';
-import { handleRequest, Env, SHARE_TEMPLATE } from '../worker/index';
+import { handleRequest, Env, SHARE_TEMPLATE, HOME_PATHS } from '../worker/index';
 import { ACCESS_HEADER, type AccessKeys } from '../worker/access';
 import { ACCESS_SECRETS, certsEndpoint, claimsAt, keysOver, signer, type Signer } from './accessToken';
 import template from '../index.html?raw';
@@ -41,6 +44,7 @@ import { buildLearnPages, buildSitemap, SITE as PAGES_SITE } from '../src/conten
 import { STATIC_ROUTES } from '../src/content/staticRoutes';
 import { HOME_LANGS } from '../src/content/home';
 import { version } from '../package.json';
+import { readFileSync } from 'node:fs';
 
 const SITE = 'https://sudokui.app';
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
@@ -224,6 +228,56 @@ describe('the telemetry route', () => {
     ]);
   });
 
+  it('takes a start or a solve with its kind of game and language, from the lists, and writes both', async () => {
+    const events = memoryEvents();
+    const batch = [
+      good({ kind: 'daily', lang: 'nb' }),
+      good({ kind: 'daily', lang: 'nb' }),
+      good({ event: 'started', bucket: 0, kind: 'practice', lang: 'es' }),
+      good({ kind: 'shared', lang: 'en' }),
+      // an app from before them sends neither, and is still taken
+      good()
+    ];
+    expect((await handleTelemetry(post(batch), events, { country: 'NO' }))!.status).toBe(204);
+    expect(events.points).toEqual([
+      { indexes: ['completed'], blobs: ['Hard', 'tab', '1.0.0', 'NO', 'daily', 'nb'], doubles: [36, 2, 0, 0, 0, 0] },
+      { indexes: ['started'], blobs: ['Hard', 'tab', '1.0.0', 'NO', 'practice', 'es'], doubles: [0, 1, 0, 0, 0, 0] },
+      { indexes: ['completed'], blobs: ['Hard', 'tab', '1.0.0', 'NO', 'shared', 'en'], doubles: [36, 1, 0, 0, 0, 0] },
+      { indexes: ['completed'], blobs: ['Hard', 'tab', '1.0.0', 'NO'], doubles: [36, 1, 0, 0, 0, 0] }
+    ]);
+    for (const kind of PLAY_KINDS)
+      for (const lang of PLAY_LANGS) {
+        expect(checkEvent(good({ kind, lang }))).toMatchObject({ kind, lang });
+        expect(checkEvent(good({ event: 'started', bucket: 0, kind, lang, optin: true, offline: true, returning: true }))).toMatchObject({ kind, lang });
+      }
+    expect(checkEvent(good())).not.toHaveProperty('kind');
+  });
+
+  it('refuses a kind or a language off the lists, one without the other, and either on a share', async () => {
+    const events = memoryEvents();
+    for (const body of [
+      good({ kind: 'weekly', lang: 'en' }),
+      good({ kind: 'Daily', lang: 'en' }),
+      good({ kind: 'daily', lang: 'de' }),
+      good({ kind: 'daily', lang: 'en-GB' }),
+      good({ kind: 'daily', lang: 'NB' }),
+      good({ kind: 1, lang: 'en' }),
+      good({ kind: 'daily', lang: null }),
+      good({ kind: 'daily' }),
+      good({ lang: 'nb' }),
+      good({ kind: '', lang: '' }),
+      good({ kind: 'daily', lang: 'nb', what: 'puzzle' }),
+      good({ kind: 'daily', lang: 'nb', country: 'NO' }),
+      shared({ kind: 'daily', lang: 'en' }),
+      shared({ kind: 'daily' }),
+      shared({ lang: 'en' })
+    ]) {
+      expect(checkEvent(body), JSON.stringify(body)).toBeNull();
+      expect((await handleTelemetry(post([body]), events))!.status, JSON.stringify(body)).toBe(400);
+    }
+    expect(events.points).toHaveLength(0);
+  });
+
   it('answers 503 without a dataset, or with one that fails, and 429 past the rate limit', async () => {
     const none = (await handleTelemetry(post([good()]), null))!;
     expect(none.status).toBe(503);
@@ -390,7 +444,28 @@ describe('the landing count', () => {
       ['android-app://com.microsoft.teams/', 'chat'],
       ['android-app://ch.protonmail.android/', 'mail'],
       // a site that sends its whole address: only the host is read
-      ['https://www.reddit.com/r/sudoku/comments/abc/title/?utm_source=share', 'reddit']
+      ['https://www.reddit.com/r/sudoku/comments/abc/title/?utm_source=share', 'reddit'],
+      // the directories of apps, Lemmy and Mastodon, the press, and the Norwegian sudoku site
+      ['https://alternativeto.net/software/hodoku/', 'directory'],
+      ['https://www.saashub.com/', 'directory'],
+      ['https://www.producthunt.com/', 'directory'],
+      ['https://pwa.directory/', 'directory'],
+      ['https://pwastore.io/', 'directory'],
+      ['https://store.app/', 'directory'],
+      ['https://lemmy.world/c/sudoku', 'fediverse'],
+      ['https://lemmy.ml/', 'fediverse'],
+      ['https://mastodon.social/', 'fediverse'],
+      ['https://fosstodon.org/', 'fediverse'],
+      ['https://snabelen.no/', 'fediverse'],
+      ['android-app://org.joinmastodon.android/', 'fediverse'],
+      ['android-app://com.jerboa/', 'fediverse'],
+      ['https://www.kode24.no/', 'press'],
+      ['https://www.tu.no/artikler/x', 'press'],
+      ['https://www.aftenposten.no/', 'press'],
+      ['https://www.menneske.no/sudoku/', 'sudoku'],
+      ['https://notkode24.no/', 'other'],
+      ['https://lemmy.world.evil.example/', 'other'],
+      ['https://menu.no/', 'other']
     ];
     for (const [referer, word] of cases) expect(landingFrom(referer), String(referer)).toBe(word);
     // every word is on the list
@@ -413,15 +488,108 @@ describe('the landing count', () => {
     // without the binding the page still renders
     const res = await handleRequest(landing(`/p/${EASY}`), assets());
     expect(res.status).toBe(200);
-    expect(countLanding(undefined, landing(`/p/${EASY}`), { level: 'Hard' })).toBe(false);
+    expect(countLanding(undefined, landing(`/p/${EASY}`), 'p', 'Hard')).toBe(false);
     // a dataset that throws never costs the page
     const broken = {
       writeDataPoint: () => {
         throw new Error('no');
       }
     };
-    expect(countLanding(broken, landing(`/p/${EASY}`), { level: 'Hard' })).toBe(false);
+    expect(countLanding(broken, landing(`/p/${EASY}`), 'p', 'Hard')).toBe(false);
     expect((await handleRequest(landing(`/p/${EASY}`), assets({ EVENTS: broken }))).status).toBe(200);
+  });
+
+  /** the assets with the three home pages: each answers with its own file */
+  function withHomes(extra: Partial<Env> = {}): Env {
+    return {
+      ASSETS: {
+        fetch: async (request: Request) => {
+          const u = new URL(request.url);
+          if ((HOME_PATHS as string[]).includes(u.pathname)) return new Response(`home ${u.pathname}`, { status: 200, headers: { 'x-answered-by': 'assets' } });
+          return new Response('not found', { status: 404, headers: { 'x-answered-by': 'assets' } });
+        }
+      },
+      ...extra
+    };
+  }
+
+  it('counts a person arriving at a home page from outside the site, and answers with the page itself', async () => {
+    const events = memoryEvents();
+    const env = withHomes({ EVENTS: events });
+    for (const path of ['/', '/nb/', '/es/']) {
+      const res = await handleRequest(landing(path, { referer: 'https://alternativeto.net/software/sudokui/' }), env);
+      expect(res.status, path).toBe(200);
+      expect(res.headers.get('x-answered-by')).toBe('assets');
+      expect(await res.text()).toBe(`home ${path}`);
+    }
+    expect(events.points).toEqual(
+      ['/', '/nb/', '/es/'].map(() => ({ indexes: ['landing'], blobs: ['', 'home', version, '', 'directory'], doubles: [0, 1, 0, 0, 0, 0] }))
+    );
+    // a query, a campaign's say, is still the home page; the word is from the referrer, never the query
+    await handleRequest(landing('/?utm_source=kode24', { referer: 'https://www.kode24.no/artikkel/1' }), env);
+    expect(events.points[3].blobs).toEqual(['', 'home', version, '', 'press']);
+    await handleRequest(landing('/nb/'), env);
+    expect(events.points[4].blobs).toEqual(['', 'home', version, '', 'none']);
+    expect(JSON.stringify(events.points)).not.toContain('kode24');
+    expect(LANDING_SLOTS).toEqual(['p', 'daily', 'home']);
+  });
+
+  it('counts no home landing from the site itself, from a robot or a preview, for a fetch that is no visit, or on another page', async () => {
+    const events = memoryEvents();
+    const env = withHomes({ EVENTS: events });
+    for (const request of [
+      // a click from inside the site: a Learn page, the privacy page, a share page, the other language
+      landing('/', { referer: `${SITE}/learn/x-wing/` }),
+      landing('/nb/', { referer: `${SITE}/` }),
+      landing('/es/', { referer: `${SITE}/es/privacy/` }),
+      // robots, preview fetchers and audit tools
+      landing('/', { 'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' }),
+      landing('/', { 'user-agent': 'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)' }),
+      landing('/nb/', { 'user-agent': 'facebookexternalhit/1.1' }),
+      landing('/es/', { 'user-agent': 'Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)' }),
+      landing('/', { 'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/141.0.0.0 Safari/537.36' }),
+      landing('/', { 'user-agent': 'curl/8.4.0' }),
+      landing('/', { 'user-agent': '' }),
+      // not a visit: a HEAD, a script's fetch, a frame, the service worker storing the page
+      landing('/', {}, 'HEAD'),
+      landing('/', { 'sec-fetch-mode': 'cors', 'sec-fetch-dest': 'empty' }),
+      landing('/', { 'sec-fetch-dest': 'iframe' }),
+      landing('/', { 'sec-fetch-mode': 'same-origin', 'sec-fetch-dest': 'empty', referer: `${SITE}/sw.js` }),
+      // other pages: no home, and not one the Worker counts
+      landing('/nb'),
+      landing('/index.html'),
+      landing('/learn/'),
+      landing('/privacy/'),
+      landing('/fr/')
+    ]) {
+      await handleRequest(request, env);
+    }
+    expect(events.points).toHaveLength(0);
+    // without the binding, or with one that fails, the page is still the page
+    expect(await (await handleRequest(landing('/'), withHomes())).text()).toBe('home /');
+    const broken = {
+      writeDataPoint: () => {
+        throw new Error('no');
+      }
+    };
+    expect(await (await handleRequest(landing('/es/'), withHomes({ EVENTS: broken }))).text()).toBe('home /es/');
+  });
+
+  it('is sent the three home pages first by wrangler.jsonc, and only those besides its own paths', () => {
+    // the comments are // lines; the strings hold no //
+    const config = JSON.parse(
+      new TextDecoder()
+        .decode(readFileSync('wrangler.jsonc'))
+        .split('\n')
+        .filter((line) => !line.trim().startsWith('//'))
+        .join('\n')
+    ) as { assets: { run_worker_first: string[] } };
+    const first = config.assets.run_worker_first;
+    for (const path of HOME_PATHS) expect(first, path).toContain(path);
+    expect(HOME_PATHS).toEqual(['/', '/nb/', '/es/']);
+    // no pattern that would send every page through the Worker
+    expect(first).not.toContain('/*');
+    expect(first.filter((p) => !p.includes('*') && p.endsWith('/'))).toEqual(HOME_PATHS);
   });
 
   it('answers the telemetry route from the Worker as a whole, before the assets', async () => {
@@ -573,18 +741,82 @@ describe('the dashboard', () => {
     expect(html).toContain('<dt>Shares, last 7 days</dt><dd>4</dd><small>2 through the share sheet, 2 copied</small>');
     expect(html).toContain('<dt>Landings per share</dt><dd>1.25</dd>');
     expect(html.match(/<dt>/g)).toHaveLength(14);
-    expect(html.match(/<tr class="today">/g)).toHaveLength(1);
+    // today's row in the every-day table and in the games begun per day
+    expect(html.match(/<tr class="today">/g)).toHaveLength(2);
     expect(html).toContain('<th>Shares</th><th>Landings</th>');
-    expect(html).toContain('<td>2026-10-12</td><td>10</td><td>5</td><td>1</td><td>3</td><td>1</td><td>5</td><td>3</td><td>1</td>');
+    expect(html).toContain('<td>2026-10-12</td><td>10</td><td>5</td><td>1</td><td>3</td><td>1</td><td>5</td><td>0</td><td>3</td><td>1</td>');
     // what was shared, every kind in the list's order, and where landings came from, the most first
     expect(html).toContain('<tr><td>Puzzle link (Share)</td><td>0</td><td>0</td><td>0</td></tr>');
     expect(html).toContain('<tr><td>Challenge (win screen)</td><td>2</td><td>1</td><td>3</td></tr>');
     expect(html.indexOf('Puzzle link (Share)')).toBeLessThan(html.indexOf('Daily line (win screen)'));
-    expect(html).toContain('<tr><td>Enjoy Sudoku forum</td><td>3</td><td>60%</td></tr>');
-    expect(html).toContain('<tr><td>No referrer: typed, a bookmark, most apps</td><td>2</td><td>40%</td></tr>');
+    expect(html).toContain('<tr><td>Enjoy Sudoku forum</td><td>0</td><td>3</td><td>3</td><td>60%</td></tr>');
+    expect(html).toContain('<tr><td>No referrer: typed, a bookmark, most apps</td><td>0</td><td>2</td><td>2</td><td>40%</td></tr>');
     expect(html.indexOf('Enjoy Sudoku forum')).toBeLessThan(html.indexOf('No referrer'));
     // a week without landings says so
-    expect(renderAdmin(metricsOf([], NOW()))).toContain('<tr><td>No landings</td><td>0</td><td>—</td></tr>');
+    expect(renderAdmin(metricsOf([], NOW()))).toContain('<tr><td>No landings</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>');
+  });
+
+  it('shows home landings apart, and the games by kind and language, with practice out of the play counts', () => {
+    const rows: Row[] = [
+      // a week from the November builds on: kinds and languages, and the home pages
+      row('2026-10-12', 'started', 'tab', { n: 3, kind: 'daily', via: 'nb', optin: 1 }),
+      row('2026-10-12', 'started', 'pwa', { n: 2, kind: 'new', via: 'en' }),
+      row('2026-10-12', 'started', 'tab', { n: 1, kind: 'shared', via: 'es' }),
+      row('2026-10-12', 'completed', 'pwa', { n: 2, kind: 'daily', via: 'nb', standalone: 2 }),
+      row('2026-10-11', 'started', 'tab', { n: 5, kind: 'practice', via: 'en', optin: 2, optin_returning: 1 }),
+      row('2026-10-11', 'completed', 'pwa', { n: 4, kind: 'practice', via: 'en', standalone: 4, offline: 1, optin: 1, optin_offline: 1 }),
+      // an older build's line says neither
+      row('2026-10-11', 'started', 'tab', { n: 4 }),
+      row('2026-10-12', 'landing', 'home', { n: 4, kind: 'search' }),
+      row('2026-10-12', 'landing', 'home', { n: 1, kind: 'directory' }),
+      row('2026-10-12', 'landing', 'p', { n: 2, kind: 'directory' }),
+      row('2026-10-11', 'landing', 'daily', { n: 1, kind: 'fediverse' }),
+      row('2026-10-12', 'shared', 'tab', { n: 2, kind: 'puzzle', via: 'copy' })
+    ];
+    const m = metricsOf(rows, NOW());
+    const w = m.week;
+    // the play counts read as before practice was counted
+    expect(w.starts).toBe(10);
+    expect(w.completed).toBe(2);
+    expect(w.offlineReported).toBe(0);
+    expect(w.standalone).toBe(2);
+    expect(w.startsOptin).toBe(1);
+    expect(w.startsReturning).toBe(0);
+    expect(w.completionRate).toBeCloseTo(0.2);
+    // and every start and solve by kind and language, practice included
+    expect(w.startsBy).toEqual({ daily: 3, new: 2, shared: 1, practice: 5, '': 4 });
+    expect(w.completedBy).toEqual({ daily: 2, practice: 4 });
+    expect(w.startsByLang).toEqual({ nb: 3, en: 7, es: 1, '': 4 });
+    expect(w.completedByLang).toEqual({ nb: 2, en: 4 });
+    // home landings, apart and by word; landings per share counts the share pages only
+    expect(w.landings).toBe(8);
+    expect(w.landingsHome).toBe(5);
+    expect(w.landingsDaily).toBe(1);
+    expect(w.landingsFrom).toEqual({ search: 4, directory: 3, fediverse: 1 });
+    expect(w.landingsFromHome).toEqual({ search: 4, directory: 1 });
+    expect(w.landingsPerShare).toBeCloseTo(1.5);
+    expect(m.yesterday.landingsHome).toBe(5);
+    const html = renderAdmin(m);
+    expect(html).toContain("<dt>Landings yesterday</dt><dd>7</dd><small>5 on a home page, 0 on a daily's address</small>");
+    expect(html).toContain('<dt>Landings per share</dt><dd>1.50</dd><small>3 share-page landings over 2 shares, 7 days</small>');
+    expect(html).toContain('<dt>Starts, last 7 days</dt><dd>10</dd>');
+    // the games by kind and language: columns in the lists' order, then the older builds' lines
+    expect(html).toContain(
+      '<thead><tr><th>Games</th><th>Daily</th><th>New</th><th>Practice</th><th>From a share link</th><th>English</th><th>Norwegian</th><th>Spanish</th><th>Not recorded</th></tr></thead>'
+    );
+    expect(html).toContain('<tr><td>Begun</td><td>3</td><td>2</td><td>5</td><td>1</td><td>7</td><td>3</td><td>1</td><td>4</td></tr>');
+    expect(html).toContain('<tr><td>Completed</td><td>2</td><td>0</td><td>4</td><td>0</td><td>4</td><td>2</td><td>0</td><td>0</td></tr>');
+    // and per day
+    expect(html).toContain('<thead><tr><th>Day</th><th>Daily</th><th>New</th>');
+    expect(html).toContain('<tr><td>2026-10-11</td><td>0</td><td>0</td><td>5</td><td>0</td><td>5</td><td>0</td><td>0</td><td>4</td></tr>');
+    expect(html).toContain('<tr><td>2026-10-12</td><td>3</td><td>2</td><td>0</td><td>1</td><td>2</td><td>3</td><td>1</td><td>0</td></tr>');
+    // where landings came from: on a home page, on a share page, both
+    expect(html).toContain("<tr><td>A search engine (and links Google's own redirect passed on)</td><td>4</td><td>0</td><td>4</td><td>50%</td></tr>");
+    expect(html).toContain('<tr><td>An app directory (AlternativeTo, SaaSHub, Product Hunt and the like)</td><td>1</td><td>2</td><td>3</td><td>38%</td></tr>');
+    expect(html).toContain('<tr><td>Lemmy or Mastodon</td><td>0</td><td>1</td><td>1</td><td>13%</td></tr>');
+    // the every-day table's home column
+    expect(html).toContain('<th>Landings</th><th>On a home page</th>');
+    expect(html).toContain('<td>2026-10-12</td><td>6</td><td>2</td><td>0</td><td>2</td><td>2</td><td>7</td><td>5</td><td>1</td><td>0</td>');
   });
 
   it('is an unknown path without its four secrets, or without a valid Access token, wherever it is reached', async () => {
@@ -705,6 +937,83 @@ describe('the privacy page', () => {
     expect(PRIVACY.en.sections[0].paragraphs[0]).toContain('15-second');
     expect(PRIVACY.en.sections[0].paragraphs[1]).toContain('Nothing is stored on your device');
     expect(PRIVACY.en.sections[1].paragraphs[0]).toContain('Help count plays, including offline ones');
+  });
+
+  it('names every landing word, the home pages, and the kind of game and language on a play line, in every language', () => {
+    /** how each language's page says each word a landing can be (LANDING_FROM) */
+    const WORDS: Record<'en' | 'nb' | 'es', Record<(typeof LANDING_FROM)[number], string>> = {
+      en: {
+        none: 'none (',
+        search: 'a search engine',
+        ai: 'an AI assistant',
+        reddit: 'Reddit',
+        enjoysudoku: 'the Enjoy Sudoku forum',
+        hackernews: 'Hacker News',
+        facebook: 'Facebook',
+        discord: 'Discord',
+        social: 'another social site or app',
+        chat: 'a chat app or site',
+        mail: 'a mail app or webmail',
+        github: 'GitHub',
+        sudoku: 'another sudoku site',
+        directory: 'an app directory',
+        fediverse: 'Lemmy or Mastodon',
+        press: 'a news site',
+        other: 'or another site or app'
+      },
+      nb: {
+        none: 'ingen (',
+        search: 'en søkemotor',
+        ai: 'en KI-assistent',
+        reddit: 'Reddit',
+        enjoysudoku: 'Enjoy Sudoku-forumet',
+        hackernews: 'Hacker News',
+        facebook: 'Facebook',
+        discord: 'Discord',
+        social: 'et annet sosialt nettsted',
+        chat: 'en chatapp',
+        mail: 'en e-postapp',
+        github: 'GitHub',
+        sudoku: 'et annet sudokunettsted',
+        directory: 'en appkatalog',
+        fediverse: 'Lemmy eller Mastodon',
+        press: 'et nyhetsnettsted',
+        other: 'eller et annet nettsted eller en annen app'
+      },
+      es: {
+        none: 'ninguna (',
+        search: 'un buscador',
+        ai: 'un asistente de IA',
+        reddit: 'Reddit',
+        enjoysudoku: 'el foro Enjoy Sudoku',
+        hackernews: 'Hacker News',
+        facebook: 'Facebook',
+        discord: 'Discord',
+        social: 'otra red social',
+        chat: 'una app o web de chat',
+        mail: 'una app de correo',
+        github: 'GitHub',
+        sudoku: 'otro sitio de sudoku',
+        directory: 'un directorio de apps',
+        fediverse: 'Lemmy o Mastodon',
+        press: 'un sitio de noticias',
+        other: 'u otro sitio u otra app'
+      }
+    };
+    /** the two fields of a play line, and the home pages among the landings */
+    const FIELDS = {
+      en: ['a new puzzle, a practice puzzle, or one opened from a link someone shared', 'the language the app is set to', 'a daily puzzle’s link or the home page', 'or the home page, opened from outside'],
+      nb: ['en ny oppgave, en øvingsoppgave eller en som ble åpnet fra en lenke noen delte', 'språket appen er satt til', 'en lenke til dagens sudoku eller forsiden, på et hvilket som helst av de tre språkene', 'en lenke til dagens sudoku eller forsiden som åpnes'],
+      es: ['un sudoku nuevo, un sudoku de práctica o uno abierto desde un enlace que alguien compartió', 'el idioma en que está la app', 'el enlace de un sudoku del día o la página de inicio', 'el del sudoku del día o la página de inicio, abiertos']
+    };
+    for (const lang of HOME_LANGS) {
+      const text = PRIVACY[lang].sections.flatMap((s) => s.paragraphs).join(' ');
+      for (const word of LANDING_FROM) expect(text, `${lang} ${word}`).toContain(WORDS[lang][word]);
+      for (const field of FIELDS[lang]) expect(text, lang).toContain(field);
+    }
+    // a practice puzzle is counted now, at the player's own first move
+    expect(PRIVACY.en.sections[0].paragraphs[2]).toContain('A practice puzzle may open part-way through');
+    expect(PRIVACY.en.sections[0].paragraphs[2]).not.toContain('practice puzzle sends nothing');
   });
 
   it('leaves no English in the Norwegian and Spanish copy', () => {

@@ -2,8 +2,8 @@
  * The Worker in front of sudokui.app (wrangler.jsonc, "main"). The site is
  * still static: a request that matches a file in dist/ is answered by
  * Cloudflare's asset hosting before this code runs, free and uncounted.
- * This runs only for the paths that are not files, and it knows three
- * kinds:
+ * This runs only for the paths that are not files, and for the three home
+ * pages, and it knows these:
  *
  * - the share address of a puzzle, /p/<81 cells> under any language root
  *   (src/content/share.ts), and the address of a published daily,
@@ -23,13 +23,20 @@
  *   Email Routing, and stored nowhere;
  * - the private dashboard, /admin (worker/admin.ts), behind Cloudflare
  *   Access, reading those counts back; a 404 until its secrets are set,
- *   and for any request without a valid Access token (worker/access.ts).
+ *   and for any request without a valid Access token (worker/access.ts);
+ * - the home pages, /, /nb/ and /es/ (HOME_PATHS), which wrangler.jsonc
+ *   sends here first: a person arriving from outside the site counts a
+ *   landing, as on a share address, and the page is the assets' own,
+ *   unchanged. A browser that already holds the app answers these from
+ *   its service worker and never asks, so this counts mostly first
+ *   visits.
  *
  * Everything else goes back to the assets, which answer with the 404
  * page of the nearest language.
  *
  * Budget (docs/online-goals.md): one invocation per share landing, one
- * asset fetch and a string fill; one invocation and one bounded D1 read
+ * asset fetch and a string fill; one invocation and one asset fetch per
+ * request for a home page that reaches the Worker; one invocation and one bounded D1 read
  * per statistics request (edge-cached a minute), two writes and one read
  * per submitted result; one invocation and at most 25 data points per
  * telemetry batch. No identifier, no cookie, nothing stored that names a
@@ -73,6 +80,9 @@ export interface Context {
 /** the built app shell with its placeholders intact (vite.config.ts, homePages) */
 export const SHARE_TEMPLATE = '/share.tpl';
 
+/** the app's home page in each language, which wrangler.jsonc's run_worker_first sends here (src/content/home.ts) */
+export const HOME_PATHS = ['/', '/nb/', '/es/'];
+
 /**
  * A share page names the current build's hashed scripts, which a deploy
  * replaces, so a browser must ask again each time, as it does for the
@@ -107,6 +117,12 @@ export async function handleRequest(request: Request, env: Env, ctx?: Context, a
     // without its secrets, or without a valid Access token, the dashboard is an unknown path
     return (await handleAdmin(request, env, admin)) ?? env.ASSETS.fetch(request);
   }
+  if (HOME_PATHS.includes(url.pathname)) {
+    // a person arriving from outside the site is a landing, counted once;
+    // the page itself is the file, as if the Worker were not here
+    countLanding(env.EVENTS, request, 'home');
+    return env.ASSETS.fetch(request);
+  }
   const share = request.method === 'GET' || request.method === 'HEAD' ? shareParamsOf(url, dailies as Daily[]) : null;
   if (!share) return env.ASSETS.fetch(request);
 
@@ -116,7 +132,7 @@ export async function handleRequest(request: Request, env: Env, ctx?: Context, a
   if (!template.ok) return env.ASSETS.fetch(request);
 
   // a person arriving from outside the site is a landing, counted once
-  countLanding(env.EVENTS, request, share);
+  countLanding(env.EVENTS, request, share.daily ? 'daily' : 'p', share.level);
   const html = renderSharePage(await template.text(), share);
   return new Response(request.method === 'HEAD' ? null : html, {
     status: 200,

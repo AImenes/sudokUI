@@ -5,7 +5,10 @@
 // addresses, /p/<puzzle> and /daily/<date>, which it renders with a
 // preview for chat apps and crawlers, the daily's API under /api/daily/
 // over D1, the telemetry route /api/t over Workers Analytics Engine and
-// the private dashboard /admin (docs/online-goals.md, phases 1 to 3).
+// the private dashboard /admin (docs/online-goals.md, phases 1 to 3);
+// and for the three home pages, which it counts a visit from outside the
+// site on and answers with the file as it is (docs/reach-plan-2026-11.md,
+// build item 2).
 // With this file present, wrangler skips its framework auto-detection
 // (which would demand Vite >= 6) and just ships.
 {
@@ -34,8 +37,11 @@
     // and for those the asset hosting answers a path that is no file with
     // the 404 page itself, before the Worker runs: a share link that
     // unfurled perfectly in a chat app opened as "Page not found". These
-    // paths go to the Worker first; everything else stays a free file
-    "run_worker_first": ["/p/*", "/nb/p/*", "/es/p/*", "/daily/*", "/nb/daily/*", "/es/daily/*", "/api/*", "/admin"]
+    // paths go to the Worker first; everything else stays a free file.
+    // The home pages, '/', '/nb/' and '/es/' exactly, go too, so a visit
+    // from outside the site is counted as a landing (worker/index.ts,
+    // HOME_PATHS); the Worker answers them with the file itself
+    "run_worker_first": ["/p/*", "/nb/p/*", "/es/p/*", "/daily/*", "/nb/daily/*", "/es/daily/*", "/api/*", "/admin", "/", "/nb/", "/es/"]
   },
   // The shared daily's results (docs/online-goals.md, phase 2): two small
   // tables, created by `npx wrangler d1 migrations apply sudokui-db

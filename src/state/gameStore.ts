@@ -28,7 +28,7 @@ import type { CellDigit } from '../engine/steps';
 import { Level, Tech, SOLVE_ORDER, hintOrder, asLevel } from '../engine/ratings';
 import { useSettings } from './settings';
 import { useStats } from './stats';
-import { useTelemetry } from './telemetry';
+import { useTelemetry, type PlayKind } from './telemetry';
 import { useDailyStats } from './dailyStats';
 import type { DailyResult } from './dailyStats';
 import { dailyClosed } from '../content/dailies';
@@ -166,6 +166,20 @@ export interface GameInfo {
   challenge?: number;
   /** opened from a position link (#s=), part-way through: its time compares with nothing */
   fromPosition?: boolean;
+  /** opened from a link someone shared: a puzzle's share address (/p/), or a position link (#s=); a daily's address opens the daily, and a bare #p= is mostly a Learn page's own link */
+  fromLink?: boolean;
+}
+
+/**
+ * What kind of game the counts say a game is (src/state/telemetry.ts):
+ * practice, the daily (a published one or the one derived from its date),
+ * a puzzle opened from a shared link, or else a new one: by band,
+ * imported, typed, pasted or scanned, or opened from a Learn page
+ */
+export function kindOf(info: GameInfo): PlayKind {
+  if (info.practiceTech) return 'practice';
+  if (info.dailyKey) return 'daily';
+  return info.fromLink ? 'shared' : 'new';
 }
 
 /**
@@ -305,8 +319,8 @@ interface GameStore {
    *  the device for counting, and a game resumed from storage is taken as
    *  counted when its board shows a move (playedOn) */
   counted: boolean;
-  /** the game has been solved: its solve is in the band record, and was
-   *  counted unless the device was left out (recordWin). Unlike won, Undo does not clear it, so a solve
+  /** the game has been solved: its solve is in the band record (practice
+   *  aside), and was counted unless the device was left out (recordWin). Unlike won, Undo does not clear it, so a solve
    *  undone and solved again is the same solve, and the puzzle started
    *  again is a new game. Saved with the game, like won, for the player's
    *  own record; a save from before it existed has it when it was won */
@@ -467,17 +481,18 @@ function foundNotice(tech: Tech): string {
 }
 
 /** a finished game goes into the band record; practice starts part-way
- *  through and compares with nothing. The solve is counted too, with
- *  nothing that names the player (src/state/telemetry.ts). Once per game:
+ *  through and compares with nothing, so it stays out. The solve is
+ *  counted, practice too, with its kind and nothing that names the player
+ *  (src/state/telemetry.ts). Once per game:
  *  a solve undone (Undo clears the win) and solved again, by the same
  *  digit or by Redo, is the same solve. A solved puzzle started again,
  *  by Restart or otherwise, even after its solve was undone, is a new
  *  game (startGame), and its solve counts again */
 function recordWin(s: GameStore) {
-  if (!s.info || s.info.practiceTech || s.solved) return;
+  if (!s.info || s.solved) return;
   useGame.setState({ solved: true });
-  useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
-  useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000));
+  if (!s.info.practiceTech) useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
+  useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000), kindOf(s.info));
   recordDaily(s);
 }
 
@@ -611,7 +626,7 @@ export const useGame = create<GameStore>()(
         // playing a solved puzzle again, even one whose solve was undone,
         // is a new one
         const prev = get();
-        const same = !practiceTech && !prev.info?.practiceTech && prev.info?.puzzle === puzzle && !prev.won && !prev.solved;
+        const same = practiceTech === (prev.info?.practiceTech ?? null) && prev.info?.puzzle === puzzle && !prev.won && !prev.solved;
         set({
           info: {
             puzzle,
@@ -661,13 +676,14 @@ export const useGame = create<GameStore>()(
       restart: () => {
         const s = get();
         if (!s.info) return;
-        const { challenge, dailyNo } = s.info;
+        const { challenge, dailyNo, fromLink } = s.info;
         get().startGame(s.info.puzzle, s.info.score, s.info.level, s.info.practiceTech, s.info.dailyKey);
         const t = translator();
         // a challenger's time (a share link's ?vs=) is still the one to
-        // beat, and a published daily is still that daily
+        // beat, a published daily is still that daily, and a puzzle from a
+        // shared link is still from it
         set((g) => ({
-          info: g.info ? { ...g.info, ...(challenge ? { challenge } : {}), ...(dailyNo ? { dailyNo } : {}) } : g.info,
+          info: g.info ? { ...g.info, ...(challenge ? { challenge } : {}), ...(dailyNo ? { dailyNo } : {}), ...(fromLink ? { fromLink } : {}) } : g.info,
           notice: t('Puzzle restarted')
         }));
       },
@@ -1750,7 +1766,9 @@ export const useGame = create<GameStore>()(
         get().startGame(givens, v.score, v.level);
         const t = translator();
         set((s) => ({
-          info: s.info && { ...s.info, fromPosition: true },
+          // a position link is someone's share, counted as one when it
+          // opens with moves on it, in this same change
+          info: s.info && { ...s.info, fromPosition: true, fromLink: true },
           cells: decoded.cells,
           autoCandidates: decoded.autoCandidates,
           // auto candidates count as help, whoever switched them on
@@ -1859,16 +1877,18 @@ export const useGame = create<GameStore>()(
           // the board says whether this game was begun, so nothing about
           // counting needs saving: a move on it was counted when made, and
           // so was a position opened with entries on it (countStart). Not
-          // practice, never counted; and not while the device is left out,
-          // when nothing was counted, so the start still goes ahead of the
-          // solve if the switch goes off later
+          // while the device is left out, when nothing was counted, so the
+          // start still goes ahead of the solve if the switch goes off
+          // later. A practice puzzle that opened part-way through shows
+          // the app's moves from the start, so it is taken as counted even
+          // if the player never moved on it before the reload: one gap
+          // more, the other way
           // (while a puzzle is being typed in, the game Cancel will bring
           // back is judged by its own saved board)
           const g = state.custom && state.customBackup ? state.customBackup : state;
-          state.counted = !!g.info && !g.info.practiceTech && !useSettings.getState().dontCount && playedOn(g);
-          // a save from before solved was kept has it when it was won;
-          // practice is never solved for the record
-          state.solved = !state.info?.practiceTech && (!!state.solved || state.won);
+          state.counted = !!g.info && !useSettings.getState().dontCount && playedOn(g);
+          // a save from before solved was kept has it when it was won
+          state.solved = !!state.solved || state.won;
         }
       }
     }
@@ -1893,7 +1913,9 @@ export function playedOn(s: Pick<GameStore, 'cells' | 'autoCandidates'>): boolea
  * chain trainer), an applied hint; or, for a shared position or a pasted
  * grid that opens with any of these on it, the moment it opens. A game
  * the app opens by itself on a first visit, or a link opened and never
- * played, is not a game begun. Practice puzzles are never counted. The
+ * played, is not a game begun. A practice puzzle may open part-way
+ * through, with the app's own digits and candidates on it, so it is begun
+ * at the player's own first move (the first entry in its history). The
  * flag lives in memory only; a game resumed from storage is taken as
  * counted when its board shows anything beyond the givens, which is
  * exactly when it was counted, so a reload does not count it again. Two
@@ -1930,15 +1952,16 @@ useSettings.subscribe((s, prev) => {
   if (prev.dontCount && !s.dontCount && !useGame.getState().won) countStart();
 });
 
-/** counts the game on the board as begun, once: not practice, not while the device is left out */
+/** counts the game on the board as begun, once, with its kind: not while the device is left out */
 function countStart() {
   const s = useGame.getState();
   // a solved game is past counting: its start was counted before the
   // win, or the device was left out of it, and its solve too
-  if (!s.info || s.counted || s.solved || s.info.practiceTech || !playedOn(s)) return;
+  if (!s.info || s.counted || s.solved) return;
+  if (!(s.info.practiceTech ? s.history.length > 0 : playedOn(s))) return;
   if (useSettings.getState().dontCount) return;
   useGame.setState({ counted: true });
-  useTelemetry.getState().track('started', s.info.level, 0);
+  useTelemetry.getState().track('started', s.info.level, 0, kindOf(s.info));
 }
 
 // the full solve path of the current puzzle, cached — rating a hard puzzle

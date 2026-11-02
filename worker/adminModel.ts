@@ -14,6 +14,7 @@ export const DAYS_SHOWN = 30;
 export interface DayRow {
   /** 2026-10-13 */
   day: string;
+  /** games begun, practice aside, as before practice was counted; and so for the other play counts below */
   starts: number;
   /** starts from opted-in devices, and of those the ones on a later day than the device's first */
   startsOptin: number;
@@ -25,10 +26,20 @@ export interface DayRow {
   completedOptin: number;
   completedOptinOffline: number;
   completedStandalone: number;
+  /** landings on every page counted: the share pages and the home pages */
   landings: number;
   landingsDaily: number;
+  /** of them, on a home page (/, /nb/, /es/) */
+  landingsHome: number;
   /** landings by where they came from (telemetry.ts, LANDING_FROM); '' for those counted before it was kept */
   landingsFrom: Record<string, number>;
+  /** the same for the home pages' landings only */
+  landingsFromHome: Record<string, number>;
+  /** every start and every solve, practice included, by kind of game (telemetry.ts, PLAY_KINDS) and by the app's language (PLAY_LANGS); '' for an older app's lines, which say neither */
+  startsBy: Record<string, number>;
+  completedBy: Record<string, number>;
+  startsByLang: Record<string, number>;
+  completedByLang: Record<string, number>;
   /** links shared, and of them the ones the share sheet took (the rest were copied) */
   shares: number;
   sharesSheet: number;
@@ -57,12 +68,19 @@ export interface Totals {
   optinOffline: number;
   landings: number;
   landingsDaily: number;
+  landingsHome: number;
   landingsFrom: Record<string, number>;
+  landingsFromHome: Record<string, number>;
   shares: number;
   sharesSheet: number;
   sharesBy: Record<string, { sheet: number; copy: number }>;
-  /** landings over shares: how far a shared link travels; null without a share */
+  /** the share pages' landings (the home pages' aside) over shares: how far a shared link travels; null without a share */
   landingsPerShare: number | null;
+  /** starts and solves by kind of game and by language, practice included */
+  startsBy: Record<string, number>;
+  completedBy: Record<string, number>;
+  startsByLang: Record<string, number>;
+  completedByLang: Record<string, number>;
   startsOptin: number;
   startsNew: number;
   startsReturning: number;
