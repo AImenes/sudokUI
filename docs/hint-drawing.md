@@ -1009,7 +1009,9 @@ the values above are its final ones.
   regressions, all fixed (hint-readability-round1.md, which also lists
   the lows left for later).
 - [ ] Phase 5: forcing
-- [ ] Phase 6: words. Done so far: Chute Remote Pair and Sue de Coq
+- [ ] Phase 6: words. Batch 1 is done (phase6-batch1-review.md): `Step.walk`, so a finder writes its own walk;
+  the XY-, XYZ- and WXYZ-Wing, Chute Remote Pair and Sue de Coq walked and coloured by function; and the uniqueness
+  family and BUG+1 saying why the pattern would be deadly. Next: every other pattern's walk, M17, L2 and L3.. Done so far: Chute Remote Pair and Sue de Coq
   (docs/hint-readability-2026-11.md H2's and M3's parts for them, H1,
   L2's "chute"): each draws what its argument uses (G15) and walks it in
   its finder's own sentences, and its Copy step line is the one it always

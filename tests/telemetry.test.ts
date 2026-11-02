@@ -321,6 +321,10 @@ describe('the landing count', () => {
   it('knows a person arriving from outside the site from everything else', () => {
     expect(isLanding(landing(`/p/${EASY}`))).toBe(true);
     expect(isLanding(landing(`/p/${EASY}`, { referer: 'https://chat.example/room/1' }))).toBe(true);
+    // a page fetched ahead of a click is no one arriving yet (the review of the reach batch)
+    expect(isLanding(landing(`/p/${EASY}`, { 'sec-purpose': 'prefetch' }))).toBe(false);
+    expect(isLanding(landing('/', { 'sec-purpose': 'prefetch;prerender' }))).toBe(false);
+    expect(isLanding(landing('/', { purpose: 'prefetch' }))).toBe(false);
     // Safari before 16.4 sends no Sec-Fetch headers; it is a browser all the same
     expect(isLanding(new Request(`${SITE}/p/${EASY}`, { headers: { 'user-agent': BROWSER } }))).toBe(true);
     expect(isLanding(landing(`/p/${EASY}`, { referer: `${SITE}/` }))).toBe(false);

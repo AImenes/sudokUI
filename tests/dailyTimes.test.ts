@@ -220,6 +220,37 @@ describe('sending a daily time', () => {
     expect(requests).toEqual([]);
   });
 
+  it('keeps at most 31 days of solves on the device, whatever order they were solved in (the review of the reach batch)', () => {
+    const played = (no: number) => ({ date: dailyDate(no), level: 'Easy' as const, score: 196, seconds: 600, assisted: false });
+    // newest first, as a player opening friends' links to older dailies would
+    for (let no = 100; no >= 40; no--) useDailyStats.getState().recordPlayed(no, played(no));
+    const kept = Object.keys(useDailyStats.getState().played).map(Number).sort((a, b) => a - b);
+    expect(kept).toHaveLength(31);
+    expect(kept[0]).toBe(70);
+    // a month of dailies, then one older one: still 31, the oldest dropped
+    useDailyStats.setState({ played: {} });
+    for (let no = 30; no <= 60; no++) useDailyStats.getState().recordPlayed(no, played(no));
+    useDailyStats.getState().recordPlayed(20, played(20));
+    expect(Object.keys(useDailyStats.getState().played)).toHaveLength(31);
+  });
+
+  it('drops a time the switch queued offline once the switch is off; a tapped one still goes', async () => {
+    const base = { grid: '1'.repeat(81), seconds: 600, hints: 0, unassisted: true };
+    useDailyStats.setState({ pending: { [todayNo]: { no: todayNo, ...base, auto: true }, [todayNo - 1]: { no: todayNo - 1, ...base } } });
+    useSettings.setState({ autoSendDaily: false });
+    await useDailyStats.getState().flushPending();
+    expect(posts().map((r) => r.body.no)).toEqual([todayNo - 1]);
+    expect(useDailyStats.getState().pending).toEqual({});
+    // and the flag never leaves the device
+    expect(Object.keys(posts()[0].body).sort()).toEqual(['grid', 'hints', 'no', 'seconds', 'token', 'unassisted']);
+    // with the switch on, a queued time goes
+    requests = [];
+    useDailyStats.setState({ pending: { [todayNo]: { no: todayNo, ...base, auto: true } } });
+    useSettings.setState({ autoSendDaily: true });
+    await useDailyStats.getState().flushPending();
+    expect(posts().map((r) => r.body.no)).toEqual([todayNo]);
+  });
+
   it('sends nothing for a game that is no published daily', async () => {
     useSettings.setState({ autoSendDaily: true });
     useGame.getState().startGame(EASY, 196, 'Easy');

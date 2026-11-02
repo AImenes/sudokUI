@@ -284,6 +284,10 @@ export function isLanding(request: Request): boolean {
   if (mode && mode !== 'navigate') return false;
   const dest = headers.get('sec-fetch-dest');
   if (dest && dest !== 'document') return false;
+  // a page fetched ahead of a click (a search result's prefetch or
+  // prerender) is no one arriving yet: the page it might become counts when
+  // it is opened, if the browser asks again
+  if (/prefetch|prerender/i.test(`${headers.get('sec-purpose') ?? ''} ${headers.get('purpose') ?? ''}`)) return false;
   if (!isPersonAgent(headers.get('user-agent') ?? '')) return false;
   const referer = headers.get('referer');
   if (referer) {

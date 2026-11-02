@@ -529,7 +529,7 @@ function recordDaily(s: GameStore) {
   daily.recordPlayed(result.no, { date: s.info.dailyKey, level: s.info.level, score: s.info.score, seconds: result.seconds, assisted: s.assisted });
   if (!useSettings.getState().autoSendDaily || !result.unassisted || dailyClosed(result.no)) return;
   if (daily.submitted[result.no] !== undefined || daily.pending[result.no] || daily.inFlight[result.no]) return;
-  void daily.submit(result);
+  void daily.submit({ ...result, auto: true });
 }
 
 export const useGame = create<GameStore>()(

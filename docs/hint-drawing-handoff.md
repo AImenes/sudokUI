@@ -76,6 +76,21 @@ phase 6 (words) and phase 7 (polish). The
 relabelling of AIC with ALS steps whose only set is a bivalue cell is a
 later measured engine change (the design's decision 14).
 
+### 2 November 2026, evening: phase 6 batch 1 and the reach items, merged
+
+Phase 6 has begun. `Step.walk` lets a finder write its own walk, and five techniques the readability check rated
+worse than HoDoKu now walk through their argument and are coloured by function. The uniqueness family and BUG+1 say
+why the pattern would be deadly.
+
+The reach plan's items 1 and 2 are built:
+- spoiler-free daily previews and sturdier links;
+- the daily's place below 20 times, and the time sent with one tap of consent after a first send;
+- each channel measured (home landings, kind and language on plays), with /admin's daily solves against times sent;
+- docs/launch-log.md for the owner's actions.
+
+The review record is phase6-batch1-review.md. The owner's two-week baseline starts once this is live. Next: the
+image export and "Share this hint" (reach item 3), then the rest of phase 6.
+
 ### 2 November 2026: the readability quick wins, after review round 1
 
 The 18 quick wins of docs/hint-readability-2026-11.md section 4 and round

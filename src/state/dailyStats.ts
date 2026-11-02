@@ -16,6 +16,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { DailyStats } from '../content/dailies';
 import type { Level } from '../engine/ratings';
+import { useSettings } from './settings';
 
 /** one player's result for a daily, as the server takes it */
 export interface DailyResult {
@@ -25,6 +26,8 @@ export interface DailyResult {
   seconds: number;
   hints: number;
   unassisted: boolean;
+  /** queued by the switch, not by a tap: kept on the device only, never sent, and dropped once the switch is off */
+  auto?: boolean;
 }
 
 export type SubmitOutcome = 'accepted' | 'repeat' | 'offline' | 'refused' | 'unavailable';
@@ -116,12 +119,15 @@ export const useDailyStats = create<DailyStatsState>()(
       played: {},
       inFlight: {},
 
+      // the PLAYED_KEPT dailies with the highest numbers, whatever order
+      // they were solved in: never more than that many days of solves
       recordPlayed: (no, played) =>
         set((s) => ({
-          played: Object.fromEntries([
-            ...Object.entries(s.played).filter(([k]) => Number(k) > no - PLAYED_KEPT && Number(k) !== no),
-            [String(no), played] as const
-          ])
+          played: Object.fromEntries(
+            [...Object.entries(s.played).filter(([k]) => Number(k) !== no), [String(no), played] as const]
+              .sort((a, b) => Number(b[0]) - Number(a[0]))
+              .slice(0, PLAYED_KEPT)
+          )
         })),
 
       fetchStats: async (no) => {
@@ -193,8 +199,15 @@ export const useDailyStats = create<DailyStatsState>()(
         }
       },
 
+      // a time the switch queued while offline goes only while the switch is
+      // still on; turned off, it is dropped (the privacy page: off again, a
+      // time goes only when you tap the button)
       flushPending: async () => {
-        for (const result of Object.values(get().pending)) await get().submit(result);
+        const auto = useSettings.getState().autoSendDaily;
+        for (const result of Object.values(get().pending)) {
+          if (result.auto && !auto) set((s) => ({ pending: without(s.pending, String(result.no)) }));
+          else await get().submit(result);
+        }
       }
     }),
     {

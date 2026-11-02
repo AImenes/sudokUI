@@ -333,7 +333,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <Toggle
         label={t('Send my daily times automatically')}
         hint={t(
-          'After each unassisted solve of the daily, your time goes in by itself, as if you had tapped Send, and the win screen shows your place at once. Off, a time goes only when you tap Send'
+          'After each unassisted solve of the daily, your time goes in by itself, as if you had tapped Send, and the win screen shows where your time stands at once. Off, a time goes only when you tap Send'
         )}
         value={s.autoSendDaily}
         onChange={(v) => s.set({ autoSendDaily: v })}

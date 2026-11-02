@@ -1402,6 +1402,10 @@ export function VictoryDialog({
             </p>
             {standingLine ? (
               <>
+                {/* a daily solved again: the results hold the time sent first */}
+                {submittedSecs !== undefined && submittedSecs !== secs && (
+                  <p className="dialog-note">{t('The time in the results is the first one you sent, {time}.', { time: clockOf(submittedSecs) })}</p>
+                )}
                 <p className="solve-clean">🌍 {standingLine}</p>
                 {standing?.kind === 'place' && standing.tied && (
                   <p className="dialog-note">{t('Times are kept in 15-second steps, so times in the same step count as a tie')}</p>
@@ -1411,7 +1415,7 @@ export function VictoryDialog({
                 <label className="setting-row daily-auto">
                   <span className="setting-text">
                     <span>{t('Send my daily times automatically')}</span>
-                    <small>{t('After each unassisted daily, your time goes in by itself, as if you had tapped Send. Settings turns it off')}</small>
+                    <small>{t('After each unassisted daily, your time goes in by itself, as if you had tapped Send. You can turn it off here or in Settings')}</small>
                   </span>
                   <button
                     role="switch"
