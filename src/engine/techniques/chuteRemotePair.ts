@@ -75,17 +75,17 @@ export function findChuteRemotePair(g: Grid): Step | null {
         // present === 0: elimMask is the whole pair, so removed holds both digits
         const description =
           present === 0
-            ? tr`Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('')} in one chute, and neither digit appears in ${cellNames(mini)}. Each absent digit forces one pair cell to the other digit, so the pair cells hold opposite digits, and both ${removed[0]} and ${removed[1]} can be removed from cells seeing both pair cells.`
+            ? tr`Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('/')} in one chute, and neither digit appears in ${cellNames(mini)}. Each absent digit forces one pair cell to the other digit, so the pair cells hold opposite digits, and both ${removed[0]} and ${removed[1]} can be removed from cells seeing both pair cells.`
             : horizontal
-              ? tr`Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('')} in one chute; ${missing[0]} appears nowhere in ${cellNames(mini)}, so the chute's third box must place its ${missing[0]} in a row shared with a pair cell, forcing that cell to ${removed[0]}. One pair cell is therefore ${removed[0]}, so ${removed[0]} can be removed from cells seeing both pair cells.`
-              : tr`Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('')} in one chute; ${missing[0]} appears nowhere in ${cellNames(mini)}, so the chute's third box must place its ${missing[0]} in a column shared with a pair cell, forcing that cell to ${removed[0]}. One pair cell is therefore ${removed[0]}, so ${removed[0]} can be removed from cells seeing both pair cells.`;
+              ? tr`Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('/')} in one chute; ${missing[0]} appears nowhere in ${cellNames(mini)}, so the chute's third box must place its ${missing[0]} in a row shared with a pair cell, forcing that cell to ${removed[0]}. One pair cell is therefore ${removed[0]}, so ${removed[0]} can be removed from cells seeing both pair cells.`
+              : tr`Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('/')} in one chute; ${missing[0]} appears nowhere in ${cellNames(mini)}, so the chute's third box must place its ${missing[0]} in a column shared with a pair cell, forcing that cell to ${removed[0]}. One pair cell is therefore ${removed[0]}, so ${removed[0]} can be removed from cells seeing both pair cells.`;
         return {
           tech: 'CHUTE_REMOTE_PAIR',
           placements: [],
           eliminations: elims,
           primary: [c1, c2].flatMap((cell) => digits.map((digit) => ({ cell, digit }))),
           labels: {
-            primary: tr`the pair: ${digits.join('')} in both cells, one chute apart`,
+            primary: tr`the pair: ${digits.join('/')} in both cells, one chute apart`,
             secondary:
               missing.length === 1
                 ? tr`the third box's mini-line, where ${missing[0]} is missing`

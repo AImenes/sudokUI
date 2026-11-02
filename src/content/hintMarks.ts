@@ -67,9 +67,9 @@ import type { CellDigit, ChainLink, Step, UnitBand } from '../engine/steps';
 import { isParity, isTie } from '../engine/steps';
 import type { Frame, Part } from '../engine/hintFrames';
 import { drawnLinks, colouringDigit, walkFrames } from '../engine/hintFrames';
-import { alsClash, deriveLinks, deriveTruth } from '../engine/truth';
+import { alsClash, deriveLinks, deriveTruth, isAlsChain, refutation } from '../engine/truth';
 import { sees } from '../engine/board';
-import { tr } from '../engine/text';
+import { aDigit, tr } from '../engine/text';
 import { insideOneCell, tilesIn } from './hintGeometry';
 import type { Shade } from './hintPalette';
 
@@ -182,9 +182,34 @@ export function premiseOf(step: Step): Premise | null {
   return { assumed, kind: first.length > 1 ? 'group' : 'candidate' };
 }
 
+/**
+ * What an ALS-XY-Chain whose chain clashes removes by (docs/hint-drawing-sets.md,
+ * decision 13 and As built; the readability report's M15): its premise, that
+ * its first set holds no z, is impossible, so the set holds z, and every
+ * removal sees each z of it. A view that shows the conclusion (the full view
+ * and the walk's last frame) draws those z as the pattern's discs, claiming
+ * no truth, as a Death Blossom's z are drawn; empty for any other step
+ */
+export function clashZ(step: Step): CellDigit[] {
+  if (step.tech !== 'ALS_XY_CHAIN' || !alsClash(step)) return [];
+  const first = step.sets?.[step.links?.[0]?.fromSet ?? -1];
+  const z = step.eliminations[0]?.digit;
+  return first && z !== undefined ? first.members.filter((m) => m.digit === z) : [];
+}
+
+/** the legend's words for clashZ's discs, or null for a step with none */
+export function clashWords(step: Step): string | null {
+  const zs = clashZ(step);
+  if (!zs.length) return null;
+  const letter = step.sets![step.links![0].fromSet!].letter ?? '';
+  const z = zs[0].digit;
+  // the removal's entry says why they go (alsRemoveWords): these words only name the discs
+  return zs.length === 1 ? tr`the ${z} of set ${letter}` : tr`the ${z}s of set ${letter}`;
+}
+
 /** the colour the step names for a candidate, if any: the first of the lists the full view marks in order */
 export function namedRole(step: Step, cd: CellDigit): Role | null {
-  return has(step.primary, cd) ? 'primary' : has(step.secondary, cd) ? 'secondary' : has(step.fins, cd) ? 'fin' : null;
+  return has(step.secondary, cd) ? 'secondary' : has(step.primary, cd) ? 'primary' : has(step.fins, cd) ? 'fin' : null;
 }
 
 /**
@@ -337,7 +362,12 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const inside = new Map<number, Map<number, Role>>();
   const values = new Map<number, CandMark>();
   const show = opts.show ?? (() => true);
-  const bands = show('units') ? (step.units ?? []) : [];
+  // a walk frame draws a band with its role: a house the pattern lives in
+  // from the frame that shows the pattern, a house that loses from the frame
+  // that shows what acts on it; 'units' draws every band at once (a band
+  // that is the whole drawing, a forcing step's broken house from the frame
+  // that reaches it: src/engine/hintFrames.ts)
+  const bands = (step.units ?? []).filter((u) => show('units') || (opts.walking && show(u.role)));
   const links = opts.links ?? step.links ?? [];
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
@@ -390,8 +420,10 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   } else {
     // a chain's truth comes before the roles, which mark only what it leaves
     if (truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
-    if (show('primary')) for (const cd of step.primary ?? []) mark(cd, 'primary');
+    // a candidate in both lists (a uniqueness pattern's key digit) is the
+    // pattern's until the frame that shows the secondary colour, then gold
     if (show('secondary')) for (const cd of step.secondary ?? []) mark(cd, 'secondary');
+    if (show('primary')) for (const cd of step.primary ?? []) mark(cd, 'primary');
     // every chain node gets a mark, so arrows root on one
     if (!truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
     if (show('fins')) for (const cd of step.fins ?? []) mark(cd, 'fin');
@@ -399,10 +431,12 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   if (show('conclusion')) {
     if (opts.walking) {
       // the last frame of a walk: the whole pattern, then the conclusion
-      for (const cd of step.primary ?? []) mark(cd, 'primary');
       for (const cd of step.secondary ?? []) mark(cd, 'secondary');
+      for (const cd of step.primary ?? []) mark(cd, 'primary');
       for (const cd of step.fins ?? []) mark(cd, 'fin');
     }
+    // a clashing ALS-XY-Chain's reason: its first set's z, which every removal sees
+    for (const cd of clashZ(step)) mark(cd, 'primary');
     for (const cd of step.eliminations) mark(cd, 'elim');
     for (const cd of step.placements) mark(cd, 'place');
     const nodes = new Set((step.links ?? []).flatMap((l) => [...l.from, ...l.to]).map((cd) => `${cd.cell}:${cd.digit}`));
@@ -528,6 +562,8 @@ export function legendKinds(
   setSquares: boolean;
   /** the tints of the almost locked sets drawn as lettered tiles, lowest first, for the swatch of "lettered cells" (decision 18) */
   tiles: Tint[];
+  /** the words of the removal's entry where they are the step's own (an ALS pattern's), or null for "remove" and the roles it lends */
+  removeWords: string | null;
 } {
   const shown = new Set<CandMark>();
   const parity = isParity(step);
@@ -567,7 +603,28 @@ export function legendKinds(
   const onBar = new Set(groups.flatMap((m) => sets[m.set].members.map((cd) => `${cd.cell}:${cd.digit}`)));
   const setSquares = [...marks.cands].some(([cell, m]) => [...m].some(([digit, k]) => k === 'oneOf' && !onBar.has(`${cell}:${digit}`)));
   const tiles = [...new Set(marks.sets.flatMap((m) => (m.tint ? [m.tint] : [])))].sort((a, b) => a - b);
-  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted, clusters, lines: marks.lines, proven, bars, setSquares, tiles };
+  const removeWords = shown.has('elim') ? alsRemoveWords(step) : null;
+  return { shown, onValue, onBand, intoRemove, intoPlace, refuted: marks.refuted, clusters, lines: marks.lines, proven, bars, setSquares, tiles, removeWords };
+}
+
+/**
+ * The removal's entry of an ALS pattern (ALS-XZ, ALS-XY-Wing, ALS-XY-Chain;
+ * docs/hint-readability-2026-11.md M2): the either/or its walk ends on, as
+ * a removed candidate's reason. One end set or the other holds z, and each
+ * removal sees every z of both; where the chain shows its first set holds z
+ * (it clashes, or shows its premise impossible), every z of that set alone,
+ * as the walk then ends. Null for any other step
+ */
+function alsRemoveWords(step: Step): string | null {
+  if (!isAlsChain(step)) return null;
+  const links = step.links!;
+  const [first, last] = [step.sets?.[links[0].fromSet!], step.sets?.[links[links.length - 1].toSet!]];
+  const z = step.eliminations[0]?.digit;
+  if (!first?.letter || !last?.letter || z === undefined) return null;
+  const [F, L] = [first.letter, last.letter];
+  return alsClash(step) || refutation(step)
+    ? tr`remove: sees every ${z} of set ${F}, which holds ${aDigit(z)}`
+    : tr`remove: sees every ${z} of set ${F} and of set ${L}, and one of the two holds ${aDigit(z)}`;
 }
 
 /** an entry of a colouring's legend: what its swatch draws, and its words */

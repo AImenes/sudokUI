@@ -176,7 +176,7 @@ export function findMedusa3d(g: Grid): Step | null {
         first,
         elims3,
         elims3.length === 1
-          ? tr`${name} holds a dark purple ${dark} and a light purple ${light}; one of them is true, so its ${removed[0]} is removed`
+          ? tr`${name} holds a dark purple ${dark} and a light purple ${light}; one of them is true, so ${removed[0]} is removed from ${name}`
           : tr`${name} holds a dark purple ${dark} and a light purple ${light}; one of them is true, so the cell's other candidates are removed` +
               (cellsHit > 1 ? tr` (${cellsHit} cells are narrowed to their two shades this way)` : ''),
         [

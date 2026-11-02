@@ -10,7 +10,10 @@
  * the solve paths of six hard puzzles, where the solver needs more than a
  * single (as tests/truth.test.ts walks them). It was taken before phase 3
  * changed anything and split off in phase 4's first stage, every drawing in
- * it unchanged; phase 4 never rewrites it.
+ * it unchanged; phase 4 never rewrites it. Since the readability check of
+ * November 2026 (docs/hint-readability-2026-11.md) it also holds named
+ * positions of its own, any technique outside the set techniques, which
+ * the check asks every later one to see: a real-size 3D Medusa (H6).
  *
  * tests/fixtures/setDrawings.json holds the set techniques: their stored
  * examples, every step of theirs on offer along the same paths whatever its
@@ -111,6 +114,17 @@ const NAMED: { name: string; puzzle: string; at: number; tech: Tech }[] = [
   { name: 'shared cells that clash', puzzle: '..2....61...5.....7.4.....3.......3.42..3.9..3...9267..9.3...5.56.1.......3.8....', at: 15, tech: 'ALS_XY_CHAIN' },
   { name: 'a clash in a false group', puzzle: '7..1.4..9....694....25.....56.....1...4...7...1.....24.....69....591....3..2.5..6', at: 29, tech: 'ALS_XY_CHAIN' },
   { name: 'a clash that closes', puzzle: '..9.2..6....56........714..3.......6.5...2.98..4...5..4.........3.7..1....7.5..32', at: 16, tech: 'ALS_XY_CHAIN' }
+];
+
+/**
+ * The other fixture's named positions (above), as the set fixture's: a
+ * real-size 3D Medusa from a practice pool's solve path, its cluster 54
+ * candidates of 8 digits joined by 29 lines, which the stored example (6
+ * candidates, 3 lines) never shows (readability report H6). The same
+ * positions are photographed by scripts/hint-shots.cjs (NAMED)
+ */
+const PLAIN_NAMED: { name: string; puzzle: string; at: number; tech: Tech }[] = [
+  { name: 'a real-size 3D Medusa', puzzle: '.68..........19.24.9...61..8.3.5.....5..3..6.....4.2.5..17...9.97.28..........75.', at: 29, tech: 'MEDUSA_3D' }
 ];
 
 const SINGLES = new Set<Tech>(['FULL_HOUSE', 'NAKED_SINGLE', 'HIDDEN_SINGLE']);
@@ -272,16 +286,19 @@ function walked(): { plain: Snapshot; sets: Snapshot } {
       applyStep(g, step);
     }
   }
-  const named: Record<string, Drawing> = {};
-  for (const n of NAMED) {
-    const g = parseGrid(n.puzzle)!;
-    for (let i = 0; i < n.at; i++) applyStep(g, findNextStep(g)!);
-    const id = `${n.name}, step ${n.at}, ${n.tech}`;
-    named[id] = entryAt(id, positionOf(n.puzzle, g));
-  }
+  const namedOf = (list: typeof NAMED): Record<string, Drawing> => {
+    const named: Record<string, Drawing> = {};
+    for (const n of list) {
+      const g = parseGrid(n.puzzle)!;
+      for (let i = 0; i < n.at; i++) applyStep(g, findNextStep(g)!);
+      const id = `${n.name}, step ${n.at}, ${n.tech}`;
+      named[id] = entryAt(id, positionOf(n.puzzle, g));
+    }
+    return named;
+  };
   return {
-    plain: { examples: examplesOf(plain), paths: plainPaths },
-    sets: { examples: examplesOf((tech) => SETS.has(tech)), paths: setPaths, named }
+    plain: { examples: examplesOf(plain), paths: plainPaths, named: namedOf(PLAIN_NAMED) },
+    sets: { examples: examplesOf((tech) => SETS.has(tech)), paths: setPaths, named: namedOf(NAMED) }
   };
 }
 
@@ -319,11 +336,11 @@ function fixtureText(s: Snapshot): string {
 }
 
 const read = (path: string): Snapshot => JSON.parse(new TextDecoder().decode(readFileSync(path)));
-/** the techniques a fixture holds: its examples', and its entries' */
-const techsIn = (s: Snapshot): Tech[] => [
+/** the techniques a fixture holds: its examples', and its entries' (but its named positions', given `named` false) */
+const techsIn = (s: Snapshot, named = true): Tech[] => [
   ...Object.keys(s.examples),
   ...Object.entries(s)
-    .filter(([name]) => name !== 'examples')
+    .filter(([name]) => name !== 'examples' && (named || name !== 'named'))
     .flatMap(([, entries]) => Object.keys(entries).map(techOf))
 ] as Tech[];
 
@@ -346,13 +363,13 @@ beforeAll(() => {
   }
   plainThen = read(FIXTURE);
   setsThen = read(SET_FIXTURE);
-  plainNow = { examples: examplesOf(plain), paths: entriesAt(plainThen.paths) };
+  plainNow = { examples: examplesOf(plain), paths: entriesAt(plainThen.paths), named: entriesAt(plainThen.named) };
   setsNow = setsAt(setsThen);
 }, 300_000);
 
 describe('the drawings phases 3 and 4 leave alone are drawn as they were', () => {
   it('the same stored examples and the same chain steps, at the positions kept', () => {
-    expect(Object.keys(plainThen)).toEqual(['examples', 'paths']);
+    expect(Object.keys(plainThen)).toEqual(['examples', 'paths', 'named']);
     expect(Object.keys(plainNow.examples)).toEqual(Object.keys(plainThen.examples));
     // every stored example that is neither a colouring nor a set technique,
     // and chains of seven kinds
@@ -362,8 +379,10 @@ describe('the drawings phases 3 and 4 leave alone are drawn as they were', () =>
     expect(new Set(Object.keys(plainThen.paths).map(techOf)).size).toBe(7);
   });
 
-  it('hold no colouring and no set technique', () => {
-    expect(techsIn(plainThen).filter((tech) => !plain(tech))).toEqual([]);
+  it('hold no colouring and no set technique, but at the positions the readability check names', () => {
+    expect(techsIn(plainThen, false).filter((tech) => !plain(tech))).toEqual([]);
+    expect(Object.keys(plainThen.named)).toEqual(PLAIN_NAMED.map((n) => `${n.name}, step ${n.at}, ${n.tech}`));
+    expect(techsIn(plainThen).filter((tech) => SETS.has(tech))).toEqual([]);
   });
 
   it('each stored example: its frames, marks, legends and geometry', () => {
@@ -372,6 +391,18 @@ describe('the drawings phases 3 and 4 leave alone are drawn as they were', () =>
 
   it('each chain step on the solve paths: its frames, marks, legends and geometry', () => {
     sameDrawings(plainNow, plainThen, 'paths');
+  });
+
+  it("each named position, a real-size 3D Medusa's 29 lines among them: its frames, marks, legends and geometry", () => {
+    sameDrawings(plainNow, plainThen, 'named');
+    const medusa = plainThen.named['a real-size 3D Medusa, step 29, MEDUSA_3D'];
+    const shapes = (medusa.geometry as { shapes: { kind: string }[] }).shapes;
+    expect(shapes.filter((s) => s.kind === 'tie').length).toBe(29);
+  });
+
+  it('are photographed by the review shots too, as the stored examples are (scripts/hint-shots.cjs NAMED)', () => {
+    const shots = new TextDecoder().decode(readFileSync('scripts/hint-shots.cjs'));
+    for (const n of PLAIN_NAMED) expect(shots, n.name).toContain(`puzzle: '${n.puzzle}', steps: ${n.at}, tech: '${n.tech}'`);
   });
 });
 

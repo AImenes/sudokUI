@@ -2,7 +2,7 @@ import { Grid, bit, boxOf, cellNames } from '../board';
 import { Step, CellDigit } from '../steps';
 import { Tech } from '../ratings';
 import { combinations } from './subsets';
-import { aDigit, tr } from '../text';
+import { aDigit, listAnd, tr } from '../text';
 
 const FISH_NAMES = ['', '', 'X-Wing', 'Swordfish', 'Jellyfish', 'Squirmbag', 'Whale', 'Leviathan'];
 
@@ -60,8 +60,9 @@ export function findBasicFish(g: Grid, size: number): Step | null {
         );
         // the fish's name stays English in every language (docs/translations.md)
         const name = FISH_NAMES[size];
-        const bases = baseLines.map((l) => l + 1).join(', ');
-        const covers = bitsOf(cover).map((p) => p + 1).join(', ');
+        // each list of houses ends in its own word ("rows 3 and 8, the 7s"), never in the digit
+        const bases = listAnd(baseLines.map((l) => l + 1));
+        const covers = listAnd(bitsOf(cover).map((p) => p + 1));
         return {
           tech: FISH_NAMES[size].toUpperCase().replace('-', '_') as Tech,
           placements: [],
@@ -81,8 +82,8 @@ export function findBasicFish(g: Grid, size: number): Step | null {
                 secondary: tr`cover rows: ${size} of them take the base's ${d}s, so ${d} goes nowhere else in them`
               },
           description: rows
-            ? tr`${name} on ${d}: in rows ${bases}, ${d} can only go in columns ${covers} (${cellNames(baseCells)}). Those ${size} rows will use up ${d} in those ${size} columns, so ${d} can go nowhere else in them.`
-            : tr`${name} on ${d}: in columns ${bases}, ${d} can only go in rows ${covers} (${cellNames(baseCells)}). Those ${size} columns will use up ${d} in those ${size} rows, so ${d} can go nowhere else in them.`
+            ? tr`${name} on ${d}: in rows ${bases}, the ${d}s lie only in columns ${covers} (${cellNames(baseCells)}). Those ${size} rows will use up ${d} in those ${size} columns, so ${d} can go nowhere else in them.`
+            : tr`${name} on ${d}: in columns ${bases}, the ${d}s lie only in rows ${covers} (${cellNames(baseCells)}). Those ${size} columns will use up ${d} in those ${size} rows, so ${d} can go nowhere else in them.`
         };
       }
     }
@@ -145,8 +146,8 @@ export function findFinnedFish(g: Grid, size: number, sashimi: boolean): Step | 
           const prefix = sashimi ? 'Sashimi' : 'Finned';
           // the fish's name stays English in every language (docs/translations.md)
           const name = `${prefix} ${FISH_NAMES[size]}`;
-          const bases = baseLines.map((l) => l + 1).join(', ');
-          const covers = coverPositions.map((p) => p + 1).join(', ');
+          const bases = listAnd(baseLines.map((l) => l + 1));
+          const covers = listAnd(coverPositions.map((p) => p + 1));
           const base = cellNames(baseCells);
           const fins = cellNames(finCells);
           const many = finCells.length > 1;
@@ -167,11 +168,11 @@ export function findFinnedFish(g: Grid, size: number, sashimi: boolean): Step | 
             },
             description: rows
               ? many
-                ? tr`${name} on ${d}: in rows ${bases}, ${d} sits in columns ${covers} (${base}) except for the fins ${fins}. Either the fins are false and the fish holds, or a fin is true; ${aDigit(d)} that sees every fin and lies in the cover columns outside the base is false both ways.`
-                : tr`${name} on ${d}: in rows ${bases}, ${d} sits in columns ${covers} (${base}) except for the fin ${fins}. Either the fin is false and the fish holds, or the fin is true; ${aDigit(d)} that sees every fin and lies in the cover columns outside the base is false both ways.`
+                ? tr`${name} on ${d}: in rows ${bases}, the ${d}s lie in columns ${covers} (${base}) except for the fins ${fins}. Either the fins are false and the fish holds, or a fin is true; ${aDigit(d)} that sees every fin and lies in the cover columns outside the base is false both ways.`
+                : tr`${name} on ${d}: in rows ${bases}, the ${d}s lie in columns ${covers} (${base}) except for the fin ${fins}. Either the fin is false and the fish holds, or the fin is true; ${aDigit(d)} that sees every fin and lies in the cover columns outside the base is false both ways.`
               : many
-                ? tr`${name} on ${d}: in columns ${bases}, ${d} sits in rows ${covers} (${base}) except for the fins ${fins}. Either the fins are false and the fish holds, or a fin is true; ${aDigit(d)} that sees every fin and lies in the cover rows outside the base is false both ways.`
-                : tr`${name} on ${d}: in columns ${bases}, ${d} sits in rows ${covers} (${base}) except for the fin ${fins}. Either the fin is false and the fish holds, or the fin is true; ${aDigit(d)} that sees every fin and lies in the cover rows outside the base is false both ways.`
+                ? tr`${name} on ${d}: in columns ${bases}, the ${d}s lie in rows ${covers} (${base}) except for the fins ${fins}. Either the fins are false and the fish holds, or a fin is true; ${aDigit(d)} that sees every fin and lies in the cover rows outside the base is false both ways.`
+                : tr`${name} on ${d}: in columns ${bases}, the ${d}s lie in rows ${covers} (${base}) except for the fin ${fins}. Either the fin is false and the fish holds, or the fin is true; ${aDigit(d)} that sees every fin and lies in the cover rows outside the base is false both ways.`
           };
         }
       }

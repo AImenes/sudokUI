@@ -460,10 +460,14 @@ describe('the geometry', () => {
     const bent = (s: ArrowShape) => s.kind === 'arrow' && /[QC]/.test(s.d);
     expect(bent(arrowShapes([weak], boardLayout(), [a, b, between])[0])).toBe(true);
     expect(bent(arrowShapes([weak], boardLayout(), [a, b])[0])).toBe(false);
-    // the 5 in r1c5 only shown, not marked: a weak tie keeps off it, a weak arrow crosses it straight
+    // the 5 in r1c5 only shown, not marked: a weak tie keeps off it, and since the readability pass so does an
+    // arrow of its digit, which would seem to stop there (M7)
     const shown = (x: CellDigit) => x.digit === 5 && x.cell === between.cell;
     expect(bent(arrowShapes([weak], boardLayout(new Set(), shown), [a, b])[0])).toBe(true);
-    expect(bent(arrowShapes([{ ...weak, undirected: undefined }], boardLayout(new Set(), shown), [a, b])[0])).toBe(false);
+    expect(bent(arrowShapes([{ ...weak, undirected: undefined }], boardLayout(new Set(), shown), [a, b])[0])).toBe(true);
+    // but not off another digit's candidate there, which it crosses straight
+    const four = (x: CellDigit) => x.digit === 4 && x.cell === between.cell;
+    expect(bent(arrowShapes([{ ...weak, undirected: undefined }], boardLayout(new Set(), four), [a, b])[0])).toBe(false);
     // the trap's light witness r8c8-r6c8, over r7c8's uncoloured 4
     const { shapes } = geometryOf(fixture('trap'));
     expect(bent(shapes[6])).toBe(true);

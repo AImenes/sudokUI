@@ -892,7 +892,7 @@ for (const [name, size] of [
       await expect(page.locator('.hint-legend')).toContainText('true, if set A holds no 1 (by the small dot)');
     });
 
-    test('draws an ALS-XY-Chain whose sets share cells and whose chain clashes with no truth: tiles, tabs, arrows and the removal, a legend naming none', async ({ page }) => {
+    test("draws an ALS-XY-Chain whose sets share cells and whose chain clashes with no truth: tiles, tabs, arrows, the removal and its reason, A's 8s, a legend naming no truth", async ({ page }) => {
       await showAt(page, namedPosition('shared cells that clash, step 15, ALS_XY_CHAIN'), 'ALS-XY-Chain');
       // D (r4c4, r6c4) inside A (r1c4, r4c4, r5c4, r6c4): both tabs on each shared cell
       expect(await tabsIn(page, 3 * 9 + 3)).toEqual(['A', 'D']);
@@ -900,14 +900,16 @@ for (const [name, size] of [
       await expect(page.locator('svg.board g.hint-tile')).toHaveCount(9);
       await expect(shafts(page)).toHaveCount(3);
       await expect(page.locator('svg.board circle.hint-ring[stroke="var(--hint-elim)"]')).toHaveCount(1);
-      // no truth mark, no role, no start dot, and a legend that names no truth
+      // no truth mark, no start dot, and a legend that names no truth; the reason r3c4's 8 goes, the 8s of A
+      // (r1c4, r4c4, r5c4, r6c4), the pattern's discs (readability report M15), and no other role
       await expect(trueDiscs(page)).toHaveCount(0);
       await expect(falseRings(page)).toHaveCount(0);
       await expect(squares(page)).toHaveCount(0);
-      await expect(page.locator('svg.board circle[fill="var(--hint-primary)"], svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(0);
+      await expect(page.locator('svg.board circle[fill="var(--hint-primary)"]')).toHaveCount(4);
+      await expect(page.locator('svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(0);
       await expect(page.locator('svg.board .chain-start')).toHaveCount(0);
       // and the dashed outline of a cell of two sets, drawn like it
-      await expect(page.locator('.hint-legend li')).toHaveText([/^remove/, /^lettered cells/, /^dashed outline/]);
+      await expect(page.locator('.hint-legend li')).toHaveText([/^remove/, /^the 8s of set A$/, /^lettered cells/, /^dashed outline/]);
       await expect(page.locator('.hint-legend li', { hasText: 'dashed outline' }).locator('i.swatch-shared')).toHaveCount(1);
     });
   });

@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import type { CellDigit, Step } from '../src/engine/steps';
-import { hintMarks, legendKinds, frameMarks, premiseOf, setTints, isParity } from '../src/content/hintMarks';
+import { hintMarks, legendKinds, frameMarks, premiseOf, setTints, isParity, clashZ } from '../src/content/hintMarks';
 import { alsClash, deriveTruth } from '../src/engine/truth';
 import { alternatingLinks, groupSet } from '../src/engine/steps';
 import type { ChainLink, ChainSet } from '../src/engine/steps';
@@ -44,7 +44,8 @@ const none = { solved: () => false };
 describe('the marks', () => {
   it('give each candidate one mark: a removal over everything, a placement over a role', () => {
     const m = hintMarks(step({ primary: [A, B], secondary: [A], fins: [C], placements: [B], eliminations: [C] }), none);
-    expect(m.cands.get(A.cell)?.get(A.digit)).toBe('primary'); // the first kind it was given
+    // in both lists: gold in a view that shows the secondary colour (G5; a uniqueness pattern's key digit)
+    expect(m.cands.get(A.cell)?.get(A.digit)).toBe('secondary');
     expect(m.cands.get(B.cell)?.get(B.digit)).toBe('place');
     expect(m.cands.get(C.cell)?.get(C.digit)).toBe('elim');
     const both = hintMarks(step({ placements: [A], eliminations: [A] }), none);
@@ -126,8 +127,8 @@ describe('the walk', () => {
     const links = [{ from: [A], to: [B], strong: true }];
     const s = step({ tech: 'DIGIT_FORCING_CHAIN', primary: [A, B], secondary: [B], links, eliminations: [C] });
     const frames = walkFrames(s);
-    expect(frameMarks(s, frames[0], () => false).cands.get(B.cell)?.get(B.digit)).toBe('primary');
-    expect(frameMarks(s, null, () => false).cands.get(B.cell)?.get(B.digit)).toBe('primary');
+    expect(frameMarks(s, frames[0], () => false).cands.get(B.cell)?.get(B.digit)).toBe('secondary');
+    expect(frameMarks(s, null, () => false).cands.get(B.cell)?.get(B.digit)).toBe('secondary');
   });
 
   it('gives the legend what the frame draws: a single\'s first frames show the pattern, not yet the placement', () => {
@@ -502,7 +503,8 @@ describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 
       for (const fr of [null, ...walkFrames(s)]) {
         const kinds = new Set([...frameMarks(s, fr, (c) => values[c] !== '0').cands.values()].flatMap((x) => [...x.values()]));
         const roles = [...kinds].filter((k) => ROLES.has(k));
-        if (s.truth === 'derived') expect(roles, `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
+        // (but a chain that clashes, which draws no truth: its first set's z, the reason, below)
+        if (s.truth === 'derived' && !alsClash(s)) expect(roles, `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
         if ([...kinds].some((k) => TRUTHS.has(k))) expect(roles, `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
         views++;
       }
@@ -562,10 +564,10 @@ describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 
       for (const fr of [null, ...walkFrames(s)]) {
         const m = frameMarks(s, fr, (c) => values[c] !== '0');
         const kinds = new Set([...m.cands.values()].flatMap((x) => [...x.values()]));
-        expect([...kinds].filter((k) => k !== 'member' && k !== 'elim'), `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
+        expect([...kinds].filter((k) => k !== 'member' && k !== 'elim' && k !== 'primary'), `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
         expect(m.refuted, where).toBe(false);
-        // the removals, the lettered cells and a cell of two sets' dashed outline: no truth
-        expect(legendOf(s, values, fr).map((l) => l.kind).filter((k) => k !== 'elim' && k !== 'tile' && k !== 'shared'), `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
+        // the removals, the reason, the lettered cells and a cell of two sets' dashed outline: no truth
+        expect(legendOf(s, values, fr).map((l) => l.kind).filter((k) => k !== 'elim' && k !== 'primary' && k !== 'tile' && k !== 'shared'), `${where}, frame ${fr?.links ?? 'full'}`).toEqual([]);
       }
       expect(premiseOf(s), where).toBeNull();
       // its tiles, its arrows and its removal still drawn
@@ -573,6 +575,35 @@ describe("almost locked sets on the board (docs/hint-drawing-sets.md, decisions 
       expect(full.sets.length, where).toBe(s.sets!.length);
     }
     expect(clashes).toBe(9);
+  });
+
+  it("draws the reason a clashing ALS-XY-Chain removes, its first set's z, as the pattern's discs where the view shows the conclusion, worded so, and nothing else as a role (readability report M15)", () => {
+    let clashes = 0;
+    const key = (cd: CellDigit) => `${cd.digit}@${cd.cell}`;
+    for (const { where, step: s, values } of corpus) {
+      if (!alsClash(s)) continue;
+      clashes++;
+      const first = s.sets![s.links![0].fromSet!];
+      const z = s.eliminations[0].digit;
+      const reason = first.members.filter((m) => m.digit === z);
+      expect(reason.length, where).toBeGreaterThan(0);
+      expect(clashZ(s).map(key), where).toEqual(reason.map(key));
+      // what the label says is so: every removal is a z that sees each of them
+      for (const x of s.eliminations) for (const r of reason) expect(x.digit === z && sees(x.cell, r.cell), `${where}: ${key(x)} and ${key(r)}`).toBe(true);
+      const frames = walkFrames(s);
+      for (const fr of [null, ...frames]) {
+        const m = frameMarks(s, fr, (c) => values[c] !== '0');
+        const blue = [...m.cands].flatMap(([cell, x]) => [...x].filter(([, k]) => k === 'primary').map(([digit]) => key({ cell, digit }))).sort();
+        const concludes = fr === null || fr === frames.at(-1);
+        expect(blue, `${where}, frame ${fr?.links ?? 'full'}`).toEqual(concludes ? reason.map(key).sort() : []);
+        const label = legendOf(s, values, fr).find((l) => l.kind === 'primary')?.label;
+        const words = reason.length === 1 ? `the ${z} of set ${first.letter}` : `the ${z}s of set ${first.letter}`;
+        expect(label, `${where}, frame ${fr?.links ?? 'full'}`).toBe(concludes ? words : undefined);
+      }
+    }
+    expect(clashes).toBe(9);
+    // a chain that does not clash has none
+    expect(clashZ(EXAMPLES.ALS_XY_CHAIN!.step)).toEqual([]);
   });
 
   it('gives the tints by decision 8: one each in letter order up to three, then the way that parts the most conflicting sets, never two linked ones, and uses all three', () => {

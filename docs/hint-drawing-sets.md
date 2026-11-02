@@ -367,7 +367,9 @@ walk, the numbers on arrows and ties those of the frame that adds them.
   them, A's tiles on r1c4 and r5c4, a tab on every tile and both on each
   shared cell, the sets' candidates members, three dashed arrows and
   r3c4's 8 removed; the legend names no truth; the walk tells the same
-  frames in words. Copy:
+  frames in words. Since the readability pass, the full view and the
+  conclusion draw A's 8s as the pattern's discs, the reason r3c4's 8 goes
+  (As built, A clash's reason). Copy:
   `(8=9){r1456c4} - (9=8)r1c1 - (8=6){r4c13} - (6=8){r46c4} => r3c4<>8`.
 - **Death Blossom** (stored, `1.9..3.......9.5.....5.281.2..........18.....86.3...249.....1........63.5..76...8`
   at step 26: stem r8c9 {257}; petals A r9c7 {24}, B r8c5, r9c6 {145}, C
@@ -836,6 +838,18 @@ hintMarks, i18n), and the decisions it refines point here.
 - **No start dot for a clash** (decision 13). An ALS pattern whose chain
   clashes words no premise and draws no truth, so no dot says where a
   reading starts: it has none, in any view (`hintDrawing`, `alsClash`).
+- **A clash's reason** (decision 13; the readability report's M15). A
+  clashing ALS-XY-Chain drew no mark for why its removals go, so its
+  arrows landed on plain bold digits. Its premise, that the first set
+  holds no z, is impossible, so the first set holds z, and every removal
+  sees each z of it: the full view and the walk's last frame, which say
+  so, now draw those z as the pattern's discs, claiming no truth, as a
+  Death Blossom's z are drawn, and the legend names them ("the 8s of set
+  A"; `clashZ`, `clashWords` in src/content/hintMarks.ts), the removal's
+  entry saying why they go ("remove: sees every 8 of set A, which holds an
+  8"). The step itself still names no role
+  (decision 10); in the set fixture's nine clashes the two views change
+  so.
 - **Start dots and bars** (decision 4). A start dot keeps off every bar,
   its own group's too, the whole of it: an arrow is free of its own bar
   only beside the member it is anchored at, a dot nowhere, so a dot never
@@ -894,7 +908,18 @@ hintMarks, i18n), and the decisions it refines point here.
   each whose shaft it crosses (decision 2): the set fixture's
   `hard 0, step 9, GROUPED_X_CYCLES` puts the bar of 5r789c7 on the left,
   where link 1, 5r8c7 to 5r7c9, would pass 2 units off it on the right
-  beyond its member, and draws link 1 into 5r7c9 from the left. And two
+  beyond its member, and draws link 1 into 5r7c9 from the left. A side
+  whose bar bends no arrow only because a head comes in square-on over
+  it still lies under that head, and one through another set's tile
+  pushes that set's tab out of it (round 3's first low: at
+  `...86..3......3..7.13..7..94...5..2...6.3.1...7..4...81..6..39.5..2......6..95...`
+  after 17 steps, an AIC with ALS on offer, the 8s' bar of r7c23 ran
+  above them through A's tile): since the readability pass each costs
+  20, more than an edge band and far less than a mark, so the bar there
+  runs below the 8s again and A's tab sits on r7c2's middle place. Over
+  the 3,966 grouped finds on offer past the singles of the pool and seed
+  paths, 14 bars change side; bars through a tile fall from 10 to 4 and
+  heads within 4 units of another group's bar from 38 to 29. And two
   arrows that run along each other for more than 0.3 of a cell within a
   stroke and a halo, their ends counted, where the same hint without its
   bars and tabs draws them apart, have the one the bars and tabs moved
@@ -960,9 +985,17 @@ hintMarks, i18n), and the decisions it refines point here.
   the stored example, the drawing Learn opens on, with its 7 tie sagging
   821 units through row 9, over r9c2's 2 and 3 and past the solved 7 and
   9 there, and its 2 tie crossing its 5 tie inside r8c8's solved 3. The 7
-  tie now runs along row 8, 774 units, rising only over r8c2's 7; the 5
-  tie, which along row 8 the solved 6 and 3 would cut twice, arcs over
-  them and crosses the 2 tie right of the 3, where it shows. Over the
+  tie now runs along row 8, 774 units, rising only over r8c2's 7. Since
+  the readability pass (its M11) a crossing of the stem's other ties ranks
+  the drawings a tie tries, before its length, and a tie clean of all but
+  a crossing (not one along its row or column, which runs along it as
+  above) tries six arcs more, either way round. A search that went on
+  until no tie crossed (208 of the 3,234 Death Blossoms on offer past the
+  singles of the pool, seed and daily paths still crossing, against 696)
+  made a Death Blossom some ten times slower to draw, 300 ms against 20
+  on a desktop, and was cut back (the review of the readability pass):
+  now 550 cross, in main's time; two drawings cross once more than main's,
+  147 no longer cross. The stored example draws as main does. Over the
   1,175 Death Blossoms at the review's positions, 356 drawings change,
   341 with a tie along its row or column; in those the ties' length
   stays the same and the length the digits cut out of them falls from
@@ -1033,3 +1066,34 @@ hintMarks, i18n), and the decisions it refines point here.
   row sitting on it, the keyline still parting the mark from the fill.
   The Learn diagrams draw their tabs' keylines (and a group member's on
   a tile) the same way; their marks have no keylines.
+- **A one-cell set reached by a restricted common** (the readability
+  check of November 2026, docs/hint-readability-2026-11.md L11). A
+  one-cell set is told by its lock, the frame after the restricted common
+  that reaches it, so that common's sentence names it with its cell: "Every
+  4 of set A sees every 4 of set C, the hinge r6c3: if r8c3 is 4, r6c3
+  cannot be 4.", and in an ALS-XZ or ALS-XY-Chain "Every 9 of set A sees
+  every 9 of set B, the cell r1c7: ...". The ALS-XY-Wing and ALS-XY-Chain
+  walks quoted under Per technique read so; tests/setWords.ts holds every
+  set step kept to it.
+- **The readability pass's words** (docs/hint-readability-2026-11.md M2
+  and H4; round 3's low on the plain ending, hint-drawing-p4-round3.md).
+  An ALS pattern's removal entry carries the either/or its walk ends on:
+  "remove: sees every 5 of set A and of set B, and one of the two holds a
+  5"; where the chain shows set A holds z (it clashes, or shows G18's
+  note), "remove: sees every 8 of set A, which holds an 8". An
+  ALS-XY-Chain that derives cleanly but whose legend shows the note (26 of
+  the 3,774 first finds along the pools', seeds' and dailies' paths, none
+  in the set fixture) is worded as a clash: `refutation` (src/engine/truth.ts)
+  finds what the legend's test finds on the marks, two true candidates
+  that cannot both be or a true node every candidate of which is ruled
+  out, and the walk ends "If set A holds no 1, r2c3 must be 1, and so must
+  one of r2c1, r3c1: two 1s in box 1, which is impossible. A cannot lack
+  a 1, so set A holds a 1. Each removed 1 sees every 1 of A.", the
+  description "But on the way r2c3 must be 1, and so must one of r2c1,
+  r3c1: two 1s in box 1. A cannot lack a 1: ...", never on "if A holds
+  none, D holds one". In every one set A holds z in the solution. An AIC
+  with ALS or with groups, as every open chain, ends on its two ends
+  before the removals ("Either r2c9 (by the small dot) is 8, or the chain
+  makes r6c9 9. Either way r6c9 is not 8."), and a grouped continuous loop
+  says at the link back to its start that it holds whichever way round it
+  is read.

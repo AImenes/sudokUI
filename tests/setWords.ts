@@ -9,7 +9,9 @@
  * - every set of several cells is introduced by one frame of its own,
  *   before any frame that reaches it, which names it, its cells and its
  *   house;
- * - a one-cell set has no frame of its own: its lock's frame introduces it;
+ * - a one-cell set has no frame of its own: its lock's frame introduces it,
+ *   and a frame before that names it names its cell with it ("set C, the
+ *   hinge r6c3", "set B, the cell r1c7": review report L11);
  * - every link with an end in a set is told as the set's, naming it, and
  *   never as a plain link of single candidates or of a group;
  * - no sentence that names a set says "group", nor does a legend whose
@@ -67,6 +69,11 @@ export function wordProblems(step: Step, frames: Frame[] = walkFrames(step)): st
       const lock = links.findIndex((l) => insideSet(l) && l.fromSet === k);
       const text = lock < 0 ? '' : frames[frameOf(lock)].text;
       if (!new RegExp(`^Set ${s.letter}(, the hinge,)? is the cell ${cellNames(s.cells)}, `).test(text)) out.push(`set ${s.letter}: a one-cell set not introduced by its lock: ${text}`);
+      // before its lock's frame, a sentence that names it names its cell too
+      const told = new RegExp(`\\bset ${s.letter}, the (hinge|cell) ${cellNames(s.cells)}\\b`);
+      frames.slice(0, lock < 0 ? frames.length : frameOf(lock)).forEach((f, i) => {
+        if (!f.sets?.includes(k) && new RegExp(`\\b[Ss]et ${s.letter}\\b`).test(f.text) && !told.test(f.text)) out.push(`frame ${i + 1}: names the one-cell set ${s.letter} before its lock without its cell: ${f.text}`);
+      });
     }
   });
   links.forEach((l, i) => {

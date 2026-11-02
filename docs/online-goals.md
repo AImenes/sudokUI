@@ -677,3 +677,7 @@ and login-gated. Indie daily-puzzle numbers (Tiled Words, Termo) are
 anecdotal. Expect a modest lift for a niche expert audience, not virality.
 The full research note with sources lives outside the repository; this
 document is the distilled, decided version.
+
+## Reach, November 2026
+
+The reach plan of 2 November 2026 is [reach-plan-2026-11.md](reach-plan-2026-11.md) (evidence: [reach-research-2026-11.md](reach-research-2026-11.md)). In one line: When you're stuck, sudokui.app draws the actual technique on your own grid and teaches you to spot it next time; it's free, works offline, no ads, no sign-up. Build, in order: Fix what a launch would show first; Make each channel measurable before using any; Board and hint image export, plus 'Share this hint'; 'Copy as post'; Previews and listings that show the right thing; Follow the daily and take a puzzle onto paper without an account. The owner's, in order: Thirty minutes of setup that keeps paying; Check the previews, bot access and Reddit's composers yourself (this decides how build items 4 and 5 ship); Enjoy Sudoku forum; AlternativeTo listing, once the account is 7 days old; Teachers and newsletters; Norway; One general launch post at a time; Optional. Everything under "Do not build" above still holds; the plan adds its own "Do not" list. Also decided with the owner on 2 November: a "Why sudokUI?" page (lichess named as the model, no competitor named, the offline promise worded exactly), the owner approving its English text first.

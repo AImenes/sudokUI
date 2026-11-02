@@ -136,6 +136,55 @@ export function clashAt(step: Step): CellDigit[] | null {
   return null;
 }
 
+/**
+ * How a chain that derives cleanly (no problem, no closure) still shows its
+ * premise impossible (docs/hint-drawing.md G18, the legend's note): two of
+ * its true candidates that cannot both be ('pair': one cell, or one digit
+ * in cells that see each other), or a true node of several candidates each
+ * of which the chain makes false or a true candidate rules out ('emptied';
+ * `by`, the true candidates that rule some out). `first` says which the
+ * chain reaches first: the pair's first candidate, or the emptied node
+ * ('node') or its rulers ('by'). The earliest along the chain is given
+ */
+export type Refutation =
+  | { kind: 'pair'; first: CellDigit; second: CellDigit }
+  | { kind: 'emptied'; node: CellDigit[]; by: CellDigit[]; out: CellDigit[]; first: 'node' | 'by' };
+
+/**
+ * Where a derived chain that clashes with none of its own links shows its
+ * premise impossible, as the full view's legend says it (the same test as
+ * src/content/hintMarks.ts `refuted` makes on the marks): the clash met
+ * first along the chain; null where there is none, or where the chain
+ * derives with a problem or a closure (an ALS pattern's clash, a
+ * discontinuous loop), whose words are their own
+ */
+export function refutation(step: Step): Refutation | null {
+  const d = deriveTruth(step);
+  if (!d || d.problems.length || d.closure) return null;
+  const truth = (cd: CellDigit) => d.candidates.get(keyOf(cd));
+  // where along the chain each node is first reached
+  const at = (node: CellDigit[]) => d.nodes.findIndex((n) => nodeKey(n.node) === nodeKey(node));
+  const trues = d.nodes.filter((n) => n.truth && n.node.length === 1).map((n) => ({ cd: n.node[0], at: at(n.node) }));
+  const found: { r: Refutation; at: number }[] = [];
+  trues.forEach((a, i) => {
+    for (const b of trues.slice(i + 1)) if (excludes(a.cd, b.cd)) found.push({ r: { kind: 'pair', first: a.cd, second: b.cd }, at: b.at });
+  });
+  d.nodes.forEach(({ node, truth: isTrue }, k) => {
+    if (!isTrue || node.length < 2) return;
+    const squares = node.filter((cd) => truth(cd) === 'groupTrue');
+    const out = node.filter((cd) => truth(cd) === 'false');
+    if (!squares.length || squares.length + out.length !== node.length) return;
+    const rulers = (cd: CellDigit) => trues.filter((t) => excludes(t.cd, cd));
+    if (!squares.every((cd) => rulers(cd).length)) return;
+    // the true candidates that rule the squares out, each square by the first along the chain
+    const by = [...new Set(squares.map((cd) => rulers(cd).sort((x, y) => x.at - y.at)[0]))].sort((x, y) => x.at - y.at);
+    const last = Math.max(k, ...by.map((t) => t.at));
+    found.push({ r: { kind: 'emptied', node, by: by.map((t) => t.cd), out, first: by[0].at < k ? 'by' : 'node' }, at: last });
+  });
+  found.sort((x, y) => x.at - y.at);
+  return found[0]?.r ?? null;
+}
+
 /** the derivation itself, over a chain's directed links in reading order */
 export function deriveLinks(links: ChainLink[]): Derivation {
   const problems: Problem[] = [];

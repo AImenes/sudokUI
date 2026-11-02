@@ -76,6 +76,24 @@ phase 6 (words) and phase 7 (polish). The
 relabelling of AIC with ALS steps whose only set is a bivalue cell is a
 later measured engine change (the design's decision 14).
 
+### 2 November 2026: the readability quick wins, after review round 1
+
+The 18 quick wins of docs/hint-readability-2026-11.md section 4 and round
+3's two lows go to main once the full checks pass on the branch's head
+(`git log main` shows the merge), after review round 1 (hint-readability-round1.md:
+what it found, what was fixed, the lows left for later). The reach plan of
+the same day is docs/reach-plan-2026-11.md.
+
+Next, decided with the owner on 2 November: a "Why sudokUI?" page (the
+owner approves the English text first; lichess named as the model, no
+competitor named; the offline promise worded exactly: play, hints,
+ratings, practice and the in-app guide work offline after one visit, the
+Learn articles and the daily's global times need a connection); then the
+reach plan's build items in order, the share kit among them (a board and
+hint image, "copy as post" with the position link and a spoiler-tagged
+hint; players post their own content, and the app never asks them to post
+where the owner is banned). The hint work continues with phase 5.
+
 ## How the work has been run
 
 - **Checks**: `npx tsc -b`; `npx vitest run`; `npm run build`; before a

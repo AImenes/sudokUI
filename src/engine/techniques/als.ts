@@ -135,7 +135,7 @@ function wxyzStep(g: Grid, A: Als, B: Als, x: number, z: number, elims: CellDigi
       ...(rest.length > 0 && { secondary: rest.length === 1 ? tr`other cell of the three` : tr`other cells of the three` }),
       fins: tr`bivalue cell`
     },
-    description: tr`WXYZ-Wing: bivalue cell ${name} (${digitsOf(g.cands[linked]).join('')}) and the three cells ${listAnd(three)} in ${unit}, which hold ${digitsOf(set.mask).join('')} between them. The ${x} in ${name} sees every ${x} in the three cells. Either ${name} is ${z}, or it is ${x} and the three cells in ${unit} must be ${listAnd(others)}. At least one of the four cells is therefore ${z}, so ${z} is removed from every other cell that sees all the ${z}s among them.`
+    description: tr`WXYZ-Wing: bivalue cell ${name} (${digitsOf(g.cands[linked]).join('/')}) and the three cells ${listAnd(three)} in ${unit}, which hold ${digitsOf(set.mask).join('/')} between them. The ${x} in ${name} sees every ${x} in the three cells. Either ${name} is ${z}, or it is ${x} and the three cells in ${unit} must be ${listAnd(others)}. At least one of the four cells is therefore ${z}, so ${z} is removed from every other cell that sees all the ${z}s among them.`
   };
 }
 

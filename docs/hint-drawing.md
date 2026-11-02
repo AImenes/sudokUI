@@ -76,12 +76,20 @@ Every rule is numbered so a commit, a test or a review can cite it.
 - **G5. Precedence.** One mark per candidate: removed > placed > chain
   truth (a true disc, a false ring, a "one of these" square) > a role > a
   set's member (its digit bold on the set's tile, no shape; since phase 4,
-  [hint-drawing-sets.md](hint-drawing-sets.md)). A view draws roles inside
+  [hint-drawing-sets.md](hint-drawing-sets.md)). A candidate a step lists
+  in the pattern and in the secondary role (a uniqueness pattern's key
+  digit in UR4, UR6 and the Hidden Rectangle) is the pattern's until the
+  walk frame that shows the secondary colour, and gold from then on, so
+  frame 1 draws the whole rectangle its words name. A view draws roles inside
   a set only in Death Blossom, which draws no truth until phase 5, so no
   role disc sits beside a truth mark; an ALS pattern whose chain clashes
   (its sets share cells, and its truths would claim more than the step
   proves) draws neither, its sets' candidates members and its removals
-  removals, in every view. A candidate a step lists in more
+  removals, in every view, but for the reason its removals rest on: its
+  first set's z, which every removal sees, are the pattern's discs in the
+  views that show the conclusion (the full view and the walk's last
+  frame), worded so in the legend (the readability pass, M15). A
+  candidate a step lists in more
   than one role takes the first of pattern, acts-through, exception, in
   the full view and in every walk frame alike. A candidate that is removed
   keeps no ring of a colour it never had (before phase 1 four techniques
@@ -152,8 +160,14 @@ Every rule is numbered so a commit, a test or a review can cite it.
   amount and is never checked against what it passes
   (`SudokuPanel.java:2693-2711`); ours chooses the side. Unrelated
   candidates and digits are crossed straight, readable through the halo
-  (G11). Two arrows joining the same two nodes are drawn side by side,
-  apart from end to end, two heads, where they bend as well. A
+  (G11), but for a candidate of an arrow's own digit, which the arrow
+  would seem to stop at: an arrow of one digit keeps a mark's radius off
+  every other candidate of its digit the board shows, softly, so a gentle
+  arc or a half-pitch shift is enough, after keeping clear of the marks,
+  not hiding another arrow and not crossing the pair it is drawn beside
+  (the readability pass, M7). Two arrows joining the same two nodes are
+  drawn side by side, apart from end to end, two heads, where they bend
+  as well. A
   group or set node is anchored at its member nearest the other end of the
   link (a centroid can fall in a cell that is not one of its members;
   HoDoKu anchors at a group's first member only, so its other members get
@@ -307,7 +321,17 @@ Every rule is numbered so a commit, a test or a review can cite it.
   cover lines, a subset's house, a single's house, Locked Candidates' box
   and line. A pattern's band (base) has a solid outline, an acts-through
   band (cover) a dashed one, so the two differ by shape and not only by
-  colour.
+  colour. In a walk a band comes with its role's frame, the pattern's
+  houses with the pattern and a house that loses with what acts on it, so
+  no frame draws what the one before drew; only a band that is the whole
+  drawing (a Full House's) is there from the first frame, and a forcing
+  step's house with no place left comes with the link into the
+  contradiction. A Hidden Single shades no band whose cells in its house
+  another band already shades. The uniqueness patterns band, dashed, the
+  house their argument locks a digit into, with that digit's candidates in
+  the acts-through colour: the Hidden Rectangle's row and column, UR Type
+  3's naked subset's house (with the roof's extras), UR Type 4's house of
+  the locked digit, UR Type 6's two lines.
 - **G16. Sets.** A group node (the 2-3 candidates of one digit in one box
   and one row or column) and an almost locked set are drawn as what they
   are, never as a hull round cells or candidates that are not theirs (a
@@ -346,18 +370,24 @@ Every rule is numbered so a commit, a test or a review can cite it.
     set is introduced by a walk frame of its own before the chain reaches
     it, drawing its tiles, tabs and members and no truth. An ALS pattern
     whose chain clashes (sets that share cells, a truth claiming more than
-    the step proves) draws no truth, no role and no start dot in any view:
-    tiles, tabs, members, arrows and removals, the walk in words, its
+    the step proves) draws no truth and no start dot in any view: tiles,
+    tabs, members, arrows and removals, the walk in words, its
     conclusion saying why the first set holds z (the last set holds z
-    only in its cells). Only
+    only in its cells), and in the views that show that conclusion its
+    first set's z as the pattern's discs, the reason every removal goes
+    (G5). Only
     Death Blossom, which draws no truth until phase 5, draws roles in a
-    set: the stem's candidates and each petal's digit the stem sees
-    acts-through gold, every petal's z pattern blue, the stem no tile, a
+    set in every view: the stem's candidates and each petal's digit the
+    stem sees acts-through gold, every petal's z pattern blue, the stem no tile, a
     headless dashed weak tie from each stem digit into its petal: along
     the row or column the two share, bending only round what lies on it,
     where that keeps clear and is shorter, counting what the digits it
     crosses cut out of it twice; crossing another tie only where the
-    crossing shows, never under a digit.
+    crossing shows, never under a digit; and, since the readability pass
+    (M11), crossing the stem's other ties as seldom as the drawings tried
+    allow (a crossing ranks before its length, and a tie clean of all but
+    a crossing tries six arcs more), never at the cost of the full search,
+    which made a Death Blossom some ten times slower to draw.
   - Arrows attach at a member (G10).
 - **G17. Digit focus (optional, Settings).** During a hint about one
   digit (fish, single-digit patterns, X-Chains, colouring), the other
@@ -947,15 +977,23 @@ the values above are its final ones.
   Left for later, low: over every grouped chain on offer along the solve
   paths of the pool, seed and hard puzzles, an arrow meets a bar away
   from its anchoring member in 44 chains, one of them a solve path's own
-  step (the design's As built names it); round 3's two unverified lows
-  (a bar moved by round 2's side rule through an ALS tile in three finds,
-  and the plain ending of an ALS-XY-Chain whose legend says its premise is
-  impossible) and its accepted heads (hint-drawing-p4-round3.md), for the
-  readability pass; an ALS-XY-Chain of more sets than cells
+  step (the design's As built names it); round 3's accepted heads
+  (hint-drawing-p4-round3.md), for the readability pass, which has fixed
+  round 3's two lows (an ALS-XY-Chain whose legend says its premise is
+  impossible is worded as a clash, and a bar moved by round 2's side rule
+  no longer runs through an ALS tile: the design's As built); an
+  ALS-XY-Chain of more sets than cells
   leaves one set no filled tile (four sets on three cells on a hard path),
   its tabs and dashed outlines carrying it; App.tsx's "a {tech} places it"
   and the share line's "a {level} sudoku" can read "a X-Wing" and "a
   Extreme sudoku" in English (a name, not a digit: phase 6's words).
+- [x] The readability pass's quick wins (docs/hint-readability-2026-11.md
+  section 4: H3, M4's Empty Rectangle, M20, M21, L1, L11, M2, H4's closing
+  sentence, M1, H2's Hidden Rectangle and UR3, M4's UR4, UR6 and AR2, M9,
+  L4, M7, M11, M15, H6's real-size Medusa in the fixture and the shots),
+  with round 3's two lows. Review round 1 found two mediums and two
+  regressions, all fixed (hint-readability-round1.md, which also lists
+  the lows left for later).
 - [ ] Phase 5: forcing
 - [ ] Phase 6: words
 - [ ] Phase 7: polish

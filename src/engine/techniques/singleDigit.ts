@@ -178,7 +178,9 @@ export function findEmptyRectangle(g: Grid): Step | null {
  * `pairLine` is the kind of line the conjugate pair lies in. With the pair
  * in a column, pair[0] lies on the box's row and pair[1] shares a row with
  * the target, which lies on the box's column; with the pair in a row, the
- * same with rows and columns swapped. The two descriptions say exactly that.
+ * same with rows and columns swapped. The labels and the description name
+ * the houses the argument uses: the box's row and column, the pair's line,
+ * the line pair[1] shares with the target, and the arm pair[0] empties.
  */
 function erStep(
   g: Grid,
@@ -189,6 +191,16 @@ function erStep(
   target: number,
   pairLine: 'row' | 'col'
 ): Step {
+  const inCol = pairLine === 'col';
+  // the box's row and column, as units: every d of the box lies on one of them
+  const boxRow = inCol ? rowOf(pair[0]) : rowOf(target);
+  const boxCol = 9 + (inCol ? colOf(target) : colOf(pair[0]));
+  // the pair's line; the line pair[1] shares with the target; the box's line pair[0] lies on, and the other
+  const line = inCol ? 9 + colOf(pair[0]) : rowOf(pair[0]);
+  const shared = inCol ? rowOf(pair[1]) : 9 + colOf(pair[1]);
+  const [arm, other] = inCol ? [boxRow, boxCol] : [boxCol, boxRow];
+  const [b, r, c, l] = [unitName(18 + box), unitName(boxRow), unitName(boxCol), unitName(line)];
+  const [p0, p1, t] = [cellName(pair[0]), cellName(pair[1]), cellName(target)];
   return {
     tech: 'EMPTY_RECTANGLE',
     placements: [],
@@ -197,12 +209,9 @@ function erStep(
     secondary: pair.map((cell) => ({ cell, digit: d })),
     units: [{ unit: 18 + box, role: 'primary' }],
     labels: {
-      primary: tr`${unitName(18 + box)}: every ${d} in it lies on one row and one column`,
-      secondary: tr`the conjugate pair on ${d}`
+      primary: tr`${b}: its ${d}s all lie in ${r} or ${c}`,
+      secondary: tr`${l}: its only ${d}s are ${p0} and ${p1}`
     },
-    description:
-      pairLine === 'col'
-        ? tr`Empty Rectangle on ${d}: in ${unitName(18 + box)} every ${d} lies on one row and one column, and ${cellNames(pair)} are the only two places for ${d} in their line. If ${cellName(pair[1])} is ${d}, ${cellName(target)} in its row is not. If not, ${cellName(pair[0])} is ${d}, so the box's ${d} cannot share its row and must lie on the column through ${cellName(target)}, which again is not ${d}. So ${d} is removed from ${cellName(target)}.`
-        : tr`Empty Rectangle on ${d}: in ${unitName(18 + box)} every ${d} lies on one row and one column, and ${cellNames(pair)} are the only two places for ${d} in their line. If ${cellName(pair[1])} is ${d}, ${cellName(target)} in its column is not. If not, ${cellName(pair[0])} is ${d}, so the box's ${d} cannot share its column and must lie on the row through ${cellName(target)}, which again is not ${d}. So ${d} is removed from ${cellName(target)}.`
+    description: tr`Empty Rectangle on ${d}: in ${b} every ${d} lies in ${r} or ${c}, and ${p0} and ${p1} are the only ${d}s in ${l}. If ${p1} is ${d}, ${t} is not: they share ${unitName(shared)}. If not, ${p0} is ${d}, so ${b} has no ${d} in ${unitName(arm)}; its ${d} lies in ${unitName(other)}, which runs through ${t}, so again ${t} is not ${d}. So ${d} is removed from ${t}.`
   };
 }

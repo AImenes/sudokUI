@@ -11,7 +11,7 @@ import { hintDrawing, tilesIn, squareReach, pointsOf, SIZES } from './hintGeomet
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
 import type { HintPalette } from './hintPalette';
-import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, premiseOf, isParity, isShade, parityLegend, stemAlone, petalsPart, sharedTile } from './hintMarks';
+import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, premiseOf, isParity, isShade, parityLegend, stemAlone, petalsPart, sharedTile, clashWords } from './hintMarks';
 import type { BarStyle, Premise, Role, Tint } from './hintMarks';
 import type { Frame } from '../engine/hintFrames';
 import { drawnLinks } from '../engine/hintFrames';
@@ -588,12 +588,12 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
       return { kind: e.kind, label: e.label, colour: '#ffffff', ink: P.arrow };
     });
   }
-  const { shown, onValue, onBand, intoRemove, intoPlace, refuted, bars, setSquares, tiles, lines } = legendKinds(step, drawn);
+  const { shown, onValue, onBand, intoRemove, intoPlace, refuted, bars, setSquares, tiles, lines, removeWords } = legendKinds(step, drawn);
   const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
   if (shown.has('place')) out.push({ kind: 'place', label: [tr`place`, ...lent(intoPlace)].join(': '), colour: P.place, ink: P.placeInk });
-  if (shown.has('elim')) out.push({ kind: 'elim', label: [tr`remove`, ...lent(intoRemove)].join(': '), colour: '#ffffff', ink: P.elim });
+  if (shown.has('elim')) out.push({ kind: 'elim', label: removeWords ?? [tr`remove`, ...lent(intoRemove)].join(': '), colour: '#ffffff', ink: P.elim });
   // a derived chain's truth, worded by its first node's premise
   const premise = premiseOf(step);
   if (premise) {
@@ -610,7 +610,7 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });
   // a Death Blossom's blue before every petal's z is drawn: a petal's, by its own branch
   const z = step.eliminations[0]?.digit;
-  const blue = petalsPart(step, drawn) ? tr`${z} in a petal: if the stem takes that petal's digit, the petal holds ${aDigit(z)}` : step.labels?.primary;
+  const blue = petalsPart(step, drawn) ? tr`${z} in a petal: if the stem takes that petal's digit, the petal holds ${aDigit(z)}` : (clashWords(step) ?? step.labels?.primary);
   if (shown.has('primary')) role('primary', blue ?? tr`the pattern`, P.primary, P.primaryInk);
   // a Death Blossom's gold before any petal's digit is drawn: the stem's candidates alone
   if (shown.has('secondary')) role('secondary', stemAlone(step, drawn) ? tr`the stem's candidates` : (step.labels?.secondary ?? tr`supporting cells`), P.secondary, P.secondaryInk);

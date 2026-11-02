@@ -138,7 +138,7 @@ const views = (s: Step): (Frame | null)[] => [null, ...walkFrames(s)];
  */
 function unnamedIn(s: Step): string[] {
   const text = describeStep(s);
-  if (s.eliminations.length > 1) return text.endsWith(` ${conclusionText(s)}`) ? [] : s.eliminations.map(nameOf);
+  if (s.eliminations.length > 1) return text.endsWith(` ${conclusionText(s, 'here')}`) ? [] : s.eliminations.map(nameOf);
   const sentences = text.split(/(?<=\.) /);
   const names = (x: CellDigit) => sentences.some((t) => t.includes(cellName(x.cell)) && new RegExp(`(?<![\\w.])${x.digit}(?!\\d)`).test(t));
   return s.eliminations.filter((x) => !names(x)).map(nameOf);
@@ -852,11 +852,11 @@ describe('the removals of a colouring the finders give', () => {
    * narrowing one cell by two
    */
   const SECOND: [Tech, string, number, string][] = [
-    ['REMOTE_PAIR', '37.......2.....5.9..168..4..6..3.8524...1......5.......4...8...6.8..21.....7..4..', 28, 'So 3 is removed from r7c3; 9 is removed from r7c3.'],
-    ['REMOTE_PAIR', '238.6...5.5..4.8......2..9.8.6.34..7.........3..27.5.4.1..5......5.8..4.6...9.351', 37, 'So 2 is removed from r5c9; 6 is removed from r5c9.'],
-    ['MEDUSA_3D', '..3.8..........3.1.....7..9.2.5.3...9.8.6.......7...5....1....6...4...7.71...9..2', 18, 'So 1 is removed from r4c1; 4 is removed from r1c1.'],
-    ['MEDUSA_3D', '.5...31..318.....2..2...64....127......4.6......398....75...9..2.....385..15...7.', 12, 'So 4 is removed from r1c5; 6 is removed from r1c5.'],
-    ['MEDUSA_3D', '..457...1.3796.....82.1.....2..5....76.....32....9..6.....3.42.....8519.4...268..', 10, 'So 1 is removed from r5c3; 8 is removed from r5c3.']
+    ['REMOTE_PAIR', '37.......2.....5.9..168..4..6..3.8524...1......5.......4...8...6.8..21.....7..4..', 28, 'Here, 3 and 9 are removed from r7c3.'],
+    ['REMOTE_PAIR', '238.6...5.5..4.8......2..9.8.6.34..7.........3..27.5.4.1..5......5.8..4.6...9.351', 37, 'Here, 2 and 6 are removed from r5c9.'],
+    ['MEDUSA_3D', '..3.8..........3.1.....7..9.2.5.3...9.8.6.......7...5....1....6...4...7.71...9..2', 18, 'Here, 4 is removed from r1c1; 1 is removed from r4c1.'],
+    ['MEDUSA_3D', '.5...31..318.....2..2...64....127......4.6......398....75...9..2.....385..15...7.', 12, 'Here, 4 and 6 are removed from r1c5.'],
+    ['MEDUSA_3D', '..457...1.3796.....82.1.....2..5....76.....32....9..6.....3.42.....8519.4...268..', 10, 'Here, 1 and 8 are removed from r5c3.']
   ];
 
   it('are each named in the explanation the full view shows, in every language: at the fixtures, the stored examples, and where a named cell loses a second candidate', () => {
@@ -890,7 +890,8 @@ describe('the removals of a colouring the finders give', () => {
     expect(wrap.eliminations.map(nameOf).join(' ')).toBe('6r1c7 6r4c5 6r3c4 6r2c3 6r7c9 6r5c2 6r8c8 6r7c6 6r6c6 6r4c7');
     const named = 'So 6 is removed from r1c7, r2c3, r3c4, r4c5, r4c7, r5c2, r6c6, r7c6, r7c9, r8c8.';
     expect(walkFrames(wrap).at(-1)!.text.startsWith(named)).toBe(true);
-    expect(describeStep(wrap)).toContain(named);
+    // the explanation's conclusion opens with "Here", after the finder's own "so" (review report M20)
+    expect(describeStep(wrap)).toContain(named.replace('So ', 'Here, '));
     for (const f of FIXTURES) {
       const s = stepAt(f);
       for (const m of walkFrames(s).at(-1)!.text.matchAll(/removed from ((?:r\dc\d(?:, )?)+)/g)) {
@@ -1760,7 +1761,7 @@ describe("a 3D Medusa's removals after its first, where they fall another way; t
     const escaped = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
     // as src/ui/Learn.tsx and src/content/learnPages.ts write it
     for (const tech of Object.keys(EXAMPLES) as Tech[]) expect(shown(tech), tech).toBe(escaped(describeStep(exampleStep(tech, EXAMPLES[tech]!))));
-    expect(shown('MULTI_COLORS')).toMatch(/; one more 6 falls the same way\. So 6 is removed from r3c6, r7c4\.$/);
+    expect(shown('MULTI_COLORS')).toMatch(/; one more 6 falls the same way\. Here, 6 is removed from r3c6, r7c4\.$/);
   });
 });
 
