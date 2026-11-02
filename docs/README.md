@@ -29,6 +29,9 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
   November 2026 (what to build, what the owner does, Reddit's rules, what
   not to do, how to measure); its evidence in
   [reach-research-2026-11.md](reach-research-2026-11.md).
+- [launch-log.md](launch-log.md): one dated line per reach action the
+  owner takes, the link used and the landing word expected, and the
+  numbers read before and after.
 
 ## The hints and their drawings
 

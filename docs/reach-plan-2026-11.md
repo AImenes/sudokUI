@@ -38,6 +38,8 @@ Each fix takes hours and costs less than a bad first impression.
 
 **Principles.** It takes information out of previews and adds none. Nothing new is sent or stored. Links stay spoiler-free by default, as decided on 14 October. Play never waits for the network.
 
+**As built, 2 November 2026.** All of it, with two corrections. The home page keeps '61': the practice dialog offers 61 techniques (PRACTICE_TECHS, '61 of 80 techniques playable'); goals.md's '65' counted the four the picker shows but cannot serve, and now says 61 (tests/home.test.ts already pins the home page to the catalogue). The rank wording follows the owner's decision of the same day: below 20 times the place ('2nd fastest of 5 today', 'tied for', 'the only time sent'), from 20 the percentile; a tie is two times in one 15-second step, the finest the server keeps. With it, as the owner decided: 'Send my time and compare' is the daily win screen's main button, and after a first send an unticked switch sends each later unassisted daily by itself (Settings has it too; the privacy page says so). The day's solve is kept on the device so the Share dialog can offer its line again; that is new local storage, never sent, and the privacy page names it.
+
 ### 2. Make each channel measurable before using any: home landings, new source words, play kind and language, a launch log
 
 At about 10 starts a day, the day-to-day noise is as large as a small channel's effect. Most planned channels are invisible today:
@@ -62,6 +64,8 @@ Principle 5 ('Measured, not asserted') needs this before the first launch, and t
 **Effort.** Claude: about half a day. Owner: 10 minutes to read the privacy diff.
 
 **Principles.** No identifier, cookie or address is stored: each landing is one closed-list word, each field one closed-list value, as in the existing landing design ('A landing is a person'). The privacy page changes in the same commit, so it stays accurate. The few extra Worker invocations per new visitor are far below the free tier.
+
+**Built** on 2 November 2026, as above, with two additions: practice games are counted now, because the kind 'practice' needs them (they open part-way, so they count from the player's own first move, and /admin keeps them out of its other play numbers); and a bare '#p=' link, which is mostly the Learn pages' own, counts as 'new', so 'shared' means a share address or a position link. The home pages also cost up to three Worker calls per device after each deploy, when the service worker fetches them again; docs/online-goals.md, Budgets, has the numbers. Details in docs/online-goals.md, 'Measured per channel'.
 
 ### 3. Board and hint image export, plus 'Share this hint'
 

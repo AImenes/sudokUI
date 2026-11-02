@@ -1937,6 +1937,26 @@ textarea {
 .daily-stats p {
   margin: 0;
 }
+/* sending the time is what the daily's win screen is for: its main button,
+   larger than the row under it */
+.daily-stats button.daily-send {
+  margin-top: 4px;
+  padding: 11px 22px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+/* the switch that sends the next dailies by themselves, under the place */
+.daily-stats .daily-auto {
+  width: 100%;
+  max-width: 400px;
+  text-align: left;
+  padding: 6px 0 0;
+}
 
 /* board column: grid + optional mascot underneath; carries the sizing the
    grid-wrap used to have as a direct flex child of the layout */

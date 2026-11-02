@@ -68,7 +68,7 @@ import { isParity, isTie } from '../engine/steps';
 import type { Frame, Part } from '../engine/hintFrames';
 import { drawnLinks, colouringDigit, walkFrames } from '../engine/hintFrames';
 import { alsClash, deriveLinks, deriveTruth, isAlsChain, refutation } from '../engine/truth';
-import { sees } from '../engine/board';
+import { UNITS, sees } from '../engine/board';
 import { aDigit, tr } from '../engine/text';
 import { insideOneCell, tilesIn } from './hintGeometry';
 import type { Shade } from './hintPalette';
@@ -148,6 +148,8 @@ export interface MarkOptions {
   walking?: boolean;
   /** the almost locked sets a walk frame introduces before any link drawn reaches them (src/engine/hintFrames.ts Frame.sets) */
   sets?: number[];
+  /** the cells a pattern's walk frame draws its roles and their bands in (Frame.cells); every cell when absent */
+  cells?: Set<number>;
 }
 
 const has = (list: CellDigit[] | undefined, cd: CellDigit) => !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
@@ -362,12 +364,17 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const inside = new Map<number, Map<number, Role>>();
   const values = new Map<number, CandMark>();
   const show = opts.show ?? (() => true);
+  // a pattern walked cell by cell draws its roles only in the cells its
+  // walk has named so far (Step.walk)
+  const named = (cell: number) => !opts.cells || opts.cells.has(cell);
+  const roleIn = (u: UnitBand) => ((u.role === 'primary' ? step.primary : step.secondary) ?? []).filter((cd) => UNITS[u.unit].includes(cd.cell));
   // a walk frame draws a band with its role: a house the pattern lives in
   // from the frame that shows the pattern, a house that loses from the frame
-  // that shows what acts on it; 'units' draws every band at once (a band
-  // that is the whole drawing, a forcing step's broken house from the frame
-  // that reaches it: src/engine/hintFrames.ts)
-  const bands = (step.units ?? []).filter((u) => show('units') || (opts.walking && show(u.role)));
+  // that shows what acts on it, and in a walk cell by cell once the walk has
+  // named every cell of the role in it; 'units' draws every band at once (a
+  // band that is the whole drawing, a forcing step's broken house from the
+  // frame that reaches it: src/engine/hintFrames.ts)
+  const bands = (step.units ?? []).filter((u) => show('units') || (opts.walking && show(u.role) && roleIn(u).every((cd) => named(cd.cell))));
   const links = opts.links ?? step.links ?? [];
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
@@ -421,12 +428,16 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
     // a chain's truth comes before the roles, which mark only what it leaves
     if (truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
     // a candidate in both lists (a uniqueness pattern's key digit) is the
-    // pattern's until the frame that shows the secondary colour, then gold
-    if (show('secondary')) for (const cd of step.secondary ?? []) mark(cd, 'secondary');
-    if (show('primary')) for (const cd of step.primary ?? []) mark(cd, 'primary');
+    // pattern's until the frame that shows the secondary colour, then gold;
+    // a pattern's candidate that is an exception too (the digit Chute Remote
+    // Pair's pair cells lose, one of them true) likewise turns purple with
+    // the frame that shows the exception
+    if (show('secondary')) for (const cd of step.secondary ?? []) if (named(cd.cell)) mark(cd, 'secondary');
+    if (show('fins') && !step.links?.length) for (const cd of step.fins ?? []) if (has(step.primary, cd) && named(cd.cell)) mark(cd, 'fin');
+    if (show('primary')) for (const cd of step.primary ?? []) if (named(cd.cell)) mark(cd, 'primary');
     // every chain node gets a mark, so arrows root on one
     if (!truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
-    if (show('fins')) for (const cd of step.fins ?? []) mark(cd, 'fin');
+    if (show('fins')) for (const cd of step.fins ?? []) if (named(cd.cell)) mark(cd, 'fin');
   }
   if (show('conclusion')) {
     if (opts.walking) {
@@ -494,7 +505,8 @@ export function frameMarks(step: Step, frame: Frame | null, solved: (cell: numbe
     links: (step.links ?? []).filter((_, i) => drawn.has(i)),
     show: frame ? (part) => frame.show.has(part) : undefined,
     walking: !!frame,
-    sets: frame?.sets
+    sets: frame?.sets,
+    cells: frame?.cells
   });
 }
 

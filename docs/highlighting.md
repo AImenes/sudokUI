@@ -117,9 +117,10 @@ needs:
   only in r2c7, so ..."). A net can have several such lines; one sound one is
   shown. The Forcing Net itself is not drawn: it reasons with
   intersections as well as singles and is search, not a pattern.
-- **Everything else** (Sue de Coq, Exocet, Fireworks, APE, Pattern
-  Overlay, Chute Remote Pair, Extended Rectangle) keeps its drawing and
-  names its colours.
+- **Everything else** (Exocet, Fireworks, APE, Pattern Overlay,
+  Extended Rectangle) keeps its drawing and names its colours. Chute
+  Remote Pair and Sue de Coq also band the houses their argument uses
+  and colour the digits by what each does there (hint-drawing.md G15).
 
 ## The player's own highlights
 

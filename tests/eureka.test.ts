@@ -235,10 +235,26 @@ describe('the HoDoKu line', () => {
     expect(stepText(step('UNIQUENESS_2'))).toBe("Unique Rectangle Type 2: 4/7 in r56c24 / 6 in r56c4 => r4c4<>6");
     expect(stepText(step('UNIQUENESS_5'))).toBe("Unique Rectangle Type 5: 4/8 in r58c89 / 5 in r5c9,r8c89 => r9c9<>5");
     expect(stepText(step('AVOIDABLE_RECTANGLE_1'))).toBe("Avoidable Rectangle Type 1: 2/3 in r2c7,r7c79 / 2 in r2c9 => r2c9<>2");
+    // the family's walks, which phase 6 gave their own sentences (step.walk), leave every line as it was
+    expect(stepText(step('BUG_PLUS_1'))).toBe('BUG+1: 3 in r5c6 => r5c6=3');
+    for (const tech of ['UNIQUENESS_1', 'UNIQUENESS_2', 'UNIQUENESS_3', 'UNIQUENESS_4', 'UNIQUENESS_5', 'UNIQUENESS_6', 'HIDDEN_RECTANGLE', 'AVOIDABLE_RECTANGLE_1', 'AVOIDABLE_RECTANGLE_2', 'EXTENDED_RECTANGLE', 'BUG_PLUS_1'] as Tech[]) {
+      expect(step(tech).walk, tech).toBeDefined();
+      expect(stepText({ ...step(tech), walk: undefined }), tech).toBe(stepText(step(tech)));
+    }
+  });
+
+  it('writes Chute Remote Pair and Sue de Coq as before phase 6 coloured them by what the argument uses', () => {
+    // the pair (and its digit in the mini-line, where a candidate), not the third box's gold or the purple
+    expect(stepText(step('CHUTE_REMOTE_PAIR'))).toBe('Chute Remote Pair: 5/6 in r4c6,r5c8 => r4c9<>5, r5c6<>5');
+    // the shared cells with every digit, then the two bivalue cells, not the three colours
+    expect(stepText(step('SUE_DE_COQ'))).toBe('Sue de Coq: 2/4/6/7/8 in r9c789 / 2/4/6/7 in r7c7,r9c4 => r9c1<>6, r9c2<>2');
   });
 
   it('writes wings, uniqueness and colouring one colour after another', () => {
+    // written from the pattern as it always was, not from the colours by function the hint draws (the readability report's M3)
     expect(stepText(step('XY_WING'))).toBe('XY-Wing: 7/9 in r7c7 / 6 in r7c6,r8c9 => r7c8<>6, r8c6<>6');
+    expect(stepText(step('XYZ_WING'))).toBe('XYZ-Wing: 4/5/9 in r2c5 / 4 in r3c6,r7c5 => r3c5<>4');
+    expect(stepText(step('WXYZ_WING'))).toBe('WXYZ-Wing: 1/9 in r4c4 / 1/4/7 in r56c5 / 4/9 in r4c3 => r4c6<>4, r5c3<>4');
     expect(stepText(step('UNIQUENESS_1'))).toBe('Unique Rectangle Type 1: 5/8 in r4c1,r5c18 => r4c8<>5, r4c8<>8');
     expect(stepText(step('UNIQUENESS_4'))).toBe('Unique Rectangle Type 4: 4/6 in r28c79 => r2c9<>4, r8c9<>4');
     expect(stepText(step('SIMPLE_COLORS'))).toBe('Simple Colors Trap: 4 (r1c5,r6c4,r8c6) / (r1c6,r5c5,r8c8) => r6c8<>4');

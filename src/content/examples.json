@@ -2696,12 +2696,62 @@
      "digit": 6
     }
    ],
+   "secondary": [
+    {
+     "cell": 28,
+     "digit": 6
+    },
+    {
+     "cell": 37,
+     "digit": 6
+    }
+   ],
+   "fins": [
+    {
+     "cell": 32,
+     "digit": 5
+    },
+    {
+     "cell": 43,
+     "digit": 5
+    }
+   ],
+   "units": [
+    {
+     "unit": 21,
+     "role": "secondary"
+    }
+   ],
    "labels": {
-    "primary": "the pair: 5/6 in both cells, one chute apart",
-    "secondary": "the third box's mini-line, where 6 is missing"
+    "primary": "the pair: only 5 and 6 in both cells, in different rows and boxes of rows 4-6",
+    "secondary": "box 4's 6s: all in the pair's rows",
+    "fins": "5 in the pair: one of the two cells is 5"
    },
-   "secondary": [],
-   "description": "Chute Remote Pair: r4c6 and r5c8 both hold 5/6 in one chute; 6 appears nowhere in r6c1, r6c2, r6c3, so the chute's third box must place its 6 in a row shared with a pair cell, forcing that cell to 5. One pair cell is therefore 5, so 5 can be removed from cells seeing both pair cells."
+   "walk": {
+    "frames": [
+     {
+      "text": "r4c6 and r5c8 hold only 5 and 6, in different rows and boxes of rows 4-6.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "In box 4, row 6 has no 6, so the box's 6 is in row 4 or row 5.",
+      "show": [
+       "secondary"
+      ]
+     },
+     {
+      "text": "If box 4's 6 is in row 4, r4c6 cannot be 6 and is 5; if it is in row 5, r5c8 is 5. Either way one of the two is 5.",
+      "show": [
+       "fins"
+      ]
+     }
+    ],
+    "lead": "r4c9 and r5c6 see both pair cells."
+   },
+   "copyOnly": [],
+   "description": "Chute Remote Pair: r4c6 and r5c8 hold only 5 and 6, in different rows and boxes of rows 4-6. In box 4, row 6 (r6c1, r6c2, r6c3) has no 6, so the box's 6 is in row 4 or row 5, and the pair cell in that row cannot be 6: it is 5. One pair cell is therefore 5, so 5 is removed from every cell that sees both."
   }
  },
  "BUG_PLUS_1": {
@@ -2823,6 +2873,23 @@
    "labels": {
     "primary": "the one cell with three candidates; 3 is the extra",
     "secondary": "its row, column and box, each holding 3 three times"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "Every unsolved cell but r5c6 holds exactly two candidates; r5c6 holds three.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "In row 5, column 6 and box 5, which meet at r5c6, 3 is a candidate in three cells each.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "Without the 3 in r5c6, every unsolved cell would hold two candidates, each found twice in its row, column and box. That is a deadly pattern: every cell could take its other candidate at once, and the puzzle would have two solutions."
    },
    "description": "BUG+1: removing 3 from r5c6 would leave a bivalue grid with two solutions, so r5c6 must be 3."
   }
@@ -3777,6 +3844,14 @@
     {
      "cell": 60,
      "digit": 9
+    },
+    {
+     "cell": 59,
+     "digit": 7
+    },
+    {
+     "cell": 71,
+     "digit": 9
     }
    ],
    "secondary": [
@@ -3790,8 +3865,38 @@
     }
    ],
    "labels": {
-    "primary": "pivot",
-    "secondary": "pincers"
+    "primary": "the pivot and the digit each pincer shares with it",
+    "secondary": "6 in each pincer"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "The pivot r7c7 holds only 7 and 9.",
+      "show": [
+       "primary"
+      ],
+      "cells": [
+       60
+      ]
+     },
+     {
+      "text": "If r7c7 is 7, the pincer r7c6 (only 6 and 7) must be 6.",
+      "show": [
+       "secondary"
+      ],
+      "cells": [
+       59
+      ]
+     },
+     {
+      "text": "If r7c7 is 9, the pincer r8c9 (only 6 and 9) must be 6.",
+      "show": [],
+      "cells": [
+       71
+      ]
+     }
+    ],
+    "lead": "Either way a pincer is 6; r7c8 and r8c6 see both."
    },
    "description": "XY-Wing: pivot r7c7 (7/9) with pincers r7c6 (6/7) and r8c9 (6/9); one pincer must be 6, so 6 is removed from cells seeing both."
   }
@@ -3895,18 +4000,26 @@
    "primary": [
     {
      "cell": 13,
-     "digit": 4
-    },
-    {
-     "cell": 13,
      "digit": 5
     },
     {
      "cell": 13,
      "digit": 9
+    },
+    {
+     "cell": 23,
+     "digit": 5
+    },
+    {
+     "cell": 58,
+     "digit": 9
     }
    ],
    "secondary": [
+    {
+     "cell": 13,
+     "digit": 4
+    },
     {
      "cell": 23,
      "digit": 4
@@ -3917,8 +4030,37 @@
     }
    ],
    "labels": {
-    "primary": "pivot",
-    "secondary": "pincers"
+    "primary": "the pivot's 5 and 9, and the one each pincer shares with it",
+    "secondary": "4 in all three cells"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "The pivot r2c5 holds only 4, 5 and 9.",
+      "show": [
+       "primary",
+       "secondary"
+      ],
+      "cells": [
+       13
+      ]
+     },
+     {
+      "text": "If r2c5 is 5, the pincer r3c6 (only 4 and 5) must be 4.",
+      "show": [],
+      "cells": [
+       23
+      ]
+     },
+     {
+      "text": "If r2c5 is 9, the pincer r7c5 (only 4 and 9) must be 4.",
+      "show": [],
+      "cells": [
+       58
+      ]
+     }
+    ],
+    "lead": "Or the pivot is 4 itself. Whichever digit it takes, one of the three cells is 4; r3c5 sees all three."
    },
    "description": "XYZ-Wing: pivot r2c5 (4/5/9) with pincers r3c6 (4/5) and r7c5 (4/9). Whichever digit the pivot takes, one of the three cells is 4, so 4 is removed from every cell that sees all three."
   }
@@ -4025,46 +4167,86 @@
    ],
    "primary": [
     {
+     "cell": 29,
+     "digit": 4
+    },
+    {
+     "cell": 29,
+     "digit": 9
+    },
+    {
      "cell": 30,
      "digit": 1
     },
     {
      "cell": 30,
      "digit": 9
+    },
+    {
+     "cell": 40,
+     "digit": 4
+    },
+    {
+     "cell": 40,
+     "digit": 7
+    },
+    {
+     "cell": 49,
+     "digit": 1
+    },
+    {
+     "cell": 49,
+     "digit": 7
     }
    ],
    "secondary": [
     {
-     "cell": 40,
+     "cell": 29,
      "digit": 4
     },
     {
      "cell": 40,
-     "digit": 7
-    },
-    {
-     "cell": 49,
-     "digit": 1
-    },
-    {
-     "cell": 49,
-     "digit": 7
+     "digit": 4
     }
    ],
-   "fins": [
+   "units": [
     {
-     "cell": 29,
-     "digit": 4
-    },
-    {
-     "cell": 29,
-     "digit": 9
+     "unit": 22,
+     "role": "primary"
     }
    ],
    "labels": {
-    "primary": "cell whose 9 the bivalue cell sees",
-    "secondary": "other cells of the three",
-    "fins": "bivalue cell"
+    "primary": "the bivalue cell and the three cells in box 5",
+    "secondary": "the 4s: at least one of them is true"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "The bivalue cell r4c3 holds only 4 and 9.",
+      "show": [
+       "primary"
+      ],
+      "cells": [
+       29
+      ]
+     },
+     {
+      "text": "The three cells r4c4, r5c5 and r6c5 in box 5 hold only 1, 4, 7 and 9 between them: one digit more than cells.",
+      "show": [],
+      "cells": [
+       30,
+       40,
+       49
+      ]
+     },
+     {
+      "text": "If r4c3 is 9, none of the three cells can be 9 (it sees the 9 in r4c4), so they must be 1, 4 and 7, and r5c5 is 4.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "Either way r4c3 or r5c5 is 4; r4c6 and r5c3 see both."
    },
    "description": "WXYZ-Wing: bivalue cell r4c3 (4/9) and the three cells r4c4, r5c5 and r6c5 in box 5, which hold 1/4/7/9 between them. The 9 in r4c3 sees every 9 in the three cells. Either r4c3 is 4, or it is 9 and the three cells in box 5 must be 1, 4 and 7. At least one of the four cells is therefore 4, so 4 is removed from every other cell that sees all the 4s among them."
   }
@@ -4208,6 +4390,23 @@
    "labels": {
     "primary": "the three corners holding only 5/8",
     "secondary": "5 and 8 in the fourth corner: either would complete the deadly pattern"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "Three corners of a rectangle, r4c1, r5c1 and r5c8, hold only 5 and 8.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The fourth corner, r4c8, holds 5 and 8 as well, and other digits too.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r4c8 were 5 or 8, all four corners would hold only 5 and 8; they could swap, and the puzzle would have two solutions."
    },
    "description": "Unique Rectangle Type 1: r4c1, r4c8, r5c1, r5c8 would form a deadly pattern on 5/8; r4c8 cannot be 5 or 8."
   }
@@ -4355,6 +4554,23 @@
    "labels": {
     "primary": "the rectangle: 4/7 in all four corners",
     "secondary": "6, the roof's extra candidate: one of the two roof cells must be it"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "4 and 7 are candidates in all four corners of the rectangle: the floor, r5c2 and r6c2, holds only these two, and the roof, r5c4 and r6c4, holds other digits too.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "Each of r5c4 and r6c4 holds just one other digit, the same one: 6.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If neither r5c4 nor r6c4 were 6, all four corners would hold only 4 and 7; they could swap, and the puzzle would have two solutions. One of them must therefore be 6, and r4c4 sees both."
    },
    "description": "Unique Rectangle Type 2: to avoid the deadly pattern on 4/7, one of r5c4/r6c4 must be 6, so 6 is removed from cells seeing both."
   }
@@ -4517,6 +4733,23 @@
     "primary": "the rectangle: 7/8 in all four corners",
     "secondary": "1 and 6: the roof's extras (r7c4, r7c5, read as one cell) and r7c6 hold only these in row 7, a naked pair"
    },
+   "walk": {
+    "frames": [
+     {
+      "text": "7 and 8 are candidates in all four corners of the rectangle: the floor, r3c4 and r3c5, holds only these two, and the roof, r7c4 and r7c5, holds other digits too.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The roof's extras are 1 and 6, and r7c6, also in row 7, holds only 1 and 6.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If neither roof cell took one of its extras, all four corners would hold only 7 and 8; they could swap, and the puzzle would have two solutions. A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked pair with r7c6: 1 and 6 can go nowhere else in row 7."
+   },
    "description": "Unique Rectangle Type 3: r3c4, r3c5, r7c4, r7c5 would form a deadly pattern on 7/8, so one of the roof cells r7c4, r7c5 must take an extra candidate. Read as one cell holding its extras (1 and 6), the roof makes a naked pair with r7c6 in row 7: 1 and 6 can only go in these cells, so they are removed from the rest of row 7."
   }
  },
@@ -4674,6 +4907,23 @@
     "primary": "the rectangle: 4/6 in all four corners",
     "secondary": "6 in column 9: only in the roof, so one of r2c9, r8c9 is 6"
    },
+   "walk": {
+    "frames": [
+     {
+      "text": "4 and 6 are candidates in all four corners of the rectangle: the floor, r2c7 and r8c7, holds only these two, and the roof, r2c9 and r8c9, holds other digits too.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "In column 9, 6 is a candidate only in the roof, so r2c9 or r8c9 is 6.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r2c9 or r8c9 were 4, the other would be 6, and all four corners would hold only 4 and 6; they could swap, and the puzzle would have two solutions."
+   },
    "description": "Unique Rectangle Type 4: 6 is locked into r2c9/r8c9; keeping 4 there would force the deadly pattern, so 4 is removed from r2c9 and r8c9."
   }
  },
@@ -4824,6 +5074,23 @@
    "labels": {
     "primary": "the rectangle: 4/8 in all four corners",
     "secondary": "5 in the roof cells: one of them must be it"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "4 and 8 are candidates in all four corners of the rectangle: r5c8 holds only these two, and r5c9, r8c8 and r8c9 hold other digits too.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "Each of r5c9, r8c8 and r8c9 holds just one other digit, the same one: 5.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If none of r5c9, r8c8 and r8c9 were 5, all four corners would hold only 4 and 8; they could swap, and the puzzle would have two solutions. One of them must therefore be 5, and r9c9 sees all of them."
    },
    "description": "Unique Rectangle Type 5: one of r5c9, r8c8, r8c9 must be 5 to avoid the deadly pattern, so 5 is removed from cells seeing all of them."
   }
@@ -4994,6 +5261,23 @@
     "primary": "the rectangle: 5/6 in all four corners",
     "secondary": "6 in rows 5 and 6: only in the rectangle, so on one diagonal"
    },
+   "walk": {
+    "frames": [
+     {
+      "text": "5 and 6 are candidates in all four corners of the rectangle: the floor, r5c6 and r6c9, holds only these two, and the roof, r5c9 and r6c6, holds other digits too.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "Rows 5 and 6 have 6 only in the rectangle, so their two 6s lie on the same diagonal.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r5c9 or r6c6 were 6, both would be, and r5c6 and r6c9 would both be 5: all four corners would hold only 5 and 6; they could swap, and the puzzle would have two solutions."
+   },
    "description": "Unique Rectangle Type 6: 6 is confined to the rectangle in both rows; placing it in a roof corner would force the deadly pattern, so 6 is removed from r5c9, r6c6."
   }
  },
@@ -5155,6 +5439,23 @@
     "primary": "the rectangle: 3/5 in all four corners",
     "secondary": "5 in row 6 and in column 5: only in the rectangle"
    },
+   "walk": {
+    "frames": [
+     {
+      "text": "3 and 5 are candidates in all four corners of the rectangle, and r9c6 holds only these two.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "In row 6 and in column 5, which cross at r6c5, 5 is a candidate only in the rectangle.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r6c5 were 3, row 6 would have its 5 in r6c6 and column 5 its 5 in r9c5, so r9c6, which sees both, would be 3: all four corners would hold only 3 and 5; they could swap, and the puzzle would have two solutions."
+   },
    "description": "Hidden Rectangle: r9c6 holds only 3/5, and 5 is confined to the rectangle in r6c5's row and column; r6c5 cannot be 3 or the deadly pattern appears."
   }
  },
@@ -5277,6 +5578,23 @@
    "labels": {
     "primary": "the three solved corners, none of them a given",
     "secondary": "the cell that would complete the rectangle with 2"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "Three corners of a rectangle are solved, none of them a given: r2c7 and r7c9 are 3, and r7c7 is 2.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The fourth corner, r2c9, still has 2 as a candidate.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r2c9 were 2, all four corners would hold only 2 and 3, none of them a given; they could swap, and the puzzle would have two solutions."
    },
    "description": "Avoidable Rectangle Type 1: setting r2c9 to 2 would complete an interchangeable rectangle of solved (non-given) cells, contradicting the puzzle's unique solution."
   }
@@ -5408,6 +5726,23 @@
    "labels": {
     "primary": "the two solved corners, neither of them a given, and the 4 and 5 that would complete the rectangle",
     "secondary": "3 in the two unsolved corners: one of them must be it"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "Two corners of a rectangle are solved, neither of them a given: r6c3 is 5 and r9c3 is 4; of the other two, r6c2 could be 4 and r9c2 could be 5.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "Each of r6c2 and r9c2 holds just one other digit, the same one: 3.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If neither r6c2 nor r9c2 were 3, they would be 4 and 5, and all four corners would hold only 4 and 5, none of them a given; they could swap, and the puzzle would have two solutions. One of them must therefore be 3, and r7c2 sees both."
    },
    "description": "Avoidable Rectangle Type 2: to avoid an interchangeable rectangle with the solved cells r6c3, r9c3, one of r6c2/r9c2 must be 3, so 3 is removed from cells seeing both."
   }
@@ -5567,6 +5902,23 @@
    "labels": {
     "primary": "the cells that would form a deadly 2/4/9 loop",
     "secondary": "4 and 9 in r9c5: each would complete the deadly loop"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "In rows 8 and 9, across three boxes, r8c1, r9c1, r8c5, r8c9 and r9c9 hold only 2, 4 and 9.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The sixth cell, r9c5, holds 4 and 9 as well, and other digits too.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r9c5 were 4 or 9, all six cells would hold only 2, 4 and 9. Swapping the two cells in each of columns 1, 5 and 9 at once would then give a second solution."
    },
    "description": "Extended Rectangle Type 1: r8c1, r9c1, r8c5, r9c5, r8c9, r9c9 would form a deadly 2/4/9 loop; r9c5 must take one of its extra candidates."
   }
@@ -6637,24 +6989,8 @@
    ],
    "primary": [
     {
-     "cell": 78,
-     "digit": 4
-    },
-    {
-     "cell": 78,
-     "digit": 7
-    },
-    {
-     "cell": 78,
-     "digit": 8
-    },
-    {
      "cell": 79,
      "digit": 2
-    },
-    {
-     "cell": 79,
-     "digit": 8
     },
     {
      "cell": 80,
@@ -6662,21 +6998,29 @@
     },
     {
      "cell": 80,
-     "digit": 4
+     "digit": 6
     },
     {
-     "cell": 80,
+     "cell": 75,
+     "digit": 2
+    },
+    {
+     "cell": 75,
      "digit": 6
     }
    ],
    "secondary": [
     {
-     "cell": 75,
-     "digit": 2
+     "cell": 78,
+     "digit": 4
     },
     {
-     "cell": 75,
-     "digit": 6
+     "cell": 78,
+     "digit": 7
+    },
+    {
+     "cell": 80,
+     "digit": 4
     },
     {
      "cell": 60,
@@ -6687,11 +7031,55 @@
      "digit": 7
     }
    ],
+   "fins": [
+    {
+     "cell": 78,
+     "digit": 8
+    },
+    {
+     "cell": 79,
+     "digit": 8
+    }
+   ],
+   "units": [
+    {
+     "unit": 8,
+     "role": "primary"
+    },
+    {
+     "unit": 26,
+     "role": "secondary"
+    }
+   ],
    "labels": {
-    "primary": "the intersection cells, holding 2/4/6/7/8",
-    "secondary": "the line cell and the box cell that complete the locked set"
+    "primary": "2 and 6 in row 9: one in r9c4, the other where it meets box 9",
+    "secondary": "4 and 7 in box 9: one in r7c7, the other where it meets row 9",
+    "fins": "8: where row 9 meets box 9, so in both"
    },
-   "description": "Sue de Coq: r9c7, r9c8, r9c9 (2/4/6/7/8) with r9c4 in the line and r7c7 in the box form a locked set; line digits are cleared from the rest of the line, box digits from the rest of the box."
+   "walk": {
+    "frames": [
+     {
+      "text": "In row 9, r9c4 holds only 2 and 6. Whichever it is, r9c7, r9c8 and r9c9 can take at most one of 2 and 6.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The three cells are in box 9 too, where r7c7 holds only 4 and 7, so they can take at most one of 4 and 7 as well.",
+      "show": [
+       "secondary"
+      ]
+     },
+     {
+      "text": "Their only other digit is 8, which they can take at most once. Three cells need three digits, so they hold one of 2 and 6, one of 4 and 7, and the 8.",
+      "show": [
+       "fins"
+      ]
+     }
+    ],
+    "lead": "Then r9c4 and the three cells hold both 2 and 6, r7c7 and the three cells both 4 and 7, and the three cells the 8."
+   },
+   "description": "Sue de Coq: r9c7, r9c8 and r9c9, in both row 9 and box 9, hold only 2, 4, 6, 7 and 8. r9c4 in row 9 takes 2 or 6, and r7c7 in box 9 takes 4 or 7, so the three cells hold one of 2 and 6, one of 4 and 7, and the 8. The other cells of row 9 outside box 9 lose 2, 6 and 8, and those of box 9 outside row 9 lose 4, 7 and 8."
   }
  },
  "SIMPLE_COLORS": {

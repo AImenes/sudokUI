@@ -101,6 +101,33 @@ const candsIn = (tech: Tech, u: number, d: number): number[] => {
 };
 
 describe('a walk', () => {
+  it("walks a pattern in its finder's own sentences when the finder writes them (step.walk, H1)", () => {
+    const ex = exampleOf('XY_WING');
+    // the XY-Wing without the walk its finder writes
+    const bare: Step = { ...ex.step, walk: undefined };
+    const s: Step = {
+      ...bare,
+      walk: {
+        frames: [
+          { text: 'The pivot holds only two digits.', show: ['primary'] },
+          { text: 'Each pincer shares one of them.', show: ['secondary'] }
+        ],
+        lead: 'Either way a pincer holds the digit.'
+      }
+    };
+    const frames = walkFrames(s);
+    expect(frames.map((f) => f.text)).toEqual([
+      'The pivot holds only two digits.',
+      'Each pincer shares one of them.',
+      `Either way a pincer holds the digit. ${walkFrames(bare).at(-1)!.text}`
+    ]);
+    expect([frames[0].show.has('primary'), frames[0].show.has('secondary')]).toEqual([true, false]);
+    expect([frames[1].show.has('primary'), frames[1].show.has('secondary')]).toEqual([true, true]);
+    expect(frames[2].show.has('conclusion')).toBe(true);
+    // without it, the labels as before
+    expect(walkFrames(bare).length).toBe(3);
+  });
+
   it('draws something new in every frame: no two frames in a row draw the same (M1)', () => {
     const repeats: string[] = [];
     let walks = 0;
@@ -128,7 +155,10 @@ describe('a walk', () => {
       // a band that is the whole drawing (a Full House) is there from the first frame
       const whole = !k.step.primary?.length && !k.step.secondary?.length && !k.step.fins?.length;
       for (const [i, frame] of walkFrames(k.step).entries()) {
-        const want = units.filter((u) => whole || frame.show.has(u.role)).map((u) => `${u.unit}:${u.role}`);
+        // a pattern walked cell by cell (step.walk) bands a house once the walk has named every cell of the role in it
+        const named = (u: (typeof units)[number]) =>
+          !frame.cells || ((u.role === 'primary' ? k.step.primary : k.step.secondary) ?? []).every((cd) => !UNITS[u.unit].includes(cd.cell) || frame.cells!.has(cd.cell));
+        const want = units.filter((u) => whole || (frame.show.has(u.role) && named(u))).map((u) => `${u.unit}:${u.role}`);
         expect(bandsAt(k, frame).sort(), `${k.id}, frame ${i + 1}`).toEqual(want.sort());
       }
       banded++;
@@ -316,7 +346,8 @@ describe('the uniqueness patterns draw what their argument uses (H2, M4, L4)', (
       const [x, y] = s.labels!.primary!.match(/(\d)\/(\d) in all four corners/)!.slice(1).map(Number);
       const corners = [...new Set(s.primary!.map((cd) => cd.cell))];
       expect(corners, tech).toHaveLength(4);
-      expect(one.text, tech).toBe(`The rectangle: ${x}/${y} in all four corners.`);
+      // its words name the pair in all four corners (the finder's own walk, H1)
+      expect(one.text.startsWith(`${x} and ${y} are candidates in all four corners of the rectangle`), `${tech}: ${one.text}`).toBe(true);
       // every corner's x and y, blue, as the sentence says
       for (const cell of corners) for (const digit of [x, y]) expect(kindAt(k, one, { cell, digit }), `${tech} frame 1 ${cell}:${digit}`).toBe('primary');
       // then the key digit in its own colour
@@ -340,8 +371,8 @@ describe('the uniqueness patterns draw what their argument uses (H2, M4, L4)', (
       else expect(ex.cands[cd.cell] & bit(cd.digit)).toBeTruthy();
     }
     const [one, two] = walkFrames(s);
-    expect(one.text).toBe('The two solved corners, neither of them a given, and the 4 and 5 that would complete the rectangle.');
-    expect(two.text).toBe('3 in the two unsolved corners: one of them must be it.');
+    expect(one.text).toBe('Two corners of a rectangle are solved, neither of them a given: r6c3 is 5 and r9c3 is 4; of the other two, r6c2 could be 4 and r9c2 could be 5.');
+    expect(two.text).toBe('Each of r6c2 and r9c2 holds just one other digit, the same one: 3.');
   });
 
   it("UR Type 1 and the Extended Rectangle: the corner the pattern must not reach, marked before its candidates go", () => {
@@ -363,6 +394,7 @@ describe('the uniqueness patterns draw what their argument uses (H2, M4, L4)', (
       expect(legendOf(s, k.values).map((l) => l.label), tech).toContain(`remove: ${words}`);
     }
     // the first frame says nothing of a corner it does not draw
-    expect(walkFrames(exampleOf('UNIQUENESS_1').step)[0].text).toBe('The three corners holding only 5/8.');
+    expect(walkFrames(exampleOf('UNIQUENESS_1').step)[0].text).toBe('Three corners of a rectangle, r4c1, r5c1 and r5c8, hold only 5 and 8.');
+    expect(walkFrames(exampleOf('EXTENDED_RECTANGLE').step)[0].text).not.toContain('r9c5');
   });
 });

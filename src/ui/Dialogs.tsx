@@ -6,6 +6,7 @@ import {
   useGame,
   solvePath,
   encodePosition,
+  dailyResultOf,
   contractGrid,
   hasManualMarks,
   markSlip,
@@ -25,7 +26,8 @@ import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
 import { parsePencilGrid, looksLikeGrid, formatPencilGrid } from '../content/textGrid';
 import { puzzleFromLink } from '../content/importLinks';
 import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
-import { fasterThan, dailyNumber, localDateKey, LATE_DAYS } from '../content/dailies';
+import { dailyNumber, localDateKey, dailyClosed, standingOf } from '../content/dailies';
+import { dailyLine, standingPhrase, asLine } from '../content/dailyLine';
 import { useDailyStats, SubmitOutcome } from '../state/dailyStats';
 import { sendText, copyText } from './send';
 import type { Sent } from './send';
@@ -963,6 +965,12 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   const autoCandidates = useGame((s) => s.autoCandidates);
   const markContract = useGame((s) => s.markContract);
   const info = useGame((s) => s.info);
+  // a board that is solved, or was until an Undo, is the solution: its
+  // position is not shared
+  const solvedBoard = useGame((s) => s.won || s.solved);
+  const played = useDailyStats((s) => s.played);
+  const dailyStats = useDailyStats((s) => s.stats);
+  const submitted = useDailyStats((s) => s.submitted);
   const [copied, setCopied] = useState('');
   // whether the link names the techniques the puzzle needs. Off every time
   // the dialog opens and never remembered: the names tell the recipient
@@ -1011,6 +1019,35 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   // forum post or a solver on the desk reads: a placed digit or the
   // candidates in every cell, as the board shows them
   const positionText = () => formatPencilGrid(cells, autoCandidates, markContract);
+  const showPosition = !(known && solvedBoard);
+
+  // a daily solved on this device, its share line again after the win
+  // screen has closed: the one on the board, else today's, from the solve
+  // as kept (src/state/dailyStats.ts)
+  const todayNo = dailyNumber(localDateKey());
+  const resultNo = known?.dailyNo && played[known.dailyNo] ? known.dailyNo : todayNo && played[todayNo] ? todayNo : null;
+  // where the time stands changes as others play: the line says it only
+  // from the day's numbers asked for now, as the win screen asks for them
+  // (nothing about the player in that request), and not from older ones
+  const [freshNo, setFreshNo] = useState<number | null>(null);
+  useEffect(() => {
+    if (!resultNo) return;
+    void useDailyStats
+      .getState()
+      .fetchStats(resultNo)
+      .then((s) => s && setFreshNo(resultNo));
+  }, [resultNo]);
+  const shareDailyResult = () => {
+    if (!resultNo) return;
+    const result = played[resultNo];
+    const stats = freshNo === resultNo ? dailyStats[resultNo] : undefined;
+    void sendText(dailyLine(t, resultNo, result, stats, submitted[resultNo])).then((outcome) => {
+      countShare(outcome, 'daily', result.level);
+      if (outcome !== 'copied') return;
+      setCopied('result');
+      setTimeout(() => setCopied(''), 2000);
+    });
+  };
 
   // the two links go to a person: a phone's share sheet, else the
   // clipboard; the puzzle string and the pencil-mark grid go into another
@@ -1035,15 +1072,19 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={t('Share this puzzle')} onClose={onClose}>
       <p className="dialog-note">
-        {rich(
-          t(
-            '{puzzle} shares a fresh copy from the start. {position} shares it exactly as it stands, with your entries, pencil marks and colours, for a second opinion or a race from the same spot.'
-          ),
-          {
-            puzzle: <strong>{t('Puzzle||the Puzzle link button')}</strong>,
-            position: <strong>{t('Position||the Position link button')}</strong>
-          }
-        )}
+        {showPosition
+          ? rich(
+              t(
+                '{puzzle} shares a fresh copy from the start. {position} shares it exactly as it stands, with your entries, pencil marks and colours, for a second opinion or a race from the same spot.'
+              ),
+              {
+                puzzle: <strong>{t('Puzzle||the Puzzle link button')}</strong>,
+                position: <strong>{t('Position||the Position link button')}</strong>
+              }
+            )
+          : rich(t('{puzzle} shares a fresh copy from the start. A solved board has no position to share: it would give the solution away.'), {
+              puzzle: <strong>{t('Puzzle||the Puzzle link button')}</strong>
+            })}
       </p>
       {known && !daily && (
         <label className="tick-row">
@@ -1055,22 +1096,31 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
         </label>
       )}
       <div className="hint-actions">
+        {resultNo && (
+          <button onClick={shareDailyResult}>
+            {copied === 'result' ? `✓ ${t('Copied')}` : `🏁 ${t('Your result in Daily #{no}', { no: resultNo })}`}
+          </button>
+        )}
         <button onClick={() => copy('link')}>
           {copied === 'link' ? `✓ ${t('Copied')}` : `🔗 ${t('Puzzle link')}`}
         </button>
-        <button onClick={() => copy('position')}>
-          {copied === 'position' ? `✓ ${t('Copied')}` : `📍 ${t('Position link')}`}
-        </button>
+        {showPosition && (
+          <button onClick={() => copy('position')}>
+            {copied === 'position' ? `✓ ${t('Copied')}` : `📍 ${t('Position link')}`}
+          </button>
+        )}
         <button className="ghost" onClick={() => copy('string')}>
           {copied === 'string' ? `✓ ${t('Copied')}` : t('Puzzle string')}
         </button>
-        <button
-          className="ghost"
-          onClick={() => copy('text')}
-          title={t('Copy the board as a pencil-mark grid, the text solvers paste on the forums')}
-        >
-          {copied === 'text' ? `✓ ${t('Copied')}` : t('Position as text')}
-        </button>
+        {showPosition && (
+          <button
+            className="ghost"
+            onClick={() => copy('text')}
+            title={t('Copy the board as a pencil-mark grid, the text solvers paste on the forums')}
+          >
+            {copied === 'text' ? `✓ ${t('Copied')}` : t('Position as text')}
+          </button>
+        )}
       </div>
     </Modal>
   );
@@ -1152,6 +1202,11 @@ export function VictoryDialog({
   const dailyNo = info?.dailyNo;
   const stats = useDailyStats((s) => (dailyNo ? s.stats[dailyNo] : undefined));
   const submittedSecs = useDailyStats((s) => (dailyNo ? s.submitted[dailyNo] : undefined));
+  // on its way, or waiting for the connection, whether the button or the
+  // switch sent it (gameStore.ts, recordDaily)
+  const inFlight = useDailyStats((s) => (dailyNo ? !!s.inFlight[dailyNo] : false));
+  const waiting = useDailyStats((s) => (dailyNo ? !!s.pending[dailyNo] : false));
+  const autoSend = useSettings((s) => s.autoSendDaily);
   const [sent, setSent] = useState<SubmitOutcome | 'sending' | null>(null);
   const [statsFailed, setStatsFailed] = useState(false);
   useEffect(() => {
@@ -1210,28 +1265,25 @@ export function VictoryDialog({
         ? t('Challenge tied: {theirs} to beat, you took {time}', challengeVars)
         : t('Challenge missed: {theirs} to beat, you took {time}', challengeVars);
 
-  // the share of the day's solvers this time beat, once it is in among them
-  const crowdPct =
-    submittedSecs !== undefined && stats && stats.count > 1 ? Math.round(fasterThan(stats, submittedSecs, true) * 100) : null;
+  // where this time stands among the day's, once it is in among them:
+  // its place while few have played, the share it beat from twenty up
+  const standing = submittedSecs !== undefined && stats ? standingOf(stats, submittedSecs) : null;
+  const standingLine = !standing
+    ? null
+    : standing.kind === 'percentile'
+      ? t('You were faster than {pct}% of them', { pct: standing.pct })
+      : asLine(standingPhrase(t, standing, info.dailyKey === localDateKey()));
   // the server takes a time for a day up to a week on; after that the day
   // is closed and the win screen does not offer what would be refused
-  const dailyClosed = !!info.dailyNo && (dailyNumber(localDateKey()) ?? 0) - info.dailyNo > LATE_DAYS;
+  const closed = !!info.dailyNo && dailyClosed(info.dailyNo);
 
-  // the player's time for the daily, sent when asked (src/state/dailyStats.ts)
+  // the player's time for the daily, sent when asked (src/state/dailyStats.ts):
+  // the same result the switch sends by itself (gameStore.ts, dailyResultOf)
   const sendDaily = async () => {
-    if (!info.dailyNo) return;
+    const result = dailyResultOf(useGame.getState());
+    if (!result) return;
     setSent('sending');
-    const outcome = await useDailyStats.getState().submit({
-      no: info.dailyNo,
-      grid: useGame
-        .getState()
-        .cells.map((c) => c.value)
-        .join(''),
-      seconds: secs,
-      hints: Object.values(game.hinted).reduce((sum, n) => sum + (n ?? 0), 0),
-      unassisted: !assisted
-    });
-    setSent(outcome);
+    setSent(await useDailyStats.getState().submit(result));
   };
 
   // same-puzzle challenge: the share text carries the share address of
@@ -1239,8 +1291,8 @@ export function VictoryDialog({
   // with this time as the one to beat. Never the techniques: a challenge
   // is about the time, and their names would tell the challenged what to
   // look for (the Share dialog names them only when asked). A daily's text
-  // is the spoiler-free line of docs/online-goals.md, with the crowd's
-  // percentile once an unassisted time is in
+  // is the spoiler-free line of docs/online-goals.md (dailyLine), where the
+  // time stands once it is in
   const shareResult = () => {
     const link = shareUrl({
       lang: t.lang,
@@ -1253,22 +1305,16 @@ export function VictoryDialog({
       vs: partWay ? undefined : secs
     });
     const vars = {
-      no: info.dailyNo ?? '',
       level: t.level(info.level),
       score: info.score,
       time: `${mm}:${ss}`,
-      pct: crowdPct ?? '',
       standing: verdict ? percentileText(verdict.percentile) : '',
       link
     };
-    // an assisted time is in nobody's statistics, so it carries no percentile
-    const text = info.dailyNo
-      ? assisted
-        ? t('sudokUI Daily #{no} · {level} ({score}) · {time} · {link}', vars)
-        : crowdPct !== null
-          ? t('sudokUI Daily #{no} · {level} ({score}) · {time} · unassisted · faster than {pct}% today · {link}', vars)
-          : t('sudokUI Daily #{no} · {level} ({score}) · {time} · unassisted · {link}', vars)
-      : verdict
+    const text =
+      info.dailyNo && info.dailyKey
+        ? dailyLine(t, info.dailyNo, { date: info.dailyKey, level: info.level, score: info.score, seconds: secs, assisted }, stats, submittedSecs)
+        : verdict
       ? assisted
         ? t('I solved a {level} sudoku (HoDoKu rating {score}) in {time}, {standing} on sudokUI. Can you beat that? {link}', vars)
         : t(
@@ -1354,22 +1400,47 @@ export function VictoryDialog({
                   ? t('Global times are unavailable right now')
                   : t('Fetching everyone’s times…')}
             </p>
-            {submittedSecs !== undefined && stats ? (
-              <p className="solve-clean">
-                {crowdPct !== null ? `🌍 ${t('You were faster than {pct}% of them', { pct: crowdPct })}` : `🌍 ${t('Your time is the first one in')}`}
-              </p>
-            ) : sent === 'sending' ? (
+            {standingLine ? (
+              <>
+                {/* a daily solved again: the results hold the time sent first */}
+                {submittedSecs !== undefined && submittedSecs !== secs && (
+                  <p className="dialog-note">{t('The time in the results is the first one you sent, {time}.', { time: clockOf(submittedSecs) })}</p>
+                )}
+                <p className="solve-clean">🌍 {standingLine}</p>
+                {standing?.kind === 'place' && standing.tied && (
+                  <p className="dialog-note">{t('Times are kept in 15-second steps, so times in the same step count as a tie')}</p>
+                )}
+                {/* one tap of consent, then automatic: off until the player
+                    turns it on, here or in Settings (src/state/settings.ts) */}
+                <label className="setting-row daily-auto">
+                  <span className="setting-text">
+                    <span>{t('Send my daily times automatically')}</span>
+                    <small>{t('After each unassisted daily, your time goes in by itself, as if you had tapped Send. You can turn it off here or in Settings')}</small>
+                  </span>
+                  <button
+                    role="switch"
+                    aria-checked={autoSend}
+                    className={`switch ${autoSend ? 'on' : ''}`}
+                    onClick={() => useSettings.getState().set({ autoSendDaily: !autoSend })}
+                  >
+                    <span className="knob" />
+                  </button>
+                </label>
+              </>
+            ) : sent === 'sending' || inFlight ? (
               <p className="solve-assisted">{t('Sending your time…')}</p>
-            ) : sent === 'offline' || sent === 'unavailable' ? (
+            ) : sent === 'offline' || sent === 'unavailable' || waiting ? (
               <p className="solve-assisted">{t('Your time goes in the next time you open the app online')}</p>
             ) : sent === 'refused' ? (
               <p className="solve-assisted">{t('Your time was not accepted')}</p>
-            ) : dailyClosed ? (
+            ) : closed ? (
               <p className="solve-assisted">{t('This daily is closed for new times')}</p>
             ) : assisted ? (
               <p className="solve-assisted">{t('Only unassisted solves are counted in everyone’s times')}</p>
             ) : (
-              <button onClick={sendDaily}>🌍 {t('Send my time and compare')}</button>
+              <button className="daily-send" onClick={sendDaily}>
+                🌍 {t('Send my time and compare')}
+              </button>
             )}
           </div>
         )}

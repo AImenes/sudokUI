@@ -26,7 +26,7 @@
 // by row, by column and singly. Nothing here is translated: the notation
 // is the same in every language, and the names are the ones the
 // community (and HoDoKu) uses.
-import { rowOf, colOf, cellName } from '../engine/board';
+import { UNITS, rowOf, colOf, cellName } from '../engine/board';
 import { TECHS, Tech } from '../engine/ratings';
 import type { Step, CellDigit, ChainLink, ChainSet, ColourRule } from '../engine/steps';
 import { isParity, insideSet } from '../engine/steps';
@@ -310,7 +310,7 @@ export function hodokuLine(step: Step): string {
   }
 
   const parts: string[] = [];
-  const rect = rectangleGroups(step);
+  const rect = rectangleGroups(step) ?? wingGroups(step);
   if (rect) {
     const known = digitsIn(rect[0]).join(sep);
     return `${name}: ${rect.filter((g) => g.length).map((g, i) => (i ? group(g, sep, known) : group(g, sep))).join(' / ')} => ${done}`;
@@ -333,8 +333,11 @@ export function hodokuLine(step: Step): string {
  * The uniqueness patterns' line, written from the rectangle as it always
  * was, not from the colours the hint draws: the readability pass moved a
  * key digit, a corner's would-be candidates and the roof's extras between
- * roles for the drawing, and the forum line stays the one players paste
- * (null for any other step)
+ * roles for the drawing, and the forum line stays the one players paste.
+ * Likewise Chute Remote Pair's (the pair, then its digit in the mini-line)
+ * and Sue de Coq's (the shared cells, then the two bivalue cells), whose
+ * hints phase 6 coloured by what the argument uses (null for any other
+ * step)
  */
 function rectangleGroups(step: Step): CellDigit[][] | null {
   const primary = step.primary ?? [];
@@ -365,6 +368,55 @@ function rectangleGroups(step: Step): CellDigit[][] | null {
       // the extra digit first, then the solved corners
       const extra = cells(secondary);
       return [secondary, primary.filter((cd) => !extra.has(cd.cell))];
+    }
+    case 'CHUTE_REMOTE_PAIR':
+      // the pair, then the pair digit in the mini-line, which the hint no
+      // longer draws (it draws the third box's missing digit instead)
+      return [primary, step.copyOnly ?? []];
+    case 'SUE_DE_COQ': {
+      // the cells where the line meets the box with every digit they hold,
+      // then the line's and the box's bivalue cells, as before the hint
+      // coloured the digits by where they are locked
+      const all = [...primary, ...secondary, ...(step.fins ?? [])];
+      const [line, box] = [0, 1].map((i) => new Set(UNITS[step.units?.[i]?.unit ?? 0]));
+      const shared = (cd: CellDigit) => line.has(cd.cell) && box.has(cd.cell);
+      const byCell = (cds: CellDigit[]) => [...cds].sort((x, y) => x.cell - y.cell || x.digit - y.digit);
+      return [byCell(all.filter(shared)), byCell(all.filter((cd) => !shared(cd)))];
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * The wings' line, written from the pattern as it always was, not from the
+ * colours the hint draws: the readability report's M3 colours a wing by
+ * what each digit does (a pincer's shared digit with the pivot, every z in
+ * one colour), and the forum line stays the one players paste (null for
+ * any other step). XY- and XYZ-Wing: the pivot's digits, then z in the
+ * pincers; the pivot is the cell the pattern lists twice. WXYZ-Wing: the
+ * cells of the three whose x the bivalue cell sees, the others of the
+ * three, then the bivalue cell, which its pattern lists first.
+ */
+function wingGroups(step: Step): CellDigit[][] | null {
+  const primary = step.primary ?? [];
+  const secondary = step.secondary ?? [];
+  const inCell = (list: CellDigit[], cell: number) => list.filter((cd) => cd.cell === cell);
+  switch (step.tech) {
+    case 'XY_WING':
+    case 'XYZ_WING': {
+      const pivot = primary.find((cd, i) => primary.findIndex((o) => o.cell === cd.cell) !== i)?.cell;
+      if (pivot === undefined) return null;
+      return [[...inCell(primary, pivot), ...inCell(secondary, pivot)], secondary.filter((cd) => cd.cell !== pivot)];
+    }
+    case 'WXYZ_WING': {
+      const linked = primary[0]?.cell;
+      const z = secondary[0]?.digit;
+      if (linked === undefined || z === undefined) return null;
+      const x = inCell(primary, linked).find((cd) => cd.digit !== z)?.digit;
+      const three = [...new Set(primary.map((cd) => cd.cell))].filter((c) => c !== linked);
+      const holdsX = (c: number) => primary.some((cd) => cd.cell === c && cd.digit === x);
+      return [three.filter(holdsX).flatMap((c) => inCell(primary, c)), three.filter((c) => !holdsX(c)).flatMap((c) => inCell(primary, c)), inCell(primary, linked)];
     }
     default:
       return null;

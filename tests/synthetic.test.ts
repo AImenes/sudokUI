@@ -140,8 +140,15 @@ describe('chute remote pair polarity', () => {
     expect(step!.eliminations.every((e) => e.digit === 8)).toBe(true);
     expect(step!.eliminations).toContainEqual({ cell: 1, digit: 8 });
     expect(step!.eliminations).toContainEqual({ cell: 15, digit: 8 });
-    expect(step!.description).toContain('7 appears nowhere in r3c4, r3c5, r3c6');
-    expect(step!.description).toContain('8 can be removed');
+    expect(step!.description).toContain('In box 2, row 3 (r3c4, r3c5, r3c6) has no 7');
+    expect(step!.description).toContain('it is 8. One pair cell is therefore 8, so 8 is removed');
+    // the hint draws box 2's 7s, the missing digit's, never the 8s present
+    // in the mini-line, and the pair's 8s as the digit one of them is
+    expect(step!.secondary!.every((x) => x.digit === 7 && [0, 1].includes(Math.floor(x.cell / 9)))).toBe(true);
+    expect(step!.fins).toEqual([
+      { cell: 6, digit: 8 },
+      { cell: 9, digit: 8 }
+    ]);
   });
 
   it('with neither digit in the mini-line, both digits fall from common peers', async () => {
@@ -155,6 +162,7 @@ describe('chute remote pair polarity', () => {
     expect(step).not.toBeNull();
     expect(step!.eliminations).toContainEqual({ cell: 1, digit: 7 });
     expect(step!.eliminations).toContainEqual({ cell: 1, digit: 8 });
-    expect(step!.description).toContain('neither digit appears');
+    expect(step!.description).toContain('has neither 7 nor 8');
+    expect(step!.description).toContain('one pair cell is 7 and the other 8');
   });
 });

@@ -1,6 +1,74 @@
-import { Grid, bit, digitsOf, popcount, sees, cellNames, cellName } from '../board';
+import { Grid, bit, digitsOf, popcount, sees, cellNames, cellName, rowOf, colOf } from '../board';
 import { Step, CellDigit } from '../steps';
 import { listAnd, tr } from '../text';
+import { oneOfThemSees } from './uniqueness';
+
+/** cells as prose writes them: "r8c1 and r9c9", "r8c1, r9c5 and r9c9" */
+const named = (cells: number[]) => listAnd(cells.map(cellName));
+
+/**
+ * The walk's words for a formation (the readability report's H1): where
+ * its six cells lie, and the swap that would give a second solution if
+ * they held only the trio. Its two long lines are two rows (then each
+ * column holds two of its cells, in one box) or two columns
+ */
+function formation(cells: number[]) {
+  const rows = [...new Set(cells.map(rowOf))].sort((a, b) => a - b).map((r) => r + 1);
+  const cols = [...new Set(cells.map(colOf))].sort((a, b) => a - b).map((c) => c + 1);
+  const inRows = rows.length === 2;
+  return {
+    /** "In rows 8 and 9, across three boxes, {cells} hold only {trio}." */
+    only: (some: number[], trio: string) =>
+      inRows
+        ? tr`In rows ${rows[0]} and ${rows[1]}, across three boxes, ${named(some)} hold only ${trio}.`
+        : tr`In columns ${cols[0]} and ${cols[1]}, across three boxes, ${named(some)} hold only ${trio}.`,
+    between: (trio: string) =>
+      inRows
+        ? tr`In rows ${rows[0]} and ${rows[1]}, across three boxes, ${named(cells)} hold ${trio} between them.`
+        : tr`In columns ${cols[0]} and ${cols[1]}, across three boxes, ${named(cells)} hold ${trio} between them.`,
+    swap: inRows
+      ? tr`Swapping the two cells in each of columns ${cols[0]}, ${cols[1]} and ${cols[2]} at once would then give a second solution.`
+      : tr`Swapping the two cells in each of rows ${rows[0]}, ${rows[1]} and ${rows[2]} at once would then give a second solution.`
+  };
+}
+
+/** Type 1's walk: the five cells on the trio, the sixth's trio digits, and why they go */
+function type1Walk(cells: number[], extrasCell: number, trio: number, elims: CellDigit[]): Step['walk'] {
+  const shape = formation(cells);
+  const t = listAnd(digitsOf(trio));
+  const ds = elims.map((e) => e.digit);
+  const x = cellName(extrasCell);
+  const lead =
+    ds.length === 1
+      ? tr`If ${x} were ${ds[0]}, all six cells would hold only ${t}.`
+      : ds.length === 2
+        ? tr`If ${x} were ${ds[0]} or ${ds[1]}, all six cells would hold only ${t}.`
+        : tr`If ${x} were ${ds[0]}, ${ds[1]} or ${ds[2]}, all six cells would hold only ${t}.`;
+  return {
+    frames: [
+      { text: shape.only(cells.filter((c) => c !== extrasCell), t), show: ['primary'] },
+      { text: tr`The sixth cell, ${x}, holds ${listAnd(ds)} as well, and other digits too.`, show: ['secondary'] }
+    ],
+    lead: `${lead} ${shape.swap}`
+  };
+}
+
+/** Type 2's walk: the six cells on the trio, the extra digit's cells, and why the removals see them all */
+function type2Walk(cells: number[], trio: number, z: number, zCells: number[], elims: CellDigit[]): Step['walk'] {
+  const shape = formation(cells);
+  const t = listAnd(digitsOf(trio));
+  const lead =
+    zCells.length === 2
+      ? tr`If neither ${cellName(zCells[0])} nor ${cellName(zCells[1])} were ${z}, all six cells would hold only ${t}.`
+      : tr`If none of ${named(zCells)} were ${z}, all six cells would hold only ${t}.`;
+  return {
+    frames: [
+      { text: shape.between(t), show: ['primary'] },
+      { text: tr`Their only other candidate is ${z}, in ${named(zCells)}.`, show: ['secondary'] }
+    ],
+    lead: `${lead} ${shape.swap} ${oneOfThemSees(z, zCells, elims)}`
+  };
+}
 
 /**
  * Extended Unique Rectangles (sudokuwiki.org/Extended_Unique_Rectangles).
@@ -86,6 +154,7 @@ function checkFormation(g: Grid, cells: number[]): Step | null {
             ? tr`${elims[0].digit} in ${cellName(extrasCell)}: it would complete the deadly loop`
             : tr`${listAnd(elims.map((e) => e.digit))} in ${cellName(extrasCell)}: each would complete the deadly loop`
       },
+      walk: type1Walk(cells, extrasCell, trio, elims),
       description: tr`Extended Rectangle Type 1: ${cellNames(cells)} would form a deadly ${digitsOf(trio).join('/')} loop; ${cellName(extrasCell)} must take one of its extra candidates.`
     };
   }
@@ -116,6 +185,7 @@ function checkFormation(g: Grid, cells: number[]): Step | null {
         primary: tr`the cells that would form a deadly ${digitsOf(trio).join('/')} loop`,
         secondary: tr`${z}, the extra candidate: one of these cells must be it`
       },
+      walk: type2Walk(cells, trio, z, zCells, elims),
       description: tr`Extended Rectangle Type 2: to avoid a deadly ${digitsOf(trio).join('/')} loop in ${cellNames(cells)}, one of ${cellNames(zCells)} must be ${z}, so ${z} is removed from cells seeing all of them.`
     };
   }

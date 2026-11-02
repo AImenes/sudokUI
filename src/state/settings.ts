@@ -97,6 +97,11 @@ interface Settings {
    *  the owner's and testers' devices, and for anyone who would rather not
    *  be counted. Kept at the player's request, like every setting */
   dontCount: boolean;
+  /** a daily's time goes in by itself after every unassisted solve, as if
+   *  the player had tapped "Send my time and compare" (gameStore.ts,
+   *  recordDaily). Off until the player turns it on: offered on the win
+   *  screen once a time has been sent, and here in Settings */
+  autoSendDaily: boolean;
 
   toggleTheme: () => void;
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
@@ -133,6 +138,7 @@ export const useSettings = create<Settings>()(
       countPlays: false,
       countPlaysAsked: false,
       dontCount: false,
+      autoSendDaily: false,
       toggleTheme: () =>
         set((s) => ({
           theme:

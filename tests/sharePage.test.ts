@@ -82,14 +82,16 @@ const placeholders = (s: string) => (s.match(/\{\w+\}/g) ?? []).sort();
 
 describe('the share address', () => {
   it('is /p/<puzzle> under the language root, with the hints as a query', () => {
-    expect(sharePath({ lang: 'en', puzzle: EASY })).toBe(`/p/${EASY}`);
-    expect(sharePath({ lang: 'nb', puzzle: EASY })).toBe(`/nb/p/${EASY}`);
-    expect(sharePath({ lang: 'es', puzzle: EASY })).toBe(`/es/p/${EASY}`);
+    // with no query the address ends in a slash, so a bare link that ends
+    // in an empty cell's dot keeps it (below)
+    expect(sharePath({ lang: 'en', puzzle: EASY })).toBe(`/p/${EASY}/`);
+    expect(sharePath({ lang: 'nb', puzzle: EASY })).toBe(`/nb/p/${EASY}/`);
+    expect(sharePath({ lang: 'es', puzzle: EASY })).toBe(`/es/p/${EASY}/`);
     expect(sharePath({ lang: 'en', puzzle: EASY, level: 'Hard', score: 1420, techs: ['X_WING', 'SKYSCRAPER'], vs: 552 })).toBe(
       `/p/${EASY}?b=hard&s=1420&t=x-wing,skyscraper&vs=552`
     );
     expect(shareUrl({ lang: 'nb', puzzle: EASY, level: 'Easy' })).toBe(`${SITE}/nb/p/${EASY}?b=easy`);
-    expect(shareUrl({ lang: 'en', puzzle: EASY }, 'http://localhost:5173')).toBe(`http://localhost:5173/p/${EASY}`);
+    expect(shareUrl({ lang: 'en', puzzle: EASY }, 'http://localhost:5173')).toBe(`http://localhost:5173/p/${EASY}/`);
     for (const lang of HOME_LANGS) expect(sharePath({ lang, puzzle: EASY }).startsWith(homePath(lang))).toBe(true);
     for (const lang of HOME_LANGS) expect(homePath(lang)).toBe(langRoot(lang));
   });
@@ -107,6 +109,23 @@ describe('the share address', () => {
     // technique hints may be catalogue keys as well as slugs
     expect(parse(`/p/${EASY}?t=X_WING,skyscraper`)?.techs).toEqual(['X_WING', 'SKYSCRAPER']);
     for (const tech of TECH_KEYS) expect(parse(`/p/${EASY}?t=${techSlug(tech)}`)?.techs, tech).toEqual([tech]);
+  });
+
+  it('ends in a slash when it has no query, so a puzzle ending in a dot keeps its last cell in a bare link', () => {
+    // Reddit, chat apps and Markdown leave a full stop out of a bare link;
+    // most puzzles end in an empty cell's dot
+    expect(EASY.endsWith('.')).toBe(true);
+    const stripped = (link: string) => link.replace(/[.,;:!?]+$/, '');
+    for (const lang of HOME_LANGS) {
+      const link = shareUrl({ lang, puzzle: EASY });
+      expect(link.endsWith(`${EASY}/`), link).toBe(true);
+      expect(stripped(link)).toBe(link);
+      expect(parseShareUrl(new URL(link))).toEqual({ lang, puzzle: EASY });
+      // a query after the puzzle keeps the dot inside the link anyway
+      const withQuery = shareUrl({ lang, puzzle: EASY, level: 'Easy' });
+      expect(withQuery.endsWith(`${EASY}?b=easy`), withQuery).toBe(true);
+      expect(parseShareUrl(new URL(withQuery))).toEqual({ lang, puzzle: EASY, level: 'Easy' });
+    }
   });
 
   it('drops a hint that does not parse, and names at most three techniques', () => {
@@ -130,7 +149,7 @@ describe('the share address', () => {
       `/p/${EASY}?t=x-wing,skyscraper,swordfish`
     );
     // an unknown or empty level, score and time are not written
-    expect(sharePath({ lang: 'en', puzzle: EASY, score: 0, vs: 0, techs: [] })).toBe(`/p/${EASY}`);
+    expect(sharePath({ lang: 'en', puzzle: EASY, score: 0, vs: 0, techs: [] })).toBe(`/p/${EASY}/`);
   });
 
   it('is nothing else: the path must be a puzzle', () => {
@@ -153,7 +172,8 @@ describe('the share address', () => {
 
   it('agrees with the service worker, the language roots and the static pages', () => {
     for (const lang of HOME_LANGS) {
-      for (const path of [sharePath({ lang, puzzle: EASY }), sharePath({ lang, puzzle: EASY, level: 'Hard', score: 1, vs: 9 }), `${sharePath({ lang, puzzle: EASY })}/`]) {
+      // the address as written, with and without its query, and without its slash
+      for (const path of [sharePath({ lang, puzzle: EASY }), sharePath({ lang, puzzle: EASY, level: 'Hard', score: 1, vs: 9 }), sharePath({ lang, puzzle: EASY }).slice(0, -1)]) {
         expect(APP_NAVIGATION.test(path), path).toBe(true);
         expect(STATIC_ROUTES.test(path), path).toBe(false);
         expect(langOfPath(path.split('?')[0]), path).toBe(lang === 'en' ? null : lang);
@@ -385,12 +405,37 @@ describe('a daily’s share page', () => {
 
   it('comes from the published list, not from the address', () => {
     const p = shareParamsOf(url(`/nb/daily/${d.date}?vs=552&b=nightmare&s=9999`), list)!;
-    expect(p).toEqual({ lang: 'nb', puzzle: d.puzzle, level: d.level, score: d.score, techs: d.techs, vs: 552, daily: { no, date: d.date } });
+    // never the techniques: the published list has them, the preview does not
+    expect(d.techs.length).toBeGreaterThan(0);
+    expect(p).toEqual({ lang: 'nb', puzzle: d.puzzle, level: d.level, score: d.score, vs: 552, daily: { no, date: d.date } });
     expect(shareParamsOf(url('/daily/2020-01-01'), list)).toBeNull();
     expect(shareParamsOf(url(`/p/${EASY}?b=hard`), list)).toEqual({ lang: 'en', puzzle: EASY, level: 'Hard' });
     // the address of a daily is its day, with the challenge if any
     expect(sharePath(p)).toBe(`/nb/daily/${d.date}?vs=552`);
     expect(sharePath({ ...p, vs: undefined })).toBe(`/nb/daily/${d.date}`);
+  });
+
+  it('names no technique in any language, whatever the address carries, and promises no crowd', () => {
+    for (const daily of list.slice(0, 60)) {
+      for (const lang of HOME_LANGS) {
+        const p = shareParamsOf(url(`${lang === 'en' ? '' : `/${lang}`}/daily/${daily.date}?t=x-wing,skyscraper`), list)!;
+        expect(p.techs).toBeUndefined();
+        // even a daily built with techniques by hand says none of them
+        for (const params of [p, { ...p, techs: [...daily.techs, 'X_WING', 'SKYSCRAPER'] as Tech[] }, { ...p, vs: 600 }]) {
+          const c = shareCopy(params);
+          const page = renderSharePage(template, params);
+          for (const tech of TECH_KEYS) {
+            const name = techName(tech, lang);
+            for (const text of [c.title, c.description, c.ogTitle, c.ogImageAlt, c.h1]) expect(text, `${lang} ${name}`).not.toContain(name);
+            expect(page, `${lang} ${name}`).not.toContain(`${name},`);
+            expect(page, `${lang} ${name}`).not.toContain(`${name}.`);
+          }
+        }
+      }
+    }
+    // the description is true however few have played: no "everyone's times"
+    expect(SHARE.en.descriptionDaily).toContain('One board for everyone, the same day.');
+    for (const lang of HOME_LANGS) expect(SHARE[lang].descriptionDaily).not.toContain('{techs}');
   });
 
   it('says which daily it is, in every language', () => {
@@ -401,9 +446,15 @@ describe('a daily’s share page', () => {
     expect(en.description.startsWith(`The daily for ${d.date}: `)).toBe(true);
     expect(en.description).toContain(`${d.level} sudoku with a HoDoKu rating of ${d.score}`);
     expect(en.ogImage).toBe(ogShareCard(d.level, 'en'));
+    // a challenge on a daily is still that daily
     const vs = shareCopy({ ...p, vs: 61 });
-    expect(vs.ogTitle).toBe('Solved in 1:01. Can you beat it?');
+    expect(vs.ogTitle).toBe(`Daily #${no}: solved in 1:01. Can you beat it?`);
     expect(vs.h1).toBe(en.ogTitle);
+    for (const lang of OTHER) {
+      const c = shareCopy({ ...p, lang, vs: 61 });
+      expect(c.ogTitle).toMatch(new RegExp(`(#|n\\.º )${no}\\b`));
+      expect(c.ogTitle).toContain('1:01');
+    }
     for (const lang of OTHER) {
       const c = shareCopy({ ...p, lang });
       expect(c.title).toContain(String(no));

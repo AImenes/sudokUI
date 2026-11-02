@@ -208,6 +208,44 @@ export function fasterThan(stats: DailyStats, seconds: number, own = false): num
   return Math.min(1, Math.max(0, (slower + same / 2) / others));
 }
 
+/** whether the server has stopped taking times for a day: more than LATE_DAYS behind the player's today */
+export const dailyClosed = (no: number, today = localDateKey()): boolean => (dailyNumber(today) ?? 0) - no > LATE_DAYS;
+
+/** below this many unassisted times, a time is told by its place; from it up, by the share it beat */
+export const PLACE_BELOW = 20;
+
+/** where the player's time stands among a day's */
+export type Standing =
+  /** the only time in */
+  | { kind: 'only' }
+  /** its place among `of` times; tied when another time shares its 15-second step */
+  | { kind: 'place'; place: number; of: number; tied: boolean }
+  /** the share of the others it beat, in percent */
+  | { kind: 'percentile'; pct: number };
+
+/**
+ * Where the player's own time, already among the day's statistics, stands.
+ * While fewer than PLACE_BELOW have played, a percentile says little (with
+ * two solvers it can only read 0 or 100), so it is the place: one more than
+ * the times in faster 15-second steps. The server keeps no finer time
+ * than the step (worker/daily.ts), so a time that shares the player's step
+ * is a tie, and both hold the better place. From PLACE_BELOW up, the share
+ * of the others the time beat (fasterThan). Null before anything is in.
+ */
+export function standingOf(stats: DailyStats, seconds: number): Standing | null {
+  if (stats.count <= 0) return null;
+  if (stats.count === 1) return { kind: 'only' };
+  if (stats.count >= PLACE_BELOW) return { kind: 'percentile', pct: Math.round(fasterThan(stats, seconds, true) * 100) };
+  const mine = bucketOf(seconds);
+  let faster = 0;
+  let same = 0;
+  for (const [bucket, n] of stats.histogram) {
+    if (bucket < mine) faster += n;
+    else if (bucket === mine) same += n;
+  }
+  return { kind: 'place', place: Math.min(faster + 1, stats.count), of: stats.count, tied: same > 1 };
+}
+
 /** the published dailies, loaded only when one is needed (the app's bundle stays light) */
 export async function loadDailies(): Promise<Daily[]> {
   try {

@@ -299,7 +299,21 @@ export default function App() {
       return;
     }
     const sharedPosition = params.get('s');
-    if (sharedPosition && useGame.getState().loadPosition(sharedPosition)) return;
+    const position = sharedPosition ? useGame.getState().loadPosition(sharedPosition) : null;
+    if (position === true) return;
+    // a position that cannot be loaded (a chat or a copy cut the link
+    // short, most likely): the puzzle under it opens as below, from the
+    // start, and the player is told why the marks are not there
+    const positionRefused = () => {
+      if (!position) return;
+      const t = translator();
+      useGame.setState({
+        notice:
+          position === 'cut'
+            ? t('This link looks cut off, so the entries and marks it shared could not be loaded')
+            : t('The entries and marks this link shared could not be read')
+      });
+    };
     const share = parseShareUrl(window.location);
     // a puzzle string may write its empty cells as zeros; the app writes dots
     const shared = (share?.puzzle ?? params.get('p') ?? '').replace(/[^0-9.]/g, '').replace(/0/g, '.');
@@ -314,11 +328,17 @@ export default function App() {
     };
     /** a game nobody has touched: its clock may have run, nothing else has happened */
     const untouched = () => game.cells.every((c) => c.given || (!c.value && !c.corner && !c.center && !c.colors.length));
+    /** the game on the board is now the one a share link opened, for the counts (gameStore.ts, kindOf) */
+    const fromLink = () => useGame.setState((s) => ({ info: s.info && { ...s.info, fromLink: true } }));
     /** the challenger's time over the game already on the board */
     const challengeCurrent = (vs: number) => {
       // a finished game, or one not yet begun, starts over against that
-      // time; one under way keeps its moves and takes the time on
-      if (game.won || untouched()) game.restart();
+      // time, as the link's game; one under way keeps its moves and takes
+      // the time on
+      if (game.won || untouched()) {
+        game.restart();
+        fromLink();
+      }
       challenge(vs);
     };
     // a daily's address, or #daily for today's: that day's board, unless it
@@ -328,10 +348,12 @@ export default function App() {
     if (daily) {
       if (game.info?.dailyKey === daily.date) {
         if (daily.vs) challengeCurrent(daily.vs);
+        positionRefused();
         return;
       }
       void startDaily(daily.date).then(() => {
         if (daily.vs) challenge(daily.vs);
+        positionRefused();
       });
       return;
     }
@@ -339,13 +361,19 @@ export default function App() {
       // the puzzle already on the board (a reload lands here), perhaps with
       // a challenger's time for it
       if (share?.vs) challengeCurrent(share.vs);
+      positionRefused();
       return;
     }
     if (shared) {
       const v = shared.length === 81 ? validatePuzzle(shared) : null;
       if (v && v.ok) {
         game.startGame(shared, v.score, v.level);
+        // a share address is someone's link; a bare #p= is mostly the
+        // Learn pages' own (their examples and their paste box), so its
+        // game is counted as a new one
+        if (share) fromLink();
         if (share?.vs) challenge(share.vs);
+        positionRefused();
         return;
       }
       // a share page promised a puzzle the app cannot play (no solution,
@@ -357,6 +385,8 @@ export default function App() {
     }
     const now = useGame.getState();
     if (!now.info && !now.custom) start({ kind: 'level', level: 'Easy' });
+    // (a share page whose puzzle cannot be opened has said so already)
+    if (!useGame.getState().notice) positionRefused();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

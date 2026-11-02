@@ -55,8 +55,8 @@ afterEach(() => {
 describe('the plays counted, by default', () => {
   it('sends a start and a solve while online, in one batch, with nothing kept on the device', async () => {
     const s = useTelemetry.getState();
-    s.track('started', 'Hard', 0);
-    s.track('completed', 'Hard', 552);
+    s.track('started', 'Hard', 0, 'new');
+    s.track('completed', 'Hard', 552, 'new');
     expect(useTelemetry.getState().pending).toHaveLength(2);
     expect(calls).toHaveLength(0);
     answers = [ok()];
@@ -66,15 +66,15 @@ describe('the plays counted, by default', () => {
     expect(calls[0].init?.method).toBe('POST');
     expect(calls[0].init?.keepalive).toBe(true);
     expect(sent(0)).toEqual([
-      { event: 'started', band: 'Hard', bucket: 0, standalone: false, version: expect.any(String), source: 'tab' },
-      { event: 'completed', band: 'Hard', bucket: 36, standalone: false, version: expect.any(String), source: 'tab' }
+      { event: 'started', band: 'Hard', bucket: 0, standalone: false, version: expect.any(String), source: 'tab', kind: 'new', lang: 'en' },
+      { event: 'completed', band: 'Hard', bucket: 36, standalone: false, version: expect.any(String), source: 'tab', kind: 'new', lang: 'en' }
     ]);
     expect(useTelemetry.getState().pending).toEqual([]);
     expect(useTelemetry.getState().queue).toEqual([]);
     expect(storage.has(STORAGE_KEY)).toBe(false);
     // a live line is sent once, whatever comes of it
     answers = [new Response('', { status: 503 })];
-    useTelemetry.getState().track('completed', 'Easy', 10);
+    useTelemetry.getState().track('completed', 'Easy', 10, 'new');
     await useTelemetry.getState().flush();
     expect(calls).toHaveLength(2);
     expect(useTelemetry.getState().queue).toEqual([]);
@@ -84,7 +84,7 @@ describe('the plays counted, by default', () => {
   it('waits a moment for company, then sends on its own', async () => {
     vi.useFakeTimers();
     answers = [ok()];
-    useTelemetry.getState().track('started', 'Medium', 0);
+    useTelemetry.getState().track('started', 'Medium', 0, 'new');
     expect(calls).toHaveLength(0);
     await vi.advanceTimersByTimeAsync(BATCH_DELAY);
     expect(calls).toHaveLength(1);
@@ -93,7 +93,7 @@ describe('the plays counted, by default', () => {
 
   it('drops a line while offline with the switch off, and keeps nothing', async () => {
     setNavigator({ onLine: false });
-    useTelemetry.getState().track('completed', 'Hard', 552);
+    useTelemetry.getState().track('completed', 'Hard', 552, 'new');
     expect(useTelemetry.getState().pending).toEqual([]);
     expect(useTelemetry.getState().queue).toEqual([]);
     await useTelemetry.getState().flush();
@@ -109,11 +109,11 @@ describe('the plays counted, with the switch on', () => {
     useSettings.setState({ countPlays: true });
     setNavigator({ onLine: false });
     const s = useTelemetry.getState();
-    s.track('started', 'Hard', 0);
-    s.track('completed', 'Hard', 700);
+    s.track('started', 'Hard', 0, 'new');
+    s.track('completed', 'Hard', 700, 'new');
     const queue = useTelemetry.getState().queue;
     expect(queue).toHaveLength(2);
-    expect(queue[1]).toEqual({ event: 'completed', band: 'Hard', bucket: 46, standalone: false, version: expect.any(String), source: 'tab', offline: true, optin: true, returning: false });
+    expect(queue[1]).toEqual({ event: 'completed', band: 'Hard', bucket: 46, standalone: false, version: expect.any(String), source: 'tab', kind: 'new', lang: 'en', offline: true, optin: true, returning: false });
     expect(useTelemetry.getState().firstSeen).toBe(today);
     expect(JSON.parse(storage.get(STORAGE_KEY)!)).toEqual({ queue, firstSeen: today });
     // still offline: nothing goes
@@ -131,19 +131,19 @@ describe('the plays counted, with the switch on', () => {
 
   it('marks a live line as opted in, and as a return once a day has passed since the switch went on', async () => {
     useSettings.setState({ countPlays: true });
-    useTelemetry.getState().track('started', 'Hard', 0);
+    useTelemetry.getState().track('started', 'Hard', 0, 'new');
     expect(useTelemetry.getState().pending[0]).toMatchObject({ optin: true, returning: false });
     expect(useTelemetry.getState().pending[0].offline).toBeUndefined();
     expect(useTelemetry.getState().firstSeen).toBe(today);
     useTelemetry.setState({ pending: [], firstSeen: '2026-01-01' });
-    useTelemetry.getState().track('started', 'Hard', 0);
+    useTelemetry.getState().track('started', 'Hard', 0, 'new');
     expect(useTelemetry.getState().pending[0]).toMatchObject({ optin: true, returning: true });
   });
 
   it('keeps the queue when the server cannot take it, and sends it in batches', async () => {
     useSettings.setState({ countPlays: true });
     setNavigator({ onLine: false });
-    for (let i = 0; i < BATCH_MAX + 5; i++) useTelemetry.getState().track('started', 'Easy', 0);
+    for (let i = 0; i < BATCH_MAX + 5; i++) useTelemetry.getState().track('started', 'Easy', 0, 'new');
     expect(useTelemetry.getState().queue).toHaveLength(BATCH_MAX + 5);
     setNavigator({ onLine: true });
     answers = [new Response('', { status: 503 })];
@@ -168,14 +168,14 @@ describe('the plays counted, with the switch on', () => {
   it('forgets the queue and the date the moment the switch goes off', () => {
     useSettings.setState({ countPlays: true });
     setNavigator({ onLine: false });
-    useTelemetry.getState().track('completed', 'Hard', 100);
+    useTelemetry.getState().track('completed', 'Hard', 100, 'new');
     expect(storage.has(STORAGE_KEY)).toBe(true);
     useSettings.getState().set({ countPlays: false });
     expect(useTelemetry.getState().queue).toEqual([]);
     expect(useTelemetry.getState().firstSeen).toBeNull();
     expect(storage.has(STORAGE_KEY)).toBe(false);
     // and off, an offline line is dropped again
-    useTelemetry.getState().track('completed', 'Hard', 100);
+    useTelemetry.getState().track('completed', 'Hard', 100, 'new');
     expect(useTelemetry.getState().queue).toEqual([]);
     expect(storage.has(STORAGE_KEY)).toBe(false);
   });
@@ -232,7 +232,7 @@ describe('the switch going off while a batch travels', () => {
   it('does not write the kept queue back when the send comes home', async () => {
     useSettings.getState().set({ countPlays: true });
     setNavigator({ onLine: false });
-    useTelemetry.getState().track('completed', 'Hard', 100);
+    useTelemetry.getState().track('completed', 'Hard', 100, 'new');
     expect(storage.has(STORAGE_KEY)).toBe(true);
     setNavigator({ onLine: true });
     // the send is held open until the test lets it go
@@ -265,7 +265,7 @@ describe('the switch turned on in another window', () => {
     expect(useTelemetry.getState().firstSeen).toBe('2026-10-01');
     // an offline line here goes after it, and says the device played before
     setNavigator({ onLine: false });
-    useTelemetry.getState().track('started', 'Easy', 0);
+    useTelemetry.getState().track('started', 'Easy', 0, 'new');
     const kept = JSON.parse(storage.get(STORAGE_KEY)!);
     expect(kept.firstSeen).toBe('2026-10-01');
     expect(kept.queue).toHaveLength(2);
@@ -280,12 +280,12 @@ describe('leaving the device out', () => {
     // an opted-in device with a line kept from an offline solve
     useSettings.getState().set({ countPlays: true });
     setNavigator({ onLine: false });
-    useTelemetry.getState().track('completed', 'Hard', 100);
+    useTelemetry.getState().track('completed', 'Hard', 100, 'new');
     expect(useTelemetry.getState().queue).toHaveLength(1);
     expect(storage.has(STORAGE_KEY)).toBe(true);
     // and a live line waiting for company
     setNavigator({ onLine: true });
-    useTelemetry.getState().track('started', 'Hard', 0);
+    useTelemetry.getState().track('started', 'Hard', 0, 'new');
     expect(useTelemetry.getState().pending).toHaveLength(1);
     // the switch, as Settings turns it on
     useSettings.getState().set({ dontCount: true, countPlays: false });
@@ -293,10 +293,10 @@ describe('leaving the device out', () => {
     expect(useTelemetry.getState().queue).toEqual([]);
     expect(storage.has(STORAGE_KEY)).toBe(false);
     // from now on nothing goes, live or kept
-    useTelemetry.getState().track('started', 'Easy', 0);
-    useTelemetry.getState().track('completed', 'Easy', 60);
+    useTelemetry.getState().track('started', 'Easy', 0, 'new');
+    useTelemetry.getState().track('completed', 'Easy', 60, 'new');
     setNavigator({ onLine: false });
-    useTelemetry.getState().track('completed', 'Easy', 60);
+    useTelemetry.getState().track('completed', 'Easy', 60, 'new');
     setNavigator({ onLine: true });
     vi.advanceTimersByTime(BATCH_DELAY * 3);
     await useTelemetry.getState().flush();
@@ -307,13 +307,13 @@ describe('leaving the device out', () => {
     // the opt-in cannot be on at the same time
     useSettings.getState().set({ countPlays: true });
     setNavigator({ onLine: false });
-    useTelemetry.getState().track('completed', 'Easy', 60);
+    useTelemetry.getState().track('completed', 'Easy', 60, 'new');
     expect(useTelemetry.getState().queue).toEqual([]);
     // switched back, counting resumes
     useSettings.getState().set({ dontCount: false, countPlays: false });
     setNavigator({ onLine: true });
     answers = [ok()];
-    useTelemetry.getState().track('started', 'Easy', 0);
+    useTelemetry.getState().track('started', 'Easy', 0, 'new');
     await useTelemetry.getState().flush();
     expect(calls).toHaveLength(1);
     expect(sent(0)).toEqual([expect.objectContaining({ event: 'started', band: 'Easy' })]);
@@ -323,7 +323,7 @@ describe('leaving the device out', () => {
 describe('a link shared', () => {
   it('sends one live line with what and how, in the batch with the plays, and keeps nothing', async () => {
     const s = useTelemetry.getState();
-    s.track('completed', 'Hard', 552);
+    s.track('completed', 'Hard', 552, 'new');
     s.shared('challenge', 'sheet', 'Hard');
     s.shared('position', 'copy', 'Medium');
     answers = [ok()];
@@ -371,5 +371,42 @@ describe('a link shared', () => {
     const lines = calls.flatMap((_, i) => sent(i));
     expect(lines).toHaveLength(SHARE_KINDS.length * SHARE_VIAS.length);
     for (const line of lines) expect(checkEvent(line), JSON.stringify(line)).not.toBeNull();
+  });
+});
+
+describe('the kind of game and the language', () => {
+  it('rides on every start and solve, from the lists the Worker takes, and on no share', async () => {
+    const { checkEvent, PLAY_KINDS, PLAY_LANGS } = await import('../worker/telemetry');
+    const before = useSettings.getState().lang;
+    answers = [ok(), ok(), ok()];
+    for (const lang of PLAY_LANGS) {
+      useSettings.setState({ lang });
+      for (const kind of PLAY_KINDS) {
+        useTelemetry.getState().track('started', 'Easy', 0, kind);
+        useTelemetry.getState().track('completed', 'Easy', 300, kind);
+      }
+      await useTelemetry.getState().flush();
+    }
+    useSettings.setState({ lang: before });
+    const lines = calls.flatMap((_, i) => sent(i));
+    expect(lines).toHaveLength(PLAY_LANGS.length * PLAY_KINDS.length * 2);
+    expect(lines.map((l) => `${l.kind}/${l.lang}`)).toEqual(PLAY_LANGS.flatMap((lang) => PLAY_KINDS.flatMap((kind) => [`${kind}/${lang}`, `${kind}/${lang}`])));
+    for (const line of lines) expect(checkEvent(line), JSON.stringify(line)).toMatchObject({ kind: line.kind, lang: line.lang });
+    // a share says neither
+    answers = [ok()];
+    useTelemetry.getState().shared('puzzle', 'copy', 'Easy');
+    await useTelemetry.getState().flush();
+    const share = sent(calls.length - 1)[0];
+    expect(share.kind).toBeUndefined();
+    expect(share.lang).toBeUndefined();
+  });
+
+  it('is kept with an offline line, so the line says it when it goes', () => {
+    useSettings.setState({ countPlays: true, lang: 'nb' });
+    setNavigator({ onLine: false });
+    useTelemetry.getState().track('completed', 'Medium', 400, 'daily');
+    expect(useTelemetry.getState().queue[0]).toMatchObject({ kind: 'daily', lang: 'nb', offline: true });
+    expect(JSON.parse(storage.get(STORAGE_KEY)!).queue[0]).toMatchObject({ kind: 'daily', lang: 'nb' });
+    useSettings.setState({ lang: 'en' });
   });
 });
