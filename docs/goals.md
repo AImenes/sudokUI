@@ -88,7 +88,7 @@ double the engine and teach nothing the mission needs.
   puzzles.
 - Progressive hints that reason from the player's own candidates, with the
   assisted and unassisted solve tiers.
-- Practice mode for 65 techniques, with saved puzzles for the rarest,
+- Practice mode for 61 techniques, with saved puzzles for the rarest,
   each puzzle within one band of its technique's class, and "you found
   it" when the player's own move is the target.
 - The player's record: every unaided move credited with the easiest

@@ -83,11 +83,18 @@ Facts a prompt can rely on, with the files that hold them:
   (`/nb/p/`, `/es/p/`), with query hints the client adds when it builds the
   link: `b` the band, `s` the score, `t` up to three technique slugs (only
   when the sender ticks "Say what it needs" in the share dialog), `vs`
-  a challenger's time in whole seconds (`src/content/share.ts`). The share
+  a challenger's time in whole seconds (`src/content/share.ts`). An
+  address with no query ends in a slash (`/p/<81 chars>/`): most puzzles
+  end in an empty cell's dot, which Reddit, chat apps and Markdown leave
+  out of a bare link. The share
   dialog and the win dialog build them with `shareUrl`, the app boots from
   them and keeps the address bar on one (`src/ui/App.tsx`), and the Worker
   renders a preview for them. `#p=` and `#s=` keep working, and a position
-  link is a share address with `#s=` on the end, so it previews too. The
+  link is a share address with `#s=` on the end, so it previews too. A
+  position payload has the length its contents say; one cut short is
+  refused, and the app opens the puzzle from the start and says the link
+  looks cut off (`src/state/gameStore.ts`, `readPosition`). A solved
+  board offers no position link, since it would be the solution. The
   learn pages still link to `#p=` for "play this puzzle from the start"
   (`src/content/learnPages.ts`), on purpose: fragments are never fetched,
   so a crawler following eighty pages of puzzle links costs no Worker
@@ -145,7 +152,7 @@ recommended a v1 of three. Where each one stands, in the research's order:
 | 3 | ID-less telemetry to WAE, opt-in offline counter, private `/admin` | **Built** (phase 3). Two lines per game while online, nothing stored by default; the opt-in keeps offline lines; landings counted from the share route; the dashboard reads WAE; the secrets and Access are hand steps | `src/state/telemetry.ts`, `worker/telemetry.ts`, `worker/admin.ts`, `src/content/privacy.ts` |
 | 4 | Daily archive pages | **Not built.** Phase 4, after data. `/daily/<date>` today is the app with a preview, `noindex`, not an indexable page | — |
 | 5 | Crowd-calibrated solve times per band | **Not built.** Phase 4. The daily results that would feed it are being collected from the first accepted result on | `src/content/solveTimes.ts` keeps the model |
-| 6 | Anonymous daily leaderboard | **Not built**, by decision: the percentile on the win screen and in the share line carries the competitive pull | — |
+| 6 | Anonymous daily leaderboard | **Not built**, by decision: the place (below twenty times) or the percentile on the win screen and in the share line carries the competitive pull | — |
 | 7 | Sync code | **Not built**, not planned | — |
 | 8 | Indexable page per generated puzzle | **Will not be built** (scaled-content risk) | — |
 
@@ -309,8 +316,25 @@ Built, October 2026, with these decisions:
   asserted by a test, the shape of the queries is.
 - **The player asks.** The win screen fetches the day's numbers on its own
   (no player data in that request) and sends the player's time only when
-  the player taps "Send my time and compare". A game that began part-way
-  (a practice puzzle, a position link) sends nothing.
+  the player taps "Send my time and compare", the screen's main button. A
+  game that began part-way (a practice puzzle, a position link) sends
+  nothing. Decided with the owner on 2 November 2026: one tap of consent,
+  then automatic. Once a time has gone in, the result panel offers a
+  switch, "Send my daily times automatically", off until the player turns
+  it on; Settings has the same switch. On, each later unassisted daily
+  solve sends the same request the button makes, by itself, and the win
+  screen shows the place at once (`src/state/gameStore.ts`,
+  `recordDaily`). It never sends an assisted solve, and the privacy page
+  says so. The day's own solve is kept on the device (31 days at most) so
+  the Share dialog can offer its share line again after the win screen
+  has closed.
+- **The place before the percentile.** Below twenty times for a day, the
+  win screen and the share line give the player's place ("2nd fastest of
+  5 today", "tied for", "the only time sent"); from twenty up, the
+  percentile as before (`src/content/dailies.ts`, `standingOf`; the words
+  in `src/content/dailyLine.ts`). The server keeps times in 15-second
+  steps, so two times in one step are a tie. "Today" only for today's
+  daily; another day's says "so far".
 - **Unassisted solves only.** A time counts only when nothing from the
   Assist box was used (hint, Check, Steps, Scan, chain trainer, auto
   candidates, Fill): an assisted time measures the help, not the player,
@@ -322,7 +346,13 @@ Built, October 2026, with these decisions:
   before (the store's version 1), since a kept count is never replaced
   by a smaller one. The share line of an assisted solve carries no
   percentile.
-- **The share line** is the one above, without the emoji row for now.
+- **The share line** is the one above, without the emoji row for now, with
+  the place in place of the percentile below twenty times.
+- **The daily's preview names no technique** (2 November 2026), in line
+  with the spoiler-free links of 14 October: its description says what the
+  daily is, "one board for everyone, the same day", and a challenge on a
+  daily keeps "Daily #n" in its headline. `dailies.json` keeps the
+  techniques for an archive.
 - **The migration is a hand step.** The binding ships with the code
   ([deployment.md](deployment.md)); until the tables exist the routes
   answer 503 and the win screen says the global times are unavailable.

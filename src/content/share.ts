@@ -87,8 +87,9 @@ export function parseShareUrl(url: { pathname: string; search: string }): ShareP
 /**
  * The share address of whatever an address points at, or null: a puzzle
  * (/p/<puzzle> with its hints) or a published daily (/daily/<date>, whose
- * band, score and techniques come from the published list, not the
- * address). What the Worker and the dev and preview servers render from.
+ * band and score come from the published list, not the address, and which
+ * names no technique). What the Worker and the dev and preview servers
+ * render from.
  */
 export function shareParamsOf(url: { pathname: string; search: string }, dailies: Daily[]): ShareParams | null {
   const share = parseShareUrl(url);
@@ -98,7 +99,10 @@ export function shareParamsOf(url: { pathname: string; search: string }, dailies
   const daily = findDaily(dailies, d.date);
   const no = dailyNumber(d.date);
   if (!daily || !no) return null;
-  return { lang: d.lang, puzzle: daily.puzzle, level: daily.level, score: daily.score, techs: daily.techs, vs: d.vs, daily: { no, date: d.date } };
+  // never the techniques: the daily's preview is the first thing a crowd
+  // sees, and naming them tells everyone what to look for (spoiler-free
+  // links, 14 October 2026). The published list keeps them for an archive
+  return { lang: d.lang, puzzle: daily.puzzle, level: daily.level, score: daily.score, vs: d.vs, daily: { no, date: d.date } };
 }
 
 /** the path and query of a share address, relative to the site */
@@ -112,7 +116,10 @@ export function sharePath(p: ShareParams): string {
   if (p.vs) q.set('vs', String(p.vs));
   // the commas between techniques stay readable: a link is read in a chat
   const query = q.toString().replace(/%2C/g, ',');
-  return `${homePath(p.lang)}p/${p.puzzle}${query ? `?${query}` : ''}`;
+  // with no query the address ends in a slash: most puzzles end in a dot,
+  // which Reddit, chat apps and Markdown leave out of a bare link, and the
+  // link would then miss its last cell (the slash is the same address)
+  return `${homePath(p.lang)}p/${p.puzzle}${query ? `?${query}` : '/'}`;
 }
 
 /** the full share address, on the site unless an origin (the dev server's) is given */
@@ -154,9 +161,11 @@ export interface ShareCopy {
   description: string;
   descriptionNoScore: string;
   descriptionUnknown: string;
-  /** a daily's tab, headline and description: {no} and {date} as well */
+  /** a daily's tab, headline and description: {no} and {date} as well; never a technique */
   titleDaily: string;
   ogTitleDaily: string;
+  /** a daily's headline when a challenger's {time} is set: still the daily's number */
+  ogTitleDailyVs: string;
   descriptionDaily: string;
   /** "needing X-Wing and Skyscraper", glued to the sentence before the full stop */
   needing: string;
@@ -183,8 +192,9 @@ export const SHARE: Record<Lang, ShareCopy> = {
     descriptionUnknown: 'A sudoku shared from sudokUI. Play it free, with hints that explain every step.',
     titleDaily: 'Daily #{no}: {level} sudoku, HoDoKu rating {score} | sudokUI',
     ogTitleDaily: 'sudokUI Daily #{no}, {date}: can you solve it?',
+    ogTitleDailyVs: 'Daily #{no}: solved in {time}. Can you beat it?',
     descriptionDaily:
-      'The daily for {date}: {a} {level} sudoku with a HoDoKu rating of {score}{techs}. One board for the whole world, with everyone’s times to compare against. Play it free on sudokUI.',
+      'The daily for {date}: {a} {level} sudoku with a HoDoKu rating of {score}. One board for everyone, the same day. Play it free on sudokUI.',
     needing: ', needing {list}',
     vs: 'Solved in {time} on sudokUI: can you beat it?',
     and: 'and',
@@ -205,8 +215,9 @@ export const SHARE: Record<Lang, ShareCopy> = {
     descriptionUnknown: 'En sudoku delt fra sudokUI. Spill den gratis, med hint som forklarer hvert steg.',
     titleDaily: 'Dagens sudoku #{no}: nivået {level}, HoDoKu-poengsum {score} | sudokUI',
     ogTitleDaily: 'Dagens sudoku #{no}, {date}: klarer du den?',
+    ogTitleDailyVs: 'Dagens sudoku #{no}: løst på {time}. Klarer du å slå det?',
     descriptionDaily:
-      'Dagens sudoku for {date}: {a} sudoku på nivået {level} med HoDoKu-poengsum {score}{techs}. Ett brett for hele verden, med alles tider å måle seg mot. Spill den gratis i sudokUI.',
+      'Dagens sudoku for {date}: {a} sudoku på nivået {level} med HoDoKu-poengsum {score}. Det samme brettet for alle, samme dag. Spill den gratis i sudokUI.',
     needing: ' som krever {list}',
     vs: 'Løst på {time} i sudokUI: klarer du å slå det?',
     and: 'og',
@@ -227,8 +238,9 @@ export const SHARE: Record<Lang, ShareCopy> = {
     descriptionUnknown: 'Un sudoku compartido desde sudokUI. Juégalo gratis, con pistas que explican cada paso.',
     titleDaily: 'Sudoku del día n.º {no}: nivel {level}, puntuación HoDoKu {score} | sudokUI',
     ogTitleDaily: 'Sudoku del día n.º {no}, {date}: ¿puedes resolverlo?',
+    ogTitleDailyVs: 'Sudoku del día n.º {no}: resuelto en {time}. ¿Puedes superarlo?',
     descriptionDaily:
-      'El sudoku del día {date}: {a} sudoku de nivel {level} con puntuación HoDoKu {score}{techs}. Un solo tablero para todo el mundo, con los tiempos de todos para compararte. Juégalo gratis en sudokUI.',
+      'El sudoku del día {date}: {a} sudoku de nivel {level} con puntuación HoDoKu {score}. El mismo tablero para todos, el mismo día. Juégalo gratis en sudokUI.',
     needing: ' que requiere {list}',
     vs: 'Resuelto en {time} en sudokUI: ¿puedes superarlo?',
     and: 'y',
@@ -276,9 +288,10 @@ const esc = (s: string) =>
 export function shareCopy(p: ShareParams) {
   const c = SHARE[p.lang];
   const level = p.level ? levelName(p.level, p.lang) : '';
-  const techs = p.techs?.length ? fill(c.needing, { list: joinNames(p.techs.map((t) => techName(t, p.lang)), c.and) }) : '';
-  const vars = { a: ARTICLE[p.lang](level), level, score: p.score ?? '', techs, no: p.daily?.no ?? '', date: p.daily?.date ?? '' };
   const daily = !!p.daily && !!p.level;
+  // a daily names no technique, whatever the address was built with
+  const techs = p.techs?.length && !daily ? fill(c.needing, { list: joinNames(p.techs.map((t) => techName(t, p.lang)), c.and) }) : '';
+  const vars = { a: ARTICLE[p.lang](level), level, score: p.score ?? '', techs, no: p.daily?.no ?? '', date: p.daily?.date ?? '' };
   const title = daily ? fill(c.titleDaily, vars) : p.level ? fill(p.score ? c.title : c.titleNoScore, vars) : c.titleUnknown;
   const description = daily
     ? fill(c.descriptionDaily, vars)
@@ -290,7 +303,8 @@ export function shareCopy(p: ShareParams) {
   return {
     title,
     description: p.vs ? `${fill(c.vs, { time })} ${description}` : description,
-    ogTitle: p.vs ? fill(c.ogTitleVs, { time }) : headline,
+    // a challenge on a daily keeps the daily's number in the headline
+    ogTitle: p.vs ? fill(daily ? c.ogTitleDailyVs : c.ogTitleVs, { ...vars, time }) : headline,
     ogImage: p.level ? ogShareCard(p.level, p.lang) : ogCard(p.lang),
     ogImageAlt: p.level ? fill(c.ogImageAlt, vars) : c.ogImageAltUnknown,
     // the preview's headline doubles as the page's, before the app mounts

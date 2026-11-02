@@ -29,6 +29,9 @@ import { Level, Tech, SOLVE_ORDER, hintOrder, asLevel } from '../engine/ratings'
 import { useSettings } from './settings';
 import { useStats } from './stats';
 import { useTelemetry } from './telemetry';
+import { useDailyStats } from './dailyStats';
+import type { DailyResult } from './dailyStats';
+import { dailyClosed } from '../content/dailies';
 import { justifyMove } from './pools';
 import { translator, msg } from '../content/i18n';
 import type { TextPosition } from '../content/textGrid';
@@ -418,9 +421,9 @@ interface GameStore {
   applyHint: () => void;
   dismissHint: () => void;
   check: () => void;
-  /** restore a full shared position from an `#s=` link payload; false if
-   *  the payload is corrupt or its givens are not a proper puzzle */
-  loadPosition: (encoded: string) => boolean;
+  /** restore a full shared position from an `#s=` link payload: true, or
+   *  why not (cut short; or corrupt, or its givens not a proper puzzle) */
+  loadPosition: (encoded: string) => true | PositionRefusal;
   /** flag the game as assisted (e.g. the solution path was viewed) */
   markAssisted: () => void;
   /** display an arbitrary step as the current full hint (used by Scan) */
@@ -475,6 +478,43 @@ function recordWin(s: GameStore) {
   useGame.setState({ solved: true });
   useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
   useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000));
+  recordDaily(s);
+}
+
+/**
+ * The result of a solved published daily, exactly what the win screen's
+ * "Send my time and compare" sends (src/state/dailyStats.ts): the day's
+ * number, the finished grid, the time in whole seconds, the hints taken
+ * and whether the solve was unassisted. Null for any other game.
+ */
+export function dailyResultOf(s: Pick<GameStore, 'info' | 'cells' | 'assisted' | 'elapsedMs'>): DailyResult | null {
+  if (!s.info?.dailyNo || !s.info.dailyKey) return null;
+  return {
+    no: s.info.dailyNo,
+    grid: s.cells.map((c) => c.value).join(''),
+    seconds: Math.floor(s.elapsedMs() / 1000),
+    hints: Object.values(useStats.getState().game.hinted).reduce((sum, n) => sum + (n ?? 0), 0),
+    unassisted: !s.assisted
+  };
+}
+
+/**
+ * A solved published daily is kept on the device for its share line, and,
+ * when the player has switched on sending daily times automatically
+ * (Settings, offered on the win screen after a first send), its time goes
+ * in by itself: the same request the button makes, once per solve, and
+ * only for an unassisted solve of a day the server still takes times for,
+ * whose time has not gone in before. With the switch off, nothing is sent
+ * until the player taps the button.
+ */
+function recordDaily(s: GameStore) {
+  const result = dailyResultOf(s);
+  if (!result || !s.info?.dailyKey) return;
+  const daily = useDailyStats.getState();
+  daily.recordPlayed(result.no, { date: s.info.dailyKey, level: s.info.level, score: s.info.score, seconds: result.seconds, assisted: s.assisted });
+  if (!useSettings.getState().autoSendDaily || !result.unassisted || dailyClosed(result.no)) return;
+  if (daily.submitted[result.no] !== undefined || daily.pending[result.no] || daily.inFlight[result.no]) return;
+  void daily.submit(result);
 }
 
 export const useGame = create<GameStore>()(
@@ -1698,13 +1738,13 @@ export const useGame = create<GameStore>()(
       },
 
       loadPosition: (encoded) => {
-        const decoded = decodePosition(encoded);
-        if (!decoded) return false;
+        const decoded = readPosition(encoded);
+        if ('refused' in decoded) return decoded.refused;
         const givens = decoded.cells
           .map((c) => (c.given ? String(c.value) : '.'))
           .join('');
         const v = validatePuzzle(givens);
-        if (!v.ok) return false;
+        if (!v.ok) return 'unreadable';
         // start the underlying game (computes the solution), then overlay
         // the shared progress: entries, marks, exclusions and colours
         get().startGame(givens, v.score, v.level);
@@ -1960,6 +2000,14 @@ class BitReader {
     for (let i = 0; i < width; i++) v = (v << 1) | (this.bits[this.pos++] ?? 0);
     return v;
   }
+  /** read past the end: the payload was cut short (what was read there is not the sender's) */
+  get overrun() {
+    return this.pos > this.bits.length;
+  }
+  /** the payload is exactly as long as the bits read need, and what is left of its last character is the writer's zero padding */
+  fits() {
+    return Math.ceil(this.pos / 6) * 6 === this.bits.length && this.bits.slice(this.pos).every((b) => b === 0);
+  }
 }
 
 /** Pack a position for sharing. Layout per cell: given(1) value(4)
@@ -1983,19 +2031,33 @@ export function encodePosition(cells: CellState[], autoCandidates: boolean): str
   return w.toString();
 }
 
+/** a position link's payload that cannot be loaded: cut short (a chat or a copy lost its end), or unreadable */
+export type PositionRefusal = 'cut' | 'unreadable';
+
 /** Inverse of encodePosition; null for corrupt or foreign payloads. */
-export function decodePosition(
-  encoded: string
-): { cells: CellState[]; autoCandidates: boolean } | null {
+export function decodePosition(encoded: string): { cells: CellState[]; autoCandidates: boolean } | null {
+  const read = readPosition(encoded);
+  return 'refused' in read ? null : read;
+}
+
+/**
+ * Inverse of encodePosition, or why not. The length a payload must have
+ * follows from what it says as it is read (an open cell carries its marks,
+ * a filled one does not), so a payload cut short, by however little, is
+ * refused rather than read with zeros where its end was; and one with
+ * characters past its end is refused too.
+ */
+export function readPosition(encoded: string): { cells: CellState[]; autoCandidates: boolean } | { refused: PositionRefusal } {
+  const unreadable = { refused: 'unreadable' } as const;
   try {
     const r = new BitReader(encoded);
-    if (r.read(4) !== SHARE_VERSION) return null;
+    if (r.read(4) !== SHARE_VERSION) return r.overrun ? { refused: 'cut' } : unreadable;
     const autoCandidates = r.read(1) === 1;
     const cells: CellState[] = [];
     for (let i = 0; i < 81; i++) {
       const given = r.read(1) === 1;
       const value = r.read(4);
-      if (value > 9 || (given && value === 0)) return null;
+      if (value > 9 || (given && value === 0)) return r.overrun ? { refused: 'cut' } : unreadable;
       const colorMask = r.read(9);
       const colors: number[] = [];
       for (let k = 0; k < 9; k++) if (colorMask & (1 << k)) colors.push(k);
@@ -2006,10 +2068,12 @@ export function decodePosition(
         cell.excluded = r.read(9);
       }
       cells.push(cell);
+      if (r.overrun) return { refused: 'cut' };
     }
+    if (!r.fits()) return unreadable;
     return { cells, autoCandidates };
   } catch {
-    return null;
+    return unreadable;
   }
 }
 

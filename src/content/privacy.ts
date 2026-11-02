@@ -59,13 +59,14 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
       {
         heading: 'If you ask: leaving this device out of the counts',
         paragraphs: [
-          'Settings also has “Leave this device out of the counts”. On, the app sends none of these lines from this device, nor the line for a link you share (below), online or offline, and deletes anything the other switch had kept. The setting itself is remembered on your device, like your other settings, because you asked for it. It holds in every ordinary window of the browser you turn it on in, not in a private one; an app added to a home screen may keep its own settings, so turn it on there too. Two things it does not change: a share or daily link opened from outside sudokui.app in a browser or app where the switch is not on can still count as a landing, because the server counts it from the request and cannot see any switch; and daily times are still sent only when you tap the button.'
+          'Settings also has “Leave this device out of the counts”. On, the app sends none of these lines from this device, nor the line for a link you share (below), online or offline, and deletes anything the other switch had kept. The setting itself is remembered on your device, like your other settings, because you asked for it. It holds in every ordinary window of the browser you turn it on in, not in a private one; an app added to a home screen may keep its own settings, so turn it on there too. Two things it does not change: a share or daily link opened from outside sudokui.app in a browser or app where the switch is not on can still count as a landing, because the server counts it from the request and cannot see any switch; and daily times are still sent when you tap the button, or by themselves once you have switched that on (below).'
         ]
       },
       {
         heading: 'The daily puzzle’s times',
         paragraphs: [
-          'After an unassisted solve of the daily, the win screen offers “Send my time and compare”. Only if you tap it, the app sends your time, the finished grid, that you solved it without help, and a random token it keeps for that day, so the same time is not counted twice. The server keeps the time in its 15-second step with the day’s other times, and with it the token and the day it arrived. Nothing links one day’s token to another day’s. To show how many have solved the day’s puzzle, the win screen also asks the server for the day’s numbers; that request carries nothing about you.'
+          'After an unassisted solve of the daily, the win screen offers “Send my time and compare”. Only if you tap it, or have switched on sending your times automatically (below), the app sends your time, the finished grid, that you solved it without help, and a random token it keeps for that day, so the same time is not counted twice. The server keeps the time in its 15-second step with the day’s other times, and with it the token and the day it arrived. Nothing links one day’s token to another day’s. To show how many have solved the day’s puzzle, the win screen also asks the server for the day’s numbers, and so does the Share dialog when it offers your daily result again; that request carries nothing about you.',
+          'Once you have sent a time, the win screen offers a switch, “Send my daily times automatically”, and Settings has the same switch. It is off until you turn it on. On, the app sends exactly what the button sends, by itself, after each later unassisted solve of a daily, and shows your place at once; never an assisted solve. Off again, a time goes only when you tap the button. The switch is remembered on your device, like your other settings. Your own daily solves, their time and whether you had help, are kept on your device too, at most 31 days of them, so that their share line can be sent again after the win screen has closed; they leave the device only in the ways this page describes.'
         ]
       },
       {
@@ -97,7 +98,7 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
         ]
       }
     ],
-    updated: 'Last changed: October 2026.'
+    updated: 'Last changed: November 2026.'
   },
   nb: {
     name: 'Personvern',
@@ -126,13 +127,14 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
       {
         heading: 'Hvis du ber om det: holde denne enheten utenfor tellingen',
         paragraphs: [
-          'I innstillingene finnes også «Hold denne enheten utenfor tellingen». Når den er på, sender appen ingen av disse linjene fra denne enheten, heller ikke linjen for en lenke du deler (se under), verken på nett eller uten, og sletter det den andre bryteren hadde beholdt. Selve innstillingen huskes på enheten din, som de andre innstillingene, fordi du har bedt om det. Den gjelder i alle vanlige vinduer i nettleseren du slår den på i, men ikke i private vinduer; en app lagt til på en hjemskjerm kan ha egne innstillinger, så slå den på der også. To ting endrer den ikke: en delingslenke eller en lenke til dagens sudoku som åpnes fra utsiden av sudokui.app i en nettleser eller app der bryteren ikke er på, kan fortsatt telles som en landing, fordi tjeneren teller den ut fra forespørselen og ikke kan se noen bryter; og tidene på dagens sudoku sendes fortsatt bare når du trykker på knappen.'
+          'I innstillingene finnes også «Hold denne enheten utenfor tellingen». Når den er på, sender appen ingen av disse linjene fra denne enheten, heller ikke linjen for en lenke du deler (se under), verken på nett eller uten, og sletter det den andre bryteren hadde beholdt. Selve innstillingen huskes på enheten din, som de andre innstillingene, fordi du har bedt om det. Den gjelder i alle vanlige vinduer i nettleseren du slår den på i, men ikke i private vinduer; en app lagt til på en hjemskjerm kan ha egne innstillinger, så slå den på der også. To ting endrer den ikke: en delingslenke eller en lenke til dagens sudoku som åpnes fra utsiden av sudokui.app i en nettleser eller app der bryteren ikke er på, kan fortsatt telles som en landing, fordi tjeneren teller den ut fra forespørselen og ikke kan se noen bryter; og tidene på dagens sudoku sendes fortsatt når du trykker på knappen, eller av seg selv når du har slått det på (se under).'
         ]
       },
       {
         heading: 'Tidene på dagens sudoku',
         paragraphs: [
-          'Etter en løsning av dagens sudoku uten hjelp tilbyr seiersskjermen «Send inn tiden min og sammenlign». Bare hvis du trykker på den, sender appen tiden din, det ferdige brettet, at du løste den uten hjelp, og et tilfeldig merke appen beholder for den dagen, slik at samme tid ikke telles to ganger. Tjeneren beholder tiden i trinnet på 15 sekunder den faller i, sammen med dagens andre tider, og med den merket og dagen den kom inn. Ingenting knytter én dags merke til en annen dags. For å vise hvor mange som har løst dagens oppgave, spør seiersskjermen også tjeneren om dagens tall; den forespørselen inneholder ingenting om deg.'
+          'Etter en løsning av dagens sudoku uten hjelp tilbyr seiersskjermen «Send inn tiden min og sammenlign». Bare hvis du trykker på den, eller har slått på at tidene sendes automatisk (se under), sender appen tiden din, det ferdige brettet, at du løste den uten hjelp, og et tilfeldig merke appen beholder for den dagen, slik at samme tid ikke telles to ganger. Tjeneren beholder tiden i trinnet på 15 sekunder den faller i, sammen med dagens andre tider, og med den merket og dagen den kom inn. Ingenting knytter én dags merke til en annen dags. For å vise hvor mange som har løst dagens oppgave, spør seiersskjermen også tjeneren om dagens tall, og det samme gjør delingsvinduet når det tilbyr resultatet ditt på dagens oppgave igjen; den forespørselen inneholder ingenting om deg.',
+          'Når du har sendt inn en tid, tilbyr seiersskjermen en bryter, «Send inn tiden min på dagens oppgave automatisk», og den samme bryteren finnes i innstillingene. Den er av til du slår den på. Når den er på, sender appen nøyaktig det knappen sender, av seg selv, etter hver senere løsning av dagens oppgave uten hjelp, og viser plasseringen din med en gang; aldri en løsning der du har fått hjelp. Slår du den av igjen, sendes en tid bare når du trykker på knappen. Bryteren huskes på enheten din, som de andre innstillingene. Dine egne løsninger av dagens oppgave, tiden og om du fikk hjelp, beholdes også på enheten, høyst 31 dager av dem, slik at linjen for å dele dem kan sendes igjen etter at seiersskjermen er lukket; de forlater enheten bare på måtene denne siden beskriver.'
         ]
       },
       {
@@ -164,7 +166,7 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
         ]
       }
     ],
-    updated: 'Sist endret: oktober 2026.'
+    updated: 'Sist endret: november 2026.'
   },
   es: {
     name: 'Privacidad',
@@ -193,13 +195,14 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
       {
         heading: 'Si lo pides: dejar este dispositivo fuera del recuento',
         paragraphs: [
-          'En Ajustes también está «Dejar este dispositivo fuera del recuento». Encendido, la app no envía ninguna de estas líneas desde este dispositivo, ni la de un enlace que compartes (más abajo), con o sin conexión, y borra lo que hubiera conservado el otro interruptor. El ajuste en sí se recuerda en tu dispositivo, como tus demás ajustes, porque lo has pedido. Vale en todas las ventanas normales del navegador en el que lo enciendes, no en las privadas; una app añadida a la pantalla de inicio puede tener sus propios ajustes, así que enciéndelo también allí. Hay dos cosas que no cambia: un enlace compartido o del sudoku del día abierto desde fuera de sudokui.app en un navegador o una app donde el interruptor no está encendido puede seguir contando como una llegada, porque el servidor la cuenta a partir de la petición y no puede ver ningún interruptor; y los tiempos del sudoku del día se siguen enviando solo cuando pulsas el botón.'
+          'En Ajustes también está «Dejar este dispositivo fuera del recuento». Encendido, la app no envía ninguna de estas líneas desde este dispositivo, ni la de un enlace que compartes (más abajo), con o sin conexión, y borra lo que hubiera conservado el otro interruptor. El ajuste en sí se recuerda en tu dispositivo, como tus demás ajustes, porque lo has pedido. Vale en todas las ventanas normales del navegador en el que lo enciendes, no en las privadas; una app añadida a la pantalla de inicio puede tener sus propios ajustes, así que enciéndelo también allí. Hay dos cosas que no cambia: un enlace compartido o del sudoku del día abierto desde fuera de sudokui.app en un navegador o una app donde el interruptor no está encendido puede seguir contando como una llegada, porque el servidor la cuenta a partir de la petición y no puede ver ningún interruptor; y los tiempos del sudoku del día se siguen enviando cuando pulsas el botón, o por sí solos si lo has activado (más abajo).'
         ]
       },
       {
         heading: 'Los tiempos del sudoku del día',
         paragraphs: [
-          'Tras resolver el sudoku del día sin ayuda, la pantalla de victoria ofrece «Enviar mi tiempo y comparar». Solo si lo pulsas, la app envía tu tiempo, el tablero terminado, que lo resolviste sin ayuda y una ficha aleatoria que conserva para ese día, para que el mismo tiempo no se cuente dos veces. El servidor guarda el tiempo en su tramo de 15 segundos junto con los demás tiempos del día, y con él la ficha y el día en que llegó. Nada vincula la ficha de un día con la de otro. Para mostrar cuántos han resuelto el sudoku del día, la pantalla de victoria también pide al servidor las cifras del día; esa petición no lleva nada sobre ti.'
+          'Tras resolver el sudoku del día sin ayuda, la pantalla de victoria ofrece «Enviar mi tiempo y comparar». Solo si lo pulsas, o si has activado el envío automático de tus tiempos (más abajo), la app envía tu tiempo, el tablero terminado, que lo resolviste sin ayuda y una ficha aleatoria que conserva para ese día, para que el mismo tiempo no se cuente dos veces. El servidor guarda el tiempo en su tramo de 15 segundos junto con los demás tiempos del día, y con él la ficha y el día en que llegó. Nada vincula la ficha de un día con la de otro. Para mostrar cuántos han resuelto el sudoku del día, la pantalla de victoria también pide al servidor las cifras del día, igual que la ventana de compartir cuando vuelve a ofrecer tu resultado del sudoku del día; esa petición no lleva nada sobre ti.',
+          'Cuando ya has enviado un tiempo, la pantalla de victoria ofrece un interruptor, «Enviar mis tiempos del sudoku del día automáticamente», y Ajustes tiene el mismo. Está apagado hasta que lo enciendes. Encendido, la app envía por sí sola exactamente lo que envía el botón, tras cada sudoku del día que resuelvas después sin ayuda, y muestra tu puesto al momento; nunca una partida en la que hayas usado ayuda. Si vuelves a apagarlo, un tiempo solo se envía cuando pulsas el botón. El interruptor se recuerda en tu dispositivo, como tus demás ajustes. Tus propias partidas del sudoku del día, su tiempo y si tuviste ayuda, también se guardan en tu dispositivo, como mucho las de 31 días, para que su línea para compartir pueda enviarse de nuevo después de cerrar la pantalla de victoria; solo salen del dispositivo de las maneras que describe esta página.'
         ]
       },
       {
@@ -231,6 +234,6 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
         ]
       }
     ],
-    updated: 'Última modificación: octubre de 2026.'
+    updated: 'Última modificación: noviembre de 2026.'
   }
 };

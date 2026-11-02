@@ -325,6 +325,20 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
+      {/* the daily's times (src/state/dailyStats.ts): sent when the player
+          taps Send on the win screen, or, once this is on, by themselves
+          after each unassisted daily (gameStore.ts, recordDaily). Off until
+          the player turns it on */}
+      <h4 className="setting-group">{t('Daily puzzle')}</h4>
+      <Toggle
+        label={t('Send my daily times automatically')}
+        hint={t(
+          'After each unassisted solve of the daily, your time goes in by itself, as if you had tapped Send, and the win screen shows your place at once. Off, a time goes only when you tap Send'
+        )}
+        value={s.autoSendDaily}
+        onChange={(v) => s.set({ autoSendDaily: v })}
+      />
+
       {/* the plays counted (src/state/telemetry.ts): off, nothing is kept on
           the device; the privacy page says what is sent either way */}
       <h4 className="setting-group">{t('Counting plays')}</h4>
@@ -340,7 +354,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <Toggle
         label={t('Leave this device out of the counts')}
         hint={t(
-          'Nothing is sent from this browser to count plays or shares, online or offline: for the developer’s and testers’ own devices, or if you would rather not be counted. An app added to a home screen may keep its own settings. Daily times are still sent only when you tap Send'
+          'Nothing is sent from this browser to count plays or shares, online or offline: for the developer’s and testers’ own devices, or if you would rather not be counted. An app added to a home screen may keep its own settings. Daily times are not counted plays: they go as you choose under Daily puzzle'
         )}
         value={s.dontCount}
         onChange={(v) => s.set(v ? { dontCount: true, countPlays: false } : { dontCount: false })}

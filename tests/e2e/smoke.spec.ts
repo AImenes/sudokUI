@@ -1501,13 +1501,15 @@ test.describe('the daily', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(/Solved unassisted by \d+ so far, median \d+:\d\d|Nobody has sent in a time for this daily yet/);
     await dialog.getByRole('button', { name: /Send my time and compare/ }).click();
-    await expect(dialog).toContainText(/Your time is the first one in|You were faster than \d+% of them/);
+    // where the time stands: its place while few have played, the percentile from twenty up
+    const standing = /The only time sent today|Fastest of \d+ today|\d+(?:st|nd|rd|th) fastest of \d+ today|Tied for (?:\d+(?:st|nd|rd|th) )?fastest of \d+ today|You were faster than \d+% of them/;
+    await expect(dialog).toContainText(standing);
     await dialog.getByRole('button', { name: /Challenge a friend/ }).click();
     const text = await copied(page);
     const no = dailies.indexOf(daily) + 1;
     expect(text.startsWith(`sudokUI Daily #${no} · ${daily.level} (${daily.score}) · `)).toBe(true);
     expect(text).toContain(' · unassisted · ');
-    const [, time, link] = /· (\d+:\d\d) · unassisted · (?:faster than \d+% today · )?(https:\S+)$/.exec(text) ?? [];
+    const [, time, link] = /· (\d+:\d\d) · unassisted · (?:[^·]+ today · )?(https:\S+)$/.exec(text) ?? [];
     expect(time).toMatch(/^\d+:\d\d$/);
     expect(link).toMatch(/^https:\/\/sudokui\.app\/daily\/\d{4}-\d{2}-\d{2}\?vs=\d+$/);
     expect(link).toContain(`/daily/${today}?vs=`);
@@ -1515,6 +1517,75 @@ test.describe('the daily', () => {
     // screen's own read a moment ago is still in the browser's cache)
     const stats = await page.evaluate(async (n) => (await fetch(`/api/daily/${n}/stats`, { cache: 'no-store' })).json(), no);
     expect(stats.count).toBeGreaterThanOrEqual(1);
+
+    // after the win screen has closed, the Share dialog offers the same
+    // line again, and no position: a solved board's would be the solution
+    await dialog.getByRole('button', { name: 'Admire the grid' }).click();
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    const share = page.getByRole('dialog', { name: 'Share this puzzle' });
+    await expect(share.getByRole('button', { name: /Position link|Position as text/ })).toHaveCount(0);
+    await expect(share).toContainText('A solved board has no position to share');
+    await share.getByRole('button', { name: `Your result in Daily #${no}` }).click();
+    expect(await copied(page)).toBe(text);
+  });
+
+  test('a player who has sent a daily time can switch on sending them, and the next daily sends its time by itself', async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.addInitScript(keepClipboard);
+    const today = localDateKey();
+    const yesterday = localDateKey(new Date(Date.now() - 24 * 60 * 60 * 1000));
+    const first = dailies.find((d) => d.date === yesterday)!;
+    const next = dailies.find((d) => d.date === today)!;
+    expect(first && next, `published dailies for ${yesterday} and ${today}`).toBeTruthy();
+    /** solves the daily on the board, past the server's floor of real seconds */
+    const solveDaily = async (daily: Daily) => {
+      const solution = gridToString(solve(parseGrid(daily.puzzle)!)!);
+      const empties = [...daily.puzzle].map((ch, i) => (ch === '.' ? i : -1)).filter((i) => i >= 0);
+      for (const cell of empties) {
+        if (cell === empties[empties.length - 1]) await page.clock.fastForward(45_000);
+        const c = await cellBox(page, cell);
+        await page.mouse.click(c.x, c.y);
+        await page.keyboard.press(`Digit${solution[cell]}`);
+      }
+    };
+    const results: string[] = [];
+    page.on('request', (r) => {
+      if (r.method() === 'POST' && r.url().includes('/api/daily/')) results.push(new URL(r.url()).pathname);
+    });
+    await page.clock.install();
+    // the first daily: nothing goes until the player taps Send
+    await page.goto(`/daily/${yesterday}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    await solveDaily(first);
+    const dialog = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(dialog).toBeVisible();
+    const auto = dialog.getByRole('switch', { name: /Send my daily times automatically/ });
+    await expect(auto).toHaveCount(0);
+    expect(results).toEqual([]);
+    await dialog.getByRole('button', { name: /Send my time and compare/ }).click();
+    await expect(dialog).toContainText(/so far|You were faster than/);
+    expect(results).toEqual([`/api/daily/${dailies.indexOf(first) + 1}/result`]);
+    // then the switch, unticked until the player ticks it
+    await expect(auto).toHaveAttribute('aria-checked', 'false');
+    await auto.click();
+    await expect(auto).toHaveAttribute('aria-checked', 'true');
+    // the next daily goes in by itself, and its place shows at once
+    await page.goto(`/daily/${today}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    await solveDaily(next);
+    const second = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(second).toBeVisible();
+    await expect(second).toContainText(/The only time sent today|fastest of \d+ today|You were faster than \d+% of them/i);
+    await expect(second.getByRole('button', { name: /Send my time and compare/ })).toHaveCount(0);
+    expect(results).toEqual([`/api/daily/${dailies.indexOf(first) + 1}/result`, `/api/daily/${dailies.indexOf(next) + 1}/result`]);
+    // and Settings turns it off
+    await second.getByRole('button', { name: 'Admire the grid' }).click();
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    const inSettings = settings.getByRole('switch', { name: /Send my daily times automatically/ });
+    await expect(inSettings).toHaveAttribute('aria-checked', 'true');
+    await inSettings.click();
+    await expect(inSettings).toHaveAttribute('aria-checked', 'false');
   });
 
   test('an assisted daily shows the day’s times, sends nothing and shares no percentile', async ({ page }) => {

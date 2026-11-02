@@ -299,7 +299,21 @@ export default function App() {
       return;
     }
     const sharedPosition = params.get('s');
-    if (sharedPosition && useGame.getState().loadPosition(sharedPosition)) return;
+    const position = sharedPosition ? useGame.getState().loadPosition(sharedPosition) : null;
+    if (position === true) return;
+    // a position that cannot be loaded (a chat or a copy cut the link
+    // short, most likely): the puzzle under it opens as below, from the
+    // start, and the player is told why the marks are not there
+    const positionRefused = () => {
+      if (!position) return;
+      const t = translator();
+      useGame.setState({
+        notice:
+          position === 'cut'
+            ? t('This link looks cut off, so the entries and marks it shared could not be loaded')
+            : t('The entries and marks this link shared could not be read')
+      });
+    };
     const share = parseShareUrl(window.location);
     // a puzzle string may write its empty cells as zeros; the app writes dots
     const shared = (share?.puzzle ?? params.get('p') ?? '').replace(/[^0-9.]/g, '').replace(/0/g, '.');
@@ -328,10 +342,12 @@ export default function App() {
     if (daily) {
       if (game.info?.dailyKey === daily.date) {
         if (daily.vs) challengeCurrent(daily.vs);
+        positionRefused();
         return;
       }
       void startDaily(daily.date).then(() => {
         if (daily.vs) challenge(daily.vs);
+        positionRefused();
       });
       return;
     }
@@ -339,6 +355,7 @@ export default function App() {
       // the puzzle already on the board (a reload lands here), perhaps with
       // a challenger's time for it
       if (share?.vs) challengeCurrent(share.vs);
+      positionRefused();
       return;
     }
     if (shared) {
@@ -346,6 +363,7 @@ export default function App() {
       if (v && v.ok) {
         game.startGame(shared, v.score, v.level);
         if (share?.vs) challenge(share.vs);
+        positionRefused();
         return;
       }
       // a share page promised a puzzle the app cannot play (no solution,
@@ -357,6 +375,8 @@ export default function App() {
     }
     const now = useGame.getState();
     if (!now.info && !now.custom) start({ kind: 'level', level: 'Easy' });
+    // (a share page whose puzzle cannot be opened has said so already)
+    if (!useGame.getState().notice) positionRefused();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

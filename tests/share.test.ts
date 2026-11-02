@@ -4,7 +4,7 @@
  * reject corrupt payloads instead of producing garbage boards.
  */
 import { describe, it, expect } from 'vitest';
-import { encodePosition, decodePosition, CellState, useGame } from '../src/state/gameStore';
+import { encodePosition, decodePosition, readPosition, CellState, useGame } from '../src/state/gameStore';
 
 const EASY =
   '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
@@ -59,6 +59,36 @@ describe('position links', () => {
     const good = encodePosition(fuzzedCells(7), true);
     // flipping the version nibble must invalidate it
     expect(decodePosition('z' + good.slice(1))).toBeNull();
+  });
+
+  it('refuses a link cut short, by one character or five, rather than reading zeros where its end was', () => {
+    for (const seed of [1, 7, 42, 999]) {
+      for (const auto of [true, false]) {
+        const good = encodePosition(fuzzedCells(seed), auto);
+        expect(readPosition(good)).not.toHaveProperty('refused');
+        for (const cut of [1, 2, 5, 40]) {
+          expect(decodePosition(good.slice(0, -cut)), `seed ${seed}, cut ${cut}`).toBeNull();
+          expect(readPosition(good.slice(0, -cut)), `seed ${seed}, cut ${cut}`).toEqual({ refused: 'cut' });
+        }
+        // characters past its end are no part of it either
+        expect(readPosition(good + 'A')).toEqual({ refused: 'unreadable' });
+        expect(readPosition(good + 'AAAAA')).toEqual({ refused: 'unreadable' });
+      }
+    }
+    // a solved board's payload is the shortest (no marks), and is cut the same way
+    const solved = fuzzedCells(3).map((c) => ({ ...c, value: c.given ? c.value : 5, corner: 0, center: 0, excluded: 0 }));
+    const short = encodePosition(solved, false);
+    expect(readPosition(short.slice(0, -1))).toEqual({ refused: 'cut' });
+  });
+
+  it('opens nothing from a cut link, and says why', () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    const good = encodePosition(fuzzedCells(42), false);
+    expect(useGame.getState().loadPosition(good.slice(0, -1))).toBe('cut');
+    expect(useGame.getState().loadPosition(good.slice(0, -5))).toBe('cut');
+    expect(useGame.getState().loadPosition('not!valid')).toBe('unreadable');
+    expect(useGame.getState().info?.fromPosition).toBeUndefined();
+    expect(useGame.getState().loadPosition(good)).toBe(true);
   });
 });
 

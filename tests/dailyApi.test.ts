@@ -275,7 +275,8 @@ describe('the Worker as a whole', () => {
     expect(html).toContain('<html lang="nb">');
     expect(html).toContain(`Dagens sudoku #${NO}, ${DAILY.date}`);
     expect(html).toContain(`<meta property="og:url" content="${SITE}/nb/daily/${DAILY.date}?vs=552" />`);
-    expect(html).toContain('Løst på 9:12. Klarer du å slå det?');
+    // a challenge on a daily keeps the daily's number in its headline
+    expect(html).toContain(`<meta property="og:title" content="Dagens sudoku #${NO}: løst på 9:12. Klarer du å slå det?" />`);
     const missing = await handleRequest(new Request(`${SITE}/daily/2020-01-01`), env());
     expect(missing.status).toBe(404);
     expect(missing.headers.get('x-answered-by')).toBe('assets');
