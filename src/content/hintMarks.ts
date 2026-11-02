@@ -182,6 +182,30 @@ export function premiseOf(step: Step): Premise | null {
   return { assumed, kind: first.length > 1 ? 'group' : 'candidate' };
 }
 
+/**
+ * What an ALS-XY-Chain whose chain clashes removes by (docs/hint-drawing-sets.md,
+ * decision 13 and As built; the readability report's M15): its premise, that
+ * its first set holds no z, is impossible, so the set holds z, and every
+ * removal sees each z of it. A view that shows the conclusion (the full view
+ * and the walk's last frame) draws those z as the pattern's discs, claiming
+ * no truth, as a Death Blossom's z are drawn; empty for any other step
+ */
+export function clashZ(step: Step): CellDigit[] {
+  if (step.tech !== 'ALS_XY_CHAIN' || !alsClash(step)) return [];
+  const first = step.sets?.[step.links?.[0]?.fromSet ?? -1];
+  const z = step.eliminations[0]?.digit;
+  return first && z !== undefined ? first.members.filter((m) => m.digit === z) : [];
+}
+
+/** the legend's words for clashZ's discs, or null for a step with none */
+export function clashWords(step: Step): string | null {
+  const zs = clashZ(step);
+  if (!zs.length) return null;
+  const letter = step.sets![step.links![0].fromSet!].letter ?? '';
+  const z = zs[0].digit;
+  return zs.length === 1 ? tr`the ${z} of set ${letter}: every removed ${z} sees it` : tr`the ${z}s of set ${letter}: every removed ${z} sees each of them`;
+}
+
 /** the colour the step names for a candidate, if any: the first of the lists the full view marks in order */
 export function namedRole(step: Step, cd: CellDigit): Role | null {
   return has(step.primary, cd) ? 'primary' : has(step.secondary, cd) ? 'secondary' : has(step.fins, cd) ? 'fin' : null;
@@ -408,6 +432,8 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
       for (const cd of step.secondary ?? []) mark(cd, 'secondary');
       for (const cd of step.fins ?? []) mark(cd, 'fin');
     }
+    // a clashing ALS-XY-Chain's reason: its first set's z, which every removal sees
+    for (const cd of clashZ(step)) mark(cd, 'primary');
     for (const cd of step.eliminations) mark(cd, 'elim');
     for (const cd of step.placements) mark(cd, 'place');
     const nodes = new Set((step.links ?? []).flatMap((l) => [...l.from, ...l.to]).map((cd) => `${cd.cell}:${cd.digit}`));

@@ -6,7 +6,9 @@
 //
 //   node scripts/hint-shots.cjs <outDir> [TECH ...]
 //       every stored example with links (or the techniques named), full
-//       view; <TECH>-<theme>-<desktop|phone>[-walkN][-panel].png
+//       view; <TECH>-<theme>-<desktop|phone>[-walkN][-panel].png; then the
+//       named positions below (NAMED) of those techniques,
+//       <TECH>-<name>-<theme>-<size>...png, as --puzzle shoots them
 //   node scripts/hint-shots.cjs <outDir> --puzzle <puzzle> <steps> [TECH]
 //       the hint after <steps> steps of the puzzle's solve path (the
 //       solver's next step, or TECH's finder's step there, as the drawing
@@ -48,6 +50,15 @@ const THEMES = (process.env.THEMES || 'dark,light,rose,forest').split(',');
 const SIZES = { desktop: { width: 1280, height: 1000, dpr: 1 }, phone: { width: 390, height: 844, dpr: 2 } };
 const sizes = (process.env.SIZES || 'desktop,phone').split(',');
 const launch = () => chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
+
+/**
+ * Positions every review photographs beside the stored examples, as the
+ * drawing fixture holds them (tests/drawingSnapshot.test.ts PLAIN_NAMED):
+ * a real-size 3D Medusa from a practice pool's solve path, 54 candidates of
+ * 8 digits joined by 29 lines, where the stored example has 6 and 3
+ * (docs/hint-readability-2026-11.md, H6)
+ */
+const NAMED = [{ name: 'large', puzzle: '.68..........19.24.9...61..8.3.5.....5..3..6.....4.2.5..17...9.97.28..........75.', steps: 29, tech: 'MEDUSA_3D' }];
 
 /** in the page: a position as the store's cells, from its values, its candidates and the puzzle's givens */
 const loadInPage = async ({ values, cands, given }) => {
@@ -140,7 +151,8 @@ async function board(mode) {
     await page.locator('svg.board').waitFor();
     for (const theme of THEMES) {
       await page.evaluate(async (theme) => (await import('/src/state/settings.ts')).useSettings.setState({ theme, lang: 'en' }), theme);
-      if (mode.puzzle) {
+      // a position on a solve path, with the solver's step there or TECH's
+      const atPuzzle = async (puzzle, base) => {
         const r = await page.evaluate(
           async ({ puzzle, steps, tech, load }) => {
             const board = await import('/src/engine/board.ts');
@@ -154,12 +166,14 @@ async function board(mode) {
             (await import('/src/state/gameStore.ts')).useGame.getState().showStep(step);
             return hf.walkFrames(step).map((f) => f.text);
           },
-          { ...mode.puzzle, load: loadInPage.toString() }
+          { ...puzzle, load: loadInPage.toString() }
         );
-        const base = `${mode.puzzle.tech ?? 'step'}-${mode.puzzle.steps}-${theme}-${size}`;
         await shootAll(page, base, r.length);
         fs.writeFileSync(path.join(out, `${base}.txt`), r.join('\n') + '\n');
         console.log('shot', base);
+      };
+      if (mode.puzzle) {
+        await atPuzzle(mode.puzzle, `${mode.puzzle.tech ?? 'step'}-${mode.puzzle.steps}-${theme}-${size}`);
         continue;
       }
       for (const tech of mode.techs) {
@@ -175,6 +189,7 @@ async function board(mode) {
         await shootAll(page, `${tech}-${theme}-${size}`, frames);
         console.log('shot', `${tech}-${theme}-${size}`);
       }
+      for (const n of NAMED.filter((n) => mode.named.includes(n.tech))) await atPuzzle(n, `${n.tech}-${n.name}-${theme}-${size}`);
       if (process.env.TRAINER) {
         for (const tech of ['X_CHAIN', 'XY_CHAIN', 'AIC']) {
           const ex = examples[tech];
@@ -229,7 +244,8 @@ async function gallery(html) {
   if (rest[0] === '--gallery') return gallery(rest[1]);
   if (rest[0] === '--puzzle') return board({ puzzle: { puzzle: rest[1], steps: Number(rest[2]), tech: rest[3] } });
   const examples = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src/content/examples.json'), 'utf8'));
-  return board({ techs: rest.length ? rest : Object.keys(examples).filter((t) => examples[t].step.links) });
+  const techs = rest.length ? rest : Object.keys(examples).filter((t) => examples[t].step.links);
+  return board({ techs: techs.filter((t) => examples[t]), named: rest.length ? rest : NAMED.map((n) => n.tech) });
 })().catch((e) => {
   console.error(e);
   process.exit(1);

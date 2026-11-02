@@ -11,7 +11,7 @@ import { hintDrawing, tilesIn, squareReach, pointsOf, SIZES } from './hintGeomet
 import type { ArrowShape, Layout } from './hintGeometry';
 import { LIGHT, MARK, fillOf } from './hintPalette';
 import type { HintPalette } from './hintPalette';
-import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, premiseOf, isParity, isShade, parityLegend, stemAlone, petalsPart, sharedTile } from './hintMarks';
+import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, premiseOf, isParity, isShade, parityLegend, stemAlone, petalsPart, sharedTile, clashWords } from './hintMarks';
 import type { BarStyle, Premise, Role, Tint } from './hintMarks';
 import type { Frame } from '../engine/hintFrames';
 import { drawnLinks } from '../engine/hintFrames';
@@ -610,7 +610,7 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });
   // a Death Blossom's blue before every petal's z is drawn: a petal's, by its own branch
   const z = step.eliminations[0]?.digit;
-  const blue = petalsPart(step, drawn) ? tr`${z} in a petal: if the stem takes that petal's digit, the petal holds ${aDigit(z)}` : step.labels?.primary;
+  const blue = petalsPart(step, drawn) ? tr`${z} in a petal: if the stem takes that petal's digit, the petal holds ${aDigit(z)}` : (clashWords(step) ?? step.labels?.primary);
   if (shown.has('primary')) role('primary', blue ?? tr`the pattern`, P.primary, P.primaryInk);
   // a Death Blossom's gold before any petal's digit is drawn: the stem's candidates alone
   if (shown.has('secondary')) role('secondary', stemAlone(step, drawn) ? tr`the stem's candidates` : (step.labels?.secondary ?? tr`supporting cells`), P.secondary, P.secondaryInk);

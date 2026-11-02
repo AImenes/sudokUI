@@ -367,7 +367,9 @@ walk, the numbers on arrows and ties those of the frame that adds them.
   them, A's tiles on r1c4 and r5c4, a tab on every tile and both on each
   shared cell, the sets' candidates members, three dashed arrows and
   r3c4's 8 removed; the legend names no truth; the walk tells the same
-  frames in words. Copy:
+  frames in words. Since the readability pass, the full view and the
+  conclusion draw A's 8s as the pattern's discs, the reason r3c4's 8 goes
+  (As built, A clash's reason). Copy:
   `(8=9){r1456c4} - (9=8)r1c1 - (8=6){r4c13} - (6=8){r46c4} => r3c4<>8`.
 - **Death Blossom** (stored, `1.9..3.......9.5.....5.281.2..........18.....86.3...249.....1........63.5..76...8`
   at step 26: stem r8c9 {257}; petals A r9c7 {24}, B r8c5, r9c6 {145}, C
@@ -836,6 +838,17 @@ hintMarks, i18n), and the decisions it refines point here.
 - **No start dot for a clash** (decision 13). An ALS pattern whose chain
   clashes words no premise and draws no truth, so no dot says where a
   reading starts: it has none, in any view (`hintDrawing`, `alsClash`).
+- **A clash's reason** (decision 13; the readability report's M15). A
+  clashing ALS-XY-Chain drew no mark for why its removals go, so its
+  arrows landed on plain bold digits. Its premise, that the first set
+  holds no z, is impossible, so the first set holds z, and every removal
+  sees each z of it: the full view and the walk's last frame, which say
+  so, now draw those z as the pattern's discs, claiming no truth, as a
+  Death Blossom's z are drawn, and the legend names them ("the 8s of set
+  A: every removed 8 sees each of them"; `clashZ`, `clashWords` in
+  src/content/hintMarks.ts). The step itself still names no role
+  (decision 10); in the set fixture's nine clashes the two views change
+  so.
 - **Start dots and bars** (decision 4). A start dot keeps off every bar,
   its own group's too, the whole of it: an arrow is free of its own bar
   only beside the member it is anchored at, a dot nowhere, so a dot never
@@ -894,7 +907,18 @@ hintMarks, i18n), and the decisions it refines point here.
   each whose shaft it crosses (decision 2): the set fixture's
   `hard 0, step 9, GROUPED_X_CYCLES` puts the bar of 5r789c7 on the left,
   where link 1, 5r8c7 to 5r7c9, would pass 2 units off it on the right
-  beyond its member, and draws link 1 into 5r7c9 from the left. And two
+  beyond its member, and draws link 1 into 5r7c9 from the left. A side
+  whose bar bends no arrow only because a head comes in square-on over
+  it still lies under that head, and one through another set's tile
+  pushes that set's tab out of it (round 3's first low: at
+  `...86..3......3..7.13..7..94...5..2...6.3.1...7..4...81..6..39.5..2......6..95...`
+  after 17 steps, an AIC with ALS on offer, the 8s' bar of r7c23 ran
+  above them through A's tile): since the readability pass each costs
+  20, more than an edge band and far less than a mark, so the bar there
+  runs below the 8s again and A's tab sits on r7c2's middle place. Over
+  the 3,966 grouped finds on offer past the singles of the pool and seed
+  paths, 14 bars change side; bars through a tile fall from 10 to 4 and
+  heads within 4 units of another group's bar from 38 to 29. And two
   arrows that run along each other for more than 0.3 of a cell within a
   stroke and a halo, their ends counted, where the same hint without its
   bars and tabs draws them apart, have the one the bars and tabs moved
@@ -960,9 +984,14 @@ hintMarks, i18n), and the decisions it refines point here.
   the stored example, the drawing Learn opens on, with its 7 tie sagging
   821 units through row 9, over r9c2's 2 and 3 and past the solved 7 and
   9 there, and its 2 tie crossing its 5 tie inside r8c8's solved 3. The 7
-  tie now runs along row 8, 774 units, rising only over r8c2's 7; the 5
-  tie, which along row 8 the solved 6 and 3 would cut twice, arcs over
-  them and crosses the 2 tie right of the 3, where it shows. Over the
+  tie now runs along row 8, 774 units, rising only over r8c2's 7. Since
+  the readability pass (its M11) a tie also crosses the other ties of its
+  stem as seldom as it can, a crossing counted before its length: the 2
+  tie, which crossed both the 5 tie and the 7 tie, goes round the right
+  of the stem into A's 2 and crosses neither, and the 5 tie then runs
+  along row 8 behind the solved 6 and 3. Of the 3,234 Death Blossoms on
+  offer past the singles of the pool, seed and daily paths, 696 drew two
+  ties crossing (752 crossings); now 208 (222), the ties 1.1% longer. Over the
   1,175 Death Blossoms at the review's positions, 356 drawings change,
   341 with a tie along its row or column; in those the ties' length
   stays the same and the length the digits cut out of them falls from

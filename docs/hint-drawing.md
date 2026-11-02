@@ -81,7 +81,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
   role disc sits beside a truth mark; an ALS pattern whose chain clashes
   (its sets share cells, and its truths would claim more than the step
   proves) draws neither, its sets' candidates members and its removals
-  removals, in every view. A candidate a step lists in more
+  removals, in every view, but for the reason its removals rest on: its
+  first set's z, which every removal sees, are the pattern's discs in the
+  views that show the conclusion (the full view and the walk's last
+  frame), worded so in the legend (the readability pass, M15). A
+  candidate a step lists in more
   than one role takes the first of pattern, acts-through, exception, in
   the full view and in every walk frame alike. A candidate that is removed
   keeps no ring of a colour it never had (before phase 1 four techniques
@@ -152,8 +156,14 @@ Every rule is numbered so a commit, a test or a review can cite it.
   amount and is never checked against what it passes
   (`SudokuPanel.java:2693-2711`); ours chooses the side. Unrelated
   candidates and digits are crossed straight, readable through the halo
-  (G11). Two arrows joining the same two nodes are drawn side by side,
-  apart from end to end, two heads, where they bend as well. A
+  (G11), but for a candidate of an arrow's own digit, which the arrow
+  would seem to stop at: an arrow of one digit keeps a mark's radius off
+  every other candidate of its digit the board shows, softly, so a gentle
+  arc or a half-pitch shift is enough, after keeping clear of the marks,
+  not hiding another arrow and not crossing the pair it is drawn beside
+  (the readability pass, M7). Two arrows joining the same two nodes are
+  drawn side by side, apart from end to end, two heads, where they bend
+  as well. A
   group or set node is anchored at its member nearest the other end of the
   link (a centroid can fall in a cell that is not one of its members;
   HoDoKu anchors at a group's first member only, so its other members get
@@ -356,18 +366,21 @@ Every rule is numbered so a commit, a test or a review can cite it.
     set is introduced by a walk frame of its own before the chain reaches
     it, drawing its tiles, tabs and members and no truth. An ALS pattern
     whose chain clashes (sets that share cells, a truth claiming more than
-    the step proves) draws no truth, no role and no start dot in any view:
-    tiles, tabs, members, arrows and removals, the walk in words, its
+    the step proves) draws no truth and no start dot in any view: tiles,
+    tabs, members, arrows and removals, the walk in words, its
     conclusion saying why the first set holds z (the last set holds z
-    only in its cells). Only
+    only in its cells), and in the views that show that conclusion its
+    first set's z as the pattern's discs, the reason every removal goes
+    (G5). Only
     Death Blossom, which draws no truth until phase 5, draws roles in a
-    set: the stem's candidates and each petal's digit the stem sees
-    acts-through gold, every petal's z pattern blue, the stem no tile, a
+    set in every view: the stem's candidates and each petal's digit the
+    stem sees acts-through gold, every petal's z pattern blue, the stem no tile, a
     headless dashed weak tie from each stem digit into its petal: along
     the row or column the two share, bending only round what lies on it,
     where that keeps clear and is shorter, counting what the digits it
     crosses cut out of it twice; crossing another tie only where the
-    crossing shows, never under a digit.
+    crossing shows, never under a digit, and as seldom as it can, a
+    crossing counted before its length (the readability pass, M11).
   - Arrows attach at a member (G10).
 - **G17. Digit focus (optional, Settings).** During a hint about one
   digit (fish, single-digit patterns, X-Chains, colouring), the other
@@ -957,11 +970,11 @@ the values above are its final ones.
   Left for later, low: over every grouped chain on offer along the solve
   paths of the pool, seed and hard puzzles, an arrow meets a bar away
   from its anchoring member in 44 chains, one of them a solve path's own
-  step (the design's As built names it); round 3's unverified low (a bar
-  moved by round 2's side rule through an ALS tile in three finds) and its
-  accepted heads (hint-drawing-p4-round3.md), for the readability pass,
-  which has worded its other low, an ALS-XY-Chain whose legend says its
-  premise is impossible, as a clash (the design's As built); an
+  step (the design's As built names it); round 3's accepted heads
+  (hint-drawing-p4-round3.md), for the readability pass, which has fixed
+  round 3's two lows (an ALS-XY-Chain whose legend says its premise is
+  impossible is worded as a clash, and a bar moved by round 2's side rule
+  no longer runs through an ALS tile: the design's As built); an
   ALS-XY-Chain of more sets than cells
   leaves one set no filled tile (four sets on three cells on a hard path),
   its tabs and dashed outlines carrying it; App.tsx's "a {tech} places it"

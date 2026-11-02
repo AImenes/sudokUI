@@ -11,7 +11,7 @@ import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
 import { walkFrames, describe } from '../engine/hintFrames';
 import { stepText } from '../content/eureka';
-import { frameMarks, legendKinds, premiseOf, parityLegend, isParity, stemAlone, petalsPart, sharedTile } from '../content/hintMarks';
+import { frameMarks, legendKinds, premiseOf, parityLegend, isParity, stemAlone, petalsPart, sharedTile, clashWords } from '../content/hintMarks';
 import type { Premise, Role, ParityEntry } from '../content/hintMarks';
 
 interface TruthWords {
@@ -443,7 +443,7 @@ export function HintPanel({ onLearn, onReport }: { onLearn: (tech: Tech) => void
                   {/* a Death Blossom's blue before every petal's z is drawn: a petal's, by its own branch */}
                   {petalsPart(hint, marks)
                     ? t("{z} in a petal: if the stem takes that petal's digit, the petal holds {aDigit}", { z: blueDigit, aDigit: t(blueDigit === 8 ? 'an {d}' : 'a {d}', { d: blueDigit }) })
-                    : (hint.labels?.primary ?? t('the pattern'))}
+                    : (clashWords(hint) ?? hint.labels?.primary ?? t('the pattern'))}
                 </li>
               )}
               {legend.shown.has('secondary') && (

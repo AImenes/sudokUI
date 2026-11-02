@@ -1453,8 +1453,9 @@ describe("what the first review of phase 4 found: where the ties, the tabs and t
     expect(lengthOf(line)).toBeLessThan(790);
   });
 
-  it('crosses no Death Blossom tie over another under a digit, where the cut-out hides the crossing: the stored example and every Death Blossom kept', () => {
-    // the stored example's 2 tie (2r8c9 to 2r9c7) crossed its 5 tie (5r8c9 to 5r8c5) at (766, 743), in r8c8's solved 3
+  it('crosses no Death Blossom tie over another under a digit, where the cut-out hides the crossing, and since the readability pass none at all where a drawing can leave it out: the stored example and every Death Blossom kept', () => {
+    // the stored example's 2 tie (2r8c9 to 2r9c7) crossed its 5 tie (5r8c9 to 5r8c5) at (766, 743), in r8c8's solved
+    // 3; then, crossing both the 5 tie and the 7 tie, a reader following it could end at another petal (M11)
     let ties = 0;
     let crossed = 0;
     for (const { where, step, values, drawing } of kept.filter((x) => x.step.tech === 'DEATH_BLOSSOM')) {
@@ -1468,7 +1469,18 @@ describe("what the first review of phase 4 found: where the ties, the tabs and t
           }
     }
     expect(ties).toBeGreaterThan(15);
-    expect(crossed).toBeGreaterThan(0);
+    expect(crossed).toBe(0);
+  });
+
+  it("counts a crossing of another of its stem's ties before a Death Blossom tie's length: the stored example's 2 tie goes round its 5 and 7 ties, which run along row 8 (readability report M11)", () => {
+    const ex = EXAMPLES.DEATH_BLOSSOM!;
+    const d = appDrawing(ex.step, ex.values, ex.cands);
+    const tieOf = (digit: number) => lineOf(d.shapes[ex.step.links!.findIndex((l) => l.undirected && key(l.from[0]) === key(cd(8, 9, digit)))]);
+    const [two, five, seven] = [tieOf(2), tieOf(5), tieOf(7)];
+    expect([crossings(two, five).length, crossings(two, seven).length, crossings(five, seven).length]).toEqual([0, 0, 0]);
+    // the 2 tie still ends at A's 2 in r9c7, and is no longer than it must be to keep off the others: under 4 cells
+    expect(dist(two.at(-1)!, d.l.centre(cd(9, 7, 2)))).toBeLessThan(SIZES.r * 100 + 2 * SIZES.gap * 100);
+    expect(lengthOf(two)).toBeLessThan(400);
   });
 
   it("never puts a tab nearer another set's tile than its own, nor two places off its tile where one beside it has the room", () => {
@@ -1677,7 +1689,8 @@ describe('what the third review of phase 4 found: steps with no sets drawn as be
   it('draws a step with no sets as main drew it before phase 4, byte for byte: Cell, Unit and Digit Forcing Chains on offer', () => {
     // a link repeated once per branch, 5r3c7=2r1c7 and 7r6c1=6r4c3, lay side by side; round 2 moved the ends of every
     // bent pair round their marks, which braided them, and joined a link at other candidates than an earlier one's,
-    // and these drawings changed, though they have no sets (each list is main's, 99516ad)
+    // and these drawings changed, though they have no sets (each list is main's, 99516ad, but the second's link 2,
+    // 5r7c1 - 5r7c4, which since the readability pass arcs off the 5 in r7c2 on its line: M7)
     expect(paths(at('..53.....8......2..7..1.5..4....53...1..7...6..32...8..6.5....9..4....3......97..', 2, 'CELL_FORCING_CHAIN'))).toEqual(
       [
         "M 811.1 532.9 Q 216.0 770.2 44.9 601.6",
@@ -1697,7 +1710,7 @@ describe('what the third review of phase 4 found: steps with no sets drawn as be
       [
         "M 336.6 343.0 Q 385.3 287.3 539.9 532.6",
         "M 538.1 556.5 Q 43.6 603.0 48.8 629.0",
-        "M 69.9 653.1 Q 354.0 620.0 354.0 628.5",
+        "M 68.8 648.9 Q 324.0 544.0 347.1 629.4",
         "M 357.0 370.7 Q 398.0 589.0 368.7 633.0",
         "M 338.8 392.6 L 532.8 539.0",
         "M 538.0 555.1 Q 86.3 556.7 62.3 629.8",
@@ -1782,5 +1795,92 @@ describe('what the fourth review of phase 4 found: a pair end turned round to th
     }
     // and the pair still has two heads
     expect(dist(arrow(d.shapes[1]).head[0], arrow(d.shapes[5]).head[0])).toBeGreaterThan(0.85 * SIZES.pair * 100);
+  });
+});
+
+describe('what the readability check of November 2026 found (docs/hint-readability-2026-11.md)', () => {
+  /** the position after `n` of the solver's steps, a technique's step there, and its drawing on the app's board, as src/ui/Grid.tsx works it out */
+  const at = (puzzle: string, n: number, tech: Tech) => {
+    const g = parseGrid(puzzle)!;
+    for (let i = 0; i < n; i++) applyStep(g, findNextStep(g)!);
+    const step = findStep(tech, g)!;
+    const [values, cands] = [Array.from(g.values), Array.from(g.cands)];
+    return { step, ...boardDrawing(step, (c) => ({ value: values[c], corner: 0, center: 0 }), (c) => cands[c]) };
+  };
+  const name = (x: CellDigit) => `${x.digit}r${Math.floor(x.cell / 9) + 1}c${(x.cell % 9) + 1}`;
+
+  it("keeps every stored example's arrow of one digit a mark's radius off every other candidate of its digit the board shows, marked or not, which it would seem to stop at (M7)", () => {
+    let arrows = 0;
+    let near = 0;
+    for (const [tech, ex] of Object.entries(EXAMPLES)) {
+      const step = ex!.step;
+      if (!step.links?.length) continue;
+      const d = boardDrawing(step, (c) => ({ value: Number(ex!.values[c]), corner: 0, center: 0 }), (c) => ex!.cands[c]);
+      for (const s of d.shapes) {
+        if (s.kind !== 'arrow' || s.undirected) continue;
+        const l = step.links[s.link];
+        const digits = new Set([...l.from, ...l.to].map((x) => x.digit));
+        if (digits.size !== 1) continue;
+        arrows++;
+        const [digit] = digits;
+        const own = new Set([...l.from, ...l.to].map((x) => x.cell));
+        for (let cell = 0; cell < 81; cell++) {
+          const x = { cell, digit };
+          if (own.has(cell) || !d.shown(x)) continue;
+          const apart = toArrow(d.layout.centre(x), s);
+          if (apart < 2 * d.layout.r) near++;
+          expect(apart, `${tech} link ${s.link + 1} and ${name(x)}`).toBeGreaterThanOrEqual(d.layout.r);
+        }
+      }
+    }
+    expect(arrows).toBeGreaterThan(50);
+    // the arrows that bend for it pass close by, a gentle arc or a half-pitch shift
+    expect(near).toBeGreaterThan(5);
+    // the report's own: the stored XY-Chain's arrow down column 6, which ran over the 3s of r3c6 and r4c6
+    const xy = EXAMPLES.XY_CHAIN!;
+    const d = boardDrawing(xy.step, (c) => ({ value: Number(xy.values[c]), corner: 0, center: 0 }), (c) => xy.cands[c]);
+    const down = xy.step.links!.findIndex((l) => name(l.from[0]) === '3r1c6' && name(l.to[0]) === '3r5c6');
+    expect(down).toBeGreaterThanOrEqual(0);
+    for (const x of [cd(3, 6, 3), cd(4, 6, 3)]) expect(toArrow(d.layout.centre(x), arrow(d.shapes[down])), name(x)).toBeGreaterThanOrEqual(d.layout.r);
+  });
+
+  it("puts a group's bar on a side that neither runs under a head coming in square-on nor through another set's tile, where the other side is otherwise alike: three AICs with ALS and a Grouped Nice Loop on offer (review round 3 of phase 4, its first low)", () => {
+    const through = (bar: GroupBar, t: { x0: number; y0: number; x1: number; y1: number }) =>
+      Math.min(bar.a.x, bar.b.x) < t.x1 && Math.max(bar.a.x, bar.b.x) > t.x0 && Math.min(bar.a.y, bar.b.y) < t.y1 && Math.max(bar.a.y, bar.b.y) > t.y0 &&
+      Math.min(bar.a.y, bar.b.y) > t.y0 + 3 && Math.max(bar.a.y, bar.b.y) < t.y1 - 3;
+    // (8)r7c23 = (8)r9c1: the 8s' bar ran above them, through A's tile on r7c2 between its 2 and its 8, under link 2's
+    // head, and pushed A's tab there out of the tile; below them, as before round 2, it bends no arrow either
+    const eight = at('...86..3......3..7.13..7..94...5..2...6.3.1...7..4...81..6..39.5..2......6..95...', 17, 'AIC_ALS');
+    expect(eight.step.tech).toBe('AIC_ALS');
+    const bar8 = eight.sets.bars.find((b) => b.members.every((m) => m.digit === 8))!;
+    expect(bar8.members.map(name)).toEqual(['8r7c2', '8r7c3']);
+    expect(bar8.a.y).toBeGreaterThan(eight.layout.centre(cd(7, 2, 8)).y);
+    expect(eight.sets.tabs.find((t) => t.cell === cd(7, 2, 1).cell)!.p).toEqual(eight.layout.centre(cd(7, 2, 5)));
+    // (9)r2c56 - (9=8){r13c6}: the 9s' bar ran above them, through B's tile on r2c5 and along r2c6's, and pushed B's
+    // tab on r2c6 to the left of it
+    const nine = at('...37...1.5......23...5.7..7..9...6...67.13...8...6..7..2.6...36......4.9...14...', 2, 'AIC_ALS');
+    const bar9 = nine.sets.bars.find((b) => b.members.every((m) => m.digit === 9))!;
+    expect(bar9.members.map(name)).toEqual(['9r2c5', '9r2c6']);
+    expect(bar9.a.y).toBeGreaterThan(nine.layout.centre(cd(2, 5, 9)).y);
+    const tabB = nine.sets.tabs.find((t) => t.cell === cd(2, 6, 1).cell && nine.step.sets![t.set].letter === 'B')!;
+    expect(tabB.p).toEqual(nine.layout.centre(cd(2, 6, 6)));
+    // and one each way: a Grouped Nice Loop on offer whose 8s' bar ran beside r4c5 and r6c5 on the right, link 6's
+    // head 1 unit from it, coming in square-on; an AIC with ALS on offer whose 3s' bar under r1c1 and r1c3 ran through
+    // set A's tile on r1c2 (each the side the one cost alone decides)
+    const loop = at('..1.4.....84..7...3.......5........1.36....58..5.....6.1.5..6.2.9.2...3..4..6..9.', 38, 'GROUPED_NICE_LOOP');
+    const bar = loop.sets.bars[0];
+    expect(bar.members.map(name)).toEqual(['8r4c5', '8r6c5']);
+    expect(bar.a.x).toBeLessThan(loop.layout.centre(cd(4, 5, 8)).x);
+    const threes = at('...72..5.6...48.7.......4...51.3.6...4...2....3.5......9.21.3......59..1..8......', 11, 'AIC_ALS');
+    expect(threes.sets.bars.map((b) => b.members.map(name).join(','))).toContain('3r1c1,3r1c3');
+    for (const d of [eight, nine, loop, threes]) {
+      for (const bar of d.sets.bars) {
+        for (const t of d.sets.tiles) expect(through(bar, t), `${bar.members.map(name)} and a tile in r${Math.floor(t.cell / 9) + 1}c${(t.cell % 9) + 1}`).toBe(false);
+        for (const s of d.shapes) {
+          if (s.kind !== 'arrow' || !s.head.length || d.step.links![s.link].to.some((x) => bar.members.some((m) => m.cell === x.cell && m.digit === x.digit))) continue;
+          expect(toSegment(s.head[0], bar.a, bar.b), `${bar.members.map(name)} and link ${s.link + 1}'s head`).toBeGreaterThan(4);
+        }
+      }
+    }
   });
 });
