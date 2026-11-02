@@ -33,7 +33,7 @@ const techs = Object.keys(EXAMPLES) as Tech[];
 
 /** a step as stored: plain data */
 const plain = (step: Step | null) => JSON.parse(JSON.stringify(step));
-/** what a step does and draws, without its words (description, legend labels, the walk's sentences) */
+/** what a step does and draws, without its words (description, legend labels, the walk's sentences and its conclusion's lead) */
 const deeds = (step: Step | null) =>
   JSON.parse(JSON.stringify(step, (key, value) => (['description', 'labels', 'text', 'lead'].includes(key) ? undefined : value)));
 

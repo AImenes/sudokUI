@@ -346,7 +346,8 @@ describe('the uniqueness patterns draw what their argument uses (H2, M4, L4)', (
       const [x, y] = s.labels!.primary!.match(/(\d)\/(\d) in all four corners/)!.slice(1).map(Number);
       const corners = [...new Set(s.primary!.map((cd) => cd.cell))];
       expect(corners, tech).toHaveLength(4);
-      expect(one.text, tech).toBe(`The rectangle: ${x}/${y} in all four corners.`);
+      // its words name the pair in all four corners (the finder's own walk, H1)
+      expect(one.text.startsWith(`${x} and ${y} are candidates in all four corners of the rectangle`), `${tech}: ${one.text}`).toBe(true);
       // every corner's x and y, blue, as the sentence says
       for (const cell of corners) for (const digit of [x, y]) expect(kindAt(k, one, { cell, digit }), `${tech} frame 1 ${cell}:${digit}`).toBe('primary');
       // then the key digit in its own colour
@@ -370,8 +371,8 @@ describe('the uniqueness patterns draw what their argument uses (H2, M4, L4)', (
       else expect(ex.cands[cd.cell] & bit(cd.digit)).toBeTruthy();
     }
     const [one, two] = walkFrames(s);
-    expect(one.text).toBe('The two solved corners, neither of them a given, and the 4 and 5 that would complete the rectangle.');
-    expect(two.text).toBe('3 in the two unsolved corners: one of them must be it.');
+    expect(one.text).toBe('Two corners of a rectangle are solved, neither of them a given: r6c3 is 5 and r9c3 is 4; of the other two, r6c2 could be 4 and r9c2 could be 5.');
+    expect(two.text).toBe('Each of r6c2 and r9c2 holds just one other digit, the same one: 3.');
   });
 
   it("UR Type 1 and the Extended Rectangle: the corner the pattern must not reach, marked before its candidates go", () => {
@@ -393,6 +394,7 @@ describe('the uniqueness patterns draw what their argument uses (H2, M4, L4)', (
       expect(legendOf(s, k.values).map((l) => l.label), tech).toContain(`remove: ${words}`);
     }
     // the first frame says nothing of a corner it does not draw
-    expect(walkFrames(exampleOf('UNIQUENESS_1').step)[0].text).toBe('The three corners holding only 5/8.');
+    expect(walkFrames(exampleOf('UNIQUENESS_1').step)[0].text).toBe('Three corners of a rectangle, r4c1, r5c1 and r5c8, hold only 5 and 8.');
+    expect(walkFrames(exampleOf('EXTENDED_RECTANGLE').step)[0].text).not.toContain('r9c5');
   });
 });

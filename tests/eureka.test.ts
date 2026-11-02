@@ -235,6 +235,12 @@ describe('the HoDoKu line', () => {
     expect(stepText(step('UNIQUENESS_2'))).toBe("Unique Rectangle Type 2: 4/7 in r56c24 / 6 in r56c4 => r4c4<>6");
     expect(stepText(step('UNIQUENESS_5'))).toBe("Unique Rectangle Type 5: 4/8 in r58c89 / 5 in r5c9,r8c89 => r9c9<>5");
     expect(stepText(step('AVOIDABLE_RECTANGLE_1'))).toBe("Avoidable Rectangle Type 1: 2/3 in r2c7,r7c79 / 2 in r2c9 => r2c9<>2");
+    // the family's walks, which phase 6 gave their own sentences (step.walk), leave every line as it was
+    expect(stepText(step('BUG_PLUS_1'))).toBe('BUG+1: 3 in r5c6 => r5c6=3');
+    for (const tech of ['UNIQUENESS_1', 'UNIQUENESS_2', 'UNIQUENESS_3', 'UNIQUENESS_4', 'UNIQUENESS_5', 'UNIQUENESS_6', 'HIDDEN_RECTANGLE', 'AVOIDABLE_RECTANGLE_1', 'AVOIDABLE_RECTANGLE_2', 'EXTENDED_RECTANGLE', 'BUG_PLUS_1'] as Tech[]) {
+      expect(step(tech).walk, tech).toBeDefined();
+      expect(stepText({ ...step(tech), walk: undefined }), tech).toBe(stepText(step(tech)));
+    }
   });
 
   it('writes Chute Remote Pair and Sue de Coq as before phase 6 coloured them by what the argument uses', () => {

@@ -2874,6 +2874,23 @@
     "primary": "the one cell with three candidates; 3 is the extra",
     "secondary": "its row, column and box, each holding 3 three times"
    },
+   "walk": {
+    "frames": [
+     {
+      "text": "Every unsolved cell but r5c6 holds exactly two candidates; r5c6 holds three.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "In row 5, column 6 and box 5, which meet at r5c6, 3 is a candidate in three cells each.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "Without the 3 in r5c6, every unsolved cell would hold two candidates, each found twice in its row, column and box. That is a deadly pattern: every cell could take its other candidate at once, and the puzzle would have two solutions."
+   },
    "description": "BUG+1: removing 3 from r5c6 would leave a bivalue grid with two solutions, so r5c6 must be 3."
   }
  },
@@ -4374,6 +4391,23 @@
     "primary": "the three corners holding only 5/8",
     "secondary": "5 and 8 in the fourth corner: either would complete the deadly pattern"
    },
+   "walk": {
+    "frames": [
+     {
+      "text": "Three corners of a rectangle, r4c1, r5c1 and r5c8, hold only 5 and 8.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The fourth corner, r4c8, holds 5 and 8 as well, and other digits too.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r4c8 were 5 or 8, all four corners would hold only 5 and 8; they could swap, and the puzzle would have two solutions."
+   },
    "description": "Unique Rectangle Type 1: r4c1, r4c8, r5c1, r5c8 would form a deadly pattern on 5/8; r4c8 cannot be 5 or 8."
   }
  },
@@ -4520,6 +4554,23 @@
    "labels": {
     "primary": "the rectangle: 4/7 in all four corners",
     "secondary": "6, the roof's extra candidate: one of the two roof cells must be it"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "4 and 7 are candidates in all four corners of the rectangle: the floor, r5c2 and r6c2, holds only these two, and the roof, r5c4 and r6c4, holds other digits too.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "Each of r5c4 and r6c4 holds just one other digit, the same one: 6.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If neither r5c4 nor r6c4 were 6, all four corners would hold only 4 and 7; they could swap, and the puzzle would have two solutions. One of them must therefore be 6, and r4c4 sees both."
    },
    "description": "Unique Rectangle Type 2: to avoid the deadly pattern on 4/7, one of r5c4/r6c4 must be 6, so 6 is removed from cells seeing both."
   }
@@ -4682,6 +4733,23 @@
     "primary": "the rectangle: 7/8 in all four corners",
     "secondary": "1 and 6: the roof's extras (r7c4, r7c5, read as one cell) and r7c6 hold only these in row 7, a naked pair"
    },
+   "walk": {
+    "frames": [
+     {
+      "text": "7 and 8 are candidates in all four corners of the rectangle: the floor, r3c4 and r3c5, holds only these two, and the roof, r7c4 and r7c5, holds other digits too.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The roof's extras are 1 and 6, and r7c6, also in row 7, holds only 1 and 6.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If neither roof cell took one of its extras, all four corners would hold only 7 and 8; they could swap, and the puzzle would have two solutions. A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked pair with r7c6: 1 and 6 can go nowhere else in row 7."
+   },
    "description": "Unique Rectangle Type 3: r3c4, r3c5, r7c4, r7c5 would form a deadly pattern on 7/8, so one of the roof cells r7c4, r7c5 must take an extra candidate. Read as one cell holding its extras (1 and 6), the roof makes a naked pair with r7c6 in row 7: 1 and 6 can only go in these cells, so they are removed from the rest of row 7."
   }
  },
@@ -4839,6 +4907,23 @@
     "primary": "the rectangle: 4/6 in all four corners",
     "secondary": "6 in column 9: only in the roof, so one of r2c9, r8c9 is 6"
    },
+   "walk": {
+    "frames": [
+     {
+      "text": "4 and 6 are candidates in all four corners of the rectangle: the floor, r2c7 and r8c7, holds only these two, and the roof, r2c9 and r8c9, holds other digits too.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "In column 9, 6 is a candidate only in the roof, so r2c9 or r8c9 is 6.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r2c9 or r8c9 were 4, the other would be 6, and all four corners would hold only 4 and 6; they could swap, and the puzzle would have two solutions."
+   },
    "description": "Unique Rectangle Type 4: 6 is locked into r2c9/r8c9; keeping 4 there would force the deadly pattern, so 4 is removed from r2c9 and r8c9."
   }
  },
@@ -4989,6 +5074,23 @@
    "labels": {
     "primary": "the rectangle: 4/8 in all four corners",
     "secondary": "5 in the roof cells: one of them must be it"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "4 and 8 are candidates in all four corners of the rectangle: r5c8 holds only these two, and r5c9, r8c8 and r8c9 hold other digits too.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "Each of r5c9, r8c8 and r8c9 holds just one other digit, the same one: 5.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If none of r5c9, r8c8 and r8c9 were 5, all four corners would hold only 4 and 8; they could swap, and the puzzle would have two solutions. One of them must therefore be 5, and r9c9 sees all of them."
    },
    "description": "Unique Rectangle Type 5: one of r5c9, r8c8, r8c9 must be 5 to avoid the deadly pattern, so 5 is removed from cells seeing all of them."
   }
@@ -5159,6 +5261,23 @@
     "primary": "the rectangle: 5/6 in all four corners",
     "secondary": "6 in rows 5 and 6: only in the rectangle, so on one diagonal"
    },
+   "walk": {
+    "frames": [
+     {
+      "text": "5 and 6 are candidates in all four corners of the rectangle: the floor, r5c6 and r6c9, holds only these two, and the roof, r5c9 and r6c6, holds other digits too.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "Rows 5 and 6 have 6 only in the rectangle, so their two 6s lie on the same diagonal.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r5c9 or r6c6 were 6, both would be, and r5c6 and r6c9 would both be 5: all four corners would hold only 5 and 6; they could swap, and the puzzle would have two solutions."
+   },
    "description": "Unique Rectangle Type 6: 6 is confined to the rectangle in both rows; placing it in a roof corner would force the deadly pattern, so 6 is removed from r5c9, r6c6."
   }
  },
@@ -5320,6 +5439,23 @@
     "primary": "the rectangle: 3/5 in all four corners",
     "secondary": "5 in row 6 and in column 5: only in the rectangle"
    },
+   "walk": {
+    "frames": [
+     {
+      "text": "3 and 5 are candidates in all four corners of the rectangle, and r9c6 holds only these two.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "In row 6 and in column 5, which cross at r6c5, 5 is a candidate only in the rectangle.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r6c5 were 3, row 6 would have its 5 in r6c6 and column 5 its 5 in r9c5, so r9c6, which sees both, would be 3: all four corners would hold only 3 and 5; they could swap, and the puzzle would have two solutions."
+   },
    "description": "Hidden Rectangle: r9c6 holds only 3/5, and 5 is confined to the rectangle in r6c5's row and column; r6c5 cannot be 3 or the deadly pattern appears."
   }
  },
@@ -5442,6 +5578,23 @@
    "labels": {
     "primary": "the three solved corners, none of them a given",
     "secondary": "the cell that would complete the rectangle with 2"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "Three corners of a rectangle are solved, none of them a given: r2c7 and r7c9 are 3, and r7c7 is 2.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The fourth corner, r2c9, still has 2 as a candidate.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r2c9 were 2, all four corners would hold only 2 and 3, none of them a given; they could swap, and the puzzle would have two solutions."
    },
    "description": "Avoidable Rectangle Type 1: setting r2c9 to 2 would complete an interchangeable rectangle of solved (non-given) cells, contradicting the puzzle's unique solution."
   }
@@ -5573,6 +5726,23 @@
    "labels": {
     "primary": "the two solved corners, neither of them a given, and the 4 and 5 that would complete the rectangle",
     "secondary": "3 in the two unsolved corners: one of them must be it"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "Two corners of a rectangle are solved, neither of them a given: r6c3 is 5 and r9c3 is 4; of the other two, r6c2 could be 4 and r9c2 could be 5.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "Each of r6c2 and r9c2 holds just one other digit, the same one: 3.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If neither r6c2 nor r9c2 were 3, they would be 4 and 5, and all four corners would hold only 4 and 5, none of them a given; they could swap, and the puzzle would have two solutions. One of them must therefore be 3, and r7c2 sees both."
    },
    "description": "Avoidable Rectangle Type 2: to avoid an interchangeable rectangle with the solved cells r6c3, r9c3, one of r6c2/r9c2 must be 3, so 3 is removed from cells seeing both."
   }
@@ -5732,6 +5902,23 @@
    "labels": {
     "primary": "the cells that would form a deadly 2/4/9 loop",
     "secondary": "4 and 9 in r9c5: each would complete the deadly loop"
+   },
+   "walk": {
+    "frames": [
+     {
+      "text": "In rows 8 and 9, across three boxes, r8c1, r9c1, r8c5, r8c9 and r9c9 hold only 2, 4 and 9.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The sixth cell, r9c5, holds 4 and 9 as well, and other digits too.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r9c5 were 4 or 9, all six cells would hold only 2, 4 and 9. Swapping the two cells in each of columns 1, 5 and 9 at once would then give a second solution."
    },
    "description": "Extended Rectangle Type 1: r8c1, r9c1, r8c5, r9c5, r8c9, r9c9 would form a deadly 2/4/9 loop; r9c5 must take one of its extra candidates."
   }

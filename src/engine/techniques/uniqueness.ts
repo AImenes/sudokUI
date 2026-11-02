@@ -15,6 +15,39 @@ import { Step, CellDigit } from '../steps';
 import { combinations } from './subsets';
 import { listAnd, tr, unitName } from '../text';
 
+/*
+ * The walks (step.walk, the readability report's H1): frame 1 the
+ * rectangle, all of it, naming its floor (the corners holding only the
+ * pair) and its roof (the corners holding more); frame 2 what the argument
+ * adds (the roof's extra digit, the key digit gold, G5); the conclusion
+ * opening with why the pattern would be deadly: with only the pair in all
+ * four corners, none of them a given, the corners could swap and the
+ * puzzle would have two solutions. The roles, and so the drawing and the
+ * Copy step line, are as they were.
+ */
+
+/** cells as prose writes them: "r5c2 and r6c2", "r5c9, r8c8 and r8c9" */
+const named = (cells: number[]) => listAnd(cells.map(cellName));
+
+/** frame 1 of a unique rectangle whose floor and roof are two corners each */
+function floorAndRoof(x: number, y: number, floor: number[], roof: number[]): string {
+  return tr`${x} and ${y} are candidates in all four corners of the rectangle: the floor, ${named(floor)}, holds only these two, and the roof, ${named(roof)}, holds other digits too.`;
+}
+
+/**
+ * After the why: one of the cells holding the extra digit z must be z, and
+ * every removal sees all of them (UR Types 2 and 5, Avoidable Rectangle
+ * Type 2, Extended Rectangle Type 2)
+ */
+export function oneOfThemSees(z: number, holders: number[], elims: CellDigit[]): string {
+  const seeing = [...new Set(elims.map((e) => e.cell))];
+  const e = named(seeing);
+  if (holders.length === 2) {
+    return seeing.length === 1 ? tr`One of them must therefore be ${z}, and ${e} sees both.` : tr`One of them must therefore be ${z}, and ${e} each see both.`;
+  }
+  return seeing.length === 1 ? tr`One of them must therefore be ${z}, and ${e} sees all of them.` : tr`One of them must therefore be ${z}, and ${e} each see all of them.`;
+}
+
 interface Rect {
   cells: [number, number, number, number]; // r1c1, r1c2, r2c1, r2c2
   x: number;
@@ -94,6 +127,13 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
             primary: tr`the three corners holding only ${x}/${y}`,
             secondary: tr`${x} and ${y} in the fourth corner: either would complete the deadly pattern`
           },
+          walk: {
+            frames: [
+              { text: tr`Three corners of a rectangle, ${named(exact)}, hold only ${x} and ${y}.`, show: ['primary'] },
+              { text: tr`The fourth corner, ${cellName(target)}, holds ${x} and ${y} as well, and other digits too.`, show: ['secondary'] }
+            ],
+            lead: tr`If ${cellName(target)} were ${x} or ${y}, all four corners would hold only ${x} and ${y}; they could swap, and the puzzle would have two solutions.`
+          },
           description: tr`Unique Rectangle Type 1: ${cellNames(cells)} would form a deadly pattern on ${x}/${y}; ${cellName(target)} cannot be ${x} or ${y}.`
         };
       }
@@ -127,6 +167,13 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
           labels: {
             primary: tr`the rectangle: ${x}/${y} in all four corners`,
             secondary: tr`${z}, the roof's extra candidate: one of the two roof cells must be it`
+          },
+          walk: {
+            frames: [
+              { text: floorAndRoof(x, y, exact, extra), show: ['primary'] },
+              { text: tr`Each of ${named(extra)} holds just one other digit, the same one: ${z}.`, show: ['secondary'] }
+            ],
+            lead: `${tr`If neither ${cellName(e1)} nor ${cellName(e2)} were ${z}, all four corners would hold only ${x} and ${y}; they could swap, and the puzzle would have two solutions.`} ${oneOfThemSees(z, extra, elims)}`
           },
           description: tr`Unique Rectangle Type 2: to avoid the deadly pattern on ${x}/${y}, one of ${cellName(e1)}/${cellName(e2)} must be ${z}, so ${z} is removed from cells seeing both.`
         };
@@ -169,6 +216,13 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
             labels: {
               primary: tr`the rectangle: ${x}/${y} in all four corners`,
               secondary: tr`${keep} in ${unitName(confined)}: only in the roof, so one of ${cellName(e1)}, ${cellName(e2)} is ${keep}`
+            },
+            walk: {
+              frames: [
+                { text: floorAndRoof(x, y, exact, extra), show: ['primary'] },
+                { text: tr`In ${unitName(confined)}, ${keep} is a candidate only in the roof, so ${cellName(e1)} or ${cellName(e2)} is ${keep}.`, show: ['secondary'] }
+              ],
+              lead: tr`If ${cellName(e1)} or ${cellName(e2)} were ${kill}, the other would be ${keep}, and all four corners would hold only ${x} and ${y}; they could swap, and the puzzle would have two solutions.`
             },
             description: tr`Unique Rectangle Type 4: ${keep} is locked into ${cellName(e1)}/${cellName(e2)}; keeping ${kill} there would force the deadly pattern, so ${kill} is removed from ${cellName(e1)} and ${cellName(e2)}.`
           };
@@ -214,6 +268,8 @@ function uniqueness3(g: Grid, rect: Rect, pairMask: number, extra: number[]): St
         const house = unitName(u);
         const deadly = cellNames(rect.cells);
         const [x, y] = [rect.x, rect.y];
+        const floor = rect.cells.filter((c) => !extra.includes(c));
+        const why = tr`If neither roof cell took one of its extras, all four corners would hold only ${x} and ${y}; they could swap, and the puzzle would have two solutions.`;
         return {
           tech: 'UNIQUENESS_3',
           placements: [],
@@ -235,6 +291,24 @@ function uniqueness3(g: Grid, rect: Rect, pairMask: number, extra: number[]): St
                 : k === 2
                   ? tr`${digits}: the roof's extras (${roof}, read as one cell) and ${cells} hold only these in ${house}, a naked triple`
                   : tr`${digits}: the roof's extras (${roof}, read as one cell) and ${cells} hold only these in ${house}, a naked quadruple`
+          },
+          walk: {
+            frames: [
+              { text: floorAndRoof(x, y, floor, [e1, e2]), show: ['primary'] },
+              {
+                text:
+                  k === 1
+                    ? tr`The roof's extras are ${extras}, and ${named(S)}, also in ${house}, holds only ${digits}.`
+                    : tr`The roof's extras are ${extras}, and ${named(S)}, also in ${house}, hold only ${digits} between them.`,
+                show: ['secondary']
+              }
+            ],
+            lead:
+              k === 1
+                ? `${why} ${tr`A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked pair with ${named(S)}: ${digits} can go nowhere else in ${house}.`}`
+                : k === 2
+                  ? `${why} ${tr`A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked triple with ${named(S)}: ${digits} can go nowhere else in ${house}.`}`
+                  : `${why} ${tr`A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked quadruple with ${named(S)}: ${digits} can go nowhere else in ${house}.`}`
           },
           description:
             k === 1
@@ -282,6 +356,16 @@ function uniqueness5(
     labels: {
       primary: tr`the rectangle: ${rect.x}/${rect.y} in all four corners`,
       secondary: tr`${z} in the roof cells: one of them must be it`
+    },
+    walk: {
+      frames: [
+        {
+          text: tr`${rect.x} and ${rect.y} are candidates in all four corners of the rectangle: ${named(exact)} holds only these two, and ${named(extra)} hold other digits too.`,
+          show: ['primary']
+        },
+        { text: tr`Each of ${named(extra)} holds just one other digit, the same one: ${z}.`, show: ['secondary'] }
+      ],
+      lead: `${tr`If none of ${named(extra)} were ${z}, all four corners would hold only ${rect.x} and ${rect.y}; they could swap, and the puzzle would have two solutions.`} ${oneOfThemSees(z, extra, elims)}`
     },
     description: tr`Unique Rectangle Type 5: one of ${cellNames(extra)} must be ${z} to avoid the deadly pattern, so ${z} is removed from cells seeing all of them.`
   };
@@ -334,6 +418,18 @@ function uniqueness6(
         secondary: rowsStrong
           ? tr`${d} in rows ${a + 1} and ${b + 1}: only in the rectangle, so on one diagonal`
           : tr`${d} in columns ${a + 1} and ${b + 1}: only in the rectangle, so on one diagonal`
+      },
+      walk: {
+        frames: [
+          { text: floorAndRoof(rect.x, rect.y, exact, extra), show: ['primary'] },
+          {
+            text: rowsStrong
+              ? tr`Rows ${a + 1} and ${b + 1} have ${d} only in the rectangle, so their two ${d}s lie on the same diagonal.`
+              : tr`Columns ${a + 1} and ${b + 1} have ${d} only in the rectangle, so their two ${d}s lie on the same diagonal.`,
+            show: ['secondary']
+          }
+        ],
+        lead: tr`If ${cellName(extra[0])} or ${cellName(extra[1])} were ${d}, both would be, and ${named(exact)} would both be ${other}: all four corners would hold only ${rect.x} and ${rect.y}; they could swap, and the puzzle would have two solutions.`
       },
       description: rowsStrong
         ? tr`Unique Rectangle Type 6: ${d} is confined to the rectangle in both rows; placing it in a roof corner would force the deadly pattern, so ${d} is removed from ${cellNames(extra)}.`
@@ -394,6 +490,16 @@ export function findHiddenRectangle(g: Grid): Step | null {
             primary: tr`the rectangle: ${x}/${y} in all four corners`,
             secondary: tr`${strong} in ${unitName(rowOf(B))} and in ${unitName(9 + colOf(B))}: only in the rectangle`
           },
+          walk: {
+            frames: [
+              { text: tr`${x} and ${y} are candidates in all four corners of the rectangle, and ${cellName(A)} holds only these two.`, show: ['primary'] },
+              {
+                text: tr`In ${unitName(rowOf(B))} and in ${unitName(9 + colOf(B))}, which cross at ${cellName(B)}, ${strong} is a candidate only in the rectangle.`,
+                show: ['secondary']
+              }
+            ],
+            lead: tr`If ${cellName(B)} were ${weak}, ${unitName(rowOf(B))} would have its ${strong} in ${cellName(rowMate)} and ${unitName(9 + colOf(B))} its ${strong} in ${cellName(colMate)}, so ${cellName(A)}, which sees both, would be ${weak}: all four corners would hold only ${x} and ${y}; they could swap, and the puzzle would have two solutions.`
+          },
           description: tr`Hidden Rectangle: ${cellName(A)} holds only ${x}/${y}, and ${strong} is confined to the rectangle in ${cellName(B)}'s row and column; ${cellName(B)} cannot be ${weak} or the deadly pattern appears.`
         };
       }
@@ -439,6 +545,16 @@ export function findAvoidableRectangle(g: Grid, type: 1 | 2): Step | null {
                 primary: tr`the three solved corners, none of them a given`,
                 secondary: tr`the cell that would complete the rectangle with ${a}`
               },
+              walk: {
+                frames: [
+                  {
+                    text: tr`Three corners of a rectangle are solved, none of them a given: ${named(adj)} are ${g.values[adj[0]]}, and ${cellName(D)} is ${a}.`,
+                    show: ['primary']
+                  },
+                  { text: tr`The fourth corner, ${cellName(U)}, still has ${a} as a candidate.`, show: ['secondary'] }
+                ],
+                lead: tr`If ${cellName(U)} were ${a}, all four corners would hold only ${Math.min(a, g.values[adj[0]])} and ${Math.max(a, g.values[adj[0]])}, none of them a given; they could swap, and the puzzle would have two solutions.`
+              },
               description: tr`Avoidable Rectangle Type 1: setting ${cellName(U)} to ${a} would complete an interchangeable rectangle of solved (non-given) cells, contradicting the puzzle's unique solution.`
             };
           }
@@ -483,6 +599,16 @@ export function findAvoidableRectangle(g: Grid, type: 1 | 2): Step | null {
                 primary: tr`the two solved corners, neither of them a given, and the ${Math.min(dv1, dv2)} and ${Math.max(dv1, dv2)} that would complete the rectangle`,
                 secondary: tr`${cDigit} in the two unsolved corners: one of them must be it`
               },
+              walk: {
+                frames: [
+                  {
+                    text: tr`Two corners of a rectangle are solved, neither of them a given: ${cellName(p1)} is ${g.values[p1]} and ${cellName(p2)} is ${g.values[p2]}; of the other two, ${cellName(u1)} could be ${dv1} and ${cellName(u2)} could be ${dv2}.`,
+                    show: ['primary']
+                  },
+                  { text: tr`Each of ${named([u1, u2])} holds just one other digit, the same one: ${cDigit}.`, show: ['secondary'] }
+                ],
+                lead: `${tr`If neither ${cellName(u1)} nor ${cellName(u2)} were ${cDigit}, they would be ${dv1} and ${dv2}, and all four corners would hold only ${Math.min(dv1, dv2)} and ${Math.max(dv1, dv2)}, none of them a given; they could swap, and the puzzle would have two solutions.`} ${oneOfThemSees(cDigit, [u1, u2], elims)}`
+              },
               description: tr`Avoidable Rectangle Type 2: to avoid an interchangeable rectangle with the solved cells ${cellNames(solved)}, one of ${cellName(u1)}/${cellName(u2)} must be ${cDigit}, so ${cDigit} is removed from cells seeing both.`
             };
           }
@@ -493,8 +619,17 @@ export function findAvoidableRectangle(g: Grid, type: 1 | 2): Step | null {
   return null;
 }
 
-/** BUG+1: if all cells were bivalue the puzzle would have two solutions;
- *  the single trivalue cell must take the digit occurring three times. */
+/**
+ * BUG+1: if all cells were bivalue, each candidate twice in each of its
+ * houses (a bivalue universal grave), every cell could take its other
+ * candidate at once and the puzzle would have two solutions; the single
+ * trivalue cell must take the digit occurring three times. Without that
+ * digit the grid must be such a grave: a house where a digit is a
+ * candidate once (a hidden single, which a solve path takes first, but
+ * Scan lists beside it) makes it none, and the placement unproven (two
+ * such finds along the practice paths placed a digit the solution does
+ * not have)
+ */
 export function findBugPlus1(g: Grid): Step | null {
   let triCell = -1;
   for (let c = 0; c < 81; c++) {
@@ -510,20 +645,37 @@ export function findBugPlus1(g: Grid): Step | null {
       (u) =>
         UNITS[u].filter((c) => g.values[c] === 0 && g.cands[c] & bit(d)).length
     );
-    if (counts.every((n) => n === 3)) {
-      return {
-        tech: 'BUG_PLUS_1',
-        placements: [{ cell: triCell, digit: d }],
-        eliminations: [],
-        primary: [{ cell: triCell, digit: d }],
-        units: CELL_UNITS[triCell].map((unit) => ({ unit, role: 'secondary' as const })),
-        labels: {
-          primary: tr`the one cell with three candidates; ${d} is the extra`,
-          secondary: tr`its row, column and box, each holding ${d} three times`
-        },
-        description: tr`BUG+1: removing ${d} from ${cellName(triCell)} would leave a bivalue grid with two solutions, so ${cellName(triCell)} must be ${d}.`
-      };
-    }
+    if (!counts.every((n) => n === 3)) continue;
+    const without = (c: number) => (c === triCell ? g.cands[c] & ~bit(d) : g.cands[c]);
+    const grave = UNITS.every((unit) => {
+      for (let e = 1; e <= 9; e++) {
+        const n = unit.filter((c) => g.values[c] === 0 && without(c) & bit(e)).length;
+        if (n !== 0 && n !== 2) return false;
+      }
+      return true;
+    });
+    if (!grave) continue;
+    const cell = cellName(triCell);
+    const [row, col, box] = CELL_UNITS[triCell].map(unitName);
+    return {
+      tech: 'BUG_PLUS_1',
+      placements: [{ cell: triCell, digit: d }],
+      eliminations: [],
+      primary: [{ cell: triCell, digit: d }],
+      units: CELL_UNITS[triCell].map((unit) => ({ unit, role: 'secondary' as const })),
+      labels: {
+        primary: tr`the one cell with three candidates; ${d} is the extra`,
+        secondary: tr`its row, column and box, each holding ${d} three times`
+      },
+      walk: {
+        frames: [
+          { text: tr`Every unsolved cell but ${cell} holds exactly two candidates; ${cell} holds three.`, show: ['primary'] },
+          { text: tr`In ${row}, ${col} and ${box}, which meet at ${cell}, ${d} is a candidate in three cells each.`, show: ['secondary'] }
+        ],
+        lead: tr`Without the ${d} in ${cell}, every unsolved cell would hold two candidates, each found twice in its row, column and box. That is a deadly pattern: every cell could take its other candidate at once, and the puzzle would have two solutions.`
+      },
+      description: tr`BUG+1: removing ${d} from ${cellName(triCell)} would leave a bivalue grid with two solutions, so ${cellName(triCell)} must be ${d}.`
+    };
   }
   return null;
 }
