@@ -20,6 +20,7 @@
  */
 import { DAYS_SHOWN, DATASET, type DayRow, type Metrics, type Totals } from './adminModel';
 import { accessKeys, cameThroughAccess, type AccessEnv, type AccessKeys } from './access';
+import type { D1Like } from './daily';
 import { PLAY_KINDS, PLAY_LANGS, SHARE_KINDS, type LandingFrom, type PlayKind, type PlayLang, type ShareKind } from './telemetry';
 
 export { DAYS_SHOWN, DATASET };
@@ -492,6 +493,58 @@ const page = (html: string, status = 200) =>
 export interface AdminEnv extends AccessEnv {
   ADMIN_ACCOUNT_ID?: string;
   ADMIN_TOKEN?: string;
+  /** the daily's times (worker/daily.ts), for how many daily solves sent theirs */
+  DB?: D1Like;
+}
+
+/** a day's daily times as they reached the database: its UTC midnight in seconds, the times, the unassisted ones */
+export interface SentDay {
+  day: number;
+  n: number;
+  unassisted: number;
+}
+
+/** the daily times sent per UTC day, the last DAYS_SHOWN days; undefined with no database, null when it fails */
+export async function dailySent(db: D1Like | undefined, now: Date): Promise<SentDay[] | null | undefined> {
+  if (!db) return undefined;
+  const since = Math.floor(now.getTime() / 86400000) * 86400 - (DAYS_SHOWN - 1) * 86400;
+  try {
+    const out = await db
+      .prepare('SELECT created_at AS day, COUNT(*) AS n, SUM(unassisted) AS unassisted FROM daily_result WHERE created_at >= ?1 GROUP BY created_at ORDER BY created_at')
+      .bind(since)
+      .all<SentDay>();
+    return out.results ?? [];
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Daily solves against daily times sent, day by day: did the player who
+ * solved the daily send the time (the win screen's button, or the switch
+ * that sends it by itself)? The solves are the play lines of kind daily,
+ * which an older app, an offline solve or a device left out of the counts
+ * never sends, so the share is a guide, not a census
+ */
+export function dailySentTable(rows: Row[], sent: SentDay[] | null | undefined): string {
+  if (sent === undefined) return '';
+  if (!sent) return '<h2>Daily times sent</h2><p class="note">The database could not be read.</p>';
+  const solves = new Map<string, number>();
+  for (const r of rows) if (r.event === 'completed' && r.kind === 'daily') solves.set(r.day, (solves.get(r.day) ?? 0) + r.n);
+  const times = new Map(sent.map((s) => [new Date(s.day * 1000).toISOString().slice(0, 10), s]));
+  const days = [...new Set([...solves.keys(), ...times.keys()])].sort().reverse();
+  const cell = (v: string | number) => `<td>${esc(String(v))}</td>`;
+  const body = days
+    .map((day) => {
+      const n = solves.get(day) ?? 0;
+      const t = times.get(day);
+      const share = n ? `${Math.round(((t?.n ?? 0) / n) * 100)}%` : '';
+      return `<tr>${cell(day)}${cell(n)}${cell(t?.n ?? 0)}${cell(t?.unassisted ?? 0)}${cell(share)}</tr>`;
+    })
+    .join('');
+  return `<h2>Daily times sent</h2>
+<p class="note">Daily solves the play lines counted, against the times that reached the database (by the button, or by the switch that sends them). A guide, not a census: an older app, an offline solve or a device left out of the counts sends no play line.</p>
+<table><thead><tr><th>Day (UTC)</th><th>Daily solves</th><th>Times sent</th><th>Of them unassisted</th><th>Sent</th></tr></thead><tbody>${body || '<tr><td colspan="5">None yet</td></tr>'}</tbody></table>`;
 }
 
 /** the Access keys, fetched once per isolate and kept an hour (access.ts) */
@@ -532,6 +585,7 @@ export async function handleAdmin(request: Request, env: AdminEnv, options: Admi
   } catch (err) {
     return page(`<!doctype html><title>sudokUI admin</title><p>The analytics API could not be read: ${esc(String(err).slice(0, 300))}</p>`, 502);
   }
-  const html = renderAdmin(metricsOf(rowsOf(answer), now));
+  const rows = rowsOf(answer);
+  const html = renderAdmin(metricsOf(rows, now)).replace('  </body>', `${dailySentTable(rows, await dailySent(env.DB, now))}\n  </body>`);
   return request.method === 'HEAD' ? page('', 200) : page(html);
 }

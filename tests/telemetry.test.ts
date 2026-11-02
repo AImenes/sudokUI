@@ -30,7 +30,7 @@ import {
   RATE_LIMIT,
   TelemetryEvent
 } from '../worker/telemetry';
-import { handleAdmin, adminQuery, rowsOf, metricsOf, renderAdmin, sqlApi, DATASET, Row, ADMIN_PATH } from '../worker/admin';
+import { handleAdmin, adminQuery, rowsOf, metricsOf, renderAdmin, sqlApi, DATASET, Row, ADMIN_PATH, dailySent, dailySentTable } from '../worker/admin';
 import { handleRequest, Env, SHARE_TEMPLATE, HOME_PATHS } from '../worker/index';
 import { ACCESS_HEADER, type AccessKeys } from '../worker/access';
 import { ACCESS_SECRETS, certsEndpoint, claimsAt, keysOver, signer, type Signer } from './accessToken';
@@ -1114,5 +1114,32 @@ describe('who is counted', () => {
     ]) {
       expect(isPersonAgent(agent), agent).toBe(false);
     }
+  });
+});
+
+describe("the admin page's daily times sent", () => {
+  const row = (day: string, event: string, kind: string, n: number) =>
+    ({ day, event, source: '', kind, via: '', n, standalone: 0, offline: 0, optin: 0, optin_offline: 0, optin_returning: 0 });
+  it('sets the daily solves the play lines counted against the times that reached the database, day by day', () => {
+    const rows = [row('2026-10-12', 'completed', 'daily', 4), row('2026-10-12', 'completed', 'new', 9), row('2026-10-12', 'started', 'daily', 6)];
+    const html = dailySentTable(rows, [{ day: Date.UTC(2026, 9, 12) / 1000, n: 2, unassisted: 1 }]);
+    expect(html).toContain('<tr><td>2026-10-12</td><td>4</td><td>2</td><td>1</td><td>50%</td></tr>');
+    // no database bound: no table at all; a database that fails: said so
+    expect(dailySentTable(rows, undefined)).toBe('');
+    expect(dailySentTable(rows, null)).toContain('could not be read');
+  });
+  it('asks the database for the last week, by the UTC day a time arrived', async () => {
+    const calls: { sql: string; args: unknown[] }[] = [];
+    const db = {
+      prepare: (sql: string) => {
+        const st = { bind: (...args: unknown[]) => (calls.push({ sql, args }), st), all: async () => ({ results: [{ day: 1, n: 3, unassisted: 2 }] }) };
+        return st;
+      },
+      batch: async () => []
+    };
+    expect(await dailySent(db as never, new Date('2026-10-13T12:00:00Z'))).toEqual([{ day: 1, n: 3, unassisted: 2 }]);
+    expect(calls[0].sql).toContain('FROM daily_result');
+    expect(calls[0].args[0]).toBeLessThan(Date.UTC(2026, 9, 13) / 1000);
+    expect(await dailySent(undefined, new Date())).toBeUndefined();
   });
 });
