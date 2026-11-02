@@ -123,7 +123,9 @@ export const useSettings = create<Settings>()(
       setTracker: false,
       // blue and orange: keys 6 and 2 in Colour mode
       setColors: [5, 1],
-      scrollOverBoard: true,
+      // off: the board takes every touch, which plays better on a phone or a
+      // tablet; the page scrolls from beside it (the owner's call, 2 November 2026)
+      scrollOverBoard: false,
       confirmAssist: true,
       useUniqueness: true,
       digitTints: false,
@@ -144,7 +146,18 @@ export const useSettings = create<Settings>()(
         })),
       set: (p) => set(p)
     }),
-    { name: 'sudokui-settings-v1' }
+    {
+      name: 'sudokui-settings-v1',
+      // version 1 (2 November 2026): scrolling over the board went off by
+      // default. Every player kept it on only because it was the default,
+      // so it goes off once for all of them; anyone who had turned it off
+      // keeps it off, and anyone may turn it on again in Settings
+      version: 1,
+      migrate: (stored, version) => {
+        const state = (stored ?? {}) as Partial<Settings>;
+        return (version < 1 ? { ...state, scrollOverBoard: false } : state) as Settings;
+      }
+    }
   )
 );
 

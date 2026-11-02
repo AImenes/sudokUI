@@ -10,6 +10,7 @@ import { BandTable } from './BandTable';
 import { RATING_SUMMARY } from '../content/rating';
 import { useLearnLocale } from './useLearnLocale';
 import { PRIVACY_URL } from '../content/staticRoutes';
+import { WHY } from '../content/why';
 import { PALETTE } from './Grid';
 
 // The rating summary in the chosen language. English is at hand; a
@@ -371,7 +372,7 @@ const SHORTCUTS: [string, string][] = [
   ['Z / X / C / V', msg('Switch mode: Digit / Corner / Centre / Colour')],
   [msg('Arrow keys'), msg('Move the selection (Shift extends it)')],
   [msg('Click + drag'), msg('Select multiple cells')],
-  [msg('Touch: drag'), msg('Select a run of cells (on a phone a vertical swipe scrolls the page: rest a moment first to drag in any direction)')],
+  [msg('Touch: drag'), msg('Select a run of cells (with Scroll by swiping over the board on, in Settings, a vertical swipe on a phone scrolls the page: rest a moment first to drag in any direction)')],
   [msg('Touch: hold a number'), msg('Enter it as a corner mark, whatever the mode')],
   [msg('Alt + drag'), msg('Select a rectangle, from the first cell to the one under the pointer (Option on a Mac)')],
   [msg('Ctrl/Cmd + click'), msg('Add cells to the selection')],
@@ -392,6 +393,45 @@ const SHORTCUTS: [string, string][] = [
 ];
 
 const REPO = 'github.com/AImenes/sudokUI';
+
+/**
+ * Why sudokUI? (src/content/why.ts): what the app is for and promises, the
+ * same copy the static page /why/ shows. Opened from the footer and the win
+ * screen, never on its own
+ */
+export function WhyDialog({ onClose, onFeedback }: { onClose: () => void; onFeedback?: () => void }) {
+  const t = useT();
+  const c = WHY[t.lang];
+  const nodes = {
+    privacy: (
+      <a href={`${t.lang === 'en' ? '' : `/${t.lang}`}${PRIVACY_URL}`} target="_blank" rel="noreferrer">
+        {c.privacyLink}
+      </a>
+    ),
+    feedback: onFeedback ? (
+      <button className="learn-link" onClick={onFeedback}>
+        {c.feedbackLink}
+      </button>
+    ) : (
+      c.feedbackLink
+    )
+  };
+  return (
+    <Modal title={c.name} onClose={onClose}>
+      <p className="dialog-note">{c.lead}</p>
+      {c.sections.map((sec) => (
+        <React.Fragment key={sec.heading}>
+          <h4 className="setting-group">{sec.heading}</h4>
+          {sec.paragraphs.map((para) => (
+            <p key={para} className="dialog-note">
+              {rich(para, nodes)}
+            </p>
+          ))}
+        </React.Fragment>
+      ))}
+    </Modal>
+  );
+}
 
 export function InfoDialog({
   onClose,
@@ -518,7 +558,7 @@ export function InfoDialog({
       <h4 className="setting-group">{t('Touch')}</h4>
       <p className="dialog-note">
         {t(
-          'Tap to select, and use the on-screen mode and number buttons. To select several cells, drag across them. On a phone a quick swipe up or down over the board scrolls the page instead: rest your finger on the first cell for a moment, then drag in any direction. Or turn on Multi: then a tap adds a cell or takes it out, a drag paints cells in or out whichever way it goes, and the page scrolls from beside the board. Hold a number key for a moment to enter it as a corner mark without changing mode. Tap the selected cell again, or anywhere beside the board, to clear the highlight, and long-press a digit on the board to highlight all of its cells.'
+          'Tap to select, and use the on-screen mode and number buttons. To select several cells, drag across them. The page scrolls from beside the board; or turn on Scroll by swiping over the board in Settings, and on a phone a quick swipe up or down over the board scrolls it instead (rest your finger on the first cell for a moment, then drag in any direction). Or turn on Multi: then a tap adds a cell or takes it out, a drag paints cells in or out whichever way it goes, and the page scrolls from beside the board. Hold a number key for a moment to enter it as a corner mark without changing mode. Tap the selected cell again, or anywhere beside the board, to clear the highlight, and long-press a digit on the board to highlight all of its cells.'
         )}
       </p>
 

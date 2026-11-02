@@ -265,8 +265,8 @@ describe('static pages', () => {
   it('builds one page per technique plus the hubs and landing pages, in every language', () => {
     // hubs: the technique index, the Intuition guide, the glossary and the rating page;
     // in English, Norwegian and Spanish: every technique, the four hubs, the
-    // privacy page and every landing page
-    expect(pages).toHaveLength(3 * (ALL_TECHS.length + 5 + LANDING_PAGES.length));
+    // privacy page, Why sudokUI? and every landing page
+    expect(pages).toHaveLength(3 * (ALL_TECHS.length + 6 + LANDING_PAGES.length));
     for (const lang of ['nb', 'es']) {
       for (const tech of ALL_TECHS) expect(urls.has(`/${lang}/learn/${techSlug(tech)}/`), `${lang} ${tech}`).toBe(true);
       for (const p of LANDING_PAGES) expect(urls.has(`/${lang}${p.url}`), `${lang} ${p.url}`).toBe(true);
@@ -293,6 +293,7 @@ describe('static pages', () => {
         "/learn/intuition/",
         "/learn/glossary/",
         "/privacy/",
+        "/why/",
         "/nb/daily-sudoku/",
         "/nb/sudoku-solver/",
         "/nb/hodoku/",
@@ -302,6 +303,7 @@ describe('static pages', () => {
         "/nb/learn/intuition/",
         "/nb/learn/glossary/",
         "/nb/privacy/",
+        "/nb/why/",
         "/es/daily-sudoku/",
         "/es/sudoku-solver/",
         "/es/hodoku/",
@@ -311,6 +313,7 @@ describe('static pages', () => {
         "/es/learn/intuition/",
         "/es/learn/glossary/",
         "/es/privacy/",
+        "/es/why/",
       ]
     `);
   });
