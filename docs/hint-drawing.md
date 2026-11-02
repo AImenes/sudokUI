@@ -1048,7 +1048,7 @@ the values above are its final ones.
   player says them, their bands still come with their roles (M1), a Hidden
   Single keeps its band rule (M9), and their Copy step lines are the ones
   they always were.
-  Batch 2's fish: all nine walk in their finders' own sentences (H1's fish
+  Batch 2 (phase6-batch2-review.md) adds the singles, subsets and Locked Candidates above, M17, and the fish: all nine walk in their finders' own sentences (H1's fish
   part): a basic fish names its base houses and their cells, then its
   cover houses and why each takes its digit from the base; a finned or
   sashimi fish its base, its fins, its cover if every fin is false (a

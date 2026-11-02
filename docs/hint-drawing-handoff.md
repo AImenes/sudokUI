@@ -76,6 +76,20 @@ phase 6 (words) and phase 7 (polish). The
 relabelling of AIC with ALS steps whose only set is a bivalue cell is a
 later measured engine change (the design's decision 14).
 
+### 2 November 2026, night: phase 6 batch 2 and reach item 3, merged
+
+The hints players see most now walk through their argument in plain sentences: the singles, the subsets and Locked
+Candidates ("Row 4 has one empty cell, r4c9, and lacks only 8."), and the nine fish, whose fins' box is now drawn,
+dotted. Every chain link between cells names the house that makes it (M17), in the chain trainer too.
+
+Reach item 3 is built. The Share dialog makes a picture of the board, and "Share this hint" makes one with the
+hint or the current walk frame drawn, never naming the technique. The picture is made on the device and goes
+through the share sheet, the clipboard or a download; only the share line (kind image, way save) is counted.
+
+The review record is phase6-batch2-review.md. Still to do: the owner's phone check of the share sheet with a picture,
+reach item 4 (copy as post) after the owner's composer test, the rest of phase 6 (Empty Rectangle, Fireworks, the
+Exocets, L2, L3, WXYZ-Wing as ALS-XZ), then phase 7 and phase 5.
+
 ### 2 November 2026, evening: phase 6 batch 1 and the reach items, merged
 
 Phase 6 has begun. `Step.walk` lets a finder write its own walk, and five techniques the readability check rated
