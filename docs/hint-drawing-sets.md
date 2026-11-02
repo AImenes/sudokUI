@@ -986,13 +986,16 @@ hintMarks, i18n), and the decisions it refines point here.
   821 units through row 9, over r9c2's 2 and 3 and past the solved 7 and
   9 there, and its 2 tie crossing its 5 tie inside r8c8's solved 3. The 7
   tie now runs along row 8, 774 units, rising only over r8c2's 7. Since
-  the readability pass (its M11) a tie also crosses the other ties of its
-  stem as seldom as it can, a crossing counted before its length: the 2
-  tie, which crossed both the 5 tie and the 7 tie, goes round the right
-  of the stem into A's 2 and crosses neither, and the 5 tie then runs
-  along row 8 behind the solved 6 and 3. Of the 3,234 Death Blossoms on
-  offer past the singles of the pool, seed and daily paths, 696 drew two
-  ties crossing (752 crossings); now 208 (222), the ties 1.1% longer. Over the
+  the readability pass (its M11) a crossing of the stem's other ties ranks
+  the drawings a tie tries, before its length, and a tie clean of all but
+  a crossing (not one along its row or column, which runs along it as
+  above) tries six arcs more, either way round. A search that went on
+  until no tie crossed (208 of the 3,234 Death Blossoms on offer past the
+  singles of the pool, seed and daily paths still crossing, against 696)
+  made a Death Blossom some ten times slower to draw, 300 ms against 20
+  on a desktop, and was cut back (the review of the readability pass):
+  now 550 cross, in main's time; two drawings cross once more than main's,
+  147 no longer cross. The stored example draws as main does. Over the
   1,175 Death Blossoms at the review's positions, 356 drawings change,
   341 with a tie along its row or column; in those the ties' length
   stays the same and the length the digits cut out of them falls from

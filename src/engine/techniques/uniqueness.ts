@@ -170,7 +170,7 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
               primary: tr`the rectangle: ${x}/${y} in all four corners`,
               secondary: tr`${keep} in ${unitName(confined)}: only in the roof, so one of ${cellName(e1)}, ${cellName(e2)} is ${keep}`
             },
-            description: tr`Unique Rectangle Type 4: ${keep} is locked into ${cellName(e1)}/${cellName(e2)}; keeping ${kill} there would force the deadly pattern, so ${kill} is removed from both.`
+            description: tr`Unique Rectangle Type 4: ${keep} is locked into ${cellName(e1)}/${cellName(e2)}; keeping ${kill} there would force the deadly pattern, so ${kill} is removed from ${cellName(e1)} and ${cellName(e2)}.`
           };
         }
       }

@@ -1453,9 +1453,8 @@ describe("what the first review of phase 4 found: where the ties, the tabs and t
     expect(lengthOf(line)).toBeLessThan(790);
   });
 
-  it('crosses no Death Blossom tie over another under a digit, where the cut-out hides the crossing, and since the readability pass none at all where a drawing can leave it out: the stored example and every Death Blossom kept', () => {
-    // the stored example's 2 tie (2r8c9 to 2r9c7) crossed its 5 tie (5r8c9 to 5r8c5) at (766, 743), in r8c8's solved
-    // 3; then, crossing both the 5 tie and the 7 tie, a reader following it could end at another petal (M11)
+  it('crosses no Death Blossom tie over another under a digit, where the cut-out hides the crossing: the stored example and every Death Blossom kept', () => {
+    // the stored example's 2 tie (2r8c9 to 2r9c7) crossed its 5 tie (5r8c9 to 5r8c5) at (766, 743), in r8c8's solved 3
     let ties = 0;
     let crossed = 0;
     for (const { where, step, values, drawing } of kept.filter((x) => x.step.tech === 'DEATH_BLOSSOM')) {
@@ -1469,18 +1468,27 @@ describe("what the first review of phase 4 found: where the ties, the tabs and t
           }
     }
     expect(ties).toBeGreaterThan(15);
-    expect(crossed).toBe(0);
+    expect(crossed).toBeGreaterThan(0);
   });
 
-  it("counts a crossing of another of its stem's ties before a Death Blossom tie's length: the stored example's 2 tie goes round its 5 and 7 ties, which run along row 8 (readability report M11)", () => {
-    const ex = EXAMPLES.DEATH_BLOSSOM!;
-    const d = appDrawing(ex.step, ex.values, ex.cands);
-    const tieOf = (digit: number) => lineOf(d.shapes[ex.step.links!.findIndex((l) => l.undirected && key(l.from[0]) === key(cd(8, 9, digit)))]);
-    const [two, five, seven] = [tieOf(2), tieOf(5), tieOf(7)];
-    expect([crossings(two, five).length, crossings(two, seven).length, crossings(five, seven).length]).toEqual([0, 0, 0]);
-    // the 2 tie still ends at A's 2 in r9c7, and is no longer than it must be to keep off the others: under 4 cells
-    expect(dist(two.at(-1)!, d.l.centre(cd(9, 7, 2)))).toBeLessThan(SIZES.r * 100 + 2 * SIZES.gap * 100);
-    expect(lengthOf(two)).toBeLessThan(400);
+  it("keeps a Death Blossom tie off its stem's other ties where a few arcs can, in about the time main takes (readability report M11; the review of the readability pass)", () => {
+    // a Death Blossom whose ties main drew crossing: a tie clean of everything else now tries a few arcs, either way
+    // round, and keeps the one that crosses none
+    const one = after('1.........5.386...96...1...59.1..7.6..3...9..6.1..8.53...4...72...573.4.........5', 20, 'DEATH_BLOSSOM' as Tech);
+    expect(one.step.tech).toBe('DEATH_BLOSSOM');
+    const d = appDrawing(one.step, one.values, one.cands);
+    const lines = d.shapes.filter((s) => s.kind === 'arrow').map(lineOf);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.flatMap((x, k) => lines.slice(k + 1).flatMap((y) => crossings(x, y))).length).toBe(0);
+    // never the whole search for a crossing, which cost a solve path's Death Blossom some 300 ms here (main 20 ms)
+    const two = after('6.2...9.3.8....5.......816.......6.9.4159...2....1....7..8..35.2....4....5.......', 33);
+    expect(two.step.tech).toBe('DEATH_BLOSSOM');
+    const times = [0, 1, 2, 3, 4].map(() => {
+      const t = performance.now();
+      appDrawing(two.step, two.values, two.cands);
+      return performance.now() - t;
+    });
+    expect(times.sort((x, y) => x - y)[2]).toBeLessThan(120);
   });
 
   it("never puts a tab nearer another set's tile than its own, nor two places off its tile where one beside it has the room", () => {

@@ -383,8 +383,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
     the row or column the two share, bending only round what lies on it,
     where that keeps clear and is shorter, counting what the digits it
     crosses cut out of it twice; crossing another tie only where the
-    crossing shows, never under a digit, and as seldom as it can, a
-    crossing counted before its length (the readability pass, M11).
+    crossing shows, never under a digit; and, since the readability pass
+    (M11), crossing the stem's other ties as seldom as the drawings tried
+    allow (a crossing ranks before its length, and a tie clean of all but
+    a crossing tries six arcs more), never at the cost of the full search,
+    which made a Death Blossom some ten times slower to draw.
   - Arrows attach at a member (G10).
 - **G17. Digit focus (optional, Settings).** During a hint about one
   digit (fish, single-digit patterns, X-Chains, colouring), the other

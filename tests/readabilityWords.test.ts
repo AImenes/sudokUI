@@ -259,6 +259,8 @@ describe('the explanation names what the step removes or places (M21)', () => {
           'REMOTE_PAIR',
           'SIMPLE_COLORS',
           'UNIQUENESS_1',
+          // its sentence names both removals' cells beside the digit (the review of the readability pass)
+          'UNIQUENESS_4',
           'UNIQUENESS_6'
         ].sort()
       );
@@ -271,6 +273,10 @@ describe('the explanation names what the step removes or places (M21)', () => {
     expect(namesCandidate('Unique Rectangle Type 1: r4c1, r4c8, r5c1, r5c8 would form a deadly pattern on 5/8; r4c8 cannot be 5 or 8.', at('r4c8', 8))).toBe(true);
     expect(namesCandidate('Hidden Single: 1 fits only in r2c2 within row 2.', at('r2c2', 1))).toBe(true);
     expect(namesCandidate('Empty Rectangle on 5: ... So 5 is removed from r6c2.', at('r6c2', 5))).toBe(true);
+    // the review of the readability pass: the cells before a ';' and the digit after it ('so 4 is removed from both')
+    // named no candidate, and UR4 and a 3D Medusa said their conclusion twice; their sentences now name both together
+    expect(namesCandidate('r1c6 holds a dark purple 9 and a light purple 2; one of them is true, so 4 is removed from r1c6', at('r1c6', 4))).toBe(true);
+    expect(namesCandidate('r1c6 holds a dark purple 9 and a light purple 2; one of them is true, so its 4 is removed', at('r1c6', 4))).toBe(false);
     // the cell alone
     expect(namesCandidate('Aligned Pair Exclusion: every candidate pairing of r7c4 and r8c4 that survives the sets they both see leaves no place for the removed candidate.', at('r8c4', 8))).toBe(false);
     expect(namesCandidate('Digit forcing: whether r1c1 is 8 or not, the forced singles agree on the same conclusions.', at('r1c1', 3))).toBe(false);

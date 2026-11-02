@@ -50,7 +50,8 @@
 //   only round what lies on it, when that keeps clear and is shorter,
 //   counting what the digits it crosses cut out of it twice; and it
 //   crosses another tie only where the crossing shows, never under a digit,
-//   and as seldom as it can, a crossing counted before its length;
+//   and as seldom as the drawings it tries allow, a crossing ranked before
+//   its length (never the whole search for it: a phone's second);
 // - the first node of each branch carries the start marker (G14), beside
 //   its mark: after a switch inside the start cell, the first drawn arrow
 //   leaves from the second node, not the first.
@@ -1330,9 +1331,10 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     // of both lines, so the two would seem to bend into each other there
     const blossom = weak && (l.fromSet !== undefined || l.toSet !== undefined);
     const hiddenOf = (shaft: Point[]) => (blossom ? lines.reduce((n, line) => n + crossingsOf(shaft, line).filter((p) => underDigit(p, layout, marked)).length, 0) : 0);
-    // and it crosses the other ties of its stem as seldom as it can, a
-    // crossing counted before its length, so a reader following one tie from
-    // the stem never ends at another's petal (readability report M11)
+    // and it crosses the other ties of its stem as seldom as the drawings
+    // it tries allow, a crossing ranked before its length, so a reader
+    // following one tie from the stem seldom ends at another's petal
+    // (readability report M11)
     const crossOf = (shaft: Point[]) => (blossom ? lines.reduce((n, line) => n + crossingsOf(shaft, line).length, 0) : 0);
     const forks =
       tie || (weak && apart)
@@ -1561,10 +1563,11 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     const lining = 0.1 * c;
     const slight = FORK_SLIGHT * c;
     // (all but a Death Blossom tie's crossings of the other ties, which may be
-    // more than any drawing can leave out: below, they come before its length)
+    // more than any drawing can leave out: they rank the drawings tried, and
+    // have one short pass of their own below, never the whole search)
     const clean = (s: Shape) =>
       s.room >= need && s.hidden === 0 && s.fork === 0 && s.rail <= 0.3 * c && s.run <= 0.3 * c && s.pairX === 0 && s.stray >= 0 && s.lined <= lining && s.headRoom >= 0;
-    const ok = (s: Shape) => clean(s) && s.cross === 0;
+    const ok = clean;
     const better = (x: Shape, y: Shape) => {
       const [rx, ry] = [Math.min(x.room, need), Math.min(y.room, need)];
       if (Math.abs(rx - ry) > 0.01) return rx > ry;
@@ -1788,7 +1791,9 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
     // an arrow's run along another drawn again to keep off it; not the grid
     // lines alone, which a bend off each end escapes only to run beside the
     // ties it then has to pass
-    const mend = (s: Shape) => s.room < need || s.hidden > 0 || s.cross > 0 || s.fork > 0 || s.stray < 0 || ((tie || along) && (s.rail > 0.3 * c || s.run > 0.3 * c));
+    // (a Death Blossom tie's crossings of the other ties rank the drawings
+    // these searches try, but start none: below, one short pass of its own)
+    const mend = (s: Shape) => s.room < need || s.hidden > 0 || s.fork > 0 || s.stray < 0 || ((tie || along) && (s.rail > 0.3 * c || s.run > 0.3 * c));
     if (mend(best)) {
       // marks beside both ends on the line: one arc cannot leave steeply and
       // arrive steeply too, so two control points, one off each end, on one
@@ -1828,15 +1833,37 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
       }
     }
 
-    if (weak && !apart && (best.room < need || best.headRoom < 0 || best.hidden > 0 || best.cross > 0)) steer();
+    // a Death Blossom tie clean of everything but the other ties it crosses:
+    // a few arcs, either way round, one off each end or one off both; never
+    // the full search, which may find no drawing without a crossing and
+    // would cost a phone a second (review of the readability pass)
+    // (not a tie along the row or column its two candidates share: it runs
+    // along it, below, as phase 4's first review settled)
+    const alongLine = group.length === 1 && (fromCd.cell % 9 === toCd.cell % 9 || Math.floor(fromCd.cell / 9) === Math.floor(toCd.cell / 9));
+    if (blossom && !alongLine && clean(best) && best.cross > 0) {
+      for (const k of [0.6, 1.1, 2]) {
+        for (const two of [false, true]) {
+          const [p, q] = [1, -1].map((side) => {
+            const off = mul(perp(u), side * k * c);
+            return shape([add(add(a, off), shift), two ? add(sub(b, off), shift) : add(add(b, off), shift)]);
+          });
+          const pick = pickOf(p, q);
+          if (better(pick, best)) best = pick;
+          if (best.cross === 0) break;
+        }
+        if (best.cross === 0) break;
+      }
+    }
+
+    if (weak && !apart && (best.room < need || best.headRoom < 0 || best.hidden > 0)) steer();
     // a Death Blossom's tie whose two candidates share a row or a column of
     // the board runs along it, as it would straight, bending only round what
     // it keeps off there (another candidate of its digit, most often), where
     // that keeps clear of everything a drawing keeps clear of, and the
     // drawing found does not or is longer, counting what of it the digits
     // it crosses cut out twice
-    if (blossom && group.length === 1 && (fromCd.cell % 9 === toCd.cell % 9 || Math.floor(fromCd.cell / 9) === Math.floor(toCd.cell / 9))) {
-      for (const s of detours()) if (clean(s) && (!clean(best) || s.cross < best.cross || (s.cross === best.cross && costOf(s) < costOf(best) - 1))) best = s;
+    if (blossom && alongLine) {
+      for (const s of detours()) if (clean(s) && (!clean(best) || costOf(s) < costOf(best) - 1)) best = s;
     }
 
     const { tail, tip, dir, head, trace, controls, mid } = best;

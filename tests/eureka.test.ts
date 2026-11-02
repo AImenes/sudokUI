@@ -226,10 +226,21 @@ describe('the HoDoKu line', () => {
     expect(counts).toEqual({ ALS_XZ: 18, ALS_XY_WING: 16, ALS_XY_CHAIN: 21, DEATH_BLOSSOM: 10 });
   });
 
+  it("writes the uniqueness patterns from the rectangle, whatever colours the hint draws them in (the review of the readability pass)", () => {
+    expect(stepText(step('UNIQUENESS_3'))).toBe("Unique Rectangle Type 3: 7/8 in r37c45 / 1/6 in r7c6 => r7c7<>6");
+    expect(stepText(step('UNIQUENESS_6'))).toBe("Unique Rectangle Type 6: 5/6 in r56c69 => r5c9<>6, r6c6<>6");
+    expect(stepText(step('HIDDEN_RECTANGLE'))).toBe("Hidden Rectangle: 3/5 in r69c56 / 5 in r9c6 => r6c5<>3");
+    expect(stepText(step('AVOIDABLE_RECTANGLE_2'))).toBe("Avoidable Rectangle Type 2: 3 in r69c2 / 4/5 in r69c3 => r7c2<>3");
+    expect(stepText(step('EXTENDED_RECTANGLE'))).toBe("Extended Rectangle: 2/4/9 in r8c159,r9c19 => r9c5<>4, r9c5<>9");
+    expect(stepText(step('UNIQUENESS_2'))).toBe("Unique Rectangle Type 2: 4/7 in r56c24 / 6 in r56c4 => r4c4<>6");
+    expect(stepText(step('UNIQUENESS_5'))).toBe("Unique Rectangle Type 5: 4/8 in r58c89 / 5 in r5c9,r8c89 => r9c9<>5");
+    expect(stepText(step('AVOIDABLE_RECTANGLE_1'))).toBe("Avoidable Rectangle Type 1: 2/3 in r2c7,r7c79 / 2 in r2c9 => r2c9<>2");
+  });
+
   it('writes wings, uniqueness and colouring one colour after another', () => {
     expect(stepText(step('XY_WING'))).toBe('XY-Wing: 7/9 in r7c7 / 6 in r7c6,r8c9 => r7c8<>6, r8c6<>6');
-    expect(stepText(step('UNIQUENESS_1'))).toBe('Unique Rectangle Type 1: 5/8 in r4c1,r5c18 / r4c8 => r4c8<>5, r4c8<>8');
-    expect(stepText(step('UNIQUENESS_4'))).toBe('Unique Rectangle Type 4: 4/6 in r28c79 / 6 in r28c9 => r2c9<>4, r8c9<>4');
+    expect(stepText(step('UNIQUENESS_1'))).toBe('Unique Rectangle Type 1: 5/8 in r4c1,r5c18 => r4c8<>5, r4c8<>8');
+    expect(stepText(step('UNIQUENESS_4'))).toBe('Unique Rectangle Type 4: 4/6 in r28c79 => r2c9<>4, r8c9<>4');
     expect(stepText(step('SIMPLE_COLORS'))).toBe('Simple Colors Trap: 4 (r1c5,r6c4,r8c6) / (r1c6,r5c5,r8c8) => r6c8<>4');
     expect(stepText(step('DIGIT_FORCING_CHAIN'))).toBe('Digit Forcing Chain: 8 in r1c1 => r1c1<>3, r1c1<>6');
   });

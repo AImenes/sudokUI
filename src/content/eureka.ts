@@ -310,6 +310,11 @@ export function hodokuLine(step: Step): string {
   }
 
   const parts: string[] = [];
+  const rect = rectangleGroups(step);
+  if (rect) {
+    const known = digitsIn(rect[0]).join(sep);
+    return `${name}: ${rect.filter((g) => g.length).map((g, i) => (i ? group(g, sep, known) : group(g, sep))).join(' / ')} => ${done}`;
+  }
   if (primary.length) {
     const [band] = bands('primary');
     parts.push(
@@ -322,6 +327,48 @@ export function hodokuLine(step: Step): string {
   if (secondary.length) parts.push(group(secondary, sep, known));
   if (fins.length) parts.push(group(fins, sep, known));
   return `${name}: ${parts.length ? `${parts.join(' / ')} => ` : ''}${done}`;
+}
+
+/**
+ * The uniqueness patterns' line, written from the rectangle as it always
+ * was, not from the colours the hint draws: the readability pass moved a
+ * key digit, a corner's would-be candidates and the roof's extras between
+ * roles for the drawing, and the forum line stays the one players paste
+ * (null for any other step)
+ */
+function rectangleGroups(step: Step): CellDigit[][] | null {
+  const primary = step.primary ?? [];
+  const secondary = step.secondary ?? [];
+  const has = (list: CellDigit[], cd: CellDigit) => list.some((o) => o.cell === cd.cell && o.digit === cd.digit);
+  const cells = (list: CellDigit[]) => new Set(list.map((cd) => cd.cell));
+  switch (step.tech) {
+    case 'UNIQUENESS_1':
+    case 'EXTENDED_RECTANGLE':
+      // the would-be candidates are the removals, after =>
+      return [primary];
+    case 'UNIQUENESS_3': {
+      // the subset's cells beside the roof, not the roof's extras
+      const roof = cells(primary);
+      return [primary, secondary.filter((cd) => !roof.has(cd.cell))];
+    }
+    case 'UNIQUENESS_4':
+    case 'UNIQUENESS_6':
+      // the key digit is in the rectangle already
+      return [primary, secondary.filter((cd) => !has(primary, cd))];
+    case 'HIDDEN_RECTANGLE': {
+      // the strong digit in the bivalue corner
+      const confined = cells(secondary);
+      const strong = secondary[0]?.digit;
+      return [primary, strong === undefined ? [] : [...cells(primary)].filter((c) => !confined.has(c)).map((cell) => ({ cell, digit: strong }))];
+    }
+    case 'AVOIDABLE_RECTANGLE_2': {
+      // the extra digit first, then the solved corners
+      const extra = cells(secondary);
+      return [secondary, primary.filter((cd) => !extra.has(cd.cell))];
+    }
+    default:
+      return null;
+  }
 }
 
 /**
