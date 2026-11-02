@@ -1,6 +1,6 @@
-import { Grid, bit, digitsOf, popcount, rowOf, colOf, boxOf, sees, cellName, cellNames } from '../board';
+import { Grid, UNITS, bit, digitsOf, popcount, rowOf, colOf, boxOf, sees, cellName, cellNames } from '../board';
 import { Step, CellDigit } from '../steps';
-import { tr, joinAnd } from '../text';
+import { tr, listAnd, unitName } from '../text';
 
 /**
  * Chute Remote Pairs (sudokuwiki.org/Chute_Remote_Pairs):
@@ -14,6 +14,13 @@ import { tr, joinAnd } from '../text';
  * in those 3 cells, can be removed from every cell seeing both pair cells.
  * If neither digit occurs, the argument runs both ways: the pair cells hold
  * opposite digits and both can be removed.
+ *
+ * The hint draws what the argument rests on (docs/hint-readability-2026-11.md
+ * H2): the pair in the pattern's colour, the third box as a dashed band with
+ * its candidates of the missing digit in gold (all in the pair's lines), and
+ * the digit the pair cells lose to the removals in the exception's colour,
+ * one of which is true; its walk goes pair > the mini-line's missing digit >
+ * the either/or > the removal (H1).
  */
 export function findChuteRemotePair(g: Grid): Step | null {
   const bivalue: number[] = [];
@@ -69,37 +76,106 @@ export function findChuteRemotePair(g: Grid): Step | null {
           }
         }
         if (!elims.length) continue;
-        const digits = digitsOf(pairMask);
-        const missing = digitsOf(pairMask & ~present);
-        const removed = digitsOf(elimMask);
-        // present === 0: elimMask is the whole pair, so removed holds both digits
-        const description =
-          present === 0
-            ? tr`Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('/')} in one chute, and neither digit appears in ${cellNames(mini)}. Each absent digit forces one pair cell to the other digit, so the pair cells hold opposite digits, and both ${removed[0]} and ${removed[1]} can be removed from cells seeing both pair cells.`
-            : horizontal
-              ? tr`Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('/')} in one chute; ${missing[0]} appears nowhere in ${cellNames(mini)}, so the chute's third box must place its ${missing[0]} in a row shared with a pair cell, forcing that cell to ${removed[0]}. One pair cell is therefore ${removed[0]}, so ${removed[0]} can be removed from cells seeing both pair cells.`
-              : tr`Chute Remote Pair: ${cellName(c1)} and ${cellName(c2)} both hold ${digits.join('/')} in one chute; ${missing[0]} appears nowhere in ${cellNames(mini)}, so the chute's third box must place its ${missing[0]} in a column shared with a pair cell, forcing that cell to ${removed[0]}. One pair cell is therefore ${removed[0]}, so ${removed[0]} can be removed from cells seeing both pair cells.`;
-        return {
-          tech: 'CHUTE_REMOTE_PAIR',
-          placements: [],
-          eliminations: elims,
-          primary: [c1, c2].flatMap((cell) => digits.map((digit) => ({ cell, digit }))),
-          labels: {
-            primary: tr`the pair: ${digits.join('/')} in both cells, one chute apart`,
-            secondary:
-              missing.length === 1
-                ? tr`the third box's mini-line, where ${missing[0]} is missing`
-                : missing.length
-                  ? tr`the third box's mini-line, where ${joinAnd(missing)} are missing`
-                  : tr`the third box's mini-line, where the pair digits are missing`
-          },
-          secondary: mini
-            .filter((c) => g.values[c] === 0)
-            .flatMap((cell) => digitsOf(g.cands[cell] & pairMask).map((digit) => ({ cell, digit }))),
-          description
-        };
+        return chuteStep(g, c1, c2, horizontal, l3, b3, mini, present, elims);
       }
     }
   }
   return null;
+}
+
+/** the step for a pair c1, c2 whose third box b3 lacks a pair digit in its mini-line (the pair digits there: present) */
+function chuteStep(
+  g: Grid,
+  c1: number,
+  c2: number,
+  horizontal: boolean,
+  l3: number,
+  b3: number,
+  mini: number[],
+  present: number,
+  elims: CellDigit[]
+): Step {
+  const pairMask = g.cands[c1];
+  const lineOf = horizontal ? rowOf : colOf;
+  const house = (l: number) => unitName(horizontal ? l : 9 + l);
+  // the pair cells in the order of their lines, for the words
+  const [p1, p2] = lineOf(c1) < lineOf(c2) ? [c1, c2] : [c2, c1];
+  const [n1, n2] = [cellName(p1), cellName(p2)];
+  // in reading order where the words do not follow the lines
+  const [f1, f2] = [cellName(c1), cellName(c2)];
+  const [L1, L2] = [house(lineOf(p1)), house(lineOf(p2))];
+  const third = house(l3);
+  const box = unitName(18 + b3);
+  const [a, b] = digitsOf(pairMask);
+  const missingMask = pairMask & ~present;
+  // present === 0: neither digit is in the mini-line, and both go
+  const both = present === 0;
+  const [m] = digitsOf(missingMask);
+  const [r] = digitsOf(present);
+  const lo = Math.floor(l3 / 3) * 3 + 1;
+  const hi = lo + 2;
+  const miniNames = cellNames(mini);
+  const pair = horizontal
+    ? tr`${f1} and ${f2} hold only ${a} and ${b}, in different rows and boxes of rows ${lo}-${hi}.`
+    : tr`${f1} and ${f2} hold only ${a} and ${b}, in different columns and boxes of columns ${lo}-${hi}.`;
+  const description = both
+    ? horizontal
+      ? tr`Chute Remote Pair: ${f1} and ${f2} hold only ${a} and ${b}, in different rows and boxes of rows ${lo}-${hi}. In ${box}, ${third} (${miniNames}) has neither ${a} nor ${b}, so the box's ${a} and ${b} each lie in ${L1} or ${L2}, and each makes the pair cell in its row the other digit: one pair cell is ${a} and the other ${b}. So both ${a} and ${b} are removed from every cell that sees both pair cells.`
+      : tr`Chute Remote Pair: ${f1} and ${f2} hold only ${a} and ${b}, in different columns and boxes of columns ${lo}-${hi}. In ${box}, ${third} (${miniNames}) has neither ${a} nor ${b}, so the box's ${a} and ${b} each lie in ${L1} or ${L2}, and each makes the pair cell in its column the other digit: one pair cell is ${a} and the other ${b}. So both ${a} and ${b} are removed from every cell that sees both pair cells.`
+    : horizontal
+      ? tr`Chute Remote Pair: ${f1} and ${f2} hold only ${a} and ${b}, in different rows and boxes of rows ${lo}-${hi}. In ${box}, ${third} (${miniNames}) has no ${m}, so the box's ${m} is in ${L1} or ${L2}, and the pair cell in that row cannot be ${m}: it is ${r}. One pair cell is therefore ${r}, so ${r} is removed from every cell that sees both.`
+      : tr`Chute Remote Pair: ${f1} and ${f2} hold only ${a} and ${b}, in different columns and boxes of columns ${lo}-${hi}. In ${box}, ${third} (${miniNames}) has no ${m}, so the box's ${m} is in ${L1} or ${L2}, and the pair cell in that column cannot be ${m}: it is ${r}. One pair cell is therefore ${r}, so ${r} is removed from every cell that sees both.`;
+  // the third box's candidates of the missing digit or digits: all in the pair's lines
+  const boxCands = UNITS[18 + b3]
+    .filter((cell) => g.values[cell] === 0)
+    .flatMap((cell) => digitsOf(g.cands[cell] & missingMask).map((digit) => ({ cell, digit })));
+  // the cells that lose a digit, in reading order
+  const losing = [...new Set(elims.map((e) => e.cell))].sort((x, y) => x - y).map(cellName);
+  return {
+    tech: 'CHUTE_REMOTE_PAIR',
+    placements: [],
+    eliminations: elims,
+    primary: [c1, c2].flatMap((cell) => [a, b].map((digit) => ({ cell, digit }))),
+    secondary: boxCands,
+    // the digit the pair cells lose to the removals, one of them true: the
+    // pattern's until the walk frame that tells why, then the exception's
+    fins: [p1, p2].flatMap((cell) => digitsOf(both ? pairMask : present).map((digit) => ({ cell, digit }))),
+    units: [{ unit: 18 + b3, role: 'secondary' }],
+    labels: {
+      primary: horizontal
+        ? tr`the pair: only ${a} and ${b} in both cells, in different rows and boxes of rows ${lo}-${hi}`
+        : tr`the pair: only ${a} and ${b} in both cells, in different columns and boxes of columns ${lo}-${hi}`,
+      secondary: both
+        ? horizontal
+          ? tr`${box}'s ${a}s and ${b}s: all in the pair's rows`
+          : tr`${box}'s ${a}s and ${b}s: all in the pair's columns`
+        : horizontal
+          ? tr`${box}'s ${m}s: all in the pair's rows`
+          : tr`${box}'s ${m}s: all in the pair's columns`,
+      fins: both ? tr`the pair: one cell is ${a}, the other ${b}` : tr`${r} in the pair: one of the two cells is ${r}`
+    },
+    walk: {
+      frames: [
+        { text: pair, show: ['primary'] },
+        {
+          text: both
+            ? tr`In ${box}, ${third} has neither ${a} nor ${b}, so the box's ${a} and ${b} each lie in ${L1} or ${L2}.`
+            : tr`In ${box}, ${third} has no ${m}, so the box's ${m} is in ${L1} or ${L2}.`,
+          show: ['secondary']
+        },
+        {
+          text: both
+            ? tr`If ${box}'s ${a} is in ${L1}, ${n1} is ${b}, and the box's ${b} must then be in ${L2}, so ${n2} is ${a}; if its ${a} is in ${L2}, the other way round. Either way one pair cell is ${a} and the other ${b}.`
+            : tr`If ${box}'s ${m} is in ${L1}, ${n1} cannot be ${m} and is ${r}; if it is in ${L2}, ${n2} is ${r}. Either way one of the two is ${r}.`,
+          show: ['fins']
+        }
+      ],
+      lead: losing.length === 1 ? tr`${losing[0]} sees both pair cells.` : tr`${listAnd(losing)} see both pair cells.`
+    },
+    // the forum line names the pair digits in the mini-line, as it always did
+    copyOnly: mini
+      .filter((c) => g.values[c] === 0)
+      .flatMap((cell) => digitsOf(g.cands[cell] & pairMask).map((digit) => ({ cell, digit }))),
+    description
+  };
 }

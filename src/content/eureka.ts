@@ -26,7 +26,7 @@
 // by row, by column and singly. Nothing here is translated: the notation
 // is the same in every language, and the names are the ones the
 // community (and HoDoKu) uses.
-import { rowOf, colOf, cellName } from '../engine/board';
+import { UNITS, rowOf, colOf, cellName } from '../engine/board';
 import { TECHS, Tech } from '../engine/ratings';
 import type { Step, CellDigit, ChainLink, ChainSet, ColourRule } from '../engine/steps';
 import { isParity, insideSet } from '../engine/steps';
@@ -333,8 +333,11 @@ export function hodokuLine(step: Step): string {
  * The uniqueness patterns' line, written from the rectangle as it always
  * was, not from the colours the hint draws: the readability pass moved a
  * key digit, a corner's would-be candidates and the roof's extras between
- * roles for the drawing, and the forum line stays the one players paste
- * (null for any other step)
+ * roles for the drawing, and the forum line stays the one players paste.
+ * Likewise Chute Remote Pair's (the pair, then its digit in the mini-line)
+ * and Sue de Coq's (the shared cells, then the two bivalue cells), whose
+ * hints phase 6 coloured by what the argument uses (null for any other
+ * step)
  */
 function rectangleGroups(step: Step): CellDigit[][] | null {
   const primary = step.primary ?? [];
@@ -365,6 +368,20 @@ function rectangleGroups(step: Step): CellDigit[][] | null {
       // the extra digit first, then the solved corners
       const extra = cells(secondary);
       return [secondary, primary.filter((cd) => !extra.has(cd.cell))];
+    }
+    case 'CHUTE_REMOTE_PAIR':
+      // the pair, then the pair digit in the mini-line, which the hint no
+      // longer draws (it draws the third box's missing digit instead)
+      return [primary, step.copyOnly ?? []];
+    case 'SUE_DE_COQ': {
+      // the cells where the line meets the box with every digit they hold,
+      // then the line's and the box's bivalue cells, as before the hint
+      // coloured the digits by where they are locked
+      const all = [...primary, ...secondary, ...(step.fins ?? [])];
+      const [line, box] = [0, 1].map((i) => new Set(UNITS[step.units?.[i]?.unit ?? 0]));
+      const shared = (cd: CellDigit) => line.has(cd.cell) && box.has(cd.cell);
+      const byCell = (cds: CellDigit[]) => [...cds].sort((x, y) => x.cell - y.cell || x.digit - y.digit);
+      return [byCell(all.filter(shared)), byCell(all.filter((cd) => !shared(cd)))];
     }
     default:
       return null;

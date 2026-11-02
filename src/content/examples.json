@@ -2696,12 +2696,62 @@
      "digit": 6
     }
    ],
+   "secondary": [
+    {
+     "cell": 28,
+     "digit": 6
+    },
+    {
+     "cell": 37,
+     "digit": 6
+    }
+   ],
+   "fins": [
+    {
+     "cell": 32,
+     "digit": 5
+    },
+    {
+     "cell": 43,
+     "digit": 5
+    }
+   ],
+   "units": [
+    {
+     "unit": 21,
+     "role": "secondary"
+    }
+   ],
    "labels": {
-    "primary": "the pair: 5/6 in both cells, one chute apart",
-    "secondary": "the third box's mini-line, where 6 is missing"
+    "primary": "the pair: only 5 and 6 in both cells, in different rows and boxes of rows 4-6",
+    "secondary": "box 4's 6s: all in the pair's rows",
+    "fins": "5 in the pair: one of the two cells is 5"
    },
-   "secondary": [],
-   "description": "Chute Remote Pair: r4c6 and r5c8 both hold 5/6 in one chute; 6 appears nowhere in r6c1, r6c2, r6c3, so the chute's third box must place its 6 in a row shared with a pair cell, forcing that cell to 5. One pair cell is therefore 5, so 5 can be removed from cells seeing both pair cells."
+   "walk": {
+    "frames": [
+     {
+      "text": "r4c6 and r5c8 hold only 5 and 6, in different rows and boxes of rows 4-6.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "In box 4, row 6 has no 6, so the box's 6 is in row 4 or row 5.",
+      "show": [
+       "secondary"
+      ]
+     },
+     {
+      "text": "If box 4's 6 is in row 4, r4c6 cannot be 6 and is 5; if it is in row 5, r5c8 is 5. Either way one of the two is 5.",
+      "show": [
+       "fins"
+      ]
+     }
+    ],
+    "lead": "r4c9 and r5c6 see both pair cells."
+   },
+   "copyOnly": [],
+   "description": "Chute Remote Pair: r4c6 and r5c8 hold only 5 and 6, in different rows and boxes of rows 4-6. In box 4, row 6 (r6c1, r6c2, r6c3) has no 6, so the box's 6 is in row 4 or row 5, and the pair cell in that row cannot be 6: it is 5. One pair cell is therefore 5, so 5 is removed from every cell that sees both."
   }
  },
  "BUG_PLUS_1": {
@@ -6752,24 +6802,8 @@
    ],
    "primary": [
     {
-     "cell": 78,
-     "digit": 4
-    },
-    {
-     "cell": 78,
-     "digit": 7
-    },
-    {
-     "cell": 78,
-     "digit": 8
-    },
-    {
      "cell": 79,
      "digit": 2
-    },
-    {
-     "cell": 79,
-     "digit": 8
     },
     {
      "cell": 80,
@@ -6777,21 +6811,29 @@
     },
     {
      "cell": 80,
-     "digit": 4
+     "digit": 6
     },
     {
-     "cell": 80,
+     "cell": 75,
+     "digit": 2
+    },
+    {
+     "cell": 75,
      "digit": 6
     }
    ],
    "secondary": [
     {
-     "cell": 75,
-     "digit": 2
+     "cell": 78,
+     "digit": 4
     },
     {
-     "cell": 75,
-     "digit": 6
+     "cell": 78,
+     "digit": 7
+    },
+    {
+     "cell": 80,
+     "digit": 4
     },
     {
      "cell": 60,
@@ -6802,11 +6844,55 @@
      "digit": 7
     }
    ],
+   "fins": [
+    {
+     "cell": 78,
+     "digit": 8
+    },
+    {
+     "cell": 79,
+     "digit": 8
+    }
+   ],
+   "units": [
+    {
+     "unit": 8,
+     "role": "primary"
+    },
+    {
+     "unit": 26,
+     "role": "secondary"
+    }
+   ],
    "labels": {
-    "primary": "the intersection cells, holding 2/4/6/7/8",
-    "secondary": "the line cell and the box cell that complete the locked set"
+    "primary": "2 and 6 in row 9: one in r9c4, the other where it meets box 9",
+    "secondary": "4 and 7 in box 9: one in r7c7, the other where it meets row 9",
+    "fins": "8: where row 9 meets box 9, so in both"
    },
-   "description": "Sue de Coq: r9c7, r9c8, r9c9 (2/4/6/7/8) with r9c4 in the line and r7c7 in the box form a locked set; line digits are cleared from the rest of the line, box digits from the rest of the box."
+   "walk": {
+    "frames": [
+     {
+      "text": "In row 9, r9c4 holds only 2 and 6. Whichever it is, r9c7, r9c8 and r9c9 can take at most one of 2 and 6.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The three cells are in box 9 too, where r7c7 holds only 4 and 7, so they can take at most one of 4 and 7 as well.",
+      "show": [
+       "secondary"
+      ]
+     },
+     {
+      "text": "Their only other digit is 8, which they can take at most once. Three cells need three digits, so they hold one of 2 and 6, one of 4 and 7, and the 8.",
+      "show": [
+       "fins"
+      ]
+     }
+    ],
+    "lead": "Then r9c4 and the three cells hold both 2 and 6, r7c7 and the three cells both 4 and 7, and the three cells the 8."
+   },
+   "description": "Sue de Coq: r9c7, r9c8 and r9c9, in both row 9 and box 9, hold only 2, 4, 6, 7 and 8. r9c4 in row 9 takes 2 or 6, and r7c7 in box 9 takes 4 or 7, so the three cells hold one of 2 and 6, one of 4 and 7, and the 8. The other cells of row 9 outside box 9 lose 2, 6 and 8, and those of box 9 outside row 9 lose 4, 7 and 8."
   }
  },
  "SIMPLE_COLORS": {

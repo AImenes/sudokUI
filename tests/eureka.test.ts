@@ -237,6 +237,13 @@ describe('the HoDoKu line', () => {
     expect(stepText(step('AVOIDABLE_RECTANGLE_1'))).toBe("Avoidable Rectangle Type 1: 2/3 in r2c7,r7c79 / 2 in r2c9 => r2c9<>2");
   });
 
+  it('writes Chute Remote Pair and Sue de Coq as before phase 6 coloured them by what the argument uses', () => {
+    // the pair (and its digit in the mini-line, where a candidate), not the third box's gold or the purple
+    expect(stepText(step('CHUTE_REMOTE_PAIR'))).toBe('Chute Remote Pair: 5/6 in r4c6,r5c8 => r4c9<>5, r5c6<>5');
+    // the shared cells with every digit, then the two bivalue cells, not the three colours
+    expect(stepText(step('SUE_DE_COQ'))).toBe('Sue de Coq: 2/4/6/7/8 in r9c789 / 2/4/6/7 in r7c7,r9c4 => r9c1<>6, r9c2<>2');
+  });
+
   it('writes wings, uniqueness and colouring one colour after another', () => {
     // written from the pattern as it always was, not from the colours by function the hint draws (the readability report's M3)
     expect(stepText(step('XY_WING'))).toBe('XY-Wing: 7/9 in r7c7 / 6 in r7c6,r8c9 => r7c8<>6, r8c6<>6');

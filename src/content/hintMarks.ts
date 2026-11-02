@@ -428,8 +428,12 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
     // a chain's truth comes before the roles, which mark only what it leaves
     if (truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
     // a candidate in both lists (a uniqueness pattern's key digit) is the
-    // pattern's until the frame that shows the secondary colour, then gold
+    // pattern's until the frame that shows the secondary colour, then gold;
+    // a pattern's candidate that is an exception too (the digit Chute Remote
+    // Pair's pair cells lose, one of them true) likewise turns purple with
+    // the frame that shows the exception
     if (show('secondary')) for (const cd of step.secondary ?? []) if (named(cd.cell)) mark(cd, 'secondary');
+    if (show('fins') && !step.links?.length) for (const cd of step.fins ?? []) if (has(step.primary, cd) && named(cd.cell)) mark(cd, 'fin');
     if (show('primary')) for (const cd of step.primary ?? []) if (named(cd.cell)) mark(cd, 'primary');
     // every chain node gets a mark, so arrows root on one
     if (!truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);

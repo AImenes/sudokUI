@@ -1,7 +1,7 @@
-import { Grid, UNITS, bit, digitsOf, popcount, cellName, cellNames, boxOf } from '../board';
+import { Grid, UNITS, digitsOf, popcount, cellName, boxOf } from '../board';
 import { Step, CellDigit } from '../steps';
 import { combinations } from './subsets';
-import { tr } from '../text';
+import { tr, listAnd, unitName } from '../text';
 
 /**
  * Sue de Coq (basic form, per sudokuwiki.org/Sue_De_Coq):
@@ -16,6 +16,13 @@ import { tr } from '../text';
  * each. Digits of D (or V \ cands(E)) are confined to the line inside the
  * pattern -> removed from the rest of the line; digits of E (or
  * V \ cands(D)) are confined to the box -> removed from the rest of the box.
+ *
+ * The hint colours the digits by where they are locked, as HoDoKu does
+ * (docs/hint-readability-2026-11.md M3): the line and its digits (D's) in
+ * the pattern's colour, the box and its digits (E's) in the acts-through
+ * colour, with the line's band solid and the box's dashed, and the digit
+ * only C holds as the exception; its walk names C, D and E and why each
+ * digit is locked where it is (H1).
  */
 export function findSueDeCoq(g: Grid): Step | null {
   for (let line = 0; line < 18; line++) {
@@ -62,23 +69,7 @@ export function findSueDeCoq(g: Grid): Step | null {
                   elims.push({ cell: c, digit: d });
               }
               if (!elims.length) continue;
-              return {
-                tech: 'SUE_DE_COQ',
-                placements: [],
-                eliminations: elims,
-                primary: C.flatMap((cell) =>
-                  digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
-                ),
-                secondary: [
-                  ...digitsOf(dMask).map((digit) => ({ cell: D, digit })),
-                  ...digitsOf(eMask).map((digit) => ({ cell: E, digit }))
-                ],
-                labels: {
-                  primary: tr`the intersection cells, holding ${digitsOf(V).join('/')}`,
-                  secondary: tr`the line cell and the box cell that complete the locked set`
-                },
-                description: tr`Sue de Coq: ${cellNames(C)} (${digitsOf(V).join('/')}) with ${cellName(D)} in the line and ${cellName(E)} in the box form a locked set; line digits are cleared from the rest of the line, box digits from the rest of the box.`
-              };
+              return sueDeCoqStep(g, line, b, C, D, E, V, elims);
             }
           }
         }
@@ -86,4 +77,63 @@ export function findSueDeCoq(g: Grid): Step | null {
     }
   }
   return null;
+}
+
+/** the step: C where the line meets box b, D in the line, E in the box, V the digits C holds */
+function sueDeCoqStep(g: Grid, line: number, b: number, C: number[], D: number, E: number, V: number, elims: CellDigit[]): Step {
+  const dMask = g.cands[D];
+  const eMask = g.cands[E];
+  // the digit only C holds (C of three cells), locked in the line and the box alike
+  const xMask = V & ~dMask & ~eMask;
+  const where = (cells: number[], mask: number) => cells.flatMap((cell) => digitsOf(g.cands[cell] & mask).map((digit) => ({ cell, digit })));
+  const [a, bb] = digitsOf(dMask);
+  const [c, d] = digitsOf(eMask);
+  const [x] = digitsOf(xMask);
+  const lineName = unitName(line);
+  const box = unitName(18 + b);
+  const [nD, nE] = [cellName(D), cellName(E)];
+  const cells = listAnd(C.map(cellName));
+  const three = C.length === 3;
+  return {
+    tech: 'SUE_DE_COQ',
+    placements: [],
+    eliminations: elims,
+    primary: [...where(C, dMask), ...where([D], dMask)],
+    secondary: [...where(C, eMask), ...where([E], eMask)],
+    ...(xMask && { fins: where(C, xMask) }),
+    units: [
+      { unit: line, role: 'primary' },
+      { unit: 18 + b, role: 'secondary' }
+    ],
+    labels: {
+      primary: tr`${a} and ${bb} in ${lineName}: one in ${nD}, the other where it meets ${box}`,
+      secondary: tr`${c} and ${d} in ${box}: one in ${nE}, the other where it meets ${lineName}`,
+      ...(xMask && { fins: tr`${x}: where ${lineName} meets ${box}, so in both` })
+    },
+    walk: {
+      frames: [
+        { text: tr`In ${lineName}, ${nD} holds only ${a} and ${bb}. Whichever it is, ${cells} can take at most one of ${a} and ${bb}.`, show: ['primary'] },
+        {
+          text: three
+            ? tr`The three cells are in ${box} too, where ${nE} holds only ${c} and ${d}, so they can take at most one of ${c} and ${d} as well.`
+            : tr`The two cells are in ${box} too, where ${nE} holds only ${c} and ${d}, so they can take at most one of ${c} and ${d} as well. They hold no other digit, and two cells need two digits: one of ${a} and ${bb}, and one of ${c} and ${d}.`,
+          show: ['secondary']
+        },
+        ...(three
+          ? [
+              {
+                text: tr`Their only other digit is ${x}, which they can take at most once. Three cells need three digits, so they hold one of ${a} and ${bb}, one of ${c} and ${d}, and the ${x}.`,
+                show: ['fins' as const]
+              }
+            ]
+          : [])
+      ],
+      lead: three
+        ? tr`Then ${nD} and the three cells hold both ${a} and ${bb}, ${nE} and the three cells both ${c} and ${d}, and the three cells the ${x}.`
+        : tr`Then ${nD} and the two cells hold both ${a} and ${bb}, and ${nE} and the two cells both ${c} and ${d}.`
+    },
+    description: three
+      ? tr`Sue de Coq: ${cells}, in both ${lineName} and ${box}, hold only ${listAnd(digitsOf(V))}. ${nD} in ${lineName} takes ${a} or ${bb}, and ${nE} in ${box} takes ${c} or ${d}, so the three cells hold one of ${a} and ${bb}, one of ${c} and ${d}, and the ${x}. The other cells of ${lineName} outside ${box} lose ${listAnd(digitsOf(dMask | xMask))}, and those of ${box} outside ${lineName} lose ${listAnd(digitsOf(eMask | xMask))}.`
+      : tr`Sue de Coq: ${cells}, in both ${lineName} and ${box}, hold only ${listAnd(digitsOf(V))}. ${nD} in ${lineName} takes ${a} or ${bb}, and ${nE} in ${box} takes ${c} or ${d}, so the two cells hold one of ${a} and ${bb} and one of ${c} and ${d}. The other cells of ${lineName} outside ${box} lose ${listAnd(digitsOf(dMask))}, and those of ${box} outside ${lineName} lose ${listAnd(digitsOf(eMask))}.`
+  };
 }

@@ -80,7 +80,11 @@ Every rule is numbered so a commit, a test or a review can cite it.
   in the pattern and in the secondary role (a uniqueness pattern's key
   digit in UR4, UR6 and the Hidden Rectangle) is the pattern's until the
   walk frame that shows the secondary colour, and gold from then on, so
-  frame 1 draws the whole rectangle its words name. A view draws roles inside
+  frame 1 draws the whole rectangle its words name. Likewise a pattern's
+  candidate it lists as the exception too (Chute Remote Pair's digit the
+  pair cells lose, one of them true; phase 6) is the pattern's until the
+  walk frame that shows the exception, and purple from then on, in a step
+  without links. A view draws roles inside
   a set only in Death Blossom, which draws no truth until phase 5, so no
   role disc sits beside a truth mark; an ALS pattern whose chain clashes
   (its sets share cells, and its truths would claim more than the step
@@ -88,7 +92,7 @@ Every rule is numbered so a commit, a test or a review can cite it.
   removals, in every view, but for the reason its removals rest on: its
   first set's z, which every removal sees, are the pattern's discs in the
   views that show the conclusion (the full view and the walk's last
-  frame), worded so in the legend (the readability pass, M15). A
+  frame), worded so in the legend (the readability pass, M15). Any other
   candidate a step lists in more
   than one role takes the first of pattern, acts-through, exception, in
   the full view and in every walk frame alike. A candidate that is removed
@@ -331,7 +335,12 @@ Every rule is numbered so a commit, a test or a review can cite it.
   house their argument locks a digit into, with that digit's candidates in
   the acts-through colour: the Hidden Rectangle's row and column, UR Type
   3's naked subset's house (with the roof's extras), UR Type 4's house of
-  the locked digit, UR Type 6's two lines. A pattern its finder walks cell
+  the locked digit, UR Type 6's two lines. Chute Remote Pair bands,
+  dashed, its third box, whose candidates of the digit the mini-line lacks
+  are gold, all in the pair's lines; Sue de Coq bands its line solid, with
+  the line cell's digits in the pattern's colour, and its box dashed, with
+  the box cell's digits gold, the digit only the shared cells hold purple
+  (phase 6). A pattern its finder walks cell
   by cell (phase 6: the XY-, XYZ- and WXYZ-Wing, `Step.walk` with
   `cells`) draws its roles only in the cells the walk has named so far,
   and a band once the walk has named every cell of the band's role in that
@@ -1000,7 +1009,11 @@ the values above are its final ones.
   regressions, all fixed (hint-readability-round1.md, which also lists
   the lows left for later).
 - [ ] Phase 5: forcing
-- [ ] Phase 6: words
+- [ ] Phase 6: words. Done so far: Chute Remote Pair and Sue de Coq
+  (docs/hint-readability-2026-11.md H2's and M3's parts for them, H1,
+  L2's "chute"): each draws what its argument uses (G15) and walks it in
+  its finder's own sentences, and its Copy step line is the one it always
+  was.
 - [ ] Phase 7: polish
 
 Branch `claude/hint-drawings`. Research behind this spec (HoDoKu's source

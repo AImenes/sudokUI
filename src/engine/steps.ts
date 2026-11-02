@@ -220,6 +220,13 @@ export interface Step {
    * (src/engine/hintFrames.ts walkFrames)
    */
   walk?: { frames: { text: string; show: ('primary' | 'secondary' | 'fins')[]; cells?: number[] }[]; lead?: string };
+  /**
+   * candidates the Copy step line names after the pattern though no view
+   * draws them, as the line always named them (src/content/eureka.ts):
+   * Chute Remote Pair's pair digit in the third box's mini-line, which the
+   * readability pass stopped drawing
+   */
+  copyOnly?: CellDigit[];
   /** whole houses shaded as bands, under the candidate marks */
   units?: UnitBand[];
   /** ordered chain of cells — legacy centre-to-centre fallback drawing */
