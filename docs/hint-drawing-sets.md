@@ -807,7 +807,9 @@ hintMarks, i18n), and the decisions it refines point here.
   one head. A bent line of such a pair now has its ends moved round its
   marks too: by its spread, or, the other drawn before it, a pair's width
   (9 units, measured round the mark, as an angle: along the tangent it
-  shrank once the end was put back on the rim; review round 3) from that
+  shrank once the end was put back on the rim; review round 3; never
+  more than 75 degrees round from its way, where it would turn to the far
+  side of its mark: review round 4) from that
   one's ends on the side its own middle lies, so the two never cross by
   their ends; where the first of a pair is bent and its ends close up on
   a later one, the first is drawn again knowing it (round 3: at

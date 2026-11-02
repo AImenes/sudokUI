@@ -1381,7 +1381,14 @@ export function arrowShapes(links: ChainLink[], layout: Layout, obstacles: CellD
           const towards = round.x * across.x + round.y * across.y;
           const d = sub(other, p);
           const at = Math.atan2(d.x * round.x + d.y * round.y, d.x * way.x + d.y * way.y);
-          turn = at + ((Math.abs(towards) > 0.2 ? Math.sign(towards) * side : -Math.sign(at) || 1) * SIZES.pair * c) / reach;
+          const by = (Math.abs(towards) > 0.2 ? Math.sign(towards) * side : -Math.sign(at) || 1) * SIZES.pair * c;
+          turn = at + by / reach;
+          // but never round to the far side of its mark, where the line
+          // would leave back over its own candidate or lay its head on
+          // its target's digit (review round 4): beyond TURN_MOST of its
+          // way, a pair's width along the tangent, which cannot pass 90°
+          if (Math.abs(turn) > TURN_MOST) turn = Math.atan2(d.x * round.x + d.y * round.y + by, reach);
+          turn = Math.max(-TURN_MOST, Math.min(TURN_MOST, turn));
         }
         const w = add(mul(way, Math.cos(turn)), mul(round, Math.sin(turn)));
         return add(p, mul(w, reachAt(layout, cd, w) + gap));
@@ -2009,6 +2016,8 @@ function cutUnderDigits(path: Point[], layout: Layout, marked: Set<string>): num
 
 /** the turns tried off a boxed-in weak tie's ends, in radians (0, 23, 46 and 69 degrees), and how far its control points reach, fractions of the line */
 const TURNS = [0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2];
+/** the furthest round its mark, from the way it leaves or arrives, a pair's end is moved: 75 degrees */
+const TURN_MOST = (75 * Math.PI) / 180;
 const REACH = [0.15, 0.3, 0.5];
 /** a direction turned by `t` radians */
 const rotate = (v: Point, t: number): Point => ({ x: v.x * Math.cos(t) - v.y * Math.sin(t), y: v.x * Math.sin(t) + v.y * Math.cos(t) });

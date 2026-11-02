@@ -68,3 +68,27 @@ Three claims fell to both skeptics: that round 2's along pass only mends its own
 path; that the bars still send grouped chains' arrows on long detours across others where main drew them clear; and
 that the along pass can swap a short run along one arrow for a board-wide detour. Each was rated low, not a
 regression the merge rule counts, by both skeptics.
+
+## Review round 4
+
+A confirmation round on this fix (599e78a, de63f9d), with three lenses: design, code and regression. The code and
+regression lenses and the design finding's skeptics did not finish, because the account's usage limit was reached.
+The design lens finished. It confirmed round 3's three named regressions fixed. It confirmed that steps with no sets
+match main in two more views: 9,947 non-set chain, forcing and colouring finds, each drawn with the player's own
+marks and with pencil marks (shapes, heads, start dots and walk numbers), and every Learn diagram (`boardSvg`). Every
+set Learn diagram is byte-identical to 004d6e8. It found one regression, medium, which is now fixed:
+
+- **A pair's end turned round to the far side of its mark.** At
+  `.1.........7.....1.9...32.51..58...9......76....9......54.......2.81.5.......98.7` after 25 steps, an ALS-XY-Chain
+  on offer joins 5r2c6 to 5r1c6 twice. Link 1's end lay about 130 degrees round 5r1c6 from link 5's way in. The angle
+  rule added a pair's width to that and turned link 5's end about 160 degrees, and nothing bounds the angle rule (the
+  tangent rule it replaced could not pass 90 degrees). The result: link 5's tail sat on the left of 5r2c6 and left
+  heading right, back over its own candidate, and its head's base lay 5 units from 5r1c6's centre, across the 5. The
+  closeUp pass then drew link 1 as a wide loop round the left, and with link 3 the three lines formed a knot. Main,
+  and 004d6e8, drew two clean arrows. **Fix.** A pair's end now turns at most 75 degrees round its mark from the way
+  its line leaves or arrives. Beyond that it moves a pair's width along the tangent instead, which cannot pass 90
+  degrees (`TURN_MOST`). The chain now draws as 004d6e8 did, with two heads and no knot. tests/hintGeometry.test.ts
+  holds the reviewer's invariant on this position: every arrow leaves its mark outward, and its head's base lies
+  outside its target's mark and further out than its tip.
+- **Checked.** Every set find on offer along the pools' and seeds' paths was drawn on this tree and on de63f9d and
+  tested for the same invariant. Of 28,219 finds, none breaks it now. On de63f9d, two did: the reviewer's, and `....3.6.....1.8..3..` after 14 steps, whose link 5 left its mark backwards. Nine drawings changed from de63f9d, all ALS-XY-Chains on offer and none a solve path's step. In each, every pair of heads is at least 8.9 apart with no crossing between the pair, as far apart as main has them, or further. The drawing snapshot and the set fixture are unchanged.

@@ -934,7 +934,13 @@ the values above are its final ones.
   chains and other steps with no sets. They are fixed: every drawing of a
   step with no sets is main's again, byte for byte, over 41,250 drawings
   on offer along the pools' and seeds' paths
-  ([hint-drawing-p4-round3.md](hint-drawing-p4-round3.md)). The relabelling of AIC with ALS steps
+  ([hint-drawing-p4-round3.md](hint-drawing-p4-round3.md)). Review round 4
+  (design, code and regression on that fix; only the design lens finished
+  before the account's usage limit) confirmed it and found one medium
+  regression, a pair's end turned round to the far side of its mark in
+  one ALS-XY-Chain on offer; the turn is now bounded at 75 degrees, and
+  every set drawing along the paths is checked to leave its marks outward
+  with its heads off their digits (the same file). The relabelling of AIC with ALS steps
   whose only set is a bivalue cell is left to a later measured engine
   change.
 

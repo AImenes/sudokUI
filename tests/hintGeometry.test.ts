@@ -1755,3 +1755,32 @@ describe('what the third review of phase 4 found: steps with no sets drawn as be
     expect(tipGap(four.shapes[1], four.shapes[5])).toBeGreaterThan(SIZES.headWidth * 100);
   });
 });
+
+describe('what the fourth review of phase 4 found: a pair end turned round to the far side of its mark', () => {
+  it("never turns a pair's end further round its mark than 75 degrees from its way, so no line leaves back over its own candidate and no head lies on its target's digit: an ALS-XY-Chain on offer whose A-B and C-D both join 5r2c6 to 5r1c6", () => {
+    // link 5's end was put a pair's width round 5r1c6 from link 1's, which lay 130 degrees round from its way in:
+    // 160 degrees, its tail on the left of 5r2c6 leaving right, its head's base 5 units from 5r1c6's centre, across the 5
+    const g = parseGrid('.1.........7.....1.9...32.51..58...9......76....9......54.......2.81.5.......98.7')!;
+    for (let i = 0; i < 25; i++) applyStep(g, findNextStep(g)!);
+    const step = findStep('ALS_XY_CHAIN', g)!;
+    const [values, cands] = [Array.from(g.values), Array.from(g.cands)];
+    const d = boardDrawing(step, (c) => ({ value: values[c], corner: 0, center: 0 }), (c) => cands[c]);
+    const nearest = (cds: CellDigit[], p: Point) => cds.map((x) => d.layout.centre(x)).sort((a, b) => dist(a, p) - dist(b, p))[0];
+    for (const s of d.shapes) {
+      if (s.kind !== 'arrow' || s.undirected) continue;
+      const l = step.links![s.link];
+      const line = samples(s.d);
+      // the tail leaves outward from its mark
+      const from = nearest(l.from, line[0]);
+      expect((line[0].x - from.x) * (line[2].x - line[0].x) + (line[0].y - from.y) * (line[2].y - line[0].y)).toBeGreaterThan(0);
+      // the head's base lies outside its target's mark, further out than its tip
+      const [tip, b1, b2] = s.head;
+      const base = { x: (b1.x + b2.x) / 2, y: (b1.y + b2.y) / 2 };
+      const to = nearest(l.to, tip);
+      expect(dist(base, to)).toBeGreaterThan(dist(tip, to));
+      expect(dist(base, to)).toBeGreaterThan(13);
+    }
+    // and the pair still has two heads
+    expect(dist(arrow(d.shapes[1]).head[0], arrow(d.shapes[5]).head[0])).toBeGreaterThan(0.85 * SIZES.pair * 100);
+  });
+});
