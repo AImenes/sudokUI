@@ -13,7 +13,7 @@ import {
 } from '../board';
 import { Step, CellDigit } from '../steps';
 import { combinations } from './subsets';
-import { tr } from '../text';
+import { listAnd, tr, unitName } from '../text';
 
 interface Rect {
   cells: [number, number, number, number]; // r1c1, r1c2, r2c1, r2c2
@@ -88,7 +88,12 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
             { cell, digit: x },
             { cell, digit: y }
           ]),
-          labels: { primary: tr`the three corners holding only ${x}/${y}: the fourth must not join them` },
+          // the fourth corner's would-be candidates, drawn before they go (as Avoidable Rectangle Type 1's)
+          secondary: elims,
+          labels: {
+            primary: tr`the three corners holding only ${x}/${y}`,
+            secondary: tr`${x} and ${y} in the fourth corner: either would complete the deadly pattern`
+          },
           description: tr`Unique Rectangle Type 1: ${cellNames(cells)} would form a deadly pattern on ${x}/${y}; ${cellName(target)} cannot be ${x} or ${y}.`
         };
       }
@@ -137,7 +142,7 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
       ]) {
         // if `keep` is confined to the two roof cells in a shared unit,
         // then `kill` can be removed from both roof cells
-        const confined = shared.some((u) =>
+        const confined = shared.find((u) =>
           UNITS[u].every(
             (c) =>
               c === e1 ||
@@ -146,7 +151,7 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
               !(g.cands[c] & bit(keep))
           )
         );
-        if (!confined) continue;
+        if (confined === undefined) continue;
         const elims = [e1, e2]
           .filter((c) => g.cands[c] & bit(kill))
           .map((cell) => ({ cell, digit: kill }));
@@ -155,11 +160,17 @@ export function findUniqueness(g: Grid, type: 1 | 2 | 3 | 4 | 5 | 6): Step | nul
             tech: 'UNIQUENESS_4',
             placements: [],
             eliminations: elims,
-            primary: cells.flatMap((cell) => [
-              { cell, digit: x },
-              { cell, digit: y }
-            ]),
-            labels: { primary: tr`the rectangle: ${x}/${y} in all four corners, with ${keep} locked into the roof` },
+            // the rectangle, but for the roof's `keep`, which is drawn in
+            // its own colour with the house it is locked into
+            primary: cells.flatMap((cell) =>
+              [x, y].filter((digit) => digit !== keep || !extra.includes(cell)).map((digit) => ({ cell, digit }))
+            ),
+            secondary: [e1, e2].map((cell) => ({ cell, digit: keep })),
+            units: [{ unit: confined, role: 'secondary' }],
+            labels: {
+              primary: tr`the rectangle: ${x}/${y} in all four corners`,
+              secondary: tr`${keep} in ${unitName(confined)}: only in the roof, so one of ${cellName(e1)}, ${cellName(e2)} is ${keep}`
+            },
             description: tr`Unique Rectangle Type 4: ${keep} is locked into ${cellName(e1)}/${cellName(e2)}; keeping ${kill} there would force the deadly pattern, so ${kill} is removed from both.`
           };
         }
@@ -195,6 +206,15 @@ function uniqueness3(g: Grid, rect: Rect, pairMask: number, extra: number[]): St
           for (const d of digitsOf(g.cands[c] & mask)) elims.push({ cell: c, digit: d });
         }
         if (!elims.length) continue;
+        // the naked subset the roof's extras, read as one cell, make with S
+        // in the house: its digits, the roof, the house and the cells named
+        const digits = listAnd(digitsOf(mask));
+        const extras = listAnd(digitsOf(E));
+        const roof = cellNames([e1, e2]);
+        const cells = cellNames(S);
+        const house = unitName(u);
+        const deadly = cellNames(rect.cells);
+        const [x, y] = [rect.x, rect.y];
         return {
           tech: 'UNIQUENESS_3',
           placements: [],
@@ -203,14 +223,26 @@ function uniqueness3(g: Grid, rect: Rect, pairMask: number, extra: number[]): St
             { cell, digit: rect.x },
             { cell, digit: rect.y }
           ]),
-          secondary: S.flatMap((cell) =>
-            digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
-          ),
+          secondary: [
+            ...[e1, e2].flatMap((cell) => digitsOf(g.cands[cell] & ~pairMask).map((digit) => ({ cell, digit }))),
+            ...S.flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit })))
+          ],
+          units: [{ unit: u, role: 'secondary' }],
           labels: {
             primary: tr`the rectangle: ${rect.x}/${rect.y} in all four corners`,
-            secondary: tr`the cells that form a locked set with the roof extras`
+            secondary:
+              k === 1
+                ? tr`${digits}: the roof's extras (${roof}, read as one cell) and ${cells} hold only these in ${house}, a naked pair`
+                : k === 2
+                  ? tr`${digits}: the roof's extras (${roof}, read as one cell) and ${cells} hold only these in ${house}, a naked triple`
+                  : tr`${digits}: the roof's extras (${roof}, read as one cell) and ${cells} hold only these in ${house}, a naked quadruple`
           },
-          description: tr`Unique Rectangle Type 3: the roof extras of ${cellNames(rect.cells)} act as one pseudo-cell and form a locked set with ${cellNames(S)}, clearing those digits from the rest of the unit.`
+          description:
+            k === 1
+              ? tr`Unique Rectangle Type 3: ${deadly} would form a deadly pattern on ${x}/${y}, so one of the roof cells ${roof} must take an extra candidate. Read as one cell holding its extras (${extras}), the roof makes a naked pair with ${cells} in ${house}: ${digits} can only go in these cells, so they are removed from the rest of ${house}.`
+              : k === 2
+                ? tr`Unique Rectangle Type 3: ${deadly} would form a deadly pattern on ${x}/${y}, so one of the roof cells ${roof} must take an extra candidate. Read as one cell holding its extras (${extras}), the roof makes a naked triple with ${cells} in ${house}: ${digits} can only go in these cells, so they are removed from the rest of ${house}.`
+                : tr`Unique Rectangle Type 3: ${deadly} would form a deadly pattern on ${x}/${y}, so one of the roof cells ${roof} must take an extra candidate. Read as one cell holding its extras (${extras}), the roof makes a naked quadruple with ${cells} in ${house}: ${digits} can only go in these cells, so they are removed from the rest of ${house}.`
         };
       }
     }
@@ -287,18 +319,22 @@ function uniqueness6(
       .filter((c) => g.cands[c] & bit(d))
       .map((cell) => ({ cell, digit: d }));
     if (!elims.length) continue;
+    // the rectangle's other digit, and its d in their own colour with the
+    // two lines it is confined to the rectangle in
+    const other = d === rect.x ? rect.y : rect.x;
+    const [a, b] = rowsStrong ? rows : cols;
     return {
       tech: 'UNIQUENESS_6',
       placements: [],
       eliminations: elims,
-      primary: rect.cells.flatMap((cell) => [
-        { cell, digit: rect.x },
-        { cell, digit: rect.y }
-      ]),
+      primary: rect.cells.map((cell) => ({ cell, digit: other })),
+      secondary: rect.cells.map((cell) => ({ cell, digit: d })),
+      units: (rowsStrong ? rows : cols.map((c) => 9 + c)).map((unit) => ({ unit, role: 'secondary' as const })),
       labels: {
-        primary: rowsStrong
-          ? tr`the rectangle: ${rect.x}/${rect.y} in all four corners, with ${d} confined to it in both rows`
-          : tr`the rectangle: ${rect.x}/${rect.y} in all four corners, with ${d} confined to it in both columns`
+        primary: tr`the rectangle: ${rect.x}/${rect.y} in all four corners`,
+        secondary: rowsStrong
+          ? tr`${d} in rows ${a + 1} and ${b + 1}: only in the rectangle, so on one diagonal`
+          : tr`${d} in columns ${a + 1} and ${b + 1}: only in the rectangle, so on one diagonal`
       },
       description: rowsStrong
         ? tr`Unique Rectangle Type 6: ${d} is confined to the rectangle in both rows; placing it in a roof corner would force the deadly pattern, so ${d} is removed from ${cellNames(extra)}.`
@@ -341,18 +377,24 @@ export function findHiddenRectangle(g: Grid): Step | null {
         );
         if (!rowConfined || !colConfined) continue;
         if (!(g.cands[B] & bit(weak))) continue;
+        // the strong digit in B's row and column, which lies there only in
+        // the rectangle, in its own colour with that row and column
+        const confined = [B, rowMate, colMate];
         return {
           tech: 'HIDDEN_RECTANGLE',
           placements: [],
           eliminations: [{ cell: B, digit: weak }],
-          primary: cells.flatMap((cell) => [
-            { cell, digit: x },
-            { cell, digit: y }
-          ]),
-          secondary: [{ cell: A, digit: strong }],
+          primary: cells.flatMap((cell) =>
+            [x, y].filter((digit) => digit !== strong || !confined.includes(cell)).map((digit) => ({ cell, digit }))
+          ),
+          secondary: confined.map((cell) => ({ cell, digit: strong })),
+          units: [
+            { unit: rowOf(B), role: 'secondary' },
+            { unit: 9 + colOf(B), role: 'secondary' }
+          ],
           labels: {
             primary: tr`the rectangle: ${x}/${y} in all four corners`,
-            secondary: tr`${strong} in the bivalue corner: confined to the rectangle in ${cellName(B)}'s row and column`
+            secondary: tr`${strong} in ${unitName(rowOf(B))} and in ${unitName(9 + colOf(B))}: only in the rectangle`
           },
           description: tr`Hidden Rectangle: ${cellName(A)} holds only ${x}/${y}, and ${strong} is confined to the rectangle in ${cellName(B)}'s row and column; ${cellName(B)} cannot be ${weak} or the deadly pattern appears.`
         };
@@ -427,15 +469,21 @@ export function findAvoidableRectangle(g: Grid, type: 1 | 2): Step | null {
               tech: 'AVOIDABLE_RECTANGLE_2',
               placements: [],
               eliminations: elims,
+              // the rectangle first, as Type 1 and the Unique Rectangles draw
+              // it: the two solved corners, shown by their digits, and the
+              // candidates that would complete it; then the extra digit
               primary: [
+                ...solved.map((cell) => ({ cell, digit: g.values[cell] })),
+                { cell: u1, digit: dv1 },
+                { cell: u2, digit: dv2 }
+              ],
+              secondary: [
                 { cell: u1, digit: cDigit },
                 { cell: u2, digit: cDigit }
               ],
-              // the two solved corners, shown by their digits
-              secondary: solved.map((cell) => ({ cell, digit: g.values[cell] })),
               labels: {
-                primary: tr`${cDigit} in the two unsolved corners: one of them must be it`,
-                secondary: tr`the two solved corners, neither of them a given`
+                primary: tr`the two solved corners, neither of them a given, and the ${Math.min(dv1, dv2)} and ${Math.max(dv1, dv2)} that would complete the rectangle`,
+                secondary: tr`${cDigit} in the two unsolved corners: one of them must be it`
               },
               description: tr`Avoidable Rectangle Type 2: to avoid an interchangeable rectangle with the solved cells ${cellNames(solved)}, one of ${cellName(u1)}/${cellName(u2)} must be ${cDigit}, so ${cDigit} is removed from cells seeing both.`
             };

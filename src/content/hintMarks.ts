@@ -337,7 +337,12 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const inside = new Map<number, Map<number, Role>>();
   const values = new Map<number, CandMark>();
   const show = opts.show ?? (() => true);
-  const bands = show('units') ? (step.units ?? []) : [];
+  // a walk frame draws a band with its role: a house the pattern lives in
+  // from the frame that shows the pattern, a house that loses from the frame
+  // that shows what acts on it; 'units' draws every band at once (a band
+  // that is the whole drawing, a forcing step's broken house from the frame
+  // that reaches it: src/engine/hintFrames.ts)
+  const bands = (step.units ?? []).filter((u) => show('units') || (opts.walking && show(u.role)));
   const links = opts.links ?? step.links ?? [];
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {

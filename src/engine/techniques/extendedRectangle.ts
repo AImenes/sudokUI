@@ -1,6 +1,6 @@
 import { Grid, bit, digitsOf, popcount, sees, cellNames, cellName } from '../board';
 import { Step, CellDigit } from '../steps';
-import { tr } from '../text';
+import { listAnd, tr } from '../text';
 
 /**
  * Extended Unique Rectangles (sudokuwiki.org/Extended_Unique_Rectangles).
@@ -77,7 +77,15 @@ function checkFormation(g: Grid, cells: number[]): Step | null {
       primary: cells
         .filter((c) => c !== extrasCell)
         .flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))),
-      labels: { primary: tr`the cells that would form a deadly ${digitsOf(trio).join('/')} loop` },
+      // the sixth cell's would-be candidates, drawn before they go
+      secondary: elims,
+      labels: {
+        primary: tr`the cells that would form a deadly ${digitsOf(trio).join('/')} loop`,
+        secondary:
+          elims.length === 1
+            ? tr`${elims[0].digit} in ${cellName(extrasCell)}: it would complete the deadly loop`
+            : tr`${listAnd(elims.map((e) => e.digit))} in ${cellName(extrasCell)}: each would complete the deadly loop`
+      },
       description: tr`Extended Rectangle Type 1: ${cellNames(cells)} would form a deadly ${digitsOf(trio).join('/')} loop; ${cellName(extrasCell)} must take one of its extra candidates.`
     };
   }

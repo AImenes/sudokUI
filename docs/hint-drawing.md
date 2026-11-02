@@ -307,7 +307,17 @@ Every rule is numbered so a commit, a test or a review can cite it.
   cover lines, a subset's house, a single's house, Locked Candidates' box
   and line. A pattern's band (base) has a solid outline, an acts-through
   band (cover) a dashed one, so the two differ by shape and not only by
-  colour.
+  colour. In a walk a band comes with its role's frame, the pattern's
+  houses with the pattern and a house that loses with what acts on it, so
+  no frame draws what the one before drew; only a band that is the whole
+  drawing (a Full House's) is there from the first frame, and a forcing
+  step's house with no place left comes with the link into the
+  contradiction. A Hidden Single shades no band whose cells in its house
+  another band already shades. The uniqueness patterns band, dashed, the
+  house their argument locks a digit into, with that digit's candidates in
+  the acts-through colour: the Hidden Rectangle's row and column, UR Type
+  3's naked subset's house (with the roof's extras), UR Type 4's house of
+  the locked digit, UR Type 6's two lines.
 - **G16. Sets.** A group node (the 2-3 candidates of one digit in one box
   and one row or column) and an almost locked set are drawn as what they
   are, never as a hull round cells or candidates that are not theirs (a

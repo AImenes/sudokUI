@@ -228,8 +228,8 @@ describe('the HoDoKu line', () => {
 
   it('writes wings, uniqueness and colouring one colour after another', () => {
     expect(stepText(step('XY_WING'))).toBe('XY-Wing: 7/9 in r7c7 / 6 in r7c6,r8c9 => r7c8<>6, r8c6<>6');
-    expect(stepText(step('UNIQUENESS_1'))).toBe('Unique Rectangle Type 1: 5/8 in r4c1,r5c18 => r4c8<>5, r4c8<>8');
-    expect(stepText(step('UNIQUENESS_4'))).toBe('Unique Rectangle Type 4: 4/6 in r28c79 => r2c9<>4, r8c9<>4');
+    expect(stepText(step('UNIQUENESS_1'))).toBe('Unique Rectangle Type 1: 5/8 in r4c1,r5c18 / r4c8 => r4c8<>5, r4c8<>8');
+    expect(stepText(step('UNIQUENESS_4'))).toBe('Unique Rectangle Type 4: 4/6 in r28c79 / 6 in r28c9 => r2c9<>4, r8c9<>4');
     expect(stepText(step('SIMPLE_COLORS'))).toBe('Simple Colors Trap: 4 (r1c5,r6c4,r8c6) / (r1c6,r5c5,r8c8) => r6c8<>4');
     expect(stepText(step('DIGIT_FORCING_CHAIN'))).toBe('Digit Forcing Chain: 8 in r1c1 => r1c1<>3, r1c1<>6');
   });

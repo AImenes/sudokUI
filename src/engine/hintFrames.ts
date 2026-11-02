@@ -19,10 +19,11 @@ import { aDigit, listAnd, tr, unitName } from './text';
 import { alsClash, clashAt, deriveTruth, isAlsChain, refutation } from './truth';
 
 /**
- * A part of the drawing a frame shows: a pattern's bands and roles; a
- * colouring's clusters in their shades, and its proof (the colour proven
- * false as false rings, its partner as true discs); a Death Blossom's stem,
- * its candidates before any branch is drawn; the conclusion.
+ * A part of the drawing a frame shows: every band at once ('units'), a
+ * pattern's roles, each with its bands in a walk frame; a colouring's
+ * clusters in their shades, and its proof (the colour proven false as false
+ * rings, its partner as true discs); a Death Blossom's stem, its candidates
+ * before any branch is drawn; the conclusion.
  */
 export type Part = 'units' | 'primary' | 'secondary' | 'fins' | 'cluster0' | 'cluster1' | 'proof' | 'stem' | 'conclusion';
 
@@ -780,12 +781,20 @@ export function walkFrames(step: Step): Frame[] {
   if (isParity(step)) return parityFrames(step);
   if (step.tech === 'DEATH_BLOSSOM' && step.links?.some((l) => l.undirected)) return blossomFrames(step);
   const frames: Frame[] = [];
-  const base = new Set<Part>(['units']);
+  // 'units' draws every band at once (src/content/hintMarks.ts), which a
+  // step without bands may show from its first frame; a step with bands
+  // draws each from the frame that reaches it
+  const hasBands = !!step.units?.length;
   if (step.links && step.links.length > 0) {
     // the link that closes a loop says what it shows: a discontinuous loop's
     // premise impossible, a continuous loop holding either way round
     const closing = closureText(step) || loopText(step);
     const introduced = new Set<number>();
+    // a forcing step's house with no place left for a digit is drawn from
+    // the frame of the link into the contradiction, the cells where the
+    // board would break (its fins), never inferences ahead of it
+    const breaks = (link: ChainLink) => link.to.some((cd) => step.fins?.some((f) => f.cell === cd.cell && f.digit === cd.digit));
+    let base = new Set<Part>(hasBands ? [] : ['units']);
     // every inference is a frame of its own; the link that closes a
     // discontinuous loop says what it proves. An almost locked set of
     // several cells comes first in a frame of its own, the locking idea
@@ -797,6 +806,7 @@ export function walkFrames(step: Step): Frame[] {
         introduced.add(k);
         frames.push({ text: setText(step, set), links: i, sets: [k], show: new Set(base) });
       }
+      if (breaks(link)) base = new Set<Part>(['units']);
       const text = closing && i === step.links!.length - 1 ? `${linkText(link, step)} ${closing}` : linkText(link, step);
       frames.push({ text, links: i + 1, show: new Set(base) });
     });
@@ -810,7 +820,11 @@ export function walkFrames(step: Step): Frame[] {
     });
     return frames;
   }
-  const shown = new Set<Part>(base);
+  // a pattern's bands come with their roles' frames: its houses with the
+  // pattern, a house that loses with what acts on it; only a band that is
+  // the whole drawing (a Full House's house) is there with every band
+  const whole = hasBands && !step.primary?.length && !step.secondary?.length && !step.fins?.length;
+  const shown = new Set<Part>(hasBands && !whole ? [] : ['units']);
   const add = (part: Part, text: string | undefined) => {
     if (!text) return;
     shown.add(part);

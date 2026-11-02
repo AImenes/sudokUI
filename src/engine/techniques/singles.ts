@@ -104,31 +104,39 @@ export function hiddenSingleStep(g: Grid, u: number, d: number, pos: number): St
       {
         // crosshatching: every other empty cell of the house is ruled out
         // by a placed d that sees it; those ds are shown, and the line (or
-        // box) each one shades across the house
-        const blockers = new Map<number, CellDigit>();
-        const bands: UnitBand[] = [{ unit: u, role: 'primary' }];
-        const shaded = new Set<number>([u]);
-        for (const x of UNITS[u]) {
-          if (x === pos || g.values[x] !== 0) continue;
+        // box) each one shades across the house: each band, with its ds
+        const across = new Map<number, number[]>();
+        const seen: number[] = [];
+        const others = UNITS[u].filter((x) => x !== pos && g.values[x] === 0);
+        for (const x of others) {
           const holders = PEERS[x].filter((p) => g.values[p] === d);
           // a blocker on the cell's row or column reads best; a box one otherwise
           const blocker =
             holders.find((p) => rowOf(p) === rowOf(x) || colOf(p) === colOf(x)) ?? holders[0];
           if (blocker === undefined) continue;
-          blockers.set(blocker, { cell: blocker, digit: d });
-          const across =
+          const line =
             rowOf(blocker) === rowOf(x) ? rowOf(x) : colOf(blocker) === colOf(x) ? 9 + colOf(x) : 18 + boxOf(x);
-          if (!shaded.has(across)) {
-            shaded.add(across);
-            bands.push({ unit: across, role: 'secondary' });
-          }
+          across.set(line, [...(across.get(line) ?? []), blocker]);
+          seen.push(blocker);
         }
+        // a band whose cells in the house another band already shades says
+        // nothing more (a column inside a box's band): it goes, the
+        // narrowest first, with the d that shades only it
+        const crossing = (line: number) => others.filter((x) => UNITS[line].includes(x));
+        const kept = [...across.keys()];
+        for (const line of [...kept].sort((a, b) => crossing(a).length - crossing(b).length)) {
+          const rest = kept.filter((l) => l !== line);
+          if (crossing(line).every((x) => rest.some((l) => UNITS[l].includes(x)))) kept.splice(kept.indexOf(line), 1);
+        }
+        const bands: UnitBand[] = [{ unit: u, role: 'primary' }, ...kept.map((unit) => ({ unit, role: 'secondary' as const }))];
+        const shading = new Set(kept.flatMap((line) => across.get(line)!));
+        const blockers = [...new Set(seen)].filter((p) => shading.has(p)).map((cell) => ({ cell, digit: d }));
         return {
           tech: 'HIDDEN_SINGLE',
           placements: [{ cell: pos, digit: d }],
           eliminations: [],
           primary: [{ cell: pos, digit: d }],
-          secondary: [...blockers.values()],
+          secondary: blockers,
           units: bands,
           labels: {
             primary: tr`${unitName(u)}: ${d} has one place left in it`,
