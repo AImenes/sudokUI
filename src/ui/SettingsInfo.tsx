@@ -10,6 +10,7 @@ import { BandTable } from './BandTable';
 import { RATING_SUMMARY } from '../content/rating';
 import { useLearnLocale } from './useLearnLocale';
 import { PRIVACY_URL } from '../content/staticRoutes';
+import { WHY } from '../content/why';
 import { PALETTE } from './Grid';
 
 // The rating summary in the chosen language. English is at hand; a
@@ -392,6 +393,45 @@ const SHORTCUTS: [string, string][] = [
 ];
 
 const REPO = 'github.com/AImenes/sudokUI';
+
+/**
+ * Why sudokUI? (src/content/why.ts): what the app is for and promises, the
+ * same copy the static page /why/ shows. Opened from the footer and the win
+ * screen, never on its own
+ */
+export function WhyDialog({ onClose, onFeedback }: { onClose: () => void; onFeedback?: () => void }) {
+  const t = useT();
+  const c = WHY[t.lang];
+  const nodes = {
+    privacy: (
+      <a href={`${t.lang === 'en' ? '' : `/${t.lang}`}${PRIVACY_URL}`} target="_blank" rel="noreferrer">
+        {c.privacyLink}
+      </a>
+    ),
+    feedback: onFeedback ? (
+      <button className="learn-link" onClick={onFeedback}>
+        {c.feedbackLink}
+      </button>
+    ) : (
+      c.feedbackLink
+    )
+  };
+  return (
+    <Modal title={c.name} onClose={onClose}>
+      <p className="dialog-note">{c.lead}</p>
+      {c.sections.map((sec) => (
+        <React.Fragment key={sec.heading}>
+          <h4 className="setting-group">{sec.heading}</h4>
+          {sec.paragraphs.map((para) => (
+            <p key={para} className="dialog-note">
+              {rich(para, nodes)}
+            </p>
+          ))}
+        </React.Fragment>
+      ))}
+    </Modal>
+  );
+}
 
 export function InfoDialog({
   onClose,

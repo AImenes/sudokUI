@@ -3962,3 +3962,10 @@ html:not([lang='en']) .zone-note {
   padding: 8px 4px;
   white-space: nowrap;
 }
+
+/* the win screen's quiet link to Why sudokUI?: under the buttons, small */
+.why-link {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 13px;
+}

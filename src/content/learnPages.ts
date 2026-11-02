@@ -25,6 +25,7 @@ import { techSlug, slugify } from './slugs';
 import { linkGlossary } from './glossaryLinks';
 import { LANDING_PAGES, LandingPage, RATING_URL } from './landing';
 import { PRIVACY, PRIVACY_URL } from './privacy';
+import { WHY, WHY_URL } from './why';
 import { EXAMPLES } from './examples';
 import { boardSvg, legendOf, swatchCss, BOARD_SIZE } from './boardSvg';
 import { FREQUENCY, byWorth } from './frequency';
@@ -327,7 +328,8 @@ ${opts.body}
         { label: lt.s('Techniques'), href: at(opts.lang, '/learn/') },
         { label: lt.s('Intuition'), href: at(opts.lang, INTUITION_URL) },
         { label: lt.s('Glossary'), href: glossaryUrl(opts.lang) },
-        { label: PRIVACY[opts.lang].name, href: at(opts.lang, PRIVACY_URL) }
+        { label: PRIVACY[opts.lang].name, href: at(opts.lang, PRIVACY_URL) },
+        { label: WHY[opts.lang].name, href: at(opts.lang, WHY_URL) }
       ]
         .map((l) => `<a href="${l.href}">${esc(l.label)}</a>`)
         .join(' · ')}</p>
@@ -887,6 +889,42 @@ ${c.sections.map((s) => `      <h2>${esc(s.heading)}</h2>\n${s.paragraphs.map(pa
   };
 }
 
+/**
+ * Why sudokUI? in a language (src/content/why.ts): what the app is for and
+ * what it promises, the page search engines read; the app opens the same
+ * copy as a dialog
+ */
+function whyPage(lang: Lang): Page {
+  const c = WHY[lang];
+  const url = at(lang, WHY_URL);
+  const privacy = `<a href="${at(lang, PRIVACY_URL)}">${esc(c.privacyLink)}</a>`;
+  const feedback = `<a href="${app(lang)}">${esc(c.feedbackLink)}</a>`;
+  const para = (p: string) => `      <p>${esc(p).replace('{privacy}', privacy).replace('{feedback}', feedback)}</p>`;
+  const body = `      <h1>${esc(c.name)}</h1>
+      <p class="lead">${esc(c.lead)}</p>
+${c.sections.map((s) => `      <h2>${esc(s.heading)}</h2>\n${s.paragraphs.map(para).join('\n')}`).join('\n')}`;
+  return {
+    path: `${url.slice(1)}index.html`,
+    url,
+    lang,
+    alternateOf: WHY_URL,
+    html: layout({
+      lang,
+      url,
+      // (it names the brand already: no "| sudokUI" after it)
+      title: c.title,
+      description: c.description,
+      alternateOf: WHY_URL,
+      crumbs: [
+        { name: 'sudokUI', url: app(lang) },
+        { name: c.name, url }
+      ],
+      jsonLd: [article(lang, url, c.name, c.description)],
+      body
+    })
+  };
+}
+
 export function buildLearnPages(): Page[] {
   return LEARN_LANGS.flatMap((lang) => [
     ...LANDING_PAGES.map((p) => landingPage(p, lang)),
@@ -895,6 +933,7 @@ export function buildLearnPages(): Page[] {
     intuitionPage(lang),
     glossaryPage(lang),
     privacyPage(lang),
+    whyPage(lang),
     ...ALL_TECHS.map((tech, i) => techniquePage(lang, tech, ALL_TECHS[i - 1], ALL_TECHS[i + 1]))
   ]);
 }

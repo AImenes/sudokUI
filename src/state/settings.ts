@@ -146,7 +146,18 @@ export const useSettings = create<Settings>()(
         })),
       set: (p) => set(p)
     }),
-    { name: 'sudokui-settings-v1' }
+    {
+      name: 'sudokui-settings-v1',
+      // version 1 (2 November 2026): scrolling over the board went off by
+      // default. Every player kept it on only because it was the default,
+      // so it goes off once for all of them; anyone who had turned it off
+      // keeps it off, and anyone may turn it on again in Settings
+      version: 1,
+      migrate: (stored, version) => {
+        const state = (stored ?? {}) as Partial<Settings>;
+        return (version < 1 ? { ...state, scrollOverBoard: false } : state) as Settings;
+      }
+    }
   )
 );
 

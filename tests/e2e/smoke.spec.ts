@@ -1014,7 +1014,7 @@ test.describe('phone, 390 x 844', () => {
 
   test('a swipe over the board scrolls the page, a tap still selects', async ({ page }) => {
     // with the setting on (off by default since 2 November 2026)
-    await page.addInitScript(() => localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { scrollOverBoard: true }, version: 0 })));
+    await page.addInitScript(() => localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { scrollOverBoard: true }, version: 1 })));
     await open(page);
     const scrolled = () =>
       page.evaluate(() => Math.max(window.scrollY, ...[...document.querySelectorAll('*')].map((el) => el.scrollTop)));
@@ -1137,7 +1137,7 @@ test.describe('phone, 390 x 844, multi-select', () => {
 
   test('Multi: a drag selects at once in any direction, a tap adds or removes, the page stays put', async ({ page }) => {
     // with scrolling over the board on, which Multi turns off for itself
-    await page.addInitScript(() => localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { scrollOverBoard: true }, version: 0 })));
+    await page.addInitScript(() => localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { scrollOverBoard: true }, version: 1 })));
     await open(page);
     const status = page.locator('#board-status');
     const board = page.locator('svg.board');
@@ -2039,9 +2039,49 @@ test.describe('a first visit', () => {
     // a swipe over the board selects; the page scrolls from beside it
     await expect(page.locator('svg.board')).toHaveAttribute('data-noscroll', 'true');
     await expect(page.locator('svg.board')).toHaveCSS('touch-action', 'pinch-zoom');
-    // and a game won on it gets its win screen
+    // and a game won on it gets its win screen, with a quiet link to Why sudokUI?
     await solveSaved(page);
-    await expect(page.getByRole('dialog', { name: 'Puzzle solved' })).toBeVisible();
+    const won = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(won).toBeVisible();
+    await won.getByRole('button', { name: 'Why sudokUI?' }).click();
+    await expect(page.getByRole('dialog', { name: 'Why sudokUI?' })).toContainText('What stays true');
+  });
+
+  test('a returning player, with scrolling over the board on only because it was the default, gets it off once', async ({ page }) => {
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('seeded')) return;
+      sessionStorage.setItem('seeded', '1');
+      localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { scrollOverBoard: true, theme: 'light' }, version: 0 }));
+    });
+    await page.goto('/');
+    await expect(page.locator('svg.board')).toHaveAttribute('data-noscroll', 'true');
+    // the rest of the settings kept, and the change made once: on again, it stays on
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-settings-v1')!).state.theme)).toBe('light');
+    await page.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem('sudokui-settings-v1')!);
+      s.state.scrollOverBoard = true;
+      localStorage.setItem('sudokui-settings-v1', JSON.stringify(s));
+    });
+    await page.reload();
+    await expect(page.locator('svg.board')).not.toHaveAttribute('data-noscroll', 'true');
+  });
+});
+
+test.describe('Why sudokUI?', () => {
+  test('the footer links the page search engines read, and in the app opens the same words', async ({ page }) => {
+    await open(page);
+    const link = page.locator('footer.app-footer a', { hasText: 'Why sudokUI?' });
+    await expect(link).toHaveAttribute('href', '/why/');
+    await link.click();
+    const dialog = page.getByRole('dialog', { name: 'Why sudokUI?' });
+    await expect(dialog).toContainText('without the clutter');
+    await expect(dialog.getByRole('link', { name: 'see the privacy page' })).toHaveAttribute('href', '/privacy/');
+    // its feedback link opens the report dialog
+    await dialog.getByRole('button', { name: 'send feedback from the app' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole('dialog').first()).toBeVisible();
+    // and the app stayed where it was: the link opened words, not the page
+    expect(new URL(page.url()).pathname).not.toBe('/why/');
   });
 });
 

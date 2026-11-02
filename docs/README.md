@@ -4,6 +4,19 @@ Start here. Every decision a session reaches is written into one of these
 and committed, so a new branch or a new session starts from the repository,
 not from a chat. Where two disagree, the newer one wins, and should be fixed.
 
+## Standing rules
+
+- **Search is part of every change** (the owner, 2 November 2026). Anything
+  a visitor should be able to find is a static page as well as whatever the
+  app shows: words a dialog shows come from one copy that also builds a page
+  (src/content/learnPages.ts), in all three languages, with a title of 60
+  characters or fewer and a description of 160 or fewer that leads with the
+  teaching, language alternates, a sitemap entry and a link from every
+  footer. Never a page per generated puzzle (online-goals.md, "Do not
+  build").
+- **Light first.** No dialog on a first visit; nothing over the board that
+  the player did not ask for. No accounts, no database for reach.
+
 ## Why, and the road
 
 - [goals.md](goals.md): the mission (the fastest solver in the room, by

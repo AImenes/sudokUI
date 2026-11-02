@@ -32,6 +32,7 @@ import type { Sent } from './send';
 import { useTelemetry } from '../state/telemetry';
 import type { ShareKind } from '../state/telemetry';
 import { PRIVACY_URL } from '../content/staticRoutes';
+import { WHY } from '../content/why';
 import { HubTabs } from './HubTabs';
 import { techniquesByFamily } from '../content/categories';
 import { useLearnLocale } from './useLearnLocale';
@@ -1121,10 +1122,13 @@ export function VictoryDialog({
   onClose,
   onAnother,
   onProgress,
-  onSettings
+  onSettings,
+  onWhy
 }: {
   onNewGame: () => void;
   onClose: () => void;
+  /** open Why sudokUI?: a quiet link under the buttons, never more */
+  onWhy?: () => void;
   /** start a fresh practice puzzle for the same technique */
   onAnother?: () => void;
   /** open the path and the record */
@@ -1402,6 +1406,13 @@ export function VictoryDialog({
           )}
           <button className="ghost" onClick={onClose}>{t('Admire the grid')}</button>
         </div>
+        {onWhy && (
+          <p className="dialog-note why-link">
+            <button className="learn-link" onClick={onWhy}>
+              {WHY[t.lang].name}
+            </button>
+          </p>
+        )}
       </div>
     </div>
   );

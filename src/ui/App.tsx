@@ -29,7 +29,8 @@ import {
   ScanDialog,
   ContractDialog
 } from './Dialogs';
-import { SettingsDialog, InfoDialog } from './SettingsInfo';
+import { SettingsDialog, InfoDialog, WhyDialog } from './SettingsInfo';
+import { WHY, WHY_URL } from '../content/why';
 import { ReportDialog } from './ReportDialog';
 import type { ReportKind } from './report';
 import type { Step } from '../engine/steps';
@@ -222,7 +223,7 @@ export default function App() {
   }, []);
 
   const [dialog, setDialog] = useState<
-    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'restart' | 'steps' | 'scan' | 'learn' | 'progress'
+    'none' | 'new' | 'practice' | 'io' | 'share' | 'settings' | 'info' | 'why' | 'restart' | 'steps' | 'scan' | 'learn' | 'progress'
   >('none');
   const [learnTarget, setLearnTarget] = useState<LearnTarget>({ tab: 'techniques' });
   // a technique the guide asked Scan to look for on the board
@@ -915,6 +916,17 @@ export default function App() {
             <span aria-hidden="true"> · </span>
             {/* what the app sends, exactly: a static page in the app's language */}
             <a href={`${langRoot(t.lang)}${PRIVACY_URL.slice(1)}`}>{t('Privacy')}</a>
+            <span aria-hidden="true"> · </span>
+            {/* what sudokUI is for: a static page for search engines, the same words as a dialog here */}
+            <a
+              href={`${langRoot(t.lang)}${WHY_URL.slice(1)}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setDialog('why');
+              }}
+            >
+              {WHY[t.lang].name}
+            </a>
             <span className="dedication">{t('for thth ♥')}</span>
           </footer>
         </aside>
@@ -1003,6 +1015,15 @@ export default function App() {
           }}
         />
       )}
+      {dialog === 'why' && (
+        <WhyDialog
+          onClose={() => setDialog('none')}
+          onFeedback={() => {
+            setDialog('none');
+            setReport({ kind: 'problem' });
+          }}
+        />
+      )}
       {report && <ReportDialog kind={report.kind} hint={report.hint} onClose={() => setReport(null)} />}
       {dialog === 'progress' && (
         <ProgressDialog
@@ -1064,6 +1085,10 @@ export default function App() {
           onProgress={() => {
             setVictoryDismissed(true);
             setDialog('progress');
+          }}
+          onWhy={() => {
+            setVictoryDismissed(true);
+            setDialog('why');
           }}
         />
       )}
