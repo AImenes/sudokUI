@@ -61,10 +61,12 @@ export function Controls({
   const tempMode = useGame((s) => s.tempMode);
   const effectiveMode = tempMode ?? mode;
 
-  // A number key tapped enters the digit in the current mode; held for a
-  // moment it enters a corner mark whatever the mode, so a phone needs no
-  // trip to the mode buttons for a pencil mark. The key shows the digit in
-  // its corner while the hold lasts.
+  // A number key tapped enters the digit in the current mode. In Digit mode,
+  // held for a moment it enters a corner mark instead, so a phone needs no
+  // trip to the mode buttons for a pencil mark; the key shows the digit in
+  // its corner while the hold lasts. In the other modes a press is a tap
+  // however long it lasts: a slow tap in Centre mode must not put a corner
+  // mark in the cell instead of the centre mark it was meant for.
   const keyHold = useRef<{ digit: number; timer: number; fired: boolean } | null>(null);
   const lastKeyPointer = useRef(0);
   const [heldKey, setHeldKey] = useState<number | null>(null);
@@ -72,12 +74,14 @@ export function Controls({
     lastKeyPointer.current = Date.now();
     if (keyHold.current) window.clearTimeout(keyHold.current.timer);
     const hold = { digit: d, timer: 0, fired: false };
-    hold.timer = window.setTimeout(() => {
-      hold.fired = true;
-      setHeldKey(d);
-      navigator.vibrate?.(12);
-      input(d, 'corner');
-    }, 350);
+    const g = useGame.getState();
+    if ((g.tempMode ?? g.mode) === 'digit')
+      hold.timer = window.setTimeout(() => {
+        hold.fired = true;
+        setHeldKey(d);
+        navigator.vibrate?.(12);
+        input(d, 'corner');
+      }, 450);
     keyHold.current = hold;
   };
   const releaseKey = (d: number | null) => {
@@ -194,7 +198,7 @@ export function Controls({
             title={t(
               armedDigit === d
                 ? '{d} is armed: tap a cell to enter it, tap {d} again to put it down'
-                : '{d}. Hold it to enter a corner mark. With nothing selected, arms {d}: every {d} lights up and a tap on a cell enters it',
+                : '{d}. In Digit mode, hold it to enter a corner mark. With nothing selected, arms {d}: every {d} lights up and a tap on a cell enters it',
               { d }
             )}
             style={

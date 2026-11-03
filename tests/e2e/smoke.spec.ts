@@ -1012,6 +1012,25 @@ test.describe('phone, 390 x 844', () => {
     await expect(page.locator('#board-status')).toContainText('Row 5, column 5: 4');
   });
 
+  test('in Centre mode a held number key is a tap: it takes the centre mark away, and puts no corner mark in', async ({ page }) => {
+    await open(page);
+    const c = await cellBox(page, 40);
+    await page.touchscreen.tap(c.x, c.y);
+    await page.locator('.mode-btn', { hasText: 'Centre' }).tap();
+    const key = (await page.locator('.num-btn', { hasText: '4' }).boundingBox())!;
+    const at = { x: key.x + key.width / 2, y: key.y + key.height / 2 };
+    await page.touchscreen.tap(at.x, at.y);
+    await expect(page.locator('#board-status')).toContainText('centre marks 4');
+    // a slow tap, well past the hold that enters a corner mark in Digit mode
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
+    await page.waitForTimeout(900);
+    await expect(page.locator('.num-btn.held-corner')).toHaveCount(0);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.locator('#board-status')).toContainText('Row 5, column 5: empty.');
+    await expect(page.locator('#board-status')).not.toContainText('corner marks');
+  });
+
   test('a swipe over the board scrolls the page, a tap still selects', async ({ page }) => {
     // with the setting on (off by default since 2 November 2026)
     await page.addInitScript(() => localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { scrollOverBoard: true }, version: 1 })));

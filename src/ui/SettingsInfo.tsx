@@ -387,7 +387,7 @@ const SHORTCUTS: [string, string][] = [
   [msg('Arrow keys'), msg('Move the selection (Shift extends it)')],
   [msg('Click + drag'), msg('Select multiple cells')],
   [msg('Touch: drag'), msg('Select a run of cells (with Scroll by swiping over the board on, in Settings, a vertical swipe on a phone scrolls the page: rest a moment first to drag in any direction)')],
-  [msg('Touch: hold a number'), msg('Enter it as a corner mark, whatever the mode')],
+  [msg('Touch: hold a number'), msg('In Digit mode, enter it as a corner mark')],
   [msg('Alt + drag'), msg('Select a rectangle, from the first cell to the one under the pointer (Option on a Mac)')],
   [msg('Ctrl/Cmd + click'), msg('Add cells to the selection')],
   ['M', msg('Multi-select on or off: a tap adds or removes a cell, a drag paints')],
