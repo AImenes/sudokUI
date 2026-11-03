@@ -24,7 +24,7 @@ import { cruxIndex } from '../engine/generator';
 import { timeVerdict, timeBand, percentileText, MODE_LABEL, SolveMode } from '../content/solveTimes';
 import { useT, translator, msg, rich, Translator } from '../content/i18n';
 import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
-import { parsePencilGrid, looksLikeGrid, formatPencilGrid } from '../content/textGrid';
+import { parsePencilGrid, looksLikeGrid } from '../content/textGrid';
 import { puzzleFromLink } from '../content/importLinks';
 import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
 import { dailyNumber, localDateKey, dailyClosed, standingOf } from '../content/dailies';
@@ -500,7 +500,8 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
  * from every possibility; Check reads the corner marks as lists too, or
  * only the centre marks (gameStore.ts, check); auto candidates keep the
  * eliminations of corner lists too, or of the centre marks alone
- * (candidateList).
+ * (candidateList); Position as text writes the marks as each cell's list,
+ * or every candidate still open (textGrid.ts candidateLists).
  */
 export function ContractChoices({ onAnswer, asked = 'hint' }: { onAnswer: (c: 'exhaustive' | 'open') => void; asked?: ContractAsker }) {
   const t = useT();
@@ -513,7 +514,9 @@ export function ContractChoices({ onAnswer, asked = 'hint' }: { onAnswer: (c: 'e
             ? t('You filled candidates and have been eliminating: a missing digit in a marked cell means you ruled it out. Check reads the corner and centre marks of a cell together as its list, and flags a list that has lost the true digit.')
             : asked === 'auto'
               ? t('You filled candidates and have been eliminating: a missing digit in a marked cell means you ruled it out. Auto candidates keep those eliminations: a cell’s centre marks, or its corner marks when it has no centre marks.')
-              : t('You filled candidates and have been eliminating: a missing digit in a marked cell means you ruled it out. Hints continue from exactly where you are. (Corner or centre makes no difference.)')}
+              : asked === 'text'
+                ? t('You filled candidates and have been eliminating: a missing digit in a marked cell means you ruled it out. The text lists a marked cell’s corner and centre marks together as its candidates, and every candidate still open in a cell you have not marked.')
+                : t('You filled candidates and have been eliminating: a missing digit in a marked cell means you ruled it out. Hints continue from exactly where you are. (Corner or centre makes no difference.)')}
         </span>
       </button>
       <button className="level-btn" onClick={() => onAnswer('open')}>
@@ -523,15 +526,18 @@ export function ContractChoices({ onAnswer, asked = 'hint' }: { onAnswer: (c: 'e
             ? t('Snyder-style or still filling: Check passes over your corner marks, and reads only your centre marks as a cell’s list.')
             : asked === 'auto'
               ? t('Snyder-style or still filling: corner marks are notes, so Auto candidates keep only the eliminations in your centre marks.')
-              : t('Snyder-style or still filling: a missing digit means nothing yet. Hints reason from every remaining possibility instead.')}
+              : asked === 'text'
+                ? t('Snyder-style or still filling: a missing digit means nothing yet. The text lists every candidate still open in each empty cell instead, and leaves your marks out.')
+                : t('Snyder-style or still filling: a missing digit means nothing yet. Hints reason from every remaining possibility instead.')}
         </span>
       </button>
     </div>
   );
 }
 
-/** Asked at most once per game: the first time Hint, or the ring around
- *  cells with two candidates (B), meets manual marks; Check and auto
+/** Asked at most once per game: the first time Hint, the ring around
+ *  cells with two candidates (B), or Position as text in the Share dialog
+ *  (which shows it over itself) meets manual marks; Check and auto
  *  candidates switched on, the first time the answer changes what they do. */
 export function ContractDialog({
   onAnswer,
@@ -540,7 +546,7 @@ export function ContractDialog({
 }: {
   onAnswer: (c: 'exhaustive' | 'open') => void;
   onClose: () => void;
-  /** what asked: a hint, Check, auto candidates, or the ring */
+  /** what asked: a hint, Check, auto candidates, the ring, or Position as text */
   asked?: ContractAsker;
 }) {
   const t = useT();
@@ -553,7 +559,9 @@ export function ContractDialog({
             ? t('How should Check read your pencil marks?')
             : asked === 'auto'
               ? t('How should Auto candidates read your corner marks?')
-              : t('How should hints read your pencil marks?')
+              : asked === 'text'
+                ? t('How should Position as text read your pencil marks?')
+                : t('How should hints read your pencil marks?')
       }
       onClose={onClose}
     >
@@ -1001,8 +1009,13 @@ function countShare(outcome: Sent, what: ShareKind, band: Level | undefined): vo
 export function ShareDialog({ onClose, withHint = false }: { onClose: () => void; withHint?: boolean }) {
   const cells = useGame((s) => s.cells);
   const autoCandidates = useGame((s) => s.autoCandidates);
-  const markContract = useGame((s) => s.markContract);
   const info = useGame((s) => s.info);
+  // the mark question Position as text raised, shown over this dialog
+  const asking = useGame((s) => s.contractPrompt && s.contractFor === 'text');
+  const answerContract = useGame((s) => s.answerContract);
+  const dismissContractPrompt = useGame((s) => s.dismissContractPrompt);
+  // the text written with every candidate still open in place of marks that are notes: said under the buttons
+  const [notesLeftOut, setNotesLeftOut] = useState(false);
   // a board that is solved, or was until an Undo, is the solution: its
   // position is not shared
   const solvedBoard = useGame((s) => s.won || s.solved);
@@ -1061,10 +1074,6 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
   // where you are, and the preview still describes the puzzle
   const positionLink = () => `${shareLink()}#s=${encodePosition(cells, autoCandidates)}`;
 
-  // the board as a pencil-mark grid (src/content/textGrid.ts), the text a
-  // forum post or a solver on the desk reads: a placed digit or the
-  // candidates in every cell, as the board shows them
-  const positionText = () => formatPencilGrid(cells, autoCandidates, markContract);
   const showPosition = !(known && solvedBoard);
 
   // the picture of the board: as it stands, its colours as the board
@@ -1092,7 +1101,6 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
     <ShareImage
       cells={pictureCells}
       autoCandidates={showPosition && autoCandidates}
-      markContract={showPosition ? markContract : 'unknown'}
       step={hint?.step}
       frame={hint?.frame}
       footer={footer}
@@ -1133,13 +1141,13 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
   // clipboard; the puzzle string and the pencil-mark grid go into another
   // tool, so they are always copied (src/ui/send.ts). The tick says Copied
   // only when they were
-  const copy = (what: 'link' | 'position' | 'string' | 'text') => {
+  const copy = (what: 'link' | 'position' | 'string' | 'text', text = '') => {
     const sent =
       what === 'link'
         ? sendText(shareLink(), 'url')
         : what === 'position'
           ? sendText(positionLink(), 'url')
-          : copyText(what === 'text' ? positionText() : currentAsString());
+          : copyText(what === 'text' ? text : currentAsString());
     void sent.then((outcome) => {
       // the two links count; the string and the grid go into another tool
       if (what === 'link' || what === 'position') countShare(outcome, what === 'link' ? 'puzzle' : 'position', known?.level);
@@ -1149,74 +1157,109 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
     });
   };
 
+  // the board as a pencil-mark grid (src/content/textGrid.ts), the text a
+  // forum post or a solver on the desk reads, and HoDoKu and SudokuWiki
+  // read as complete lists: each cell's list as the solver reads it. Marks
+  // whose meaning was never declared ask the mark question first (the
+  // store's positionText raises it), and its answer, a tap of its own,
+  // copies the text; marks that are notes are left out, and a line says so
+  const copyPosition = () => {
+    const s = useGame.getState();
+    const text = s.positionText();
+    if (text === null) return;
+    setNotesLeftOut(!s.autoCandidates && s.markContract === 'open' && hasManualMarks(s.cells));
+    copy('text', text);
+  };
+  const answerText = (contract: 'exhaustive' | 'open') => {
+    answerContract(contract);
+    copyPosition();
+  };
+  // the question goes with the dialog, should it close another way
+  useEffect(
+    () => () => {
+      const s = useGame.getState();
+      if (s.contractPrompt && s.contractFor === 'text') s.dismissContractPrompt();
+    },
+    []
+  );
+
   return (
-    <Modal title={hint ? t('Share this hint') : t('Share this puzzle')} onClose={onClose}>
-      {hint && (
-        <>
-          <p className="dialog-note">{t('A picture of your board with the hint drawn as you see it, without the step numbers on its arrows or the name of the technique.')}</p>
-          {picture}
-        </>
-      )}
-      <p className="dialog-note">
-        {showPosition
-          ? rich(
-              t(
-                '{puzzle} shares a fresh copy from the start. {position} shares it exactly as it stands, with your entries, pencil marks and colours, for a second opinion or a race from the same spot.'
-              ),
-              {
-                puzzle: <strong>{t('Puzzle||the Puzzle link button')}</strong>,
-                position: <strong>{t('Position||the Position link button')}</strong>
-              }
-            )
-          : rich(t('{puzzle} shares a fresh copy from the start. A solved board has no position to share: it would give the solution away.'), {
-              puzzle: <strong>{t('Puzzle||the Puzzle link button')}</strong>
-            })}
-      </p>
-      {known && !daily && (
-        <label className="tick-row">
-          <input type="checkbox" checked={nameTechs} onChange={(e) => setNameTechs(e.target.checked)} />
-          <span className="setting-text">
-            <span>{t('Say what it needs')}</span>
-            <small>{t('Names the techniques the puzzle needs in the preview: a spoiler for the player who opens it')}</small>
-          </span>
-        </label>
-      )}
-      <div className="hint-actions">
-        {resultNo && (
-          <button onClick={shareDailyResult}>
-            {copied === 'result' ? `✓ ${t('Copied')}` : `🏁 ${t('Your result in Daily #{no}', { no: resultNo })}`}
-          </button>
+    <>
+      {/* while the question is up, Escape closes the question alone */}
+      <Modal title={hint ? t('Share this hint') : t('Share this puzzle')} onClose={asking ? () => {} : onClose}>
+        {hint && (
+          <>
+            <p className="dialog-note">{t('A picture of your board with the hint drawn as you see it, without the step numbers on its arrows or the name of the technique.')}</p>
+            {picture}
+          </>
         )}
-        <button onClick={() => copy('link')}>
-          {copied === 'link' ? `✓ ${t('Copied')}` : `🔗 ${t('Puzzle link')}`}
-        </button>
-        {showPosition && (
-          <button onClick={() => copy('position')}>
-            {copied === 'position' ? `✓ ${t('Copied')}` : `📍 ${t('Position link')}`}
-          </button>
+        <p className="dialog-note">
+          {showPosition
+            ? rich(
+                t(
+                  '{puzzle} shares a fresh copy from the start. {position} shares it exactly as it stands, with your entries, pencil marks and colours, for a second opinion or a race from the same spot.'
+                ),
+                {
+                  puzzle: <strong>{t('Puzzle||the Puzzle link button')}</strong>,
+                  position: <strong>{t('Position||the Position link button')}</strong>
+                }
+              )
+            : rich(t('{puzzle} shares a fresh copy from the start. A solved board has no position to share: it would give the solution away.'), {
+                puzzle: <strong>{t('Puzzle||the Puzzle link button')}</strong>
+              })}
+        </p>
+        {known && !daily && (
+          <label className="tick-row">
+            <input type="checkbox" checked={nameTechs} onChange={(e) => setNameTechs(e.target.checked)} />
+            <span className="setting-text">
+              <span>{t('Say what it needs')}</span>
+              <small>{t('Names the techniques the puzzle needs in the preview: a spoiler for the player who opens it')}</small>
+            </span>
+          </label>
         )}
-        <button className="ghost" onClick={() => copy('string')}>
-          {copied === 'string' ? `✓ ${t('Copied')}` : t('Puzzle string')}
-        </button>
-        {showPosition && (
-          <button
-            className="ghost"
-            onClick={() => copy('text')}
-            title={t('Copy the board as a pencil-mark grid, the text solvers paste on the forums')}
-          >
-            {copied === 'text' ? `✓ ${t('Copied')}` : t('Position as text')}
+        <div className="hint-actions">
+          {resultNo && (
+            <button onClick={shareDailyResult}>
+              {copied === 'result' ? `✓ ${t('Copied')}` : `🏁 ${t('Your result in Daily #{no}', { no: resultNo })}`}
+            </button>
+          )}
+          <button onClick={() => copy('link')}>
+            {copied === 'link' ? `✓ ${t('Copied')}` : `🔗 ${t('Puzzle link')}`}
           </button>
-        )}
-      </div>
-      {!hint && (
-        <>
-          <p className="dialog-note share-image-note">
-            {showPosition ? t('A picture of the board as it stands, for a post or a chat.') : t('A picture of the puzzle from the start, for a post or a chat.')}
+          {showPosition && (
+            <button onClick={() => copy('position')}>
+              {copied === 'position' ? `✓ ${t('Copied')}` : `📍 ${t('Position link')}`}
+            </button>
+          )}
+          <button className="ghost" onClick={() => copy('string')}>
+            {copied === 'string' ? `✓ ${t('Copied')}` : t('Puzzle string')}
+          </button>
+          {showPosition && (
+            <button
+              className="ghost"
+              onClick={copyPosition}
+              title={t('Copy the board as a pencil-mark grid, the text solvers paste on the forums')}
+            >
+              {copied === 'text' ? `✓ ${t('Copied')}` : t('Position as text')}
+            </button>
+          )}
+        </div>
+        {showPosition && notesLeftOut && (
+          <p className="dialog-note" role="status">
+            {t('You said your pencil marks are partial notes, so the text leaves them out and lists every candidate still open in each empty cell.')}
           </p>
-          {picture}
-        </>
-      )}
-    </Modal>
+        )}
+        {!hint && (
+          <>
+            <p className="dialog-note share-image-note">
+              {showPosition ? t('A picture of the board as you see it, for a post or a chat.') : t('A picture of the puzzle from the start, for a post or a chat.')}
+            </p>
+            {picture}
+          </>
+        )}
+      </Modal>
+      {asking && <ContractDialog asked="text" onAnswer={answerText} onClose={dismissContractPrompt} />}
+    </>
   );
 }
 

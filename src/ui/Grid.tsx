@@ -17,6 +17,7 @@ import { walkFrames, drawnLinks } from '../engine/hintFrames';
 import { tilesIn, pointsOf, SIZES } from '../content/hintGeometry';
 import type { ArrowShape, HintDrawing } from '../content/hintGeometry';
 import { SIZE, M, candX, candY, boardDrawing } from './boardLayout';
+import { PERIMETER, GRID_SIZE, EDGE_SIZE, LINE_SIZE, LINE_Y, longLineSize, LONG_LINE_Y } from '../content/pencilLayout';
 import { MARK } from '../content/hintPalette';
 import { frameMarks, isShade } from '../content/hintMarks';
 import type { BarStyle } from '../content/hintMarks';
@@ -364,23 +365,10 @@ function HintMark({ x, y, kind, inside, part }: { x: number; y: number; kind: st
   );
 }
 
-/** Perimeter slots for corner marks when a cell ALSO holds centre marks —
- *  the classic SudokuPad arrangement, keeping the middle free for the
- *  centre line. Filled in digit order. */
-const PERIMETER: [number, number][] = [
-  [21, 30], // top-left
-  [79, 30], // top-right
-  [21, 92], // bottom-left
-  [79, 92], // bottom-right
-  [50, 30], // top-middle
-  [50, 92], // bottom-middle
-  [21, 62], // left-middle
-  [79, 62] // right-middle
-];
-
 /**
  * How a cell's manual pencil marks are drawn (auto candidates handled
- * separately). The rules, chosen so nothing ever overlaps:
+ * separately), by the rule the picture a player shares draws them by too
+ * (src/content/pencilLayout.ts). The rules, chosen so nothing ever overlaps:
  *
  * - hint highlights on the cell → everything promotes to the 3×3 grid so the
  *   highlight circles sit exactly on the digits (corner-sourced digits stay
@@ -493,7 +481,7 @@ function renderMarks(
         x={x + candX(d)}
         y={y + candY(d)}
         textAnchor="middle"
-        fontSize={23}
+        fontSize={GRID_SIZE}
         fontWeight={marks?.has(d) ? 700 : hl(d) ? 700 : bold || pair ? 600 : 400}
         fill={marks?.has(d) ? hintTextFill(marks.get(d)!) : hl(d) ? 'var(--accent)' : 'var(--cand)'}
       >
@@ -513,7 +501,7 @@ function renderMarks(
   const lineHl = hlDigit && !marks?.has(hlDigit) ? hlDigit : 0;
   const centerLine =
     centerDs.length > 0 && centerDs.length <= 4 ? (
-      <CentreLine key="cl" x={x + SIZE / 2} y={y + SIZE / 2 + 8} fontSize={26} fontWeight={pair ? 600 : undefined} ds={centerDs} hlDigit={lineHl} frame={frame} />
+      <CentreLine key="cl" x={x + SIZE / 2} y={y + LINE_Y} fontSize={LINE_SIZE} fontWeight={pair ? 600 : undefined} ds={centerDs} hlDigit={lineHl} frame={frame} />
     ) : null;
 
   if (cornerDs.length && centerDs.length) {
@@ -537,7 +525,7 @@ function renderMarks(
               x={x + PERIMETER[k][0]}
               y={y + PERIMETER[k][1]}
               textAnchor="middle"
-              fontSize={21}
+              fontSize={EDGE_SIZE}
               fontWeight={hl(d) ? 700 : 600}
               fill={hl(d) ? 'var(--accent)' : 'var(--cand)'}
             >
@@ -546,7 +534,7 @@ function renderMarks(
           </React.Fragment>
         ))}
         {centerLine ?? (
-          <CentreLine key="cl2" x={x + SIZE / 2} y={y + SIZE / 2 + 7} fontSize={Math.min(22, 118 / centerDs.length + 4)} ds={centerDs} hlDigit={lineHl} frame={frame} />
+          <CentreLine key="cl2" x={x + SIZE / 2} y={y + LONG_LINE_Y} fontSize={longLineSize(centerDs.length)} ds={centerDs} hlDigit={lineHl} frame={frame} />
         )}
       </>
     );

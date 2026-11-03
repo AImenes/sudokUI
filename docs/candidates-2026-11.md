@@ -17,7 +17,8 @@ Swap, and one rule for where the app writes a list of candidates.
 Three explorers hunted from three angles (the store, the board in a browser, the features), and an independent
 checker reproduced each finding with scripts of its own: 24 confirmed, none rejected, and 10 lows. 23 of the 24
 confirmed findings fall into the clusters A to K below and are fixed; the 24th, a medium (Share's Position as text
-and board picture under "unknown"), is left for the owner's decision (see Left as they are). Clustered:
+and board picture under "unknown"), was left for the owner's decision, and is built as he chose it (see Share as the
+board shows it, below). Clustered:
 
 - **A. Undo and Redo forgot how the board read the marks.** History held the cells alone, so Ctrl+Z after Auto
   on, Auto off, a jump to a step or a Check proof left auto candidates in the wrong state, and the next Auto off
@@ -241,6 +242,38 @@ The confirmation review of round 3 found one medium, of the same kind as round 2
 trainer is open dropped the handover, so Done left auto on. A proof shown with auto already on now keeps it, and a
 test holds it. Nothing else stood.
 
+## Share as the board shows it (the owner's choice)
+
+The one confirmed finding left to the owner: the Share dialog's picture and Position as text took their candidates
+from one rule (`shownCandidates`), which with auto candidates off and the contract "unknown" or "open" ignored the
+player's marks and wrote the engine's candidates for every empty cell, so a player who worked by hand shared a
+position behind the one on screen. Of the three ways out (ask the mark question for both, draw the marks as written,
+or both by what each is for), he chose the third:
+
+- **The picture draws the board as the player sees it** (src/content/boardImage.ts, src/content/boardSvg.ts). With
+  auto candidates off, the player's own corner and centre marks, whatever the contract, laid out by the board's own
+  rule, now one module (src/content/pencilLayout.ts) that Grid.tsx renderMarks, the hint geometry's `digitShown` and
+  the picture all read: corner marks alone on the 3×3 grid, centre marks a line up to four digits and on the grid
+  from five, corner marks round the edge beside a centre line, and a cell the hint marks on the grid with the hint's
+  digits. With auto candidates on, the auto candidates, as before. The tick is "Your pencil marks" or "Candidates"
+  by what it draws, and shows only when the empty cells draw something; a solved board's picture is its givens
+  alone. The dialog says "A picture of the board as you see it". Sizes are the board's, scaled as the picture's
+  candidates are. The Learn diagrams are never given marks and are byte for byte as before.
+- **Position as text writes complete lists, and asks when only the player knows them**
+  (src/content/textGrid.ts `candidateLists`, the store's `positionText`). HoDoKu and SudokuWiki read every list in
+  the grid as complete, so each cell's list is the one the solver reads (contractGrid). With auto candidates off,
+  manual marks and the contract "unknown", choosing it asks the mark question first, as Hint and Check do
+  (`contractFor: 'text'`, "How should Position as text read your pencil marks?"), shown over the Share dialog; the
+  answer's own tap copies the text, and the answer holds for the puzzle (and its history) as Hint's does. "They are
+  my remaining candidates" says the text lists a marked cell's corner and centre marks together, and every candidate
+  still open in a cell not marked; "They are partial notes" says it lists every candidate still open instead, and a
+  line under the buttons says so once copied. Closing the question copies nothing. With no manual marks, auto
+  candidates on or the answer known, there is no question. Two consequences of reading the lists as the solver
+  does: a list never holds a digit the placed digits rule out (a pasted single, which the forums read as a placed
+  digit, takes its digit from the lists beside it when the grid is copied back), and with auto candidates off the
+  candidates still open leave out the eliminations the app applied and checked, as Hint and Fill do.
+- The help's paragraph on the mark question names Position as text too.
+
 ## Tests
 
 - tests/candidateLayers.test.ts: the store, one scenario per cluster from the reports (A, B, E, F, G, H, I, J, K,
@@ -277,12 +310,24 @@ test holds it. Nothing else stood.
   build (270 pages); and the browser tests, 104 of 104 in both font setups.
 - The checks of round 3: tsc; the whole unit suite (1594 passed); the path digest with its menus, unchanged; the
   build (270 pages); and the browser tests, 107 of 107 in both font setups.
+- Share as the board shows it: tests/boardImage.test.ts pins the picture to the new rule (the auto candidates with
+  auto on, the player's marks with it off, whatever the contract, nothing with the tick off), and holds every place,
+  size and weight of each layout, with and without a hint, to the app board's own drawing, rendered beside it; the
+  examples' diagrams still equal the picture of their position under auto candidates. tests/textGrid.test.ts and
+  tests/shareText.test.ts: the text's lists are contractGrid's in every state, and its question flow at the store
+  (asked in its own name, each answer and what it writes, closed unanswered, remembered across Undo, no question
+  without manual marks, with auto on or with the answer known). tests/e2e/smoke.spec.ts: the picture draws the
+  marks as laid out and the tick says what it draws, in both auto states; Position as text asks, Escape closes the
+  question alone, each answer copies what it said, the line says what was left out, and Hint asks no more.
+- The checks of Share as the board shows it: tsc; the whole unit suite (1605 passed); the path digest with its
+  menus, unchanged; the build (270 pages, its 80 Learn diagrams byte for byte as before); and the browser tests, 110
+  of 110 in both font setups. The pictures were looked at as 1140 px PNGs and in the Share dialog on a phone, in a
+  light and a dark app theme.
 
 ## Left as they are
 
-- **The board picture and Position as text under "unknown"** (a confirmed medium of the hunt) write the engine's
-  candidates, not the player's marks, unless the marks are declared complete. Whether Share should ask the mark
-  question, or draw the marks as written, is the owner's decision, so it is left for him.
+- **The board picture and Position as text under "unknown"** (a confirmed medium of the hunt): no longer left. Done
+  as the owner chose (Share as the board shows it, above).
 - **A wrong digit on the board when Auto goes off or Fill runs** (a low of round 2): the list written for each of
   its peers lacks the digit, and erasing the wrong digit later does not give it back (its placement recorded only
   the marks there were then), so Check flags a peer the player never touched. Main does the same; recording the

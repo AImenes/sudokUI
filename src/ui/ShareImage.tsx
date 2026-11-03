@@ -1,6 +1,8 @@
 // The Share dialog's picture of the board (docs/reach-plan-2026-11.md,
-// build item 3): a live preview, three ticks (the candidates, the player's
-// colours, the line naming the site) and the buttons that hand the PNG on.
+// build item 3): a live preview, three ticks (what the board draws in its
+// empty cells, the auto candidates or the player's own pencil marks; the
+// player's colours; the line naming the site) and the buttons that hand
+// the PNG on.
 // The picture is drawn on the device (src/content/boardImage.ts), always
 // light, and made into a PNG as soon as the dialog opens or a tick
 // changes (src/ui/boardPng.ts), so a tap hands it to the share sheet
@@ -11,8 +13,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Step } from '../engine/steps';
 import type { Frame } from '../engine/hintFrames';
-import type { MarkContract } from '../state/gameStore';
-import { positionSvg } from '../content/boardImage';
+import { positionSvg, hasMarksToDraw } from '../content/boardImage';
 import type { PictureCell } from '../content/boardImage';
 import { svgToPng } from './boardPng';
 import { sendFile, saveFile, copyImage, canShareFile, canCopyImage } from './send';
@@ -24,6 +25,7 @@ export const IMAGE_KEY = 'sudokui-image-v1';
 
 /** what the picture shows: each on until the player turns it off */
 export interface ImageChoice {
+  /** the candidates or the pencil marks, as the board draws them */
   candidates: boolean;
   colours: boolean;
   footer: boolean;
@@ -53,7 +55,6 @@ const PROBE = typeof File === 'function' ? new File([new Uint8Array(0)], 'sudoku
 export function ShareImage({
   cells,
   autoCandidates,
-  markContract,
   step,
   frame,
   footer,
@@ -62,7 +63,6 @@ export function ShareImage({
 }: {
   cells: readonly PictureCell[];
   autoCandidates: boolean;
-  markContract: MarkContract;
   /** a hint drawn on the board, at the walk's frame shown or in full */
   step?: Step | null;
   frame?: Frame | null;
@@ -76,12 +76,14 @@ export function ShareImage({
   const t = useT();
   const [choice, setChoice] = useState(readChoice);
   const coloured = cells.some((c) => c.colors.length > 0);
+  // the tick for what the empty cells draw, only when they draw something:
+  // named for it, the auto candidates or the player's own marks
+  const marked = hasMarksToDraw(cells, autoCandidates);
   const svg = useMemo(
     () =>
       positionSvg({
         cells,
         autoCandidates,
-        markContract,
         candidates: choice.candidates,
         colours: coloured && choice.colours,
         step,
@@ -89,7 +91,7 @@ export function ShareImage({
         footer: choice.footer ? footer : undefined,
         title: t('Picture of a sudoku board')
       }),
-    [cells, autoCandidates, markContract, choice, coloured, step, frame, footer, t]
+    [cells, autoCandidates, choice, coloured, step, frame, footer, t]
   );
   const preview = useMemo(() => `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`, [svg]);
   // the PNG, made as soon as the picture changes, so a tap has it at hand
@@ -131,12 +133,14 @@ export function ShareImage({
     <div className="share-image">
       <img className="share-image-preview" src={preview} alt={t('The picture as it will be shared')} />
       <div className="share-image-side">
-        <label className="tick-row">
-          <input type="checkbox" checked={choice.candidates} onChange={tick('candidates')} />
-          <span className="setting-text">
-            <span>{t('Candidates')}</span>
-          </span>
-        </label>
+        {marked && (
+          <label className="tick-row">
+            <input type="checkbox" checked={choice.candidates} onChange={tick('candidates')} />
+            <span className="setting-text">
+              <span>{autoCandidates ? t('Candidates') : t('Your pencil marks')}</span>
+            </span>
+          </label>
+        )}
         {coloured && (
           <label className="tick-row">
             <input type="checkbox" checked={choice.colours} onChange={tick('colours')} />

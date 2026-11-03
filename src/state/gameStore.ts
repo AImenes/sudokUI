@@ -36,6 +36,7 @@ import { dailyClosed } from '../content/dailies';
 import { justifyMove } from './pools';
 import { translator, msg } from '../content/i18n';
 import type { TextPosition } from '../content/textGrid';
+import { formatPencilGrid } from '../content/textGrid';
 
 export type EntryMode = 'digit' | 'corner' | 'center' | 'color';
 
@@ -169,8 +170,8 @@ export function giveBack(cells: CellState[], i: number, own = true) {
  */
 export type MarkContract = 'unknown' | 'exhaustive' | 'open';
 
-/** what asked the mark question (contractFor) */
-export type ContractAsker = 'hint' | 'highlight' | 'check' | 'auto';
+/** what asked the mark question (contractFor): Position as text (the Share dialog) is 'text' */
+export type ContractAsker = 'hint' | 'highlight' | 'check' | 'auto' | 'text';
 
 /* what Swap, Gather and Fill say while auto candidates are on: only what
  * is true whatever the "Keep candidates" setting, since with it off,
@@ -676,6 +677,16 @@ interface GameStore {
   setBivalueHighlight: (on: boolean) => void;
   /** answer the contract question and continue with the pending hint */
   answerContract: (contract: 'exhaustive' | 'open') => void;
+  /**
+   * The board as a pencil-mark grid, for Position as text in the Share
+   * dialog: each cell's list as the solver reads it (src/content/textGrid.ts
+   * candidateLists), since the tools it goes into read every list as
+   * complete. Null when the marks' meaning must be asked first (auto
+   * candidates off, manual marks, the contract unknown): this raises the
+   * question (contractFor 'text'), and the dialog copies the text once it
+   * is answered
+   */
+  positionText: () => string | null;
   dismissContractPrompt: () => void;
   revealHint: () => void;
   /** start the walk, or move through it by a number of frames */
@@ -1790,7 +1801,25 @@ export const useGame = create<GameStore>()(
         if (asked === 'hint') get().requestHint();
         else if (asked === 'check') get().check();
         else if (asked === 'auto') get().toggleAutoCandidates();
+        // Position as text: the Share dialog that asked copies it, from the answer's own tap
+        else if (asked === 'text') return;
         else if (contract === 'open') set({ notice: translator()(NOTES_RING_CENTRE) });
+      },
+
+      positionText: () => {
+        const s = get();
+        // the question only where the answer changes the text: marks that
+        // read as lists the same either way need no answer
+        if (
+          !s.autoCandidates &&
+          s.markContract === 'unknown' &&
+          hasManualMarks(s.cells) &&
+          formatPencilGrid(s.cells, false, 'exhaustive') !== formatPencilGrid(s.cells, false, 'open')
+        ) {
+          set({ contractPrompt: true, contractFor: 'text' });
+          return null;
+        }
+        return formatPencilGrid(s.cells, s.autoCandidates, s.markContract);
       },
 
       // the ring's question closed unanswered is a "no": the setting goes

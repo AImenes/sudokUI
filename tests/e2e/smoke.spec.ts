@@ -6,7 +6,7 @@
 import { test, expect, Page, Locator } from '@playwright/test';
 import { parseGrid, gridToString, digitsOf, bit } from '../../src/engine/board';
 import { solve } from '../../src/engine/bruteForce';
-import { formatPencilGrid } from '../../src/content/textGrid';
+import { formatPencilGrid, parsePencilGrid } from '../../src/content/textGrid';
 import { readFileSync } from 'node:fs';
 import { localDateKey } from '../../src/content/dailies';
 import type { Daily } from '../../src/content/dailies';
@@ -1943,7 +1943,7 @@ test.describe('positions as text', () => {
   };
   const copied = (page: Page) => page.evaluate(() => (window as any).__copied as string);
 
-  test('a pasted pencil-mark grid puts its candidates on the board, and Share copies the board back as the same grid', async ({ page }) => {
+  test('a pasted pencil-mark grid puts its candidates on the board, and Share copies the board back as the solver reads it', async ({ page }) => {
     await page.addInitScript(keepClipboard);
     await open(page);
     // the puzzle with its candidates, one false candidate already taken
@@ -1972,10 +1972,90 @@ test.describe('positions as text', () => {
     await expect(page.locator('#board-status')).toHaveText(
       `Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}: empty, centre marks ${left}.`
     );
-    // and the board copied as text is the grid that was pasted
+    // and the board copied as text is the grid that was pasted, as the
+    // solver reads it: a single candidate pasted is a placed digit (as the
+    // forums read it), so the lists beside it lose that digit, and the list
+    // that lost a candidate is the player's, without it
     await page.locator('.menu-row button', { hasText: 'Share' }).click();
     await page.getByRole('dialog', { name: 'Share this puzzle' }).getByRole('button', { name: 'Position as text' }).click();
-    expect(await copied(page)).toBe(text);
+    const back = parsePencilGrid(text)!;
+    const board = back.values.map((value, i) => ({ value, corner: 0, center: back.cands![i], excluded: 0 }));
+    const again = await copied(page);
+    expect(again).toBe(formatPencilGrid(board, false, 'exhaustive'));
+    const read = parsePencilGrid(again)!;
+    expect(read.cands![cell] & bit(dropped)).toBe(0);
+    // every list is the pasted one, less only digits the placed digits rule out
+    for (let i = 0; i < 81; i++) if (!read.values[i]) expect(read.cands![i] & ~back.cands![i], `cell ${i}`).toBe(0);
+  });
+
+  /** EASY with the player's own marks: r1c2 (candidates 4 5 7 8) a centre pair, r2c2 (2 4 6 7 8) a corner pair */
+  const marked = async (page: Page) => {
+    for (const [cell, keys] of [
+      [1, ['Control+Digit7', 'Control+Digit8']],
+      [10, ['Shift+Digit6', 'Shift+Digit7']]
+    ] as const) {
+      const c = await cellBox(page, cell);
+      await page.mouse.click(c.x, c.y);
+      for (const k of keys) await page.keyboard.press(k);
+    }
+    const g = parseGrid(EASY)!;
+    return Array.from({ length: 81 }, (_, i) => ({ value: g.values[i], corner: i === 10 ? bit(6) | bit(7) : 0, center: i === 1 ? bit(7) | bit(8) : 0, excluded: 0 }));
+  };
+
+  test('over marks never declared, Position as text asks the mark question first; partial notes copy every candidate still open, and say so', async ({ page }) => {
+    await page.addInitScript(keepClipboard);
+    await open(page);
+    const cells = await marked(page);
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    const share = page.getByRole('dialog', { name: 'Share this puzzle' });
+    const text = share.getByRole('button', { name: 'Position as text' });
+    await text.click();
+    // the question, in its own words, over the Share dialog, and nothing copied yet
+    const question = page.getByRole('dialog', { name: 'How should Position as text read your pencil marks?' });
+    await expect(question).toBeVisible();
+    await expect(question.getByRole('button', { name: /They are my remaining candidates/ })).toContainText('The text lists a marked cell’s corner and centre marks together as its candidates');
+    await expect(question.getByRole('button', { name: /They are partial notes/ })).toContainText('The text lists every candidate still open in each empty cell instead, and leaves your marks out.');
+    expect(await copied(page)).toBe('');
+    // Escape closes the question alone
+    await page.keyboard.press('Escape');
+    await expect(question).toBeHidden();
+    await expect(share).toBeVisible();
+    expect(await copied(page)).toBe('');
+    // asked again, answered: the answer's tap copies the text it described, and a line says what it holds
+    await text.click();
+    await question.getByRole('button', { name: /They are partial notes/ }).click();
+    await expect(question).toBeHidden();
+    await expect(share.getByRole('button', { name: /Copied/ })).toBeVisible();
+    expect(await copied(page)).toBe(formatPencilGrid(cells, false, 'open'));
+    await expect(share.getByRole('status')).toHaveText('You said your pencil marks are partial notes, so the text leaves them out and lists every candidate still open in each empty cell.');
+    // remembered for the puzzle: the text asks no more, nor does Hint
+    await page.evaluate(() => ((window as any).__copied = ''));
+    await page.keyboard.press('Escape');
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    await text.click();
+    await expect(question).toBeHidden();
+    expect(await copied(page)).toBe(formatPencilGrid(cells, false, 'open'));
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('KeyH');
+    await page.getByRole('button', { name: 'Use Hint' }).click();
+    await expect(page.locator('.hint-panel')).toBeVisible();
+    await expect(page.getByRole('dialog', { name: /read your pencil marks/ })).toHaveCount(0);
+  });
+
+  test('my remaining candidates copy the player’s own lists, as complete lists', async ({ page }) => {
+    await page.addInitScript(keepClipboard);
+    await open(page);
+    const cells = await marked(page);
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    const share = page.getByRole('dialog', { name: 'Share this puzzle' });
+    await share.getByRole('button', { name: 'Position as text' }).click();
+    await page.getByRole('dialog', { name: 'How should Position as text read your pencil marks?' }).getByRole('button', { name: /They are my remaining candidates/ }).click();
+    const text = await copied(page);
+    expect(text).toBe(formatPencilGrid(cells, false, 'exhaustive'));
+    // r1c2 and r2c2 carry the player's lists; r1c1, unmarked, every candidate
+    expect(text.split('\n')[1]).toMatch(/^\| 45 +78 +3 /);
+    expect(text.split('\n')[2]).toMatch(/^\| 9 +67 +/);
+    await expect(share.getByRole('status')).toHaveCount(0);
   });
 });
 
@@ -2022,7 +2102,56 @@ test.describe('a picture of the board', () => {
     await page.keyboard.press('Escape');
     await page.locator('.menu-row button', { hasText: 'Share' }).click();
     await expect(dialog.getByRole('checkbox', { name: 'Footer' })).not.toBeChecked();
+    // a board with no marks and auto candidates off draws nothing in its empty cells, so it has no tick for them
+    await expect(dialog.getByRole('checkbox', { name: /Candidates|Your pencil marks/ })).toHaveCount(0);
+  });
+
+  test('the picture draws the board as the player sees it: their own pencil marks with auto candidates off, the auto candidates with them on', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    await page.goto(`/#p=${HARD}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    const svgOf = async (dialog: Locator) =>
+      decodeURIComponent((await dialog.locator('.share-image-preview').getAttribute('src'))!.replace(/^data:image\/svg\+xml;utf8,/, ''));
+    /** the texts the picture draws in its empty cells, by kind: candidates on the grid, corner marks there, round the edge, centre lines */
+    const drawn = (svg: string) =>
+      [...svg.replace(/<mask [\s\S]*?<\/mask>/g, '').matchAll(/class="(cd|cc|ce|cl)"[^>]*>([^<]*)</g)].map((m) => `${m[1]}:${m[2]}`).sort();
+    // r1c1 (candidates 2 3 5 7 8): corner marks alone; r1c2: a centre line; r1c3: both layers
+    const enter = async (cell: number, keys: string[]) => {
+      const c = await cellBox(page, cell);
+      await page.mouse.click(c.x, c.y);
+      for (const k of keys) await page.keyboard.press(k);
+    };
+    await enter(0, ['Shift+Digit2', 'Shift+Digit7']);
+    await enter(1, ['Control+Digit3', 'Control+Digit8']);
+    await enter(2, ['Shift+Digit5', 'Control+Digit7', 'Control+Digit8']);
+    await expect(page.locator('#board-status')).toHaveText('Row 1, column 3: empty, corner marks 5, centre marks 7 8.');
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
+    await expect(dialog).toContainText('A picture of the board as you see it, for a post or a chat.');
+    // the tick is named for what it draws, and the picture draws the marks the board shows, laid out as it lays them out, and nothing else
+    const marks = dialog.getByRole('checkbox', { name: 'Your pencil marks' });
+    await expect(marks).toBeChecked();
+    expect(drawn(await svgOf(dialog))).toEqual(['cc:2', 'cc:7', 'ce:5', 'cl:38', 'cl:78']);
+    // off, no marks; and the choice is remembered
+    await marks.uncheck();
+    await expect.poll(async () => drawn(await svgOf(dialog))).toEqual([]);
+    await page.keyboard.press('Escape');
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    await expect(marks).not.toBeChecked();
+    await marks.check();
+    await expect.poll(async () => drawn(await svgOf(dialog))).toHaveLength(5);
+    await page.keyboard.press('Escape');
+    // with auto candidates on, the board's candidates, and the tick says so
+    await page.getByRole('button', { name: /Auto candidates/ }).first().click();
+    await page.getByRole('button', { name: 'Use Auto candidates' }).click();
+    await page.getByRole('button', { name: /They are partial notes/ }).click();
+    await expect(page.locator('#board-status')).toContainText('candidates');
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
     await expect(dialog.getByRole('checkbox', { name: 'Candidates' })).toBeChecked();
+    await expect(dialog.getByRole('checkbox', { name: 'Your pencil marks' })).toHaveCount(0);
+    const auto = drawn(await svgOf(dialog));
+    expect(auto.length).toBeGreaterThan(100);
+    expect(auto.every((t) => t.startsWith('cd:'))).toBe(true);
   });
 
   test('Share this hint saves the board with the hint drawn, and names no technique', async ({ page }) => {
@@ -2041,6 +2170,8 @@ test.describe('a picture of the board', () => {
     const svg = decodeURIComponent((await dialog.locator('.share-image-preview').getAttribute('src'))!.replace(/^data:image\/svg\+xml;utf8,/, ''));
     expect(svg).toMatch(/class="(mk|rm)"/);
     expect(svg).not.toContain(name);
+    // as the board shows it with auto candidates off and no marks: the hint's digits alone
+    expect(svg).not.toMatch(/class="(cd|cc|ce|cl)"/);
     const [download] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: 'Save image' }).click()]);
     expect(download.suggestedFilename()).toBe('sudokui-hint.png');
     expect(await pngOf(download)).toEqual({ width: 1140, height: 1220 });
