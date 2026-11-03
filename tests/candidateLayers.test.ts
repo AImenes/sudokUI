@@ -704,6 +704,22 @@ describe('I: the chain trainer switches auto candidates on and off as the Auto b
     expect(board()).toBe(before);
   });
 
+  it("Check's Show me while it is open keeps the handover: Done still puts auto back off", () => {
+    type([R1C1], [4], 'corner');
+    g().setMode('digit');
+    g().startChain();
+    type([R1C2], [7], 'digit'); // wrong: r1c2 is 8
+    g().check();
+    expect(g().proofs.length).toBeGreaterThan(0);
+    g().showProof(0);
+    expect(g().autoCandidates).toBe(true);
+    expect(g().chainHandover).not.toBeNull();
+    g().endChain();
+    expect(g().autoCandidates).toBe(false);
+    expect(g().cells[R1C1].corner & (1 << 3)).not.toBe(0);
+    expect(g().cells[R1C2].value).toBe(0);
+  });
+
   it('a jump back to a step from before it opened, with auto on then, has no handover: Done leaves auto on, as the player had it', () => {
     g().toggleAutoCandidates();
     type([R1C2], [7], 'digit'); // wrong

@@ -237,6 +237,10 @@ and four lows. All are fixed here.
   which exclusions are left with auto off, the trainer's Done included, and docs/chain-trainer.md says what Done
   gives back.
 
+The confirmation review of round 3 found one medium, of the same kind as round 2's: Check's "Show me" while the
+trainer is open dropped the handover, so Done left auto on. A proof shown with auto already on now keeps it, and a
+test holds it. Nothing else stood.
+
 ## Tests
 
 - tests/candidateLayers.test.ts: the store, one scenario per cluster from the reports (A, B, E, F, G, H, I, J, K,

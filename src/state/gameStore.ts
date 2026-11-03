@@ -2138,7 +2138,10 @@ export const useGame = create<GameStore>()(
           walkIndex: 0,
           assisted: true,
           autoCandidates,
-          chainHandover: null,
+          // a proof shown while the chain trainer is open keeps the trainer's
+          // handover when auto was already on (the trainer switched it on),
+          // so Done still gives the player's marks back
+          chainHandover: s.autoCandidates ? s.chainHandover : null,
           notice: path.length
             ? path.length > 1
               ? t(
