@@ -203,7 +203,7 @@ const { parseGrid } = await import('../src/engine/board');
 const { findStep } = await import('../src/engine/humanSolver');
 
 describe("the app board draws an almost locked set's tiles and letter tabs (docs/hint-drawing-sets.md, decisions 5-10)", () => {
-  const ALS: Tech[] = ['AIC_ALS', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'];
+  const ALS: Tech[] = ['AIC_ALS', 'ALS_XZ', 'WXYZ_WING', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'];
   /** the tiles a full view draws, their outlines, a filled tile's fill, and the tabs, from the markup */
   const parts = (html: string) => ({
     tiles: [...html.matchAll(/<g class="hint-tile">([\s\S]*?)<\/g>/g)].map((m) => m[1]),

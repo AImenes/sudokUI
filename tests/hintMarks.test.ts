@@ -868,8 +868,8 @@ describe('the Learn diagrams', () => {
     }
     // the four grouped chains: AIC with Groups, Grouped Nice Loop and X-Cycles, and AIC with ALS, whose set is no group
     expect(grouped).toBe(3);
-    // AIC with ALS, the three ALS patterns and Death Blossom
-    expect(tiled).toBe(5);
+    // AIC with ALS, the three ALS patterns, Death Blossom and the WXYZ-Wing, the ALS-XZ it is
+    expect(tiled).toBe(6);
   });
 
   it('colour a solved digit the step names through its style, with a rounded outline as the shape cue', () => {

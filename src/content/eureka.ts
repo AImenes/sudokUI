@@ -398,9 +398,11 @@ function rectangleGroups(step: Step): CellDigit[][] | null {
  * what each digit does (a pincer's shared digit with the pivot, every z in
  * one colour), and the forum line stays the one players paste (null for
  * any other step). XY- and XYZ-Wing: the pivot's digits, then z in the
- * pincers; the pivot is the cell the pattern lists twice. WXYZ-Wing: the
- * cells of the three whose x the bivalue cell sees, the others of the
- * three, then the bivalue cell, which its pattern lists first.
+ * pincers; the pivot is the cell the pattern lists twice. WXYZ-Wing, drawn
+ * as the ALS-XZ it is (src/engine/techniques/als.ts), from its two sets:
+ * the cells of the three (set B) whose x the bivalue cell (set A) sees,
+ * the others of the three, then the bivalue cell, each with every digit it
+ * holds, x the digit of the link between the sets.
  */
 function wingGroups(step: Step): CellDigit[][] | null {
   const primary = step.primary ?? [];
@@ -414,13 +416,15 @@ function wingGroups(step: Step): CellDigit[][] | null {
       return [[...inCell(primary, pivot), ...inCell(secondary, pivot)], secondary.filter((cd) => cd.cell !== pivot)];
     }
     case 'WXYZ_WING': {
-      const linked = primary[0]?.cell;
-      const z = secondary[0]?.digit;
-      if (linked === undefined || z === undefined) return null;
-      const x = inCell(primary, linked).find((cd) => cd.digit !== z)?.digit;
-      const three = [...new Set(primary.map((cd) => cd.cell))].filter((c) => c !== linked);
-      const holdsX = (c: number) => primary.some((cd) => cd.cell === c && cd.digit === x);
-      return [three.filter(holdsX).flatMap((c) => inCell(primary, c)), three.filter((c) => !holdsX(c)).flatMap((c) => inCell(primary, c)), inCell(primary, linked)];
+      const [bivalue, three] = [1, 3].map((n) => step.sets?.find((s) => s.kind === 'als' && s.cells.length === n));
+      const x = step.links?.find((l) => !insideSet(l) && l.fromSet !== undefined && l.toSet !== undefined)?.from[0]?.digit;
+      if (!bivalue || !three || x === undefined) return null;
+      const holdsX = (c: number) => three.members.some((cd) => cd.cell === c && cd.digit === x);
+      return [
+        three.cells.filter(holdsX).flatMap((c) => inCell(three.members, c)),
+        three.cells.filter((c) => !holdsX(c)).flatMap((c) => inCell(three.members, c)),
+        bivalue.members
+      ];
     }
     default:
       return null;
@@ -428,10 +432,17 @@ function wingGroups(step: Step): CellDigit[][] | null {
 }
 
 /**
+ * The techniques drawn as chains whose line to paste stays HoDoKu's: the
+ * WXYZ-Wing, drawn as the ALS-XZ it is since phase 6, whose line players
+ * paste is the wing's (wingGroups)
+ */
+const WING_LINE = new Set<Tech>(['WXYZ_WING']);
+
+/**
  * A step as the line to paste on a forum: a chain's name and its Eureka
  * notation, any other step as HoDoKu writes it.
  */
 export function stepText(step: Step): string {
-  const chain = eurekaOf(step);
+  const chain = WING_LINE.has(step.tech) ? null : eurekaOf(step);
   return chain ? `${TECHS[step.tech].name}: ${chain}` : hodokuLine(step);
 }

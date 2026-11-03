@@ -345,11 +345,9 @@ Every rule is numbered so a commit, a test or a review can cite it.
   the line cell's digits in the pattern's colour, and its box dashed, with
   the box cell's digits gold, the digit only the shared cells hold purple
   (phase 6). A pattern its finder walks cell
-  by cell (phase 6: the XY-, XYZ- and WXYZ-Wing, `Step.walk` with
-  `cells`) draws its roles only in the cells the walk has named so far,
-  and a band once the walk has named every cell of the band's role in that
-  house: a WXYZ-Wing's house comes with its three cells, not with the
-  bivalue cell before them.
+  by cell (phase 6: the XY- and XYZ-Wing, `Step.walk` with `cells`)
+  draws its roles only in the cells the walk has named so far, and a band
+  once the walk has named every cell of the band's role in that house.
 - **G16. Sets.** A group node (the 2-3 candidates of one digit in one box
   and one row or column) and an almost locked set are drawn as what they
   are, never as a hull round cells or candidates that are not theirs (a
@@ -407,6 +405,10 @@ Every rule is numbered so a commit, a test or a review can cite it.
     a crossing tries six arcs more), never at the cost of the full search,
     which made a Death Blossom some ten times slower to draw.
   - Arrows attach at a member (G10).
+  - The WXYZ-Wing is the ALS-XZ of a bivalue cell and three cells, and is
+    drawn and walked as one (phase 6): the bivalue cell is set A, where the
+    chain starts, the three cells set B, with the restricted common's
+    dashed link between them and the chain's truth, no role and no band.
 - **G17. Digit focus (optional, Settings).** During a hint about one
   digit (fish, single-digit patterns, X-Chains, colouring), the other
   digits' candidates are dimmed. Off by default; a toggle in Settings and
@@ -501,7 +503,10 @@ Every rule is numbered so a commit, a test or a review can cite it.
   what the board draws: a role every candidate of which became a removal
   or a placement
   lends its words to that entry ("remove: the cell that would complete
-  the rectangle"). During a walk it names what the frame shows. The marks
+  the rectangle"). During a walk it names what the frame shows, and a
+  frame that draws only part of a role names that part (`Step.walk`'s
+  frame labels: the XY-Wing's "the pivot", then "the pivot and the digit
+  the pincer shares with it", then the whole role). The marks
   and the legend both come from one call in `src/content/hintMarks.ts`
   (`frameMarks`), so they cannot disagree. Prose and notation can carry the
   same swatches inline ("if r5c1 is ◯ false, then r5c7 is ● true").
@@ -1101,6 +1106,13 @@ the values above are its final ones.
   their finds on the 336 practice paths in three languages
   (tests/fireworksExocetWalks.test.ts, FIREWORKS_EXOCET_SCAN=all), and
   their Copy step lines are unchanged (tests/eureka.test.ts).
+  Batch 3's wings: the WXYZ-Wing is drawn and walked as the ALS-XZ it is,
+  its bivalue cell set A and its three cells set B with the link on x and
+  the chain's truth (M3's WXYZ part, G16), its description one line (L3)
+  and its Copy step line the wing's line it always was, and a walk frame
+  that draws part of a role names only that part in its legend, so the
+  XY- and XYZ-Wing's name the pivot, then one pincer, then both (batch 1's
+  low; tests/wingWalks.test.ts, every find along the practice paths).
 - [ ] Phase 7: polish
 
 Branch `claude/hint-drawings`. Research behind this spec (HoDoKu's source

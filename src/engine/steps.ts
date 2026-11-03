@@ -275,10 +275,22 @@ export interface Step {
    * digits only, that frame alone, so a pattern can take one digit a frame
    * (an Exocet's base digits); its bands stay. A finned fish shows its fins'
    * box ('finBox', its band of role 'fin') in a frame of its own, after its
-   * cover lines. A step without it walks its labels back, one frame a role
-   * (src/engine/hintFrames.ts walkFrames)
+   * cover lines. A frame that draws only part of a role (a wing's pivot
+   * before its pincers) names it in `labels` as it draws it, in place of the
+   * step's own labels in that frame's legend, which names only what the
+   * frame draws (G23). A step without it walks its labels back, one frame a
+   * role (src/engine/hintFrames.ts walkFrames)
    */
-  walk?: { frames: { text: string; show: ('primary' | 'secondary' | 'fins' | 'finBox')[]; cells?: number[]; digits?: number[] }[]; lead?: string };
+  walk?: {
+    frames: {
+      text: string;
+      show: ('primary' | 'secondary' | 'fins' | 'finBox')[];
+      cells?: number[];
+      digits?: number[];
+      labels?: { primary?: string; secondary?: string; fins?: string };
+    }[];
+    lead?: string;
+  };
   /**
    * candidates the Copy step line names after the pattern though no view
    * draws them, as the line always named them (src/content/eureka.ts):

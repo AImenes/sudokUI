@@ -61,6 +61,20 @@ export interface Frame {
    * walks it a digit a frame (Step.walk); absent, every digit
    */
   digits?: Set<number>;
+  /**
+   * what the legend calls a role in this frame, where it draws only part
+   * of it (Step.walk's frame labels): in place of the step's own labels
+   */
+  labels?: Step['labels'];
+}
+
+/**
+ * What a view's legend calls each role: the step's labels, or in a walk
+ * frame that names its roles as it draws them, the frame's in their place
+ * (G23: a frame's legend names only what the frame draws)
+ */
+export function labelsAt(step: Step, frame: Frame | null): Step['labels'] {
+  return frame?.labels ? { ...step.labels, ...frame.labels } : step.labels;
 }
 
 /**
@@ -900,7 +914,7 @@ export function walkFrames(step: Step): Frame[] {
     for (const f of step.walk.frames) {
       for (const part of f.show) shown.add(part);
       if (f.cells) cells = new Set([...(cells ?? []), ...f.cells]);
-      frames.push({ text: f.text, links: 0, show: new Set(shown), ...(cells && { cells: new Set(cells) }), ...(f.digits && { digits: new Set(f.digits) }) });
+      frames.push({ text: f.text, links: 0, show: new Set(shown), ...(cells && { cells: new Set(cells) }), ...(f.digits && { digits: new Set(f.digits) }), ...(f.labels && { labels: f.labels }) });
     }
     for (const part of ['primary', 'secondary', 'fins', 'conclusion'] as const) shown.add(part);
     if (finBand) shown.add('finBox');

@@ -266,6 +266,8 @@ describe('worked examples', () => {
       // decision 22's swaps: a TRUE end group, and a false and a true group of three on the same cells
       GROUPED_NICE_LOOP: ['group r1c9, r2c9, r3c9 {9} in column 9', 'group r1c9, r2c9, r3c9 {7} in column 9'],
       ALS_XZ: ['A r8c2, r9c1 {159} in box 7', 'B r7c8, r8c9 {159} in box 9'],
+      // the ALS-XZ it is: the bivalue cell A, where the chain starts, and its three cells B
+      WXYZ_WING: ['A r4c3 {49} in row 4', 'B r4c4, r5c5, r6c5 {1479} in box 5'],
       ALS_XY_WING: ['A r8c3, r8c8 {247} in row 8', 'B r4c9, r6c8 {467} in box 6', 'C r6c3 {46} in row 6'],
       ALS_XY_CHAIN: ['A r4c2, r4c7 {469} in row 4', 'B r1c7 {39} in row 1', 'C r1c5, r1c6 {239} in row 1', 'D r7c5 {49} in row 7'],
       AIC_GROUPED: ['group r8c6, r9c6 {8} in column 6'],
@@ -279,6 +281,7 @@ describe('worked examples', () => {
       // the restricted commons between them, A's 1 to B's; the wing A's to
       // the hinge C, and the hinge's to the wing B
       ALS_XZ: ['A-A', 'A-B', 'B-B'],
+      WXYZ_WING: ['A-A', 'A-B', 'B-B'],
       ALS_XY_WING: ['A-A', 'A-C', 'C-C', 'C-B', 'B-B'],
       ALS_XY_CHAIN: ['A-A', 'A-B', 'B-B', 'B-C', 'C-C', 'C-D', 'D-D'],
       AIC_GROUPED: ['·-·', '·-·', '·-·', '·-·', '·-·', '·-·', '·-group'],
@@ -407,8 +410,8 @@ describe("the Learn diagrams after phase 4's first review (docs/hint-drawing-set
       // a diagram with no set draws no tab
       if (!EXAMPLES[tech]!.step.sets?.length) expect(tabs, tech).toBe(false);
     }
-    // the five techniques with almost locked sets; the groups draw none
-    expect(tabbed).toBe(5);
+    // the five techniques with almost locked sets, and the WXYZ-Wing, the ALS-XZ it is; the groups draw none
+    expect(tabbed).toBe(6);
     expect(styleOf(boardSvg(EXAMPLES.AIC_GROUPED!, 'AIC_GROUPED'))).toBe(MAIN_STYLE);
     // and so every Learn asset of an example
     for (const a of buildLearnAssets().filter((x) => !x.path.startsWith('learn/img/intuition-'))) expect(styleOf(a.content).includes('.tab{'), a.path).toBe(a.content.includes('class="tab"'));

@@ -318,8 +318,7 @@ describe('digits are never run together into a number (L1)', () => {
     // phase 6 writes them as a player says them (L1)
     expect(d('EXOCET')).toContain('hold two different digits of 2, 5 and 6');
     expect(d('SUE_DE_COQ')).toContain('hold only 2, 4, 6, 7 and 8');
-    expect(d('WXYZ_WING')).toContain('(4/9)');
-    expect(d('WXYZ_WING')).toContain('hold 1/4/7/9 between them');
+    // the WXYZ-Wing's description is one line since phase 6 (L3), naming no cell's digits: tests/wingWalks.test.ts
     expect(d('CHUTE_REMOTE_PAIR')).toContain('hold only 5 and 6, in different rows and boxes of rows 4-6');
     expect(d('EXTENDED_RECTANGLE')).toContain('a deadly 2/4/9 loop');
     expect(d('XYZ_WING')).toContain('(4/5/9)');

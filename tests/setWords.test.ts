@@ -62,10 +62,10 @@ const storage = new Map<string, string>();
 const { useGame } = await import('../src/state/gameStore');
 const { HintPanel } = await import('../src/ui/HintPanel');
 
-/** the techniques phase 4 draws with their sets */
-const SETS: Tech[] = ['AIC_GROUPED', 'AIC_ALS', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'];
-/** the patterns a chain derives (decision 11) */
-const PATTERNS: Tech[] = ['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN'];
+/** the techniques phase 4 draws with their sets, and the WXYZ-Wing, drawn as the ALS-XZ it is since phase 6 */
+const SETS: Tech[] = ['AIC_GROUPED', 'AIC_ALS', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES', 'ALS_XZ', 'WXYZ_WING', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM'];
+/** the patterns a chain derives (decision 11), the WXYZ-Wing among them */
+const PATTERNS: Tech[] = ['ALS_XZ', 'WXYZ_WING', 'ALS_XY_WING', 'ALS_XY_CHAIN'];
 
 interface Position {
   puzzle: string;
@@ -247,7 +247,8 @@ describe('the set walk (docs/hint-drawing-sets.md, decision 17)', () => {
       expect(step.links, where).toEqual(patternChain(step));
       expect([step.primary, step.secondary, step.fins, step.labels], where).toEqual([undefined, undefined, undefined, undefined]);
     }
-    expect(patterns.length).toBe(55);
+    // and since phase 6 the WXYZ-Wing's stored example and its ten steps the paths offer
+    expect(patterns.length).toBe(66);
     // the stored ALS-XZ link by link: (5)A=(1)A, A's 5s r8c2 and r9c1, its 1 r8c2; (1)A-(1)B, into r8c9's 1; (1)B=(5)B, B's 5 r7c8
     const at = (r: number, c: number, digit: number) => ({ cell: (r - 1) * 9 + c - 1, digit });
     expect(EXAMPLES.ALS_XZ!.step.links).toEqual([

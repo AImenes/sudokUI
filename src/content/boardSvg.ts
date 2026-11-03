@@ -18,7 +18,7 @@ import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, prem
 import type { BarStyle, HintMarks, Premise, Role, Tint } from './hintMarks';
 import { PALETTE, PALETTE_OPACITY } from './playerColours';
 import type { Frame } from '../engine/hintFrames';
-import { drawnLinks } from '../engine/hintFrames';
+import { drawnLinks, labelsAt } from '../engine/hintFrames';
 import { pencilLayout, digitShown, PERIMETER, GRID_SIZE, EDGE_SIZE, LINE_SIZE, LINE_Y, longLineSize, LONG_LINE_Y } from './pencilLayout';
 
 interface TruthWords {
@@ -718,7 +718,9 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
     });
   }
   const { shown, onValue, onBand, finBox, intoRemove, intoPlace, refuted, bars, setSquares, tiles, lines, removeWords } = legendKinds(step, drawn);
-  const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
+  // a walk frame that draws part of a role names it as it draws it
+  const labels = labelsAt(step, frame);
+  const words = (role: Role) => (role === 'primary' ? labels?.primary : role === 'secondary' ? labels?.secondary : labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
   if (shown.has('place')) out.push({ kind: 'place', label: [tr`place`, ...lent(intoPlace)].join(': '), colour: P.place, ink: P.placeInk });
@@ -739,11 +741,11 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });
   // a Death Blossom's blue before every petal's z is drawn: a petal's, by its own branch
   const z = step.eliminations[0]?.digit;
-  const blue = petalsPart(step, drawn) ? tr`${z} in a petal: if the stem takes that petal's digit, the petal holds ${aDigit(z)}` : (clashWords(step) ?? step.labels?.primary);
+  const blue = petalsPart(step, drawn) ? tr`${z} in a petal: if the stem takes that petal's digit, the petal holds ${aDigit(z)}` : (clashWords(step) ?? labels?.primary);
   if (shown.has('primary')) role('primary', blue ?? tr`the pattern`, P.primary, P.primaryInk);
   // a Death Blossom's gold before any petal's digit is drawn: the stem's candidates alone
-  if (shown.has('secondary')) role('secondary', stemAlone(step, drawn) ? tr`the stem's candidates` : (step.labels?.secondary ?? tr`supporting cells`), P.secondary, P.secondaryInk);
-  if (shown.has('fin')) role('fin', step.labels?.fins ?? tr`fin`, P.fin, P.finInk);
+  if (shown.has('secondary')) role('secondary', stemAlone(step, drawn) ? tr`the stem's candidates` : (labels?.secondary ?? tr`supporting cells`), P.secondary, P.secondaryInk);
+  if (shown.has('fin')) role('fin', labels?.fins ?? tr`fin`, P.fin, P.finInk);
   // a finned fish's fins' box: a small band, dotted, in the fins' colour
   if (finBox && step.labels?.finBox) out.push({ kind: 'finBox', label: step.labels.finBox, colour: P.fin, ink: P.finInk, onBand: true });
   // a bar in the pattern's ink (a proof-only view) or the removal's: what a

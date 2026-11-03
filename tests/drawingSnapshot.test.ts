@@ -15,7 +15,8 @@
  * positions of its own, any technique outside the set techniques, which
  * the check asks every later one to see: a real-size 3D Medusa (H6).
  *
- * tests/fixtures/setDrawings.json holds the set techniques: their stored
+ * tests/fixtures/setDrawings.json holds the set techniques, and since
+ * phase 6 the WXYZ-Wing, drawn as the ALS-XZ it is: their stored
  * examples, every step of theirs on offer along the same paths whatever its
  * truth, and the design's named positions (the true group, the Grouped
  * Nice Loop pair, rule 3, the two ALS-XY-Chains whose sets share a cell,
@@ -73,13 +74,18 @@ const SET_FIXTURE = 'tests/fixtures/setDrawings.json';
 /** the techniques phase 3 draws as colourings: every other drawing stays */
 const COLOURING = new Set<Tech>(['SIMPLE_COLORS', 'MULTI_COLORS', 'MEDUSA_3D', 'REMOTE_PAIR']);
 
-/** the techniques phase 4 draws with their sets (docs/hint-drawing-sets.md): their own fixture */
+/**
+ * the techniques phase 4 draws with their sets (docs/hint-drawing-sets.md),
+ * and the WXYZ-Wing, drawn as the ALS-XZ it is since phase 6: their own
+ * fixture
+ */
 const SETS = new Set<Tech>([
   'AIC_GROUPED',
   'AIC_ALS',
   'GROUPED_NICE_LOOP',
   'GROUPED_X_CYCLES',
   'ALS_XZ',
+  'WXYZ_WING',
   'ALS_XY_WING',
   'ALS_XY_CHAIN',
   'DEATH_BLOSSOM'
@@ -377,7 +383,7 @@ describe('the drawings phases 3 and 4 leave alone are drawn as they were', () =>
     // every stored example that is neither a colouring nor a set technique,
     // and chains of seven kinds
     expect(Object.keys(plainNow.examples).length).toBe(Object.keys(EXAMPLES).filter((t) => plain(t as Tech)).length);
-    expect(Object.keys(plainThen.examples).length).toBe(53);
+    expect(Object.keys(plainThen.examples).length).toBe(52);
     expect(Object.keys(plainThen.paths).length).toBe(45);
     expect(new Set(Object.keys(plainThen.paths).map(techOf)).size).toBe(7);
   });
@@ -417,7 +423,7 @@ describe("the set techniques' drawings are drawn as the set fixture last wrote t
     expect(Object.keys(setsThen.named)).toEqual(NAMED.map((n) => `${n.name}, step ${n.at}, ${n.tech}`));
     // the 49 grouped chains the paths offered before phase 4, derived, and
     // the ALS patterns beside them, derived chains too since stage 8 but
-    // Death Blossom, which claims no truth
+    // Death Blossom, which claims no truth; the WXYZ-Wings since phase 6
     const count: Record<string, number> = {};
     for (const tech of Object.keys(setsThen.paths).map(techOf)) count[tech] = (count[tech] ?? 0) + 1;
     expect(count).toEqual({
@@ -426,6 +432,7 @@ describe("the set techniques' drawings are drawn as the set fixture last wrote t
       GROUPED_NICE_LOOP: 16,
       GROUPED_X_CYCLES: 15,
       ALS_XZ: 16,
+      WXYZ_WING: 10,
       ALS_XY_WING: 14,
       ALS_XY_CHAIN: 16,
       DEATH_BLOSSOM: 8

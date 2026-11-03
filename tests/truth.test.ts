@@ -171,6 +171,7 @@ const OPEN: Tech[] = [
   'TURBOT_FISH',
   'W_WING',
   'ALS_XZ',
+  'WXYZ_WING',
   'ALS_XY_WING',
   'ALS_XY_CHAIN'
 ];
@@ -291,7 +292,7 @@ function checkDerived(step: Step, where: string, g?: Grid, tally?: Tally): void 
     return;
   }
   expect(d.problems, where).toEqual([]);
-  if (['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN'].includes(step.tech)) {
+  if (['ALS_XZ', 'WXYZ_WING', 'ALS_XY_WING', 'ALS_XY_CHAIN'].includes(step.tech)) {
     expect(d.closure, where).toBeNull();
     count('clean');
   }
@@ -376,8 +377,8 @@ describe('every chain the engine finds', () => {
       checkDerived(ex.step, tech, g);
       n++;
     }
-    // the fifteen derived techniques with a stored example (X_CYCLES has none), the three ALS patterns among them
-    expect(n).toBe(15);
+    // the sixteen derived techniques with a stored example (X_CYCLES has none), the three ALS patterns and the WXYZ-Wing among them
+    expect(n).toBe(16);
   });
 
   it('derives without a problem in every chain step met while solving a batch of puzzles', () => {
@@ -417,25 +418,26 @@ describe('every chain the engine finds', () => {
     console.info('derived chains checked:', [...seen].map(([t, n]) => `${t} ${n}`).join(', '), '; the ALS patterns:', JSON.stringify(tally), `; ${branches} Death Blossom branches`);
     expect(seen.size).toBeGreaterThanOrEqual(6);
     // the six hard paths alone offer each ALS pattern, and Death Blossoms
-    for (const tech of ['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN']) expect(tally[tech]?.clean, tech).toBeGreaterThan(0);
+    for (const tech of ['ALS_XZ', 'WXYZ_WING', 'ALS_XY_WING', 'ALS_XY_CHAIN']) expect(tally[tech]?.clean, tech).toBeGreaterThan(0);
     expect(branches).toBeGreaterThan(0);
   });
 
   it('reads each ALS pattern the repository keeps as a chain that derives cleanly, or, an ALS-XY-Chain whose sets share a cell, clashes and draws no truth: both counted (decision 13)', () => {
     const tally: Tally = {};
     const steps = [
-      ...(['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN'] as Tech[]).map((tech) => {
+      ...(['ALS_XZ', 'WXYZ_WING', 'ALS_XY_WING', 'ALS_XY_CHAIN'] as Tech[]).map((tech) => {
         const ex = EXAMPLES[tech]!;
         return { where: tech, step: ex.step, g: { values: Uint8Array.from(ex.values, Number), cands: Uint16Array.from(ex.cands), given: new Uint8Array(81) } as Grid };
       }),
       ...keptSteps()
     ];
-    for (const { where, step, g } of steps) if (['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN'].includes(step.tech)) checkDerived(step, where, g, tally);
+    for (const { where, step, g } of steps) if (['ALS_XZ', 'WXYZ_WING', 'ALS_XY_WING', 'ALS_XY_CHAIN'].includes(step.tech)) checkDerived(step, where, g, tally);
     // the examples, the hard paths' offers and the named positions: only
     // ALS-XY-Chains clash, 9 of the 21, the named clashes in a false group,
     // that close and that leave a true end no candidate among them
     expect(tally).toEqual({
       ALS_XZ: { clean: 18, clash: 0 },
+      WXYZ_WING: { clean: 11, clash: 0 },
       ALS_XY_WING: { clean: 16, clash: 0 },
       ALS_XY_CHAIN: { clean: 12, clash: 9 }
     });

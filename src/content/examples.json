@@ -4129,7 +4129,10 @@
       ],
       "cells": [
        60
-      ]
+      ],
+      "labels": {
+       "primary": "the pivot"
+      }
      },
      {
       "text": "If r7c7 is 7, the pincer r7c6 (only 6 and 7) must be 6.",
@@ -4138,7 +4141,11 @@
       ],
       "cells": [
        59
-      ]
+      ],
+      "labels": {
+       "primary": "the pivot and the digit the pincer shares with it",
+       "secondary": "6 in the pincer"
+      }
      },
      {
       "text": "If r7c7 is 9, the pincer r8c9 (only 6 and 9) must be 6.",
@@ -4295,14 +4302,22 @@
       ],
       "cells": [
        13
-      ]
+      ],
+      "labels": {
+       "primary": "the pivot's 5 and 9",
+       "secondary": "4 in the pivot"
+      }
      },
      {
       "text": "If r2c5 is 5, the pincer r3c6 (only 4 and 5) must be 4.",
       "show": [],
       "cells": [
        23
-      ]
+      ],
+      "labels": {
+       "primary": "the pivot's 5 and 9, and the one the pincer shares with it",
+       "secondary": "4 in the pivot and the pincer"
+      }
      },
      {
       "text": "If r2c5 is 9, the pincer r7c5 (only 4 and 9) must be 4.",
@@ -4417,90 +4432,128 @@
      "digit": 4
     }
    ],
-   "primary": [
+   "links": [
     {
-     "cell": 29,
-     "digit": 4
+     "from": [
+      {
+       "cell": 29,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 29,
+       "digit": 9
+      }
+     ],
+     "strong": true,
+     "fromSet": 0,
+     "toSet": 0
     },
     {
-     "cell": 29,
-     "digit": 9
+     "from": [
+      {
+       "cell": 29,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 30,
+       "digit": 9
+      }
+     ],
+     "strong": false,
+     "fromSet": 0,
+     "toSet": 1,
+     "unit": 3
     },
     {
-     "cell": 30,
-     "digit": 1
-    },
-    {
-     "cell": 30,
-     "digit": 9
-    },
-    {
-     "cell": 40,
-     "digit": 4
-    },
-    {
-     "cell": 40,
-     "digit": 7
-    },
-    {
-     "cell": 49,
-     "digit": 1
-    },
-    {
-     "cell": 49,
-     "digit": 7
+     "from": [
+      {
+       "cell": 30,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 40,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "fromSet": 1,
+     "toSet": 1
     }
    ],
-   "secondary": [
+   "truth": "derived",
+   "sets": [
     {
-     "cell": 29,
-     "digit": 4
+     "kind": "als",
+     "cells": [
+      29
+     ],
+     "digits": [
+      4,
+      9
+     ],
+     "members": [
+      {
+       "cell": 29,
+       "digit": 4
+      },
+      {
+       "cell": 29,
+       "digit": 9
+      }
+     ],
+     "unit": 3,
+     "letter": "A"
     },
     {
-     "cell": 40,
-     "digit": 4
-    }
-   ],
-   "units": [
-    {
+     "kind": "als",
+     "cells": [
+      30,
+      40,
+      49
+     ],
+     "digits": [
+      1,
+      4,
+      7,
+      9
+     ],
+     "members": [
+      {
+       "cell": 30,
+       "digit": 1
+      },
+      {
+       "cell": 30,
+       "digit": 9
+      },
+      {
+       "cell": 40,
+       "digit": 4
+      },
+      {
+       "cell": 40,
+       "digit": 7
+      },
+      {
+       "cell": 49,
+       "digit": 1
+      },
+      {
+       "cell": 49,
+       "digit": 7
+      }
+     ],
      "unit": 22,
-     "role": "primary"
+     "letter": "B"
     }
    ],
-   "labels": {
-    "primary": "the bivalue cell and the three cells in box 5",
-    "secondary": "the 4s: at least one of them is true"
-   },
-   "walk": {
-    "frames": [
-     {
-      "text": "The bivalue cell r4c3 holds only 4 and 9.",
-      "show": [
-       "primary"
-      ],
-      "cells": [
-       29
-      ]
-     },
-     {
-      "text": "The three cells r4c4, r5c5 and r6c5 in box 5 hold only 1, 4, 7 and 9 between them: one digit more than cells.",
-      "show": [],
-      "cells": [
-       30,
-       40,
-       49
-      ]
-     },
-     {
-      "text": "If r4c3 is 9, none of the three cells can be 9 (it sees the 9 in r4c4), so they must be 1, 4 and 7, and r5c5 is 4.",
-      "show": [
-       "secondary"
-      ]
-     }
-    ],
-    "lead": "Either way r4c3 or r5c5 is 4; r4c6 and r5c3 see both."
-   },
-   "description": "WXYZ-Wing: bivalue cell r4c3 (4/9) and the three cells r4c4, r5c5 and r6c5 in box 5, which hold 1/4/7/9 between them. The 9 in r4c3 sees every 9 in the three cells. Either r4c3 is 4, or it is 9 and the three cells in box 5 must be 1, 4 and 7. At least one of the four cells is therefore 4, so 4 is removed from every other cell that sees all the 4s among them."
+   "description": "Either set A, the cell r4c3, is 4, or it is 9, and then set B, in box 5, holds a 4."
   }
  },
  "UNIQUENESS_1": {

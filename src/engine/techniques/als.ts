@@ -1,7 +1,7 @@
 import { Grid, UNITS, bit, digitsOf, popcount, sees, cellName, cellNames } from '../board';
 import { Step, CellDigit, ChainLink, ChainSet } from '../steps';
 import { combinations } from './subsets';
-import { aDigit, tr, listAnd, unitName } from '../text';
+import { aDigit, tr, unitName } from '../text';
 import { clashReason } from '../hintFrames';
 
 export interface Als {
@@ -109,65 +109,29 @@ function alsChain(sets: ChainSet[], order: number[], commons: number[], z: numbe
  * A WXYZ-Wing, in the terms of docs/glossary_input.md: the bivalue cell,
  * holding the restricted digit x and the removed digit z, and the three
  * cells of the other set, in one house, which the bivalue cell's x sees
- * wherever they hold x. Coloured by what each digit does (the readability
- * report's M3): every z of the four cells, at least one of which is true,
- * and the rest of the pattern, its house banded; walked in the
- * description's order (H1): the bivalue cell, the three cells, the case
- * where the bivalue cell is x, which leaves the three cells z, and the z
- * gold from then on (a candidate in both roles is the pattern's until the
- * frame that shows the secondary colour). The bivalue cell's candidates
- * come first in the pattern, so the Copy step line is written as it always
- * was (src/content/eureka.ts wingGroups). The ALS-XZ it is, with its sets'
- * tiles and its x link, is a later redraw. Only the drawing and the
- * wording differ from ALS-XZ: the search and the removals are the same.
+ * wherever they hold x. It is the ALS-XZ it is, a bivalue cell and a set of
+ * three cells, and is drawn and walked as one (the readability report's M3;
+ * docs/hint-drawing-sets.md, decision 11): the bivalue cell is set A, where
+ * the chain starts, as the description reads it, (z)A=(x)A-(x)B=(z)B, so
+ * the walk tells A's lock (if it is not z, it is x), set B, the x link and
+ * B's lock (without x, its other digits fill it, and it holds z), and ends
+ * on the either/or. Its description is one line (the report's L3), and its
+ * Copy step line is HoDoKu's wing line from the sets, as it always was
+ * (src/content/eureka.ts wingGroups). Only the drawing and the wording
+ * differ from ALS-XZ: the search and the removals are the same.
  */
 function wxyzStep(g: Grid, A: Als, B: Als, x: number, z: number, elims: CellDigit[]): Step {
-  const [linked] = (A.cells.length === 1 ? A : B).cells;
-  const set = A.cells.length === 1 ? B : A;
-  const cells = [...set.cells].sort((a, b) => a - b);
-  const seen = cells.filter((c) => g.cands[c] & bit(x));
-  const zs = cells.filter((c) => g.cands[c] & bit(z));
-  const house = UNITS.findIndex((u) => set.cells.every((c) => u.includes(c)));
-  const unit = unitName(house);
-  const three = cells.map(cellName);
-  const others = listAnd(digitsOf(set.mask & ~bit(x)));
-  const name = cellName(linked);
-  // the x (or xs) of the three cells the bivalue cell sees, and their z (or one of their zs)
-  const its = seen.length === 1 ? tr`the ${x} in ${cellName(seen[0])}` : tr`the ${x}s in ${listAnd(seen.map(cellName))}`;
-  const ifX =
-    zs.length === 1
-      ? tr`If ${name} is ${x}, none of the three cells can be ${x} (it sees ${its}), so they must be ${others}, and ${cellName(zs[0])} is ${z}.`
-      : tr`If ${name} is ${x}, none of the three cells can be ${x} (it sees ${its}), so they must be ${others}, and one of ${listAnd(zs.map(cellName))} is ${z}.`;
-  const out = listAnd(elims.map((e) => cellName(e.cell)));
-  const one = elims.length === 1;
-  const lead =
-    zs.length === 1
-      ? one
-        ? tr`Either way ${name} or ${cellName(zs[0])} is ${z}; ${out} sees both.`
-        : tr`Either way ${name} or ${cellName(zs[0])} is ${z}; ${out} see both.`
-      : one
-        ? tr`Either way one of ${listAnd([linked, ...zs].map(cellName))} is ${z}; ${out} sees all of them.`
-        : tr`Either way one of ${listAnd([linked, ...zs].map(cellName))} is ${z}; ${out} see all of them.`;
+  const [one, three] = A.cells.length === 1 ? [A, B] : [B, A];
+  const sets = [alsSet(g, one, 'A'), alsSet(g, three, 'B')];
+  const name = cellName(one.cells[0]);
   return {
     tech: 'WXYZ_WING',
     placements: [],
     eliminations: elims,
-    primary: allCands(g, [linked, ...cells]),
-    secondary: [linked, ...zs].map((cell) => ({ cell, digit: z })),
-    units: [{ unit: house, role: 'primary' }],
-    labels: {
-      primary: tr`the bivalue cell and the three cells in ${unit}`,
-      secondary: tr`the ${z}s: at least one of them is true`
-    },
-    walk: {
-      frames: [
-        { text: tr`The bivalue cell ${name} holds only ${listAnd(digitsOf(g.cands[linked]))}.`, show: ['primary'], cells: [linked] },
-        { text: tr`The three cells ${listAnd(three)} in ${unit} hold only ${listAnd(digitsOf(set.mask))} between them: one digit more than cells.`, show: [], cells },
-        { text: ifX, show: ['secondary'] }
-      ],
-      lead
-    },
-    description: tr`WXYZ-Wing: bivalue cell ${name} (${digitsOf(g.cands[linked]).join('/')}) and the three cells ${listAnd(three)} in ${unit}, which hold ${digitsOf(set.mask).join('/')} between them. The ${x} in ${name} sees every ${x} in the three cells. Either ${name} is ${z}, or it is ${x} and the three cells in ${unit} must be ${listAnd(digitsOf(set.mask & ~bit(x)).map(String))}. At least one of the four cells is therefore ${z}, so ${z} is removed from every other cell that sees all the ${z}s among them.`
+    links: alsChain(sets, [0, 1], [x], z),
+    truth: 'derived',
+    sets,
+    description: tr`Either set A, the cell ${name}, is ${z}, or it is ${x}, and then set B, in ${unitName(sets[1].unit)}, holds ${aDigit(z)}.`
   };
 }
 

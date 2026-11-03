@@ -393,7 +393,18 @@ walk, the numbers on arrows and ties those of the frame that adds them.
   stem's digits"; dashed line. Copy: `Death Blossom: [r8c9], -2- r9c7 {24},
   -5- r8c5,r9c6 {145}, -7- r8c1 {47} => r9c2<>4, r9c3<>4` (HoDoKu's form,
   SolutionStep.java:1220-1235).
-- **WXYZ-Wing** (an ALS-XZ HoDoKu names apart, sharing its search): unchanged.
+- **WXYZ-Wing** (an ALS-XZ HoDoKu names apart, sharing its search): unchanged
+  in phase 4; since phase 6 drawn and walked as the ALS-XZ it is (stored:
+  A the bivalue cell r4c3 {49}, B r4c4, r5c5, r6c5 {1479} in box 5; x 9,
+  z 4): A's 4 a false ring with the start dot, its 9 a true disc, a dashed
+  arrow into r4c4's 9, r5c5's 4 a true disc, the 1s and 7s members, r4c6's
+  and r5c3's 4 removed. Five frames: A's lock ("Set A is the cell r4c3,
+  ..."), set B, the link on 9 ("In row 4, every 9 of set A sees every 9 of
+  set B: ..."), B's lock, and the either-way of the two sets. Its
+  description is one line ("Either set A, the cell r4c3, is 4, or it is 9,
+  and then set B, in box 5, holds a 4."), and its Copy step line is the
+  wing's, as before: `WXYZ-Wing: 1/9 in r4c4 / 1/4/7 in r56c5 / 4/9 in
+  r4c3 => r4c6<>4, r5c3<>4`.
 
 ## Colours
 
