@@ -264,7 +264,7 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
       if (mode === 'loop' && path.length >= 4 && groupInPath) {
         const lastWasStrong = nextType === 'weak';
         if (!lastWasStrong && (strong.get(cur) ?? []).includes(path[0])) {
-          const step = loopRule2(g, nodes, path, label);
+          const step = loopRule2(g, nodes, path);
           if (step) return step;
         }
         if (
@@ -272,7 +272,7 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
           weakLinked(nodes[cur], nodes[path[0]]) &&
           path.length % 2 === 0
         ) {
-          const step = loopRule1(g, nodes, path, coveredByPath, label);
+          const step = loopRule1(g, nodes, path, coveredByPath);
           if (step) return step;
         }
       }
@@ -294,15 +294,11 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
 }
 
 /** double-strong discontinuity at the start: the start node is TRUE */
-function loopRule2(
-  g: Grid,
-  nodes: GNode[],
-  path: number[],
-  label: (n: number) => string
-): Step | null {
+function loopRule2(g: Grid, nodes: GNode[], path: number[]): Step | null {
   const start = nodes[path[0]];
-  const chain = path.map(label).join(' → ');
   const { ends, sets, setOf } = chainOf(g, nodes, path);
+  // in words, the loop's notation left to Copy step (the readability report's L3)
+  const d = start.digit;
   if (start.cells.length === 1) {
     return {
       tech: 'GROUPED_NICE_LOOP',
@@ -313,7 +309,7 @@ function loopRule2(
       primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
       links: alternatingLinks(ends, 'strong', setOf),
       ...(sets.length > 0 && { sets }),
-      description: tr`Grouped Nice Loop: ${chain} closes with two strong links at the start: denying it forces it, so it is placed.`
+      description: tr`Grouped Nice Loop: if ${cellName(start.cells[0])} is not ${d}, the loop's links lead back round and make it ${d}, so ${cellName(start.cells[0])} is ${d}.`
     };
   }
   const inPath = new Set(path.flatMap((n) => nodes[n].cells.map((c) => c * 9 + nodes[n].digit - 1)));
@@ -333,7 +329,7 @@ function loopRule2(
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
     links: alternatingLinks(ends, 'strong', setOf),
     ...(sets.length > 0 && { sets }),
-    description: tr`Grouped Nice Loop: ${chain} closes with two strong links at the start group, so the digit lives there and falls from every cell seeing the whole group.`
+    description: tr`Grouped Nice Loop: if none of ${cellNames(start.cells)} is ${d}, the loop's links lead back round and make one of them ${d}, so one of them is ${d}, and no other cell that sees all of them can be ${d}.`
   };
 }
 
@@ -342,8 +338,7 @@ function loopRule1(
   g: Grid,
   nodes: GNode[],
   path: number[],
-  coveredByPath: (path: number[], cell: number, digit: number) => boolean,
-  label: (n: number) => string
+  coveredByPath: (path: number[], cell: number, digit: number) => boolean
 ): Step | null {
   const elims: CellDigit[] = [];
   const seen = new Set<string>();
@@ -374,6 +369,7 @@ function loopRule1(
   }
   if (!elims.length) return null;
   const { ends, sets, setOf } = chainOf(g, nodes, path);
+  const start = nodes[path[0]];
   return {
     tech: 'GROUPED_NICE_LOOP',
     truth: 'derived',
@@ -383,6 +379,10 @@ function loopRule1(
     primary: path.flatMap((n) => nodes[n].cells.map((cell) => ({ cell, digit: nodes[n].digit }))),
     links: alternatingLinks(ends, 'weak', setOf),
     ...(sets.length > 0 && { sets }),
-    description: tr`Grouped Nice Loop: the continuous loop ${path.map(label).join(' → ')} alternates perfectly; every weak link has exactly one true side, clearing candidates along it.`
+    // one lead line in words, the loop's notation left to Copy step (the readability report's L3)
+    description:
+      start.cells.length === 1
+        ? tr`Grouped Nice Loop: this loop of strong and weak links in turn starts and ends at ${cellName(start.cells[0])}, so it holds whichever way round it is read: each weak link has exactly one true end, and a candidate that would make both ends of one false cannot be true.`
+        : tr`Grouped Nice Loop: this loop of strong and weak links in turn starts and ends at the group ${cellNames(start.cells)}, so it holds whichever way round it is read: each weak link has exactly one true end, and a candidate that would make both ends of one false cannot be true.`
   };
 }

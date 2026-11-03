@@ -257,7 +257,9 @@ export function findAlsXyWing(g: Grid): Step | null {
             links: alsChain(sets, [0, 2, 1], [l1.x, l2.x], z),
             truth: 'derived',
             sets,
-            description: tr`ALS-XY-Wing: the wings A (${a}) and B (${b}) and the hinge C (${c}) each hold one digit more than they have cells; every ${l1.x} of C sees every ${l1.x} of A, and every ${l2.x} of C every ${l2.x} of B. C lacks at most one of its digits, so it holds ${aDigit(l1.x)} (and A then holds no ${l1.x}) or ${aDigit(l2.x)} (and B then holds no ${l2.x}). That wing's other digits fill its cells, and it holds ${aDigit(z)}: A or B holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`
+            // one lead line (the readability report's L3), in plain words (L2):
+            // the sets' links and their digits are the walk's, and Copy step's
+            description: tr`ALS-XY-Wing: the hinge C (${c}) holds ${aDigit(l1.x)} or ${aDigit(l2.x)}, so wing A (${a}) holds no ${l1.x} or wing B (${b}) no ${l2.x}, and that wing then holds ${aDigit(z)}. A or B holds ${aDigit(z)}, so no cell that sees every ${z} of both can be ${z}.`
           };
         }
       }
@@ -328,10 +330,14 @@ export function findAlsXyChain(g: Grid): Step | null {
               sets,
               description: ''
             };
-            const cascade = tr`ALS-XY-Chain: sets A (${a}), B (${b}), C (${c}) and D (${d}) each hold one digit more than they have cells, linked by ${x1}, ${x2} and ${x3}: every ${x1} of A sees every ${x1} of B, every ${x2} of B every ${x2} of C, and every ${x3} of C every ${x3} of D. If A holds no ${z}, its other digits fill its cells, so it holds ${aDigit(x1)}; then B holds no ${x1} and holds ${aDigit(x2)}, C no ${x2} and ${aDigit(x3)}, and D no ${x3} and ${aDigit(z)}: each set in turn loses its link digit and fills its cells.`;
+            // one lead line (the readability report's L3): the chain through the
+            // four sets, each with its cells, so Learn explains the removal
+            // without a walk (docs/hint-drawing-sets.md, decision 22); why each
+            // link holds is the walk's, and the chain's line is Copy step's
+            const cascade = tr`ALS-XY-Chain: if set A (${a}) holds no ${z}, it holds ${aDigit(x1)}; then set B (${b}) holds no ${x1} and holds ${aDigit(x2)}, C (${c}) no ${x2} and ${aDigit(x3)}, and D (${d}) no ${x3} and ${aDigit(z)}.`;
             // where the sets share cells the chain may clash (docs/hint-drawing-sets.md,
             // decision 13): the premise is then impossible, and the removal rests on A alone
-            const ends = clashReason(step) || tr`A or D holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both.`;
+            const ends = clashReason(step) || tr`A or D holds ${aDigit(z)}, so no cell that sees every ${z} of both can be ${z}.`;
             step.description = `${cascade} ${ends}`;
             return step;
           }

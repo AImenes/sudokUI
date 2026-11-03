@@ -276,12 +276,12 @@ describe('the words of review round 1 in Norwegian and Spanish (docs/hint-drawin
     }
   });
 
-  it("parts the ALS-XY-Wing's two cases in brackets: C holds x, and A then holds none, or y, and B then holds none", () => {
+  it("says the ALS-XY-Wing's two cases in one lead: C holds x or y, so A holds no x or B no y (the readability report's L2 and L3)", () => {
     const ex = EXAMPLES.ALS_XY_WING!;
     const g = { values: Uint8Array.from(ex.values, Number), cands: Uint16Array.from(ex.cands), given: new Uint8Array(81) };
     const want = {
-      nb: 'C mangler høyst ett av tallene sine, så C har en 4 (og da har A ingen 4) eller en 6 (og da har B ingen 6). ',
-      es: 'A C le falta como mucho uno de sus números, así que tiene un 4 (y entonces A no tiene ningún 4) o un 6 (y entonces B no tiene ningún 6). '
+      nb: 'ALS-XY-Wing: hengselet C (r6c3) har en 4 eller en 6, så vingen A (r8c3, r8c8) har ingen 4, eller vingen B (r4c9, r6c8) ingen 6, og da har den vingen en 7. ',
+      es: 'ALS-XY-Wing: la bisagra C (r6c3) tiene un 4 o un 6, así que el ala A (r8c3, r8c8) no tiene ningún 4 o el ala B (r4c9, r6c8) ningún 6, y esa ala tiene entonces un 7. '
     };
     for (const [lang, loc] of LOCALES) {
       setEngineText(lang, loc.engine);

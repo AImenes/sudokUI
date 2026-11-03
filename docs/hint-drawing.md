@@ -1113,6 +1113,16 @@ the values above are its final ones.
   that draws part of a role names only that part in its legend, so the
   XY- and XYZ-Wing's name the pivot, then one pincer, then both (batch 1's
   low; tests/wingWalks.test.ts, every find along the practice paths).
+  Batch 3's words pass (L2 and L3) gives BUG+1, Unique Rectangle Type 3,
+  the Extended Rectangle, the ALS-XY-Wing, the ALS-XY-Chain, the Grouped
+  Nice Loop and the AIC plain, exact words in one lead line each, their
+  chains' notation left to Copy step, has a 3D Medusa that proves dark
+  purple false count its removals once there are more than four, and has
+  the hint panel leave out the "Name:" its title repeats, for every
+  technique at once (src/content/panelText.ts, Learn keeping it), with
+  Copy step's lines unchanged and every find along the practice paths
+  held true in three languages (tests/wordsPass.test.ts; the fish's
+  "fins" and Chute Remote Pair's "chute" were already right).
 - [ ] Phase 7: polish
 
 Branch `claude/hint-drawings`. Research behind this spec (HoDoKu's source

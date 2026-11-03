@@ -259,8 +259,8 @@ function uniqueness3(g: Grid, rect: Rect, pairMask: number, extra: number[]): St
           for (const d of digitsOf(g.cands[c] & mask)) elims.push({ cell: c, digit: d });
         }
         if (!elims.length) continue;
-        // the naked subset the roof's extras, read as one cell, make with S
-        // in the house: its digits, the roof, the house and the cells named
+        // the digits the roof's extras and S fill in the house, one roof cell
+        // taking an extra: the digits, the roof, the house and the cells named
         const digits = listAnd(digitsOf(mask));
         const extras = listAnd(digitsOf(E));
         const roof = cellNames([e1, e2]);
@@ -283,14 +283,16 @@ function uniqueness3(g: Grid, rect: Rect, pairMask: number, extra: number[]): St
             ...S.flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit })))
           ],
           units: [{ unit: u, role: 'secondary' }],
+          // the roof's extras and the cells beside them, in plain words: one
+          // roof cell must take an extra, so with the cells beside it the
+          // digits fill as many cells as there are digits (the readability
+          // report's L2: no "pseudo-cell", no cell "read as one")
           labels: {
             primary: tr`the rectangle: ${rect.x}/${rect.y} in all four corners`,
             secondary:
               k === 1
-                ? tr`${digits}: the roof's extras (${roof}, read as one cell) and ${cells} hold only these in ${house}, a naked pair`
-                : k === 2
-                  ? tr`${digits}: the roof's extras (${roof}, read as one cell) and ${cells} hold only these in ${house}, a naked triple`
-                  : tr`${digits}: the roof's extras (${roof}, read as one cell) and ${cells} hold only these in ${house}, a naked quadruple`
+                ? tr`${digits}: the roof must take one, and ${cells} holds only these, so they go nowhere else in ${house}`
+                : tr`${digits}: the roof must take one of its extras, and ${cells} hold only these, so they go nowhere else in ${house}`
           },
           walk: {
             frames: [
@@ -305,17 +307,13 @@ function uniqueness3(g: Grid, rect: Rect, pairMask: number, extra: number[]): St
             ],
             lead:
               k === 1
-                ? `${why} ${tr`A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked pair with ${named(S)}: ${digits} can go nowhere else in ${house}.`}`
-                : k === 2
-                  ? `${why} ${tr`A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked triple with ${named(S)}: ${digits} can go nowhere else in ${house}.`}`
-                  : `${why} ${tr`A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked quadruple with ${named(S)}: ${digits} can go nowhere else in ${house}.`}`
+                ? `${why} ${tr`A roof cell must therefore take one of its extras, and ${named(S)} holds only ${digits}, so ${digits} go in the roof and ${named(S)}, and nowhere else in ${house}.`}`
+                : `${why} ${tr`A roof cell must therefore take one of its extras, and ${named(S)} hold only ${digits} between them, so ${digits} go in the roof and ${named(S)}, and nowhere else in ${house}.`}`
           },
           description:
             k === 1
-              ? tr`Unique Rectangle Type 3: ${deadly} would form a deadly pattern on ${x}/${y}, so one of the roof cells ${roof} must take an extra candidate. Read as one cell holding its extras (${extras}), the roof makes a naked pair with ${cells} in ${house}: ${digits} can only go in these cells, so they are removed from the rest of ${house}.`
-              : k === 2
-                ? tr`Unique Rectangle Type 3: ${deadly} would form a deadly pattern on ${x}/${y}, so one of the roof cells ${roof} must take an extra candidate. Read as one cell holding its extras (${extras}), the roof makes a naked triple with ${cells} in ${house}: ${digits} can only go in these cells, so they are removed from the rest of ${house}.`
-                : tr`Unique Rectangle Type 3: ${deadly} would form a deadly pattern on ${x}/${y}, so one of the roof cells ${roof} must take an extra candidate. Read as one cell holding its extras (${extras}), the roof makes a naked quadruple with ${cells} in ${house}: ${digits} can only go in these cells, so they are removed from the rest of ${house}.`
+              ? tr`Unique Rectangle Type 3: ${deadly} would form a deadly pattern on ${x}/${y}, so one of the roof cells ${roof} must take one of the roof's extras (${extras}), and ${cells} holds only ${digits}. So ${digits} go in the roof and ${cells}, and nowhere else in ${house}.`
+              : tr`Unique Rectangle Type 3: ${deadly} would form a deadly pattern on ${x}/${y}, so one of the roof cells ${roof} must take one of the roof's extras (${extras}), and ${cells} hold only ${digits} between them. So ${digits} go in the roof and ${cells}, and nowhere else in ${house}.`
         };
       }
     }
@@ -674,7 +672,9 @@ export function findBugPlus1(g: Grid): Step | null {
         ],
         lead: tr`Without the ${d} in ${cell}, every unsolved cell would hold two candidates, each found twice in its row, column and box. That is a deadly pattern: every cell could take its other candidate at once, and the puzzle would have two solutions.`
       },
-      description: tr`BUG+1: removing ${d} from ${cellName(triCell)} would leave a bivalue grid with two solutions, so ${cellName(triCell)} must be ${d}.`
+      // the BUG idea in plain words (docs/hint-readability-2026-11.md L2): a
+      // grave has no solution or several, never exactly one
+      description: tr`BUG+1: every unsolved cell but ${cell} holds exactly two candidates. Without its ${d}, ${cell} would too, and each candidate would be found twice in its row, column and box: a deadly pattern, which cannot have just one solution. So ${cell} must be ${d}.`
     };
   }
   return null;

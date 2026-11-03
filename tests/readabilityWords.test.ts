@@ -231,7 +231,7 @@ describe('the explanation names what the step removes or places (M21)', () => {
     const shown = (tech: Tech) => describeStep(EXAMPLES[tech]!.step);
     expect(shown('ALIGNED_PAIR_EXCLUSION').endsWith(' leaves no place for the removed candidate. Here, 8 is removed from r8c4.')).toBe(true);
     expect(shown('DIGIT_FORCING_CHAIN').endsWith(' the forced singles agree on the same conclusions. Here, 3 and 6 are removed from r1c1.')).toBe(true);
-    expect(shown('AIC').endsWith(' so candidates conflicting with both are removed. Here, 8 is removed from r1c9.')).toBe(true);
+    expect(shown('AIC').endsWith(' a candidate that would make both false cannot be true. Here, 8 is removed from r1c9.')).toBe(true);
     expect(shown('EXOCET').endsWith(" So these targets hold the base's two digits and nothing else. Here, 8 is removed from r8c5.")).toBe(true);
     expect(shown('FIREWORKS').endsWith(' and these three cells hold nothing else. Here, 5 and 6 are removed from r2c6.')).toBe(true);
   });
@@ -251,6 +251,8 @@ describe('the explanation names what the step removes or places (M21)', () => {
           'AVOIDABLE_RECTANGLE_1',
           'BUG_PLUS_1',
           'EMPTY_RECTANGLE',
+          // its sentence ends on what goes, in words (the readability report's L2)
+          'EXTENDED_RECTANGLE',
           'FULL_HOUSE',
           'HIDDEN_RECTANGLE',
           'HIDDEN_SINGLE',
@@ -320,7 +322,7 @@ describe('digits are never run together into a number (L1)', () => {
     expect(d('SUE_DE_COQ')).toContain('hold only 2, 4, 6, 7 and 8');
     // the WXYZ-Wing's description is one line since phase 6 (L3), naming no cell's digits: tests/wingWalks.test.ts
     expect(d('CHUTE_REMOTE_PAIR')).toContain('hold only 5 and 6, in different rows and boxes of rows 4-6');
-    expect(d('EXTENDED_RECTANGLE')).toContain('a deadly 2/4/9 loop');
+    expect(d('EXTENDED_RECTANGLE')).toContain('hold only 2, 4 and 9');
     expect(d('XYZ_WING')).toContain('(4/5/9)');
   });
 });

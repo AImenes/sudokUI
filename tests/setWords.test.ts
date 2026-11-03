@@ -489,7 +489,7 @@ describe('an 8: the article before a digit (src/engine/text.ts aDigit)', () => {
     // the conclusion of a chain whose sets share cells, about 8
     const clash = kept.find((k) => k.where === 'shared cells that clash, step 15, ALS_XY_CHAIN')!.step;
     expect(walkFrames(clash).at(-1)!.text).toMatch(/^Set D holds 8 only in r4c4, r6c4, cells of set A: .* A cannot lack an 8, so set A holds an 8\./);
-    expect(clash.description).toMatch(/A cannot lack an 8: it holds one, and 8 is removed/);
+    expect(clash.description).toMatch(/A cannot lack an 8: it holds one, so no cell that sees every 8 of A can be 8\.$/);
   });
 
   it('words a premise that a set holds an 8 so in the hint panel and the Learn legend', () => {
@@ -721,25 +721,25 @@ describe('the words and the legends, review round 2 (docs/hint-drawing-p4-round2
       puzzle: '4.......3.28..6..4.....598.6..4..3.8...6.1...5.3..9..1.579.....2..8..74.1.......9',
       at: 16,
       end: 'If set A holds no 2, r9c5 must be 7, and further along the chain it cannot be 7: that is impossible. A cannot lack a 2, so set A holds a 2. Each removed 2 sees every 2 of A. So 2 is removed from r9c6.',
-      reason: 'But on the way r9c5 must be 7, and further along the chain it cannot be 7. A cannot lack a 2: it holds one, and 2 is removed from every cell that sees every 2 of A.'
+      reason: 'But on the way r9c5 must be 7, and further along the chain it cannot be 7. A cannot lack a 2: it holds one, so no cell that sees every 2 of A can be 2.'
     },
     {
       puzzle: '.97.....1.2...8...8..4..92...3..2......561......9..5...38..9..7...2...5.5.....68.',
       at: 10,
       end: 'If set A holds no 6, one of r3c5, r3c6 must be 3, and further along the chain none of them can be 3: that is impossible. A cannot lack a 6, so set A holds a 6. Each removed 6 sees every 6 of A. So 6 is removed from r3c9.',
-      reason: 'But on the way one of r3c5, r3c6 must be 3, and further along the chain none of them can be 3. A cannot lack a 6: it holds one, and 6 is removed from every cell that sees every 6 of A.'
+      reason: 'But on the way one of r3c5, r3c6 must be 3, and further along the chain none of them can be 3. A cannot lack a 6: it holds one, so no cell that sees every 6 of A can be 6.'
     },
     {
       puzzle: '8.57.....7.....6.8.23........7.34..1..9....4.....687...1.6.3...4...1...79......2.',
       at: 17,
       end: 'If set A holds no 1, r3c6 must be 9, and further along the chain it cannot be 9: that is impossible. A cannot lack a 1, so set A holds a 1. Each removed 1 sees every 1 of A. So 1 is removed from r3c4.',
-      reason: 'But on the way r3c6 must be 9, and further along the chain it cannot be 9. A cannot lack a 1: it holds one, and 1 is removed from every cell that sees every 1 of A.'
+      reason: 'But on the way r3c6 must be 9, and further along the chain it cannot be 9. A cannot lack a 1: it holds one, so no cell that sees every 1 of A can be 1.'
     },
     {
       puzzle: '7..8..5..9.8..3..2....4..8.6.2..7.....7.6.2.....1..9.6.6..9....3..7..6.5..4..8..9',
       at: 10,
       end: 'If set A holds no 5, r6c5 must be 2, and further along the chain it cannot be 2: that is impossible. A cannot lack a 5, so set A holds a 5. Each removed 5 sees every 5 of A. So 5 is removed from r6c6.',
-      reason: 'But on the way r6c5 must be 2, and further along the chain it cannot be 2. A cannot lack a 5: it holds one, and 5 is removed from every cell that sees every 5 of A.'
+      reason: 'But on the way r6c5 must be 2, and further along the chain it cannot be 2. A cannot lack a 5: it holds one, so no cell that sees every 5 of A can be 5.'
     }
   ];
   /** a repro's step, found again in the language the engine writes now */
@@ -796,15 +796,15 @@ describe('the words and the legends, review round 2 (docs/hint-drawing-p4-round2
   it("words a clashing ALS-XY-Chain's description by what its removal rests on, the reason its walk ends on, and every other ALS-XY-Chain's as before (finding 2)", () => {
     const clash = kept.find((k) => k.where === 'shared cells that clash, step 15, ALS_XY_CHAIN')!;
     expect(clash.step.description).toBe(
-      'ALS-XY-Chain: sets A (r1c4, r4c4, r5c4, r6c4), B (r1c1), C (r4c1, r4c3) and D (r4c4, r6c4) each hold one digit more than they have cells, linked by 9, 8 and 6: every 9 of A sees every 9 of B, every 8 of B every 8 of C, and every 6 of C every 6 of D. If A holds no 8, its other digits fill its cells, so it holds a 9; then B holds no 9 and holds an 8, C no 8 and a 6, and D no 6 and an 8: each set in turn loses its link digit and fills its cells. But D holds 8 only in cells of A, so A holds one after all. A cannot lack an 8: it holds one, and 8 is removed from every cell that sees every 8 of A.'
+      'ALS-XY-Chain: if set A (r1c4, r4c4, r5c4, r6c4) holds no 8, it holds a 9; then set B (r1c1) holds no 9 and holds an 8, C (r4c1, r4c3) no 8 and a 6, and D (r4c4, r6c4) no 6 and an 8. But D holds 8 only in cells of A, so A holds one after all. A cannot lack an 8: it holds one, so no cell that sees every 8 of A can be 8.'
     );
-    for (const c of CLASHES) expect(reproStep(c).description, c.puzzle).toMatch(new RegExp(`fills its cells\\. ${c.reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
+    for (const c of CLASHES) expect(reproStep(c).description, c.puzzle).toMatch(new RegExp(`\\. ${c.reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
     // every clash: the description ends on the reason the walk's conclusion gives, A's alone
     for (const { where, step } of clashing()) {
       const z = step.eliminations[0].digit;
       const [description, end] = [step.description, walkFrames(step).at(-1)!.text];
       expect(description, where).not.toMatch(/A or D holds/);
-      expect(description, where).toMatch(new RegExp(`fills its cells\\. But .* A cannot lack ${aDigit(z)}: it holds one, and ${z} is removed from every cell that sees every ${z} of A\\.$`));
+      expect(description, where).toMatch(new RegExp(`\\. But .* A cannot lack ${aDigit(z)}: it holds one, so no cell that sees every ${z} of A can be ${z}\\.$`));
       if (inFirst(step)) {
         expect([description.includes(`But D holds ${z} only in cells of A, so A holds one after all.`), end.startsWith(`Set D holds ${z} only in `)], where).toEqual([true, true]);
       } else {
@@ -819,7 +819,7 @@ describe('the words and the legends, review round 2 (docs/hint-drawing-p4-round2
     expect(plain.length).toBeGreaterThan(10);
     for (const { where, step } of plain) {
       const z = step.eliminations[0].digit;
-      expect(step.description, where).toMatch(new RegExp(`fills its cells\\. A or D holds ${aDigit(z)}, so ${z} is removed from every cell that sees every ${z} of both\\.$`));
+      expect(step.description, where).toMatch(new RegExp(`\\. A or D holds ${aDigit(z)}, so no cell that sees every ${z} of both can be ${z}\\.$`));
     }
     const ex = EXAMPLES.ALS_XY_CHAIN!;
     const g = parseGrid(ex.puzzle)!;
@@ -831,14 +831,14 @@ describe('the words and the legends, review round 2 (docs/hint-drawing-p4-round2
     // Norwegian and Spanish
     const want = {
       nb: {
-        clash: ': hver mengde mister i tur og orden lenketallet sitt og fyller rutene sine. Men D har 8 bare i ruter som hører til A, så A har likevel en. A kan ikke mangle en 8: A har en, og 8 fjernes fra hver rute som ser alle 8-tallene i A.',
-        repro: ' Men underveis må r9c5 være 7, og senere i kjeden kan den ikke være 7. A kan ikke mangle en 2: A har en, og 2 fjernes fra hver rute som ser alle 2-tallene i A.',
-        plain: ' A eller D har en 4, så 4 fjernes fra hver rute som ser alle 4-tallene i begge.'
+        clash: ', og D (r4c4, r6c4) ingen 6 og en 8. Men D har 8 bare i ruter som hører til A, så A har likevel en. A kan ikke mangle en 8: A har en, så ingen rute som ser alle 8-tallene i A, kan være 8.',
+        repro: ' Men underveis må r9c5 være 7, og senere i kjeden kan den ikke være 7. A kan ikke mangle en 2: A har en, så ingen rute som ser alle 2-tallene i A, kan være 2.',
+        plain: ' A eller D har en 4, så ingen rute som ser alle 4-tallene i begge, kan være 4.'
       },
       es: {
-        clash: ': cada conjunto, por turno, pierde su número de enlace y llena sus casillas. Pero D solo puede tener el 8 en casillas de A, así que A tiene uno después de todo. A no puede quedarse sin un 8: tiene uno, y el 8 se elimina de cada casilla que ve todos los 8 de A.',
-        repro: ' Pero por el camino r9c5 debe ser 7, y más adelante en la cadena no puede ser 7. A no puede quedarse sin un 2: tiene uno, y el 2 se elimina de cada casilla que ve todos los 2 de A.',
-        plain: ' A o D tiene un 4, así que el 4 se elimina de cada casilla que ve todos los 4 de ambos.'
+        clash: ', y D (r4c4, r6c4) ningún 6 y un 8. Pero D solo puede tener el 8 en casillas de A, así que A tiene uno después de todo. A no puede quedarse sin un 8: tiene uno, así que ninguna casilla que vea todos los 8 de A puede ser 8.',
+        repro: ' Pero por el camino r9c5 debe ser 7, y más adelante en la cadena no puede ser 7. A no puede quedarse sin un 2: tiene uno, así que ninguna casilla que vea todos los 2 de A puede ser 2.',
+        plain: ' A o D tiene un 4, así que ninguna casilla que vea todos los 4 de ambos puede ser 4.'
       }
     };
     for (const [lang, loc] of LOCALES) {
@@ -960,7 +960,7 @@ describe("the words, readability pass (docs/hint-readability-2026-11.md M2; docs
       expect(end, where).toMatch(new RegExp(`^If set A holds no ${z}, .*, which is impossible\\. A cannot lack ${aDigit(z)}, so set A holds ${aDigit(z)}\\. Each removed ${z} sees every ${z} of A\\. So `));
       // the description ends on the same reason, A's alone
       expect(step.description, where).not.toMatch(/A or D holds/);
-      expect(step.description, where).toMatch(new RegExp(`fills its cells\\. But on the way .* A cannot lack ${aDigit(z)}: it holds one, and ${z} is removed from every cell that sees every ${z} of A\\.$`));
+      expect(step.description, where).toMatch(new RegExp(`\\. But on the way .* A cannot lack ${aDigit(z)}: it holds one, so no cell that sees every ${z} of A can be ${z}\\.$`));
       // what the chain meets, in the same words
       const said = /^If set A holds no \d, (.*), which is impossible\./.exec(end)![1];
       expect(step.description, where).toContain(`But on the way ${said}.`);
@@ -979,7 +979,7 @@ describe("the words, readability pass (docs/hint-readability-2026-11.md M2; docs
       'If set A holds no 1, r2c3 must be 1, and so must one of r2c1, r3c1: two 1s in box 1, which is impossible. A cannot lack a 1, so set A holds a 1. Each removed 1 sees every 1 of A. So 1 is removed from r5c1.'
     );
     expect(noted(NOTED[EXTREME_13]).step.description).toMatch(
-      / fills its cells\. But on the way r2c3 must be 1, and so must one of r2c1, r3c1: two 1s in box 1\. A cannot lack a 1: it holds one, and 1 is removed from every cell that sees every 1 of A\.$/
+      /\. But on the way r2c3 must be 1, and so must one of r2c1, r3c1: two 1s in box 1\. A cannot lack a 1: it holds one, so no cell that sees every 1 of A can be 1\.$/
     );
     // two true candidates of one digit in one house
     expect(end(0)).toMatch(/^If set A holds no 9, r1c2 must be 9, and so must r3c3: two 9s in box 1, which is impossible\. /);
@@ -990,12 +990,12 @@ describe("the words, readability pass (docs/hint-readability-2026-11.md M2; docs
     const want = {
       nb: {
         end: 'Har mengde A ingen 1, må r2c3 være 1, og en av r2c1, r3c1 må også være 1: to 1-tall i boks 1, og det er umulig. A kan ikke mangle en 1, så mengde A har en 1. Hvert 1-tall som fjernes, ser alle 1-tallene i A. ',
-        description: ' Men underveis må r2c3 være 1, og en av r2c1, r3c1 må også være 1: to 1-tall i boks 1. A kan ikke mangle en 1: A har en, og 1 fjernes fra hver rute som ser alle 1-tallene i A.',
+        description: ' Men underveis må r2c3 være 1, og en av r2c1, r3c1 må også være 1: to 1-tall i boks 1. A kan ikke mangle en 1: A har en, så ingen rute som ser alle 1-tallene i A, kan være 1.',
         plain: /har A ingen, har D en|A eller D har/
       },
       es: {
         end: 'Si el conjunto A no tiene ningún 1, r2c3 debe ser 1, y una de r2c1, r3c1 también: dos 1 en la caja 1, lo cual es imposible. A no puede quedarse sin un 1, así que el conjunto A tiene un 1. Cada 1 eliminado ve todos los 1 de A. ',
-        description: ' Pero por el camino r2c3 debe ser 1, y una de r2c1, r3c1 también: dos 1 en la caja 1. A no puede quedarse sin un 1: tiene uno, y el 1 se elimina de cada casilla que ve todos los 1 de A.',
+        description: ' Pero por el camino r2c3 debe ser 1, y una de r2c1, r3c1 también: dos 1 en la caja 1. A no puede quedarse sin un 1: tiene uno, así que ninguna casilla que vea todos los 1 de A puede ser 1.',
         plain: /si A no tiene ninguno, D tiene uno|A o D tiene/
       }
     };

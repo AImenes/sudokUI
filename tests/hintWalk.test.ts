@@ -312,8 +312,9 @@ describe('the uniqueness patterns draw what their argument uses (H2, M4, L4)', (
     // the band: a house holding the roof and the subset, the house the removals are in
     expect(s.units).toEqual([{ unit: 6, role: 'secondary' }]);
     for (const c of [...roof, ...cells, ...s.eliminations.map((e) => e.cell)]) expect(UNITS[6]).toContain(c);
-    expect(s.labels!.secondary).toBe("1 and 6: the roof's extras (r7c4, r7c5, read as one cell) and r7c6 hold only these in row 7, a naked pair");
-    for (const words of ['r7c4, r7c5', '(1 and 6)', 'row 7', 'naked pair with r7c6']) expect(s.description).toContain(words);
+    // in plain words: no cell "read as one" (the readability report's L2)
+    expect(s.labels!.secondary).toBe('1 and 6: the roof must take one, and r7c6 holds only these, so they go nowhere else in row 7');
+    for (const words of ['r7c4, r7c5', '(1 and 6)', 'row 7', 'r7c6 holds only 1 and 6', 'go in the roof and r7c6']) expect(s.description).toContain(words);
     expect(bandsAt(k, walkFrames(s)[1])).toEqual(['6:secondary']);
   });
 
@@ -382,7 +383,7 @@ describe('the uniqueness patterns draw what their argument uses (H2, M4, L4)', (
   it("UR Type 1 and the Extended Rectangle: the corner the pattern must not reach, marked before its candidates go", () => {
     for (const [tech, words] of [
       ['UNIQUENESS_1', '5 and 8 in the fourth corner: either would complete the deadly pattern'],
-      ['EXTENDED_RECTANGLE', '4 and 9 in r9c5: each would complete the deadly loop']
+      ['EXTENDED_RECTANGLE', '4 and 9 in r9c5: each would complete the deadly pattern']
     ] as const) {
       const k = exampleOf(tech);
       const s = k.step;

@@ -9,7 +9,8 @@ import { TECHS, Tech } from '../engine/ratings';
 import type { Step } from '../engine/steps';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
-import { walkFrames, describe, labelsAt } from '../engine/hintFrames';
+import { walkFrames, labelsAt } from '../engine/hintFrames';
+import { panelExplanation } from '../content/panelText';
 import { stepText } from '../content/eureka';
 import { frameMarks, legendKinds, premiseOf, parityLegend, isParity, stemAlone, petalsPart, sharedTile, clashWords } from '../content/hintMarks';
 import type { Premise, Role, ParityEntry } from '../content/hintMarks';
@@ -389,7 +390,7 @@ export function HintPanel({
               </div>
             </div>
           ) : (
-            <p>{describe(hint)}</p>
+            <p>{panelExplanation(hint, name)}</p>
           )}
           {!frame && showKey && /r\dc\d/.test(hint.description) && (
             <p className="hint-key">{t('r2c3 means row 2, column 3, counted from the top left.')}</p>

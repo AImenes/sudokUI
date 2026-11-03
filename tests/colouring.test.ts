@@ -50,7 +50,7 @@ import type { Tech } from '../src/engine/ratings';
 import type { CellDigit, ChainLink, ColourRule, Step } from '../src/engine/steps';
 import { isParity, isTie } from '../src/engine/steps';
 import { checkParity } from '../src/engine/truth';
-import { walkFrames, drawnLinks, describe as describeStep, conclusionText } from '../src/engine/hintFrames';
+import { walkFrames, drawnLinks, describe as describeStep, conclusionText, countsRemovals } from '../src/engine/hintFrames';
 import type { Frame } from '../src/engine/hintFrames';
 import { frameMarks, parityLegend, markedCandidates, placedKeys } from '../src/content/hintMarks';
 import { arrowShapes, startMarkers, badgePoints, SIZES } from '../src/content/hintGeometry';
@@ -65,7 +65,7 @@ import { findMedusa3d } from '../src/engine/techniques/medusa';
 import { findRemotePair } from '../src/engine/techniques/chains';
 import { buildable } from '../src/engine/chainTrainer';
 import { boardLayout, digitShown, M, SIZE } from '../src/ui/boardLayout';
-import { setEngineText, missedTemplates } from '../src/engine/text';
+import { setEngineText, missedTemplates, tr } from '../src/engine/text';
 import engineNb from '../src/content/locales/engine.nb';
 import engineEs from '../src/content/locales/engine.es';
 import { PARITY_FIXTURES, nameOf } from './parityFixtures';
@@ -138,6 +138,14 @@ const views = (s: Step): (Frame | null)[] => [null, ...walkFrames(s)];
  */
 function unnamedIn(s: Step): string[] {
   const text = describeStep(s);
+  // a 3D Medusa that proves dark purple false and removes more than its words list counts
+  // them instead (the readability report's L3): its sentence says every dark purple candidate
+  // goes, and they are exactly its removals, each barred on the board and listed by Copy step
+  if (countsRemovals(s)) {
+    const dark = s.colouring!.clusters[0].dark;
+    const whole = s.colouring!.darkFalse === 0 && dark.length === s.eliminations.length && dark.every((d) => s.eliminations.some((e) => e.cell === d.cell && e.digit === d.digit));
+    return whole && text.endsWith(` ${tr`Here, ${s.eliminations.length} candidates are removed.`}`) ? [] : s.eliminations.map(nameOf);
+  }
   if (s.eliminations.length > 1) return text.endsWith(` ${conclusionText(s, 'here')}`) ? [] : s.eliminations.map(nameOf);
   const sentences = text.split(/(?<=\.) /);
   const names = (x: CellDigit) => sentences.some((t) => t.includes(cellName(x.cell)) && new RegExp(`(?<![\\w.])${x.digit}(?!\\d)`).test(t));

@@ -3102,7 +3102,7 @@
     ],
     "lead": "Without the 3 in r5c6, every unsolved cell would hold two candidates, each found twice in its row, column and box. That is a deadly pattern: every cell could take its other candidate at once, and the puzzle would have two solutions."
    },
-   "description": "BUG+1: removing 3 from r5c6 would leave a bivalue grid with two solutions, so r5c6 must be 3."
+   "description": "BUG+1: every unsolved cell but r5c6 holds exactly two candidates. Without its 3, r5c6 would too, and each candidate would be found twice in its row, column and box: a deadly pattern, which cannot have just one solution. So r5c6 must be 3."
   }
  },
  "SKYSCRAPER": {
@@ -5036,7 +5036,7 @@
    ],
    "labels": {
     "primary": "the rectangle: 7/8 in all four corners",
-    "secondary": "1 and 6: the roof's extras (r7c4, r7c5, read as one cell) and r7c6 hold only these in row 7, a naked pair"
+    "secondary": "1 and 6: the roof must take one, and r7c6 holds only these, so they go nowhere else in row 7"
    },
    "walk": {
     "frames": [
@@ -5053,9 +5053,9 @@
       ]
      }
     ],
-    "lead": "If neither roof cell took one of its extras, all four corners would hold only 7 and 8; they could swap, and the puzzle would have two solutions. A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked pair with r7c6: 1 and 6 can go nowhere else in row 7."
+    "lead": "If neither roof cell took one of its extras, all four corners would hold only 7 and 8; they could swap, and the puzzle would have two solutions. A roof cell must therefore take one of its extras, and r7c6 holds only 1 and 6, so 1 and 6 go in the roof and r7c6, and nowhere else in row 7."
    },
-   "description": "Unique Rectangle Type 3: r3c4, r3c5, r7c4, r7c5 would form a deadly pattern on 7/8, so one of the roof cells r7c4, r7c5 must take an extra candidate. Read as one cell holding its extras (1 and 6), the roof makes a naked pair with r7c6 in row 7: 1 and 6 can only go in these cells, so they are removed from the rest of row 7."
+   "description": "Unique Rectangle Type 3: r3c4, r3c5, r7c4, r7c5 would form a deadly pattern on 7/8, so one of the roof cells r7c4, r7c5 must take one of the roof's extras (1 and 6), and r7c6 holds only 1 and 6. So 1 and 6 go in the roof and r7c6, and nowhere else in row 7."
   }
  },
  "UNIQUENESS_4": {
@@ -6205,8 +6205,8 @@
     }
    ],
    "labels": {
-    "primary": "the cells that would form a deadly 2/4/9 loop",
-    "secondary": "4 and 9 in r9c5: each would complete the deadly loop"
+    "primary": "five of the six cells, which hold only 2, 4 and 9",
+    "secondary": "4 and 9 in r9c5: each would complete the deadly pattern"
    },
    "walk": {
     "frames": [
@@ -6225,7 +6225,7 @@
     ],
     "lead": "If r9c5 were 4 or 9, all six cells would hold only 2, 4 and 9. Swapping the two cells in each of columns 1, 5 and 9 at once would then give a second solution."
    },
-   "description": "Extended Rectangle Type 1: r8c1, r9c1, r8c5, r9c5, r8c9, r9c9 would form a deadly 2/4/9 loop; r9c5 must take one of its extra candidates."
+   "description": "Extended Rectangle: five of the six cells, r8c1, r9c1, r8c5, r8c9, r9c9, hold only 2, 4 and 9. If r9c5 were 4 or 9 too, the six cells would form a deadly pattern, and the puzzle would have a second solution, so 4 and 9 are removed from r9c5."
   }
  },
  "FINNED_X_WING": {
@@ -9753,7 +9753,7 @@
      "unit": 17
     }
    ],
-   "description": "Grouped Nice Loop: the continuous loop 7@r1c8 → 9@r1c8 → 9@[r1c9, r2c9, r3c9] → 9@r5c9 → 8@r5c9 → 8@r9c9 → 7@r9c9 → 7@[r1c9, r2c9, r3c9] alternates perfectly; every weak link has exactly one true side, clearing candidates along it."
+   "description": "Grouped Nice Loop: this loop of strong and weak links in turn starts and ends at r1c8, so it holds whichever way round it is read: each weak link has exactly one true end, and a candidate that would make both ends of one false cannot be true."
   }
  },
  "ALS_XZ": {
@@ -10266,7 +10266,7 @@
      "letter": "C"
     }
    ],
-   "description": "ALS-XY-Wing: the wings A (r8c3, r8c8) and B (r4c9, r6c8) and the hinge C (r6c3) each hold one digit more than they have cells; every 4 of C sees every 4 of A, and every 6 of C every 6 of B. C lacks at most one of its digits, so it holds a 4 (and A then holds no 4) or a 6 (and B then holds no 6). That wing's other digits fill its cells, and it holds a 7: A or B holds a 7, so 7 is removed from every cell that sees every 7 of both."
+   "description": "ALS-XY-Wing: the hinge C (r6c3) holds a 4 or a 6, so wing A (r8c3, r8c8) holds no 4 or wing B (r4c9, r6c8) no 6, and that wing then holds a 7. A or B holds a 7, so no cell that sees every 7 of both can be 7."
   }
  },
  "ALS_XY_CHAIN": {
@@ -10612,7 +10612,7 @@
      "letter": "D"
     }
    ],
-   "description": "ALS-XY-Chain: sets A (r4c2, r4c7), B (r1c7), C (r1c5, r1c6) and D (r7c5) each hold one digit more than they have cells, linked by 9, 3 and 9: every 9 of A sees every 9 of B, every 3 of B every 3 of C, and every 9 of C every 9 of D. If A holds no 4, its other digits fill its cells, so it holds a 9; then B holds no 9 and holds a 3, C no 3 and a 9, and D no 9 and a 4: each set in turn loses its link digit and fills its cells. A or D holds a 4, so 4 is removed from every cell that sees every 4 of both."
+   "description": "ALS-XY-Chain: if set A (r4c2, r4c7) holds no 4, it holds a 9; then set B (r1c7) holds no 9 and holds a 3, C (r1c5, r1c6) no 3 and a 9, and D (r7c5) no 9 and a 4. A or D holds a 4, so no cell that sees every 4 of both can be 4."
   }
  },
  "AIC": {
@@ -10821,7 +10821,7 @@
      "unit": 17
     }
    ],
-   "description": "AIC: 8@r1c6 → 4@r1c6 → 4@r5c6 → 2@r5c6 → 2@r5c9 → 2@r1c9; at least one of 8@r1c6 and 2@r1c9 is true, so candidates conflicting with both are removed."
+   "description": "AIC: if r1c6 is not 8, the chain's links make its last candidate true: r1c9 is then 2. So one of the two is true, and a candidate that would make both false cannot be true."
   }
  },
  "AIC_GROUPED": {

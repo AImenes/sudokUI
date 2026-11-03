@@ -394,6 +394,23 @@ export function namesCandidate(text: string, { cell, digit }: CellDigit): boolea
   return plain.split(/[.;:](?=\s|$)/).some((clause) => clause.includes(name) && number.test(clause.split(name).join(' ')));
 }
 
+/** the most removals a 3D Medusa's proof lists (countsRemovals) */
+const LISTED = 4;
+
+/**
+ * Whether a 3D Medusa that proves dark purple false (rules 1, 2 and 6,
+ * which remove the whole colour) removes more candidates than its words
+ * list (the readability report's L3): along the practice solve paths rule 1
+ * removes a median of 17 (up to 36) and rule 2 of 10, in many digits. Its
+ * sentence already says every dark purple candidate goes; the explanation
+ * and the walk's conclusion then count them, the board bars each one, and
+ * Copy step lists them.
+ */
+export function countsRemovals(step: Step): boolean {
+  const rule = step.colouring?.rule;
+  return isParity(step) && (rule === 'medusa1' || rule === 'medusa2' || rule === 'medusa6') && step.eliminations.length > LISTED;
+}
+
 /**
  * The explanation as shown: the finder's sentence, followed by the
  * conclusion ("Here, 6 is removed from r4c4.") unless the sentence already
@@ -404,6 +421,7 @@ export function namesCandidate(text: string, { cell, digit }: CellDigit): boolea
  * removes more than one candidate.
  */
 export function describe(step: Step): string {
+  if (countsRemovals(step)) return `${step.description} ${tr`Here, ${step.eliminations.length} candidates are removed.`}`;
   const all = [...step.placements, ...step.eliminations];
   const counted = isParity(step) && step.eliminations.length > 1;
   const named = !counted && all.every((cd) => namesCandidate(step.description, cd));
@@ -549,7 +567,7 @@ function parityFrames(step: Step): Frame[] {
     frames.push({ text: proofText(step), links: links.length, drawn: [...argument], show: new Set(shown) });
   }
   shown.add('conclusion');
-  const conclusion = conclusionText(step);
+  const conclusion = countsRemovals(step) ? tr`So all ${step.eliminations.length} dark purple candidates are removed.` : conclusionText(step);
   frames.push({
     text: darkFalse !== undefined ? `${conclusion} ${provenText(step)}` : conclusion,
     links: links.length,
@@ -755,8 +773,9 @@ function contradictionText(step: Step, F: string, z: number): string {
  * clashes); or, wherever else D's z lie, the node the premise makes true
  * and then false (contradictionText's); or, where the chain derives cleanly
  * yet shows its premise impossible, what it meets on the way (refutedAt).
- * Either way A cannot lack z, and z goes from every cell that sees every z
- * of A. Empty for a step that does none of these
+ * Either way A cannot lack z, so no cell that sees every z of A can be z
+ * (the finder removes it from those that also see every z of D, outside the
+ * sets). Empty for a step that does none of these
  */
 export function clashReason(step: Step): string {
   if (step.tech !== 'ALS_XY_CHAIN') return '';
@@ -770,20 +789,20 @@ export function clashReason(step: Step): string {
     const Z = aDigit(z);
     switch (r.kind) {
       case 'twice':
-        return tr`But on the way ${r.a} must be ${r.d}, and so must ${r.b}: two ${r.d}s in ${r.house}. A cannot lack ${Z}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+        return tr`But on the way ${r.a} must be ${r.d}, and so must ${r.b}: two ${r.d}s in ${r.house}. A cannot lack ${Z}: it holds one, so no cell that sees every ${z} of A can be ${z}.`;
       case 'byFirst':
-        return tr`But on the way ${r.a} must be ${r.d}, and so must one of ${r.b}: two ${r.d}s in ${r.house}. A cannot lack ${Z}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+        return tr`But on the way ${r.a} must be ${r.d}, and so must one of ${r.b}: two ${r.d}s in ${r.house}. A cannot lack ${Z}: it holds one, so no cell that sees every ${z} of A can be ${z}.`;
       case 'nodeFirst':
-        return tr`But on the way one of ${r.a} must be ${r.d}, and so must ${r.b}: two ${r.d}s in ${r.house}. A cannot lack ${Z}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+        return tr`But on the way one of ${r.a} must be ${r.d}, and so must ${r.b}: two ${r.d}s in ${r.house}. A cannot lack ${Z}: it holds one, so no cell that sees every ${z} of A can be ${z}.`;
       case 'cell':
-        return tr`But on the way ${r.a} must be ${r.d}, and also ${r.e}: two digits in one cell. A cannot lack ${Z}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+        return tr`But on the way ${r.a} must be ${r.d}, and also ${r.e}: two digits in one cell. A cannot lack ${Z}: it holds one, so no cell that sees every ${z} of A can be ${z}.`;
       case 'ruledOut':
-        return tr`But on the way one of ${r.a} must be ${r.d}, yet the chain rules out every one of them. A cannot lack ${Z}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+        return tr`But on the way one of ${r.a} must be ${r.d}, yet the chain rules out every one of them. A cannot lack ${Z}: it holds one, so no cell that sees every ${z} of A can be ${z}.`;
     }
   }
   const inD = D.members.filter((m) => m.digit === z).map((m) => m.cell);
   if (inD.length && inD.every((c) => A.cells.includes(c))) {
-    return tr`But D holds ${z} only in cells of A, so A holds one after all. A cannot lack ${aDigit(z)}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+    return tr`But D holds ${z} only in cells of A, so A holds one after all. A cannot lack ${aDigit(z)}: it holds one, so no cell that sees every ${z} of A can be ${z}.`;
   }
   const node = clashAt(step);
   if (!node) return '';
@@ -791,8 +810,8 @@ export function clashReason(step: Step): string {
   const cells = uniq(node.map((cd) => cd.cell));
   const c = cellNames(cells);
   return cells.length === 1
-    ? tr`But on the way ${c} must be ${d}, and further along the chain it cannot be ${d}. A cannot lack ${aDigit(z)}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`
-    : tr`But on the way one of ${c} must be ${d}, and further along the chain none of them can be ${d}. A cannot lack ${aDigit(z)}: it holds one, and ${z} is removed from every cell that sees every ${z} of A.`;
+    ? tr`But on the way ${c} must be ${d}, and further along the chain it cannot be ${d}. A cannot lack ${aDigit(z)}: it holds one, so no cell that sees every ${z} of A can be ${z}.`
+    : tr`But on the way one of ${c} must be ${d}, and further along the chain none of them can be ${d}. A cannot lack ${aDigit(z)}: it holds one, so no cell that sees every ${z} of A can be ${z}.`;
 }
 
 /**

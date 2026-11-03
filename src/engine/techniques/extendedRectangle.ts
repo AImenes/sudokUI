@@ -53,6 +53,23 @@ function type1Walk(cells: number[], extrasCell: number, trio: number, elims: Cel
   };
 }
 
+/**
+ * Type 1's description: the five cells on the trio, and the sixth's trio
+ * digits, which would make the six a deadly pattern, removed
+ */
+function type1Text(cells: number[], extrasCell: number, trio: number, elims: CellDigit[]): string {
+  const five = cellNames(cells.filter((c) => c !== extrasCell));
+  const t = listAnd(digitsOf(trio));
+  const x = cellName(extrasCell);
+  const ds = elims.map((e) => e.digit);
+  if (ds.length === 1) {
+    return tr`Extended Rectangle: five of the six cells, ${five}, hold only ${t}. If ${x} were ${ds[0]} too, the six cells would form a deadly pattern, and the puzzle would have a second solution, so ${ds[0]} is removed from ${x}.`;
+  }
+  return ds.length === 2
+    ? tr`Extended Rectangle: five of the six cells, ${five}, hold only ${t}. If ${x} were ${ds[0]} or ${ds[1]} too, the six cells would form a deadly pattern, and the puzzle would have a second solution, so ${ds[0]} and ${ds[1]} are removed from ${x}.`
+    : tr`Extended Rectangle: five of the six cells, ${five}, hold only ${t}. If ${x} were ${ds[0]}, ${ds[1]} or ${ds[2]} too, the six cells would form a deadly pattern, and the puzzle would have a second solution, so ${ds[0]}, ${ds[1]} and ${ds[2]} are removed from ${x}.`;
+}
+
 /** Type 2's walk: the six cells on the trio, the extra digit's cells, and why the removals see them all */
 function type2Walk(cells: number[], trio: number, z: number, zCells: number[], elims: CellDigit[]): Step['walk'] {
   const shape = formation(cells);
@@ -147,15 +164,17 @@ function checkFormation(g: Grid, cells: number[]): Step | null {
         .flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))),
       // the sixth cell's would-be candidates, drawn before they go
       secondary: elims,
+      // plain words (the readability report's L2): no "Type 1", which the
+      // panel's title does not name, and a deadly pattern, not a "loop"
       labels: {
-        primary: tr`the cells that would form a deadly ${digitsOf(trio).join('/')} loop`,
+        primary: tr`five of the six cells, which hold only ${listAnd(digitsOf(trio))}`,
         secondary:
           elims.length === 1
-            ? tr`${elims[0].digit} in ${cellName(extrasCell)}: it would complete the deadly loop`
-            : tr`${listAnd(elims.map((e) => e.digit))} in ${cellName(extrasCell)}: each would complete the deadly loop`
+            ? tr`${elims[0].digit} in ${cellName(extrasCell)}: it would complete the deadly pattern`
+            : tr`${listAnd(elims.map((e) => e.digit))} in ${cellName(extrasCell)}: each would complete the deadly pattern`
       },
       walk: type1Walk(cells, extrasCell, trio, elims),
-      description: tr`Extended Rectangle Type 1: ${cellNames(cells)} would form a deadly ${digitsOf(trio).join('/')} loop; ${cellName(extrasCell)} must take one of its extra candidates.`
+      description: type1Text(cells, extrasCell, trio, elims)
     };
   }
 
@@ -182,11 +201,11 @@ function checkFormation(g: Grid, cells: number[]): Step | null {
       ),
       secondary: zCells.map((cell) => ({ cell, digit: z })),
       labels: {
-        primary: tr`the cells that would form a deadly ${digitsOf(trio).join('/')} loop`,
+        primary: tr`the six cells: without the extra ${z}, they would form a deadly pattern on ${listAnd(digitsOf(trio))}`,
         secondary: tr`${z}, the extra candidate: one of these cells must be it`
       },
       walk: type2Walk(cells, trio, z, zCells, elims),
-      description: tr`Extended Rectangle Type 2: to avoid a deadly ${digitsOf(trio).join('/')} loop in ${cellNames(cells)}, one of ${cellNames(zCells)} must be ${z}, so ${z} is removed from cells seeing all of them.`
+      description: tr`Extended Rectangle: to avoid a deadly pattern on ${listAnd(digitsOf(trio))} in ${cellNames(cells)}, one of ${cellNames(zCells)} must be ${z}, so ${z} is removed from cells seeing all of them.`
     };
   }
   return null;

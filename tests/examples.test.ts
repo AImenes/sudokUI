@@ -296,13 +296,15 @@ describe('worked examples', () => {
     expect(EXAMPLES.ALS_XZ!.step.description).toBe(
       'ALS-XZ: sets A (r8c2, r9c1) and B (r7c8, r8c9) each hold one digit more than they have cells, and every 1 of A sees every 1 of B, so at most one of them keeps a 1. The other loses its 1, its other digits fill its cells, and it holds a 5: A or B holds a 5, so 5 is removed from every cell that sees every 5 of both.'
     );
-    // the hinge C holds 4 or 6, and so takes one of them from a wing
-    expect(EXAMPLES.ALS_XY_WING!.step.description).toMatch(
-      /^ALS-XY-Wing: the wings A \(r8c3, r8c8\) and B \(r4c9, r6c8\) and the hinge C \(r6c3\) .* C lacks at most one of its digits, so it holds a 4 \(and A then holds no 4\) or a 6 \(and B then holds no 6\)\. .* A or B holds a 7, so 7 is removed from every cell that sees every 7 of both\.$/
+    // the hinge C holds 4 or 6, and so takes one of them from a wing: one lead line, in plain
+    // words (the readability report's L2 and L3), the links and their notation left to the
+    // walk and Copy step
+    expect(EXAMPLES.ALS_XY_WING!.step.description).toBe(
+      'ALS-XY-Wing: the hinge C (r6c3) holds a 4 or a 6, so wing A (r8c3, r8c8) holds no 4 or wing B (r4c9, r6c8) no 6, and that wing then holds a 7. A or B holds a 7, so no cell that sees every 7 of both can be 7.'
     );
     // each set in turn loses its link digit and fills its cells
-    expect(EXAMPLES.ALS_XY_CHAIN!.step.description).toMatch(
-      /^ALS-XY-Chain: sets A \(r4c2, r4c7\), B \(r1c7\), C \(r1c5, r1c6\) and D \(r7c5\) .* linked by 9, 3 and 9: .* each set in turn loses its link digit and fills its cells\. A or D holds a 4, so 4 is removed from every cell that sees every 4 of both\.$/
+    expect(EXAMPLES.ALS_XY_CHAIN!.step.description).toBe(
+      'ALS-XY-Chain: if set A (r4c2, r4c7) holds no 4, it holds a 9; then set B (r1c7) holds no 9 and holds a 3, C (r1c5, r1c6) no 3 and a 9, and D (r7c5) no 9 and a 4. A or D holds a 4, so no cell that sees every 4 of both can be 4.'
     );
     // whichever digit the stem takes, its petal loses it and holds z
     expect(EXAMPLES.DEATH_BLOSSOM!.step.description).toMatch(
