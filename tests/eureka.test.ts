@@ -268,6 +268,13 @@ describe('the HoDoKu line', () => {
     expect(stepText(step('SUE_DE_COQ'))).toBe('Sue de Coq: 2/4/6/7/8 in r9c789 / 2/4/6/7 in r7c7,r9c4 => r9c1<>6, r9c2<>2');
   });
 
+  it("writes an Empty Rectangle as it always did, the box's digits then the pair, whatever bands and walk the hint draws (phase 6)", () => {
+    expect(stepText(step('EMPTY_RECTANGLE'))).toBe('Empty Rectangle: 5 in r1c23,r2c2 / r16c5 => r6c2<>5');
+    // the bands and the walk the hint draws do not reach the line
+    const s = step('EMPTY_RECTANGLE');
+    expect(stepText({ ...s, units: [{ unit: 18, role: 'primary' }], walk: undefined })).toBe(stepText(s));
+  });
+
   it('writes wings, uniqueness and colouring one colour after another', () => {
     // written from the pattern as it always was, not from the colours by function the hint draws (the readability report's M3)
     expect(stepText(step('XY_WING'))).toBe('XY-Wing: 7/9 in r7c7 / 6 in r7c6,r8c9 => r7c8<>6, r8c6<>6');

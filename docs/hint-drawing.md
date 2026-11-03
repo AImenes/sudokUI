@@ -1075,6 +1075,17 @@ the values above are its final ones.
   false either way. The fins' box is drawn (M4's fish part, G15), and no
   legend entry names a role its frame has not drawn. The Copy step lines
   are unchanged (tests/fishWalks.test.ts, tests/eureka.test.ts).
+  In batch 3, Empty Rectangle walks in its finder's own sentences as the grouped 2-String Kite it is (H1, M4, L2):
+  the box's digits in its row and its column, the pair as the only two of the digit in their line, then the two
+  cases and "either way the target sees a 5"; it bands the box, its row and its column solid in the pattern's
+  colour with the box's digits and the pair's line dashed with the pair, each band from its role's frame, its
+  labels say "box 1: its 5s all lie in row 1 or column 2" and "r1c5 and r6c5: the only 5s in column 5", its
+  description leads with the pair in one line and gives the two cases (L3), and its guide entry says "only two
+  places" where it said "conjugate pair"; it stays a pattern (G20) with no arrows, as a prototype drawn as the
+  chain showed a premise legend of five entries and a crowded link inside the box on a phone, and would have
+  needed a group short of its box's digits (which checkSets refuses) at 206 of the 4,227 finds along the 336
+  practice paths, where every sentence is true in English, Norwegian and Spanish and the Copy step line is the one
+  it always was (tests/erWalks.test.ts, ER_SCAN=all; tests/eureka.test.ts).
 - [ ] Phase 7: polish
 
 Branch `claude/hint-drawings`. Research behind this spec (HoDoKu's source

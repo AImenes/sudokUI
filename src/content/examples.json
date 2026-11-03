@@ -3746,13 +3746,42 @@
     {
      "unit": 18,
      "role": "primary"
+    },
+    {
+     "unit": 0,
+     "role": "primary"
+    },
+    {
+     "unit": 10,
+     "role": "primary"
+    },
+    {
+     "unit": 13,
+     "role": "secondary"
     }
    ],
    "labels": {
     "primary": "box 1: its 5s all lie in row 1 or column 2",
-    "secondary": "column 5: its only 5s are r1c5 and r6c5"
+    "secondary": "r1c5 and r6c5: the only 5s in column 5"
    },
-   "description": "Empty Rectangle on 5: in box 1 every 5 lies in row 1 or column 2, and r1c5 and r6c5 are the only 5s in column 5. If r6c5 is 5, r6c2 is not: they share row 6. If not, r1c5 is 5, so box 1 has no 5 in row 1; its 5 lies in column 2, which runs through r6c2, so again r6c2 is not 5. So 5 is removed from r6c2."
+   "walk": {
+    "frames": [
+     {
+      "text": "In box 1, every 5 lies in row 1 or column 2: r1c2 and r1c3 in row 1, r2c2 in column 2.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "r1c5 and r6c5 are the only 5s in column 5, so one of them is 5.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r6c5 is 5, r6c2 sees it in row 6. If r1c5 is 5, row 1 has no other 5, so the 5 of box 1 must be in r2c2, which r6c2 sees in column 2. Either way r6c2 sees a 5."
+   },
+   "description": "The only 5s in column 5 are r1c5 and r6c5. If r6c5 is 5, r6c2 sees it in row 6. If r1c5 is 5, box 1 has no 5 left in row 1, so its 5 lies in column 2, which r6c2 sees too. So 5 is removed from r6c2."
   }
  },
  "W_WING": {

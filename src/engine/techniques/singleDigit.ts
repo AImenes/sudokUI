@@ -10,7 +10,7 @@ import {
   cellNames
 } from '../board';
 import { Step, CellDigit, alternatingLinks } from '../steps';
-import { tr, unitName } from '../text';
+import { aDigit, listAnd, tr, unitName } from '../text';
 
 type LinkType = 'row' | 'col' | 'box';
 interface StrongLink {
@@ -183,9 +183,14 @@ export function findEmptyRectangle(g: Grid): Step | null {
  * `pairLine` is the kind of line the conjugate pair lies in. With the pair
  * in a column, pair[0] lies on the box's row and pair[1] shares a row with
  * the target, which lies on the box's column; with the pair in a row, the
- * same with rows and columns swapped. The labels and the description name
- * the houses the argument uses: the box's row and column, the pair's line,
- * the line pair[1] shares with the target, and the arm pair[0] empties.
+ * same with rows and columns swapped. It reads as the grouped 2-String Kite
+ * it is ((5)r6c5 = (5)r1c5 - (5)r1c23 = (5)r2c2 => r6c2<>5): the pair is a
+ * strong link, and so are the box's digits on the line pair[0] lies on (the
+ * arm, the crossing too where it holds the digit) and its others, all on
+ * the other line, which runs through the target. The labels, the bands, the
+ * walk and the description name the houses the argument uses: the box, its
+ * row and column, the pair's line, the line pair[1] shares with the target,
+ * and the arm pair[0] empties.
  */
 function erStep(
   g: Grid,
@@ -204,19 +209,50 @@ function erStep(
   const line = inCol ? 9 + colOf(pair[0]) : rowOf(pair[0]);
   const shared = inCol ? rowOf(pair[1]) : 9 + colOf(pair[1]);
   const [arm, other] = inCol ? [boxRow, boxCol] : [boxCol, boxRow];
+  // the box's digits on the arm, the crossing among them, and the rest, all on the other line
+  const onArm = boxCells.filter((c) => UNITS[arm].includes(c));
+  const off = boxCells.filter((c) => !UNITS[arm].includes(c));
+  const [inRow, inColumn] = inCol ? [onArm, off] : [off, onArm];
   const [b, r, c, l] = [unitName(18 + box), unitName(boxRow), unitName(boxCol), unitName(line)];
   const [p0, p1, t] = [cellName(pair[0]), cellName(pair[1]), cellName(target)];
+  // the pair in reading order, as the board reads it
+  const [pa, pb] = [...pair].sort((x, y) => x - y).map(cellName);
+  const [S, A, O] = [unitName(shared), unitName(arm), unitName(other)];
+  const names = (cells: number[]) => listAnd(cells.map(cellName));
+  // the two cases: pair[1] is d, and the target sees it; or pair[0] is, and
+  // the box's d lies off the arm, in its one cell there or in one of two,
+  // which the target sees on the other line
+  const ifShared = tr`If ${p1} is ${d}, ${t} sees it in ${S}.`;
+  const ifArm =
+    off.length === 1
+      ? tr`If ${p0} is ${d}, ${A} has no other ${d}, so the ${d} of ${b} must be in ${cellName(off[0])}, which ${t} sees in ${O}.`
+      : tr`If ${p0} is ${d}, ${A} has no other ${d}, so the ${d} of ${b} must be in ${cellName(off[0])} or ${cellName(off[1])}, and ${t} sees both in ${O}.`;
+  const either = tr`Either way ${t} sees ${aDigit(d)}.`;
   return {
     tech: 'EMPTY_RECTANGLE',
     placements: [],
     eliminations: [{ cell: target, digit: d }],
     primary: boxCells.map((cell) => ({ cell, digit: d })),
     secondary: pair.map((cell) => ({ cell, digit: d })),
-    units: [{ unit: 18 + box, role: 'primary' }],
+    // the box and its row and column, where its digits lie; the pair's line, where the pair are the only two
+    units: [
+      { unit: 18 + box, role: 'primary' },
+      { unit: boxRow, role: 'primary' },
+      { unit: boxCol, role: 'primary' },
+      { unit: line, role: 'secondary' }
+    ],
     labels: {
       primary: tr`${b}: its ${d}s all lie in ${r} or ${c}`,
-      secondary: tr`${l}: its only ${d}s are ${p0} and ${p1}`
+      secondary: tr`${pa} and ${pb}: the only ${d}s in ${l}`
     },
-    description: tr`Empty Rectangle on ${d}: in ${b} every ${d} lies in ${r} or ${c}, and ${p0} and ${p1} are the only ${d}s in ${l}. If ${p1} is ${d}, ${t} is not: they share ${unitName(shared)}. If not, ${p0} is ${d}, so ${b} has no ${d} in ${unitName(arm)}; its ${d} lies in ${unitName(other)}, which runs through ${t}, so again ${t} is not ${d}. So ${d} is removed from ${t}.`
+    walk: {
+      frames: [
+        { text: tr`In ${b}, every ${d} lies in ${r} or ${c}: ${names(inRow)} in ${r}, ${names(inColumn)} in ${c}.`, show: ['primary'] },
+        { text: tr`${pa} and ${pb} are the only ${d}s in ${l}, so one of them is ${d}.`, show: ['secondary'] }
+      ],
+      lead: `${ifShared} ${ifArm} ${either}`
+    },
+    // the two cases, led by the pair in one line (the legend names the box's row and column)
+    description: tr`The only ${d}s in ${l} are ${pa} and ${pb}. If ${p1} is ${d}, ${t} sees it in ${S}. If ${p0} is ${d}, ${b} has no ${d} left in ${A}, so its ${d} lies in ${O}, which ${t} sees too. So ${d} is removed from ${t}.`
   };
 }

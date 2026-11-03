@@ -136,8 +136,8 @@ const es: LearnLocale = {
       "spot": "Skyscraper y 2-String Kite son casos particulares; si no, busca formas en las que al menos uno de los pares conjugados esté en una caja."
     },
     "EMPTY_RECTANGLE": {
-      "what": "Los candidatos de X en una caja están solo en una fila y una columna; un par conjugado de columna (o de fila) fuera de la caja tiene un extremo en esa fila (o columna).",
-      "why": "Como un extremo está en la fila, el X de la caja está o bien en esa fila, y entonces el otro extremo es X, o bien en la columna; así que cualquier casilla de esa columna fuera de la caja que vea el otro extremo pierde X. En el otro caso, intercambia fila y columna.",
+      "what": "Los candidatos de X de una caja están en una fila y una columna; una columna (o fila) fuera de ella solo tiene dos sitios para X, uno en esa fila (o columna).",
+      "why": "Uno de los dos sitios es X; si es el de la fila de la caja, el X de la caja está en su columna. En cualquier caso, la casilla donde esa columna cruza la fila del otro sitio ve un X y lo pierde.",
       "spot": "Busca una caja donde cuatro casillas que forman un rectángulo no tengan el candidato X, de modo que X quede solo en una fila y una columna."
     },
     "W_WING": {

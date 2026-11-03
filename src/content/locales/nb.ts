@@ -136,8 +136,8 @@ const nb: LearnLocale = {
       "spot": "Skyscraper og 2-String Kite er spesialtilfeller; ellers ser du etter former der minst ett av de konjugerte parene ligger i en boks."
     },
     "EMPTY_RECTANGLE": {
-      "what": "Kandidatene for X i en boks ligger bare i én rad og én kolonne; et konjugert par i en kolonne (eller rad) utenfor boksen har én ende i den raden (eller kolonnen).",
-      "why": "Når enden ligger i raden, står X i boksen enten i den raden, og da blir den andre enden X, eller i kolonnen; derfor fjernes X fra alle ruter i den kolonnen utenfor boksen som ser den andre enden. Ellers bytter rad og kolonne plass.",
+      "what": "X-kandidatene i en boks ligger alle i én rad og én kolonne; en kolonne (eller rad) utenfor boksen har bare to plasser for X, én i den raden (eller kolonnen).",
+      "why": "Én av de to plassene er X; er det den i boksens rad, ligger boksens X i boksens kolonne. Uansett ser ruten der den kolonnen krysser raden til den andre plassen, en X, så X fjernes fra den.",
       "spot": "Se etter en boks der fire ruter som danner et rektangel, ikke har kandidaten X, så X står igjen langs én rad og én kolonne."
     },
     "W_WING": {

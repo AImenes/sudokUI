@@ -4,7 +4,8 @@
  * wins 1, 6, 10, 11, 15 and 17):
  * - H3: a fish's description runs no digit into its list of houses;
  * - M4 (Empty Rectangle): its labels and description name the row and the
- *   columns the argument uses, and say what is true;
+ *   columns the argument uses, and say what is true (its walk and bands are
+ *   held in tests/erWalks.test.ts);
  * - M20: the conclusion names its removals in reading order, a cell that
  *   loses several digits once, and the explanation never says "So" twice;
  * - M21: the explanation the full view shows ends with the conclusion
@@ -108,24 +109,24 @@ describe('a fish names its houses as lists that end in a word, never in the digi
   });
 });
 
-describe("Empty Rectangle names the houses its argument uses, and what it says is true (M4's quick win)", () => {
-  /** what the English description claims, read back */
+describe("Empty Rectangle names the houses its argument uses, and what it says is true (M4's quick win; phase 6's two cases)", () => {
+  /** what the English description claims, read back: the pair, then the two cases */
   const CLAIM =
-    /^Empty Rectangle on (\d): in box (\d) every \1 lies in row (\d) or column (\d), and (r\dc\d) and (r\dc\d) are the only \1s in (row|column) (\d)\. If \6 is \1, (r\dc\d) is not: they share (row|column) (\d)\. If not, \5 is \1, so box \2 has no \1 in (row|column) (\d); its \1 lies in (row|column) (\d), which runs through \9, so again \9 is not \1\. So \1 is removed from \9\.$/;
+    /^The only (\d)s in (row|column) (\d) are (r\dc\d) and (r\dc\d)\. If (r\dc\d) is \1, (r\dc\d) sees it in (row|column) (\d)\. If (r\dc\d) is \1, box (\d) has no \1 left in (row|column) (\d), so its \1 lies in (row|column) (\d), which \7 sees too\. So \1 is removed from \7\.$/;
   const cellOf = (name: string) => (Number(name[1]) - 1) * 9 + Number(name[3]) - 1;
   const unitOf = (kind: string, n: string) => (kind === 'row' ? 0 : 9) + Number(n) - 1;
   const inUnit = (u: number, cell: number) => (u < 9 ? rowOf(cell) === u : colOf(cell) === u - 9);
 
   it('in the stored example: row 1, column 2, column 5 and row 6, in the labels, the walk and the description', () => {
     const s = EXAMPLES.EMPTY_RECTANGLE!.step;
-    expect(s.labels).toEqual({ primary: 'box 1: its 5s all lie in row 1 or column 2', secondary: 'column 5: its only 5s are r1c5 and r6c5' });
+    expect(s.labels).toEqual({ primary: 'box 1: its 5s all lie in row 1 or column 2', secondary: 'r1c5 and r6c5: the only 5s in column 5' });
     expect(walkFrames(s).map((f) => f.text)).toEqual([
-      'Box 1: its 5s all lie in row 1 or column 2.',
-      'Column 5: its only 5s are r1c5 and r6c5.',
-      'So 5 is removed from r6c2.'
+      'In box 1, every 5 lies in row 1 or column 2: r1c2 and r1c3 in row 1, r2c2 in column 2.',
+      'r1c5 and r6c5 are the only 5s in column 5, so one of them is 5.',
+      'If r6c5 is 5, r6c2 sees it in row 6. If r1c5 is 5, row 1 has no other 5, so the 5 of box 1 must be in r2c2, which r6c2 sees in column 2. Either way r6c2 sees a 5. So 5 is removed from r6c2.'
     ]);
     expect(s.description).toBe(
-      'Empty Rectangle on 5: in box 1 every 5 lies in row 1 or column 2, and r1c5 and r6c5 are the only 5s in column 5. If r6c5 is 5, r6c2 is not: they share row 6. If not, r1c5 is 5, so box 1 has no 5 in row 1; its 5 lies in column 2, which runs through r6c2, so again r6c2 is not 5. So 5 is removed from r6c2.'
+      'The only 5s in column 5 are r1c5 and r6c5. If r6c5 is 5, r6c2 sees it in row 6. If r1c5 is 5, box 1 has no 5 left in row 1, so its 5 lies in column 2, which r6c2 sees too. So 5 is removed from r6c2.'
     );
   });
 
@@ -145,25 +146,26 @@ describe("Empty Rectangle names the houses its argument uses, and what it says i
     for (const { s, g } of cases) {
       const m = CLAIM.exec(s.description);
       expect(m, s.description).not.toBeNull();
-      const [, d, box, row, col, p0, p1, lineKind, line, target, sharedKind, shared, armKind, arm, otherKind, other] = m!;
+      const [, d, lineKind, line, pa, pb, p1, target, sharedKind, shared, p0, box, armKind, arm, otherKind, other] = m!;
       const digit = Number(d);
       const holds = (cell: number) => g.values[cell] === 0 && (g.cands[cell] & bit(digit)) !== 0;
       const all = (u: number) => [...Array(81).keys()].filter((c) => holds(c) && (u < 18 ? inUnit(u, c) : boxOf(c) === u - 18));
-      const [R, C, L, S, A, O] = [unitOf('row', row), unitOf('column', col), unitOf(lineKind, line), unitOf(sharedKind, shared), unitOf(armKind, arm), unitOf(otherKind, other)];
-      // the box's digits all lie in the named row or column, some in each arm
-      const inBox = all(18 + Number(box) - 1);
-      expect(inBox.every((c) => inUnit(R, c) || inUnit(C, c)), s.description).toBe(true);
-      // the pair are the line's only two
-      expect(all(L).map(cellName), s.description).toEqual([p0, p1].map(cellOf).sort((a, b) => a - b).map(cellName));
-      // the second shares a line with the target; the first lies on one arm, whose other arm runs through the target
+      const [L, S, A, O] = [unitOf(lineKind, line), unitOf(sharedKind, shared), unitOf(armKind, arm), unitOf(otherKind, other)];
+      // the pair are the line's only two, in reading order, and the two cases are the two of them
+      expect(all(L).map(cellName), s.description).toEqual([pa, pb]);
+      expect([p0, p1].sort(), s.description).toEqual([pa, pb].sort());
+      // the second shares a line with the target; the first lies on one of the box's lines, and the other runs through the target
       expect([inUnit(S, cellOf(p1)), inUnit(S, cellOf(target))], s.description).toEqual([true, true]);
-      expect(inUnit(A, cellOf(p0)) && [R, C].includes(A) && [R, C].includes(O) && A !== O, s.description).toBe(true);
-      expect(inUnit(O, cellOf(target)), s.description).toBe(true);
+      const inBox = all(18 + Number(box) - 1);
+      expect(A !== O && A < 18 && O < 18 && A < 9 !== O < 9 && inUnit(A, cellOf(p0)) && inUnit(O, cellOf(target)), s.description).toBe(true);
+      // the box's digits all lie in its two lines, some off the arm, all of those in the other line
+      expect(inBox.every((c) => inUnit(A, c) || inUnit(O, c)) && inBox.some((c) => !inUnit(A, c)), s.description).toBe(true);
       expect(s.eliminations, s.description).toEqual([{ cell: cellOf(target), digit }]);
       // the labels say the same houses
+      const [row, col] = A < 9 ? [A, O - 9] : [O, A - 9];
       expect(s.labels, s.description).toEqual({
-        primary: `box ${box}: its ${d}s all lie in row ${row} or column ${col}`,
-        secondary: `${lineKind} ${line}: its only ${d}s are ${p0} and ${p1}`
+        primary: `box ${box}: its ${d}s all lie in row ${row + 1} or column ${col + 1}`,
+        secondary: `${pa} and ${pb}: the only ${d}s in ${lineKind} ${line}`
       });
       lines.add(lineKind);
     }
