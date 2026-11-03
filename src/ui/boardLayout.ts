@@ -8,6 +8,7 @@ import { MARK } from '../content/hintPalette';
 import { frameMarks, markedCandidates, placedKeys, squareKeys } from '../content/hintMarks';
 import type { HintMarks } from '../content/hintMarks';
 import type { CellDigit, Step } from '../engine/steps';
+import { digitShown } from '../content/pencilLayout';
 
 export const SIZE = 100;
 export const M = 4; // outer margin
@@ -24,34 +25,8 @@ export const squareReachOf = (dir: { x: number; y: number }) => squareReach(dir,
 /** a square's reach at its corners, the most it reaches: what keeps off it keeps off that */
 export const SQUARE_RADIUS = squareReachOf({ x: Math.SQRT1_2, y: Math.SQRT1_2 });
 
-/**
- * Whether a cell shows a digit at its place on the 3×3 grid, which a hint's
- * heads, start dots and walk numbers keep off (src/content/hintGeometry.ts):
- * with auto candidates on (`auto`, the cell's candidates), or in a cell the
- * hint marks (`marks`, which stays on the 3×3 through the walk), its
- * candidates and the digits the hint marks; otherwise the player's own
- * marks as Grid.tsx renderMarks draws them: corner marks alone, or five or
- * more centre marks, at their places; a centre line, or corner marks round
- * the edge with a centre line, runs through the cell, so every place there
- * counts as taken
- */
-export function digitShown(
-  c: { value: number; corner: number; center: number },
-  digit: number,
-  auto: number | null,
-  marks?: { has(digit: number): boolean }
-): boolean {
-  if (c.value) return false;
-  const b = 1 << (digit - 1);
-  if (auto !== null || marks) return !!marks?.has(digit) || ((auto ?? c.corner | c.center) & b) !== 0;
-  if (c.corner && !c.center) return (c.corner & b) !== 0;
-  if (!c.corner && c.center) {
-    let n = 0;
-    for (let x = c.center; x; x &= x - 1) n++;
-    return n >= 5 ? (c.center & b) !== 0 : true;
-  }
-  return !!(c.corner || c.center);
-}
+/** whether a cell shows a digit at its place on the 3×3 grid: the pencil marks' own rule (src/content/pencilLayout.ts) */
+export { digitShown };
 
 /**
  * Where the app board draws its candidates' marks, and which digits it

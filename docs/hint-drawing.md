@@ -525,7 +525,15 @@ Every rule is numbered so a commit, a test or a review can cite it.
   the Learn diagrams' renderer, given the player's position, colours and
   the walk's frame shown, so it draws what the board draws in that frame
   but for the walk's numbers on the arrows, which it leaves out, always
-  light, and never prints the technique's name.
+  light, and never prints the technique's name. With auto candidates off
+  it is given the player's own pencil marks too, and lays them out by the
+  board's own rule (`src/content/pencilLayout.ts`, which `Grid.tsx`
+  renderMarks and the geometry's `digitShown` read): corner marks alone
+  on the 3×3 grid, centre marks a line up to four digits and the grid
+  from five, corner marks round the edge beside a centre line, and a
+  cell the hint marks on the grid with the hint's digits; its heads and
+  start dots keep off whatever a cell draws, as on the board. The Learn
+  diagrams are never given marks, so their drawing is unchanged.
 
 ## Truth: where it comes from
 

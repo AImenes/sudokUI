@@ -19,6 +19,7 @@ import type { BarStyle, HintMarks, Premise, Role, Tint } from './hintMarks';
 import { PALETTE, PALETTE_OPACITY } from './playerColours';
 import type { Frame } from '../engine/hintFrames';
 import { drawnLinks } from '../engine/hintFrames';
+import { pencilLayout, digitShown, PERIMETER, GRID_SIZE, EDGE_SIZE, LINE_SIZE, LINE_Y, longLineSize, LONG_LINE_Y } from './pencilLayout';
 
 interface TruthWords {
   isTrue: string;
@@ -48,8 +49,21 @@ export interface Example {
   afterHarder?: boolean;
 }
 
-/** a board to draw: an example, or a player's position with no hint (no step) */
-export type BoardPicture = Omit<Example, 'step'> & { step?: Step | null };
+/** a cell's own pencil marks, the two layers as masks */
+export interface PencilMarks {
+  corner: number;
+  center: number;
+}
+
+/**
+ * a board to draw: an example, or a player's position with no hint (no
+ * step); and, for a player's board with auto candidates off, the player's
+ * own marks, cell by cell, which are then drawn as the app's board draws
+ * them (src/content/pencilLayout.ts): `cands` is then each cell's digits,
+ * its marks and the digits a hint marks there, which a cell the hint marks
+ * draws on the 3×3 grid
+ */
+export type BoardPicture = Omit<Example, 'step'> & { step?: Step | null; marks?: readonly PencilMarks[] };
 
 /** what a picture of the board adds to an example's diagram (src/content/boardImage.ts) */
 export interface BoardOptions {
@@ -148,6 +162,52 @@ const TINT: Record<Tint, { fill: keyof HintPalette; ink: keyof HintPalette }> = 
 };
 const tintOf = (t: Tint) => ({ fill: P[TINT[t].fill] as string, ink: P[TINT[t].ink] as string });
 
+/** the board's units (a cell is 100, src/content/pencilLayout.ts) in the diagram's, for a place */
+const PLACE = S / 100;
+/** and for a size: the diagram's candidates are 13 where the board's are 23 (GRID_SIZE), a touch under its cell's scale */
+const TYPE = 13 / GRID_SIZE;
+const digitsIn = (mask: number) => [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => mask & (1 << (d - 1)));
+
+/**
+ * The player's own marks in a cell no hint marks, as the app's board draws
+ * them (src/ui/Grid.tsx renderMarks): corner marks alone on the 3×3 grid,
+ * a little bold; centre marks alone a line up to four digits, and from five
+ * on the 3×3 grid; both layers, the corner marks round the edge and the
+ * centre marks a line between them, smaller from five. The board's places
+ * and its sizes, scaled as the candidates are
+ */
+function pencilTexts(cell: number, m: PencilMarks): string[] {
+  const at = (d: number, cls: string) => `<text x="${f(candX({ cell, digit: d }))}" y="${f(candY({ cell, digit: d }) + 4.4)}" class="${cls}">${d}</text>`;
+  const line = (ds: number[], y: number, size?: number) =>
+    `<text x="${f(cellX(cell) + S / 2)}" y="${f(cellY(cell) + y * PLACE)}" class="cl"${size ? ` style="font-size:${f(size * TYPE)}px"` : ''}>${ds.join('')}</text>`;
+  const corner = digitsIn(m.corner);
+  const centre = digitsIn(m.center);
+  switch (pencilLayout(m.corner, m.center)) {
+    case 'grid':
+      return corner.map((d) => at(d, 'cc'));
+    case 'list':
+      return centre.map((d) => at(d, 'cd'));
+    case 'line':
+      return [line(centre, LINE_Y)];
+    case 'edge':
+      return [
+        ...corner
+          .slice(0, PERIMETER.length)
+          .map((d, i) => `<text x="${f(cellX(cell) + PERIMETER[i][0] * PLACE)}" y="${f(cellY(cell) + PERIMETER[i][1] * PLACE)}" class="ce">${d}</text>`),
+        centre.length <= 4 ? line(centre, LINE_Y) : line(centre, LONG_LINE_Y, longLineSize(centre.length))
+      ];
+    default:
+      return [];
+  }
+}
+
+/**
+ * The marks' type, only in a picture that draws them: a corner mark on the
+ * 3×3 grid a little bold, as the board has it; round the edge, and the
+ * centre line, at the board's sizes, scaled as the candidates are
+ */
+const PENCIL_CSS = `.cc{font-size:13px;font-weight:600;fill:#5d6577}.ce{font-size:${f(EDGE_SIZE * TYPE)}px;font-weight:600;fill:#5d6577}.cl{font-size:${f(LINE_SIZE * TYPE)}px;fill:#5d6577}`;
+
 /**
  * The example as an SVG document. `title` becomes the image's accessible
  * name, so it should say what the diagram shows. Given a frame, it draws
@@ -224,9 +284,18 @@ export function boardSvg(example: BoardPicture, title: string, opts: BoardOption
       : squares.has(`${cd.cell}:${cd.digit}`)
         ? squareReach({ x: Math.SQRT1_2, y: Math.SQRT1_2 }, MARK.oneOf * S, MARK.oneOfRadius * S)
         : LAYOUT.r;
+  // the player's own marks, where a picture of their board has them: a
+  // cell the hint marks, in full or in the frame shown, puts both layers
+  // and the hint's digits on the 3×3 grid, as the board does; elsewhere
+  // they are laid out as the board lays them out, and the hint's heads and
+  // dots keep off whatever the cell draws
+  const pencil = example.marks;
+  const promoted = (cell: number) => full.cands.has(cell) || (drawn.cands.get(cell)?.size ?? 0) > 0;
   const layout: Layout = {
     ...LAYOUT,
-    shown: (cd) => !Number(example.values[cd.cell]) && (example.cands[cd.cell] & (1 << (cd.digit - 1))) !== 0,
+    shown: pencil
+      ? (cd) => digitShown({ value: Number(example.values[cd.cell]), ...pencil[cd.cell] }, cd.digit, null, full.cands.get(cd.cell))
+      : (cd) => !Number(example.values[cd.cell]) && (example.cands[cd.cell] & (1 << (cd.digit - 1))) !== 0,
     solved,
     radiusOf,
     ...(squares.size
@@ -317,6 +386,11 @@ export function boardSvg(example: BoardPicture, title: string, opts: BoardOption
       texts.push(`<text x="${cellX(cell) + S / 2}" y="${cellY(cell) + S / 2 + 12}" class="${given[cell] ? 'giv' : 'ent'}"${fill}>${value}</text>`);
       continue;
     }
+    const own = pencil?.[cell];
+    if (own && !promoted(cell)) {
+      texts.push(...pencilTexts(cell, own));
+      continue;
+    }
     for (let digit = 1; digit <= 9; digit++) {
       if (!(example.cands[cell] & (1 << (digit - 1)))) continue;
       const cd = { cell, digit };
@@ -325,7 +399,8 @@ export function boardSvg(example: BoardPicture, title: string, opts: BoardOption
       const y = f(candY(cd));
       const ty = f(candY(cd) + 4.4);
       if (!kind) {
-        texts.push(`<text x="${x}" y="${ty}" class="cd">${digit}</text>`);
+        // a corner mark keeps the weight the board gives it on the 3×3 grid
+        texts.push(`<text x="${x}" y="${ty}" class="${own && own.corner & (1 << (digit - 1)) ? 'cc' : 'cd'}">${digit}</text>`);
         continue;
       }
       if (kind === 'member') {
@@ -490,7 +565,7 @@ export function boardSvg(example: BoardPicture, title: string, opts: BoardOption
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOARD_SIZE} ${height}" role="img" aria-label="${esc(title)}">
 <title>${esc(title)}</title>
-<style>text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-anchor:middle}.giv{font-size:34px;font-weight:700;fill:#1b2233}.ent{font-size:34px;font-weight:600;fill:#2f6fd0}.cd{font-size:13px;fill:#5d6577}.mk{font-size:12.5px;font-weight:700;fill:${P.onFill}}.rm{font-size:12.5px;font-weight:700;fill:${P.inRing}}.lab{font-size:12px;fill:#7a8294}${sets.tabs.some((t) => tints.has(t.set)) ? `.tab{font-size:${f(MARK.tabLetter * (MARK.tabLarge / MARK.tab) * S)}px;font-weight:700;fill:#ffffff}` : ''}.ko text{fill:#000!important;stroke:#000;stroke-width:max(.12em,2.4px);stroke-linejoin:round}${opts.footer ? '.ft{font-size:15px;font-weight:600;fill:#5d6577}' : ''}</style>
+<style>text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-anchor:middle}.giv{font-size:34px;font-weight:700;fill:#1b2233}.ent{font-size:34px;font-weight:600;fill:#2f6fd0}.cd{font-size:13px;fill:#5d6577}${pencil ? PENCIL_CSS : ''}.mk{font-size:12.5px;font-weight:700;fill:${P.onFill}}.rm{font-size:12.5px;font-weight:700;fill:${P.inRing}}.lab{font-size:12px;fill:#7a8294}${sets.tabs.some((t) => tints.has(t.set)) ? `.tab{font-size:${f(MARK.tabLetter * (MARK.tabLarge / MARK.tab) * S)}px;font-weight:700;fill:#ffffff}` : ''}.ko text{fill:#000!important;stroke:#000;stroke-width:max(.12em,2.4px);stroke-linejoin:round}${opts.footer ? '.ft{font-size:15px;font-weight:600;fill:#5d6577}' : ''}</style>
 <rect width="${BOARD_SIZE}" height="${height}" rx="8" fill="#f5f6fa"/>
 ${parts.join('\n')}
 </svg>

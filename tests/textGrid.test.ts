@@ -5,7 +5,7 @@
  * 81-character line with its candidates.
  */
 import { describe, it, expect } from 'vitest';
-import { formatPencilGrid, parsePencilGrid, puzzleStringOf, looksLikeGrid, shownCandidates } from '../src/content/textGrid';
+import { formatPencilGrid, parsePencilGrid, puzzleStringOf, looksLikeGrid, candidateLists } from '../src/content/textGrid';
 import type { MarkedCell } from '../src/content/textGrid';
 import { parseGrid, bit, digitsOf } from '../src/engine/board';
 import { EXAMPLES } from '../src/content/examples';
@@ -56,17 +56,22 @@ describe('the pencil-mark grid', () => {
     );
   });
 
-  it('shows what the board shows: auto candidates less the strikes, marks under the exhaustive contract, else every candidate', () => {
+  it('writes each list as the solver reads it: the engine’s candidates less the strikes, and marks declared complete', () => {
     const cells = fresh(EASY);
     const g = parseGrid(EASY)!;
     // r1c1 holds 45; the player marks 4 alone and strikes 5 in the auto view
     cells[0].center = bit(4);
     cells[0].excluded = bit(5);
     cells[1].corner = bit(7) | bit(8);
-    expect(runs(shownCandidates(cells, true, 'unknown')).slice(0, 3)).toEqual(['4', '4578', '']);
-    expect(runs(shownCandidates(cells, false, 'exhaustive')).slice(0, 3)).toEqual(['4', '78', '']);
-    expect(runs(shownCandidates(cells, false, 'open')).slice(0, 3)).toEqual(['45', '4578', '']);
-    expect(runs(shownCandidates(cells, false, 'unknown'))).toEqual(runs(Array.from(g.cands, (c, i) => (g.values[i] ? 0 : c))));
+    expect(runs(candidateLists(cells, true, 'unknown')).slice(0, 3)).toEqual(['4', '4578', '']);
+    expect(runs(candidateLists(cells, false, 'exhaustive')).slice(0, 3)).toEqual(['4', '78', '']);
+    // marks that are notes, or not yet declared, are no list: the engine's candidates, less an elimination the app applied (5 in r1c1)
+    expect(runs(candidateLists(cells, false, 'open')).slice(0, 3)).toEqual(['4', '4578', '']);
+    expect(runs(candidateLists(cells, false, 'unknown'))).toEqual(runs(Array.from(g.cands, (c, i) => (g.values[i] ? 0 : i === 0 ? bit(4) : c))));
+    // a complete list never holds a digit the placed digits rule out, and marks that leave nothing are no list
+    cells[1].corner = bit(3) | bit(7);
+    cells[3].center = bit(2) | bit(6);
+    expect(runs(candidateLists(cells, false, 'exhaustive')).slice(0, 4)).toEqual(['4', '7', '', '49']);
     // an empty cell with nothing left is a dot, so the grid keeps its shape
     cells[0].excluded = bit(4) | bit(5);
     expect(formatPencilGrid(cells, true, 'unknown').split('\n')[1]).toBe('| .      4578   3      | 49     2      147    | 6      5789   57     |');

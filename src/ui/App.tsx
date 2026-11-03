@@ -1154,8 +1154,9 @@ export default function App() {
         />
       )}
       {/* last among the dialogs, so it paints above the one that raised it
-          (the Settings dialog's toggle asks it too) */}
-      {contractPrompt && (
+          (the Settings dialog's toggle asks it too); Position as text's is
+          the Share dialog's own, whose answer copies the text */}
+      {contractPrompt && contractFor !== 'text' && (
         <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} asked={contractFor} />
       )}
       <UpdateBar />

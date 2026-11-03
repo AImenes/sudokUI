@@ -539,7 +539,7 @@ export function InfoDialog({
       <p className="dialog-note">
         <strong>{t('Hints follow your own play.')}</strong>{' '}
         {t(
-          'A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which, so the first time Hint or Scan meets your manual marks it asks once, and remembers for the rest of the puzzle. Check and Auto ask too, when your corner marks would change what they do.'
+          'A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which, so the first time Hint or Scan meets your manual marks it asks once, and remembers for the rest of the puzzle. Check and Auto ask too, when your corner marks would change what they do, and so does Position as text in the Share dialog, since the tools it goes into read every list as complete.'
         )}
       </p>
       <p className="dialog-note">

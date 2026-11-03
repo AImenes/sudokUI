@@ -34,25 +34,32 @@ export interface TextPosition {
 }
 
 /**
- * The candidates each empty cell shows, as the board shows them: the auto
- * candidates when they are on (the canonical set less the strikes), the
- * player's marks (corner and centre together) under the exhaustive
- * contract, and the canonical set for every other cell.
+ * Each empty cell's candidate list, as the solver reads the position
+ * (src/state/gameStore.ts contractGrid, which Hint and Scan reason from),
+ * since the tools a pencil-mark grid goes into (HoDoKu, SudokuWiki) read
+ * every cell's list as complete: the engine's candidates, which are the
+ * placed digits' leftovers less the cell's strikes (with auto candidates
+ * on, the player's; with them off, the eliminations the app applied and
+ * checked), and, once the marks are declared complete (the exhaustive
+ * contract, auto candidates off), a marked cell's corner and centre marks
+ * together, less any digit the placed digits rule out; marks that leave
+ * nothing are no list, and the cell keeps the engine's.
  */
-export function shownCandidates(cells: readonly MarkedCell[], autoCandidates: boolean, contract: MarkContract): number[] {
+export function candidateLists(cells: readonly MarkedCell[], autoCandidates: boolean, contract: MarkContract): number[] {
   const g = emptyGrid();
   for (let i = 0; i < 81; i++) if (cells[i].value) setValue(g, i, cells[i].value);
   return cells.map((c, i) => {
     if (c.value) return 0;
-    if (autoCandidates) return g.cands[i] & ~c.excluded;
-    const marks = c.corner | c.center;
-    return contract === 'exhaustive' && marks ? marks : g.cands[i];
+    const engine = g.cands[i] & ~c.excluded;
+    if (autoCandidates || contract !== 'exhaustive') return engine;
+    return engine & (c.corner | c.center) || engine;
   });
 }
 
 /**
  * The pencil-mark grid: nine rows of nine cells, a placed digit or the
- * cell's candidates in each, every column as wide as the longest cell,
+ * cell's candidate list (candidateLists) in each, every column as wide as
+ * the longest cell,
  * the boxes framed the way HoDoKu draws them:
  *
  *   .------------.------------.------------.
@@ -61,7 +68,7 @@ export function shownCandidates(cells: readonly MarkedCell[], autoCandidates: bo
  *   '------------'------------'------------'
  */
 export function formatPencilGrid(cells: readonly MarkedCell[], autoCandidates: boolean, contract: MarkContract): string {
-  const cands = shownCandidates(cells, autoCandidates, contract);
+  const cands = candidateLists(cells, autoCandidates, contract);
   const texts = cells.map((c, i) => (c.value ? String(c.value) : digitsOf(cands[i]).join('') || '.'));
   const width = Math.max(...texts.map((t) => t.length));
   const bar = '-'.repeat(3 * width + 4);
