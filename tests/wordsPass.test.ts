@@ -115,8 +115,14 @@ describe('the panel leaves out the name its title repeats (L3)', () => {
         const whole = describeStep(step);
         const shown = panelExplanation(step, titleOf(tech, lang));
         const at = `${lang} ${tech}: ${whole}`;
-        // every one opens with its name, which the panel leaves out, and nothing more
-        expect(shown, at).not.toBe(whole);
+        // one that opens with its name has it left out, and nothing more; one
+        // that batch 3 led with its argument instead (Empty Rectangle,
+        // Fireworks, Exocet, WXYZ-Wing) is shown whole, and never opens with
+        // the title
+        if (shown === whole) {
+          expect(whole.toLowerCase().startsWith(titleOf(tech, lang).toLowerCase()), at).toBe(false);
+          continue;
+        }
         const cut = whole.length - shown.length;
         expect(whole.slice(cut - 2, cut), at).toBe(': ');
         expect(whole.slice(cut).toLowerCase(), at).toBe(shown.toLowerCase());
