@@ -1299,7 +1299,7 @@ export function Grid() {
                     </text>
                   </React.Fragment>
                 ))
-              ) : (
+              ) : autoCandidates ? null /* every candidate struck: an empty cell, as the status says; the player's own marks stay hidden */ : (
                 renderMarks(cell, x, y, marks, hlDigit, frameHighlights, pairs.has(i), promoted.has(i))
               )}
             </g>

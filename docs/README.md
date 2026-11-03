@@ -59,6 +59,10 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
 ## The engine and the content
 
 - [architecture.md](architecture.md): how the app is put together.
+- [candidates-2026-11.md](candidates-2026-11.md): auto candidates and the
+  two mark layers: the owner's report and the hunt of November 2026, what
+  was fixed (undo, strikes, erase, Check, the chain trainer), Gather and the
+  one rule for where a list of candidates goes, and what was left.
 - [generator.md](generator.md): making and rating puzzles.
 - [technique-stats.md](technique-stats.md): the learning path from the
   player's own play.

@@ -10,7 +10,8 @@ import {
   contractGrid,
   hasManualMarks,
   markSlip,
-  stepMatchesSolution
+  stepMatchesSolution,
+  type ContractAsker
 } from '../state/gameStore';
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
@@ -493,48 +494,75 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
  * engine cannot answer itself. Shared by the Hint flow (as a dialog) and
  * Scan (inline); the answer holds for the rest of the game.
  */
-export function ContractChoices({ onAnswer }: { onAnswer: (c: 'exhaustive' | 'open') => void }) {
+/**
+ * The two answers, each in the words of what asked, since each says what
+ * that will then do: hints (and Scan, and the ring) reason from the marks or
+ * from every possibility; Check reads the corner marks as lists too, or
+ * only the centre marks (gameStore.ts, check); auto candidates keep the
+ * eliminations of corner lists too, or of the centre marks alone
+ * (candidateList).
+ */
+export function ContractChoices({ onAnswer, asked = 'hint' }: { onAnswer: (c: 'exhaustive' | 'open') => void; asked?: ContractAsker }) {
   const t = useT();
   return (
     <div className="level-list">
       <button className="level-btn" onClick={() => onAnswer('exhaustive')}>
         <strong>{t('They are my remaining candidates')}</strong>
         <span>
-          {t('You filled candidates and have been eliminating: a missing digit in a marked cell means you ruled it out. Hints continue from exactly where you are. (Corner or centre makes no difference.)')}
+          {asked === 'check'
+            ? t('You filled candidates and have been eliminating: a missing digit in a marked cell means you ruled it out. Check reads the corner and centre marks of a cell together as its list, and flags a list that has lost the true digit.')
+            : asked === 'auto'
+              ? t('You filled candidates and have been eliminating: a missing digit in a marked cell means you ruled it out. Auto candidates keep those eliminations: a cell’s centre marks, or its corner marks when it has no centre marks.')
+              : t('You filled candidates and have been eliminating: a missing digit in a marked cell means you ruled it out. Hints continue from exactly where you are. (Corner or centre makes no difference.)')}
         </span>
       </button>
       <button className="level-btn" onClick={() => onAnswer('open')}>
         <strong>{t('They are partial notes')}</strong>
         <span>
-          {t('Snyder-style or still filling: a missing digit means nothing yet. Hints reason from every remaining possibility instead.')}
+          {asked === 'check'
+            ? t('Snyder-style or still filling: Check passes over your corner marks, and reads only your centre marks as a cell’s list.')
+            : asked === 'auto'
+              ? t('Snyder-style or still filling: corner marks are notes, so Auto candidates keep only the eliminations in your centre marks.')
+              : t('Snyder-style or still filling: a missing digit means nothing yet. Hints reason from every remaining possibility instead.')}
         </span>
       </button>
     </div>
   );
 }
 
-/** Asked at most once per game, the first time Hint, or the ring around
- *  cells with two candidates (B), meets manual marks. */
+/** Asked at most once per game: the first time Hint, or the ring around
+ *  cells with two candidates (B), meets manual marks; Check and auto
+ *  candidates switched on, the first time the answer changes what they do. */
 export function ContractDialog({
   onAnswer,
   onClose,
-  forHighlight = false
+  asked = 'hint'
 }: {
   onAnswer: (c: 'exhaustive' | 'open') => void;
   onClose: () => void;
-  /** the ring asked, not a hint */
-  forHighlight?: boolean;
+  /** what asked: a hint, Check, auto candidates, or the ring */
+  asked?: ContractAsker;
 }) {
   const t = useT();
   return (
     <Modal
-      title={forHighlight ? t('How should the board read your pencil marks?') : t('How should hints read your pencil marks?')}
+      title={
+        asked === 'highlight'
+          ? t('How should the board read your pencil marks?')
+          : asked === 'check'
+            ? t('How should Check read your pencil marks?')
+            : asked === 'auto'
+              ? t('How should Auto candidates read your corner marks?')
+              : t('How should hints read your pencil marks?')
+      }
       onClose={onClose}
     >
       <p className="dialog-note">
-        {t('A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which. Your answer is remembered for the rest of this puzzle (Auto, or Fill on the whole board, answers it automatically).')}
+        {asked === 'auto'
+          ? t('A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which. Your answer is remembered for the rest of this puzzle.')
+          : t('A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which. Your answer is remembered for the rest of this puzzle (a whole-board Fill, or Auto switched off with its candidates kept as your marks, answers it automatically).')}
       </p>
-      <ContractChoices onAnswer={onAnswer} />
+      <ContractChoices onAnswer={onAnswer} asked={asked} />
     </Modal>
   );
 }

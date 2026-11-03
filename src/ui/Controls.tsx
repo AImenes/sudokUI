@@ -16,6 +16,9 @@ function eraseTitle(t: Translator, mode: EntryMode, auto: boolean): string {
       ? t('Erase corner marks in selected cells (Backspace) · W wipes everything')
       : t('Erase centre marks in selected cells (Backspace) · W wipes everything');
   }
+  // with auto candidates on, the marks the board shows are the candidates:
+  // Erase gives back the struck ones and leaves the player's hidden marks
+  if (auto) return t('Erase value, then restore struck candidates, then colours (Backspace) · W wipes everything');
   return t('Erase value, then marks, then colours (Backspace) · W wipes everything');
 }
 
@@ -30,8 +33,8 @@ function eraseTitle(t: Translator, mode: EntryMode, auto: boolean): string {
 const BUTTONS: { name: string; icon: string; text: string; assist?: true }[] = [
   { name: msg('Undo'), icon: '↩', text: msg('Takes back your last action.') },
   { name: msg('Redo'), icon: '↪', text: msg('Brings back what Undo took away.') },
-  { name: msg('Erase'), icon: '⌫', text: msg('Clears the selected cells: the digit first, then pencil marks, then colours.') },
-  { name: msg('Swap'), icon: '⇄', text: msg('Moves corner marks to the centre and centre marks to the corner. Notation only.') },
+  { name: msg('Erase'), icon: '⌫', text: msg('Clears the selected cells: the digit first, then pencil marks (with auto candidates on, the struck candidates come back instead), then colours.') },
+  { name: msg('Swap'), icon: '⇄', text: msg('Moves corner marks to the centre and centre marks to the corner, in the selected cells or the whole board. Held in Corner or Centre mode, it gathers those marks into that mode’s layer instead; Shift+S gathers in any mode, into the layer Fill uses. Notation only.') },
   { name: msg('Hint'), icon: '💡', text: msg('Names the technique for the next step. It shows the step itself only if you ask.'), assist: true },
   { name: msg('Check'), icon: '✓', text: msg('Marks wrong digits, and pencil marks that have lost the true digit.'), assist: true },
   { name: msg('Steps'), icon: '≡', text: msg('Lists every step of one complete solution. You can jump to any of them.'), assist: true },
@@ -42,6 +45,10 @@ const BUTTONS: { name: string; icon: string; text: string; assist?: true }[] = [
 ];
 
 const textOf = (name: string) => BUTTONS.find((b) => b.name === name)!.text;
+
+/** the Fill button's title while auto candidates are on: what a press says
+ *  (fillCandidates), true whatever the "Keep candidates" setting */
+const FILL_UNDER_AUTO_TITLE = msg('Auto candidates are on: every empty cell already shows its candidates, so there is nothing to fill.');
 
 const MODES: { id: EntryMode; label: string; key: string }[] = [
   { id: 'digit', label: msg('Digit'), key: 'Z' },
@@ -68,10 +75,13 @@ export function Controls({
   // however long it lasts: a slow tap in Centre mode must not put a corner
   // mark in the cell instead of the centre mark it was meant for.
   const keyHold = useRef<{ digit: number; timer: number; fired: boolean } | null>(null);
-  const lastKeyPointer = useRef(0);
+  // a key pressed by a pointer is handled by the pointer's own events,
+  // however long the press: the click the browser sends after it is not a
+  // second press (keyboard and assistive technology click with no pointer)
+  const keyPointer = useRef(false);
   const [heldKey, setHeldKey] = useState<number | null>(null);
   const pressKey = (d: number) => {
-    lastKeyPointer.current = Date.now();
+    keyPointer.current = true;
     if (keyHold.current) window.clearTimeout(keyHold.current.timer);
     const hold = { digit: d, timer: 0, fired: false };
     const g = useGame.getState();
@@ -114,6 +124,7 @@ export function Controls({
   const multiSelect = useGame((s) => s.multiSelect);
   const setMultiSelect = useGame((s) => s.setMultiSelect);
   const [help, setHelp] = useState(false);
+  const custom = useGame((s) => s.custom);
 
   // the first assist of a clean game asks first; after that, and for
   // anyone who has switched the question off, the buttons act at once
@@ -127,6 +138,44 @@ export function Controls({
     toggleAutoCandidates();
   };
 
+  // Swap held for a moment in Corner or Centre mode gathers the marks
+  // into that layer (Gather): the button says where they will go, the
+  // phone buzzes, and lifting on the button does it; sliding off cancels.
+  // In Digit or Colour mode a hold is a tap
+  const gatherMarks = useGame((s) => s.gatherMarks);
+  const swapHold = useRef<{ timer: number; layer: MarkLayer | null; armed: boolean } | null>(null);
+  const swapPointer = useRef(false);
+  const [gatherArmed, setGatherArmed] = useState<MarkLayer | null>(null);
+  const pressSwap = () => {
+    swapPointer.current = true;
+    if (swapHold.current) window.clearTimeout(swapHold.current.timer);
+    const g = useGame.getState();
+    const m = g.tempMode ?? g.mode;
+    const hold = { timer: 0, layer: m === 'corner' || m === 'center' ? m : null, armed: false };
+    if (hold.layer)
+      hold.timer = window.setTimeout(() => {
+        hold.armed = true;
+        setGatherArmed(hold.layer);
+        navigator.vibrate?.(12);
+      }, 500);
+    swapHold.current = hold;
+  };
+  const releaseSwap = (on: boolean) => {
+    const hold = swapHold.current;
+    if (!hold) return;
+    swapHold.current = null;
+    window.clearTimeout(hold.timer);
+    setGatherArmed(null);
+    if (!on) return;
+    if (hold.armed && hold.layer) gatherMarks(hold.layer);
+    else convertMarks();
+  };
+  /** the pointer is over the button (a touch stays the button's while it lasts, so the place is what tells) */
+  const onButton = (e: React.PointerEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  };
+
   const chooseAutoOff = (layer: MarkLayer | 'none') => {
     useSettings.getState().set(
       layer === 'none'
@@ -134,7 +183,8 @@ export function Controls({
         : { autoOffMaterialize: true, materializeLayer: layer, autoOffPromptDone: true }
     );
     setAutoOffPrompt(false);
-    toggleAutoCandidates();
+    // the layer just chosen, whichever mode is active
+    toggleAutoCandidates(layer === 'none' ? undefined : layer);
   };
 
   const startChain = useGame((s) => s.startChain);
@@ -160,6 +210,13 @@ export function Controls({
   };
 
   const t = useT();
+  // where Fill writes (listLayer): the mode's layer, or the one set in
+  // Settings; and so does switching Auto off, when it keeps the candidates
+  // (the first time, it asks)
+  const materializeLayer = useSettings((s) => s.materializeLayer);
+  const fillLayer = effectiveMode === 'corner' || effectiveMode === 'center' ? effectiveMode : materializeLayer;
+  const keepCandidates = useSettings((s) => s.autoOffMaterialize);
+  const autoOffPromptDone = useSettings((s) => s.autoOffPromptDone);
   return (
     <div className="controls">
       <div className="mode-row">
@@ -214,11 +271,12 @@ export function Controls({
             onPointerLeave={() => releaseKey(null)}
             onPointerCancel={() => releaseKey(null)}
             onContextMenu={(e) => e.preventDefault()}
-            onClick={() => {
-              // a pointer was handled above; this is the keyboard, or
-              // assistive technology, pressing the button
-              if (Date.now() - lastKeyPointer.current < 1000) return;
-              input(d);
+            onClick={(e) => {
+              // a pointer press was handled above, however long it lasted;
+              // the keyboard (detail 0) and assistive technology enter here
+              const fromPointer = keyPointer.current && e.detail !== 0;
+              keyPointer.current = false;
+              if (!fromPointer) input(d);
             }}
           >
             {effectiveMode === 'color' ? '' : d}
@@ -231,16 +289,39 @@ export function Controls({
         <button onClick={undo} disabled={!canUndo} title={t('Undo (Ctrl+Z)')}>↩ {t('Undo')}</button>
         <button onClick={redo} disabled={!canRedo} title={t('Redo (Ctrl+Y)')}>↪ {t('Redo')}</button>
         <button onClick={erase} title={eraseTitle(t, effectiveMode, autoCandidates)}>⌫ {t('Erase')}</button>
+        {/* a tap swaps; held in Corner or Centre mode it arms Gather,
+            shows where the marks will go, and lifting on the button does
+            it (sliding off cancels) */}
         <button
-          onClick={convertMarks}
-          title={t('Swap corner and centre marks (S). Pure notation, never counts as help')}
+          className={`swap-btn${gatherArmed ? ' gather-armed' : ''}`}
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            pressSwap();
+          }}
+          onPointerMove={(e) => {
+            if (swapHold.current && !onButton(e)) releaseSwap(false);
+          }}
+          onPointerUp={(e) => releaseSwap(onButton(e))}
+          onPointerLeave={() => releaseSwap(false)}
+          onPointerCancel={() => releaseSwap(false)}
+          onContextMenu={(e) => e.preventDefault()}
+          onClick={(e) => {
+            // as the number keys: a pointer press was handled above
+            const fromPointer = swapPointer.current && e.detail !== 0;
+            swapPointer.current = false;
+            if (!fromPointer) convertMarks();
+          }}
+          title={t('Swap corner and centre marks (S), in the selected cells or the whole board. Held in Corner or Centre mode it gathers those marks into that mode’s layer; Shift+S gathers into the layer Fill uses. Pure notation, never counts as help')}
         >
-          ⇄ {t('Swap')}
+          {gatherArmed ? t(gatherArmed === 'corner' ? '→ Corner' : '→ Centre') : `⇄ ${t('Swap')}`}
         </button>
       </div>
 
       {/* one group, one caption: everything inside counts as help, and
-          the solve is no longer unassisted the moment any of it is used */}
+          the solve is no longer unassisted the moment any of it is used.
+          Not while a puzzle is typed in: there is no game to help with,
+          and the one Cancel brings back must come back as it was */}
+      {!custom && (
       <div className="assist-zone">
         <div className="row-caption zone-head">
           <span>
@@ -295,9 +376,15 @@ export function Controls({
             className={autoCandidates ? 'toggled' : ''}
             onClick={autoCandidates ? onAutoToggle : guarded('Auto candidates', onAutoToggle)}
             title={t(
-              autoCandidates
-                ? 'Turn off. Where the candidates go is configurable in Settings, and Ctrl+Z reverts'
-                : 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
+              !autoCandidates
+                ? 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
+                : !autoOffPromptDone
+                  ? 'Turn off. The first time, you choose whether the candidates stay as your marks, and Ctrl+Z reverts'
+                  : !keepCandidates
+                    ? 'Turn off. Nothing is written into your marks, since Settings is set not to keep the candidates, and Ctrl+Z reverts'
+                    : fillLayer === 'corner'
+                      ? 'Turn off. The candidates are written into your corner marks, and Ctrl+Z reverts'
+                      : 'Turn off. The candidates are written into your centre marks, and Ctrl+Z reverts'
             )}
           >
             <span className="btn-icon" aria-hidden="true">⌗</span><span>{t('Auto candidates')}</span>
@@ -305,15 +392,18 @@ export function Controls({
           <button
             onClick={guarded('Fill candidates', fillCandidates)}
             title={t(
-              effectiveMode === 'corner'
-                ? 'Fill corner marks with all candidates. With empty cells selected, only those are filled'
-                : 'Fill centre marks with all candidates. With empty cells selected, only those are filled'
+              autoCandidates
+                ? FILL_UNDER_AUTO_TITLE
+                : fillLayer === 'corner'
+                  ? 'Fill corner marks with all candidates. With empty cells selected, only those are filled'
+                  : 'Fill centre marks with all candidates. With empty cells selected, only those are filled'
             )}
           >
             <span className="btn-icon" aria-hidden="true">✎</span><span>{t('Fill candidates')}</span>
           </button>
         </div>
       </div>
+      )}
 
       {pending && (
         <Modal title={t('Use {name}?', { name: t(pending) })} onClose={() => askAssist(null)}>
@@ -356,7 +446,7 @@ export function Controls({
         <Modal title={t('Keep your candidates?')} onClose={() => setAutoOffPrompt(false)}>
           <p className="dialog-note">
             {t(
-              'When Auto is switched off, the candidates it was showing can stay on the board as your own pencil marks, so you continue exactly where Auto left off. Your choice becomes the default. Change it anytime in Settings.'
+              'When Auto is switched off, the candidates it was showing can stay on the board as your own pencil marks, so you continue exactly where Auto left off. Your choice is saved in Settings as “Keep candidates when Auto is switched off” and, for a layer, as “Candidates go in”, the layer Digit and Colour mode use (Corner and Centre mode use their own). You can change both there anytime.'
             )}
           </p>
           <div className="level-list">
