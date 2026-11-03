@@ -1246,7 +1246,7 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
         </div>
         {showPosition && notesLeftOut && (
           <p className="dialog-note" role="status">
-            {t('Your pencil marks are notes, so the text lists every candidate still open in each empty cell instead.')}
+            {t('You said your pencil marks are partial notes, so the text leaves them out and lists every candidate still open in each empty cell.')}
           </p>
         )}
         {!hint && (

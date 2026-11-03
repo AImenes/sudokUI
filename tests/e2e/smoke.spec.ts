@@ -2027,7 +2027,7 @@ test.describe('positions as text', () => {
     await expect(question).toBeHidden();
     await expect(share.getByRole('button', { name: /Copied/ })).toBeVisible();
     expect(await copied(page)).toBe(formatPencilGrid(cells, false, 'open'));
-    await expect(share.getByRole('status')).toHaveText('Your pencil marks are notes, so the text lists every candidate still open in each empty cell instead.');
+    await expect(share.getByRole('status')).toHaveText('You said your pencil marks are partial notes, so the text leaves them out and lists every candidate still open in each empty cell.');
     // remembered for the puzzle: the text asks no more, nor does Hint
     await page.evaluate(() => ((window as any).__copied = ''));
     await page.keyboard.press('Escape');

@@ -1808,7 +1808,14 @@ export const useGame = create<GameStore>()(
 
       positionText: () => {
         const s = get();
-        if (!s.autoCandidates && s.markContract === 'unknown' && hasManualMarks(s.cells)) {
+        // the question only where the answer changes the text: marks that
+        // read as lists the same either way need no answer
+        if (
+          !s.autoCandidates &&
+          s.markContract === 'unknown' &&
+          hasManualMarks(s.cells) &&
+          formatPencilGrid(s.cells, false, 'exhaustive') !== formatPencilGrid(s.cells, false, 'open')
+        ) {
           set({ contractPrompt: true, contractFor: 'text' });
           return null;
         }

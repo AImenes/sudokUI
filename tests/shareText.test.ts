@@ -67,6 +67,16 @@ describe('Position as text and the mark question', () => {
     expect(g().cells[R1C2].center).toBe(bits(7, 8));
   });
 
+  it('asks nothing when either answer writes the same text: marks that are already the whole list', () => {
+    // r1c1's whole list is 4 5: marks that say the same as the open candidates
+    useGame.setState({ cells: g().cells.map((c, i) => (i === R1C2 || i === R2C2 ? { ...c, corner: 0, center: 0 } : c)) });
+    mark(R1C1, { center: bits(4, 5) });
+    const text = g().positionText();
+    expect(text).not.toBeNull();
+    expect(g().contractPrompt).toBe(false);
+    expect(g().markContract).toBe('unknown');
+  });
+
   it('"my remaining candidates" writes the player’s lists, as the solver reads them, and is remembered for the puzzle', () => {
     g().positionText();
     g().answerContract('exhaustive');
