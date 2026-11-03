@@ -175,7 +175,10 @@ function drawingOf(step: Step, values: string, cands: ArrayLike<number>): Drawin
       cands: perCandidate(m.cands),
       inside: perCandidate(m.inside),
       values: [...m.values].sort((a, b) => a[0] - b[0]),
-      bands: m.bands.map((b): [number, string] => [b.unit, b.role]).sort((a, b) => a[0] - b[0] || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0)),
+      // a band cut to a box (an Exocet's mini-line) keeps the box as well
+      bands: m.bands
+        .map((b): (number | string)[] => (b.within === undefined ? [b.unit, b.role] : [b.unit, b.role, b.within]))
+        .sort((a, b) => (a[0] as number) - (b[0] as number) || (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0)),
       refuted: m.refuted,
       ...(m.sets.length ? { sets: m.sets.map((x): (number | string)[] => (x.tint ? [x.set, x.style, x.tint] : [x.set, x.style])) } : {})
     })),

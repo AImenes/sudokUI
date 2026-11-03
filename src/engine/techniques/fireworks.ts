@@ -1,6 +1,6 @@
 import { Grid, UNITS, bit, digitsOf, popcount, boxOf, rowOf, colOf, cellName } from '../board';
 import { Step, CellDigit } from '../steps';
-import { tr } from '../text';
+import { tr, listAnd, unitName } from '../text';
 
 /**
  * Fireworks (sudokuwiki.org/Fireworks), the triple form.
@@ -18,6 +18,12 @@ import { tr } from '../text';
  * Three such digits on the SAME three cells form a locked set: each needs
  * one of the three cells, so the cells hold exactly those digits — every
  * other candidate in A, B, C is eliminated.
+ *
+ * The hint (docs/hint-readability-2026-11.md, H1, M4 and L2) draws the row
+ * and the column as dashed bands that cross at A, the wings' digits gold
+ * in them and A's blue, and walks it line by line: outside the box, the
+ * row has the digits only in B, then the column only in C, then why a
+ * digit in neither wing is in A.
  */
 export function findFireworks(g: Grid): Step | null {
   for (let b = 0; b < 9; b++) {
@@ -56,19 +62,65 @@ export function findFireworks(g: Grid): Step | null {
             for (const d of digitsOf(g.cands[x] & ~dMask)) elims.push({ cell: x, digit: d });
           }
           if (!elims.length) continue;
-          return {
-            tech: 'FIREWORKS',
-            placements: [],
-            eliminations: elims,
-            primary: cells.flatMap((cell) =>
-              digitsOf(g.cands[cell] & dMask).map((digit) => ({ cell, digit }))
-            ),
-            labels: { primary: tr`the cross and its two wings: the only cells ${digitsOf(dMask).join('/')} can land on` },
-            description: tr`Fireworks: digits ${digitsOf(dMask).join('/')} each must land on one of ${cellName(A)} (cross), ${cellName(B)} (row wing) or ${cellName(C)} (column wing), locking those three cells, so all other candidates there are removed.`
-          };
+          return fireworksStep(g, b, A, B, C, dMask, elims);
         }
       }
     }
   }
   return null;
+}
+
+/**
+ * What a wing's line has outside the box: the digits it holds there only
+ * in the wing, and the ones it has not at all
+ */
+function wingText(g: Grid, box: string, line: string, wing: number, digits: number[]): string {
+  const name = cellName(wing);
+  const has = digits.filter((d) => g.cands[wing] & bit(d));
+  const lacks = digits.filter((d) => !(g.cands[wing] & bit(d)));
+  if (!lacks.length) return tr`Outside ${box}, ${line} has ${listAnd(has)} only in ${name}.`;
+  if (lacks.length === 1) return tr`Outside ${box}, ${line} has ${listAnd(has)} only in ${name}, and no ${lacks[0]}.`;
+  if (has.length) return tr`Outside ${box}, ${line} has ${has[0]} only in ${name}, and no ${lacks[0]} or ${lacks[1]}.`;
+  return tr`Outside ${box}, ${line} has none of ${listAnd(lacks)}.`;
+}
+
+/**
+ * The step: A where row r meets column c in box b, B the row's wing and C
+ * the column's, outside the box, and the three digits they lock. The wings
+ * are gold in their dashed line, A blue where the lines cross; the Copy
+ * step line names the three cells' digits as one group, as it always did
+ * (src/content/eureka.ts)
+ */
+function fireworksStep(g: Grid, b: number, A: number, B: number, C: number, dMask: number, elims: CellDigit[]): Step {
+  const where = (cell: number) => digitsOf(g.cands[cell] & dMask).map((digit) => ({ cell, digit }));
+  const digits = digitsOf(dMask);
+  const [d1, d2, d3] = digits;
+  const all = listAnd(digits);
+  const [nA, nB, nC] = [A, B, C].map(cellName);
+  const [r, c] = [rowOf(A), colOf(A)];
+  const [row, col, box] = [unitName(r), unitName(9 + c), unitName(18 + b)];
+  return {
+    tech: 'FIREWORKS',
+    placements: [],
+    eliminations: elims,
+    primary: where(A),
+    secondary: [...where(B), ...where(C)],
+    units: [
+      { unit: r, role: 'secondary' },
+      { unit: 9 + c, role: 'secondary' }
+    ],
+    labels: {
+      primary: tr`the cross, where ${row} meets ${col}: whichever of ${all} is in neither wing is here`,
+      secondary: tr`the wings: outside ${box}, each is the only cell of its row or column that can be ${d1}, ${d2} or ${d3}`
+    },
+    walk: {
+      frames: [
+        { text: wingText(g, box, row, B, digits), show: ['secondary'], cells: [B] },
+        { text: wingText(g, box, col, C, digits), show: ['secondary'], cells: [C] },
+        { text: tr`If one of ${all} is in neither ${nB} nor ${nC}, ${row} and ${col} both have it in ${box}, which holds only one: so it is in ${nA}, where they cross.`, show: ['primary'], cells: [A] }
+      ],
+      lead: tr`Each of ${all} must be in one of ${listAnd([A, B, C].sort((x, y) => x - y).map(cellName))}, so these three cells hold only ${all}.`
+    },
+    description: tr`Outside ${box}, only ${nB} in ${row} and only ${nC} in ${col} can be ${d1}, ${d2} or ${d3}. So each of the three is in ${nB}, in ${nC} or in ${nA}, where the row and column cross, and these three cells hold nothing else.`
+  };
 }

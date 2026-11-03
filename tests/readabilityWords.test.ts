@@ -232,8 +232,8 @@ describe('the explanation names what the step removes or places (M21)', () => {
     expect(shown('ALIGNED_PAIR_EXCLUSION').endsWith(' leaves no place for the removed candidate. Here, 8 is removed from r8c4.')).toBe(true);
     expect(shown('DIGIT_FORCING_CHAIN').endsWith(' the forced singles agree on the same conclusions. Here, 3 and 6 are removed from r1c1.')).toBe(true);
     expect(shown('AIC').endsWith(' so candidates conflicting with both are removed. Here, 8 is removed from r1c9.')).toBe(true);
-    expect(shown('EXOCET').endsWith(' so the targets keep only base candidates. Here, 8 is removed from r8c5.')).toBe(true);
-    expect(shown('FIREWORKS').endsWith(' so all other candidates there are removed. Here, 5 and 6 are removed from r2c6.')).toBe(true);
+    expect(shown('EXOCET').endsWith(" So these targets hold the base's two digits and nothing else. Here, 8 is removed from r8c5.")).toBe(true);
+    expect(shown('FIREWORKS').endsWith(' and these three cells hold nothing else. Here, 5 and 6 are removed from r2c6.')).toBe(true);
   });
 
   it('leaves alone, of the stored examples, exactly the sentences that name every candidate by its cell and digit', () => {
@@ -315,8 +315,8 @@ describe('digits are never run together into a number (L1)', () => {
     expect(d('XY_WING')).toContain('pivot r7c7 (7/9) with pincers r7c6 (6/7) and r8c9 (6/9)');
     expect(d('W_WING')).toContain('both hold 4/6;');
     expect(d('HIDDEN_RECTANGLE')).toContain('holds only 3/5,');
-    expect(d('EXOCET')).toContain('(2/5/6)');
     // phase 6 writes them as a player says them (L1)
+    expect(d('EXOCET')).toContain('hold two different digits of 2, 5 and 6');
     expect(d('SUE_DE_COQ')).toContain('hold only 2, 4, 6, 7 and 8');
     expect(d('WXYZ_WING')).toContain('(4/9)');
     expect(d('WXYZ_WING')).toContain('hold 1/4/7/9 between them');

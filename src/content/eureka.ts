@@ -334,10 +334,10 @@ export function hodokuLine(step: Step): string {
  * was, not from the colours the hint draws: the readability pass moved a
  * key digit, a corner's would-be candidates and the roof's extras between
  * roles for the drawing, and the forum line stays the one players paste.
- * Likewise Chute Remote Pair's (the pair, then its digit in the mini-line)
- * and Sue de Coq's (the shared cells, then the two bivalue cells), whose
- * hints phase 6 coloured by what the argument uses (null for any other
- * step)
+ * Likewise Chute Remote Pair's (the pair, then its digit in the mini-line),
+ * Sue de Coq's (the shared cells, then the two bivalue cells) and
+ * Fireworks' (the three cells as one group), whose hints phase 6 coloured
+ * by what the argument uses (null for any other step)
  */
 function rectangleGroups(step: Step): CellDigit[][] | null {
   const primary = step.primary ?? [];
@@ -373,6 +373,10 @@ function rectangleGroups(step: Step): CellDigit[][] | null {
       // the pair, then the pair digit in the mini-line, which the hint no
       // longer draws (it draws the third box's missing digit instead)
       return [primary, step.copyOnly ?? []];
+    case 'FIREWORKS':
+      // the three cells with the digits they lock, as one group, as before
+      // phase 6 drew the wings gold and the cross blue
+      return [[...primary, ...secondary]];
     case 'SUE_DE_COQ': {
       // the cells where the line meets the box with every digit they hold,
       // then the line's and the box's bivalue cells, as before the hint

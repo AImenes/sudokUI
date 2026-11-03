@@ -150,6 +150,8 @@ export interface MarkOptions {
   sets?: number[];
   /** the cells a pattern's walk frame draws its roles and their bands in (Frame.cells); every cell when absent */
   cells?: Set<number>;
+  /** the digits a pattern's walk frame draws its roles in (Frame.digits); every digit when absent */
+  digits?: Set<number>;
 }
 
 const has = (list: CellDigit[] | undefined, cd: CellDigit) => !!list?.some((o) => o.cell === cd.cell && o.digit === cd.digit);
@@ -365,10 +367,14 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   const values = new Map<number, CandMark>();
   const show = opts.show ?? (() => true);
   // a pattern walked cell by cell draws its roles only in the cells its
-  // walk has named so far (Step.walk)
-  const named = (cell: number) => !opts.cells || opts.cells.has(cell);
+  // walk has named so far, and one walked a digit a frame only in that
+  // frame's digits (Step.walk); its bands go by the cells alone
+  const inCells = (cell: number) => !opts.cells || opts.cells.has(cell);
+  const named = (cd: CellDigit) => inCells(cd.cell) && (!opts.digits || opts.digits.has(cd.digit));
   const roleIn = (u: UnitBand) =>
-    ((u.role === 'primary' ? step.primary : u.role === 'secondary' ? step.secondary : step.fins) ?? []).filter((cd) => UNITS[u.unit].includes(cd.cell));
+    ((u.role === 'primary' ? step.primary : u.role === 'secondary' ? step.secondary : step.fins) ?? []).filter(
+      (cd) => UNITS[u.unit].includes(cd.cell) && (u.within === undefined || UNITS[u.within].includes(cd.cell))
+    );
   // a walk frame draws a band with its role: a house the pattern lives in
   // from the frame that shows the pattern, a house that loses from the frame
   // that shows what acts on it, a finned fish's fins' box from the frame
@@ -377,7 +383,7 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
   // band that is the whole drawing, a forcing step's broken house from the
   // frame that reaches it: src/engine/hintFrames.ts)
   const partOf = (u: UnitBand): Part => (u.role === 'fin' ? 'finBox' : u.role);
-  const bands = (step.units ?? []).filter((u) => show('units') || (opts.walking && show(partOf(u)) && roleIn(u).every((cd) => named(cd.cell))));
+  const bands = (step.units ?? []).filter((u) => show('units') || (opts.walking && show(partOf(u)) && roleIn(u).every((cd) => inCells(cd.cell))));
   const links = opts.links ?? step.links ?? [];
   const mark = (cd: CellDigit, kind: CandMark) => {
     if (opts.solved(cd.cell)) {
@@ -435,12 +441,12 @@ export function hintMarks(step: Step, opts: MarkOptions): HintMarks {
     // a pattern's candidate that is an exception too (the digit Chute Remote
     // Pair's pair cells lose, one of them true) likewise turns purple with
     // the frame that shows the exception
-    if (show('secondary')) for (const cd of step.secondary ?? []) if (named(cd.cell)) mark(cd, 'secondary');
-    if (show('fins') && !step.links?.length) for (const cd of step.fins ?? []) if (has(step.primary, cd) && named(cd.cell)) mark(cd, 'fin');
-    if (show('primary')) for (const cd of step.primary ?? []) if (named(cd.cell)) mark(cd, 'primary');
+    if (show('secondary')) for (const cd of step.secondary ?? []) if (named(cd)) mark(cd, 'secondary');
+    if (show('fins') && !step.links?.length) for (const cd of step.fins ?? []) if (has(step.primary, cd) && named(cd)) mark(cd, 'fin');
+    if (show('primary')) for (const cd of step.primary ?? []) if (named(cd)) mark(cd, 'primary');
     // every chain node gets a mark, so arrows root on one
     if (!truth) for (const l of links) for (const cd of [...l.from, ...l.to]) node(cd);
-    if (show('fins')) for (const cd of step.fins ?? []) if (named(cd.cell)) mark(cd, 'fin');
+    if (show('fins')) for (const cd of step.fins ?? []) if (named(cd)) mark(cd, 'fin');
   }
   if (show('conclusion')) {
     if (opts.walking) {
@@ -509,7 +515,8 @@ export function frameMarks(step: Step, frame: Frame | null, solved: (cell: numbe
     show: frame ? (part) => frame.show.has(part) : undefined,
     walking: !!frame,
     sets: frame?.sets,
-    cells: frame?.cells
+    cells: frame?.cells,
+    digits: frame?.digits
   });
 }
 

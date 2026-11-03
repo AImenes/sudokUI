@@ -241,13 +241,17 @@ export function boardSvg(example: BoardPicture, title: string, opts: BoardOption
   // through, dotted for a finned fish's fins' box, under everything else;
   // the dots' spacing grows with their width (LINE), so dot and gap keep
   // the board's proportion (src/ui/Grid.tsx)
-  for (const { unit, role } of drawn.bands) {
-    const r =
-      unit < 9
-        ? { x: L, y: L + unit * S, w: 9 * S, h: S }
-        : unit < 18
-          ? { x: L + (unit - 9) * S, y: L, w: S, h: 9 * S }
-          : { x: L + ((unit - 18) % 3) * 3 * S, y: L + Math.floor((unit - 18) / 3) * 3 * S, w: 3 * S, h: 3 * S };
+  const houseRect = (unit: number) =>
+    unit < 9
+      ? { x: L, y: L + unit * S, w: 9 * S, h: S }
+      : unit < 18
+        ? { x: L + (unit - 9) * S, y: L, w: S, h: 9 * S }
+        : { x: L + ((unit - 18) % 3) * 3 * S, y: L + Math.floor((unit - 18) / 3) * 3 * S, w: 3 * S, h: 3 * S };
+  for (const { unit, role, within } of drawn.bands) {
+    // a line's band cut to a box shades where they meet (an Exocet's mini-line)
+    const [line, box] = [houseRect(unit), within === undefined ? houseRect(unit) : houseRect(within)];
+    const [x, y] = [Math.max(line.x, box.x), Math.max(line.y, box.y)];
+    const r = { x, y, w: Math.min(line.x + line.w, box.x + box.w) - x, h: Math.min(line.y + line.h, box.y + box.h) - y };
     const { fill, ink } = fillOf(P, role);
     const k = S / 100;
     const inset = role === 'fin' ? MARK.finInset * S : 3.5 * k;

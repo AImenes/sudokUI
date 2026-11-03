@@ -56,6 +56,11 @@ export interface Frame {
    * where its finder walks it cell by cell (Step.walk); absent, every cell
    */
   cells?: Set<number>;
+  /**
+   * the digits a pattern's walk frame draws its roles in, where its finder
+   * walks it a digit a frame (Step.walk); absent, every digit
+   */
+  digits?: Set<number>;
 }
 
 /**
@@ -895,7 +900,7 @@ export function walkFrames(step: Step): Frame[] {
     for (const f of step.walk.frames) {
       for (const part of f.show) shown.add(part);
       if (f.cells) cells = new Set([...(cells ?? []), ...f.cells]);
-      frames.push({ text: f.text, links: 0, show: new Set(shown), ...(cells && { cells: new Set(cells) }) });
+      frames.push({ text: f.text, links: 0, show: new Set(shown), ...(cells && { cells: new Set(cells) }), ...(f.digits && { digits: new Set(f.digits) }) });
     }
     for (const part of ['primary', 'secondary', 'fins', 'conclusion'] as const) shown.add(part);
     if (finBand) shown.add('finBox');

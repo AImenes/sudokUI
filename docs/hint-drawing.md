@@ -1086,6 +1086,21 @@ the values above are its final ones.
   needed a group short of its box's digits (which checkSets refuses) at 206 of the 4,227 finds along the 336
   practice paths, where every sentence is true in English, Norwegian and Spanish and the Copy step line is the one
   it always was (tests/erWalks.test.ts, ER_SCAN=all; tests/eureka.test.ts).
+  Batch 3's Fireworks and Exocet (H1, M4, L2 and L3 for them): Fireworks
+  bands its row and column dashed, crossing at the cross cell, its wings
+  gold and its cross blue, and walks outside the box the row's wing, the
+  column's wing, then why a digit in neither wing is in the cross; Exocet
+  bands its base's mini-line (a line's band cut to a box, `within`) and
+  its targets' two lines dashed, and walks the base, the targets' lines,
+  then each base digit in a frame of its own that draws that digit alone
+  (`Step.walk` frames' `digits`), saying how the targets' boxes and lines
+  settle it where the board does and otherwise only what the proof
+  counted, the ways the board leaves to place all nine of the digit; both
+  descriptions lead with the argument, not the name, their legends say
+  exactly what each colour is, every sentence held true at all 1,949 of
+  their finds on the 336 practice paths in three languages
+  (tests/fireworksExocetWalks.test.ts, FIREWORKS_EXOCET_SCAN=all), and
+  their Copy step lines are unchanged (tests/eureka.test.ts).
 - [ ] Phase 7: polish
 
 Branch `claude/hint-drawings`. Research behind this spec (HoDoKu's source

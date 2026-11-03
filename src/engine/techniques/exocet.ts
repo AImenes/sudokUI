@@ -1,7 +1,7 @@
-import { Grid, bit, digitsOf, popcount, rowOf, colOf, cellName, cellNames } from '../board';
+import { Grid, UNITS, bit, boxOf, digitsOf, popcount, rowOf, colOf, cellName, cellNames } from '../board';
 import { Step, CellDigit } from '../steps';
 import { digitTemplates } from './templates';
-import { tr } from '../text';
+import { tr, listAnd, unitName } from '../text';
 
 /**
  * Exocet (sudokuwiki.org/Exocet), with a per-position PROOF instead of
@@ -27,6 +27,13 @@ import { tr } from '../text';
  *      value, so it falls from both base cells.
  * (Mirror-cell and cross-line eliminations from the S-cell theory are
  * deliberately not implemented — they carry no per-position proof here.)
+ *
+ * The hint (docs/hint-readability-2026-11.md, H1 and M4) bands the base's
+ * mini-line and the targets' two lines, and walks it a base digit a frame,
+ * claiming no more than the board shows: where the digit's places in the
+ * targets' two boxes and lines already force it into a target (or keep it
+ * out of the base), it says so; elsewhere it gives what the proof counted,
+ * the ways the board leaves to place all nine of the digit.
  */
 
 export interface ProvenExocet {
@@ -146,24 +153,114 @@ export function findExocet(g: Grid): Step | null {
       }
     }
     if (!elims.length) continue;
-    return {
-      tech: 'EXOCET',
-      placements: [],
-      eliminations: elims,
-      primary: base.flatMap((cell) =>
-        digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))
-      ),
-      secondary: targets.flatMap((cell) =>
-        digitsOf(g.cands[cell] & S).map((digit) => ({ cell, digit }))
-      ),
-      labels: {
-        primary: tr`the base cells, holding ${digitsOf(S).join('/')}`,
-        secondary: tr`the target cells: the base digits must land here`
-      },
-      description: tr`Exocet: base ${cellNames(base)} (${digitsOf(S).join('/')}) with targets ${cellName(targets[0])} and ${cellName(targets[1])}: a complete placement analysis proves the base digits must land in the targets, so the targets keep only base candidates.`
-    };
+    return exocetStep(g, ex, elims);
   }
   return null;
+}
+
+/**
+ * Why a base digit, if the base holds it, is in a target, or why the base
+ * cannot hold it, in the words the board allows. The base's line L and box
+ * Q have the digit in the base, so the targets' boxes X and Y put theirs in
+ * the targets' lines A and B, one in each: X in A and Y in B (the targets'
+ * own lines), or X in B and Y in A. Where a box has no place for it in a
+ * line, that settles it: neither way (the base cannot hold it), or only
+ * the first, where X's only place in A is T1 or Y's only place in B is T2.
+ * Where the board's places do not settle it, the sentence gives what the
+ * proof counted: the ways the board leaves to place all nine of the digit,
+ * and how many of them put one in the base, every one of those with one in
+ * a target.
+ */
+function digitText(g: Grid, d: number, base: number[], T1: number, T2: number, lineOf: (cell: number) => number, lineUnit: (line: number) => number): string {
+  const [X, Y] = [boxOf(T1), boxOf(T2)];
+  const [lA, lB] = [lineOf(T1), lineOf(T2)];
+  const holds = (c: number) => g.values[c] === d || (g.values[c] === 0 && !!(g.cands[c] & bit(d)));
+  const at = (box: number, line: number) => UNITS[18 + box].filter((c) => lineOf(c) === line && holds(c));
+  const [XA, XB, YA, YB] = [at(X, lA), at(X, lB), at(Y, lA), at(Y, lB)];
+  const [boxX, boxY, lineA, lineB] = [unitName(18 + X), unitName(18 + Y), unitName(lineUnit(lA)), unitName(lineUnit(lB))];
+  const own = XA.length > 0 && YB.length > 0;
+  const crossed = XB.length > 0 && YA.length > 0;
+  if (!own && !crossed) {
+    if (!XA.length && !XB.length) return tr`If a base cell were ${d}, ${boxX} would need its ${d} in ${lineA} or ${lineB}, but it has none there, so neither base cell can be ${d}.`;
+    if (!YA.length && !YB.length) return tr`If a base cell were ${d}, ${boxY} would need its ${d} in ${lineA} or ${lineB}, but it has none there, so neither base cell can be ${d}.`;
+    if (!XA.length && !YA.length) return tr`If a base cell were ${d}, ${lineA} would need its ${d} from ${boxX} or ${boxY}, but neither has one there, so neither base cell can be ${d}.`;
+    return tr`If a base cell were ${d}, ${lineB} would need its ${d} from ${boxX} or ${boxY}, but neither has one there, so neither base cell can be ${d}.`;
+  }
+  const onlyT1 = XA.length === 1 && XA[0] === T1;
+  const onlyT2 = YB.length === 1 && YB[0] === T2;
+  if (!crossed && (onlyT1 || onlyT2)) {
+    const [box, line] = !XB.length ? [boxX, lineB] : [boxY, lineA];
+    return onlyT1
+      ? tr`If a base cell is ${d}, ${box} has no ${d} in ${line}, so ${boxX} puts its ${d} in ${lineA} and ${boxY} in ${lineB}, and the only ${d} of ${boxX} in ${lineA} is the target ${cellName(T1)}.`
+      : tr`If a base cell is ${d}, ${box} has no ${d} in ${line}, so ${boxX} puts its ${d} in ${lineA} and ${boxY} in ${lineB}, and the only ${d} of ${boxY} in ${lineB} is the target ${cellName(T2)}.`;
+  }
+  // what the proof counted (collectExocets): it never overflows on a find
+  const all = digitTemplates(g, d, 20000) ?? [];
+  const n = all.length;
+  const m = all.filter((t) => t.includes(base[0]) || t.includes(base[1])).length;
+  if (!m)
+    return n === 1
+      ? tr`The board leaves one way to place all nine ${d}s, and it uses neither base cell, so neither can be ${d}.`
+      : tr`None of the ${n} ways the board leaves to place all nine ${d}s uses a base cell, so neither base cell can be ${d}.`;
+  if (m === n)
+    return n === 1
+      ? tr`If a base cell is ${d}, so is a target: the board leaves one way to place all nine ${d}s, and it uses a base cell and a target.`
+      : tr`If a base cell is ${d}, so is a target: the board leaves ${n} ways to place all nine ${d}s, and each uses a base cell and a target.`;
+  return m === 1
+    ? tr`If a base cell is ${d}, so is a target: of the ${n} ways the board leaves to place all nine ${d}s, the one that uses a base cell uses a target too.`
+    : tr`If a base cell is ${d}, so is a target: of the ${n} ways the board leaves to place all nine ${d}s, the ${m} that use a base cell all use a target too.`;
+}
+
+/**
+ * The step: the base's candidates blue on its mini-line's band, the
+ * targets' base digits gold on their lines' dashed bands, and a walk that
+ * takes the base, the targets' lines, then each base digit alone. Its Copy
+ * step line is the one it always was (src/content/eureka.ts)
+ */
+function exocetStep(g: Grid, ex: ProvenExocet, elims: CellDigit[]): Step {
+  const { rows, S } = ex;
+  const base = [...ex.base].sort((a, b) => a - b);
+  const [T1, T2] = [...ex.targets].sort((a, b) => a - b);
+  const lineOf = (c: number) => (rows ? rowOf(c) : colOf(c));
+  const lineUnit = (l: number) => (rows ? l : 9 + l);
+  const Q = boxOf(base[0]);
+  const digits = digitsOf(S);
+  const [B1, B2, n1, n2] = [...base, T1, T2].map(cellName);
+  const [line, box] = [unitName(lineUnit(ex.line)), unitName(18 + Q)];
+  const [lineA, lineB, boxX, boxY] = [unitName(lineUnit(lineOf(T1))), unitName(lineUnit(lineOf(T2))), unitName(18 + boxOf(T1)), unitName(18 + boxOf(T2))];
+  // a base digit neither target holds, which the base therefore cannot
+  const dead = digits.filter((d) => !((g.cands[T1] | g.cands[T2]) & bit(d)));
+  const intoTargets = elims.some((e) => e.cell === T1 || e.cell === T2);
+  return {
+    tech: 'EXOCET',
+    placements: [],
+    eliminations: elims,
+    primary: base.flatMap((cell) => digitsOf(g.cands[cell]).map((digit) => ({ cell, digit }))),
+    secondary: [T1, T2].flatMap((cell) => digitsOf(g.cands[cell] & S).map((digit) => ({ cell, digit }))),
+    units: [
+      { unit: lineUnit(ex.line), role: 'primary', within: 18 + Q },
+      { unit: lineUnit(lineOf(T1)), role: 'secondary' },
+      { unit: lineUnit(lineOf(T2)), role: 'secondary' }
+    ],
+    labels: {
+      primary: tr`the base: two different digits of ${listAnd(digits)}, one in each cell`,
+      secondary: tr`the targets, in ${lineA} and ${lineB}: each digit the base holds is in one of them`
+    },
+    walk: {
+      frames: [
+        { text: tr`${B1} and ${B2}, where ${line} meets ${box}, hold only ${listAnd(digits)} between them, and they see each other, so they hold two different ones of these digits.`, show: ['primary'] },
+        {
+          text: tr`The targets: ${n1} in ${lineA} and ${n2} in ${lineB}. Whatever digit a base cell holds, ${line} and ${box} have it there, so ${boxX} and ${boxY} must put it in ${lineA} and ${lineB}, one in each.`,
+          show: ['secondary']
+        },
+        ...digits.map((d) => ({ text: digitText(g, d, base, T1, T2, lineOf, lineUnit), show: [] as ('primary' | 'secondary')[], digits: [d] }))
+      ],
+      ...(intoTargets && { lead: tr`The base holds two different digits, and each is in a target, so the two targets hold them both and nothing else.` })
+    },
+    description: dead.length
+      ? tr`${B1} and ${B2} hold two different digits of ${listAnd(digits)}, and the board leaves no way to place either of them in the base without one in ${n1} or ${n2}. So these targets hold the base's two digits and nothing else, and the base cannot hold ${listAnd(dead)}, which neither target can.`
+      : tr`${B1} and ${B2} hold two different digits of ${listAnd(digits)}, and the board leaves no way to place either of them in the base without one in ${n1} or ${n2}. So these targets hold the base's two digits and nothing else.`
+  };
 }
 
 /**

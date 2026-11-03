@@ -275,6 +275,17 @@ describe('the HoDoKu line', () => {
     expect(stepText({ ...s, units: [{ unit: 18, role: 'primary' }], walk: undefined })).toBe(stepText(s));
   });
 
+  it('writes Fireworks and Exocet as before phase 6 banded their lines and walked their argument', () => {
+    // the three cells with the digits they lock, as one group, not the gold wings and the blue cross
+    expect(stepText(step('FIREWORKS'))).toBe('Fireworks: 1/4/8 in r2c6,r8c36 => r2c6<>5, r2c6<>6');
+    // the base, then the targets
+    expect(stepText(step('EXOCET'))).toBe('Exocet: 2/5/6 in r9c89 / r7c3,r8c5 => r8c5<>8');
+    for (const tech of ['FIREWORKS', 'EXOCET'] as Tech[]) {
+      expect(step(tech).walk, tech).toBeDefined();
+      expect(stepText({ ...step(tech), walk: undefined, units: undefined }), tech).toBe(stepText(step(tech)));
+    }
+  });
+
   it('writes wings, uniqueness and colouring one colour after another', () => {
     // written from the pattern as it always was, not from the colours by function the hint draws (the readability report's M3)
     expect(stepText(step('XY_WING'))).toBe('XY-Wing: 7/9 in r7c7 / 6 in r7c6,r8c9 => r7c8<>6, r8c6<>6');

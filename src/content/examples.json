@@ -11767,7 +11767,9 @@
     {
      "cell": 68,
      "digit": 8
-    },
+    }
+   ],
+   "secondary": [
     {
      "cell": 65,
      "digit": 4
@@ -11785,10 +11787,53 @@
      "digit": 8
     }
    ],
+   "units": [
+    {
+     "unit": 7,
+     "role": "secondary"
+    },
+    {
+     "unit": 14,
+     "role": "secondary"
+    }
+   ],
    "labels": {
-    "primary": "the cross and its two wings: the only cells 1/4/8 can land on"
+    "primary": "the cross, where row 8 meets column 6: whichever of 1, 4 and 8 is in neither wing is here",
+    "secondary": "the wings: outside box 8, each is the only cell of its row or column that can be 1, 4 or 8"
    },
-   "description": "Fireworks: digits 1/4/8 each must land on one of r8c6 (cross), r8c3 (row wing) or r2c6 (column wing), locking those three cells, so all other candidates there are removed."
+   "walk": {
+    "frames": [
+     {
+      "text": "Outside box 8, row 8 has 4 and 8 only in r8c3, and no 1.",
+      "show": [
+       "secondary"
+      ],
+      "cells": [
+       65
+      ]
+     },
+     {
+      "text": "Outside box 8, column 6 has 1 and 8 only in r2c6, and no 4.",
+      "show": [
+       "secondary"
+      ],
+      "cells": [
+       14
+      ]
+     },
+     {
+      "text": "If one of 1, 4 and 8 is in neither r8c3 nor r2c6, row 8 and column 6 both have it in box 8, which holds only one: so it is in r8c6, where they cross.",
+      "show": [
+       "primary"
+      ],
+      "cells": [
+       68
+      ]
+     }
+    ],
+    "lead": "Each of 1, 4 and 8 must be in one of r2c6, r8c3 and r8c6, so these three cells hold only 1, 4 and 8."
+   },
+   "description": "Outside box 8, only r8c3 in row 8 and only r2c6 in column 6 can be 1, 4 or 8. So each of the three is in r8c3, in r2c6 or in r8c6, where the row and column cross, and these three cells hold nothing else."
   }
  },
  "ALIGNED_PAIR_EXCLUSION": {
@@ -12094,11 +12139,64 @@
      "digit": 2
     }
    ],
+   "units": [
+    {
+     "unit": 8,
+     "role": "primary",
+     "within": 26
+    },
+    {
+     "unit": 6,
+     "role": "secondary"
+    },
+    {
+     "unit": 7,
+     "role": "secondary"
+    }
+   ],
    "labels": {
-    "primary": "the base cells, holding 2/5/6",
-    "secondary": "the target cells: the base digits must land here"
+    "primary": "the base: two different digits of 2, 5 and 6, one in each cell",
+    "secondary": "the targets, in row 7 and row 8: each digit the base holds is in one of them"
    },
-   "description": "Exocet: base r9c8, r9c9 (2/5/6) with targets r7c3 and r8c5: a complete placement analysis proves the base digits must land in the targets, so the targets keep only base candidates."
+   "walk": {
+    "frames": [
+     {
+      "text": "r9c8 and r9c9, where row 9 meets box 9, hold only 2, 5 and 6 between them, and they see each other, so they hold two different ones of these digits.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The targets: r7c3 in row 7 and r8c5 in row 8. Whatever digit a base cell holds, row 9 and box 9 have it there, so box 7 and box 8 must put it in row 7 and row 8, one in each.",
+      "show": [
+       "secondary"
+      ]
+     },
+     {
+      "text": "If a base cell is 2, box 7 has no 2 in row 8, so box 7 puts its 2 in row 7 and box 8 in row 8, and the only 2 of box 8 in row 8 is the target r8c5.",
+      "show": [],
+      "digits": [
+       2
+      ]
+     },
+     {
+      "text": "If a base cell is 5, so is a target: of the 9 ways the board leaves to place all nine 5s, the 6 that use a base cell all use a target too.",
+      "show": [],
+      "digits": [
+       5
+      ]
+     },
+     {
+      "text": "If a base cell is 6, so is a target: of the 8 ways the board leaves to place all nine 6s, the 5 that use a base cell all use a target too.",
+      "show": [],
+      "digits": [
+       6
+      ]
+     }
+    ],
+    "lead": "The base holds two different digits, and each is in a target, so the two targets hold them both and nothing else."
+   },
+   "description": "r9c8 and r9c9 hold two different digits of 2, 5 and 6, and the board leaves no way to place either of them in the base without one in r7c3 or r8c5. So these targets hold the base's two digits and nothing else."
   },
   "credit": "sudokuwiki.org"
  },
