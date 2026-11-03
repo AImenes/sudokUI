@@ -289,7 +289,8 @@ function layout(opts: {
     ${alternates}
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    <meta name="theme-color" content="#1a1d29" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#e8ebf3" />
+    <meta name="theme-color" content="#1c1f2b" />
     <meta property="og:site_name" content="sudokUI" />
     <meta property="og:type" content="article" />
     <meta property="og:locale" content="${OG_LOCALE[opts.lang]}" />

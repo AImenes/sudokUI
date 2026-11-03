@@ -19,7 +19,7 @@ import type { ParityFixture } from './parityFixtures';
 import type { CellDigit, ChainLink, Step } from '../src/engine/steps';
 import { isParity, isTie } from '../src/engine/steps';
 import { checkParity } from '../src/engine/truth';
-import { walkFrames, drawnLinks, conclusionText } from '../src/engine/hintFrames';
+import { walkFrames, drawnLinks, conclusionText, countsRemovals } from '../src/engine/hintFrames';
 import type { Frame } from '../src/engine/hintFrames';
 import { frameMarks, legendKinds, parityLegend, markedCandidates, placedKeys } from '../src/content/hintMarks';
 import type { HintMarks } from '../src/content/hintMarks';
@@ -162,7 +162,9 @@ describe('the walk', () => {
       expect(last.show.has('conclusion'), f.name).toBe(true);
       const proof = frames[frames.length - 2];
       expect(proof.show.has('proof') && !proof.show.has('conclusion'), f.name).toBe(darkFalse !== undefined);
-      expect(last.text.startsWith(conclusionText(f.step)), f.name).toBe(true);
+      // a 3D Medusa proving dark purple false counts its many removals (the readability report's L3)
+      const conclusion = countsRemovals(f.step) ? `So all ${f.step.eliminations.length} dark purple candidates are removed.` : conclusionText(f.step);
+      expect(last.text.startsWith(conclusion), f.name).toBe(true);
     }
   });
 

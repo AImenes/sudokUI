@@ -471,6 +471,8 @@ const ui: Dictionary = {
   "Daylight": "Claro",
   "Rosé": "Rosé",
   "Forest": "Bosque",
+  "Match device": "Automático",
+  "“Match device” shows Daylight while your device is in light mode, and Dark while it is in dark mode": "«Automático» muestra Claro mientras tu dispositivo está en modo claro, y Oscuro mientras está en modo oscuro",
   "Board typeface": "Tipografía del tablero",
   "For the digits and pencil marks on the board": "Para los números y las anotaciones del tablero",
   "Classic": "Clásica",

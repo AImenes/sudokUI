@@ -84,9 +84,13 @@ export function deriveTruth(step: Step): Derivation | null {
   return deriveLinks(step.links.filter((l) => !l.undirected));
 }
 
-/** the ALS patterns read as the chains they derive (docs/hint-drawing-sets.md, decision 11) */
-const ALS_CHAINS = new Set<Step['tech']>(['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN']);
-/** an ALS-XZ, ALS-XY-Wing or ALS-XY-Chain, a chain from its first set to its last */
+/**
+ * the ALS patterns read as the chains they derive (docs/hint-drawing-sets.md,
+ * decision 11), the WXYZ-Wing among them, the ALS-XZ of a bivalue cell and
+ * three cells that it is
+ */
+const ALS_CHAINS = new Set<Step['tech']>(['ALS_XZ', 'WXYZ_WING', 'ALS_XY_WING', 'ALS_XY_CHAIN']);
+/** an ALS-XZ (a WXYZ-Wing too), ALS-XY-Wing or ALS-XY-Chain, a chain from its first set to its last */
 export const isAlsChain = (step: Step): boolean => ALS_CHAINS.has(step.tech) && step.truth === 'derived';
 
 /**
@@ -453,11 +457,12 @@ function shaped(s: ChainSet, cands?: ArrayLike<number>): boolean {
 }
 
 /** the removals' end sets of each ALS pattern, by letter: Death Blossom's every petal */
-const END_SETS: Partial<Record<Step['tech'], string[]>> = { ALS_XZ: ['A', 'B'], ALS_XY_WING: ['A', 'B'], ALS_XY_CHAIN: ['A', 'D'] };
+const END_SETS: Partial<Record<Step['tech'], string[]>> = { ALS_XZ: ['A', 'B'], WXYZ_WING: ['A', 'B'], ALS_XY_WING: ['A', 'B'], ALS_XY_CHAIN: ['A', 'D'] };
 
 /** the links between two sets of each ALS pattern, from set to set by letter, in link order: Death Blossom's from the stem */
 const LINKED: Partial<Record<Step['tech'], string[][]>> = {
   ALS_XZ: [['A', 'B']],
+  WXYZ_WING: [['A', 'B']],
   ALS_XY_WING: [
     ['A', 'C'],
     ['C', 'B']
@@ -530,7 +535,7 @@ export function checkSets(step: Step, cands?: ArrayLike<number>): SetProblem[] {
   // the sets an ALS pattern keeps apart
   const apart: [number, number][] = [];
   if (step.tech === 'ALS_XY_CHAIN') for (let i = 1; i < sets.length; i++) apart.push([i - 1, i]);
-  else if (['ALS_XZ', 'ALS_XY_WING', 'DEATH_BLOSSOM'].includes(step.tech)) {
+  else if (['ALS_XZ', 'WXYZ_WING', 'ALS_XY_WING', 'DEATH_BLOSSOM'].includes(step.tech)) {
     for (let i = 0; i < sets.length; i++) for (let j = i + 1; j < sets.length; j++) apart.push([i, j]);
   }
   for (const [i, j] of apart) {

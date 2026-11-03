@@ -172,12 +172,16 @@ export function alternatingLinks(
  * Primary and secondary follow the step's colour grammar and its labels;
  * 'fin' is the box a finned fish's fins lie in, which every removal shares
  * (outlined dotted in the fin's colour, named by `labels.finBox`, and drawn
- * in a walk from the frame that shows 'finBox')
+ * in a walk from the frame that shows 'finBox'). A line's band `within` a
+ * box shades only the three cells where they meet: an Exocet's base
+ * mini-line (phase 6)
  */
 export interface UnitBand {
   /** index into UNITS: rows 0-8, columns 9-17, boxes 18-26 */
   unit: number;
   role: 'primary' | 'secondary' | 'fin';
+  /** a box (a UNITS index, 18-26) the line's band is cut to: the mini-line where they meet */
+  within?: number;
 }
 
 /**
@@ -267,12 +271,28 @@ export interface Step {
    * its roles, and their bands, only in the cells the walk has named so
    * far, so a pattern can be walked cell by cell in the colours of its
    * function (a wing's pivot, then each pincer); the conclusion frame draws
-   * every cell. A finned fish shows its fins' box ('finBox', its band of
-   * role 'fin') in a frame of its own, after its cover lines. A step
-   * without it walks its labels back, one frame a role
-   * (src/engine/hintFrames.ts walkFrames)
+   * every cell. A frame that names `digits` draws its roles in those
+   * digits only, that frame alone, so a pattern can take one digit a frame
+   * (an Exocet's base digits); its bands stay, and with no digits named
+   * they are all it draws (an Exocet's frame for a digit its walk keeps out
+   * of the base that the step leaves). A finned fish shows its fins'
+   * box ('finBox', its band of role 'fin') in a frame of its own, after its
+   * cover lines. A frame that draws only part of a role (a wing's pivot
+   * before its pincers) names it in `labels` as it draws it, in place of the
+   * step's own labels in that frame's legend, which names only what the
+   * frame draws (G23). A step without it walks its labels back, one frame a
+   * role (src/engine/hintFrames.ts walkFrames)
    */
-  walk?: { frames: { text: string; show: ('primary' | 'secondary' | 'fins' | 'finBox')[]; cells?: number[] }[]; lead?: string };
+  walk?: {
+    frames: {
+      text: string;
+      show: ('primary' | 'secondary' | 'fins' | 'finBox')[];
+      cells?: number[];
+      digits?: number[];
+      labels?: { primary?: string; secondary?: string; fins?: string };
+    }[];
+    lead?: string;
+  };
   /**
    * candidates the Copy step line names after the pattern though no view
    * draws them, as the line always named them (src/content/eureka.ts):

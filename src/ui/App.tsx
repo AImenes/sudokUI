@@ -1,12 +1,13 @@
 // App shell: top bar (brand, difficulty/score, timer, quick toggles), the
 // board + side panel layout, global keyboard handling, dialog routing,
 // toast display and the first-visit bootstrap game.
-import React, { Suspense, useEffect, useState, useRef } from 'react';
+import React, { Suspense, useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { SLOP_PX } from './touchIntent';
 import { useGame, rateImport, validatePuzzle, Proof, listLayer } from '../state/gameStore';
 import { cellName, PEERS } from '../engine/board';
 import { dailyPuzzle } from '../engine/daily';
 import { useSettings } from '../state/settings';
+import { useShownTheme, applyTheme } from './theme';
 import { useAppStatus } from '../state/appStatus';
 import { useT, translator, rich, langRoot } from '../content/i18n';
 import type { Translator } from '../content/i18n';
@@ -212,7 +213,7 @@ export default function App() {
   const givenCount = useGame((s) =>
     s.custom ? s.cells.filter((c) => c.value > 0).length : 0
   );
-  const { theme, font, toggleTheme, showTimer, hideRating, showPoodle, lang } = useSettings();
+  const { font, toggleTheme, showTimer, hideRating, showPoodle, lang } = useSettings();
   const t = useT();
   const { start, genState, cancel } = useNewGame();
   // the hardest bands start from seeds: stock their pools while idle, so
@@ -272,9 +273,10 @@ export default function App() {
     });
   };
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
+  // before the first paint, so the app never shows a frame in the wrong look;
+  // under Match device the look follows the device while the app is open
+  const shown = useShownTheme();
+  useLayoutEffect(() => applyTheme(shown), [shown]);
 
   useEffect(() => {
     document.documentElement.dataset.font = font;
@@ -751,16 +753,16 @@ export default function App() {
             onClick={toggleTheme}
             title={t('Cycle theme: dark → daylight → rosé → forest')}
             aria-label={t(
-              theme === 'dark'
+              shown === 'dark'
                 ? 'Switch to daylight theme'
-                : theme === 'light'
+                : shown === 'light'
                   ? 'Switch to rosé theme'
-                  : theme === 'rose'
+                  : shown === 'rose'
                     ? 'Switch to forest theme'
                     : 'Switch to dark theme'
             )}
           >
-            {theme === 'dark' ? '☀️' : theme === 'light' ? '🌸' : theme === 'rose' ? '🌲' : '🌙'}
+            {shown === 'dark' ? '☀️' : shown === 'light' ? '🌸' : shown === 'rose' ? '🌲' : '🌙'}
           </button>
           <button
             className="icon-btn"

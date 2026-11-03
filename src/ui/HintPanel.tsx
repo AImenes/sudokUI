@@ -9,7 +9,8 @@ import { TECHS, Tech } from '../engine/ratings';
 import type { Step } from '../engine/steps';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { frequencyParts } from '../content/frequency';
-import { walkFrames, describe } from '../engine/hintFrames';
+import { walkFrames, labelsAt } from '../engine/hintFrames';
+import { panelExplanation } from '../content/panelText';
 import { stepText } from '../content/eureka';
 import { frameMarks, legendKinds, premiseOf, parityLegend, isParity, stemAlone, petalsPart, sharedTile, clashWords } from '../content/hintMarks';
 import type { Premise, Role, ParityEntry } from '../content/hintMarks';
@@ -318,9 +319,11 @@ export function HintPanel({
   const shared = sharedTile(hint, marks);
   // the digit a Death Blossom's petals hold, its blue
   const blueDigit = hint.eliminations[0]?.digit ?? 0;
+  // a walk frame that draws part of a role names it as it draws it
+  const labels = labelsAt(hint, frame);
   const lent = (roles: Role[]) =>
     roles
-      .map((r) => (r === 'primary' ? hint.labels?.primary : r === 'secondary' ? hint.labels?.secondary : hint.labels?.fins))
+      .map((r) => (r === 'primary' ? labels?.primary : r === 'secondary' ? labels?.secondary : labels?.fins))
       .filter((s): s is string => !!s);
   // what a derived chain's truths are under: its first node's premise
   const premise = premiseOf(hint);
@@ -387,7 +390,7 @@ export function HintPanel({
               </div>
             </div>
           ) : (
-            <p>{describe(hint)}</p>
+            <p>{panelExplanation(hint, name)}</p>
           )}
           {!frame && showKey && /r\dc\d/.test(hint.description) && (
             <p className="hint-key">{t('r2c3 means row 2, column 3, counted from the top left.')}</p>
@@ -452,20 +455,20 @@ export function HintPanel({
                   {/* a Death Blossom's blue before every petal's z is drawn: a petal's, by its own branch */}
                   {petalsPart(hint, marks)
                     ? t("{z} in a petal: if the stem takes that petal's digit, the petal holds {aDigit}", { z: blueDigit, aDigit: t(blueDigit === 8 ? 'an {d}' : 'a {d}', { d: blueDigit }) })
-                    : (clashWords(hint) ?? hint.labels?.primary ?? t('the pattern'))}
+                    : (clashWords(hint) ?? labels?.primary ?? t('the pattern'))}
                 </li>
               )}
               {legend.shown.has('secondary') && (
                 <li>
                   <i className={swatch('secondary')} />
                   {/* a Death Blossom's gold before any petal's digit is drawn: the stem's candidates alone */}
-                  {stemAlone(hint, marks) ? t("the stem's candidates") : (hint.labels?.secondary ?? t('supporting cells'))}
+                  {stemAlone(hint, marks) ? t("the stem's candidates") : (labels?.secondary ?? t('supporting cells'))}
                 </li>
               )}
               {legend.shown.has('fin') && (
                 <li>
                   <i className={swatch('fin')} />
-                  {hint.labels?.fins ?? t('fin')}
+                  {labels?.fins ?? t('fin')}
                 </li>
               )}
               {/* a finned fish's fins' box: a small band, dotted, in the fins' colour */}

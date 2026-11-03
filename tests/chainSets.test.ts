@@ -215,6 +215,7 @@ describe("the finders' sets keep their rules", () => {
       GROUPED_NICE_LOOP: 17,
       GROUPED_X_CYCLES: 17,
       ALS_XZ: 17,
+      WXYZ_WING: 10,
       ALS_XY_WING: 15,
       ALS_XY_CHAIN: 20,
       DEATH_BLOSSOM: 9

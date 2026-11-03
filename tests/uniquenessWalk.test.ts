@@ -141,14 +141,15 @@ function oracle(g: Grid, s: Step, at: string): string[] {
       const digits = subset.reduce((m, c) => m | g.cands[c], extras);
       expect(popcount(digits), `${at}: as many digits as the subset's cells and the roof read as one`).toBe(subset.length + 1);
       expect(s.eliminations.every((e) => UNITS[u].includes(e.cell) && ![...roof, ...subset].includes(e.cell) && digits & bit(e.digit)), `${at}: removals are the subset's digits elsewhere in ${house(u)}`).toBe(true);
-      const word = ['pair', 'triple', 'quadruple'][subset.length - 1];
       const ds = and(digitsOf(digits));
       return [
         floorAndRoof(x, y, floor, roof),
         subset.length === 1
           ? `The roof's extras are ${and(digitsOf(extras))}, and ${named(subset)}, also in ${house(u)}, holds only ${ds}.`
           : `The roof's extras are ${and(digitsOf(extras))}, and ${named(subset)}, also in ${house(u)}, hold only ${ds} between them.`,
-        `If neither roof cell took one of its extras, all four corners would hold only ${x} and ${y}; ${SWAP} A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked ${word} with ${named(subset)}: ${ds} can go nowhere else in ${house(u)}.`
+        subset.length === 1
+          ? `If neither roof cell took one of its extras, all four corners would hold only ${x} and ${y}; ${SWAP} A roof cell must therefore take one of its extras, and ${named(subset)} holds only ${ds}, so ${ds} go in the roof and ${named(subset)}, and nowhere else in ${house(u)}.`
+          : `If neither roof cell took one of its extras, all four corners would hold only ${x} and ${y}; ${SWAP} A roof cell must therefore take one of its extras, and ${named(subset)} hold only ${ds} between them, so ${ds} go in the roof and ${named(subset)}, and nowhere else in ${house(u)}.`
       ];
     }
     case 'UNIQUENESS_4': {
@@ -316,7 +317,7 @@ describe('the uniqueness family and BUG+1 walk with their why (H1)', () => {
       UNIQUENESS_3: [
         '7 and 8 are candidates in all four corners of the rectangle: the floor, r3c4 and r3c5, holds only these two, and the roof, r7c4 and r7c5, holds other digits too.',
         "The roof's extras are 1 and 6, and r7c6, also in row 7, holds only 1 and 6.",
-        'If neither roof cell took one of its extras, all four corners would hold only 7 and 8; they could swap, and the puzzle would have two solutions. A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked pair with r7c6: 1 and 6 can go nowhere else in row 7. So 6 is removed from r7c7.'
+        'If neither roof cell took one of its extras, all four corners would hold only 7 and 8; they could swap, and the puzzle would have two solutions. A roof cell must therefore take one of its extras, and r7c6 holds only 1 and 6, so 1 and 6 go in the roof and r7c6, and nowhere else in row 7. So 6 is removed from r7c7.'
       ],
       UNIQUENESS_4: [
         '4 and 6 are candidates in all four corners of the rectangle: the floor, r2c7 and r8c7, holds only these two, and the roof, r2c9 and r8c9, holds other digits too.',

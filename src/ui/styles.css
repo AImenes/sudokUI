@@ -3142,6 +3142,25 @@ kbd {
     padding-right: 9px;
   }
 
+  /* a row of choices too long for the phone wraps rather than running
+     past the dialog's edge, each line then filling the width; where it
+     fits it keeps its own width, on one line */
+  .setting-row.stack .segmented {
+    flex-wrap: wrap;
+    flex-shrink: 1;
+  }
+
+  .setting-row.stack .segmented button {
+    flex: 1 0 auto;
+  }
+
+  /* the four themes and Match device, the longest name, on one line on
+     most phones: narrower still */
+  .setting-row.stack .segmented.theme-choice button {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+
   /* keys above, meaning below: two cramped columns become one */
   .shortcut-table:not(.band-table) td {
     display: block;

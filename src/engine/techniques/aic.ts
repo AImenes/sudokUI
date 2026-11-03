@@ -139,9 +139,9 @@ function searchAic(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | nu
             eliminations: elims,
             primary: path.map((id) => ({ cell: nCell(id), digit: nDigit(id) })),
             links: alternatingLinks(path.map((id) => [{ cell: nCell(id), digit: nDigit(id) }])),
-            description: tr`AIC: ${path
-              .map((id) => `${nDigit(id)}@${cellName(nCell(id))}`)
-              .join(' → ')}; at least one of ${nDigit(a)}@${cellName(nCell(a))} and ${nDigit(b)}@${cellName(nCell(b))} is true, so candidates conflicting with both are removed.`
+            // in words, the chain's notation left to Copy step (the
+            // readability report's L2: one name in the panel, its title)
+            description: tr`AIC: if ${cellName(nCell(a))} is not ${nDigit(a)}, the chain's links make its last candidate true: ${cellName(nCell(b))} is then ${nDigit(b)}. So one of the two is true, and a candidate that would make both false cannot be true.`
           };
         }
       }

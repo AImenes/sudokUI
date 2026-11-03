@@ -345,11 +345,9 @@ Every rule is numbered so a commit, a test or a review can cite it.
   the line cell's digits in the pattern's colour, and its box dashed, with
   the box cell's digits gold, the digit only the shared cells hold purple
   (phase 6). A pattern its finder walks cell
-  by cell (phase 6: the XY-, XYZ- and WXYZ-Wing, `Step.walk` with
-  `cells`) draws its roles only in the cells the walk has named so far,
-  and a band once the walk has named every cell of the band's role in that
-  house: a WXYZ-Wing's house comes with its three cells, not with the
-  bivalue cell before them.
+  by cell (phase 6: the XY- and XYZ-Wing, `Step.walk` with `cells`)
+  draws its roles only in the cells the walk has named so far, and a band
+  once the walk has named every cell of the band's role in that house.
 - **G16. Sets.** A group node (the 2-3 candidates of one digit in one box
   and one row or column) and an almost locked set are drawn as what they
   are, never as a hull round cells or candidates that are not theirs (a
@@ -407,6 +405,10 @@ Every rule is numbered so a commit, a test or a review can cite it.
     a crossing tries six arcs more), never at the cost of the full search,
     which made a Death Blossom some ten times slower to draw.
   - Arrows attach at a member (G10).
+  - The WXYZ-Wing is the ALS-XZ of a bivalue cell and three cells, and is
+    drawn and walked as one (phase 6): the bivalue cell is set A, where the
+    chain starts, the three cells set B, with the restricted common's
+    dashed link between them and the chain's truth, no role and no band.
 - **G17. Digit focus (optional, Settings).** During a hint about one
   digit (fish, single-digit patterns, X-Chains, colouring), the other
   digits' candidates are dimmed. Off by default; a toggle in Settings and
@@ -501,7 +503,10 @@ Every rule is numbered so a commit, a test or a review can cite it.
   what the board draws: a role every candidate of which became a removal
   or a placement
   lends its words to that entry ("remove: the cell that would complete
-  the rectangle"). During a walk it names what the frame shows. The marks
+  the rectangle"). During a walk it names what the frame shows, and a
+  frame that draws only part of a role names that part (`Step.walk`'s
+  frame labels: the XY-Wing's "the pivot", then "the pivot and the digit
+  the pincer shares with it", then the whole role). The marks
   and the legend both come from one call in `src/content/hintMarks.ts`
   (`frameMarks`), so they cannot disagree. Prose and notation can carry the
   same swatches inline ("if r5c1 is ◯ false, then r5c7 is ● true").
@@ -1038,6 +1043,15 @@ the values above are its final ones.
   with round 3's two lows. Review round 1 found two mediums and two
   regressions, all fixed (hint-readability-round1.md, which also lists
   the lows left for later).
+- [x] Match device (the owner's ask, November 2026): Settings' Theme row
+  offers Match device beside Dark, Daylight, Rosé and Forest, showing
+  Daylight while the device is in light mode and Dark while it is in dark
+  mode and following it live with the app open (src/ui/theme.ts), while a
+  new player still starts dark, every stored theme is kept, the browser's
+  and an installed app's bar wear the top bar's colour of whatever is
+  shown, the shared picture stays light, and no drawing, fixture or
+  example changed (a hint under Match device is drawn in Daylight's or
+  Dark's own colours).
 - [ ] Phase 5: forcing
 - [ ] Phase 6: words. Batch 1 is done (phase6-batch1-review.md): `Step.walk`, so a finder writes its own walk;
   the XY-, XYZ- and WXYZ-Wing, Chute Remote Pair and Sue de Coq walked and coloured by function; and the uniqueness
@@ -1066,6 +1080,61 @@ the values above are its final ones.
   false either way. The fins' box is drawn (M4's fish part, G15), and no
   legend entry names a role its frame has not drawn. The Copy step lines
   are unchanged (tests/fishWalks.test.ts, tests/eureka.test.ts).
+  In batch 3, Empty Rectangle walks in its finder's own sentences as the grouped 2-String Kite it is (H1, M4, L2):
+  the box's digits in its row and its column, the pair as the only two of the digit in their line, then the two
+  cases and "either way the target sees a 5"; it bands the box, its row and its column solid in the pattern's
+  colour with the box's digits and the pair's line dashed with the pair, each band from its role's frame, its
+  labels say "box 1: its 5s all lie in row 1 or column 2" and "r1c5 and r6c5: the only 5s in column 5", its
+  description leads with the pair in one line and gives the two cases (L3), and its guide entry says "only two
+  places" where it said "conjugate pair"; it stays a pattern (G20) with no arrows, as a prototype drawn as the
+  chain showed a premise legend of five entries and a crowded link inside the box on a phone, and would have
+  needed a group short of its box's digits (which checkSets refuses) at 206 of the 4,227 finds along the 336
+  practice paths, where every sentence is true in English, Norwegian and Spanish and the Copy step line is the one
+  it always was (tests/erWalks.test.ts, ER_SCAN=all; tests/eureka.test.ts).
+  Batch 3's Fireworks and Exocet (H1, M4, L2 and L3 for them): Fireworks
+  bands its row and column dashed, crossing at the cross cell, its wings
+  gold and its cross blue, and walks outside the box the row's wing, the
+  column's wing, then why a digit in neither wing is in the cross; Exocet
+  bands its base's mini-line (a line's band cut to a box, `within`) and
+  its targets' two lines dashed, and walks the base, the targets' lines,
+  then each base digit in a frame of its own that draws that digit alone
+  (`Step.walk` frames' `digits`), saying how the targets' boxes and lines
+  settle it where the board does and otherwise only what the proof
+  counted, the ways the board leaves to place all nine of the digit; both
+  descriptions lead with the argument, not the name, their legends say
+  exactly what each colour is, every sentence held true at all 1,949 of
+  their finds on the 336 practice paths in three languages
+  (tests/fireworksExocetWalks.test.ts, FIREWORKS_EXOCET_SCAN=all), and
+  their Copy step lines are unchanged (tests/eureka.test.ts).
+  Batch 3's wings: the WXYZ-Wing is drawn and walked as the ALS-XZ it is,
+  its bivalue cell set A and its three cells set B with the link on x and
+  the chain's truth (M3's WXYZ part, G16), its description one line (L3)
+  and its Copy step line the wing's line it always was, and a walk frame
+  that draws part of a role names only that part in its legend, so the
+  XY- and XYZ-Wing's name the pivot, then one pincer, then both (batch 1's
+  low; tests/wingWalks.test.ts, every find along the practice paths).
+  Batch 3's words pass (L2 and L3) gives BUG+1, Unique Rectangle Type 3,
+  the Extended Rectangle, the ALS-XY-Wing, the ALS-XY-Chain, the Grouped
+  Nice Loop and the AIC plain, exact words in one lead line each, their
+  chains' notation left to Copy step, has a 3D Medusa that proves dark
+  purple false count its removals once there are more than four, and has
+  the hint panel leave out the "Name:" its title repeats, for every
+  technique at once (src/content/panelText.ts, Learn keeping it), with
+  Copy step's lines unchanged and every find along the practice paths
+  held true in three languages (tests/wordsPass.test.ts; the fish's
+  "fins" and Chute Remote Pair's "chute" were already right).
+  Batch 3's review (phase6-batch3-review.md) found Empty Rectangle's guide
+  had dropped "outside the box", so its rule could take a cell of the box;
+  it says so again in the three languages, and tests/erWalks.test.ts holds
+  the rule as it reads to the reviewer's board and the practice paths. An
+  Exocet frame that keeps a digit out of the base where a target holds it,
+  which the step leaves, now says "5 is not one of the base's two digits.
+  This step does not remove it from r8c5." and draws it in no cell (an
+  empty `digits`); Fireworks' row's wing, Exocet's targets before they are
+  argued and each Exocet digit frame name only what they draw (G23); the
+  WXYZ-Wing's description ends on why the removals lose z; Exocet's count
+  reads "6 of those ways". Empty Rectangle's band shapes against G15 are
+  left as a design question.
 - [ ] Phase 7: polish
 
 Branch `claude/hint-drawings`. Research behind this spec (HoDoKu's source

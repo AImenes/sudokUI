@@ -168,6 +168,15 @@ function unitRect(unit: number): { x: number; y: number; w: number; h: number } 
   return { x: M + (b % 3) * 3 * SIZE, y: M + Math.floor(b / 3) * 3 * SIZE, w: 3 * SIZE, h: 3 * SIZE };
 }
 
+/** a band's rectangle: its house's, or where a line meets the box it is cut to (an Exocet's mini-line) */
+function bandRect(unit: number, within?: number): { x: number; y: number; w: number; h: number } {
+  const r = unitRect(unit);
+  if (within === undefined) return r;
+  const b = unitRect(within);
+  const [x, y] = [Math.max(r.x, b.x), Math.max(r.y, b.y)];
+  return { x, y, w: Math.min(r.x + r.w, b.x + b.w) - x, h: Math.min(r.y + r.h, b.y + b.h) - y };
+}
+
 /** One shows on each pause — the only place a tip never interrupts play.
  *  Translated where it is shown. */
 const TIPS = [
@@ -1431,8 +1440,8 @@ export function Grid() {
         {/* house bands (G15): the houses a pattern lives in, under its marks,
             carried by a full-strength outline over a barely-there fill:
             solid for the pattern, dashed for a cover, dotted for a fins' box */}
-        {bands.map(({ unit, role }, k) => {
-          const r = unitRect(unit);
+        {bands.map(({ unit, role, within }, k) => {
+          const r = bandRect(unit, within);
           const inset = role === 'fin' ? MARK.finInset * SIZE : 3.5;
           return (
             <g key={`band-${k}`} className="hint-band">

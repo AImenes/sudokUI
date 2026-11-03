@@ -13,7 +13,8 @@ import { tr, listAnd } from '../text';
  * - W-Wing: two XZ bivalue cells joined through a strong link on X; one of
  *   the two must be Z.
  * - WXYZ-Wing: four cells, four digits, one non-restricted digit Z that must
- *   land inside the pattern — an ALS argument in miniature.
+ *   land inside the pattern — an ALS-XZ of a bivalue cell and three cells,
+ *   found and drawn as one in als.ts.
  */
 
 /** the removals' cells named, and whether there is one: a lead's verb agrees with them */
@@ -61,8 +62,9 @@ export function findXYWing(g: Grid): Step | null {
         // coloured by what each digit does (the readability report's M3): the
         // pivot's digits and the one each pincer shares with it, which tie
         // the pincer to the pivot, and z in each pincer; walked cell by cell
-        // (H1). The Copy step line is written from the pivot and the pincers'
-        // z as it always was (src/content/eureka.ts wingGroups)
+        // (H1), each frame's legend naming only what it draws (the pivot,
+        // then one pincer). The Copy step line is written from the pivot and
+        // the pincers' z as it always was (src/content/eureka.ts wingGroups)
         return {
           tech: 'XY_WING',
           placements: [],
@@ -72,8 +74,13 @@ export function findXYWing(g: Grid): Step | null {
           labels: { primary: tr`the pivot and the digit each pincer shares with it`, secondary: tr`${z} in each pincer` },
           walk: {
             frames: [
-              { text: tr`The pivot ${cellName(pivot)} holds only ${listAnd([x, y])}.`, show: ['primary'], cells: [pivot] },
-              { text: pincerText(g, pivot, w1, x, z), show: ['secondary'], cells: [w1] },
+              { text: tr`The pivot ${cellName(pivot)} holds only ${listAnd([x, y])}.`, show: ['primary'], cells: [pivot], labels: { primary: tr`the pivot` } },
+              {
+                text: pincerText(g, pivot, w1, x, z),
+                show: ['secondary'],
+                cells: [w1],
+                labels: { primary: tr`the pivot and the digit the pincer shares with it`, secondary: tr`${z} in the pincer` }
+              },
               { text: pincerText(g, pivot, w2, y, z), show: [], cells: [w2] }
             ],
             lead: out.one ? tr`Either way a pincer is ${z}; ${out.cells} sees both.` : tr`Either way a pincer is ${z}; ${out.cells} see both.`
@@ -111,7 +118,8 @@ export function findXYZWing(g: Grid): Step | null {
         const [wx, wy] = [wings[i], wings[j]].sort((a, b) => (g.cands[a] & bit(x) ? -1 : 1) - (g.cands[b] & bit(x) ? -1 : 1));
         // coloured by what each digit does (M3): z in all three cells, at
         // least one of which is z whichever digit the pivot takes, and x and
-        // y, which tie each pincer to the pivot; walked cell by cell (H1)
+        // y, which tie each pincer to the pivot; walked cell by cell (H1),
+        // each frame's legend naming only what it draws
         return {
           tech: 'XYZ_WING',
           placements: [],
@@ -125,8 +133,18 @@ export function findXYZWing(g: Grid): Step | null {
           labels: { primary: tr`the pivot's ${x} and ${y}, and the one each pincer shares with it`, secondary: tr`${z} in all three cells` },
           walk: {
             frames: [
-              { text: tr`The pivot ${cellName(pivot)} holds only ${listAnd(digitsOf(pivotMask))}.`, show: ['primary', 'secondary'], cells: [pivot] },
-              { text: pincerText(g, pivot, wx, x, z), show: [], cells: [wx] },
+              {
+                text: tr`The pivot ${cellName(pivot)} holds only ${listAnd(digitsOf(pivotMask))}.`,
+                show: ['primary', 'secondary'],
+                cells: [pivot],
+                labels: { primary: tr`the pivot's ${x} and ${y}`, secondary: tr`${z} in the pivot` }
+              },
+              {
+                text: pincerText(g, pivot, wx, x, z),
+                show: [],
+                cells: [wx],
+                labels: { primary: tr`the pivot's ${x} and ${y}, and the one the pincer shares with it`, secondary: tr`${z} in the pivot and the pincer` }
+              },
               { text: pincerText(g, pivot, wy, y, z), show: [], cells: [wy] }
             ],
             lead: out.one

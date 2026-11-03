@@ -266,6 +266,8 @@ describe('worked examples', () => {
       // decision 22's swaps: a TRUE end group, and a false and a true group of three on the same cells
       GROUPED_NICE_LOOP: ['group r1c9, r2c9, r3c9 {9} in column 9', 'group r1c9, r2c9, r3c9 {7} in column 9'],
       ALS_XZ: ['A r8c2, r9c1 {159} in box 7', 'B r7c8, r8c9 {159} in box 9'],
+      // the ALS-XZ it is: the bivalue cell A, where the chain starts, and its three cells B
+      WXYZ_WING: ['A r4c3 {49} in row 4', 'B r4c4, r5c5, r6c5 {1479} in box 5'],
       ALS_XY_WING: ['A r8c3, r8c8 {247} in row 8', 'B r4c9, r6c8 {467} in box 6', 'C r6c3 {46} in row 6'],
       ALS_XY_CHAIN: ['A r4c2, r4c7 {469} in row 4', 'B r1c7 {39} in row 1', 'C r1c5, r1c6 {239} in row 1', 'D r7c5 {49} in row 7'],
       AIC_GROUPED: ['group r8c6, r9c6 {8} in column 6'],
@@ -279,6 +281,7 @@ describe('worked examples', () => {
       // the restricted commons between them, A's 1 to B's; the wing A's to
       // the hinge C, and the hinge's to the wing B
       ALS_XZ: ['A-A', 'A-B', 'B-B'],
+      WXYZ_WING: ['A-A', 'A-B', 'B-B'],
       ALS_XY_WING: ['A-A', 'A-C', 'C-C', 'C-B', 'B-B'],
       ALS_XY_CHAIN: ['A-A', 'A-B', 'B-B', 'B-C', 'C-C', 'C-D', 'D-D'],
       AIC_GROUPED: ['·-·', '·-·', '·-·', '·-·', '·-·', '·-·', '·-group'],
@@ -293,13 +296,15 @@ describe('worked examples', () => {
     expect(EXAMPLES.ALS_XZ!.step.description).toBe(
       'ALS-XZ: sets A (r8c2, r9c1) and B (r7c8, r8c9) each hold one digit more than they have cells, and every 1 of A sees every 1 of B, so at most one of them keeps a 1. The other loses its 1, its other digits fill its cells, and it holds a 5: A or B holds a 5, so 5 is removed from every cell that sees every 5 of both.'
     );
-    // the hinge C holds 4 or 6, and so takes one of them from a wing
-    expect(EXAMPLES.ALS_XY_WING!.step.description).toMatch(
-      /^ALS-XY-Wing: the wings A \(r8c3, r8c8\) and B \(r4c9, r6c8\) and the hinge C \(r6c3\) .* C lacks at most one of its digits, so it holds a 4 \(and A then holds no 4\) or a 6 \(and B then holds no 6\)\. .* A or B holds a 7, so 7 is removed from every cell that sees every 7 of both\.$/
+    // the hinge C holds 4 or 6, and so takes one of them from a wing: one lead line, in plain
+    // words (the readability report's L2 and L3), the links and their notation left to the
+    // walk and Copy step
+    expect(EXAMPLES.ALS_XY_WING!.step.description).toBe(
+      'ALS-XY-Wing: the hinge C (r6c3) holds a 4 or a 6, so wing A (r8c3, r8c8) holds no 4 or wing B (r4c9, r6c8) no 6, and that wing then holds a 7. A or B holds a 7, so no cell that sees every 7 of both can be 7.'
     );
     // each set in turn loses its link digit and fills its cells
-    expect(EXAMPLES.ALS_XY_CHAIN!.step.description).toMatch(
-      /^ALS-XY-Chain: sets A \(r4c2, r4c7\), B \(r1c7\), C \(r1c5, r1c6\) and D \(r7c5\) .* linked by 9, 3 and 9: .* each set in turn loses its link digit and fills its cells\. A or D holds a 4, so 4 is removed from every cell that sees every 4 of both\.$/
+    expect(EXAMPLES.ALS_XY_CHAIN!.step.description).toBe(
+      'ALS-XY-Chain: if set A (r4c2, r4c7) holds no 4, it holds a 9; then set B (r1c7) holds no 9 and holds a 3, C (r1c5, r1c6) no 3 and a 9, and D (r7c5) no 9 and a 4. A or D holds a 4, so no cell that sees every 4 of both can be 4.'
     );
     // whichever digit the stem takes, its petal loses it and holds z
     expect(EXAMPLES.DEATH_BLOSSOM!.step.description).toMatch(
@@ -407,8 +412,8 @@ describe("the Learn diagrams after phase 4's first review (docs/hint-drawing-set
       // a diagram with no set draws no tab
       if (!EXAMPLES[tech]!.step.sets?.length) expect(tabs, tech).toBe(false);
     }
-    // the five techniques with almost locked sets; the groups draw none
-    expect(tabbed).toBe(5);
+    // the five techniques with almost locked sets, and the WXYZ-Wing, the ALS-XZ it is; the groups draw none
+    expect(tabbed).toBe(6);
     expect(styleOf(boardSvg(EXAMPLES.AIC_GROUPED!, 'AIC_GROUPED'))).toBe(MAIN_STYLE);
     // and so every Learn asset of an example
     for (const a of buildLearnAssets().filter((x) => !x.path.startsWith('learn/img/intuition-'))) expect(styleOf(a.content).includes('.tab{'), a.path).toBe(a.content.includes('class="tab"'));

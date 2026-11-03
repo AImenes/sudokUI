@@ -3102,7 +3102,7 @@
     ],
     "lead": "Without the 3 in r5c6, every unsolved cell would hold two candidates, each found twice in its row, column and box. That is a deadly pattern: every cell could take its other candidate at once, and the puzzle would have two solutions."
    },
-   "description": "BUG+1: removing 3 from r5c6 would leave a bivalue grid with two solutions, so r5c6 must be 3."
+   "description": "BUG+1: every unsolved cell but r5c6 holds exactly two candidates. Without its 3, r5c6 would too, and each candidate would be found twice in its row, column and box: a deadly pattern, which cannot have just one solution. So r5c6 must be 3."
   }
  },
  "SKYSCRAPER": {
@@ -3746,13 +3746,42 @@
     {
      "unit": 18,
      "role": "primary"
+    },
+    {
+     "unit": 0,
+     "role": "primary"
+    },
+    {
+     "unit": 10,
+     "role": "primary"
+    },
+    {
+     "unit": 13,
+     "role": "secondary"
     }
    ],
    "labels": {
     "primary": "box 1: its 5s all lie in row 1 or column 2",
-    "secondary": "column 5: its only 5s are r1c5 and r6c5"
+    "secondary": "r1c5 and r6c5: the only 5s in column 5"
    },
-   "description": "Empty Rectangle on 5: in box 1 every 5 lies in row 1 or column 2, and r1c5 and r6c5 are the only 5s in column 5. If r6c5 is 5, r6c2 is not: they share row 6. If not, r1c5 is 5, so box 1 has no 5 in row 1; its 5 lies in column 2, which runs through r6c2, so again r6c2 is not 5. So 5 is removed from r6c2."
+   "walk": {
+    "frames": [
+     {
+      "text": "In box 1, every 5 lies in row 1 or column 2: r1c2 and r1c3 in row 1, r2c2 in column 2.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "r1c5 and r6c5 are the only 5s in column 5, so one of them is 5.",
+      "show": [
+       "secondary"
+      ]
+     }
+    ],
+    "lead": "If r6c5 is 5, r6c2 sees it in row 6. If r1c5 is 5, row 1 has no other 5, so the 5 of box 1 must be in r2c2, which r6c2 sees in column 2. Either way r6c2 sees a 5."
+   },
+   "description": "The only 5s in column 5 are r1c5 and r6c5. If r6c5 is 5, r6c2 sees it in row 6. If r1c5 is 5, box 1 has no 5 left in row 1, so its 5 lies in column 2, which r6c2 sees too. So 5 is removed from r6c2."
   }
  },
  "W_WING": {
@@ -4100,7 +4129,10 @@
       ],
       "cells": [
        60
-      ]
+      ],
+      "labels": {
+       "primary": "the pivot"
+      }
      },
      {
       "text": "If r7c7 is 7, the pincer r7c6 (only 6 and 7) must be 6.",
@@ -4109,7 +4141,11 @@
       ],
       "cells": [
        59
-      ]
+      ],
+      "labels": {
+       "primary": "the pivot and the digit the pincer shares with it",
+       "secondary": "6 in the pincer"
+      }
      },
      {
       "text": "If r7c7 is 9, the pincer r8c9 (only 6 and 9) must be 6.",
@@ -4266,14 +4302,22 @@
       ],
       "cells": [
        13
-      ]
+      ],
+      "labels": {
+       "primary": "the pivot's 5 and 9",
+       "secondary": "4 in the pivot"
+      }
      },
      {
       "text": "If r2c5 is 5, the pincer r3c6 (only 4 and 5) must be 4.",
       "show": [],
       "cells": [
        23
-      ]
+      ],
+      "labels": {
+       "primary": "the pivot's 5 and 9, and the one the pincer shares with it",
+       "secondary": "4 in the pivot and the pincer"
+      }
      },
      {
       "text": "If r2c5 is 9, the pincer r7c5 (only 4 and 9) must be 4.",
@@ -4388,90 +4432,128 @@
      "digit": 4
     }
    ],
-   "primary": [
+   "links": [
     {
-     "cell": 29,
-     "digit": 4
+     "from": [
+      {
+       "cell": 29,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 29,
+       "digit": 9
+      }
+     ],
+     "strong": true,
+     "fromSet": 0,
+     "toSet": 0
     },
     {
-     "cell": 29,
-     "digit": 9
+     "from": [
+      {
+       "cell": 29,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 30,
+       "digit": 9
+      }
+     ],
+     "strong": false,
+     "fromSet": 0,
+     "toSet": 1,
+     "unit": 3
     },
     {
-     "cell": 30,
-     "digit": 1
-    },
-    {
-     "cell": 30,
-     "digit": 9
-    },
-    {
-     "cell": 40,
-     "digit": 4
-    },
-    {
-     "cell": 40,
-     "digit": 7
-    },
-    {
-     "cell": 49,
-     "digit": 1
-    },
-    {
-     "cell": 49,
-     "digit": 7
+     "from": [
+      {
+       "cell": 30,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 40,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "fromSet": 1,
+     "toSet": 1
     }
    ],
-   "secondary": [
+   "truth": "derived",
+   "sets": [
     {
-     "cell": 29,
-     "digit": 4
+     "kind": "als",
+     "cells": [
+      29
+     ],
+     "digits": [
+      4,
+      9
+     ],
+     "members": [
+      {
+       "cell": 29,
+       "digit": 4
+      },
+      {
+       "cell": 29,
+       "digit": 9
+      }
+     ],
+     "unit": 3,
+     "letter": "A"
     },
     {
-     "cell": 40,
-     "digit": 4
-    }
-   ],
-   "units": [
-    {
+     "kind": "als",
+     "cells": [
+      30,
+      40,
+      49
+     ],
+     "digits": [
+      1,
+      4,
+      7,
+      9
+     ],
+     "members": [
+      {
+       "cell": 30,
+       "digit": 1
+      },
+      {
+       "cell": 30,
+       "digit": 9
+      },
+      {
+       "cell": 40,
+       "digit": 4
+      },
+      {
+       "cell": 40,
+       "digit": 7
+      },
+      {
+       "cell": 49,
+       "digit": 1
+      },
+      {
+       "cell": 49,
+       "digit": 7
+      }
+     ],
      "unit": 22,
-     "role": "primary"
+     "letter": "B"
     }
    ],
-   "labels": {
-    "primary": "the bivalue cell and the three cells in box 5",
-    "secondary": "the 4s: at least one of them is true"
-   },
-   "walk": {
-    "frames": [
-     {
-      "text": "The bivalue cell r4c3 holds only 4 and 9.",
-      "show": [
-       "primary"
-      ],
-      "cells": [
-       29
-      ]
-     },
-     {
-      "text": "The three cells r4c4, r5c5 and r6c5 in box 5 hold only 1, 4, 7 and 9 between them: one digit more than cells.",
-      "show": [],
-      "cells": [
-       30,
-       40,
-       49
-      ]
-     },
-     {
-      "text": "If r4c3 is 9, none of the three cells can be 9 (it sees the 9 in r4c4), so they must be 1, 4 and 7, and r5c5 is 4.",
-      "show": [
-       "secondary"
-      ]
-     }
-    ],
-    "lead": "Either way r4c3 or r5c5 is 4; r4c6 and r5c3 see both."
-   },
-   "description": "WXYZ-Wing: bivalue cell r4c3 (4/9) and the three cells r4c4, r5c5 and r6c5 in box 5, which hold 1/4/7/9 between them. The 9 in r4c3 sees every 9 in the three cells. Either r4c3 is 4, or it is 9 and the three cells in box 5 must be 1, 4 and 7. At least one of the four cells is therefore 4, so 4 is removed from every other cell that sees all the 4s among them."
+   "description": "Either set A, the cell r4c3, is 4, or it is 9, and then set B, in box 5, holds a 4. Set A or set B holds a 4, so no cell that sees every 4 of both can be 4."
   }
  },
  "UNIQUENESS_1": {
@@ -4954,7 +5036,7 @@
    ],
    "labels": {
     "primary": "the rectangle: 7/8 in all four corners",
-    "secondary": "1 and 6: the roof's extras (r7c4, r7c5, read as one cell) and r7c6 hold only these in row 7, a naked pair"
+    "secondary": "1 and 6: the roof must take one, and r7c6 holds only these, so they go nowhere else in row 7"
    },
    "walk": {
     "frames": [
@@ -4971,9 +5053,9 @@
       ]
      }
     ],
-    "lead": "If neither roof cell took one of its extras, all four corners would hold only 7 and 8; they could swap, and the puzzle would have two solutions. A roof cell must therefore take one of its extras, and, read as one cell, the roof makes a naked pair with r7c6: 1 and 6 can go nowhere else in row 7."
+    "lead": "If neither roof cell took one of its extras, all four corners would hold only 7 and 8; they could swap, and the puzzle would have two solutions. A roof cell must therefore take one of its extras, and r7c6 holds only 1 and 6, so 1 and 6 go in the roof and r7c6, and nowhere else in row 7."
    },
-   "description": "Unique Rectangle Type 3: r3c4, r3c5, r7c4, r7c5 would form a deadly pattern on 7/8, so one of the roof cells r7c4, r7c5 must take an extra candidate. Read as one cell holding its extras (1 and 6), the roof makes a naked pair with r7c6 in row 7: 1 and 6 can only go in these cells, so they are removed from the rest of row 7."
+   "description": "Unique Rectangle Type 3: r3c4, r3c5, r7c4, r7c5 would form a deadly pattern on 7/8, so one of the roof cells r7c4, r7c5 must take one of the roof's extras (1 and 6), and r7c6 holds only 1 and 6. So 1 and 6 go in the roof and r7c6, and nowhere else in row 7."
   }
  },
  "UNIQUENESS_4": {
@@ -6123,8 +6205,8 @@
     }
    ],
    "labels": {
-    "primary": "the cells that would form a deadly 2/4/9 loop",
-    "secondary": "4 and 9 in r9c5: each would complete the deadly loop"
+    "primary": "five of the six cells, which hold only 2, 4 and 9",
+    "secondary": "4 and 9 in r9c5: each would complete the deadly pattern"
    },
    "walk": {
     "frames": [
@@ -6143,7 +6225,7 @@
     ],
     "lead": "If r9c5 were 4 or 9, all six cells would hold only 2, 4 and 9. Swapping the two cells in each of columns 1, 5 and 9 at once would then give a second solution."
    },
-   "description": "Extended Rectangle Type 1: r8c1, r9c1, r8c5, r9c5, r8c9, r9c9 would form a deadly 2/4/9 loop; r9c5 must take one of its extra candidates."
+   "description": "Extended Rectangle: five of the six cells, r8c1, r9c1, r8c5, r8c9, r9c9, hold only 2, 4 and 9. If r9c5 were 4 or 9 too, the six cells would form a deadly pattern, and the puzzle would have a second solution, so 4 and 9 are removed from r9c5."
   }
  },
  "FINNED_X_WING": {
@@ -9671,7 +9753,7 @@
      "unit": 17
     }
    ],
-   "description": "Grouped Nice Loop: the continuous loop 7@r1c8 → 9@r1c8 → 9@[r1c9, r2c9, r3c9] → 9@r5c9 → 8@r5c9 → 8@r9c9 → 7@r9c9 → 7@[r1c9, r2c9, r3c9] alternates perfectly; every weak link has exactly one true side, clearing candidates along it."
+   "description": "Grouped Nice Loop: this loop of strong and weak links in turn starts and ends at r1c8, so it holds whichever way round it is read: each weak link has exactly one true end, and a candidate that would make both ends of one false cannot be true."
   }
  },
  "ALS_XZ": {
@@ -10184,7 +10266,7 @@
      "letter": "C"
     }
    ],
-   "description": "ALS-XY-Wing: the wings A (r8c3, r8c8) and B (r4c9, r6c8) and the hinge C (r6c3) each hold one digit more than they have cells; every 4 of C sees every 4 of A, and every 6 of C every 6 of B. C lacks at most one of its digits, so it holds a 4 (and A then holds no 4) or a 6 (and B then holds no 6). That wing's other digits fill its cells, and it holds a 7: A or B holds a 7, so 7 is removed from every cell that sees every 7 of both."
+   "description": "ALS-XY-Wing: the hinge C (r6c3) holds a 4 or a 6, so wing A (r8c3, r8c8) holds no 4 or wing B (r4c9, r6c8) no 6, and that wing then holds a 7. A or B holds a 7, so no cell that sees every 7 of both can be 7."
   }
  },
  "ALS_XY_CHAIN": {
@@ -10530,7 +10612,7 @@
      "letter": "D"
     }
    ],
-   "description": "ALS-XY-Chain: sets A (r4c2, r4c7), B (r1c7), C (r1c5, r1c6) and D (r7c5) each hold one digit more than they have cells, linked by 9, 3 and 9: every 9 of A sees every 9 of B, every 3 of B every 3 of C, and every 9 of C every 9 of D. If A holds no 4, its other digits fill its cells, so it holds a 9; then B holds no 9 and holds a 3, C no 3 and a 9, and D no 9 and a 4: each set in turn loses its link digit and fills its cells. A or D holds a 4, so 4 is removed from every cell that sees every 4 of both."
+   "description": "ALS-XY-Chain: if set A (r4c2, r4c7) holds no 4, it holds a 9; then set B (r1c7) holds no 9 and holds a 3, C (r1c5, r1c6) no 3 and a 9, and D (r7c5) no 9 and a 4. A or D holds a 4, so no cell that sees every 4 of both can be 4."
   }
  },
  "AIC": {
@@ -10739,7 +10821,7 @@
      "unit": 17
     }
    ],
-   "description": "AIC: 8@r1c6 → 4@r1c6 → 4@r5c6 → 2@r5c6 → 2@r5c9 → 2@r1c9; at least one of 8@r1c6 and 2@r1c9 is true, so candidates conflicting with both are removed."
+   "description": "AIC: if r1c6 is not 8, the chain's links make its last candidate true: r1c9 is then 2. So one of the two is true, and a candidate that would make both false cannot be true."
   }
  },
  "AIC_GROUPED": {
@@ -11738,7 +11820,9 @@
     {
      "cell": 68,
      "digit": 8
-    },
+    }
+   ],
+   "secondary": [
     {
      "cell": 65,
      "digit": 4
@@ -11756,10 +11840,56 @@
      "digit": 8
     }
    ],
+   "units": [
+    {
+     "unit": 7,
+     "role": "secondary"
+    },
+    {
+     "unit": 14,
+     "role": "secondary"
+    }
+   ],
    "labels": {
-    "primary": "the cross and its two wings: the only cells 1/4/8 can land on"
+    "primary": "the cross, where row 8 meets column 6: whichever of 1, 4 and 8 is in neither wing is here",
+    "secondary": "the wings: outside box 8, each is the only cell of its row or column that can be 1, 4 or 8"
    },
-   "description": "Fireworks: digits 1/4/8 each must land on one of r8c6 (cross), r8c3 (row wing) or r2c6 (column wing), locking those three cells, so all other candidates there are removed."
+   "walk": {
+    "frames": [
+     {
+      "text": "Outside box 8, row 8 has 4 and 8 only in r8c3, and no 1.",
+      "show": [
+       "secondary"
+      ],
+      "cells": [
+       65
+      ],
+      "labels": {
+       "secondary": "the row's wing: the only cell of row 8 outside box 8 that can be 1, 4 or 8"
+      }
+     },
+     {
+      "text": "Outside box 8, column 6 has 1 and 8 only in r2c6, and no 4.",
+      "show": [
+       "secondary"
+      ],
+      "cells": [
+       14
+      ]
+     },
+     {
+      "text": "If one of 1, 4 and 8 is in neither r8c3 nor r2c6, row 8 and column 6 both have it in box 8, which holds only one: so it is in r8c6, where they cross.",
+      "show": [
+       "primary"
+      ],
+      "cells": [
+       68
+      ]
+     }
+    ],
+    "lead": "Each of 1, 4 and 8 must be in one of r2c6, r8c3 and r8c6, so these three cells hold only 1, 4 and 8."
+   },
+   "description": "Outside box 8, only r8c3 in row 8 and only r2c6 in column 6 can be 1, 4 or 8. So each of the three is in r8c3, in r2c6 or in r8c6, where the row and column cross, and these three cells hold nothing else."
   }
  },
  "ALIGNED_PAIR_EXCLUSION": {
@@ -12065,11 +12195,79 @@
      "digit": 2
     }
    ],
+   "units": [
+    {
+     "unit": 8,
+     "role": "primary",
+     "within": 26
+    },
+    {
+     "unit": 6,
+     "role": "secondary"
+    },
+    {
+     "unit": 7,
+     "role": "secondary"
+    }
+   ],
    "labels": {
-    "primary": "the base cells, holding 2/5/6",
-    "secondary": "the target cells: the base digits must land here"
+    "primary": "the base: two different digits of 2, 5 and 6, one in each cell",
+    "secondary": "the targets, in row 7 and row 8: each digit the base holds is in one of them"
    },
-   "description": "Exocet: base r9c8, r9c9 (2/5/6) with targets r7c3 and r8c5: a complete placement analysis proves the base digits must land in the targets, so the targets keep only base candidates."
+   "walk": {
+    "frames": [
+     {
+      "text": "r9c8 and r9c9, where row 9 meets box 9, hold only 2, 5 and 6 between them, and they see each other, so they hold two different ones of these digits.",
+      "show": [
+       "primary"
+      ]
+     },
+     {
+      "text": "The targets: r7c3 in row 7 and r8c5 in row 8. Whatever digit a base cell holds, row 9 and box 9 have it there, so box 7 and box 8 must put it in row 7 and row 8, one in each.",
+      "show": [
+       "secondary"
+      ],
+      "labels": {
+       "secondary": "the targets, in row 7 and row 8"
+      }
+     },
+     {
+      "text": "If a base cell is 2, box 7 has no 2 in row 8, so box 7 puts its 2 in row 7 and box 8 in row 8, and the only 2 of box 8 in row 8 is the target r8c5.",
+      "show": [],
+      "digits": [
+       2
+      ],
+      "labels": {
+       "primary": "2 in the base",
+       "secondary": "2 in the targets"
+      }
+     },
+     {
+      "text": "If a base cell is 5, so is a target: the board leaves 9 ways to place all nine 5s; 6 of those ways use a base cell, and each of them uses a target too.",
+      "show": [],
+      "digits": [
+       5
+      ],
+      "labels": {
+       "primary": "5 in the base",
+       "secondary": "5 in the targets"
+      }
+     },
+     {
+      "text": "If a base cell is 6, so is a target: the board leaves 8 ways to place all nine 6s; 5 of those ways use a base cell, and each of them uses a target too.",
+      "show": [],
+      "digits": [
+       6
+      ],
+      "labels": {
+       "primary": "6 in the base",
+       "secondary": "6 in the targets"
+      }
+     }
+    ],
+    "lead": "The base holds two different digits, and each is in a target, so the two targets hold them both and nothing else."
+   },
+   "description": "r9c8 and r9c9 hold two different digits of 2, 5 and 6, and the board leaves no way to place either of them in the base without one in r7c3 or r8c5. So these targets hold the base's two digits and nothing else."
   },
   "credit": "sudokuwiki.org"
  },

@@ -31,13 +31,14 @@ import { walkFrames } from '../src/engine/hintFrames';
 import { frameMarks, premiseOf } from '../src/content/hintMarks';
 import type { Tech } from '../src/engine/ratings';
 
-/** the techniques phase 4 draws with their sets */
+/** the techniques phase 4 draws with their sets, and the WXYZ-Wing, drawn as the ALS-XZ it is since phase 6 */
 export const SET_TECHS = new Set<Tech>([
   'AIC_GROUPED',
   'AIC_ALS',
   'GROUPED_NICE_LOOP',
   'GROUPED_X_CYCLES',
   'ALS_XZ',
+  'WXYZ_WING',
   'ALS_XY_WING',
   'ALS_XY_CHAIN',
   'DEATH_BLOSSOM'
@@ -46,10 +47,10 @@ export const SET_TECHS = new Set<Tech>([
 /** the chains through groups only */
 const GROUPED = new Set<Tech>(['AIC_GROUPED', 'GROUPED_NICE_LOOP', 'GROUPED_X_CYCLES']);
 /** the patterns made of almost locked sets */
-const PATTERNS = new Set<Tech>(['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM']);
+const PATTERNS = new Set<Tech>(['ALS_XZ', 'WXYZ_WING', 'ALS_XY_WING', 'ALS_XY_CHAIN', 'DEATH_BLOSSOM']);
 
 /** the ALS patterns read as chains (decision 11) */
-const ALS_CHAINS = new Set<Tech>(['ALS_XZ', 'ALS_XY_WING', 'ALS_XY_CHAIN']);
+const ALS_CHAINS = new Set<Tech>(['ALS_XZ', 'WXYZ_WING', 'ALS_XY_WING', 'ALS_XY_CHAIN']);
 
 /** a candidate `e` conflicts with a node when it cannot be true if the node is: every member is in e's cell with another digit, or holds e's digit in a peer */
 const conflicts = (e: CellDigit, node: CellDigit[]) =>

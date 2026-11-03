@@ -46,7 +46,8 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
   [hint-drawing-p4-round3.md](hint-drawing-p4-round3.md),
   [hint-readability-round1.md](hint-readability-round1.md),
   [phase6-batch1-review.md](phase6-batch1-review.md),
-  [phase6-batch2-review.md](phase6-batch2-review.md): review rounds,
+  [phase6-batch2-review.md](phase6-batch2-review.md),
+  [phase6-batch3-review.md](phase6-batch3-review.md): review rounds,
   what each found and fixed, and the lows left for later.
 - [hint-readability-2026-11.md](hint-readability-2026-11.md): every
   technique's hint scored against HoDoKu, the issues, the quick wins and

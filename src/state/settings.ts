@@ -5,7 +5,47 @@ import { persist } from 'zustand/middleware';
 
 export type MarkLayer = 'center' | 'corner';
 
+/** a look the app is shown in: what the page's data-theme says and the
+ *  colours of src/ui/styles.css are keyed by */
 export type Theme = 'dark' | 'light' | 'rose' | 'forest';
+
+/** what the player chooses in Settings: one of the four looks, or 'device',
+ *  which shows Daylight while the device is set to light and Dark while it
+ *  is set to dark, and changes the moment the device does (src/ui/theme.ts) */
+export type ThemeChoice = Theme | 'device';
+
+/** the device asks for a light look. A device that says nothing either way
+ *  gets dark, the app's default */
+export const DEVICE_LIGHT = '(prefers-color-scheme: light)';
+
+const deviceQuery = () =>
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(DEVICE_LIGHT) : null;
+
+/** the device is set to light, now */
+export const deviceIsLight = () => deviceQuery()?.matches ?? false;
+
+/** call back whenever the device turns light or dark; returns the unsubscribe */
+export function onDeviceScheme(fn: () => void): () => void {
+  const q = deviceQuery();
+  if (!q) return () => {};
+  if (q.addEventListener) {
+    q.addEventListener('change', fn);
+    return () => q.removeEventListener('change', fn);
+  }
+  // Safari before 14 has only the older listener (as RatingGauge.tsx)
+  q.addListener(fn);
+  return () => q.removeListener(fn);
+}
+
+/** the look a choice shows, with the device light or not */
+export const shownTheme = (choice: ThemeChoice, deviceLight: boolean): Theme =>
+  choice === 'device' ? (deviceLight ? 'light' : 'dark') : choice;
+
+/** the top bar's theme button: the look after the one shown, in the order
+ *  dark, daylight, rosé, forest. From Match device it starts at what the
+ *  device shows, so every press changes what the player sees */
+export const nextTheme = (shown: Theme): Theme =>
+  shown === 'dark' ? 'light' : shown === 'light' ? 'rose' : shown === 'rose' ? 'forest' : 'dark';
 
 /** typefaces already on the device: nothing to download, works offline */
 export type Font = 'classic' | 'rounded' | 'serif' | 'mono' | 'hand';
@@ -25,8 +65,9 @@ export function deviceLang(): Lang {
 interface Settings {
   /** the app's language */
   lang: Lang;
-  /** board theme: dark, daylight or rosé */
-  theme: Theme;
+  /** the theme chosen: dark, daylight, rosé, forest, or the device's light
+   *  or dark (shownTheme gives the look) */
+  theme: ThemeChoice;
   /** typeface of the board (digits and pencil marks); all other text
    *  keeps the face made for reading */
   font: Font;
@@ -111,6 +152,9 @@ export const useSettings = create<Settings>()(
   persist(
     (set) => ({
       lang: deviceLang(),
+      // dark for a new player (the owner's choice); Match device is beside
+      // it in Settings. Every theme stored before Match device came is
+      // still a choice, so a returning player keeps theirs with no migration
       theme: 'dark',
       font: 'classic',
       highlightPeers: true,
@@ -139,17 +183,7 @@ export const useSettings = create<Settings>()(
       countPlaysAsked: false,
       dontCount: false,
       autoSendDaily: false,
-      toggleTheme: () =>
-        set((s) => ({
-          theme:
-            s.theme === 'dark'
-              ? 'light'
-              : s.theme === 'light'
-                ? 'rose'
-                : s.theme === 'rose'
-                  ? 'forest'
-                  : 'dark'
-        })),
+      toggleTheme: () => set((s) => ({ theme: nextTheme(shownTheme(s.theme, deviceIsLight())) })),
       set: (p) => set(p)
     }),
     {

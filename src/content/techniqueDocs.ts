@@ -175,8 +175,8 @@ export const TECH_DOCS: Record<Tech, TechDoc> = {
     aka: []
   },
   EMPTY_RECTANGLE: {
-    what: "A box's candidates for X lie only on one row and one column; a column (or row) conjugate pair outside the box has one end on that row (or column).",
-    why: 'With the end on the row, X in the box lies either on that row, making the other end X, or on the column; so any cell on that column outside the box that sees the other end loses X. Swap row and column otherwise.',
+    what: "A box's X candidates all lie in one row and one column; a column (or row) outside it has only two places for X, one in that row (or column).",
+    why: "One of the two places is X; if it is the one in the box's row, the box's X lies in its column. Either way the cell outside the box where that column meets the other place's row sees an X and loses it.",
     spot: 'Look for a box where four cells forming a rectangle have no candidate X, leaving X along both one row and one column.',
     aka: []
   },

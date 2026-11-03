@@ -18,7 +18,7 @@ import { frameMarks, markedCandidates, legendKinds, placedKeys, squareKeys, prem
 import type { BarStyle, HintMarks, Premise, Role, Tint } from './hintMarks';
 import { PALETTE, PALETTE_OPACITY } from './playerColours';
 import type { Frame } from '../engine/hintFrames';
-import { drawnLinks } from '../engine/hintFrames';
+import { drawnLinks, labelsAt } from '../engine/hintFrames';
 import { pencilLayout, digitShown, PERIMETER, GRID_SIZE, EDGE_SIZE, LINE_SIZE, LINE_Y, longLineSize, LONG_LINE_Y } from './pencilLayout';
 
 interface TruthWords {
@@ -241,13 +241,17 @@ export function boardSvg(example: BoardPicture, title: string, opts: BoardOption
   // through, dotted for a finned fish's fins' box, under everything else;
   // the dots' spacing grows with their width (LINE), so dot and gap keep
   // the board's proportion (src/ui/Grid.tsx)
-  for (const { unit, role } of drawn.bands) {
-    const r =
-      unit < 9
-        ? { x: L, y: L + unit * S, w: 9 * S, h: S }
-        : unit < 18
-          ? { x: L + (unit - 9) * S, y: L, w: S, h: 9 * S }
-          : { x: L + ((unit - 18) % 3) * 3 * S, y: L + Math.floor((unit - 18) / 3) * 3 * S, w: 3 * S, h: 3 * S };
+  const houseRect = (unit: number) =>
+    unit < 9
+      ? { x: L, y: L + unit * S, w: 9 * S, h: S }
+      : unit < 18
+        ? { x: L + (unit - 9) * S, y: L, w: S, h: 9 * S }
+        : { x: L + ((unit - 18) % 3) * 3 * S, y: L + Math.floor((unit - 18) / 3) * 3 * S, w: 3 * S, h: 3 * S };
+  for (const { unit, role, within } of drawn.bands) {
+    // a line's band cut to a box shades where they meet (an Exocet's mini-line)
+    const [line, box] = [houseRect(unit), within === undefined ? houseRect(unit) : houseRect(within)];
+    const [x, y] = [Math.max(line.x, box.x), Math.max(line.y, box.y)];
+    const r = { x, y, w: Math.min(line.x + line.w, box.x + box.w) - x, h: Math.min(line.y + line.h, box.y + box.h) - y };
     const { fill, ink } = fillOf(P, role);
     const k = S / 100;
     const inset = role === 'fin' ? MARK.finInset * S : 3.5 * k;
@@ -714,7 +718,9 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
     });
   }
   const { shown, onValue, onBand, finBox, intoRemove, intoPlace, refuted, bars, setSquares, tiles, lines, removeWords } = legendKinds(step, drawn);
-  const words = (role: Role) => (role === 'primary' ? step.labels?.primary : role === 'secondary' ? step.labels?.secondary : step.labels?.fins);
+  // a walk frame that draws part of a role names it as it draws it
+  const labels = labelsAt(step, frame);
+  const words = (role: Role) => (role === 'primary' ? labels?.primary : role === 'secondary' ? labels?.secondary : labels?.fins);
   const lent = (roles: Role[]) => roles.map(words).filter((x): x is string => !!x);
   const out: LegendEntry[] = [];
   if (shown.has('place')) out.push({ kind: 'place', label: [tr`place`, ...lent(intoPlace)].join(': '), colour: P.place, ink: P.placeInk });
@@ -735,11 +741,11 @@ export function legendOf(step: Step, values?: string, frame: Frame | null = null
     out.push({ kind, label, colour, ink, ...(onValue.has(kind) ? { onValue: true } : onBand.has(kind) ? { onBand: true } : {}) });
   // a Death Blossom's blue before every petal's z is drawn: a petal's, by its own branch
   const z = step.eliminations[0]?.digit;
-  const blue = petalsPart(step, drawn) ? tr`${z} in a petal: if the stem takes that petal's digit, the petal holds ${aDigit(z)}` : (clashWords(step) ?? step.labels?.primary);
+  const blue = petalsPart(step, drawn) ? tr`${z} in a petal: if the stem takes that petal's digit, the petal holds ${aDigit(z)}` : (clashWords(step) ?? labels?.primary);
   if (shown.has('primary')) role('primary', blue ?? tr`the pattern`, P.primary, P.primaryInk);
   // a Death Blossom's gold before any petal's digit is drawn: the stem's candidates alone
-  if (shown.has('secondary')) role('secondary', stemAlone(step, drawn) ? tr`the stem's candidates` : (step.labels?.secondary ?? tr`supporting cells`), P.secondary, P.secondaryInk);
-  if (shown.has('fin')) role('fin', step.labels?.fins ?? tr`fin`, P.fin, P.finInk);
+  if (shown.has('secondary')) role('secondary', stemAlone(step, drawn) ? tr`the stem's candidates` : (labels?.secondary ?? tr`supporting cells`), P.secondary, P.secondaryInk);
+  if (shown.has('fin')) role('fin', labels?.fins ?? tr`fin`, P.fin, P.finInk);
   // a finned fish's fins' box: a small band, dotted, in the fins' colour
   if (finBox && step.labels?.finBox) out.push({ kind: 'finBox', label: step.labels.finBox, colour: P.fin, ink: P.finInk, onBand: true });
   // a bar in the pattern's ink (a proof-only view) or the removal's: what a
