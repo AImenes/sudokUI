@@ -63,16 +63,22 @@ serves seeds first.
 
 **Game store** ([gameStore.ts](../src/state/gameStore.ts)). The active game:
 81 `CellState`s (`value`, `given`, `corner`/`center` mark masks, `excluded`
-mask, `colors`), selection, entry mode, undo/redo history (snapshots), timer,
-hint state, transient toast. The candidate model:
+mask, `colors`, and `took`: the marks a placed digit cleared, given back when
+it goes), selection, entry mode, undo/redo history (snapshots of the cells,
+the auto-candidates flag and the marks' contract), timer, hint state,
+transient toast. The candidate model:
 
 - *corner marks* = notation (Snyder-style, partial by design),
 - *centre marks* = exhaustive candidate list (absence = eliminated),
-- *auto candidates* = engine-computed list minus `excluded` (strike-throughs).
+- *auto candidates* = engine-computed list minus `excluded` (strike-throughs),
+  which live only while auto is on: switching it off clears them
+  ([candidates-2026-11.md](candidates-2026-11.md)).
 
 `engineGrid(cells)` converts UI cell state into an engine `Grid` (values +
 canonical candidates minus exclusions); it's the bridge used by hints, fill,
 auto-view and check. All mutating actions snapshot into `history` first.
+`listLayer(mode)` says where the app writes a candidate list (the Corner or
+Centre tab's layer, else the "Candidates go in" setting).
 
 **Settings** ([settings.ts](../src/state/settings.ts)). Persisted user
 preferences (theme, highlights, timer, auto-off materialisation behaviour).

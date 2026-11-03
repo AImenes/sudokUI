@@ -10,7 +10,11 @@ player write them.
 
 ⛓ Chain in the Assist box (it counts as assistance: the engine checks
 every link). Auto candidates come on, because the player taps
-candidates, not cells.
+candidates, not cells: through the Auto button's own handover (the
+eliminations in the player's candidate lists kept, one step for Ctrl+Z),
+and Done switches them off again with the player's own marks as they
+were, when the trainer switched them on. A new game, the next practice
+puzzle and Restart close the trainer ([candidates-2026-11.md](candidates-2026-11.md), I).
 
 - The first tap starts the chain. Each next tap must link to the last
   candidate: a **strong link** (the other candidate of a bivalue cell, or
