@@ -115,7 +115,13 @@ function fireworksStep(g: Grid, b: number, A: number, B: number, C: number, dMas
     },
     walk: {
       frames: [
-        { text: wingText(g, box, row, B, digits), show: ['secondary'], cells: [B] },
+        // the row's wing alone, named alone (G23); from the column's on, the wings
+        {
+          text: wingText(g, box, row, B, digits),
+          show: ['secondary'],
+          cells: [B],
+          labels: { secondary: tr`the row's wing: the only cell of ${row} outside ${box} that can be ${d1}, ${d2} or ${d3}` }
+        },
         { text: wingText(g, box, col, C, digits), show: ['secondary'], cells: [C] },
         { text: tr`If one of ${all} is in neither ${nB} nor ${nC}, ${row} and ${col} both have it in ${box}, which holds only one: so it is in ${nA}, where they cross.`, show: ['primary'], cells: [A] }
       ],

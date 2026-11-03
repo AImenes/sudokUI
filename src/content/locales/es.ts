@@ -137,7 +137,7 @@ const es: LearnLocale = {
     },
     "EMPTY_RECTANGLE": {
       "what": "Los candidatos de X de una caja están en una fila y una columna; una columna (o fila) fuera de ella solo tiene dos sitios para X, uno en esa fila (o columna).",
-      "why": "Uno de los dos sitios es X; si es el de la fila de la caja, el X de la caja está en su columna. En cualquier caso, la casilla donde esa columna cruza la fila del otro sitio ve un X y lo pierde.",
+      "why": "Uno de los dos sitios es X; si es el de la fila de la caja, el X de la caja está en su columna. En cualquier caso, la casilla fuera de la caja donde esa columna cruza la fila del otro sitio ve un X y lo pierde.",
       "spot": "Busca una caja donde cuatro casillas que forman un rectángulo no tengan el candidato X, de modo que X quede solo en una fila y una columna."
     },
     "W_WING": {

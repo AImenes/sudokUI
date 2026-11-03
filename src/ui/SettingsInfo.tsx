@@ -89,7 +89,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             )}
           </small>
           <small>
-            {t('Match device follows your device: Daylight in light mode, Dark in dark mode')}
+            {t('“Match device” shows Daylight while your device is in light mode, and Dark while it is in dark mode')}
           </small>
         </div>
         <div className="segmented theme-choice">

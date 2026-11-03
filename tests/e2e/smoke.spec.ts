@@ -2712,7 +2712,7 @@ test.describe('Match device', () => {
     await themes.getByRole('button', { name: 'Match device' }).click();
     await expect(themes.getByRole('button', { name: 'Match device' })).toHaveAttribute('aria-pressed', 'true');
     await expect(themes.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'false');
-    await expect(settings).toContainText('Match device follows your device: Daylight in light mode, Dark in dark mode');
+    await expect(settings).toContainText('“Match device” shows Daylight while your device is in light mode, and Dark while it is in dark mode');
     // the device is light: Daylight, and the bars wear its top bar's colour
     await expect(html).toHaveAttribute('data-theme', 'light');
     const day = await bars(page);

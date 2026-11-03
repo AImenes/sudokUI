@@ -115,7 +115,8 @@ function alsChain(sets: ChainSet[], order: number[], commons: number[], z: numbe
  * the chain starts, as the description reads it, (z)A=(x)A-(x)B=(z)B, so
  * the walk tells A's lock (if it is not z, it is x), set B, the x link and
  * B's lock (without x, its other digits fill it, and it holds z), and ends
- * on the either/or. Its description is one line (the report's L3), and its
+ * on the either/or. Its description is one line (the report's L3) and ends,
+ * as the other ALS leads do, on why a cell seeing every z of both loses z; its
  * Copy step line is HoDoKu's wing line from the sets, as it always was
  * (src/content/eureka.ts wingGroups). Only the drawing and the wording
  * differ from ALS-XZ: the search and the removals are the same.
@@ -131,7 +132,8 @@ function wxyzStep(g: Grid, A: Als, B: Als, x: number, z: number, elims: CellDigi
     links: alsChain(sets, [0, 1], [x], z),
     truth: 'derived',
     sets,
-    description: tr`Either set A, the cell ${name}, is ${z}, or it is ${x}, and then set B, in ${unitName(sets[1].unit)}, holds ${aDigit(z)}.`
+    // and why the removed cells lose z, as the other ALS leads end
+    description: tr`Either set A, the cell ${name}, is ${z}, or it is ${x}, and then set B, in ${unitName(sets[1].unit)}, holds ${aDigit(z)}. Set A or set B holds ${aDigit(z)}, so no cell that sees every ${z} of both can be ${z}.`
   };
 }
 

@@ -18,11 +18,15 @@
  *   orientations, a box digit off the arm in one cell and in two, and a box
  *   holding the digit where its row and column cross and not, all occur (a
  *   sample of the paths; ER_SCAN=all reads every practice puzzle's path).
+ * - the technique guide's rule (Learn and the static page, in the three
+ *   languages) is true: the cell that loses the digit lies outside the box,
+ *   as the finder's band check has it; without that, the reviewer's board
+ *   below would have it take the solution's digit from a cell of the box.
  * The Copy step line is pinned in tests/eureka.test.ts, as it always was.
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { env } from 'node:process';
-import { Grid, UNITS, bit, boxOf, parseGrid, isSolved, sees } from '../src/engine/board';
+import { Grid, UNITS, bit, boxOf, rowOf, colOf, parseGrid, isSolved, sees } from '../src/engine/board';
 import { findStep, findNextStep, applyStep } from '../src/engine/humanSolver';
 import { solve } from '../src/engine/bruteForce';
 import { walkFrames, describe as describeStep } from '../src/engine/hintFrames';
@@ -36,6 +40,9 @@ import { exampleGrid } from '../src/content/learnLocale';
 import practice from '../src/content/practicePuzzles.json';
 import engineNb from '../src/content/locales/engine.nb';
 import engineEs from '../src/content/locales/engine.es';
+import { TECH_DOCS } from '../src/content/techniqueDocs';
+import learnNb from '../src/content/locales/nb';
+import learnEs from '../src/content/locales/es';
 
 afterEach(() => setEngineText('en', null));
 
@@ -313,5 +320,101 @@ describe('Empty Rectangle walks in its own sentences, as the grouped Kite it is 
     for (const part of ['pair in a row', 'pair in a column', '1 off the arm', '2 off the arm', ', crossing', 'no crossing']) {
       expect(seen.some((s) => s.includes(part)), `${part}: ${seen.join(' / ')}`).toBe(true);
     }
+  });
+});
+
+/**
+ * The technique guide's rule as it reads, applied to a board: a box whose
+ * digits all lie in one row and one column, and a column (or row) outside
+ * the box with only two places for the digit, one in the box's row (or
+ * column); the cell where the box's column (or row) meets the other place's
+ * row (or column) loses the digit. With `outside`, only where that cell is
+ * outside the box, as the guide's why says
+ */
+function guideRemovals(g: Grid, outside: boolean): { cell: number; digit: number }[] {
+  const out: { cell: number; digit: number }[] = [];
+  const holdsAt = (cell: number, d: number) => g.values[cell] === 0 && (g.cands[cell] & bit(d)) !== 0;
+  for (let d = 1; d <= 9; d++) {
+    for (let b = 0; b < 9; b++) {
+      const box = UNITS[18 + b];
+      if (box.some((c) => g.values[c] === d)) continue;
+      const inBox = box.filter((c) => holdsAt(c, d));
+      if (!inBox.length) continue;
+      const [rows, cols] = [[0, 1, 2].map((k) => Math.floor(b / 3) * 3 + k), [0, 1, 2].map((k) => (b % 3) * 3 + k)];
+      for (const R of rows) {
+        for (const C of cols) {
+          if (!inBox.every((c) => rowOf(c) === R || colOf(c) === C)) continue;
+          // a line outside the box, its two places one on the box's line across it
+          for (const [line, across, meet] of [
+            ...[...Array(9).keys()].filter((x) => !cols.includes(x)).map((x) => [9 + x, R, (other: number) => rowOf(other) * 9 + C] as const),
+            ...[...Array(9).keys()].filter((r) => !rows.includes(r)).map((r) => [r, 9 + C, (other: number) => R * 9 + colOf(other)] as const)
+          ]) {
+            const places = UNITS[line].filter((c) => holdsAt(c, d));
+            if (places.length !== 2) continue;
+            const on = places.filter((c) => UNITS[across].includes(c));
+            if (on.length !== 1) continue;
+            const target = meet(places.find((c) => c !== on[0])!);
+            if (outside && box.includes(target)) continue;
+            if (holdsAt(target, d) && !out.some((e) => e.cell === target && e.digit === d)) out.push({ cell: target, digit: d });
+          }
+        }
+      }
+    }
+  }
+  return out;
+}
+
+describe("Empty Rectangle's technique guide states a true rule", () => {
+  // the reviewer's board: the solution v(r,c) = (3r + floor(r/3) + c) mod 9 + 1
+  // as every cell's candidate, and a 5 more in r1c2, r1c3 and r2c5, so box 1's
+  // 5s are r1c2, r1c3 and r2c2 (row 1 and column 2) and column 5's only two
+  // are r1c5, in the box's row, and r2c5, in the box's band
+  const solution = Array.from({ length: 81 }, (_, i) => ((3 * rowOf(i) + Math.floor(rowOf(i) / 3) + colOf(i)) % 9) + 1);
+  const reviewers = (): Grid => {
+    const cands = new Uint16Array(solution.map(bit));
+    for (const n of ['r1c2', 'r1c3', 'r2c5']) cands[cellOf(n)] |= bit(5);
+    return { values: new Uint8Array(81), cands, given: new Uint8Array(81) };
+  };
+
+  it('takes no cell of the box, which without "outside the box" would lose the answer', () => {
+    expect(UNITS.every((u) => new Set(u.map((c) => solution[c])).size === 9)).toBe(true);
+    const g = reviewers();
+    // where column 2 meets row 2 is r2c2, in box 1, and the solution's 5
+    expect(solution[cellOf('r2c2')]).toBe(5);
+    expect(guideRemovals(g, false)).toContainEqual({ cell: cellOf('r2c2'), digit: 5 });
+    // the rule as the guide states it removes nothing here, and nor does the finder
+    expect(guideRemovals(g, true)).toEqual([]);
+    expect(findStep('EMPTY_RECTANGLE', g)).toBeNull();
+  });
+
+  it('says so in English, Norwegian and Spanish', () => {
+    expect(TECH_DOCS.EMPTY_RECTANGLE.why).toContain('the cell outside the box where that column meets');
+    expect(learnNb.techDocs.EMPTY_RECTANGLE!.why).toContain('ruten utenfor boksen der den kolonnen krysser');
+    expect(learnEs.techDocs.EMPTY_RECTANGLE!.why).toContain('la casilla fuera de la caja donde esa columna cruza');
+  });
+
+  it('removes no answer at any position along practice solve paths, and every finder removal is one of its own', () => {
+    const pools = Object.values(practice as Record<string, { puzzle: string; techs: string[] }[]>).flat();
+    const puzzles = [...new Set(pools.filter((e) => e.techs.includes('EMPTY_RECTANGLE')).map((e) => e.puzzle))].slice(0, env.ER_SCAN === 'all' ? undefined : 8);
+    const wrong: string[] = [];
+    let finds = 0;
+    for (const puzzle of puzzles) {
+      const g = parseGrid(puzzle)!;
+      const sol = solve(g)!;
+      for (let i = 0; i < 300 && !isSolved(g); i++) {
+        const rule = guideRemovals(g, true);
+        for (const e of rule) if (sol.values[e.cell] === e.digit) wrong.push(`${puzzle} step ${i}: the guide's rule removes the answer ${e.digit} from r${rowOf(e.cell) + 1}c${colOf(e.cell) + 1}`);
+        const step = findStep('EMPTY_RECTANGLE', g);
+        if (step) {
+          finds++;
+          for (const e of step.eliminations) if (!rule.some((o) => o.cell === e.cell && o.digit === e.digit)) wrong.push(`${puzzle} step ${i}: ${step.description} is not the guide's rule`);
+        }
+        const s = findNextStep(g);
+        if (!s) break;
+        applyStep(g, s);
+      }
+    }
+    expect(wrong.slice(0, 10)).toEqual([]);
+    expect(finds).toBeGreaterThan(50);
   });
 });

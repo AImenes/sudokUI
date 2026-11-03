@@ -76,6 +76,25 @@ phase 6 (words) and phase 7 (polish). The
 relabelling of AIC with ALS steps whose only set is a bivalue cell is a
 later measured engine change (the design's decision 14).
 
+### 3 November 2026: phase 6 batch 3 and Match device
+
+Batch 3 walks the patterns the readability check left: Empty Rectangle as the grouped 2-String Kite it is, Fireworks
+line by line, Exocet a base digit a frame, and the WXYZ-Wing drawn and walked as the ALS-XZ it is. A walk frame that
+draws part of a role names only that part in its legend (`Step.walk` frame labels), the wings first and now
+Fireworks and Exocet too. The words pass gives nine hints plain, exact words and one lead line (L2, L3), and the hint
+panel no longer repeats its title. Settings has a Match device theme that follows the device's light or dark.
+
+The review (six agents, two lenses) found the Empty Rectangle guide teaching a false rule, a regression: it had
+dropped "outside the box". It also found Exocet frames saying a base cell could not be a digit that the step then
+left. Both are fixed, and so is every low but one: G23 labels for the new frames, the WXYZ-Wing's ending, Exocet's
+counted sentence, and the Match device help line. The finders find what they found before, and the path digest is
+unchanged. The review record is phase6-batch3-review.md.
+
+Still to do: Empty Rectangle's band shapes (solid lines through the removal, the confining pair's line dashed),
+a design question for later; Exocet's finder taking the removals its walk proves, a measured engine change; the
+owner's phone check of the share sheet with a picture and reach item 4 (copy as post) from batch 2; then phase 7
+and phase 5.
+
 ### 2 November 2026, night: phase 6 batch 2 and reach item 3, merged
 
 The hints players see most now walk through their argument in plain sentences: the singles, the subsets and Locked

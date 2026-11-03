@@ -402,7 +402,9 @@ walk, the numbers on arrows and ties those of the frame that adds them.
   ..."), set B, the link on 9 ("In row 4, every 9 of set A sees every 9 of
   set B: ..."), B's lock, and the either-way of the two sets. Its
   description is one line ("Either set A, the cell r4c3, is 4, or it is 9,
-  and then set B, in box 5, holds a 4."), and its Copy step line is the
+  and then set B, in box 5, holds a 4.") that ends, as the other ALS leads
+  do, on why the removed cells lose 4 ("Set A or set B holds a 4, so no
+  cell that sees every 4 of both can be 4."), and its Copy step line is the
   wing's, as before: `WXYZ-Wing: 1/9 in r4c4 / 1/4/7 in r56c5 / 4/9 in
   r4c3 => r4c6<>4, r5c3<>4`.
 

@@ -96,7 +96,8 @@ const SET_B = /^Set B: the 3 cells (.+) of (row|column|box) (\d) hold only (.+):
 const LINK_X = /^(?:In (row|column|box) (\d), every|Every) (\d) of set A sees every \3 of set B: if (r\dc\d) is \3, (?:(r\dc\d) cannot be|none of (.+) can be) \3\.$/;
 const LOCK_B = /^If set B holds no (\d), its other 3 digits fill its 3 cells, so (?:one of (.+)|(r\dc\d)) must be (\d)\.$/;
 const ENDS = /^Set A or set B holds an? (\d): if A holds none, B holds one\. Each removed \1 sees every \1 of both\. So \1 is removed from (.+)\.$/;
-const WXYZ_DESCRIPTION = /^Either set A, the cell (r\dc\d), is (\d), or it is (\d), and then set B, in (row|column|box) (\d), holds an? (\d)\.$/;
+const WXYZ_DESCRIPTION =
+  /^Either set A, the cell (r\dc\d), is (\d), or it is (\d), and then set B, in (row|column|box) (\d), holds an? (\d)\. Set A or set B holds an? (\d), so no cell that sees every (\d) of both can be (\d)\.$/;
 
 /**
  * What is wrong with a wing's English walk at its position, given the
@@ -198,6 +199,8 @@ function wrongIn(step: Step, g: Grid, sol: Grid): string[] {
     const d = WXYZ_DESCRIPTION.exec(step.description);
     if (!d) return [...out, `not a WXYZ-Wing's description: ${step.description}`];
     ok(cellOf(d[1]) === A && Number(d[2]) === z && Number(d[3]) === x && Number(d[6]) === z, 'the description names set A, z and x');
+    // and why the removals lose z, as the other ALS leads end
+    ok([d[7], d[8], d[9]].every((n) => Number(n) === z), `the description's removal is of z: ${step.description}`);
     ok(houseOf(d[4], d[5]) === house, "the description names set B's house");
   }
   return out;
@@ -392,11 +395,11 @@ describe('the wings walk in their own sentences (H1)', () => {
     }
   });
 
-  it("describes the WXYZ-Wing in one line, its either-way by its two sets (L3), in English, Norwegian and Spanish, and its Copy step line is the wing's", () => {
+  it("describes the WXYZ-Wing in one line, its either-way by its two sets and why the removals go (L3), in English, Norwegian and Spanish, and its Copy step line is the wing's", () => {
     const want: Record<string, string> = {
-      en: 'Either set A, the cell r4c3, is 4, or it is 9, and then set B, in box 5, holds a 4.',
-      nb: 'Enten er mengde A, ruten r4c3, lik 4, eller så er den lik 9, og da har mengde B, i boks 5, en 4.',
-      es: 'O el conjunto A, la casilla r4c3, es 4, o es 9, y entonces el conjunto B, en la caja 5, tiene un 4.'
+      en: 'Either set A, the cell r4c3, is 4, or it is 9, and then set B, in box 5, holds a 4. Set A or set B holds a 4, so no cell that sees every 4 of both can be 4.',
+      nb: 'Enten er mengde A, ruten r4c3, lik 4, eller så er den lik 9, og da har mengde B, i boks 5, en 4. Mengde A eller mengde B har en 4, så ingen rute som ser alle 4-tallene i begge, kan være 4.',
+      es: 'O el conjunto A, la casilla r4c3, es 4, o es 9, y entonces el conjunto B, en la caja 5, tiene un 4. El conjunto A o el conjunto B tiene un 4, así que ninguna casilla que vea todos los 4 de ambos puede ser 4.'
     };
     for (const [lang, table] of [['en', null], ...OTHER] as const) {
       setEngineText(lang, table);

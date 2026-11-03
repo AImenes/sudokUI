@@ -137,7 +137,7 @@ const nb: LearnLocale = {
     },
     "EMPTY_RECTANGLE": {
       "what": "X-kandidatene i en boks ligger alle i én rad og én kolonne; en kolonne (eller rad) utenfor boksen har bare to plasser for X, én i den raden (eller kolonnen).",
-      "why": "Én av de to plassene er X; er det den i boksens rad, ligger boksens X i boksens kolonne. Uansett ser ruten der den kolonnen krysser raden til den andre plassen, en X, så X fjernes fra den.",
+      "why": "Én av de to plassene er X; er det den i boksens rad, ligger boksens X i boksens kolonne. Uansett ser ruten utenfor boksen der den kolonnen krysser raden til den andre plassen, en X, så X fjernes fra den.",
       "spot": "Se etter en boks der fire ruter som danner et rektangel, ikke har kandidaten X, så X står igjen langs én rad og én kolonne."
     },
     "W_WING": {

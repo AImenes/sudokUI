@@ -12,11 +12,17 @@
  *   own that draws that digit alone: where the targets' boxes and lines
  *   settle it on the board, it says how; elsewhere it gives what the proof
  *   counted, the ways the board leaves to place all nine of the digit, and
- *   claims nothing more;
+ *   claims nothing more; a digit it keeps out of the base goes from the
+ *   base where no target holds it, and where one does the step leaves it,
+ *   so the frame says only that it is not one of the base's two digits and
+ *   that this step does not remove it, and draws it in no cell;
  * - the stored examples walk so in English, Norwegian and Spanish, and the
  *   descriptions lead with the argument, not the technique's name (L3);
  * - each frame draws what it names and something new; the bands come with
- *   their frames;
+ *   their frames; each frame's legend names only what that frame draws, in
+ *   words (G23: Fireworks' row's wing before both wings, Exocet's targets
+ *   by their lines before the walk argues what they hold, then each digit
+ *   in the base and the targets);
  * - every sentence is true of its board and of the puzzle's solution at
  *   every find of the two techniques along practice solve paths, and
  *   Norwegian and Spanish name the same cells and digits (a sample of the
@@ -33,7 +39,7 @@ import type { Frame } from '../src/engine/hintFrames';
 import { frameMarks } from '../src/content/hintMarks';
 import { boardSvg, legendOf } from '../src/content/boardSvg';
 import { digitTemplates } from '../src/engine/techniques/templates';
-import { setEngineText } from '../src/engine/text';
+import { setEngineText, listAnd } from '../src/engine/text';
 import type { Tech } from '../src/engine/ratings';
 import type { Step } from '../src/engine/steps';
 import { EXAMPLES } from '../src/content/examples';
@@ -162,8 +168,23 @@ const EX_FORCED = /^If a base cell is (\d), box (\d) has no (\d) in (row|column)
 const EX_NOBOX = /^If a base cell were (\d), box (\d) would need its (\d) in (row|column) (\d) or (row|column) (\d), but it has none there, so neither base cell can be (\d)\.$/;
 const EX_NOLINE = /^If a base cell were (\d), (row|column) (\d) would need its (\d) from box (\d) or box (\d), but neither has one there, so neither base cell can be (\d)\.$/;
 const EX_NONE = /^(?:The board leaves one way to place all nine (\d)s, and it uses neither base cell, so neither can be (\d)|None of the (\d+) ways the board leaves to place all nine (\d)s uses a base cell, so neither base cell can be (\d))\.$/;
+/** the count of ways through the base with its noun after it ("6 of those ways"), never a bare number */
 const EX_COUNT =
-  /^If a base cell is (\d), so is a target: (?:the board leaves (one way|\d+ ways) to place all nine (\d)s, and (?:it|each) uses a base cell and a target|of the (\d+) ways the board leaves to place all nine (\d)s, (?:the one that uses a base cell uses|the (\d+) that use a base cell all use) a target too)\.$/;
+  /^If a base cell is (\d), so is a target: (?:the board leaves (one way|\d+ ways) to place all nine (\d)s, and (?:it|each) uses a base cell and a target|the board leaves (\d+) ways to place all nine (\d)s; (?:one of those ways uses a base cell, and it uses|(\d+) of those ways use a base cell, and each of them uses) a target too)\.$/;
+/** where a target holds a digit the walk keeps out of the base, the step leaves it, and the sentence ends so */
+const EX_LEFT = /, so (\d) is not one of the base's two digits\. This step does not remove it from (r\dc\d)(?: or (r\dc\d))?\.$/;
+
+/**
+ * A sentence keeping a digit out of the base, read back in the words the
+ * removal's form has ("so neither base cell can be 5"), and the base cells
+ * it says the step leaves the digit in, where it says so
+ */
+function outOfBase(text: string): { said: string; left: number[] | null } {
+  const m = EX_LEFT.exec(text);
+  if (!m) return { said: text, left: null };
+  const neither = text.startsWith('The board leaves one way') ? 'neither can be' : 'neither base cell can be';
+  return { said: `${text.slice(0, m.index)}, so ${neither} ${m[1]}.`, left: [m[2], m[3]].filter(Boolean).map((x) => cellOf(x!)) };
+}
 const EX_LEAD = /^The base holds two different digits, and each is in a target, so the two targets hold them both and nothing else\. So /;
 
 /**
@@ -209,10 +230,22 @@ function exocetWrong(step: Step, g: Grid, sol: Grid, kinds: Set<string>): string
   } else out.push(`not the targets' sentence: ${texts[1]}`);
   const at = (box: number, l: number, d: number) => UNITS[18 + box].filter((x) => lineOf(x) === l && holds(g, x, d));
   const baseIs = (d: number) => baseSol.includes(d);
+  // a digit kept out of the base: removed from every base cell holding it where no target holds it, and said so;
+  // left where a target holds it, and said so, naming the base cells it stays in
+  const outOf = (d: number, left: number[] | null, text: string) => {
+    const inBase = base.filter((x) => holds(g, x, d));
+    const fromBase = sorted(step.eliminations.filter((e) => e.digit === d && base.includes(e.cell)).map((e) => e.cell));
+    if (holds(g, T1, d) || holds(g, T2, d)) {
+      kinds.add('no base, left');
+      ok(!!left && JSON.stringify(left) === JSON.stringify(inBase) && !fromBase.length, `the step leaves ${d} in the base, so the frame must say it does and where: ${text}`);
+    } else ok(!left && JSON.stringify(fromBase) === JSON.stringify(inBase), `the frame says neither base cell can be ${d}, so the step must remove it from both: ${text}`);
+  };
   digits.forEach((d, i) => {
     const text = texts[i + 2];
     const f = frames[i + 2];
-    ok(!!f.digits && same([...f.digits], [d]), `frame ${i + 3} draws one digit: ${text}`);
+    const { said, left } = outOfBase(text);
+    // a frame draws its one digit; one that keeps it out of the base while the step leaves it, none
+    ok(!!f.digits && JSON.stringify([...f.digits]) === JSON.stringify(left ? [] : [d]), `frame ${i + 3} draws ${left ? 'no digit' : 'one digit'}: ${text}`);
     let m: RegExpExecArray | null;
     if ((m = EX_FORCED.exec(text))) {
       kinds.add('forced');
@@ -228,15 +261,17 @@ function exocetWrong(step: Step, g: Grid, sol: Grid, kinds: Set<string>): string
       ok(JSON.stringify(places) === JSON.stringify([T]), `the only ${d} of box ${F + 1} in that line is not the target: ${text}`);
       kinds.add(T === T1 ? 'forced T1' : 'forced T2');
       if (baseIs(d)) ok(sol.values[T1] === d || sol.values[T2] === d, `${d} in the base and no target: ${text}`);
-    } else if ((m = EX_NOBOX.exec(text))) {
+    } else if ((m = EX_NOBOX.exec(said))) {
       kinds.add('no base, box');
+      outOf(d, left, text);
       const P = Number(m[2]) - 1;
       ok(Number(m[1]) === d && Number(m[3]) === d && Number(m[8]) === d && (P === X || P === Y), `the digit and box: ${text}`);
       ok(same([line(m[4], m[5]), line(m[6], m[7])], [lineUnit(lA), lineUnit(lB)]), `the lines: ${text}`);
       ok(!at(P, lA, d).length && !at(P, lB, d).length, `box ${P + 1} has a ${d} in those lines: ${text}`);
       ok(!baseIs(d), `the base holds ${d}: ${text}`);
-    } else if ((m = EX_NOLINE.exec(text))) {
+    } else if ((m = EX_NOLINE.exec(said))) {
       kinds.add('no base, line');
+      outOf(d, left, text);
       const M = line(m[2], m[3]);
       ok(Number(m[1]) === d && Number(m[4]) === d && Number(m[7]) === d && (M === lineUnit(lA) || M === lineUnit(lB)), `the digit and line: ${text}`);
       ok(same([Number(m[5]) - 1, Number(m[6]) - 1], [X, Y]), `the boxes: ${text}`);
@@ -248,12 +283,13 @@ function exocetWrong(step: Step, g: Grid, sol: Grid, kinds: Set<string>): string
       const all = digitTemplates(g, d, 20000)!;
       const through = all.filter((tp) => tp.includes(base[0]) || tp.includes(base[1]));
       ok(through.every((tp) => tp.includes(T1) || tp.includes(T2)), `a way through the base misses the targets: ${text}`);
-      if ((m = EX_NONE.exec(text))) {
+      if ((m = EX_NONE.exec(said))) {
         kinds.add('no base, counted');
+        outOf(d, left, text);
         const n = m[1] ? 1 : Number(m[3]);
         ok(Number(m[1] ?? m[4]) === d && Number(m[2] ?? m[5]) === d && n === all.length && !through.length, `the count: ${text}`);
         ok(!baseIs(d), `the base holds ${d}: ${text}`);
-      } else if ((m = EX_COUNT.exec(text))) {
+      } else if (!left && (m = EX_COUNT.exec(text))) {
         kinds.add(m[2] ? 'counted, every way' : m[6] ? 'counted, several' : 'counted, one');
         ok(Number(m[1]) === d && Number(m[3] ?? m[5]) === d, `the digit: ${text}`);
         const n = m[2] ? (m[2] === 'one way' ? 1 : Number(m[2].split(' ')[0])) : Number(m[4]);
@@ -280,7 +316,9 @@ function exocetWrong(step: Step, g: Grid, sol: Grid, kinds: Set<string>): string
  * What is wrong with a walk's drawing: a frame names a cell it does not
  * draw (an Exocet's digit frame names cells of its boxes and lines, which
  * its bands draw), two frames in a row draw the same, a band comes before
- * its frame, a digit frame draws another digit
+ * its frame, a digit frame draws another digit, or a digit the step leaves
+ * in the base, and a frame's legend names, in its words, other than what
+ * the frame draws (G23)
  */
 function drawnWrong(step: Step, g: Grid): string[] {
   const out: string[] = [];
@@ -289,7 +327,12 @@ function drawnWrong(step: Step, g: Grid): string[] {
     if (i && drawing(step, frames[i - 1], g) === drawing(step, f, g)) out.push(`frames ${i} and ${i + 1} draw the same`);
   });
   const at = frames.map((f) => bandsAt(step, f, g).sort());
-  const kinds = frames.map((f) => legendOf(step, valuesOf(g), f).map((e) => e.kind).join());
+  const legends = frames.map((f) => legendOf(step, valuesOf(g), f).map((e) => `${e.kind}: ${e.label}`));
+  const legendWrong = (want: string[][]) => {
+    legends.forEach((l, i) => {
+      if (JSON.stringify(l) !== JSON.stringify(want[i])) out.push(`frame ${i + 1}'s legend: ${l.join(' / ')}, not ${want[i]?.join(' / ')}`);
+    });
+  };
   if (step.tech === 'FIREWORKS') {
     const { A, B, C, r, c } = fireworksParts(step);
     const cells = frames.map((f) => drawnCells(step, f, g));
@@ -299,9 +342,15 @@ function drawnWrong(step: Step, g: Grid): string[] {
     const col = `${9 + c}:secondary`;
     const both = [row, col].sort();
     if (JSON.stringify(at) !== JSON.stringify([[row], both, both, both])) out.push(`the bands by frame: ${JSON.stringify(at)}`);
-    if (kinds.join(' / ') !== 'secondary / secondary / primary,secondary / elim,primary,secondary') out.push(`the legend by frame: ${kinds.join(' / ')}`);
+    // the row's wing alone, then the wings, then the cross with them, then the removals
+    const { b, digits } = fireworksParts(step);
+    const [d1, d2, d3] = digits;
+    const cross = `primary: the cross, where row ${r + 1} meets column ${c + 1}: whichever of ${d1}, ${d2} and ${d3} is in neither wing is here`;
+    const wings = `secondary: the wings: outside box ${b + 1}, each is the only cell of its row or column that can be ${d1}, ${d2} or ${d3}`;
+    const rowWing = `secondary: the row's wing: the only cell of row ${r + 1} outside box ${b + 1} that can be ${d1}, ${d2} or ${d3}`;
+    legendWrong([[rowWing], [wings], [cross, wings], ['elim: remove', cross, wings]]);
   } else {
-    const { base, T1, T2, digits, lineUnit, L, lA, lB, Q } = exocetParts(step);
+    const { base, T1, T2, digits, lineUnit, L, lA, lB, Q, rows } = exocetParts(step);
     const cells = frames.map((f) => drawnCells(step, f, g));
     if (JSON.stringify(cells[0]) !== JSON.stringify(base)) out.push(`frame 1 draws other cells than the base: ${cells[0]}`);
     if (JSON.stringify(cells[1]) !== JSON.stringify(sorted([...base, T1, T2]))) out.push(`frame 2 draws other cells than the base and targets: ${cells[1]}`);
@@ -309,15 +358,31 @@ function drawnWrong(step: Step, g: Grid): string[] {
     const lines = [`${lineUnit(lA)}:secondary`, `${lineUnit(lB)}:secondary`];
     const all = [mini, ...lines].sort();
     if (JSON.stringify(at) !== JSON.stringify([[mini], ...frames.slice(1).map(() => all)])) out.push(`the bands by frame: ${JSON.stringify(at)}`);
+    // the legend: the base, then the targets by their lines, then each digit in the base and the targets, or the
+    // bands alone where the frame draws none of a role, then the step's own words with the removals
+    const lineName = (l: number) => `${rows ? 'row' : 'column'} ${l + 1}`;
+    const [A, B] = [lineName(lA), lineName(lB)];
+    const theBase = `primary: the base: two different digits of ${listAnd(digits)}, one in each cell`;
+    const want = [[theBase], [theBase, `secondary: the targets, in ${A} and ${B}`]];
     digits.forEach((d, i) => {
       const f = frames[i + 2];
       const drawn = drawnCands(step, f, g);
-      const want = [...base, T1, T2].filter((x) => g.values[x] === 0 && g.cands[x] & bit(d));
-      if (drawn.some((cd) => cd.digit !== d) || !same(drawn.map((cd) => cd.cell), want)) out.push(`frame ${i + 3} draws other than the base's and targets' ${d}s: ${JSON.stringify(drawn)}`);
+      // a digit the walk keeps out of the base that the step leaves: drawn in no cell, so not read as the base's
+      const left = !!outOfBase(f.text).left;
+      const inTargets = holds(g, T1, d) || holds(g, T2, d);
+      const cells = left ? [] : [...base, T1, T2].filter((x) => g.values[x] === 0 && g.cands[x] & bit(d));
+      if (drawn.some((cd) => cd.digit !== d) || !same(drawn.map((cd) => cd.cell), cells) || drawn.length !== cells.length)
+        out.push(`frame ${i + 3} draws other than the ${left ? 'bands' : `base's and targets' ${d}s`}: ${JSON.stringify(drawn)}`);
+      if (drawn.some((cd) => cd.kind !== (base.includes(cd.cell) ? 'primary' : 'secondary'))) out.push(`frame ${i + 3} draws a base or target ${d} in another colour: ${JSON.stringify(drawn)}`);
+      want.push([
+        left ? `primary: the base, where ${lineName(L)} meets box ${Q + 1}` : `primary: ${d} in the base`,
+        inTargets && !left ? `secondary: ${d} in the targets` : `secondary: the targets' lines, ${A} and ${B}`
+      ]);
     });
+    want.push(['elim: remove', theBase, `secondary: the targets, in ${A} and ${B}: each digit the base holds is in one of them`]);
+    legendWrong(want);
     const last = drawnCands(step, frames.at(-1)!, g);
     if (!step.eliminations.every((e) => last.some((cd) => cd.cell === e.cell && cd.digit === e.digit && cd.kind === 'elim'))) out.push('the last frame does not draw every removal');
-    if (kinds.slice(0, -1).some((k, i) => k !== (i ? 'primary,secondary' : 'primary')) || kinds.at(-1) !== 'elim,primary,secondary') out.push(`the legend by frame: ${kinds.join(' / ')}`);
   }
   return out;
 }
@@ -357,7 +422,10 @@ const SAMPLE = [
   '2...4...........75.1.8.74...4..1..6...69.35...3..5..2...37.2.5.48...........3...7',
   '....9..8.1.6.4....72....3....31....79...7...66....92....7....21....2.7.3.9..6....',
   '...3...5.65..7.2.9..2..96..367.....2...2.7...1.....786..68..4..9.5.4..63.7...3...',
-  '.....2....9.7..84.....4.3...8...94...4..3....27.1.......69.5.........18.4..21...9'
+  '.....2....9.7..84.....4.3...8...94...4..3....27.1.......69.5.........18.4..21...9',
+  // a digit kept out of the base that a target holds, which the step leaves (phase 6 batch 3's review)
+  '..7..48..1.36........2..96.....3...97.1.......8....5..8....7.....4.....3....8.12.',
+  '.....931......2..5.8...3.921.4...9...3..1..2...7...4.162.3...4.3..8......952.....'
 ];
 
 describe('Fireworks and Exocet walk their argument (H1, M4)', () => {
@@ -374,8 +442,8 @@ describe('Fireworks and Exocet walk their argument (H1, M4)', () => {
           'r9c8 and r9c9, where row 9 meets box 9, hold only 2, 5 and 6 between them, and they see each other, so they hold two different ones of these digits.',
           'The targets: r7c3 in row 7 and r8c5 in row 8. Whatever digit a base cell holds, row 9 and box 9 have it there, so box 7 and box 8 must put it in row 7 and row 8, one in each.',
           'If a base cell is 2, box 7 has no 2 in row 8, so box 7 puts its 2 in row 7 and box 8 in row 8, and the only 2 of box 8 in row 8 is the target r8c5.',
-          'If a base cell is 5, so is a target: of the 9 ways the board leaves to place all nine 5s, the 6 that use a base cell all use a target too.',
-          'If a base cell is 6, so is a target: of the 8 ways the board leaves to place all nine 6s, the 5 that use a base cell all use a target too.',
+          'If a base cell is 5, so is a target: the board leaves 9 ways to place all nine 5s; 6 of those ways use a base cell, and each of them uses a target too.',
+          'If a base cell is 6, so is a target: the board leaves 8 ways to place all nine 6s; 5 of those ways use a base cell, and each of them uses a target too.',
           'The base holds two different digits, and each is in a target, so the two targets hold them both and nothing else. So 8 is removed from r8c5.'
         ]
       },
@@ -390,8 +458,8 @@ describe('Fireworks and Exocet walk their argument (H1, M4)', () => {
           'r9c8 og r9c9, der rad 9 møter boks 9, har til sammen bare 2, 5 og 6, og de ser hverandre, så de har to ulike av disse tallene.',
           'Målrutene: r7c3 i rad 7 og r8c5 i rad 8. Uansett hvilket tall en basisrute har, har rad 9 og boks 9 det der, så boks 7 og boks 8 må sette det i rad 7 og rad 8, ett i hver.',
           'Hvis en basisrute er 2, har boks 7 ingen 2-er i rad 8, så boks 7 setter 2-eren sin i rad 7 og boks 8 sin i rad 8, og den eneste 2-eren i boks 8 i rad 8 er målruten r8c5.',
-          'Hvis en basisrute er 5, er også en målrute 5: av de 9 måtene brettet gir for å plassere alle ni 5-erne, bruker 6 en basisrute, og alle disse bruker også en målrute.',
-          'Hvis en basisrute er 6, er også en målrute 6: av de 8 måtene brettet gir for å plassere alle ni 6-erne, bruker 5 en basisrute, og alle disse bruker også en målrute.',
+          'Hvis en basisrute er 5, er også en målrute 5: brettet gir 9 måter å plassere alle ni 5-erne på; 6 av disse måtene bruker en basisrute, og hver av dem bruker også en målrute.',
+          'Hvis en basisrute er 6, er også en målrute 6: brettet gir 8 måter å plassere alle ni 6-erne på; 5 av disse måtene bruker en basisrute, og hver av dem bruker også en målrute.',
           'Basen har to ulike tall, og hvert av dem står i en målrute, så de to målrutene har begge tallene og ikke noe annet. Så fjernes 8 fra r8c5.'
         ]
       },
@@ -406,8 +474,8 @@ describe('Fireworks and Exocet walk their argument (H1, M4)', () => {
           'r9c8 y r9c9, donde la fila 9 se cruza con la caja 9, solo tienen 2, 5 y 6 entre las dos, y se ven entre sí, así que tienen dos números distintos de estos.',
           'Los objetivos: r7c3 en la fila 7 y r8c5 en la fila 8. Sea cual sea el número de una casilla base, la fila 9 y la caja 9 lo tienen ahí, así que la caja 7 y la caja 8 deben ponerlo en la fila 7 y en la fila 8, uno en cada una.',
           'Si una casilla base es 2, la caja 7 no tiene ningún 2 en la fila 8, así que la caja 7 pone su 2 en la fila 7 y la caja 8 el suyo en la fila 8, y el único 2 de la caja 8 en la fila 8 es el objetivo r8c5.',
-          'Si una casilla base es 5, también lo es un objetivo: de las 9 formas que deja el tablero de colocar los nueve 5, las 6 que usan una casilla base usan todas también un objetivo.',
-          'Si una casilla base es 6, también lo es un objetivo: de las 8 formas que deja el tablero de colocar los nueve 6, las 5 que usan una casilla base usan todas también un objetivo.',
+          'Si una casilla base es 5, también lo es un objetivo: el tablero deja 9 formas de colocar los nueve 5; 6 de esas formas usan una casilla base, y cada una de ellas usa también un objetivo.',
+          'Si una casilla base es 6, también lo es un objetivo: el tablero deja 8 formas de colocar los nueve 6; 5 de esas formas usan una casilla base, y cada una de ellas usa también un objetivo.',
           'La base tiene dos números distintos, y cada uno está en un objetivo, así que los dos objetivos tienen esos dos números y nada más. Por tanto, se elimina el 8 de r8c5.'
         ]
       }
@@ -415,6 +483,51 @@ describe('Fireworks and Exocet walk their argument (H1, M4)', () => {
     for (const [lang, table] of [['en', null], ...OTHER] as const) {
       setEngineText(lang, table);
       for (const [tech, frames] of Object.entries(want[lang])) expect(walkFrames(found(tech as Tech)).map((f) => f.text), `${lang} ${tech}`).toEqual(frames);
+    }
+  });
+
+  it("says a digit it keeps out of the base, which the step leaves, is not one of the base's two digits, draws it in no cell, and says the step does not remove it", () => {
+    // phase 6 batch 3's review: the base r7c5 {2,6}, r8c5 {1,2,5}, the targets r1c4 {1,5} and r5c6 {2,6,9}; the
+    // walk keeps 5 out of the base, but r1c4 holds 5, so the step removes only r5c6's 9; and the base r2c5, r3c5,
+    // where r5c4 holds 6
+    const at = (puzzle: string, steps: number): Grid => {
+      const g = parseGrid(puzzle)!;
+      for (let i = 0; i < steps; i++) applyStep(g, findNextStep(g)!);
+      return g;
+    };
+    const cases = [
+      {
+        g: at('..7..48..1.36........2..96.....3...97.1.......8....5..8....7.....4.....3....8.12.', 45),
+        frame: 4,
+        en: "If a base cell were 5, column 6 would need its 5 from box 2 or box 5, but neither has one there, so 5 is not one of the base's two digits. This step does not remove it from r8c5.",
+        nb: 'Hvis en basisrute var 5, måtte kolonne 6 få 5-eren sin fra boks 2 eller boks 5, men ingen av dem har en der, så 5 er ikke ett av basens to tall. Dette steget fjerner det ikke fra r8c5.',
+        es: 'Si una casilla base fuera 5, la columna 6 tendría que recibir su 5 de la caja 2 o de la caja 5, pero ninguna tiene uno ahí, así que el 5 no es uno de los dos números de la base. Este paso no lo elimina de r8c5.',
+        legend: ['primary: the base, where column 5 meets box 8', "secondary: the targets' lines, column 4 and column 6"],
+        elims: [{ cell: cellOf('r5c6'), digit: 9 }]
+      },
+      {
+        g: at('.....931......2..5.8...3.921.4...9...3..1..2...7...4.162.3...4.3..8......952.....', 18),
+        frame: 4,
+        en: "None of the 17 ways the board leaves to place all nine 6s uses a base cell, so 6 is not one of the base's two digits. This step does not remove it from r2c5.",
+        nb: 'Ingen av de 17 måtene brettet gir for å plassere alle ni 6-erne, bruker en basisrute, så 6 er ikke ett av basens to tall. Dette steget fjerner det ikke fra r2c5.',
+        es: 'Ninguna de las 17 formas que deja el tablero de colocar los nueve 6 usa una casilla base, así que el 6 no es uno de los dos números de la base. Este paso no lo elimina de r2c5.',
+        legend: ['primary: the base, where column 5 meets box 2', "secondary: the targets' lines, column 4 and column 6"],
+        elims: [{ cell: cellOf('r7c6'), digit: 1 }]
+      }
+    ];
+    for (const { g, frame, legend, elims, ...words } of cases) {
+      const step = findStep('EXOCET', g)!;
+      expect(step.eliminations).toEqual(elims);
+      const f = walkFrames(step)[frame];
+      expect(f.text).toBe(words.en);
+      expect(drawnCands(step, f, g)).toEqual([]);
+      expect(legendOf(step, valuesOf(g), f).map((e) => `${e.kind}: ${e.label}`)).toEqual(legend);
+      expect(drawnWrong(step, g)).toEqual([]);
+      for (const [lang, table] of OTHER) {
+        setEngineText(lang, table);
+        expect(walkFrames(findStep('EXOCET', g)!)[frame].text, lang).toBe(words[lang]);
+        setEngineText('en', null);
+      }
     }
   });
 
@@ -513,6 +626,7 @@ describe('Fireworks and Exocet walk their argument (H1, M4)', () => {
       'no base, box',
       'no base, line',
       'no base, counted',
+      'no base, left',
       'counted, one',
       'counted, several',
       'counted, every way',

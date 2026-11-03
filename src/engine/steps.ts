@@ -273,7 +273,9 @@ export interface Step {
    * function (a wing's pivot, then each pincer); the conclusion frame draws
    * every cell. A frame that names `digits` draws its roles in those
    * digits only, that frame alone, so a pattern can take one digit a frame
-   * (an Exocet's base digits); its bands stay. A finned fish shows its fins'
+   * (an Exocet's base digits); its bands stay, and with no digits named
+   * they are all it draws (an Exocet's frame for a digit its walk keeps out
+   * of the base that the step leaves). A finned fish shows its fins'
    * box ('finBox', its band of role 'fin') in a frame of its own, after its
    * cover lines. A frame that draws only part of a role (a wing's pivot
    * before its pincers) names it in `labels` as it draws it, in place of the

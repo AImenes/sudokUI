@@ -4553,7 +4553,7 @@
      "letter": "B"
     }
    ],
-   "description": "Either set A, the cell r4c3, is 4, or it is 9, and then set B, in box 5, holds a 4."
+   "description": "Either set A, the cell r4c3, is 4, or it is 9, and then set B, in box 5, holds a 4. Set A or set B holds a 4, so no cell that sees every 4 of both can be 4."
   }
  },
  "UNIQUENESS_1": {
@@ -11863,7 +11863,10 @@
       ],
       "cells": [
        65
-      ]
+      ],
+      "labels": {
+       "secondary": "the row's wing: the only cell of row 8 outside box 8 that can be 1, 4 or 8"
+      }
      },
      {
       "text": "Outside box 8, column 6 has 1 and 8 only in r2c6, and no 4.",
@@ -12223,28 +12226,43 @@
       "text": "The targets: r7c3 in row 7 and r8c5 in row 8. Whatever digit a base cell holds, row 9 and box 9 have it there, so box 7 and box 8 must put it in row 7 and row 8, one in each.",
       "show": [
        "secondary"
-      ]
+      ],
+      "labels": {
+       "secondary": "the targets, in row 7 and row 8"
+      }
      },
      {
       "text": "If a base cell is 2, box 7 has no 2 in row 8, so box 7 puts its 2 in row 7 and box 8 in row 8, and the only 2 of box 8 in row 8 is the target r8c5.",
       "show": [],
       "digits": [
        2
-      ]
+      ],
+      "labels": {
+       "primary": "2 in the base",
+       "secondary": "2 in the targets"
+      }
      },
      {
-      "text": "If a base cell is 5, so is a target: of the 9 ways the board leaves to place all nine 5s, the 6 that use a base cell all use a target too.",
+      "text": "If a base cell is 5, so is a target: the board leaves 9 ways to place all nine 5s; 6 of those ways use a base cell, and each of them uses a target too.",
       "show": [],
       "digits": [
        5
-      ]
+      ],
+      "labels": {
+       "primary": "5 in the base",
+       "secondary": "5 in the targets"
+      }
      },
      {
-      "text": "If a base cell is 6, so is a target: of the 8 ways the board leaves to place all nine 6s, the 5 that use a base cell all use a target too.",
+      "text": "If a base cell is 6, so is a target: the board leaves 8 ways to place all nine 6s; 5 of those ways use a base cell, and each of them uses a target too.",
       "show": [],
       "digits": [
        6
-      ]
+      ],
+      "labels": {
+       "primary": "6 in the base",
+       "secondary": "6 in the targets"
+      }
      }
     ],
     "lead": "The base holds two different digits, and each is in a target, so the two targets hold them both and nothing else."

@@ -176,7 +176,7 @@ export const TECH_DOCS: Record<Tech, TechDoc> = {
   },
   EMPTY_RECTANGLE: {
     what: "A box's X candidates all lie in one row and one column; a column (or row) outside it has only two places for X, one in that row (or column).",
-    why: "One of the two places is X; if it is the one in the box's row, the box's X lies in its column. Either way the cell where that column meets the other place's row sees an X and loses it.",
+    why: "One of the two places is X; if it is the one in the box's row, the box's X lies in its column. Either way the cell outside the box where that column meets the other place's row sees an X and loses it.",
     spot: 'Look for a box where four cells forming a rectangle have no candidate X, leaving X along both one row and one column.',
     aka: []
   },

@@ -1123,6 +1123,18 @@ the values above are its final ones.
   Copy step's lines unchanged and every find along the practice paths
   held true in three languages (tests/wordsPass.test.ts; the fish's
   "fins" and Chute Remote Pair's "chute" were already right).
+  Batch 3's review (phase6-batch3-review.md) found Empty Rectangle's guide
+  had dropped "outside the box", so its rule could take a cell of the box;
+  it says so again in the three languages, and tests/erWalks.test.ts holds
+  the rule as it reads to the reviewer's board and the practice paths. An
+  Exocet frame that keeps a digit out of the base where a target holds it,
+  which the step leaves, now says "5 is not one of the base's two digits.
+  This step does not remove it from r8c5." and draws it in no cell (an
+  empty `digits`); Fireworks' row's wing, Exocet's targets before they are
+  argued and each Exocet digit frame name only what they draw (G23); the
+  WXYZ-Wing's description ends on why the removals lose z; Exocet's count
+  reads "6 of those ways". Empty Rectangle's band shapes against G15 are
+  left as a design question.
 - [ ] Phase 7: polish
 
 Branch `claude/hint-drawings`. Research behind this spec (HoDoKu's source
