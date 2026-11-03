@@ -407,6 +407,8 @@ test.describe('desktop, 1280 x 800', () => {
     await expect(page.locator('#board-status')).toContainText('Row 1, column 1: empty, corner marks 1 2.');
     await page.getByRole('button', { name: /Auto candidates/ }).first().click();
     await page.getByRole('button', { name: 'Use Auto candidates' }).click();
+    // corner marks alone: Auto asks what they are first
+    await page.getByRole('button', { name: /They are partial notes/ }).click();
     await page.keyboard.press('Digit4');
     await page.keyboard.press('Digit5');
     await expect(page.locator('#board-status')).toContainText('Row 1, column 1: empty, candidates none.');
@@ -420,6 +422,79 @@ test.describe('desktop, 1280 x 800', () => {
       { ...c, size: (await page.locator('svg.board').boundingBox())!.width / 9 }
     );
     expect(drawn).toBe(0);
+  });
+
+  test('Enter held on a focused number key enters once: its repeats click nothing', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const c = await cellBox(page, 40);
+    await page.mouse.click(c.x, c.y);
+    await page.locator('.num-btn', { hasText: '6' }).focus();
+    // held: the first keydown, then three the keyboard repeats
+    for (let k = 0; k < 4; k++) await page.keyboard.down('Enter');
+    await page.keyboard.up('Enter');
+    await expect(status).toContainText('Row 5, column 5: 6.');
+    await page.keyboard.press('Control+KeyZ');
+    await expect(status).toContainText('Row 5, column 5: empty.');
+    await expect(page.locator('.action-row button', { hasText: 'Undo' })).toBeDisabled();
+  });
+
+  test('with auto candidates on, Erase and Fill say what a press does, with Keep candidates off too', async ({ page }) => {
+    // Keep candidates off, as the first prompt's "Don't fill anything" leaves it
+    await page.addInitScript(() =>
+      localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { autoOffMaterialize: false, autoOffPromptDone: true }, version: 1 }))
+    );
+    await open(page);
+    const erase = page.locator('.action-row button', { hasText: 'Erase' });
+    const fill = page.getByRole('button', { name: 'Fill candidates', exact: true });
+    await expect(erase).toHaveAttribute('title', 'Erase value, then marks, then colours (Backspace) · W wipes everything');
+    await page.getByRole('button', { name: /Auto candidates/ }).first().click();
+    await page.getByRole('button', { name: 'Use Auto candidates' }).click();
+    await expect(erase).toHaveAttribute('title', 'Erase value, then restore struck candidates, then colours (Backspace) · W wipes everything');
+    await expect(fill).toHaveAttribute('title', 'Auto candidates are on: every empty cell already shows its candidates, so there is nothing to fill.');
+    await fill.click();
+    await expect(page.locator('.toast').filter({ hasText: 'every empty cell already shows its candidates' })).toBeVisible();
+  });
+
+  test('Check asks the mark question only when corner marks change what it checks, in words of what it then does', async ({ page }) => {
+    await open(page);
+    const toast = page.locator('.toast');
+    const check = page.getByRole('button', { name: 'Check', exact: true });
+    // centre marks alone: r1c1 (candidates 4 5, solution 4) with only a 5
+    let c = await cellBox(page, 0);
+    await page.mouse.click(c.x, c.y);
+    await page.keyboard.press('KeyC');
+    await page.keyboard.press('Digit5');
+    await check.click();
+    await page.getByRole('button', { name: 'Use Check' }).click();
+    await expect(toast.filter({ hasText: '1 problem found' })).toBeVisible();
+    await expect(page.locator('.modal-backdrop')).toHaveCount(0);
+    // a corner list in r1c2 (candidates 4 5 7 8) that has lost its 8
+    c = await cellBox(page, 1);
+    await page.mouse.click(c.x, c.y);
+    await page.keyboard.press('KeyX');
+    for (const d of ['Digit4', 'Digit5', 'Digit7']) await page.keyboard.press(d);
+    await check.click();
+    await expect(page.getByRole('dialog', { name: 'How should Check read your pencil marks?' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /They are partial notes/ })).toContainText('Check passes over your corner marks');
+    const complete = page.getByRole('button', { name: /They are my remaining candidates/ });
+    await expect(complete).toContainText('Check reads the corner and centre marks of a cell together as its list');
+    await complete.click();
+    await expect(toast.filter({ hasText: '2 problems found' })).toBeVisible();
+  });
+
+  test('Auto on asks first when a cell has corner marks alone, and keeps a corner list’s eliminations once they are complete', async ({ page }) => {
+    await open(page);
+    // r1c2 (candidates 4 5 7 8): a corner list without the 5
+    const c = await cellBox(page, 1);
+    await page.mouse.click(c.x, c.y);
+    await page.keyboard.press('KeyX');
+    for (const d of ['Digit4', 'Digit7', 'Digit8']) await page.keyboard.press(d);
+    await page.getByRole('button', { name: /Auto candidates/ }).first().click();
+    await page.getByRole('button', { name: 'Use Auto candidates' }).click();
+    await expect(page.getByRole('dialog', { name: 'How should Auto candidates read your corner marks?' })).toBeVisible();
+    await page.getByRole('button', { name: /They are my remaining candidates/ }).click();
+    await expect(page.locator('#board-status')).toContainText('Row 1, column 2: empty, candidates 4 7 8.');
   });
 
   test('the hint panel and its buttons are on screen, and H walks the hint', async ({ page }) => {
@@ -1129,7 +1204,7 @@ test.describe('phone, 390 x 844', () => {
     await expect(page.locator('#board-status')).not.toContainText('corner marks');
   });
 
-  test('Swap held in the Centre tab says where the marks go and gathers them there; sliding off cancels; a tap still swaps', async ({ page }) => {
+  test('Swap held in Centre mode says where the marks go and gathers them there; sliding off cancels; a tap still swaps', async ({ page }) => {
     await open(page);
     // the board as saved on the device: each cell's corner and centre marks
     const cellsOf = () =>

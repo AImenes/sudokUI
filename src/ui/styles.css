@@ -1052,7 +1052,7 @@ button {
   color: var(--on-accent);
 }
 
-/* Swap held in the Corner or Centre tab: it says where Gather puts the
+/* Swap held in Corner or Centre mode: it says where Gather puts the
    marks, and lifting the finger does it (Controls.tsx) */
 .action-row button.swap-btn {
   -webkit-touch-callout: none;

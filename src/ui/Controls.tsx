@@ -16,6 +16,9 @@ function eraseTitle(t: Translator, mode: EntryMode, auto: boolean): string {
       ? t('Erase corner marks in selected cells (Backspace) · W wipes everything')
       : t('Erase centre marks in selected cells (Backspace) · W wipes everything');
   }
+  // with auto candidates on, the marks the board shows are the candidates:
+  // Erase gives back the struck ones and leaves the player's hidden marks
+  if (auto) return t('Erase value, then restore struck candidates, then colours (Backspace) · W wipes everything');
   return t('Erase value, then marks, then colours (Backspace) · W wipes everything');
 }
 
@@ -30,8 +33,8 @@ function eraseTitle(t: Translator, mode: EntryMode, auto: boolean): string {
 const BUTTONS: { name: string; icon: string; text: string; assist?: true }[] = [
   { name: msg('Undo'), icon: '↩', text: msg('Takes back your last action.') },
   { name: msg('Redo'), icon: '↪', text: msg('Brings back what Undo took away.') },
-  { name: msg('Erase'), icon: '⌫', text: msg('Clears the selected cells: the digit first, then pencil marks, then colours.') },
-  { name: msg('Swap'), icon: '⇄', text: msg('Moves corner marks to the centre and centre marks to the corner. Held in the Corner or Centre tab (or Shift+S), it gathers every mark into that one layer instead. Notation only.') },
+  { name: msg('Erase'), icon: '⌫', text: msg('Clears the selected cells: the digit first, then pencil marks (with auto candidates on, the struck candidates come back instead), then colours.') },
+  { name: msg('Swap'), icon: '⇄', text: msg('Moves corner marks to the centre and centre marks to the corner, in the selected cells or the whole board. Held in Corner or Centre mode, it gathers those marks into that mode’s layer instead; Shift+S gathers in any mode, into the layer Fill uses. Notation only.') },
   { name: msg('Hint'), icon: '💡', text: msg('Names the technique for the next step. It shows the step itself only if you ask.'), assist: true },
   { name: msg('Check'), icon: '✓', text: msg('Marks wrong digits, and pencil marks that have lost the true digit.'), assist: true },
   { name: msg('Steps'), icon: '≡', text: msg('Lists every step of one complete solution. You can jump to any of them.'), assist: true },
@@ -43,8 +46,9 @@ const BUTTONS: { name: string; icon: string; text: string; assist?: true }[] = [
 
 const textOf = (name: string) => BUTTONS.find((b) => b.name === name)!.text;
 
-/** the Fill button's title while auto candidates are on: what a press says (fillCandidates) */
-const FILL_UNDER_AUTO_TITLE = msg('Auto candidates are on: the app already draws every candidate, so there is nothing to fill. Turn them off to keep them as your own marks.');
+/** the Fill button's title while auto candidates are on: what a press says
+ *  (fillCandidates), true whatever the "Keep candidates" setting */
+const FILL_UNDER_AUTO_TITLE = msg('Auto candidates are on: every empty cell already shows its candidates, so there is nothing to fill.');
 
 const MODES: { id: EntryMode; label: string; key: string }[] = [
   { id: 'digit', label: msg('Digit'), key: 'Z' },
@@ -134,7 +138,7 @@ export function Controls({
     toggleAutoCandidates();
   };
 
-  // Swap held for a moment in the Corner or Centre tab gathers every mark
+  // Swap held for a moment in Corner or Centre mode gathers the marks
   // into that layer (Gather): the button says where they will go, the
   // phone buzzes, and lifting on the button does it; sliding off cancels.
   // In Digit or Colour mode a hold is a tap
@@ -179,7 +183,7 @@ export function Controls({
         : { autoOffMaterialize: true, materializeLayer: layer, autoOffPromptDone: true }
     );
     setAutoOffPrompt(false);
-    // the layer just chosen, whichever tab is active
+    // the layer just chosen, whichever mode is active
     toggleAutoCandidates(layer === 'none' ? undefined : layer);
   };
 
@@ -206,7 +210,7 @@ export function Controls({
   };
 
   const t = useT();
-  // where Fill writes (listLayer): the tab's layer, or the one set in Settings
+  // where Fill writes (listLayer): the mode's layer, or the one set in Settings
   const materializeLayer = useSettings((s) => s.materializeLayer);
   const fillLayer = effectiveMode === 'corner' || effectiveMode === 'center' ? effectiveMode : materializeLayer;
   return (
@@ -281,7 +285,7 @@ export function Controls({
         <button onClick={undo} disabled={!canUndo} title={t('Undo (Ctrl+Z)')}>↩ {t('Undo')}</button>
         <button onClick={redo} disabled={!canRedo} title={t('Redo (Ctrl+Y)')}>↪ {t('Redo')}</button>
         <button onClick={erase} title={eraseTitle(t, effectiveMode, autoCandidates)}>⌫ {t('Erase')}</button>
-        {/* a tap swaps; held in the Corner or Centre tab it arms Gather,
+        {/* a tap swaps; held in Corner or Centre mode it arms Gather,
             shows where the marks will go, and lifting on the button does
             it (sliding off cancels) */}
         <button
@@ -303,7 +307,7 @@ export function Controls({
             swapPointer.current = false;
             if (!fromPointer) convertMarks();
           }}
-          title={t('Swap corner and centre marks (S). Hold it in the Corner or Centre tab, or press Shift+S, to gather every mark into one layer. Pure notation, never counts as help')}
+          title={t('Swap corner and centre marks (S), in the selected cells or the whole board. Held in Corner or Centre mode it gathers those marks into that mode’s layer; Shift+S gathers into the layer Fill uses. Pure notation, never counts as help')}
         >
           {gatherArmed ? t(gatherArmed === 'corner' ? '→ Corner' : '→ Centre') : `⇄ ${t('Swap')}`}
         </button>
@@ -432,7 +436,7 @@ export function Controls({
         <Modal title={t('Keep your candidates?')} onClose={() => setAutoOffPrompt(false)}>
           <p className="dialog-note">
             {t(
-              'When Auto is switched off, the candidates it was showing can stay on the board as your own pencil marks, so you continue exactly where Auto left off. Your choice becomes the default. Change it anytime in Settings.'
+              'When Auto is switched off, the candidates it was showing can stay on the board as your own pencil marks, so you continue exactly where Auto left off. Your choice is saved in Settings: Keep candidates, and the layer as Candidates go in, which Digit and Colour mode use (Corner and Centre mode use their own). Change it anytime there.'
             )}
           </p>
           <div className="level-list">

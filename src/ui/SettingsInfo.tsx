@@ -298,13 +298,13 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         onChange={(v) => s.set({ autoOffMaterialize: v })}
       />
       {/* one rule for where the app writes a list of candidates (listLayer,
-          gameStore.ts): the Corner or Centre tab's layer, else this one */}
+          gameStore.ts): the layer of Corner or Centre mode, else this one */}
       <div className="setting-row stack" role="group" aria-label={t('Candidates go in')}>
         <div className="setting-text">
           <span>{t('Candidates go in')}</span>
           <small>
             {t(
-              'Where the app writes a list of candidates when you are in Digit or Colour mode: Fill candidates, Auto switched off, and gathering your marks (Shift+S). In the Corner or Centre tab they go in that tab’s marks. Centre: a compact list in the middle of the cell. Corner: each digit in its own fixed spot, which is where hints highlight it'
+              'Where Fill candidates, Auto switched off and Shift+S put a list in Digit or Colour mode; Corner and Centre mode use their own. Centre: a compact list mid-cell. Corner: each digit in its fixed spot, where hints highlight it'
             )}
           </small>
         </div>
@@ -399,9 +399,7 @@ const SHORTCUTS: [string, string][] = [
   ['S', msg('Swap corner ↔ centre marks (selection, or the whole board)')],
   [
     'Shift + S',
-    msg(
-      'Gather every mark into one layer: the Corner or Centre tab’s, or in Digit or Colour mode the one set in Settings (Candidates go in). A cell with marks in both layers is left as it is. On a phone, hold Swap in the Corner or Centre tab'
-    )
+    msg('Gather the marks (selection, or the whole board) into one layer: in Corner or Centre mode that mode’s, else the one set in Settings')
   ],
   ['N', msg('Next practice puzzle (in practice mode)')],
   ['P', msg('Pause')],
@@ -504,7 +502,7 @@ export function InfoDialog({
       <p className="dialog-note">
         {rich(
           t(
-            "{fill} writes every candidate into the empty cells, or only the empty cells selected: into corner marks in the Corner tab, centre marks in the Centre tab, and in Digit or Colour mode the layer set in Settings (Candidates go in). {auto} computes and maintains candidates for you; when you turn it on, the eliminations in your candidate lists are kept (your centre marks, and corner marks in a cell without centre marks once your marks are declared complete), and pencil input strikes candidates through while it's active. Turning it off can hand the state back as marks, in the layer Fill uses (see Settings); otherwise its strikes go with it. New games start with Auto off, so switching it on is a per-game choice and the daily is a fair race. A practice puzzle that jumps straight to its technique is the exception: it starts with Auto on. {swap} exchanges corner and centre layers; held in the Corner or Centre tab (or Shift+S) it gathers every mark into that layer instead, leaving a cell with marks in both as it is. Taking off a digit you placed gives back the pencil marks it took from its cell and from the cells it sees. {check} flags wrong digits and candidate lists that lost the true digit."
+            "{fill} writes every candidate into the empty cells, or only the empty cells selected: in Corner or Centre mode into that mode’s marks, in Digit or Colour mode into the layer set in Settings (Candidates go in). {auto} computes and maintains candidates for you; when you turn it on, the eliminations in your candidate lists are kept (your centre marks, and corner marks in a cell without centre marks once your marks are declared complete; it asks, if you have not said), and pencil input strikes candidates through while it's active. Turning it off can hand the state back as marks, in the layer Fill uses (see Settings); otherwise its strikes go with it. New games start with Auto off, so switching it on is a per-game choice and the daily is a fair race. A practice puzzle that jumps straight to its technique is the exception: it starts with Auto on. {swap} exchanges corner and centre layers, in the selected cells or the whole board; held in Corner or Centre mode, or with Shift+S, it gathers those marks into the layer Fill uses instead, leaving a cell with marks in both as it is. Taking off a digit you placed gives back the pencil marks it took from its cell and from the cells it sees. {check} flags wrong digits and candidate lists that lost the true digit."
           ),
           {
             fill: <em>{t('Fill||the Fill candidates button, in the help')}</em>,
@@ -541,7 +539,7 @@ export function InfoDialog({
       <p className="dialog-note">
         <strong>{t('Hints follow your own play.')}</strong>{' '}
         {t(
-          'A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which, so the first time Hint, Scan or Check meets your manual marks it asks once, and remembers for the rest of the puzzle.'
+          'A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which, so the first time Hint or Scan meets your manual marks it asks once, and remembers for the rest of the puzzle. Check and Auto ask too, when your corner marks would change what they do.'
         )}
       </p>
       <p className="dialog-note">
@@ -575,7 +573,7 @@ export function InfoDialog({
       <h4 className="setting-group">{t('Touch')}</h4>
       <p className="dialog-note">
         {t(
-          'Tap to select, and use the on-screen mode and number buttons. To select several cells, drag across them. The page scrolls from beside the board; or turn on Scroll by swiping over the board in Settings, and on a phone a quick swipe up or down over the board scrolls it instead (rest your finger on the first cell for a moment, then drag in any direction). Or turn on Multi: then a tap adds a cell or takes it out, a drag paints cells in or out whichever way it goes, and the page scrolls from beside the board. In Digit mode, hold a number key for a moment to enter it as a corner mark. In the Corner or Centre tab, hold Swap to gather every mark into that layer. Tap the selected cell again, or anywhere beside the board, to clear the highlight, and long-press a digit on the board to highlight all of its cells.'
+          'Tap to select, and use the on-screen mode and number buttons. To select several cells, drag across them. The page scrolls from beside the board; or turn on Scroll by swiping over the board in Settings, and on a phone a quick swipe up or down over the board scrolls it instead (rest your finger on the first cell for a moment, then drag in any direction). Or turn on Multi: then a tap adds a cell or takes it out, a drag paints cells in or out whichever way it goes, and the page scrolls from beside the board. In Digit mode, hold a number key for a moment to enter it as a corner mark. In Corner or Centre mode, hold Swap to gather the marks (selected cells, or the whole board) into that layer. Tap the selected cell again, or anywhere beside the board, to clear the highlight, and long-press a digit on the board to highlight all of its cells.'
         )}
       </p>
 

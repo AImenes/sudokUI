@@ -9,7 +9,11 @@
  * changes nothing (G), custom entry leaves the game as it was (H), the
  * chain trainer switches auto on and off as the button does (I), Check asks
  * the mark question (J), Erase under auto acts on what the board shows (K),
- * one rule says where a candidate list goes (M), and Gather (N).
+ * one rule says where a candidate list goes (M), and Gather (N). The
+ * review that followed (round 2): Done gives back what the board says now,
+ * an Undo past the trainer's opening closes it, the notices under auto say
+ * only what is true, and Check and Auto on ask the mark question only when
+ * corner marks change what they do.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGame, engineGrid, contractGrid, listLayer, type CellState, type EntryMode } from '../src/state/gameStore';
@@ -53,9 +57,12 @@ beforeEach(() => {
 
 describe('auto candidates and the two mark layers', () => {
   it('Swap with auto candidates on changes no cell, and says why', () => {
-    // a corner mark written before auto candidates went on, hidden while they are on
+    // a corner mark written before auto candidates went on, hidden while they
+    // are on (a note: Auto on asks, as it does for corner marks alone)
     mark(R1C1, { corner: bit(4) });
     g().toggleAutoCandidates();
+    g().answerContract('open');
+    expect(g().autoCandidates).toBe(true);
     const before = board();
     const history = g().history.length;
     g().convertMarks();
@@ -115,9 +122,11 @@ describe('A: Undo and Redo put back how the board read the marks', () => {
   });
 
   it('Ctrl+Z after Auto off turns auto back on, with the contract from before', () => {
-    // a Snyder note: corner 4 in r1c2, whose candidates are 4 5 7 8
-    mark(R1C2, { corner: bit(4) });
+    // a Snyder note: corner 4 in r1c2, whose candidates are 4 5 7 8, beside
+    // its whole list in the centre (so Auto on has nothing to ask)
+    mark(R1C2, { corner: bit(4), center: bits(4, 5, 7, 8) });
     g().toggleAutoCandidates();
+    expect(g().contractPrompt).toBe(false);
     g().toggleAutoCandidates(); // off, the candidates written: exhaustive
     expect(g().markContract).toBe('exhaustive');
     g().undo();
@@ -326,15 +335,13 @@ describe('F: auto on keeps the eliminations of corner-mark candidate lists', () 
     expect(g().cells[R1C2].corner).toBe(bits(4, 7, 8));
   });
 
-  it('partial corner notes under the unknown or open contract are left alone', () => {
-    for (const contract of ['unknown', 'open'] as const) {
-      g().startGame(EASY, 196, 'Easy');
-      mark(R1C2, { corner: bit(8) });
-      if (contract === 'open') g().setMarkContract('open');
-      g().toggleAutoCandidates();
-      expect(g().cells[R1C2].excluded).toBe(0);
-      expect(g().notice).toBeNull();
-    }
+  it('partial corner notes under the open contract are left alone', () => {
+    mark(R1C2, { corner: bit(8) });
+    g().setMarkContract('open');
+    g().toggleAutoCandidates();
+    expect(g().contractPrompt).toBe(false);
+    expect(g().cells[R1C2].excluded).toBe(0);
+    expect(g().notice).toBeNull();
   });
 
   it('under the exhaustive contract a cell with centre marks keeps its centre list', () => {
@@ -345,10 +352,65 @@ describe('F: auto on keeps the eliminations of corner-mark candidate lists', () 
   });
 });
 
+describe('F2: Auto on asks the mark question first when a cell has corner marks alone', () => {
+  it('a centre list gathered into corner marks keeps its elimination once the marks are said to be complete', () => {
+    type([R1C2], [4, 7, 8], 'center'); // the 5 ruled out by hand
+    g().gatherMarks('corner');
+    expect(g().cells[R1C2]).toMatchObject({ corner: bits(4, 7, 8), center: 0 });
+    g().setMode('digit');
+    g().toggleAutoCandidates();
+    expect(g().autoCandidates).toBe(false);
+    expect(g().contractPrompt).toBe(true);
+    expect(g().contractFor).toBe('auto');
+    g().answerContract('exhaustive');
+    expect(g().contractPrompt).toBe(false);
+    expect(g().autoCandidates).toBe(true);
+    expect(view(R1C2)).toEqual({ auto: bits(4, 7, 8) });
+    expect(g().notice).toBe('Auto candidates on: kept your eliminations in 1 cell');
+  });
+
+  it('a Fill of the selection into corner marks (the setting) keeps its eliminations through auto on and off', () => {
+    useSettings.getState().set({ materializeLayer: 'corner' });
+    g().setMode('digit');
+    g().select([R1C1, R1C2], false);
+    g().fillCandidates();
+    expect(g().markContract).toBe('unknown');
+    type([R1C2], [5], 'corner'); // a correct elimination
+    g().setMode('digit');
+    g().toggleAutoCandidates();
+    g().answerContract('exhaustive');
+    expect(view(R1C2)).toEqual({ auto: bits(4, 7, 8) });
+    g().toggleAutoCandidates(); // off, into corner marks
+    expect(g().cells[R1C2].corner).toBe(bits(4, 7, 8));
+  });
+
+  it('answered as notes, corner notes adopt nothing; closed, the question leaves auto off', () => {
+    mark(R1C2, { corner: bit(8) });
+    g().toggleAutoCandidates();
+    g().dismissContractPrompt();
+    expect(g().autoCandidates).toBe(false);
+    expect(g().history).toHaveLength(0);
+    g().toggleAutoCandidates();
+    g().answerContract('open');
+    expect(g().autoCandidates).toBe(true);
+    expect(g().markContract).toBe('open');
+    expect(g().cells[R1C2].excluded).toBe(0);
+  });
+
+  it('with no cell of corner marks alone it asks nothing, as before', () => {
+    mark(R1C1, { center: bit(4) });
+    mark(R1C2, { corner: bit(8), center: bits(4, 5, 7, 8) });
+    g().toggleAutoCandidates();
+    expect(g().contractPrompt).toBe(false);
+    expect(g().autoCandidates).toBe(true);
+    expect(g().markContract).toBe('unknown');
+  });
+});
+
 describe('G: Fill candidates with auto on', () => {
   for (const mode of ['corner', 'center', 'digit'] as const) {
     it(`changes nothing in ${mode} mode, adds no step, and says why`, () => {
-      mark(R1C2, { corner: bit(8) });
+      mark(R1C2, { corner: bit(8), center: bits(4, 5, 7, 8) });
       g().toggleAutoCandidates();
       g().setMode(mode);
       g().select([], false);
@@ -360,6 +422,20 @@ describe('G: Fill candidates with auto on', () => {
       expect(g().history).toHaveLength(steps);
       expect(g().markContract).toBe('unknown');
       expect(g().notice).toMatch(/^Auto candidates are on: .*nothing to fill/);
+    });
+  }
+
+  for (const keep of [true, false]) {
+    it(`Fill, Gather and Swap under auto say only what is true, with Keep candidates ${keep ? 'on' : 'off'}`, () => {
+      useSettings.getState().set({ autoOffMaterialize: keep });
+      mark(R1C2, { corner: bit(8), center: bits(4, 5, 7, 8) });
+      g().toggleAutoCandidates();
+      g().fillCandidates();
+      expect(g().notice).toBe('Auto candidates are on: every empty cell already shows its candidates, so there is nothing to fill.');
+      g().gatherMarks('center');
+      expect(g().notice).toBe('Auto candidates are on: the app draws them, so there are no marks of yours to gather while they are on.');
+      g().convertMarks();
+      expect(g().notice).toBe('Auto candidates are on: the app draws them, so there are no marks of yours to swap while they are on.');
     });
   }
 });
@@ -433,6 +509,122 @@ describe('I: the chain trainer switches auto candidates on and off as the Auto b
     g().startGame('4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......', 1000, 'Hard');
     expect(g().chain).toBeNull();
   });
+
+  // r7c8 = r9c8, the only places for 8 in box 9: r1c8 (5 7 8 9) and r2c8
+  // (2 7 8) lose their 8
+  const R1C8 = 7;
+  const R2C8 = 16;
+  function applyBox9Chain() {
+    g().chainTap(61, 8);
+    g().chainTap(79, 8);
+    g().chainApply();
+    expect(g().cells[R1C8].excluded & bit(8)).toBe(bit(8));
+  }
+
+  it('an applied chain, undone, leaves nothing behind at Done: the marks as they were, no strike', () => {
+    type([R1C8], [5, 7, 8, 9], 'center');
+    type([R2C8], [2, 7, 8], 'center');
+    g().setMode('digit');
+    const before = board();
+    g().startChain();
+    applyBox9Chain();
+    g().undo();
+    expect(g().chain).not.toBeNull();
+    g().endChain();
+    expect(g().autoCandidates).toBe(false);
+    expect(board()).toBe(before);
+    // nothing hidden: Hint reads the 8s the board shows, and Fill corrects nothing
+    expect(contractGrid(g().cells, false, g().markContract).cands[R1C8]).toBe(bits(5, 7, 8, 9));
+    g().select([], false);
+    g().fillCandidates();
+    expect(g().notice).toBe('Filled centre marks');
+  });
+
+  it('with no marks, a chain undone before Done is a candidate again when auto goes on', () => {
+    g().startChain();
+    applyBox9Chain();
+    g().undo();
+    g().endChain();
+    expect(g().cells.every((c) => c.excluded === 0)).toBe(true);
+    g().toggleAutoCandidates();
+    expect(view(R1C8)).toEqual({ auto: bits(5, 7, 8, 9) });
+  });
+
+  it('a chain still applied at Done stays: out of the marks, and struck where there are none', () => {
+    type([R1C8], [5, 7, 8, 9], 'center');
+    g().setMode('digit');
+    g().startChain();
+    applyBox9Chain();
+    g().endChain();
+    expect(g().cells[R1C8]).toMatchObject({ center: bits(5, 7, 9), excluded: bit(8) });
+    expect(g().cells[R2C8]).toMatchObject({ center: 0, excluded: bit(8) });
+    g().toggleAutoCandidates();
+    expect(view(R2C8)).toEqual({ auto: bits(2, 7) });
+  });
+
+  it('a digit struck while it is open leaves the marks at Done, and a true digit struck is no hidden strike', () => {
+    type([R1C1], [4, 5], 'center'); // solution 4
+    g().setMode('digit');
+    g().startChain();
+    type([R1C1], [4], 'corner'); // the true 4 struck by mistake
+    type([R1C4], [9], 'corner'); // r1c4 has no marks: its true 9 struck
+    g().setMode('digit');
+    g().endChain();
+    expect(g().cells[R1C1]).toMatchObject({ center: bit(5), excluded: 0 });
+    expect(g().cells[R1C4]).toMatchObject({ corner: 0, center: 0, excluded: 0 });
+    // what the board shows is what Check reads
+    g().check();
+    expect(g().errors).toEqual([R1C1]);
+  });
+
+  it('Chain pressed again while it is open keeps the handover: Done still puts auto back off', () => {
+    type([R1C1], [4], 'corner');
+    g().setMode('digit');
+    const before = board();
+    g().startChain();
+    const steps = g().history.length;
+    g().startChain();
+    expect(g().history).toHaveLength(steps);
+    g().endChain();
+    expect(g().autoCandidates).toBe(false);
+    expect(board()).toBe(before);
+  });
+
+  it('an Undo past its opening closes it: auto off, the board as before, nothing left for Done', () => {
+    type([R1C1], [4], 'center');
+    g().setMode('digit');
+    const before = board();
+    g().startChain();
+    g().undo();
+    expect(g().autoCandidates).toBe(false);
+    expect(g().chain).toBeNull();
+    expect(g().chainHandover).toBeNull();
+    expect(board()).toBe(before);
+    // Redo gives back the step's board, auto on; the trainer stays closed
+    g().redo();
+    expect(g().autoCandidates).toBe(true);
+    expect(g().chain).toBeNull();
+  });
+
+  it('a Redo or a jump back to the last correct position that turns auto off closes it too', () => {
+    g().toggleAutoCandidates();
+    g().toggleAutoCandidates();
+    g().undo(); // auto on again
+    g().startChain();
+    g().redo();
+    expect(g().autoCandidates).toBe(false);
+    expect(g().chain).toBeNull();
+    // a wrong digit, then the trainer, then Check and the jump back
+    g().startGame(EASY, 196, 'Easy');
+    type([R1C1], [5], 'digit');
+    g().startChain();
+    g().check();
+    expect(g().revertIndex).not.toBeNull();
+    g().revertToValid();
+    expect(g().autoCandidates).toBe(false);
+    expect(g().chain).toBeNull();
+    expect(g().chainHandover).toBeNull();
+  });
 });
 
 describe('J: Check reads corner-mark candidate lists', () => {
@@ -456,6 +648,27 @@ describe('J: Check reads corner-mark candidate lists', () => {
     expect(g().notice).toBe('Everything checks out so far');
   });
 
+  it('on a board of centre marks it asks nothing and checks at once, as before', () => {
+    type([R1C1], [5], 'center'); // a centre list that has lost the true 4
+    g().check();
+    expect(g().contractPrompt).toBe(false);
+    expect(g().errors).toEqual([R1C1]);
+    expect(g().markContract).toBe('unknown');
+  });
+
+  it('corner marks the centre marks already hold ask nothing; a corner digit of their own asks', () => {
+    mark(R1C2, { corner: bits(4, 5), center: bits(4, 5, 7) }); // the centre list has lost the 8
+    g().check();
+    expect(g().contractPrompt).toBe(false);
+    expect(g().errors).toEqual([R1C2]);
+    mark(R1C2, { corner: bit(8), center: bits(4, 5, 7) });
+    g().check();
+    expect(g().contractPrompt).toBe(true);
+    // the two layers together are the list 4 5 7 8
+    g().answerContract('exhaustive');
+    expect(g().errors).toEqual([]);
+  });
+
   it('closing the question runs no Check', () => {
     type([R1C2], [4, 5, 7], 'corner');
     g().check();
@@ -470,6 +683,7 @@ describe('K: Erase in Digit mode with auto on acts on what the board shows', () 
     type([R1C2], [5, 7], 'corner');
     type([R1C2], [3], 'color');
     g().toggleAutoCandidates();
+    g().answerContract('open'); // the corner marks are notes
     type([R1C2], [8], 'corner'); // struck
     expect(view(R1C2)).toEqual({ auto: bits(4, 5, 7) });
     g().setMode('digit');
@@ -486,6 +700,7 @@ describe('K: Erase in Digit mode with auto on acts on what the board shows', () 
     type([R1C2], [5, 7], 'corner');
     type([R1C2], [3], 'color');
     g().toggleAutoCandidates();
+    g().answerContract('open');
     g().setMode('digit');
     g().erase();
     expect(g().cells[R1C2].colors).toEqual([]);
@@ -576,7 +791,16 @@ describe('N: Gather puts every mark into one layer', () => {
     g().gatherMarks('corner');
     expect(g().cells[R2C2]).toMatchObject({ corner: bits(2, 6), center: 0 });
     expect(g().cells[R1C1]).toMatchObject({ corner: bits(4, 5), center: 0 });
-    expect(g().notice).toBe('Gathered into corner marks in 1 cell');
+    expect(g().notice).toBe('Gathered into corner marks in 1 selected cell');
+  });
+
+  it('with only unmarked cells selected it says there is nothing in the selected cells, and leaves the rest', () => {
+    marked();
+    const before = board();
+    g().select([3 * 9 + 4], false); // r4c5, empty and unmarked
+    g().gatherMarks('center');
+    expect(board()).toBe(before);
+    expect(g().notice).toBe('Nothing to gather into centre marks in the selected cells');
   });
 
   it('with nothing to gather it says so and adds no step', () => {
@@ -589,6 +813,8 @@ describe('N: Gather puts every mark into one layer', () => {
   it('with auto candidates on it changes nothing and says why', () => {
     marked();
     g().toggleAutoCandidates();
+    g().answerContract('open');
+    expect(g().autoCandidates).toBe(true);
     const before = board();
     const steps = g().history.length;
     g().gatherMarks('center');

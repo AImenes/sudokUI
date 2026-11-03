@@ -542,8 +542,10 @@ export default function App() {
       // first press kept from the page (scrolling, typing) are kept too
       const repeatable =
         e.code.startsWith('Arrow') || e.code === 'Backspace' || e.code === 'Delete' || (mod && (e.code === 'KeyZ' || e.code === 'KeyY'));
+      // Enter on a focused button clicks it on every keydown, so its repeats
+      // are kept from the page too: one press of a number key, one entry
       if (e.repeat && !repeatable) {
-        if (e.code === 'Space' || /^(Digit|Numpad)[1-9]$/.test(e.code)) e.preventDefault();
+        if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter' || /^(Digit|Numpad)[1-9]$/.test(e.code)) e.preventDefault();
         return;
       }
       // walking a hint: the arrow keys step through its frames, Escape
@@ -634,9 +636,9 @@ export default function App() {
         case 'KeyS': {
           // Ctrl/Cmd+S is the browser's
           if (mod || e.altKey) break;
-          // Shift+S gathers every mark into the active tab's layer (Shift
-          // itself makes the mode Corner while held, so the tab is the
-          // mode chosen); S swaps corner and centre marks (selection or board)
+          // Shift+S gathers the marks (selection or board) into the layer
+          // of the mode chosen (Shift itself makes the mode Corner while
+          // held, so the base mode decides); S swaps corner and centre marks
           if (e.shiftKey) {
             const g = useGame.getState();
             g.gatherMarks(listLayer(g.mode));

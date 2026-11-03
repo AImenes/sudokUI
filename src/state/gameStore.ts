@@ -167,12 +167,18 @@ export function giveBack(cells: CellState[], i: number, own = true) {
  */
 export type MarkContract = 'unknown' | 'exhaustive' | 'open';
 
-/** what Swap says while auto candidates are on (convertMarks) */
-const SWAP_UNDER_AUTO = msg('Auto candidates are on: the app draws them, so there are no marks of yours to swap. Turn them off to write them in as your own marks.');
-/** what Gather says while auto candidates are on (gatherMarks) */
-const GATHER_UNDER_AUTO = msg('Auto candidates are on: the app draws them, so there are no marks of yours to gather. Turn them off to write them in as your own marks.');
-/** what Fill says while auto candidates are on (fillCandidates) */
-const FILL_UNDER_AUTO = msg('Auto candidates are on: the app already draws every candidate, so there is nothing to fill. Turn them off to keep them as your own marks.');
+/** what asked the mark question (contractFor) */
+export type ContractAsker = 'hint' | 'highlight' | 'check' | 'auto';
+
+/* what Swap, Gather and Fill say while auto candidates are on: only what
+ * is true whatever the "Keep candidates" setting, since with it off,
+ * switching auto off writes nothing */
+/** Swap (convertMarks) */
+const SWAP_UNDER_AUTO = msg('Auto candidates are on: the app draws them, so there are no marks of yours to swap while they are on.');
+/** Gather (gatherMarks) */
+const GATHER_UNDER_AUTO = msg('Auto candidates are on: the app draws them, so there are no marks of yours to gather while they are on.');
+/** Fill (fillCandidates), and the Fill button's title meanwhile (Controls.tsx) */
+const FILL_UNDER_AUTO = msg('Auto candidates are on: every empty cell already shows its candidates, so there is nothing to fill.');
 /** what the ring around bivalue cells says when the marks are notes: it reads the centre marks alone */
 const NOTES_RING_CENTRE = msg('Your marks are notes for now, so the rings read your centre marks alone, as each cell’s candidates; corner marks do not count');
 
@@ -189,7 +195,7 @@ export function candidateList(c: CellState, contract: MarkContract): number {
 
 /**
  * Where the app writes a candidate list (Fill candidates, auto candidates
- * switched off, Gather): the layer of the Corner or Centre tab when one is
+ * switched off, Gather): the layer of Corner or Centre mode when one is
  * active, otherwise, in Digit or Colour mode, the layer set in Settings
  * ("Candidates go in", which the first auto-off prompt also sets).
  */
@@ -218,6 +224,12 @@ const snap = (s: { cells: CellState[]; autoCandidates: boolean; markContract: Ma
 /** the state a snapshot puts back */
 const restore = (x: Snapshot) => ({ cells: cloneCells(x.cells), autoCandidates: x.auto, markContract: x.contract });
 
+/** the chain trainer runs on auto candidates: an Undo, a Redo or a jump
+ *  back that leaves them off closes it, with no handover left for Done,
+ *  and the board stays as the step says */
+const trainerAfter = (open: boolean, x: Snapshot) =>
+  open && !x.auto ? { chain: null, chainNote: '', chainGoal: null, chainHandover: null } : {};
+
 /** the player's answer to the mark question holds for the whole puzzle: the
  *  steps taken before it was asked read the marks the same way, so Undo
  *  past them does not ask again */
@@ -236,6 +248,19 @@ function dropHiddenSlips(cells: CellState[], solution: string): CellState[] {
  *  on a bare board) */
 export function hasManualMarks(cells: CellState[]): boolean {
   return cells.some((c) => !c.value && (c.corner | c.center) !== 0);
+}
+
+/** an empty cell whose corner marks hold a digit its centre marks do not:
+ *  the only cells where Check's reading depends on the mark question
+ *  (corner and centre together once complete, the centre alone otherwise) */
+export function cornerMarksCount(cells: CellState[]): boolean {
+  return cells.some((c) => !c.value && (c.corner & ~c.center) !== 0);
+}
+
+/** an empty cell with corner marks and no centre marks: the only cells
+ *  where turning auto on depends on the mark question (candidateList) */
+export function cornerOnlyLists(cells: CellState[]): boolean {
+  return cells.some((c) => !c.value && c.corner !== 0 && c.center === 0);
 }
 
 /**
@@ -487,9 +512,9 @@ interface GameStore {
   markContract: MarkContract;
   /** the one-time contract question is being shown (set by requestHint) */
   contractPrompt: boolean;
-  /** what raised it: a hint, or Check, goes on once it is answered; the
-   *  ring around bivalue cells simply shows */
-  contractFor: 'hint' | 'highlight' | 'check';
+  /** what raised it: a hint, Check, or auto candidates switched on goes on
+   *  once it is answered; the ring around bivalue cells simply shows */
+  contractFor: ContractAsker;
   errors: number[];
   /** why each wrong digit found by check() is wrong */
   proofs: Proof[];
@@ -519,11 +544,12 @@ interface GameStore {
   /** candidates the chain should remove (practice), and whether the board marks where to go next */
   chainGoal: CellDigit[] | null;
   chainSuggest: boolean;
-  /** the trainer switched auto candidates on: the exclusions to put back
-   *  when Done switches them off again (startChain, endChain), the chain's
-   *  own applied eliminations among them. Null when auto was on already, or
-   *  the player has switched it since */
-  chainHandover: { excluded: number[] } | null;
+  /** the trainer switched auto candidates on, and Done switches them off
+   *  again (startChain, endChain): each cell's exclusions from before it
+   *  opened, and right after (the handover's strikes), against which Done
+   *  reads what was struck while it was open. Null when auto was on
+   *  already, or the player has switched it since */
+  chainHandover: { before: number[]; opened: number[] } | null;
 
   startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null, dailyKey?: string) => void;
   /**
@@ -1293,6 +1319,7 @@ export const useGame = create<GameStore>()(
         const prev = s.history[s.history.length - 1];
         set({
           ...restore(prev),
+          ...trainerAfter(!!s.chain, prev),
           history: s.history.slice(0, -1),
           future: [snap(s), ...s.future],
           won: false,
@@ -1311,6 +1338,7 @@ export const useGame = create<GameStore>()(
         const won = s.info ? checkWin(next.cells, s.info.solution) : false;
         set({
           ...restore(next),
+          ...trainerAfter(!!s.chain, next),
           future: rest,
           history: [...s.history, snap(s)],
           hint: null,
@@ -1328,9 +1356,12 @@ export const useGame = create<GameStore>()(
        *   exclusions (candidateList: centre marks, or corner marks in a cell
        *   without them once the marks are declared complete; corner notes
        *   are otherwise left alone). Impossible marks are dropped, and both
-       *   events are reported (autoOn).
+       *   events are reported (autoOn). A cell with corner marks alone while
+       *   the marks' meaning is unknown: the mark question first, as Hint
+       *   asks it, and the answer switches auto on (answerContract), so a
+       *   corner list (Gather's, a Fill's) keeps its eliminations.
        * - OFF: if the "keep candidates" setting is on, the current auto view
-       *   is written into one layer (listLayer: the Corner or Centre tab's,
+       *   is written into one layer (listLayer: Corner or Centre mode's,
        *   else the one set in Settings) so play continues exactly where auto
        *   left off. Either way the strikes go: they lived in the auto view,
        *   and the board no longer shows them (Ctrl+Z brings it all back).
@@ -1339,6 +1370,10 @@ export const useGame = create<GameStore>()(
         const s = get();
         // a puzzle being typed in is no game yet: nothing to help with
         if (!s.info) return;
+        if (!s.autoCandidates && s.markContract === 'unknown' && cornerOnlyLists(s.cells)) {
+          set({ contractPrompt: true, contractFor: 'auto' });
+          return;
+        }
         const cells = cloneCells(s.cells);
         let notice: string | null = null;
         const t = translator();
@@ -1413,7 +1448,7 @@ export const useGame = create<GameStore>()(
 
       /**
        * Fill candidates into one layer of marks (listLayer: the Corner or
-       * Centre tab's, else, in Digit or Colour mode, the one set in
+       * Centre mode's, else, in Digit or Colour mode, the one set in
        * Settings). With any empty cell selected, only the selected empty
        * cells are filled — handy when your own logic is already underway
        * elsewhere. Wrong marks are corrected and reported. With auto
@@ -1537,7 +1572,8 @@ export const useGame = create<GameStore>()(
         }
         const cells = cloneCells(s.cells);
         const scope = s.selection.filter((i) => !cells[i].given && !cells[i].value);
-        const targets = scope.length
+        const partial = scope.length > 0;
+        const targets = partial
           ? scope
           : Array.from({ length: 81 }, (_, i) => i).filter((i) => !cells[i].given && !cells[i].value);
         const from = into === 'corner' ? 'center' : 'corner';
@@ -1555,14 +1591,24 @@ export const useGame = create<GameStore>()(
           moved++;
         }
         const corner = into === 'corner';
+        // the scope said, as Swap says it: the selected cells, or the board
         const first = moved
-          ? t(
-              moved > 1
-                ? corner ? 'Gathered into corner marks in {n} cells' : 'Gathered into centre marks in {n} cells'
-                : corner ? 'Gathered into corner marks in {n} cell' : 'Gathered into centre marks in {n} cell',
-              { n: moved }
-            )
-          : t(corner ? 'Nothing to gather into corner marks' : 'Nothing to gather into centre marks');
+          ? partial
+            ? t(
+                moved > 1
+                  ? corner ? 'Gathered into corner marks in {n} selected cells' : 'Gathered into centre marks in {n} selected cells'
+                  : corner ? 'Gathered into corner marks in {n} selected cell' : 'Gathered into centre marks in {n} selected cell',
+                { n: moved }
+              )
+            : t(
+                moved > 1
+                  ? corner ? 'Gathered into corner marks in {n} cells' : 'Gathered into centre marks in {n} cells'
+                  : corner ? 'Gathered into corner marks in {n} cell' : 'Gathered into centre marks in {n} cell',
+                { n: moved }
+              )
+          : partial
+            ? t(corner ? 'Nothing to gather into corner marks in the selected cells' : 'Nothing to gather into centre marks in the selected cells')
+            : t(corner ? 'Nothing to gather into corner marks' : 'Nothing to gather into centre marks');
         const notice = both
           ? `${first}; ${t(both > 1 ? '{n} cells have marks in both and were left as they are' : '{n} cell has marks in both and was left as it is', { n: both })}`
           : first;
@@ -1662,18 +1708,20 @@ export const useGame = create<GameStore>()(
       answerContract: (contract) => {
         const asked = get().contractFor;
         get().setMarkContract(contract);
-        // raised on the way to a hint, or by Check, that goes on; raised by
-        // the ring around bivalue cells, the answer is all it needed, and
-        // "notes" means the ring reads the centre marks alone, which the
-        // player should hear
+        // raised on the way to a hint, by Check or by auto candidates
+        // switched on, that goes on; raised by the ring around bivalue
+        // cells, the answer is all it needed, and "notes" means the ring
+        // reads the centre marks alone, which the player should hear
         if (asked === 'hint') get().requestHint();
         else if (asked === 'check') get().check();
+        else if (asked === 'auto') get().toggleAutoCandidates();
         else if (contract === 'open') set({ notice: translator()(NOTES_RING_CENTRE) });
       },
 
       // the ring's question closed unanswered is a "no": the setting goes
-      // off again rather than staying on with nothing to show; a hint's or
-      // Check's question closed is that hint or Check not wanted
+      // off again rather than staying on with nothing to show; a hint's,
+      // Check's or Auto's question closed is that hint, Check or switch not
+      // wanted
       dismissContractPrompt: () => {
         if (get().contractFor === 'highlight') useSettings.getState().set({ highlightBivalue: false });
         set({ contractPrompt: false });
@@ -1726,10 +1774,12 @@ export const useGame = create<GameStore>()(
       check: () => {
         const s = get();
         if (!s.info) return;
-        // manual marks whose meaning was never declared: Check cannot tell
-        // a corner-mark candidate list from a note, so it asks the one-time
-        // question first, as Hint does (the answer re-enters this action)
-        if (!s.autoCandidates && s.markContract === 'unknown' && hasManualMarks(s.cells)) {
+        // Check reads a cell's centre marks as its list, and its corner marks
+        // too once the marks are declared complete: when some corner mark
+        // would count only then, it asks the one-time question first, as
+        // Hint does (the answer re-enters this action). Otherwise the answer
+        // changes nothing Check does, and it checks at once
+        if (!s.autoCandidates && s.markContract === 'unknown' && cornerMarksCount(s.cells)) {
           set({ contractPrompt: true, contractFor: 'check' });
           return;
         }
@@ -1793,6 +1843,7 @@ export const useGame = create<GameStore>()(
         const t = translator();
         set({
           ...restore(s.history[s.revertIndex]),
+          ...trainerAfter(!!s.chain, s.history[s.revertIndex]),
           history: [...s.history, snap(s)],
           chainHandover: null,
           future: [],
@@ -1820,6 +1871,8 @@ export const useGame = create<GameStore>()(
         const handover = !s.autoCandidates;
         const cells = handover ? cloneCells(s.cells) : s.cells;
         const notice = handover ? autoOn(cells, s.markContract) : null;
+        // pressed again while the trainer is open, on the auto candidates
+        // it switched on: the handover stands, and Done still switches them off
         set({
           chain: EMPTY_CHAIN,
           chainGoal: goal?.length ? goal : null,
@@ -1837,26 +1890,47 @@ export const useGame = create<GameStore>()(
                 autoCandidates: true,
                 history: [...s.history, snap(s)],
                 future: [],
-                chainHandover: { excluded: s.cells.map((c) => c.excluded) },
+                chainHandover: { before: s.cells.map((c) => c.excluded), opened: cells.map((c) => c.excluded) },
                 ...(notice ? { notice } : {})
               }
-            : { chainHandover: null })
+            : { chainHandover: s.chain ? s.chainHandover : null })
         });
       },
 
       /**
        * Done: the trainer closes. When it switched auto candidates on, they
-       * go off again as they were before it opened: the player's own marks,
-       * hidden meanwhile, come back as they were (less what an applied chain
-       * removed), with nothing written over them, and the strikes are those
-       * from before, with the chain's eliminations. One step for Ctrl+Z.
+       * go off again, and what comes back is read from the board as it is
+       * now, not from a list kept of what was applied: the player's own
+       * marks, hidden meanwhile (as the trainer found them, changed only by
+       * the player's own steps since: an applied chain takes its digits out
+       * and Undo puts them back, a digit placed takes itself from its
+       * peers), less each digit struck now that was not struck when the
+       * trainer opened (an applied chain still applied, a candidate struck
+       * by hand); a chain applied and undone leaves nothing. Nothing is
+       * written over the marks. The strikes kept are
+       * those from before it opened and those made since, never a true
+       * digit (a slip struck by hand: where the cell has marks, its
+       * removal shows there), and never the handover's own, which were
+       * the player's lists and are still the marks. One step for Ctrl+Z.
        */
       endChain: () => {
         const s = get();
         const closed = { chain: null, chainNote: '', chainGoal: null, chainHandover: null, hint: null, hintStage: 'hidden' as const };
-        if (!s.chainHandover || !s.autoCandidates) return set(closed);
-        const back = s.chainHandover.excluded;
-        const cells = s.cells.map((c, i) => (c.value ? c : { ...c, colors: [...c.colors], excluded: back[i] ?? 0 }));
+        const h = s.chainHandover;
+        if (!h || !s.autoCandidates || !s.info) return set(closed);
+        const sol = s.info.solution;
+        const cells = s.cells.map((c, i) => {
+          if (c.value) return c;
+          const struck = c.excluded & ~h.opened[i];
+          const adopted = h.opened[i] & ~h.before[i];
+          return {
+            ...c,
+            colors: [...c.colors],
+            corner: c.corner & ~struck,
+            center: c.center & ~struck,
+            excluded: c.excluded & ~adopted & ~bit(Number(sol[i]))
+          };
+        });
         set({ ...closed, cells, autoCandidates: false, history: [...s.history, snap(s)], future: [] });
       },
 
@@ -1927,20 +2001,18 @@ export const useGame = create<GameStore>()(
           return;
         }
         const cells = cloneCells(s.cells);
-        // the eliminations stay when Done switches auto candidates off again
-        const handover = s.chainHandover && { excluded: [...s.chainHandover.excluded] };
+        // struck, and so kept when Done switches auto candidates off again
+        // while they are still struck (endChain reads the board)
         for (const { cell, digit } of elims) {
           cells[cell].excluded |= bit(digit);
           cells[cell].corner &= ~bit(digit);
           cells[cell].center &= ~bit(digit);
-          if (handover) handover.excluded[cell] |= bit(digit);
         }
         set({
           cells,
           history: [...s.history, snap(s)],
           future: [],
           errors: [],
-          chainHandover: handover,
           chain: EMPTY_CHAIN,
           // {button}: the trainer's Done button, by its own label
           chainNote: t(
