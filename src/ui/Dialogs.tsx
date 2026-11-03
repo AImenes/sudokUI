@@ -513,22 +513,28 @@ export function ContractChoices({ onAnswer }: { onAnswer: (c: 'exhaustive' | 'op
   );
 }
 
-/** Asked at most once per game, the first time Hint, or the ring around
- *  cells with two candidates (B), meets manual marks. */
+/** Asked at most once per game, the first time Hint, Check, or the ring
+ *  around cells with two candidates (B), meets manual marks. */
 export function ContractDialog({
   onAnswer,
   onClose,
-  forHighlight = false
+  asked = 'hint'
 }: {
   onAnswer: (c: 'exhaustive' | 'open') => void;
   onClose: () => void;
-  /** the ring asked, not a hint */
-  forHighlight?: boolean;
+  /** what asked: a hint, Check, or the ring */
+  asked?: 'hint' | 'highlight' | 'check';
 }) {
   const t = useT();
   return (
     <Modal
-      title={forHighlight ? t('How should the board read your pencil marks?') : t('How should hints read your pencil marks?')}
+      title={
+        asked === 'highlight'
+          ? t('How should the board read your pencil marks?')
+          : asked === 'check'
+            ? t('How should Check read your pencil marks?')
+            : t('How should hints read your pencil marks?')
+      }
       onClose={onClose}
     >
       <p className="dialog-note">

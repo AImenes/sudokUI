@@ -3,7 +3,7 @@
 // toast display and the first-visit bootstrap game.
 import React, { Suspense, useEffect, useState, useRef } from 'react';
 import { SLOP_PX } from './touchIntent';
-import { useGame, rateImport, validatePuzzle, Proof } from '../state/gameStore';
+import { useGame, rateImport, validatePuzzle, Proof, listLayer } from '../state/gameStore';
 import { cellName, PEERS } from '../engine/board';
 import { dailyPuzzle } from '../engine/daily';
 import { useSettings } from '../state/settings';
@@ -535,6 +535,17 @@ export default function App() {
         );
       }
       const mod = e.metaKey || e.ctrlKey;
+      // a key held down repeats (the OS sends keydowns with repeat set).
+      // Digits, Swap, Space, the mode keys, H, B, M, P and N each act once
+      // per press, or a held digit would put itself in and take itself out
+      // again: only moving, erasing and undo/redo repeat. The repeats the
+      // first press kept from the page (scrolling, typing) are kept too
+      const repeatable =
+        e.code.startsWith('Arrow') || e.code === 'Backspace' || e.code === 'Delete' || (mod && (e.code === 'KeyZ' || e.code === 'KeyY'));
+      if (e.repeat && !repeatable) {
+        if (e.code === 'Space' || /^(Digit|Numpad)[1-9]$/.test(e.code)) e.preventDefault();
+        return;
+      }
       // walking a hint: the arrow keys step through its frames, Escape
       // returns to the whole drawing
       const walking = useGame.getState().hintStage === 'walk';
@@ -593,16 +604,21 @@ export default function App() {
           setMode(order[(order.indexOf(useGame.getState().mode) + 1) % order.length]);
           break;
         }
+        // Ctrl/Cmd with C, X and V copy, cut and paste: the mode stays
         case 'KeyZ':
+          if (mod || e.altKey) break;
           setMode('digit');
           break;
         case 'KeyX':
+          if (mod || e.altKey) break;
           setMode('corner');
           break;
         case 'KeyC':
+          if (mod || e.altKey) break;
           setMode('center');
           break;
         case 'KeyV':
+          if (mod || e.altKey) break;
           setMode('color');
           break;
         case 'KeyH': {
@@ -615,9 +631,18 @@ export default function App() {
           else g.askAssist('Hint');
           break;
         }
-        case 'KeyS':
-          convertMarks(); // swap corner ↔ centre marks (selection or board)
+        case 'KeyS': {
+          // Ctrl/Cmd+S is the browser's
+          if (mod || e.altKey) break;
+          // Shift+S gathers every mark into the active tab's layer (Shift
+          // itself makes the mode Corner while held, so the tab is the
+          // mode chosen); S swaps corner and centre marks (selection or board)
+          if (e.shiftKey) {
+            const g = useGame.getState();
+            g.gatherMarks(listLayer(g.mode));
+          } else convertMarks();
           break;
+        }
         case 'KeyP':
           togglePause();
           break;
@@ -1129,7 +1154,7 @@ export default function App() {
       {/* last among the dialogs, so it paints above the one that raised it
           (the Settings dialog's toggle asks it too) */}
       {contractPrompt && (
-        <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} forHighlight={contractFor === 'highlight'} />
+        <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} asked={contractFor} />
       )}
       <UpdateBar />
       {notice && (

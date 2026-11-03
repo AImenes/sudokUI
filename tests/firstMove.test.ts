@@ -215,8 +215,10 @@ describe('a game begun', () => {
   it('counts a game begun by opening the chain trainer, which switches candidates on, and not again after a reload', async () => {
     useGame.getState().startGame(EASY, 196, 'Easy');
     useGame.getState().startChain();
-    useGame.getState().endChain();
     expect(tracked).toEqual(['started']);
+    // the trainer is not kept, the candidates it switched on are (Done
+    // would switch them off again, leaving the board as it was: then a
+    // reload takes it for a game not begun, one of the two gaps)
     await reload();
     expect(useGame.getState().counted).toBe(true);
     for (const cell of EMPTY) play(cell, Number(solution()[cell]));

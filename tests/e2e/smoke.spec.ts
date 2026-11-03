@@ -324,6 +324,104 @@ test.describe('desktop, 1280 x 800', () => {
     await expect(page.locator('.num-btn.armed')).toHaveCount(0);
   });
 
+  test('a number key held down with the mouse enters once, however long the press', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const undo = page.locator('.action-row button', { hasText: 'Undo' });
+    const c = await cellBox(page, 40);
+    await page.mouse.click(c.x, c.y);
+    const key = (await page.locator('.num-btn', { hasText: '4' }).boundingBox())!;
+    const hold = async (ms: number) => {
+      await page.mouse.move(key.x + key.width / 2, key.y + key.height / 2);
+      await page.mouse.down();
+      await page.waitForTimeout(ms);
+      await page.mouse.up();
+    };
+    // Digit mode: a hold enters a corner mark, and a press of a second and
+    // a half is no tap after it (the click that follows is the same press):
+    // one step, which one Ctrl+Z takes back
+    await hold(1500);
+    await expect(status).toContainText('Row 5, column 5: empty, corner marks 4.');
+    await page.keyboard.press('Control+KeyZ');
+    await expect(status).toContainText('Row 5, column 5: empty.');
+    await expect(undo).toBeDisabled();
+    // Centre mode: a press is a tap however long, once
+    await page.keyboard.press('KeyC');
+    await hold(1500);
+    await expect(status).toContainText('Row 5, column 5: empty, centre marks 4.');
+    await page.keyboard.press('Control+KeyZ');
+    await expect(status).toContainText('Row 5, column 5: empty.');
+    await expect(undo).toBeDisabled();
+    // and the keyboard on the focused key still enters, at once
+    await page.locator('.num-btn', { hasText: '5' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(status).toContainText('Row 5, column 5: empty, centre marks 5.');
+  });
+
+  test('a digit key held down enters once: the repeats the keyboard sends are ignored', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const undo = page.locator('.action-row button', { hasText: 'Undo' });
+    const c = await cellBox(page, 1);
+    await page.mouse.click(c.x, c.y);
+    // held: the first keydown, then two the keyboard repeats
+    const holdKey = async (code: string) => {
+      await page.keyboard.down(code);
+      await page.keyboard.down(code);
+      await page.keyboard.down(code);
+      await page.keyboard.up(code);
+    };
+    await holdKey('Digit4');
+    await expect(status).toContainText('Row 1, column 2: 4.');
+    await page.keyboard.press('Control+KeyZ');
+    await expect(status).toContainText('Row 1, column 2: empty.');
+    await expect(undo).toBeDisabled();
+    await page.keyboard.press('KeyX');
+    await holdKey('Digit9');
+    await expect(status).toContainText('Row 1, column 2: empty, corner marks 9.');
+    // S swaps once, however long it is held
+    await holdKey('KeyS');
+    await expect(status).toContainText('Row 1, column 2: empty, centre marks 9.');
+    await page.keyboard.press('Control+KeyZ');
+    await expect(status).toContainText('Row 1, column 2: empty, corner marks 9.');
+    await page.keyboard.press('Control+KeyZ');
+    await expect(status).toContainText('Row 1, column 2: empty.');
+    await expect(undo).toBeDisabled();
+  });
+
+  test('Ctrl/Cmd with C, X and V leave the entry mode alone, and a cell with every candidate struck draws nothing', async ({ page }) => {
+    await open(page);
+    const active = page.locator('.mode-btn.active');
+    await expect(active).toContainText('Digit');
+    for (const keys of ['Control+KeyC', 'Control+KeyX', 'Control+KeyV', 'Meta+KeyC']) {
+      await page.keyboard.press(keys);
+      await expect(active, keys).toContainText('Digit');
+    }
+    // r1c1 has candidates 4 and 5; corner marks 1 2 written by hand there
+    // are hidden once auto candidates are on, also when both are struck
+    const c = await cellBox(page, 0);
+    await page.mouse.click(c.x, c.y);
+    await page.keyboard.press('KeyX');
+    await page.keyboard.press('Digit1');
+    await page.keyboard.press('Digit2');
+    await expect(page.locator('#board-status')).toContainText('Row 1, column 1: empty, corner marks 1 2.');
+    await page.getByRole('button', { name: /Auto candidates/ }).first().click();
+    await page.getByRole('button', { name: 'Use Auto candidates' }).click();
+    await page.keyboard.press('Digit4');
+    await page.keyboard.press('Digit5');
+    await expect(page.locator('#board-status')).toContainText('Row 1, column 1: empty, candidates none.');
+    const drawn = await page.evaluate(({ x, y, size }) =>
+      [...document.querySelectorAll('svg.board text')].filter((el) => {
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        return r.width > 0 && Math.abs(cx - x) < size / 2 && Math.abs(cy - y) < size / 2;
+      }).length,
+      { ...c, size: (await page.locator('svg.board').boundingBox())!.width / 9 }
+    );
+    expect(drawn).toBe(0);
+  });
+
   test('the hint panel and its buttons are on screen, and H walks the hint', async ({ page }) => {
     await open(page);
     await page.keyboard.press('KeyH');
@@ -1029,6 +1127,52 @@ test.describe('phone, 390 x 844', () => {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.locator('#board-status')).toContainText('Row 5, column 5: empty.');
     await expect(page.locator('#board-status')).not.toContainText('corner marks');
+  });
+
+  test('Swap held in the Centre tab says where the marks go and gathers them there; sliding off cancels; a tap still swaps', async ({ page }) => {
+    await open(page);
+    // the board as saved on the device: each cell's corner and centre marks
+    const cellsOf = () =>
+      page.evaluate(() =>
+        (JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.cells as { corner: number; center: number }[]).map((c) => [c.corner, c.center])
+      );
+    // corner marks in two cells, then nothing selected: the whole board
+    await page.locator('.mode-btn', { hasText: 'Corner' }).tap();
+    for (const [cell, digits] of [[40, [4, 7]], [41, [1, 2]]] as const) {
+      const c = await cellBox(page, cell);
+      await page.touchscreen.tap(c.x, c.y);
+      for (const d of digits) await page.locator('.num-btn', { hasText: String(d) }).tap();
+    }
+    const c = await cellBox(page, 41);
+    await page.touchscreen.tap(c.x, c.y);
+    await expect(page.locator('#board-status')).toContainText('No cell selected');
+    const marks = { corner: [bit(4) | bit(7), bit(1) | bit(2)] };
+    expect((await cellsOf()).slice(40, 42)).toEqual([[marks.corner[0], 0], [marks.corner[1], 0]]);
+    await page.locator('.mode-btn', { hasText: 'Centre' }).tap();
+    const swap = page.locator('.action-row button.swap-btn');
+    const box = (await swap.boundingBox())!;
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const cdp = await page.context().newCDPSession(page);
+    // held: the button says where the marks will go, and lifting does it
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
+    await expect(swap).toHaveText('→ Centre');
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(swap).toHaveText('⇄ Swap');
+    await expect(page.locator('.toast, [role=status]').filter({ hasText: 'Gathered into centre marks in 2 cells' })).toBeVisible();
+    expect((await cellsOf()).slice(40, 42)).toEqual([[0, marks.corner[0]], [0, marks.corner[1]]]);
+    // Undo, then a hold slid off the button: nothing happens
+    await page.locator('.action-row button', { hasText: 'Undo' }).tap();
+    expect((await cellsOf()).slice(40, 42)).toEqual([[marks.corner[0], 0], [marks.corner[1], 0]]);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
+    await expect(swap).toHaveText('→ Centre');
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: at.x, y: at.y - 200 }] });
+    await expect(swap).toHaveText('⇄ Swap');
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    expect((await cellsOf()).slice(40, 42)).toEqual([[marks.corner[0], 0], [marks.corner[1], 0]]);
+    // a tap is Swap, as ever
+    await swap.tap();
+    await expect(page.locator('.toast, [role=status]').filter({ hasText: 'Swapped corner and centre marks in 2 cells' })).toBeVisible();
+    expect((await cellsOf()).slice(40, 42)).toEqual([[0, marks.corner[0]], [0, marks.corner[1]]]);
   });
 
   test('a swipe over the board scrolls the page, a tap still selects', async ({ page }) => {
