@@ -62,13 +62,17 @@ All in src/state/gameStore.ts unless named.
   records it; opening the chain trainer with auto off (which switches it on) is a step of its own. The player's answer to the mark question is a fact
   about the whole puzzle, not a move, so answering rewrites "unknown" in the steps already taken: Undo past them
   does not ask again, while Undo of a Fill or an auto-off write gives back the contract from before it.
-- **B.** Switching auto off clears every open cell's exclusions after writing the list (with any of the three
-  choices: centre marks, corner marks, nothing; Ctrl+Z brings them back through A). With auto off the only
-  exclusions left are eliminations the app applied and checked against the solution (an applied hint, an applied
-  chain), which can never hide a true digit, so Hint moves on past them and Fill does not write them back. A
-  digit written into a mark by hand clears its exclusion, so what the board shows is what the solver reads. A
-  save or a position link from before the fix, with auto off, loses any struck solution digit when it is opened
-  (`dropHiddenSlips`). Check reads only what the board shows; Hint and Scan (contractGrid) and Fill read the marks
+- **B.** Switching auto off clears the exclusions of every cell but the givens, a cell holding a digit too
+  (round 3), after writing the list (with any of the three choices: centre marks, corner marks, nothing; Ctrl+Z
+  brings them back through A). With auto off the only exclusions left are in empty cells: eliminations the app
+  applied and checked against the solution (an applied hint, an applied chain), and the strikes the chain
+  trainer's Done keeps from while it was open (round 2: an applied chain still applied, a candidate struck by
+  hand, also in a cell without marks). None of them is ever the cell's solution digit, so none hides a true
+  digit; Hint moves on past them and Fill does not write them back. A digit written into a mark by hand clears
+  its exclusion, and with auto off a digit typed into a cell or taken off it (Backspace, the digit again, a Check
+  proof) clears the cell's exclusions, so what the board shows is what the solver reads. A save or a position
+  link from before the fix, with auto off, loses any struck solution digit when it is opened, and a saved cell
+  holding a digit its exclusions (`dropHiddenSlips`). Check reads only what the board shows; Hint and Scan (contractGrid) and Fill read the marks
   and, beside them, those applied eliminations, which the board does not draw with auto off but which never hide
   a true digit; Steps reads the puzzle alone.
 - **C.** src/ui/Controls.tsx: a number key pressed by a pointer is handled by its pointer events however long
@@ -144,7 +148,8 @@ All are fixed here except one low, listed under Left as they are.
   - The handover keeps each cell's exclusions from before the trainer opened and right after (`before`,
     `opened`), not a list of what was applied. Done reads the board as it is then: each empty cell keeps the
     player's marks less each digit struck now that was not struck when the trainer opened (an applied chain still
-    applied, a candidate struck by hand meanwhile). The marks are the hidden ones on the board, which are the
+    applied, a candidate struck by hand meanwhile), and, since round 3, with each digit struck then and restored
+    meanwhile back in its list. The marks are the hidden ones on the board, which are the
     marks as the trainer found them, changed only by the player's own steps since (an applied chain takes its
     digits out and Undo puts them back; a digit placed meanwhile takes itself from its peers, which keep that). Its exclusions are those struck now, less the handover's own
     (the player's lists, which live on as the marks) and less the cell's solution digit (a slip struck by hand,
@@ -154,7 +159,7 @@ All are fixed here except one low, listed under Left as they are.
   - Chain pressed again while the trainer is open on the candidates it switched on keeps the handover, with no
     new step; Done still switches auto off.
   - An Undo, a Redo or Check's jump back that leaves auto off closes the trainer cleanly: no handover left, the
-    board as the step says. One that keeps auto on keeps it open.
+    board as the step says. One that keeps auto on keeps it open, with the step's own handover (round 3).
 - **Untrue words** (three standing mediums and a low). Fill's and Gather's notices under auto, and Fill's title,
   told the player to turn auto off to keep the candidates as marks, which with Keep candidates off writes
   nothing. They now say only what is true whatever that setting: "Auto candidates are on: every empty cell already
@@ -188,6 +193,50 @@ All are fixed here except one low, listed under Left as they are.
   words are shorter where a phone wrapped them: the Shift+S row of the keyboard list (three lines at 390 px) and
   the Candidates go in text. This document says which findings were fixed and which were left.
 
+## The review of round 2 (round 3)
+
+A review of round 2 found four standing findings (one of them reported twice), one on which the skeptics split,
+and four lows. All are fixed here.
+
+- **Back to correct while the chain trainer is open** (a standing medium, reported twice) dropped the handover,
+  so Done left auto on and the next Auto off could write over the player's marks; Auto switched off inside the
+  trainer and then Ctrl+Z did the same. Each history step now carries the handover (`Snapshot.handover`), and
+  Undo, Redo and the jump back put it back with the step while the trainer is open (`trainerAfter`): a step taken
+  since the trainer opened has it, so Done switches auto off; a step from before it opened, when auto was on
+  already, has none, so Done leaves auto as the player had it then; with the trainer closed there is none.
+  Keeping the opening step's place in the history and comparing it was the other design; the step's own handover
+  is simpler and covers Undo and Redo as well as the jump.
+- **A strike in a cell holding a digit** (a standing medium): a candidate struck under auto in a cell that then
+  got a digit survived Auto off, and came back hidden when the digit was erased: Hint said "Run Check", Check said
+  "Everything checks out", and Fill wrote a list without the true digit. Now Auto off clears the exclusions of
+  every cell but the givens, and so does Done in a cell holding a digit; with auto off a digit typed into a cell or
+  taken off it clears the cell's exclusions; and a save opened with auto off drops a digit cell's exclusions (B).
+- **The mark question's note and the help** (a standing low, a false statement) said Auto answers the question
+  automatically, while Auto on asks it when a cell has corner marks alone. They now name what does: "a
+  whole-board Fill, or Auto switched off with its candidates kept as your marks" (src/ui/Dialogs.tsx, the help in
+  src/ui/SettingsInfo.tsx).
+- **The Auto button's title with auto on** (a standing low, a false statement) said where the candidates go is
+  set in Settings, while in Corner or Centre mode they go into that mode's layer. It now says what a press does,
+  naming the layer as Fill's title does (`listLayer`): "Turn off. The candidates are written into your corner
+  marks" (or centre marks); with Keep candidates off, "Nothing is written into your marks, since Settings is set
+  not to keep the candidates"; and before the first auto-off prompt has been answered, that the player chooses
+  then.
+- **A reload with the trainer open** (split: medium, or low as main's behaviour) left auto on, the trainer gone,
+  and the player's marks hidden under the auto view. The handover is now saved with the game, and a reload whose
+  save has a handover with auto on closes the trainer as Done does (`handBack`, shared with Done), with no step,
+  since history is not saved. Whether the game was begun is read from the board as saved, before that. A save
+  from before has no handover and loads as it did. Saving the trainer itself (its chain, goal and drawing) was
+  the other design.
+- **Lows.** A candidate restored inside the trainer (Erase, or a struck digit pressed again) was taken out of the
+  marks again at Done; now each digit struck when the trainer opened and not struck at Done goes back into the
+  cell's list (its centre marks, or its corner marks once complete), in a cell that has one. The Norwegian Fill
+  notice and title said "hver tomme rute", now "hver tom rute"; the other new Norwegian strings were read for the
+  same slip and have none. The first auto-off prompt names its settings in quotes: "Your choice is saved in
+  Settings as “Keep candidates when Auto is switched off” and, for a layer, as “Candidates go in”, the layer Digit
+  and Colour mode use (Corner and Centre mode use their own). You can change both there anytime." B above says
+  which exclusions are left with auto off, the trainer's Done included, and docs/chain-trainer.md says what Done
+  gives back.
+
 ## Tests
 
 - tests/candidateLayers.test.ts: the store, one scenario per cluster from the reports (A, B, E, F, G, H, I, J, K,
@@ -195,9 +244,14 @@ All are fixed here except one low, listed under Left as they are.
   a37c744, the rest pin behaviour kept on purpose. Round 2 added 16 (the handover and Undo in I, Check's question
   in J, Auto on's question in F2, the words under auto in G, the selection in N) and changed one notice in N: 15
   of them fail on 20b799d; "a chain still applied at Done stays" and "with no cell of corner marks alone it asks
-  nothing" pin behaviour kept. Tests whose corner marks alone now raise Auto's question answer it.
-- tests/firstMove.test.ts: opening the trainer still counts the game as begun; after Done the board is as it was,
-  so the reload case keeps the trainer open.
+  nothing" pin behaviour kept. Tests whose corner marks alone now raise Auto's question answer it. Round 3 added
+  11 (in B, a strike under a digit, wrong or true, and a digit taken off with auto off; in I, Back to correct and
+  Auto off then Ctrl+Z inside the trainer, a candidate restored there, a strike under a digit at Done; and a
+  reload, with the store's save kept in the test) and one check in I (no handover after a Redo with the trainer
+  closed): 9 of them fail on f576c2e; "a jump back to a step from before it opened" and "a save without a
+  handover" pin behaviour kept.
+- tests/firstMove.test.ts: opening the trainer still counts the game as begun, across a reload too, which since
+  round 3 closes the trainer as Done does (the count is read from the board as saved, before that).
 - tests/e2e/smoke.spec.ts: a mouse hold of 1.5 s on a number key enters once (Digit and Centre mode), the focused
   key still answers Enter; a digit key held with two repeats enters once, and S swaps once; Ctrl/Cmd with C, X and
   V keep the mode, and a cell with every candidate struck under auto draws nothing; on a phone, Swap held in
@@ -205,13 +259,20 @@ All are fixed here except one low, listed under Left as they are.
   focused number key enters once; with auto on and Keep candidates off, the Erase and Fill titles and Fill's notice
   say what a press does; Check on a board of centre marks checks at once, and with a corner list asks in its own
   words; Auto on with a corner list asks, and keeps its eliminations once they are complete. The four fail on a
-  build of 20b799d.
+  build of 20b799d. Round 3: a reload with the trainer open closes it, auto off and the corner marks back; Auto's
+  title with auto on says the first time that it asks, and then the layer (centre in Digit mode, corner in Corner
+  mode), and with Keep candidates off that nothing is written; the first auto-off prompt names its settings in
+  quotes; Hint's mark question names what answers it, and Auto then asks it. The four (three new, one with a line
+  added) fail on a build of f576c2e.
 - Each fix was undone once and its tests seen to fail, then restored (the browser ones on a build of each); in
-  round 2 the new tests were run against 20b799d (the store's in the suite, the browser's on its build).
+  round 2 the new tests were run against 20b799d (the store's in the suite, the browser's on its build), and in
+  round 3 against f576c2e the same way.
 - The checks of round 1: tsc; the whole unit suite (1567 passed); the path digest with its menus, unchanged; the
   build (270 pages); and the browser tests, 100 of 100 in both font setups.
 - The checks of round 2: tsc; the whole unit suite (1583 passed); the path digest with its menus, unchanged; the
   build (270 pages); and the browser tests, 104 of 104 in both font setups.
+- The checks of round 3: tsc; the whole unit suite (1594 passed); the path digest with its menus, unchanged; the
+  build (270 pages); and the browser tests, 107 of 107 in both font setups.
 
 ## Left as they are
 
@@ -223,8 +284,8 @@ All are fixed here except one low, listed under Left as they are.
   the marks there were then), so Check flags a peer the player never touched. Main does the same; recording the
   written lists in the placed digit's `took` would fix it, and is left for a later round.
 - **The chain trainer's own switch to auto candidates does not ask the mark question.** Under "unknown", corner
-  marks alone adopt nothing in the trainer's view, as on main, but Done gives them back untouched, so nothing is
-  lost.
+  marks alone adopt nothing in the trainer's view, as on main, but Done, or a reload while it is open (round 3),
+  gives them back untouched, so nothing is lost.
 - **A position link does not carry the mark contract** (a low), so the recipient reads the same marks as "unknown" (and
   colours come back in palette order). It needs a new payload version.
 - **Hint and Scan under "notes" ignore centre lists** (a low) that Check and the ring read as candidates, so a hint can

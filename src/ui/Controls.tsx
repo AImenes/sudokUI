@@ -210,9 +210,13 @@ export function Controls({
   };
 
   const t = useT();
-  // where Fill writes (listLayer): the mode's layer, or the one set in Settings
+  // where Fill writes (listLayer): the mode's layer, or the one set in
+  // Settings; and so does switching Auto off, when it keeps the candidates
+  // (the first time, it asks)
   const materializeLayer = useSettings((s) => s.materializeLayer);
   const fillLayer = effectiveMode === 'corner' || effectiveMode === 'center' ? effectiveMode : materializeLayer;
+  const keepCandidates = useSettings((s) => s.autoOffMaterialize);
+  const autoOffPromptDone = useSettings((s) => s.autoOffPromptDone);
   return (
     <div className="controls">
       <div className="mode-row">
@@ -372,9 +376,15 @@ export function Controls({
             className={autoCandidates ? 'toggled' : ''}
             onClick={autoCandidates ? onAutoToggle : guarded('Auto candidates', onAutoToggle)}
             title={t(
-              autoCandidates
-                ? 'Turn off. Where the candidates go is configurable in Settings, and Ctrl+Z reverts'
-                : 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
+              !autoCandidates
+                ? 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
+                : !autoOffPromptDone
+                  ? 'Turn off. The first time, you choose whether the candidates stay as your marks, and Ctrl+Z reverts'
+                  : !keepCandidates
+                    ? 'Turn off. Nothing is written into your marks, since Settings is set not to keep the candidates, and Ctrl+Z reverts'
+                    : fillLayer === 'corner'
+                      ? 'Turn off. The candidates are written into your corner marks, and Ctrl+Z reverts'
+                      : 'Turn off. The candidates are written into your centre marks, and Ctrl+Z reverts'
             )}
           >
             <span className="btn-icon" aria-hidden="true">⌗</span><span>{t('Auto candidates')}</span>
@@ -436,7 +446,7 @@ export function Controls({
         <Modal title={t('Keep your candidates?')} onClose={() => setAutoOffPrompt(false)}>
           <p className="dialog-note">
             {t(
-              'When Auto is switched off, the candidates it was showing can stay on the board as your own pencil marks, so you continue exactly where Auto left off. Your choice is saved in Settings: Keep candidates, and the layer as Candidates go in, which Digit and Colour mode use (Corner and Centre mode use their own). Change it anytime there.'
+              'When Auto is switched off, the candidates it was showing can stay on the board as your own pencil marks, so you continue exactly where Auto left off. Your choice is saved in Settings as “Keep candidates when Auto is switched off” and, for a layer, as “Candidates go in”, the layer Digit and Colour mode use (Corner and Centre mode use their own). You can change both there anytime.'
             )}
           </p>
           <div className="level-list">

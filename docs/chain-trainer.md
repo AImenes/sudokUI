@@ -12,9 +12,12 @@ player write them.
 every link). Auto candidates come on, because the player taps
 candidates, not cells: through the Auto button's own handover (the
 eliminations in the player's candidate lists kept, one step for Ctrl+Z),
-and Done switches them off again with the player's own marks as they
-were, when the trainer switched them on. A new game, the next practice
-puzzle and Restart close the trainer ([candidates-2026-11.md](candidates-2026-11.md), I).
+and Done switches them off again, when the trainer switched them on, with
+the player's own marks less what an applied chain or a strike removed
+meanwhile, and with what the player restored meanwhile; a reload while it
+is open does the same. A new game, the next practice puzzle and Restart
+close the trainer ([candidates-2026-11.md](candidates-2026-11.md), I and
+rounds 2 and 3).
 
 - The first tap starts the chain. Each next tap must link to the last
   candidate: a **strong link** (the other candidate of a bivalue cell, or

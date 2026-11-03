@@ -545,7 +545,7 @@ export function InfoDialog({
       <p className="dialog-note">
         {rich(
           t(
-            'Say your marks are your {remaining} and hints continue from exactly where you are. Corner or centre makes no difference, since those are positions, not meanings (Snyder notation is a {method}: partial corner marks, which is the other answer). Auto and a whole-board Fill answer the question automatically.'
+            'Say your marks are your {remaining} and hints continue from exactly where you are. Corner or centre makes no difference, since those are positions, not meanings (Snyder notation is a {method}: partial corner marks, which is the other answer). A whole-board Fill answers the question automatically, and so does switching Auto off with its candidates kept as your marks.'
           ),
           {
             remaining: <em>{t('remaining candidates||the answer, in the help')}</em>,

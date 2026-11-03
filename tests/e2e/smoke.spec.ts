@@ -452,8 +452,55 @@ test.describe('desktop, 1280 x 800', () => {
     await page.getByRole('button', { name: 'Use Auto candidates' }).click();
     await expect(erase).toHaveAttribute('title', 'Erase value, then restore struck candidates, then colours (Backspace) · W wipes everything');
     await expect(fill).toHaveAttribute('title', 'Auto candidates are on: every empty cell already shows its candidates, so there is nothing to fill.');
+    await expect(page.getByRole('button', { name: /Auto candidates/ }).first()).toHaveAttribute(
+      'title',
+      'Turn off. Nothing is written into your marks, since Settings is set not to keep the candidates, and Ctrl+Z reverts'
+    );
     await fill.click();
     await expect(page.locator('.toast').filter({ hasText: 'every empty cell already shows its candidates' })).toBeVisible();
+  });
+
+  test('Auto’s title with auto on says where switching it off writes, and the first time that it asks, in words that name the settings', async ({ page }) => {
+    await open(page);
+    const auto = page.getByRole('button', { name: /Auto candidates/ }).first();
+    await auto.click();
+    await page.getByRole('button', { name: 'Use Auto candidates' }).click();
+    await expect(auto).toHaveAttribute('title', 'Turn off. The first time, you choose whether the candidates stay as your marks, and Ctrl+Z reverts');
+    await auto.click();
+    const prompt = page.getByRole('dialog', { name: 'Keep your candidates?' });
+    await expect(prompt).toContainText(
+      'Your choice is saved in Settings as “Keep candidates when Auto is switched off” and, for a layer, as “Candidates go in”, the layer Digit and Colour mode use (Corner and Centre mode use their own). You can change both there anytime.'
+    );
+    await prompt.getByRole('button', { name: /Centre marks/ }).click();
+    await auto.click();
+    // Digit mode: the layer set in Settings; Corner and Centre mode: their own
+    await expect(auto).toHaveAttribute('title', 'Turn off. The candidates are written into your centre marks, and Ctrl+Z reverts');
+    await page.keyboard.press('KeyX');
+    await expect(auto).toHaveAttribute('title', 'Turn off. The candidates are written into your corner marks, and Ctrl+Z reverts');
+    await auto.click();
+    await expect(page.locator('.toast').filter({ hasText: 'Current state written to corner marks' })).toBeVisible();
+  });
+
+  test('the mark question says what answers it by itself: a whole-board Fill, or Auto switched off into the marks', async ({ page }) => {
+    await open(page);
+    // r1c1 (candidates 4 5): corner marks alone
+    const c = await cellBox(page, 0);
+    await page.mouse.click(c.x, c.y);
+    await page.keyboard.press('KeyX');
+    await page.keyboard.press('Digit4');
+    await page.keyboard.press('Digit5');
+    await page.keyboard.press('KeyZ');
+    await page.getByRole('button', { name: /Hint/ }).first().click();
+    await page.getByRole('button', { name: 'Use Hint' }).click();
+    const question = page.getByRole('dialog', { name: 'How should hints read your pencil marks?' });
+    await expect(question).toContainText(
+      'Your answer is remembered for the rest of this puzzle (a whole-board Fill, or Auto switched off with its candidates kept as your marks, answers it automatically).'
+    );
+    await page.keyboard.press('Escape');
+    // Auto, which the note no longer says answers it, asks it
+    await page.getByRole('button', { name: /Auto candidates/ }).first().click();
+    await page.getByRole('button', { name: 'Use Auto candidates' }).click();
+    await expect(page.getByRole('dialog', { name: 'How should Auto candidates read your corner marks?' })).toBeVisible();
   });
 
   test('Check asks the mark question only when corner marks change what it checks, in words of what it then does', async ({ page }) => {
@@ -624,6 +671,30 @@ test.describe('the chain trainer', () => {
     await expect(panel).toContainText('1 candidate');
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
+  });
+
+  test('a reload while it is open closes it as Done does: auto candidates off, the player’s marks back', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const auto = page.getByRole('button', { name: /Auto candidates/ }).first();
+    // r1c2 (candidates 4 5 7 8): two corner marks of the player's
+    const c = await cellBox(page, 1);
+    await page.mouse.click(c.x, c.y);
+    await page.keyboard.press('KeyX');
+    await page.keyboard.press('Digit4');
+    await page.keyboard.press('Digit5');
+    await page.keyboard.press('KeyZ');
+    await expect(status).toContainText('Row 1, column 2: empty, corner marks 4 5.');
+    await page.getByRole('button', { name: /Chain/ }).first().click();
+    await page.getByRole('button', { name: 'Use Chain' }).click();
+    await expect(page.getByRole('region', { name: 'Build a chain' })).toBeVisible();
+    await expect(auto).toHaveClass(/toggled/);
+    await page.reload();
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Build a chain' })).toHaveCount(0);
+    await expect(auto).not.toHaveClass(/toggled/);
+    await page.mouse.click(c.x, c.y);
+    await expect(status).toContainText('Row 1, column 2: empty, corner marks 4 5.');
   });
 });
 

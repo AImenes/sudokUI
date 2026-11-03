@@ -13,12 +13,27 @@
  * review that followed (round 2): Done gives back what the board says now,
  * an Undo past the trainer's opening closes it, the notices under auto say
  * only what is true, and Check and Auto on ask the mark question only when
- * corner marks change what they do.
+ * corner marks change what they do. Round 3: the handover goes with each
+ * step (Undo, Redo, Back to correct) and survives a reload as Done, no
+ * strike outlives auto in a cell holding a digit, and a candidate restored
+ * in the trainer is in the marks at Done.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGame, engineGrid, contractGrid, listLayer, type CellState, type EntryMode } from '../src/state/gameStore';
 import { useSettings } from '../src/state/settings';
 import { PEERS } from '../src/engine/board';
+
+// what the store saves, kept here so a reload can read it back (persist);
+// set before the store is imported, as a page's own storage is
+const saved = vi.hoisted(() => {
+  const m = new Map<string, string>();
+  (globalThis as { localStorage?: unknown }).localStorage = {
+    getItem: (k: string) => m.get(k) ?? null,
+    setItem: (k: string, v: string) => void m.set(k, v),
+    removeItem: (k: string) => void m.delete(k)
+  };
+  return m;
+});
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
 const bit = (d: number) => 1 << (d - 1);
@@ -239,6 +254,50 @@ describe('B: the strikes go with auto candidates, and nothing hidden steers', ()
     g().undo();
     expect(g().autoCandidates).toBe(true);
     expect(g().cells[R1C1].excluded).toBe(bit(4));
+  });
+
+  for (const digit of [5, 4]) {
+    it(`a strike in a cell that then gets a digit (${digit === 4 ? 'the true one' : 'a wrong one'}) goes with auto too: erased later, the digit leaves nothing hidden`, () => {
+      useSettings.getState().set({ autoOffMaterialize: false });
+      g().toggleAutoCandidates();
+      type([R1C1], [4], 'corner'); // the true 4 struck: the cell shows a lone 5
+      type([R1C1], [digit], 'digit');
+      expect(g().cells[R1C1]).toMatchObject({ value: digit, excluded: bit(4) });
+      g().select([], false);
+      g().toggleAutoCandidates();
+      expect(g().cells.every((c) => c.given || c.excluded === 0)).toBe(true);
+      g().select([R1C1], false);
+      g().erase();
+      expect(g().cells[R1C1]).toMatchObject({ value: 0, corner: 0, center: 0, excluded: 0 });
+      // Hint and Check agree, and Fill writes the true 4
+      expect(contractGrid(g().cells, false, g().markContract).cands[R1C1]).toBe(bits(4, 5));
+      g().requestHint();
+      expect(g().notice ?? '').not.toMatch(/impossible deduction/);
+      g().dismissHint();
+      g().select([R1C1], false);
+      g().setMode('center');
+      g().fillCandidates();
+      expect(g().cells[R1C1].center).toBe(bits(4, 5));
+    });
+  }
+
+  it('with auto off, a digit taken off takes its cell’s strikes with it (Backspace, or the digit again); with auto on they show again', () => {
+    for (const off of [() => g().erase(), () => g().input(5)]) {
+      g().startGame(EASY, 196, 'Easy');
+      // a strike left under a digit, as a version before this one left it
+      mark(R1C1, { value: 5, excluded: bit(4) });
+      g().setMode('digit');
+      g().select([R1C1], false);
+      off();
+      expect(g().cells[R1C1]).toMatchObject({ value: 0, excluded: 0 });
+    }
+    // with auto on the strike is drawn, so it stays with the cell
+    g().startGame(EASY, 196, 'Easy');
+    g().toggleAutoCandidates();
+    type([R1C1], [4], 'corner');
+    type([R1C1], [5], 'digit');
+    g().erase();
+    expect(view(R1C1)).toEqual({ auto: bit(5) });
   });
 });
 
@@ -600,10 +659,12 @@ describe('I: the chain trainer switches auto candidates on and off as the Auto b
     expect(g().chain).toBeNull();
     expect(g().chainHandover).toBeNull();
     expect(board()).toBe(before);
-    // Redo gives back the step's board, auto on; the trainer stays closed
+    // Redo gives back the step's board, auto on; the trainer stays closed,
+    // and no handover is left without it
     g().redo();
     expect(g().autoCandidates).toBe(true);
     expect(g().chain).toBeNull();
+    expect(g().chainHandover).toBeNull();
   });
 
   it('a Redo or a jump back to the last correct position that turns auto off closes it too', () => {
@@ -624,6 +685,141 @@ describe('I: the chain trainer switches auto candidates on and off as the Auto b
     expect(g().autoCandidates).toBe(false);
     expect(g().chain).toBeNull();
     expect(g().chainHandover).toBeNull();
+  });
+
+  it('Back to the last correct position while it is open keeps the handover: Done still puts auto back off', () => {
+    type([R1C1], [4], 'corner');
+    g().setMode('digit');
+    const before = board();
+    g().startChain();
+    type([R1C2], [7], 'digit'); // wrong: r1c2 is 8
+    g().check();
+    expect(g().revertIndex).not.toBeNull();
+    g().revertToValid();
+    expect(g().autoCandidates).toBe(true);
+    expect(g().chain).not.toBeNull();
+    expect(g().chainHandover).not.toBeNull();
+    g().endChain();
+    expect(g().autoCandidates).toBe(false);
+    expect(board()).toBe(before);
+  });
+
+  it('a jump back to a step from before it opened, with auto on then, has no handover: Done leaves auto on, as the player had it', () => {
+    g().toggleAutoCandidates();
+    type([R1C2], [7], 'digit'); // wrong
+    g().select([], false);
+    g().toggleAutoCandidates();
+    g().startChain();
+    expect(g().chainHandover).not.toBeNull();
+    g().check();
+    g().revertToValid();
+    expect(g().autoCandidates).toBe(true);
+    expect(g().chain).not.toBeNull();
+    expect(g().chainHandover).toBeNull();
+    g().endChain();
+    expect(g().autoCandidates).toBe(true);
+  });
+
+  it('Auto switched off while it is open, then Ctrl+Z: the handover comes back with the step, and Done puts auto back off', () => {
+    type([R1C1], [4], 'corner');
+    g().setMode('digit');
+    const before = board();
+    g().startChain();
+    g().toggleAutoCandidates();
+    expect(g().chainHandover).toBeNull();
+    g().undo();
+    expect(g().autoCandidates).toBe(true);
+    expect(g().chain).not.toBeNull();
+    expect(g().chainHandover).not.toBeNull();
+    g().endChain();
+    expect(g().autoCandidates).toBe(false);
+    expect(board()).toBe(before);
+  });
+
+  it('a candidate restored while it is open is in the marks at Done: by Erase, or the struck digit pressed again', () => {
+    const restores = [
+      () => {
+        g().setMode('digit');
+        g().select([R1C2], false);
+        g().erase();
+      },
+      () => type([R1C2], [8], 'corner')
+    ];
+    for (const restore of restores) {
+      g().startGame(EASY, 196, 'Easy');
+      type([R1C2], [4, 5, 7], 'center'); // the true 8 lost
+      g().setMode('digit');
+      g().startChain();
+      expect(g().cells[R1C2].excluded).toBe(bit(8));
+      restore();
+      expect(view(R1C2)).toEqual({ auto: bits(4, 5, 7, 8) });
+      g().setMode('digit');
+      g().endChain();
+      expect(g().cells[R1C2]).toMatchObject({ center: bits(4, 5, 7, 8), excluded: 0 });
+      g().check();
+      expect(g().errors).toEqual([]);
+    }
+  });
+
+  it('a strike in a cell that gets a digit while it is open goes at Done: erased later, the digit leaves nothing hidden', () => {
+    g().startChain();
+    type([R1C1], [4], 'corner'); // the true 4 struck
+    type([R1C1], [5], 'digit'); // and the 5 left placed
+    g().endChain();
+    expect(g().cells[R1C1]).toMatchObject({ value: 5, excluded: 0 });
+    g().select([R1C1], false);
+    g().erase();
+    expect(g().cells[R1C1].excluded).toBe(0);
+    g().requestHint();
+    expect(g().notice ?? '').not.toMatch(/impossible deduction/);
+  });
+});
+
+describe('a reload', () => {
+  const R1C8 = 7;
+  const R2C8 = 16;
+  /** the page starts again, with nothing in memory but what was saved */
+  async function reload() {
+    const game = saved.get('sudokui-game-v1')!;
+    useGame.setState({ info: null, chain: null, chainHandover: null, autoCandidates: false, history: [], future: [] });
+    saved.set('sudokui-game-v1', game);
+    await useGame.persist.rehydrate();
+  }
+
+  it('with the chain trainer open closes it as Done does: auto off, the marks back less a chain still applied', async () => {
+    type([R1C2], [4, 5], 'corner');
+    type([R1C8], [5, 7, 8, 9], 'center');
+    g().setMode('digit');
+    g().startChain();
+    // r7c8 = r9c8: r1c8 and r2c8 lose their 8
+    g().chainTap(61, 8);
+    g().chainTap(79, 8);
+    g().chainApply();
+    await reload();
+    expect(g().autoCandidates).toBe(false);
+    expect(g().chainHandover).toBeNull();
+    expect(g().cells[R1C2]).toMatchObject({ corner: bits(4, 5), center: 0, excluded: 0 });
+    expect(g().cells[R1C8]).toMatchObject({ center: bits(5, 7, 9), excluded: bit(8) });
+    expect(g().cells[R2C8]).toMatchObject({ center: 0, excluded: bit(8) });
+  });
+
+  it('of a save without a handover (auto on by the player, or a save from before) keeps auto on', async () => {
+    g().toggleAutoCandidates();
+    type([R1C1], [5], 'corner');
+    const game = JSON.parse(saved.get('sudokui-game-v1')!);
+    delete game.state.chainHandover;
+    saved.set('sudokui-game-v1', JSON.stringify(game));
+    await reload();
+    expect(g().autoCandidates).toBe(true);
+    expect(g().cells[R1C1].excluded).toBe(bit(5));
+  });
+
+  it('with auto off, of a save that holds a strike under a digit (from before this version), drops it', async () => {
+    mark(R1C1, { value: 5, excluded: bit(4) });
+    mark(R1C2, { excluded: bits(7, 8) }); // r1c2 is 8: its 8 goes, the 7 stays
+    await reload();
+    expect(g().cells[R1C1]).toMatchObject({ value: 5, excluded: 0 });
+    expect(g().cells[R1C2].excluded).toBe(bit(7));
   });
 });
 

@@ -560,7 +560,7 @@ export function ContractDialog({
       <p className="dialog-note">
         {asked === 'auto'
           ? t('A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which. Your answer is remembered for the rest of this puzzle.')
-          : t('A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which. Your answer is remembered for the rest of this puzzle (Auto, or Fill on the whole board, answers it automatically).')}
+          : t('A missing pencil mark can mean "eliminated" or just "not written yet", and only you know which. Your answer is remembered for the rest of this puzzle (a whole-board Fill, or Auto switched off with its candidates kept as your marks, answers it automatically).')}
       </p>
       <ContractChoices onAnswer={onAnswer} asked={asked} />
     </Modal>

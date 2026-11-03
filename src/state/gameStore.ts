@@ -82,8 +82,10 @@ const cloneCells = (cells: CellState[]): CellState[] =>
  *  explicit exclusions (left in, for the candidates the placed digits
  *  alone allow). With auto candidates off, the only exclusions left are
  *  eliminations the app applied and checked against the solution (an
- *  applied hint or chain): switching auto off clears the strikes, so
- *  nothing the board does not show can steer a hint, a fill or a check. */
+ *  applied hint or chain) and strikes the chain trainer's Done keeps,
+ *  never a true digit: switching auto off clears the strikes, in every
+ *  cell, so nothing the board does not show can steer a hint, a fill or a
+ *  check. */
 export function engineGrid(cells: CellState[], withExclusions = true): Grid {
   const g = emptyGrid();
   for (let i = 0; i < 81; i++) {
@@ -203,22 +205,34 @@ export function listLayer(mode: EntryMode): MarkLayer {
   return mode === 'corner' || mode === 'center' ? mode : useSettings.getState().materializeLayer;
 }
 
+/** the chain trainer's switch to auto candidates, which Done undoes
+ *  (startChain, endChain): each cell's exclusions from before it opened,
+ *  and right after (the handover's strikes) */
+export interface ChainHandover {
+  before: number[];
+  opened: number[];
+}
+
 /**
  * One step of the undo history: the cells, and how the board read them then
- * (auto candidates on or off, and the marks' contract), so Undo and Redo put
- * back the view with the marks: Ctrl+Z after Auto off turns Auto on again,
- * and after a whole-board Fill the marks are notes again if they were.
+ * (auto candidates on or off, the marks' contract, and the chain trainer's
+ * handover), so Undo and Redo put back the view with the marks: Ctrl+Z after
+ * Auto off turns Auto on again, after a whole-board Fill the marks are notes
+ * again if they were, and a step taken while the trainer had switched auto
+ * on still has Done switch it off.
  */
 export interface Snapshot {
   cells: CellState[];
   auto: boolean;
   contract: MarkContract;
+  handover: ChainHandover | null;
 }
 
-const snap = (s: { cells: CellState[]; autoCandidates: boolean; markContract: MarkContract }): Snapshot => ({
+const snap = (s: { cells: CellState[]; autoCandidates: boolean; markContract: MarkContract; chainHandover: ChainHandover | null }): Snapshot => ({
   cells: cloneCells(s.cells),
   auto: s.autoCandidates,
-  contract: s.markContract
+  contract: s.markContract,
+  handover: s.chainHandover
 });
 
 /** the state a snapshot puts back */
@@ -226,9 +240,13 @@ const restore = (x: Snapshot) => ({ cells: cloneCells(x.cells), autoCandidates: 
 
 /** the chain trainer runs on auto candidates: an Undo, a Redo or a jump
  *  back that leaves them off closes it, with no handover left for Done,
- *  and the board stays as the step says */
+ *  and the board stays as the step says. One that keeps them on keeps it
+ *  open, with the step's handover (none if auto was the player's then);
+ *  with the trainer closed there is none */
 const trainerAfter = (open: boolean, x: Snapshot) =>
-  open && !x.auto ? { chain: null, chainNote: '', chainGoal: null, chainHandover: null } : {};
+  open && !x.auto
+    ? { chain: null, chainNote: '', chainGoal: null, chainHandover: null }
+    : { chainHandover: open ? x.handover : null };
 
 /** the player's answer to the mark question holds for the whole puzzle: the
  *  steps taken before it was asked read the marks the same way, so Undo
@@ -239,9 +257,58 @@ const answered = (stack: Snapshot[], contract: MarkContract) =>
 /** Exclusions with auto candidates off hold only eliminations the app
  *  applied and checked, so a struck solution digit there is a slip from a
  *  save or a link made before strikes went with auto off: the board does not
- *  show it, so it goes */
+ *  show it, so it goes; and a cell holding a digit keeps none (auto off and
+ *  a digit taken off clear them), so a save from before keeps none there */
 function dropHiddenSlips(cells: CellState[], solution: string): CellState[] {
-  return cells.map((c, i) => (!c.value && c.excluded & bit(Number(solution[i])) ? { ...c, excluded: c.excluded & ~bit(Number(solution[i])) } : c));
+  return cells.map((c, i) =>
+    c.value
+      ? c.given || !c.excluded
+        ? c
+        : { ...c, excluded: 0 }
+      : c.excluded & bit(Number(solution[i]))
+        ? { ...c, excluded: c.excluded & ~bit(Number(solution[i])) }
+        : c
+  );
+}
+
+/**
+ * The chain trainer closes on the auto candidates it switched on (Done, or
+ * a reload while it was open): they go off again, and what comes back is
+ * read from the board as it is now, not from a list kept of what was
+ * applied. Each empty cell keeps the player's own marks, hidden meanwhile
+ * (as the trainer found them, changed only by the player's own steps
+ * since: an applied chain takes its digits out and Undo puts them back, a
+ * digit placed takes itself from its peers), less each digit struck now
+ * that was not struck when the trainer opened (an applied chain still
+ * applied, a candidate struck by hand), and with each digit struck then
+ * and not now (a candidate restored, by Erase or pressed again) back in
+ * the cell's list (its centre marks, or its corner marks once complete); a
+ * chain applied and undone leaves nothing. Nothing is written over the
+ * marks. The strikes kept are those from before it opened and those made
+ * since, never a true digit (a slip struck by hand: where the cell has
+ * marks, its removal shows there), and never the handover's own, which
+ * were the player's lists and are still the marks. A cell holding a digit
+ * keeps no strike: with auto off, none would show when the digit goes.
+ */
+function handBack(cells: CellState[], h: ChainHandover, solution: string, contract: MarkContract): CellState[] {
+  const canon = engineGrid(cells, false);
+  return cells.map((c, i) => {
+    if (c.value) return c.given || !c.excluded ? c : { ...c, colors: [...c.colors], excluded: 0 };
+    const struck = c.excluded & ~h.opened[i];
+    const adopted = h.opened[i] & ~h.before[i];
+    const restored = h.opened[i] & ~c.excluded & canon.cands[i];
+    // the list the restored digits go back to, as candidateList reads it
+    const list = c.center ? 'center' : contract === 'exhaustive' && c.corner ? 'corner' : null;
+    const corner = c.corner & ~struck;
+    const center = c.center & ~struck;
+    return {
+      ...c,
+      colors: [...c.colors],
+      corner: list === 'corner' ? corner | restored : corner,
+      center: list === 'center' ? center | restored : center,
+      excluded: c.excluded & ~adopted & ~bit(Number(solution[i]))
+    };
+  });
 }
 
 /** any pencil marks on empty cells? (the contract question is pointless
@@ -548,8 +615,10 @@ interface GameStore {
    *  again (startChain, endChain): each cell's exclusions from before it
    *  opened, and right after (the handover's strikes), against which Done
    *  reads what was struck while it was open. Null when auto was on
-   *  already, or the player has switched it since */
-  chainHandover: { before: number[]; opened: number[] } | null;
+   *  already, or the player has switched it since, and whenever the
+   *  trainer is closed. Each history step keeps it (Snapshot), and the
+   *  save too, so a reload closes the trainer as Done does */
+  chainHandover: ChainHandover | null;
 
   startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null, dailyKey?: string) => void;
   /**
@@ -1116,6 +1185,9 @@ export const useGame = create<GameStore>()(
               placeDigit(cells, i, digit);
               changed = true;
             }
+            // with auto off a strike under a digit would be hidden once the
+            // digit goes: a digit typed or taken off clears the cell's
+            if (!s.autoCandidates) cells[i].excluded = 0;
           }
         } else if (mode === 'corner' || mode === 'center') {
           const editable = targets.filter((i) => !cells[i].given && !cells[i].value);
@@ -1241,6 +1313,8 @@ export const useGame = create<GameStore>()(
           for (const i of targets) {
             if (cells[i].value) {
               giveBack(cells, i);
+              // with auto off its strikes would be hidden: they go with it
+              if (!s.autoCandidates) cells[i].excluded = 0;
               changed = true;
             } else if (s.autoCandidates ? cells[i].excluded : cells[i].corner || cells[i].center) {
               if (s.autoCandidates) cells[i].excluded = 0;
@@ -1408,8 +1482,9 @@ export const useGame = create<GameStore>()(
           // the strikes were the auto view's: written into the marks above,
           // or, with nothing written, gone with the view. Kept hidden, they
           // would steer Hint, Scan and Fill by candidates the board no
-          // longer shows, which Check cannot see
-          for (let i = 0; i < 81; i++) if (!cells[i].value) cells[i].excluded = 0;
+          // longer shows, which Check cannot see; so in a cell holding a
+          // digit too, where they would be hidden once the digit goes
+          for (let i = 0; i < 81; i++) if (!cells[i].given) cells[i].excluded = 0;
         }
         // a hint shown was found and drawn for the candidates the board
         // showed before; the board now shows others. The chain trainer's
@@ -1845,7 +1920,6 @@ export const useGame = create<GameStore>()(
           ...restore(s.history[s.revertIndex]),
           ...trainerAfter(!!s.chain, s.history[s.revertIndex]),
           history: [...s.history, snap(s)],
-          chainHandover: null,
           future: [],
           errors: [],
           revertIndex: null,
@@ -1899,38 +1973,15 @@ export const useGame = create<GameStore>()(
 
       /**
        * Done: the trainer closes. When it switched auto candidates on, they
-       * go off again, and what comes back is read from the board as it is
-       * now, not from a list kept of what was applied: the player's own
-       * marks, hidden meanwhile (as the trainer found them, changed only by
-       * the player's own steps since: an applied chain takes its digits out
-       * and Undo puts them back, a digit placed takes itself from its
-       * peers), less each digit struck now that was not struck when the
-       * trainer opened (an applied chain still applied, a candidate struck
-       * by hand); a chain applied and undone leaves nothing. Nothing is
-       * written over the marks. The strikes kept are
-       * those from before it opened and those made since, never a true
-       * digit (a slip struck by hand: where the cell has marks, its
-       * removal shows there), and never the handover's own, which were
-       * the player's lists and are still the marks. One step for Ctrl+Z.
+       * go off again, with the marks read from the board as it is now
+       * (handBack). One step for Ctrl+Z.
        */
       endChain: () => {
         const s = get();
         const closed = { chain: null, chainNote: '', chainGoal: null, chainHandover: null, hint: null, hintStage: 'hidden' as const };
         const h = s.chainHandover;
         if (!h || !s.autoCandidates || !s.info) return set(closed);
-        const sol = s.info.solution;
-        const cells = s.cells.map((c, i) => {
-          if (c.value) return c;
-          const struck = c.excluded & ~h.opened[i];
-          const adopted = h.opened[i] & ~h.before[i];
-          return {
-            ...c,
-            colors: [...c.colors],
-            corner: c.corner & ~struck,
-            center: c.center & ~struck,
-            excluded: c.excluded & ~adopted & ~bit(Number(sol[i]))
-          };
-        });
+        const cells = handBack(s.cells, h, s.info.solution, s.markContract);
         set({ ...closed, cells, autoCandidates: false, history: [...s.history, snap(s)], future: [] });
       },
 
@@ -2047,13 +2098,20 @@ export const useGame = create<GameStore>()(
         if (!proof.steps.length) return;
         const sol = s.info.solution;
         const cells = cloneCells(s.cells);
-        // the wrong digits come off the board, giving back the marks they
-        // took: the proof reasons from a true position
-        for (let i = 0; i < 81; i++) {
-          if (cells[i].value && !cells[i].given && cells[i].value !== Number(sol[i])) giveBack(cells, i);
-        }
         const path = proof.steps.slice(0, -1);
         const last = proof.steps[proof.steps.length - 1];
+        // the easier steps, and a trail's forced singles, are visible only
+        // with their candidates on the board
+        const autoCandidates = s.autoCandidates || path.length > 0 || proof.trail;
+        // the wrong digits come off the board, giving back the marks they
+        // took: the proof reasons from a true position. With auto off a
+        // strike under one would be hidden, so it goes with the digit
+        for (let i = 0; i < 81; i++) {
+          if (cells[i].value && !cells[i].given && cells[i].value !== Number(sol[i])) {
+            giveBack(cells, i);
+            if (!autoCandidates) cells[i].excluded = 0;
+          }
+        }
         for (const step of path) {
           for (const { cell, digit } of step.eliminations) cells[cell].excluded |= bit(digit);
           for (const { cell, digit } of step.placements) {
@@ -2062,9 +2120,6 @@ export const useGame = create<GameStore>()(
             cells[cell].center = 0;
           }
         }
-        // the easier steps, and a trail's forced singles, are visible only
-        // with their candidates on the board
-        const autoCandidates = s.autoCandidates || path.length > 0 || proof.trail;
         // auto candidates switched on here: the notice says so
         const candidatesOn = autoCandidates && !s.autoCandidates;
         const vars = { n: path.length, name: t.tech(last.tech) };
@@ -2267,6 +2322,9 @@ export const useGame = create<GameStore>()(
         assisted: s.assisted,
         // the declared meaning of the marks survives a reload with them
         markContract: s.markContract,
+        // the chain trainer is not kept, but the auto candidates it switched
+        // on are: its handover lets a reload switch them off as Done would
+        chainHandover: s.chainHandover,
         practiceTarget: s.practiceTarget,
         practiceFound: s.practiceFound
       }),
@@ -2297,6 +2355,16 @@ export const useGame = create<GameStore>()(
           state.counted = !!g.info && !useSettings.getState().dontCount && playedOn(g);
           // a save from before solved was kept has it when it was won
           state.solved = !!state.solved || state.won;
+          // the chain trainer, open when the page went, does not come back:
+          // it closes as Done closes it, so the auto candidates it switched
+          // on go off with the player's marks back (after the count above,
+          // which they were part of). A save from before the handover was
+          // kept has none, and keeps auto as it was
+          if (state.chainHandover && state.autoCandidates && state.info) {
+            state.cells = handBack(state.cells, state.chainHandover, state.info.solution, state.markContract);
+            state.autoCandidates = false;
+          }
+          state.chainHandover = null;
           // a save from before strikes went with auto candidates off may
           // hold a struck true digit the board cannot show: it goes
           if (state.info && !state.autoCandidates) state.cells = dropHiddenSlips(state.cells, state.info.solution);
