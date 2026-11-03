@@ -91,6 +91,8 @@ export function engineGrid(cells: CellState[]): Grid {
 export type MarkContract = 'unknown' | 'exhaustive' | 'open';
 
 /** what the ring around bivalue cells says when the marks are notes: it reads the centre marks alone */
+/** what Swap says while auto candidates are on (convertMarks) */
+const SWAP_UNDER_AUTO = msg('Auto candidates are on: the app draws them, so there are no marks of yours to swap. Turn them off to write them in as your own marks.');
 const NOTES_RING_CENTRE = msg('Your marks are notes for now, so the rings read your centre marks alone, as each cell’s candidates; corner marks do not count');
 
 /** any pencil marks on empty cells? (the contract question is pointless
@@ -1146,8 +1148,15 @@ export const useGame = create<GameStore>()(
           const { autoOffMaterialize, materializeLayer } = useSettings.getState();
           if (autoOffMaterialize) {
             const eg = engineGrid(cells);
+            // the candidates as they stand are the cell's whole list: they go
+            // in the one layer chosen, and the other layer's marks, left from
+            // before auto candidates went on and hidden while they were, go
+            // (Ctrl+Z brings them back). A cell keeping both would draw its
+            // corner marks round the edge and keep digits the list has ruled out
             for (let i = 0; i < 81; i++) {
-              if (!cells[i].given && !cells[i].value) cells[i][materializeLayer] = eg.cands[i];
+              if (cells[i].given || cells[i].value) continue;
+              cells[i][materializeLayer] = eg.cands[i];
+              cells[i][materializeLayer === 'corner' ? 'center' : 'corner'] = 0;
             }
             notice = t(
               materializeLayer === 'corner'
@@ -1251,6 +1260,13 @@ export const useGame = create<GameStore>()(
       convertMarks: () => {
         const s = get();
         if (s.won || s.paused) return;
+        // auto candidates are drawn by the app, not kept in either layer, and
+        // the player's own marks are hidden while they are on: nothing to
+        // swap that the board would show, so say so
+        if (s.autoCandidates) {
+          set({ notice: translator()(SWAP_UNDER_AUTO) });
+          return;
+        }
         const cells = cloneCells(s.cells);
         const scope = s.selection.filter((i) => !cells[i].given && !cells[i].value);
         const partial = scope.length >= 1;
