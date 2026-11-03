@@ -14,7 +14,8 @@
 //       solver's next step, or TECH's finder's step there, as the drawing
 //       fixtures find it)
 //
-//   env: BASE (http://localhost:4174), THEMES (dark,light,rose,forest),
+//   env: BASE (http://localhost:4174), THEMES (dark,light,rose,forest; also
+//   device-light and device-dark, Match device with the device so set),
 //   SIZES (desktop,phone), WALK=1 every walk frame, PANEL=1 the hint panel
 //   too, PLAYER=1 the board again over the player's own cell colours,
 //   TRAINER=1 the chain trainer building the X-Chain, XY-Chain and AIC
@@ -150,7 +151,10 @@ async function board(mode) {
     await page.goto(BASE + '/');
     await page.locator('svg.board').waitFor();
     for (const theme of THEMES) {
-      await page.evaluate(async (theme) => (await import('/src/state/settings.ts')).useSettings.setState({ theme, lang: 'en' }), theme);
+      // device-light and device-dark: Match device, with the device set to light or dark
+      const device = /^device-(light|dark)$/.exec(theme);
+      await page.emulateMedia({ colorScheme: device ? device[1] : null });
+      await page.evaluate(async (theme) => (await import('/src/state/settings.ts')).useSettings.setState({ theme, lang: 'en' }), device ? 'device' : theme);
       // a position on a solve path, with the solver's step there or TECH's
       const atPuzzle = async (puzzle, base) => {
         const r = await page.evaluate(

@@ -350,6 +350,19 @@ describe('static pages', () => {
     }
   });
 
+  it('gives the browser’s bar the colour of the page’s own top bar, light on a light device and dark otherwise', () => {
+    for (const page of pages) {
+      const soft = (css: string) => css.match(/--soft:(#[0-9a-f]{6})/)![1];
+      const style = page.html.match(/<style>([\s\S]*?)<\/style>/)![1];
+      const light = style.match(/@media \(prefers-color-scheme:light\)\{([^}]*)\}/)![1];
+      const bars = [...page.html.matchAll(/<meta name="theme-color"(?: media="([^"]*)")? content="([^"]*)" \/>/g)].map((m) => [m[1] ?? null, m[2]]);
+      expect(bars, page.url).toEqual([
+        ['(prefers-color-scheme: light)', soft(light)],
+        [null, soft(style)]
+      ]);
+    }
+  });
+
   it('sends readers into the app in the page’s language', () => {
     for (const page of pages) {
       const root = home(page.lang);

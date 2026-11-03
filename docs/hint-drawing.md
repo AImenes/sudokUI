@@ -1038,6 +1038,15 @@ the values above are its final ones.
   with round 3's two lows. Review round 1 found two mediums and two
   regressions, all fixed (hint-readability-round1.md, which also lists
   the lows left for later).
+- [x] Match device (the owner's ask, November 2026): Settings' Theme row
+  offers Match device beside Dark, Daylight, Rosé and Forest, showing
+  Daylight while the device is in light mode and Dark while it is in dark
+  mode and following it live with the app open (src/ui/theme.ts), while a
+  new player still starts dark, every stored theme is kept, the browser's
+  and an installed app's bar wear the top bar's colour of whatever is
+  shown, the shared picture stays light, and no drawing, fixture or
+  example changed (a hint under Match device is drawn in Daylight's or
+  Dark's own colours).
 - [ ] Phase 5: forcing
 - [ ] Phase 6: words. Batch 1 is done (phase6-batch1-review.md): `Step.walk`, so a finder writes its own walk;
   the XY-, XYZ- and WXYZ-Wing, Chute Remote Pair and Sue de Coq walked and coloured by function; and the uniqueness

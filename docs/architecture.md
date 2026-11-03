@@ -82,7 +82,10 @@ Centre tab's layer, else the "Candidates go in" setting).
 
 **Settings** ([settings.ts](../src/state/settings.ts)). Persisted user
 preferences (theme, highlights, timer, auto-off materialisation behaviour).
-Separate store so settings changes never touch game history.
+Separate store so settings changes never touch game history. The theme is a
+choice of four looks or Match device, which shows Daylight or Dark as the
+device is set; [theme.ts](../src/ui/theme.ts) puts the look shown on the
+page and gives the browser's bar the top bar's colour.
 
 **Pools** ([pools.ts](../src/state/pools.ts)). localStorage-backed puzzle
 pools keyed per difficulty and per technique, plus the worker plumbing

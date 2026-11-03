@@ -471,6 +471,8 @@ const ui: Dictionary = {
   "Daylight": "Dagslys",
   "Rosé": "Rosé",
   "Forest": "Skog",
+  "Match device": "Som enheten",
+  "Match device follows your device: Daylight in light mode, Dark in dark mode": "Som enheten følger enheten din: Dagslys i lys modus, Mørk i mørk modus",
   "Board typeface": "Skrifttype på brettet",
   "For the digits and pencil marks on the board": "For tallene og notatene på brettet",
   "Classic": "Klassisk",

@@ -2672,6 +2672,123 @@ test.describe('a first visit', () => {
   });
 });
 
+test.describe('Match device', () => {
+  /** the colour the page gives the browser's bar and an installed app's
+   *  status bar, and the top bar's own background, both as rgb() */
+  const bars = (page: Page) =>
+    page.evaluate(() => {
+      const metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+      const probe = document.createElement('div');
+      probe.style.color = metas[0].content;
+      document.body.appendChild(probe);
+      const meta = getComputedStyle(probe).color;
+      probe.remove();
+      return { count: metas.length, meta, top: getComputedStyle(document.querySelector('.topbar')!).backgroundColor };
+    });
+  /** the picture the Share dialog would share, as its SVG */
+  const picture = async (page: Page) => {
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    const share = page.getByRole('dialog', { name: 'Share this puzzle' });
+    const src = (await share.locator('.share-image-preview').getAttribute('src'))!;
+    await page.keyboard.press('Escape');
+    await expect(share).toHaveCount(0);
+    return decodeURIComponent(src.replace(/^data:image\/svg\+xml;utf8,/, ''));
+  };
+
+  test('follows the device into light and dark with the app open, the status bar with it, and the picture stays light', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await open(page);
+    const html = page.locator('html');
+    // a new player starts dark, whatever the device says (the owner's choice)
+    await expect(html).toHaveAttribute('data-theme', 'dark');
+    const dark = await bars(page);
+    expect(dark.count).toBe(1);
+    expect(dark.meta).toBe(dark.top);
+    const chosen = await picture(page);
+
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    const themes = settings.getByRole('group', { name: 'Theme' });
+    await themes.getByRole('button', { name: 'Match device' }).click();
+    await expect(themes.getByRole('button', { name: 'Match device' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(themes.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'false');
+    await expect(settings).toContainText('Match device follows your device: Daylight in light mode, Dark in dark mode');
+    // the device is light: Daylight, and the bars wear its top bar's colour
+    await expect(html).toHaveAttribute('data-theme', 'light');
+    const day = await bars(page);
+    expect(day.meta).toBe(day.top);
+    expect(day.meta).not.toBe(dark.meta);
+    // the device turns dark with the app open, and light again: the look follows at once
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await expect(html).toHaveAttribute('data-theme', 'dark');
+    expect(await bars(page)).toEqual(dark);
+    await page.emulateMedia({ colorScheme: 'light' });
+    await expect(html).toHaveAttribute('data-theme', 'light');
+    expect(await bars(page)).toEqual(day);
+    await page.keyboard.press('Escape');
+
+    // the picture is the same light picture whatever the app shows
+    expect(await picture(page)).toBe(chosen);
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await expect(html).toHaveAttribute('data-theme', 'dark');
+    expect(await picture(page)).toBe(chosen);
+
+    // the choice is kept: opened again on a dark device, still Match device, and dark
+    await page.reload();
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect(html).toHaveAttribute('data-theme', 'dark');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-settings-v1')!).state.theme)).toBe('device');
+    await page.emulateMedia({ colorScheme: 'light' });
+    await expect(html).toHaveAttribute('data-theme', 'light');
+
+    // the top bar's theme button goes on from the look shown (Daylight here) and leaves Match device
+    await page.getByRole('button', { name: 'Switch to rosé theme' }).click();
+    await expect(html).toHaveAttribute('data-theme', 'rose');
+    const rose = await bars(page);
+    expect(rose.meta).toBe(rose.top);
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.waitForTimeout(200);
+    await expect(html).toHaveAttribute('data-theme', 'rose');
+
+    // and a theme chosen in Settings holds whatever the device does
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await themes.getByRole('button', { name: 'Forest' }).click();
+    await expect(themes.getByRole('button', { name: 'Match device' })).toHaveAttribute('aria-pressed', 'false');
+    await expect(html).toHaveAttribute('data-theme', 'forest');
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.waitForTimeout(200);
+    await expect(html).toHaveAttribute('data-theme', 'forest');
+    const forest = await bars(page);
+    expect(forest.meta).toBe(forest.top);
+  });
+
+  test('on a phone the five choices fit the dialog in every language, wrapping rather than running past its edge', async ({ page }) => {
+    for (const [width, path, device] of [
+      [360, '/', 'Match device'],
+      [390, '/nb/', 'Som enheten'],
+      [320, '/es/', 'Automático']
+    ] as const) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+      await page.goto(path);
+      await expect(page.locator('svg.board')).toBeVisible();
+      await page.locator('button.gear').click();
+      const row = page.locator('.modal .theme-choice');
+      await expect(row.getByRole('button', { name: device })).toBeVisible();
+      const misfits = await row.evaluate((seg) => {
+        const box = seg.parentElement!.getBoundingClientRect();
+        return [...seg.querySelectorAll('button')]
+          .filter((b) => {
+            const r = b.getBoundingClientRect();
+            return r.left < box.left - 0.5 || r.right > box.right + 0.5 || b.scrollWidth > b.clientWidth + 1;
+          })
+          .map((b) => b.textContent);
+      });
+      expect(misfits, `${width} ${path}`).toEqual([]);
+    }
+  });
+});
+
 test.describe('Why sudokUI?', () => {
   test('the footer links the page search engines read, and in the app opens the same words', async ({ page }) => {
     await open(page);

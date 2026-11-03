@@ -88,14 +88,19 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               'Rosé and Forest keep candidate and hint colours unchanged, so nothing about solving reads differently'
             )}
           </small>
+          <small>
+            {t('Match device follows your device: Daylight in light mode, Dark in dark mode')}
+          </small>
         </div>
-        <div className="segmented">
+        <div className="segmented theme-choice">
           {(
             [
               ['dark', t('Dark')],
               ['light', t('Daylight')],
               ['rose', t('Rosé')],
-              ['forest', t('Forest')]
+              ['forest', t('Forest')],
+              // the device's light or dark, followed live (src/ui/theme.ts)
+              ['device', t('Match device')]
             ] as const
           ).map(([value, label]) => (
             <button
