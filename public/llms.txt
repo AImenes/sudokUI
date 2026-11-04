@@ -2,7 +2,7 @@
 
 > sudokUI is a free sudoku app that runs in the browser and teaches you to solve. When you are stuck, a hint names the technique that comes next and, if you ask, walks you through it on your own grid, one step at a time, saying why it works. It works offline once loaded, needs no account and shows no ads. In English, Norwegian and Spanish.
 
-sudokUI is for people who play sudoku and want to get better at it at their own pace: from a beginner meeting their first hidden single to an experienced solver practising X-Wings, chains and Exocets. There is no course to follow. You play, look up a technique when you want to, and ask for a hint when you are stuck.
+sudokUI is for people who play sudoku and want to get better at it at their own pace: from a beginner meeting their first hidden single to an experienced solver practising X-Wings and chains, or reading up on Exocets. There is no course to follow. You play, look up a technique when you want to, and ask for a hint when you are stuck.
 
 What it does:
 
@@ -13,14 +13,14 @@ What it does:
 - A daily puzzle, the same for everyone in the world; after an unassisted solve you can send your time and compare it with everyone else's.
 - A difficulty rating for any puzzle, on HoDoKu-compatible scores (with thanks to HoDoKu's author, Bernhard Hobiger).
 - Type a puzzle in or scan a photo of one; share puzzles and positions as links or pictures.
-- A learning path built from your own games, and a guide to all 80 techniques in plain words.
+- A learning path in the order a solver needs the techniques, showing where you stand from your own games, and a guide to all 80 techniques in plain words.
 - It installs from the browser as an app on a phone, a tablet or a computer, and keeps working with no connection.
 
 What it does not do:
 
 - No account, no sign-up, no ads, no paywall, no purchases.
 - No leaderboards, followers, feeds or streak rewards.
-- No lesson plan: no lessons in a set order and nothing to complete. The guide can suggest what to learn next from your own games; you choose.
+- No lessons and no course: the guide only suggests what to learn next from your own games; you choose.
 - Your games, pencil marks and statistics stay on your device; they leave it only when you share a link or a picture, send a daily time or send a report. The server counts games started and finished, and shares, with no ID and nothing that tells players apart; the privacy page says exactly what is sent.
 - It is a web app, not an app-store download.
 

@@ -1,7 +1,8 @@
 // What sudokUI tells AI assistants about itself, /llms.txt (public/llms.txt,
 // copied into dist/ as it is): the format llmstxt.org describes, every
 // number the catalogue's own, every link a page the build writes, the
-// pages it must point to, no other app named, and a plain file that the
+// pages it must point to, no other app named but HoDoKu, credited for the
+// rating scale as the Why page credits it, and a plain file that the
 // asset hosting serves, never the Worker or the service worker's shell.
 // The browser test (tests/e2e/smoke.spec.ts) reads it from the build,
 // with the home pages' structured data.

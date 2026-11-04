@@ -1092,9 +1092,9 @@ describe('the privacy page', () => {
     }
     // the one tag read from a link with no referrer, what it is read for, and that nothing else is read or kept
     const TAG = {
-      en: ['When the browser reports nothing, the server reads one tag in the link itself, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini or Copilot, the word is “an AI assistant”', 'Nothing else in the link is read, and the tag is not kept'],
-      nb: ['Når nettleseren ikke oppgir noe, leser tjeneren én merkelapp i selve lenken, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini eller Copilot, blir ordet «en KI-assistent»', 'Ingenting annet i lenken leses, og merkelappen beholdes ikke'],
-      es: ['Si el navegador no indica nada, el servidor lee una sola etiqueta del propio enlace, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini o Copilot, la palabra es «un asistente de IA»', 'No se lee nada más del enlace, y la etiqueta no se guarda']
+      en: ['When the browser reports nothing, the server reads one tag in the link itself, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini or Copilot, the word is “an AI assistant”', 'Nothing else in the link is read for this word, and the tag is not kept'],
+      nb: ['Når nettleseren ikke oppgir noe, leser tjeneren én merkelapp i selve lenken, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini eller Copilot, blir ordet «en KI-assistent»', 'Ingenting annet i lenken leses for dette ordet, og merkelappen beholdes ikke'],
+      es: ['Si el navegador no indica nada, el servidor lee una sola etiqueta del propio enlace, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini o Copilot, la palabra es «un asistente de IA»', 'No se lee nada más del enlace para esta palabra, y la etiqueta no se guarda']
     };
     for (const lang of HOME_LANGS) {
       const text = PRIVACY[lang].sections.flatMap((s) => s.paragraphs).join(' ');

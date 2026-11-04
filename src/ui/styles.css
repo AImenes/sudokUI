@@ -1240,16 +1240,19 @@ html .assist-zone.folded .zone-note {
   line-height: 1;
 }
 
-/* Gather's label wraps where the button is too narrow for it: the arrow
-   over the word, inside the button's height */
-.edit-row .gather-label {
-  white-space: normal;
-  line-height: 1.1;
-}
+/* on a phone, Gather's label wraps where the button is too narrow for it:
+   the arrow over the word, inside the button's height (desktop and tablet
+   keep the held Swap as it was) */
+@media (pointer: coarse) and (max-width: 560px) {
+  .edit-row .gather-label {
+    white-space: normal;
+    line-height: 1.1;
+  }
 
-.edit-row button.gather-armed {
-  padding-top: 2px;
-  padding-bottom: 2px;
+  .edit-row button.gather-armed {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
 }
 
 /* the "?" at the end of the row keeps its own small round shape, in

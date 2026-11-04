@@ -96,7 +96,7 @@ export const HOME: Record<Lang, HomeCopy> = {
     features: [
       'A HoDoKu rating for any sudoku, with HoDoKu’s five difficulty levels',
       '77 machine-verified solving techniques with step-by-step hints',
-      'Practice mode for 61 named techniques, X-Wing to Exocet',
+      'Practice mode for 61 named techniques, X-Wing to Death Blossom',
       'A step-by-step solver that names and explains every step',
       'A shared daily puzzle, identical worldwide',
       'Shareable puzzle and position links',
@@ -104,7 +104,7 @@ export const HOME: Record<Lang, HomeCopy> = {
     ],
     h1: 'sudokUI',
     intro:
-      'A free, open-source sudoku app for playing, practising and rating puzzles. It rates the difficulty of any sudoku with HoDoKu-compatible scores, knows 77 solving techniques with hints that explain every step, and has a practice mode for 61 of them, from X-Wings to Exocets. One shared daily puzzle, no ads, no account, works offline.',
+      'A free, open-source sudoku app for playing, practising and rating puzzles. It rates the difficulty of any sudoku with HoDoKu-compatible scores, knows 77 solving techniques with hints that explain every step, and has a practice mode for 61 of them, from X-Wings to Death Blossoms. One shared daily puzzle, no ads, no account, works offline.',
     links: [
       'Sudoku solving techniques explained',
       'How the HoDoKu rating works',
@@ -130,7 +130,7 @@ export const HOME: Record<Lang, HomeCopy> = {
     features: [
       'HoDoKu-poengsum for enhver sudoku, med HoDoKus fem vanskelighetsnivåer',
       '77 maskinkontrollerte løsningsteknikker med hint steg for steg',
-      'Øvingsmodus for 61 navngitte teknikker, fra X-Wing til Exocet',
+      'Øvingsmodus for 61 navngitte teknikker, fra X-Wing til Death Blossom',
       'En sudokuløser som går steg for steg og navngir og forklarer hvert steg',
       'Dagens sudoku, den samme for alle i hele verden',
       'Lenker til oppgaver og stillinger som kan deles',
@@ -138,7 +138,7 @@ export const HOME: Record<Lang, HomeCopy> = {
     ],
     h1: 'sudokUI',
     intro:
-      'En gratis sudokuapp med åpen kildekode for å spille, øve og vurdere oppgaver. Den vurderer vanskelighetsgraden til enhver sudoku med poeng som i HoDoKu, kan 77 løsningsteknikker med hint som forklarer hvert steg, og har øvingsmodus for 61 av dem, fra X-Wing til Exocet. Dagens sudoku er den samme for alle. Ingen reklame, ingen konto, og appen virker uten nett.',
+      'En gratis sudokuapp med åpen kildekode for å spille, øve og vurdere oppgaver. Den vurderer vanskelighetsgraden til enhver sudoku med poeng som i HoDoKu, kan 77 løsningsteknikker med hint som forklarer hvert steg, og har øvingsmodus for 61 av dem, fra X-Wing til Death Blossom. Dagens sudoku er den samme for alle. Ingen reklame, ingen konto, og appen virker uten nett.',
     links: [
       'Teknikker for å løse sudoku, forklart',
       'Slik regnes HoDoKu-poengsummen ut',
@@ -164,7 +164,7 @@ export const HOME: Record<Lang, HomeCopy> = {
     features: [
       'Puntuación HoDoKu de cualquier sudoku, con los cinco niveles de dificultad de HoDoKu',
       '77 técnicas de resolución verificadas automáticamente, con pistas paso a paso',
-      'Modo de práctica para 61 técnicas con nombre propio, del X-Wing al Exocet',
+      'Modo de práctica para 61 técnicas con nombre propio, del X-Wing al Death Blossom',
       'Un resolvedor paso a paso que nombra y explica cada paso',
       'Un sudoku del día compartido, idéntico en todo el mundo',
       'Enlaces para compartir sudokus y posiciones',
@@ -172,7 +172,7 @@ export const HOME: Record<Lang, HomeCopy> = {
     ],
     h1: 'sudokUI',
     intro:
-      'Una app de sudoku gratuita y de código abierto para jugar, practicar y puntuar sudokus. Mide la dificultad de cualquier sudoku con puntuaciones compatibles con HoDoKu, conoce 77 técnicas de resolución con pistas que explican cada paso y tiene un modo de práctica para 61 de ellas, del X-Wing al Exocet. Un único sudoku del día, igual para todos. Sin anuncios, sin cuenta y funciona sin conexión.',
+      'Una app de sudoku gratuita y de código abierto para jugar, practicar y puntuar sudokus. Mide la dificultad de cualquier sudoku con puntuaciones compatibles con HoDoKu, conoce 77 técnicas de resolución con pistas que explican cada paso y tiene un modo de práctica para 61 de ellas, del X-Wing al Death Blossom. Un único sudoku del día, igual para todos. Sin anuncios, sin cuenta y funciona sin conexión.',
     links: [
       'Técnicas para resolver sudokus, explicadas',
       'Cómo funciona la puntuación HoDoKu',
