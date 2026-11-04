@@ -247,7 +247,7 @@ const ui: Dictionary = {
   "Using it counts as help, so this solve will no longer be unassisted. Everything else stays as it is.": "Usarlo cuenta como ayuda, así que este sudoku ya no se resolverá sin ayuda. Todo lo demás se queda como está.",
   "Use {name}": "Usar «{name}»",
   "Use, and stop asking": "Usar y no volver a preguntar",
-  "everything here counts as help": "todo aquí cuenta como ayuda",
+  "counts as help||after the name of the Assist box, folded into one row": "consta en la partida",
   "counts as help": "cuenta como ayuda",
   "Keep your candidates?": "¿Conservar tus candidatos?",
   "Centre marks": "Notas centrales",

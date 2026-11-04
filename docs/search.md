@@ -23,12 +23,16 @@ into `dist/`:
 | `/nb/…`, `/es/…` | every page above (techniques, Intuition, glossary, rating, landing pages) in Norwegian and Spanish, at the English address under the language's prefix (`/nb/daily-sudoku/`, `/es/learn/x-wing/`) |
 | `/learn/img/intuition-<diagram>.<lang>.svg` | the Intuition diagrams with Norwegian and Spanish labels |
 | `/sitemap.xml` | the home pages `/`, `/nb/` and `/es/` plus all of the above, each with its language versions |
+| `/llms.txt` | not generated: `public/llms.txt`, copied as it is. What sudokUI is and does, for AI assistants, in the format llmstxt.org describes, with links to the home pages, Why, the Learn pages and the privacy page (`tests/llms.test.ts`; [reach-plan-2026-11.md](reach-plan-2026-11.md), "AI assistants") |
 
 Every page names its three language versions with `hreflang` links
 (English is `x-default`) and has a language line in its footer; see
 `docs/translations.md`. The home pages `/`, `/nb/` and `/es/` are the app
 itself in each language (`index.html`, filled in by `src/content/home.ts`),
-and alternates of each other in the same way.
+and alternates of each other in the same way. Each carries schema.org JSON-LD
+(`structuredData`): the site, and the app as a WebApplication with its
+description, address, category, operating system, a price of 0 and its
+language; the browser test reads it back from the build.
 
 The pages are self-contained HTML with one inline stylesheet: no React, no
 service worker, and script only on the paste-a-puzzle box.

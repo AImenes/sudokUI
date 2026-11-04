@@ -280,6 +280,18 @@ Do not promise never to link it.
 
 **Risk.** A defensive or repeated message can bring a modmail mute of 3 to 28 days. Send it once and do not follow up. If it is refused, say nothing in public.
 
+## AI assistants
+
+_Added on 4 November 2026_, after the first fan who does not know the owner (Matt, a player from the feedback e-mails) found sudokUI by asking ChatGPT for apps to get better at sudoku ([launch-log.md](launch-log.md), "Notes"). People ask an assistant the question a search box used to get, and the assistant answers from what it can read about the app. Nothing here asks anyone to mention sudokUI, and nothing pays for a place in an answer: the app is described truthfully where an assistant reads, and the arrivals are counted.
+
+**What is built.**
+- Counting (worker/telemetry.ts). A landing whose referrer is an assistant's address (chatgpt.com, chat.openai.com, perplexity.ai, claude.ai, gemini.google.com, copilot.microsoft.com) was already `ai`. Assistants often send no referrer but tag the link instead, as ChatGPT does with `utm_source=chatgpt.com`. So a landing with no referrer whose link carries `utm_source` naming one of those addresses is `ai` too (`landingWord`, `assistantTagged`). That one parameter is the only thing read from the address, and nothing of it is kept. A referrer, when there is one, always decides. The privacy page says so in all three languages.
+- Describing (public/llms.txt, src/content/home.ts). `/llms.txt` is a plain file in the format llmstxt.org describes: what sudokUI is, who it is for (players who want to improve at their own pace), what it does (hints that walk through each technique on your own grid, practice for 61 techniques, the daily, three languages, offline, no account) and what it does not do (no account, no ads, no leaderboards, no course), with links to the home pages, Why, the Learn pages and the privacy page, and no other app named. The asset hosting serves it; the Worker never runs for it. The three home pages carry schema.org JSON-LD as the build writes them: a WebApplication with its name, description, address, category (GameApplication), operating system (any), a price of 0 and its language. tests/llms.test.ts and the browser test hold both to the truth and to the build.
+
+**Reading it on /admin.** "Where landings came from, last 7 days" has a row "An AI assistant": a landing with an assistant's address as the referrer, or with no referrer and its tag on the link. Read it as the other channels are read, a 7-day count next to the baseline. It is a floor, not the total: an assistant's app that opens a link with neither a referrer nor a tag reads as `none`, a link the assistant gives to a Learn page is counted only in Search Console, and a player who already has the app installed is answered by the service worker and not counted at all. A rise in `ai` landings that leaves completions and daily participants flat two weeks later is not reach, as for any channel.
+
+**What not to do.** No text written to steer assistants (lists of keywords, claims about other apps, "the best sudoku app"); no paid "AI visibility" service; no asking players to tell an assistant about sudokUI. Keep `/llms.txt` as true as the privacy page: when a number or a promise changes, change it in the same commit.
+
 ## Reddit
 
 The facts, and how sure they are:
@@ -389,6 +401,7 @@ PER STEP:
 3 and 4. Image and post kit: shares of kind 'image' and 'post' per week, and landings from reddit, discord and enjoysudoku. At today's numbers, expect a few image shares a week at best. If there is still under one a week after a month, the kit's value is the owner's own posts; stop adding formats.
 5. Previews: check by unfurling a link in Discord and on the owner's Reddit profile. In Search Console, watch impressions for Learn pages and for rare-technique and nb/es queries. Judge at 8 to 12 weeks.
 6. Feed and print: not counted, by design. Watch daily participants only.
+7. AI assistants ("AI assistants" above, since 4 November 2026): the 'ai' row of /admin's "Where landings came from", with an assistant's address as the referrer or its tag on the link. There is no launch day to judge from: read the weekly count against the baseline, and judge /llms.txt and the structured data at 8 to 12 weeks, as for the previews.
 
 Owner actions:
 - Forum: at least 20 enjoysudoku landings in week one, and at least one substantive technical reply.

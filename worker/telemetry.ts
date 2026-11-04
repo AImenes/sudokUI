@@ -35,8 +35,9 @@
  * pages, /, /nb/ and /es/, count one the same way (worker/index.ts), with
  * `home` where a share page says `p` or `daily` (LANDING_SLOTS). Its fifth
  * blob says where the link was opened from, as one word of a closed list
- * (landingFrom): the referrer the browser sends is read for that word and
- * never written.
+ * (landingWord): the referrer the browser sends is read for that word and
+ * never written; with no referrer, the one tag an AI assistant puts on
+ * its links, utm_source, is read for `ai` alone, and never written.
  *
  * The dataset is an interface, so the tests and the dev and preview
  * servers run the whole thing over memory (memoryEvents).
@@ -331,6 +332,12 @@ export const LANDING_FROM = [
 ] as const;
 export type LandingFrom = (typeof LANDING_FROM)[number];
 
+/** the AI assistants, by their hosts: as a referrer, and as the utm_source tag on a link they give (assistantTagged) */
+const AI_HOSTS = ['chatgpt.com', 'chat.openai.com', 'perplexity.ai', 'claude.ai', 'gemini.google.com', 'copilot.microsoft.com'];
+
+/** a host, or one of its subdomains, among these */
+const hostIn = (host: string, hosts: string[]) => hosts.some((h) => host === h || host.endsWith(`.${h}`));
+
 /**
  * The sites each word stands for, matched on the host and its subdomains
  * (old.reddit.com is reddit, l.facebook.com facebook). The first match
@@ -357,7 +364,7 @@ const FROM_HOSTS: [LandingFrom, string[]][] = [
       'email.seznam.cz'
     ]
   ],
-  ['ai', ['chatgpt.com', 'chat.openai.com', 'perplexity.ai', 'claude.ai', 'gemini.google.com', 'copilot.microsoft.com']],
+  ['ai', AI_HOSTS],
   ['reddit', ['reddit.com', 'redd.it']],
   ['enjoysudoku', ['enjoysudoku.com']],
   ['hackernews', ['news.ycombinator.com', 'hn.algolia.com']],
@@ -485,9 +492,37 @@ export function landingFrom(referer: string | null): LandingFrom {
   if (url.protocol === 'android-app:') return FROM_APPS.find(([, apps]) => apps.includes(host))?.[0] ?? 'other';
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return 'other';
   for (const [word, hosts] of FROM_HOSTS) {
-    if (hosts.some((h) => host === h || host.endsWith(`.${h}`))) return word;
+    if (hostIn(host, hosts)) return word;
   }
   return SEARCH_ROOTS.test(host) ? 'search' : 'other';
+}
+
+/**
+ * True when the address a landing asked for carries the tag an AI
+ * assistant puts on the links it gives, utm_source naming one of the
+ * assistants of `ai` by its host (ChatGPT's is utm_source=chatgpt.com).
+ * That one parameter is the only thing read from the address, and
+ * nothing of it is kept.
+ */
+export function assistantTagged(address: string): boolean {
+  let tag: string | null;
+  try {
+    tag = new URL(address).searchParams.get('utm_source');
+  } catch {
+    return false;
+  }
+  return !!tag && hostIn(tag.trim().toLowerCase().replace(/\.$/, ''), AI_HOSTS);
+}
+
+/**
+ * The word for a landing: its referrer's (landingFrom). Assistants often
+ * send none, so a landing with no referrer whose link an assistant tagged
+ * (assistantTagged) is `ai`; any other stays `none`, and a referrer, when
+ * there is one, always decides.
+ */
+export function landingWord(request: Request): LandingFrom {
+  const word = landingFrom(request.headers.get('referer'));
+  return word === 'none' && assistantTagged(request.url) ? 'ai' : word;
 }
 
 /**
@@ -501,7 +536,7 @@ export type LandingSlot = (typeof LANDING_SLOTS)[number];
  * Counts a landing on a share page or a home page when the request is one
  * (isLanding): a `landing` point with the band the page knows (a home
  * page knows none), which page it was (LANDING_SLOTS) in the source slot,
- * the Worker's version, the country and where it came from (landingFrom).
+ * the Worker's version, the country and where it came from (landingWord).
  * True when a point was written.
  */
 export function countLanding(dataset: AnalyticsEngineLike | null | undefined, request: Request, slot: LandingSlot, level?: Level): boolean {
@@ -509,7 +544,7 @@ export function countLanding(dataset: AnalyticsEngineLike | null | undefined, re
   try {
     dataset.writeDataPoint({
       indexes: ['landing'],
-      blobs: [level ?? '', slot, WORKER_VERSION, countryOf(request), landingFrom(request.headers.get('referer'))],
+      blobs: [level ?? '', slot, WORKER_VERSION, countryOf(request), landingWord(request)],
       doubles: [0, 1, 0, 0, 0, 0]
     });
     return true;

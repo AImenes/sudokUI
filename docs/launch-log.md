@@ -33,7 +33,11 @@ The word comes from what the visitor's browser says about where the link
 was opened from, and most apps say nothing, so a link sent in a chat or an
 e-mail app mostly reads as `none`. Each word stands for the sites named
 in `worker/telemetry.ts` (FROM_HOSTS); a site not named there reads as
-`other`.
+`other`. One exception to "the browser says": since 4 November 2026 a
+landing with no referrer whose link carries `utm_source` naming an AI
+assistant by its address (ChatGPT tags its links `utm_source=chatgpt.com`)
+reads as `ai`; nothing else in the link is read, and nothing of it kept
+(`landingWord`, and the privacy page).
 
 | Where the link is | Landing word |
 |---|---|
@@ -47,7 +51,7 @@ in `worker/telemetry.ts` (FROM_HOSTS); a site not named there reads as
 | Hacker News | `hackernews` |
 | YouTube, X, Bluesky, LinkedIn, Instagram and a few more social sites | `social` |
 | GitHub | `github` |
-| ChatGPT, Perplexity, Claude, Gemini, Copilot | `ai` |
+| ChatGPT, Perplexity, Claude, Gemini, Copilot, as the referrer or, with none, as the link's `utm_source` | `ai` |
 | Any site not named | `other` |
 
 ## Actions
@@ -55,6 +59,27 @@ in `worker/telemetry.ts` (FROM_HOSTS); a site not named there reads as
 | Date | Action | Link used | Landing word expected |
 |---|---|---|---|
 | | | | |
+
+## Notes
+
+Things learnt about how people arrive and why they stay, dated, so the
+numbers above can be read against them.
+
+- **4 November 2026: the first fan from outside, through ChatGPT.** Matt,
+  a player from the feedback e-mails and the first fan who does not know
+  the owner, found sudokUI by asking ChatGPT for apps to get better at
+  sudoku. What he values, in his words: "I can just play and research
+  techniques and get hints at my own pace. There isn't some structured
+  thing." Sending daily times automatically gave him a regular
+  competitor on the daily's times, and he has shared the app with his
+  friends. AI assistants are now a channel of their own
+  ([reach-plan-2026-11.md](reach-plan-2026-11.md), "AI assistants"): a
+  link an assistant tags counts as `ai` even with no referrer, and
+  `/llms.txt` and the home pages' structured data say what the app is.
+  The same week the r/sudoku moderators were discussing whether to allow
+  promotion again. Until they decide, and after, the owner stays within
+  the ban: no posts or comments there, no second account, and nothing
+  through Matt or any other player (the plan's "Reddit" and "Do not").
 
 ## Readings
 
