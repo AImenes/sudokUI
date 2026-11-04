@@ -145,7 +145,7 @@ GitHub Actions ([ci.yml](../.github/workflows/ci.yml)) remains the quality
 gate: typecheck, the full test suite including the technique soundness
 harness, and a build. Cloudflare's build is what actually deploys. A second
 workflow, [indexnow.yml](../.github/workflows/indexnow.yml), runs on a push
-to `main` only and tells IndexNow what the deploy changed (below); it can
+to `main` only and tells IndexNow what the deploy changed ("IndexNow", above); it can
 never fail.
 
 Note they are independent — a push to `main` deploys even if CI fails. For

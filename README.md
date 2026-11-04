@@ -192,7 +192,10 @@ npm run build      # production build + PWA service worker + static pages
 ```
 
 `npm run build` ends by generating the static pages (the technique guide,
-glossary, rating explainer and landing pages) and `sitemap.xml` into `dist/`.
+glossary, rating explainer and landing pages) and `sitemap.xml` into `dist/`,
+then `dist/indexnow.json` for IndexNow ([docs/deployment.md](docs/deployment.md),
+"IndexNow"), which fails the build if the key file is missing or a sitemap
+URL has no page.
 They are not served by `npm run dev`; to look at them, build and then run
 `npx wrangler dev`. How they are made, and what to do after adding or
 renaming a technique, is in [docs/search.md](docs/search.md).
