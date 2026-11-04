@@ -533,7 +533,10 @@ interface GameStore {
   selection: number[];
   /** number-first entry: a digit pressed with nothing selected arms it;
    *  every cell and pencil mark of that digit lights up (a digit filter)
-   *  and a tap on a cell enters it. Escape, or the digit again, disarms. */
+   *  and a tap on a cell enters it. While it is armed the number keys
+   *  choose the armed digit (numberKey): the same digit again puts it
+   *  down, whatever is selected, another arms that one. Escape, or a
+   *  selection emptied, puts it down too. */
   armedDigit: number | null;
   /** an assist the keyboard asked for while the first-assist question is
    *  on: the control panel shows the question and runs it on yes */
@@ -655,6 +658,9 @@ interface GameStore {
   setActiveColor: (c: number) => void;
   /** enter a digit in the current mode, or in the mode given (a held number key enters a corner mark) */
   input: (digit: number, as?: EntryMode) => void;
+  /** a number key pressed, on screen or on the keyboard: while a digit is
+   *  armed it chooses the armed digit and enters nothing; otherwise input */
+  numberKey: (digit: number) => void;
   erase: () => void;
   wipe: () => void;
   clearNotice: () => void;
@@ -1153,6 +1159,25 @@ export const useGame = create<GameStore>()(
       setTempMode: (tempMode) =>
         set((s) => (s.tempMode === tempMode ? {} : { tempMode })),
       setActiveColor: (activeColor) => set({ activeColor, mode: 'color' }),
+
+      // While a digit is armed, the number keys choose the armed digit:
+      // the armed one again puts it down and another arms that one, with
+      // or without a selection, and nothing goes into the cells, which take
+      // the armed digit from a tap (Grid.tsx). A tap on a cell selects it,
+      // so a key that entered into the selection here could never put the
+      // digit down again on a phone, which has no Escape: every tap on the
+      // armed key would toggle the digit in the cell, a hold would put a
+      // corner mark in, and a tap on the cell enters the digit rather than
+      // letting go of it (the owner's report of 4 November 2026)
+      numberKey: (digit) => {
+        const s = get();
+        if (s.won || s.paused) return;
+        if (s.armedDigit !== null) {
+          set({ armedDigit: s.armedDigit === digit ? null : digit });
+          return;
+        }
+        get().input(digit);
+      },
 
       input: (digit, as) => {
         const s = get();

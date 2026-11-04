@@ -32,6 +32,11 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
 - [launch-log.md](launch-log.md): one dated line per reach action the
   owner takes, the link used and the landing word expected, and the
   numbers read before and after.
+- [play-store-plan.md](play-store-plan.md): sudokUI on Google Play as a
+  Trusted Web Activity (November 2026): Google's rules, the asset links
+  file, the Data safety answers, the listing in three languages, the
+  landing question, the risks, the owner's steps and the code's, and the
+  time it takes.
 
 ## The hints and their drawings
 
@@ -63,7 +68,8 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
 - [candidates-2026-11.md](candidates-2026-11.md): auto candidates and the
   two mark layers: the owner's report and the hunt of November 2026, what
   was fixed (undo, strikes, erase, Check, the chain trainer), Gather and the
-  one rule for where a list of candidates goes, and what was left.
+  one rule for where a list of candidates goes, and what was left; and the
+  armed digit that would not let go on a phone (4 November).
 - [generator.md](generator.md): making and rating puzzles.
 - [technique-stats.md](technique-stats.md): the learning path from the
   player's own play.

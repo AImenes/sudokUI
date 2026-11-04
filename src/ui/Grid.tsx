@@ -26,6 +26,7 @@ import type { Translator } from '../content/i18n';
 import { touchIntent, cellsBetween, INTENT_MS, SLOP_PX } from './touchIntent';
 import type { TouchIntent, ScrollRoom } from './touchIntent';
 import { PALETTE, PALETTE_OPACITY } from '../content/playerColours';
+import { BRAND, SITE_HOST } from './brand';
 
 /** the tip that names multi-select has been shown once this session */
 let dragTipShown = false;
@@ -1720,9 +1721,18 @@ export function Grid() {
           <button className="resume-btn" onClick={togglePause}>
             ⏵ {t('Resume (P)')}
           </button>
-          {showPoodle && (
-            <img className="pause-poodle" src="/poodle.png" width="76" alt="" aria-hidden="true" />
-          )}
+          {/* the app's mark and address, quiet but big enough to read from
+              the next seat: a phone paused on the bus says what it plays.
+              Beside Nutella, when she is shown, so a small board holds both */}
+          <div className="pause-foot">
+            {showPoodle && (
+              <img className="pause-poodle" src="/poodle.png" width="76" alt="" aria-hidden="true" />
+            )}
+            <p className="pause-brand">
+              <span className="brand-mark" aria-hidden="true">{BRAND[1]}</span>
+              <span className="pause-site">{SITE_HOST}</span>
+            </p>
+          </div>
         </div>
       )}
     </div>
