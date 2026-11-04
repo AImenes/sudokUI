@@ -859,9 +859,41 @@ button {
   filter: brightness(1.08);
 }
 
-.pause-poodle {
+/* under the button: Nutella, when shown, and beside her the app's mark */
+.pause-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
   margin-top: 14px;
+}
+
+.pause-poodle {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+}
+
+/* the app's mark and address: the top bar's mark, a size up, beside the
+   address in the muted ink. Quiet next to Paused and Resume, yet the size
+   of a title, so the next seat can read it */
+.pause-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.pause-brand .brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 17px;
+}
+
+.pause-site {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--muted);
 }
 
 .side {
@@ -941,6 +973,81 @@ button {
 .zone-help:hover {
   color: var(--text);
   border-color: var(--accent);
+}
+
+/* the box's two rows and their names, which a phone can fold away */
+.assist-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.assist-body[hidden] {
+  display: none;
+}
+
+/* folding the box: on a phone held upright only (Controls.tsx, useMedia's
+   PHONE), a round button beside the "?", its chevron pointing the way the
+   box will go */
+.zone-fold {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(128, 128, 160, 0.35);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.zone-fold svg {
+  transition: transform 0.15s ease;
+}
+
+.zone-fold[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+/* the caption takes the room the buttons beside it leave, so they keep to
+   the right: the "?", the chevron, and folded, Hint before them */
+.zone-head > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* folded: one row, the caption, Hint, the "?" and the chevron */
+.assist-zone.folded {
+  padding: 6px 8px;
+}
+
+.assist-zone.folded .zone-head {
+  margin: 0 2px;
+}
+
+.zone-hint {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(128, 128, 160, 0.2);
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.zone-hint .btn-icon {
+  font-size: 16px;
+  line-height: 1;
 }
 
 .button-help dt {
@@ -1153,8 +1260,13 @@ button {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
 }
 
-.num-btn:hover {
-  border-color: var(--accent);
+/* only where a pointer hovers: a touch screen keeps :hover on the key last
+   tapped (iOS Safari until the next tap elsewhere), and an outline left on
+   a key reads as a digit still armed */
+@media (hover: hover) {
+  .num-btn:hover {
+    border-color: var(--accent);
+  }
 }
 
 /* a key is held: no text selection or callout, and the digit moves into
@@ -1179,6 +1291,12 @@ button {
   background: var(--accent-fill);
   color: var(--on-accent);
   border-color: var(--accent-fill);
+}
+
+/* a colour key keeps its colour when armed (Controls.tsx sets it on the
+   key): a ring says it is the armed one, the way to put it down */
+.num-btn.color-btn.armed {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
 }
 
 /* while the board is hidden behind the pause card, the controls rest too */
@@ -3020,7 +3138,8 @@ kbd {
   }
 
   /* a small mark with a finger-sized target around it */
-  .zone-help {
+  .zone-help,
+  .zone-fold {
     width: 32px;
     height: 32px;
   }

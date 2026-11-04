@@ -50,9 +50,8 @@ import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, parseDail
 import { useDailyStats } from '../state/dailyStats';
 import { useTelemetry } from '../state/telemetry';
 import { RATING_URL, PRIVACY_URL } from '../content/staticRoutes';
+import { BRAND } from './brand';
 
-/** the name, the same in every language: "sudok" and a coloured "UI" */
-const BRAND = ['sudok', 'UI'] as const;
 /** a no-break space: the &nbsp; after the rating's word in the top bar */
 const NBSP = String.fromCharCode(160);
 
@@ -176,7 +175,7 @@ export default function App() {
   const won = useGame((s) => s.won);
   const paused = useGame((s) => s.paused);
   const togglePause = useGame((s) => s.togglePause);
-  const input = useGame((s) => s.input);
+  const numberKey = useGame((s) => s.numberKey);
   const erase = useGame((s) => s.erase);
   const wipe = useGame((s) => s.wipe);
   const notice = useGame((s) => s.notice);
@@ -571,7 +570,10 @@ export default function App() {
         const d = Number(e.code.replace('Digit', '').replace('Numpad', ''));
         if (d >= 1 && d <= 9) {
           e.preventDefault();
-          input(d); // held modifiers already routed via the temporary mode
+          // held modifiers already routed via the temporary mode; while a
+          // digit is armed the key chooses the armed digit instead, as the
+          // number keys on screen do
+          numberKey(d);
           return;
         }
       }
@@ -695,7 +697,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [input, erase, wipe, undo, redo, setMode, requestHint, select, selection, togglePause, convertMarks, start]);
+  }, [numberKey, erase, wipe, undo, redo, setMode, requestHint, select, selection, togglePause, convertMarks, start]);
 
   return (
     <div className="app">

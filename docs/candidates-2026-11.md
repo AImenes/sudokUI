@@ -352,3 +352,54 @@ or both by what each is for), he chose the third:
   corner notes beside a centre list, the corner digits count for Check and not for the auto view.
 
 Nothing sent from the device changed, so the privacy page is unchanged.
+
+## The armed digit that would not let go (4 November 2026)
+
+**The report.** On 4 November the owner reported, with a screenshot from his iPhone, that a number key's highlight
+"gets stuck activated and there is no way to deselect": 1 was armed (number-first entry) and r8c1 was selected,
+with a corner mark 1 in it from a held key.
+
+**The cause.** Confirmed in the store and on a phone in the browser. A tap on a cell with a digit armed selects the
+cell as it enters the digit (Grid.tsx), so from the first tap there is a selection, and the number keys entered into
+it: a tap on the armed key toggled the digit in that cell instead of putting it down, and a hold put a corner mark
+in. A tap on the selected cell enters the digit again (taking it out, the second time) rather than letting go of the
+cell, and a phone has no Escape. The one way out left was a tap on the bare space beside the board, which a phone
+held upright hardly has.
+
+**The rule now.** While a digit is armed, the number keys choose the armed digit: a tap on the armed key always puts
+it down, whatever is selected, and enters nothing; a tap on another key arms that one instead, and enters nothing
+either. Cells take the armed digit as before. The store's `numberKey` holds the rule, for the keys on screen and the
+keyboard's digits alike (so on a keyboard, too, a digit typed while one is armed chooses rather than enters); `input`
+is what a cell's tap calls, unchanged. With nothing armed, a key enters into the selection, or with nothing selected
+arms its digit, as before. A held key enters a corner mark only in Digit mode with cells selected and nothing armed:
+while a digit is armed a hold is a tap, so the armed key is always the way out, and it is always on screen. After
+putting it down the cell stays selected, now as a plain selection that a tap lets go. The armed key's title says
+"Tap 1 again to put it down, whatever is selected"; the others' "Arm 4 instead of 1"; the shortcuts in How to play
+say the same (en, nb, es). An armed colour key, whose own colour hides the armed fill, wears a ring. A key's hover
+outline is now kept to devices that hover: a touch screen keeps :hover on the key last tapped (iOS Safari until the
+next tap elsewhere), and that outline read as a digit still armed.
+
+**The taps themselves.** The keys handle a pointer's press in its own events (so a hold can be a corner mark) and
+must not count the click the browser sends after it. The guard read the click's `detail` (0 for a keyboard's click),
+which iOS Safari does not promise for a tap: a click there may carry 0 and would have counted the tap twice, may
+come late or not at all, and a pointerleave may come before the pointerup, which would have counted it not at all.
+src/ui/keyTap.ts (TapGate) now matches the click to the press it follows by time, never by `detail`, and whichever
+of the lift and the click first says the press was a tap makes it one; a hold that acted is neither. Swap uses the
+same gate.
+
+**Tests.** tests/armedDigit.test.ts: the store (arm, tap a cell: the digit in and the cell selected; the armed key:
+put down and nothing entered, with a filled or an empty cell selected and in every mode; another key arms instead;
+no digit armed: the key enters as ever; an emptied selection puts down; a paused game takes no key) and the gate in
+every order of events (Chromium's; the leave before the lift; the click before it; no click; a hold; a scroll; the
+keyboard; quick taps; a second finger). tests/e2e/smoke.spec.ts, on a phone: arm, tap a cell, tap the armed key (put
+down, nothing entered, and a tap on the cell then lets go); the armed key held (a tap, no corner mark); another key
+arms instead; a tap counts once, by a real touch and by the events dispatched in each of iOS Safari's orders with a
+click of detail 0. On a build with the old key handling all four fail: the held armed key leaves 1 armed, and the
+first iOS order (pointerdown, pointerup, pointerleave, a click of detail 0) counts the tap twice.
+
+**The checks.** tsc; the whole unit suite (1655 passed, 17 skipped); the path digest with its menus, unchanged; the
+build (270 pages); and the browser tests, 121 of 121 in both font setups. The phone was looked at in light and dark:
+the armed key with its cell, the key put down, an armed colour key.
+
+**Left.** The low of the hunt above, Shift- and Ctrl-click with a digit armed, now reads differently: those clicks
+still add to the selection, and a key then chooses the armed digit rather than entering into it.

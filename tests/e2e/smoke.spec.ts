@@ -101,7 +101,7 @@ const controlMisfits = (page: Page) =>
   page.locator('.side').evaluate((side) => {
     const column = side.getBoundingClientRect();
     const misfits: string[] = [];
-    for (const el of side.querySelectorAll<HTMLElement>('.num-btn, .mode-btn, .action-row button, .menu-row button')) {
+    for (const el of side.querySelectorAll<HTMLElement>('.num-btn, .mode-btn, .action-row button, .menu-row button, .zone-head button')) {
       if (!el.getClientRects().length) continue; // not shown here
       const r = el.getBoundingClientRect();
       const name = el.innerText.replace(/\s+/g, ' ').trim();
@@ -125,6 +125,29 @@ async function expectControlsFit(page: Page, width: number, height: number) {
 test.describe('desktop, 1280 x 800', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
+
+  test('the Assist box does not fold at a desk, even where a phone folded it', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('sudokui-assist-folded', '1'));
+    await open(page);
+    await expect(page.locator('.zone-fold')).toHaveCount(0);
+    await expect(page.locator('.assist-zone')).not.toHaveClass(/folded/);
+    await expect(page.locator('#assist-buttons').getByRole('button', { name: 'Steps' })).toBeVisible();
+    await expect(page.locator('.assist-zone')).toContainText('everything in this box counts as help');
+  });
+
+  test('the pause card shows the app’s mark and address, inside the board', async ({ page }) => {
+    await open(page);
+    await page.keyboard.press('KeyP');
+    const card = page.locator('.pause-card');
+    await expect(card.locator('.pause-brand')).toHaveText('UIsudokui.app');
+    const board = (await page.locator('svg.board').boundingBox())!;
+    const brand = (await card.locator('.pause-brand').boundingBox())!;
+    const resume = (await card.locator('.resume-btn').boundingBox())!;
+    expect(brand.y).toBeGreaterThan(resume.y + resume.height);
+    expect(brand.y + brand.height).toBeLessThanOrEqual(board.y + board.height);
+    await page.keyboard.press('KeyP');
+    await expect(card).toHaveCount(0);
+  });
 
   test('frames a highlighted digit in a line of centre marks as it frames a corner mark', async ({ page }) => {
     await open(page);
@@ -1273,6 +1296,228 @@ test.describe('phone, 390 x 844', () => {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page.locator('#board-status')).toContainText('Row 5, column 5: empty.');
     await expect(page.locator('#board-status')).not.toContainText('corner marks');
+  });
+
+  /**
+   * Number-first entry on a phone (the owner's report of 4 November 2026):
+   * a tap on a cell selects it as it enters the armed digit, and the armed
+   * key then has to put the digit down, whatever is selected, or a phone,
+   * with no Escape, has no way out
+   */
+  test('an armed digit: a tap on a cell enters it there, and a tap on the armed key puts it down, entering nothing', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const armed = page.locator('.num-btn.armed');
+    const one = page.locator('.num-btn', { hasText: /^1$/ });
+    await expect(status).toHaveText('No cell selected.');
+    await one.tap();
+    await expect(armed).toHaveText('1');
+    await expect(one).toHaveAttribute('aria-pressed', 'true');
+    // r9c1, empty: the tap enters the 1 and selects the cell
+    const c = await cellBox(page, 72);
+    await page.touchscreen.tap(c.x, c.y);
+    await expect(status).toHaveText('Row 9, column 1: 1.');
+    await expect(armed).toHaveText('1');
+    await expect(one).toHaveAttribute('title', /1 is armed: .*Tap 1 again to put it down, whatever is selected/);
+    // the way out: the armed key, with the cell still selected
+    await one.tap();
+    await expect(armed).toHaveCount(0);
+    await expect(status).toHaveText('Row 9, column 1: 1.');
+    // a plain selection now: a tap on the cell lets go of it
+    await page.touchscreen.tap(c.x, c.y);
+    await expect(status).toHaveText('No cell selected.');
+    await expect(armed).toHaveCount(0);
+  });
+
+  test('an armed digit: a held armed key is a tap too, putting it down with no corner mark put in', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const one = page.locator('.num-btn', { hasText: /^1$/ });
+    await one.tap();
+    // the owner's screenshot: 1 armed and an empty cell selected (a tap on
+    // a cell enters the 1, a second takes it off again)
+    const c = await cellBox(page, 72);
+    await page.touchscreen.tap(c.x, c.y);
+    await page.touchscreen.tap(c.x, c.y);
+    await expect(status).toHaveText('Row 9, column 1: empty.');
+    await expect(page.locator('.num-btn.armed')).toHaveText('1');
+    const key = (await one.boundingBox())!;
+    const at = { x: key.x + key.width / 2, y: key.y + key.height / 2 };
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
+    await page.waitForTimeout(900);
+    await expect(page.locator('.num-btn.held-corner')).toHaveCount(0);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.locator('.num-btn.armed')).toHaveCount(0);
+    await expect(status).toHaveText('Row 9, column 1: empty.');
+  });
+
+  test('an armed digit: another key arms that one instead, entering nothing, and the cells take it', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const armed = page.locator('.num-btn.armed');
+    await page.locator('.num-btn', { hasText: /^1$/ }).tap();
+    const c = await cellBox(page, 72);
+    await page.touchscreen.tap(c.x, c.y);
+    await expect(status).toHaveText('Row 9, column 1: 1.');
+    const four = page.locator('.num-btn', { hasText: /^4$/ });
+    await expect(four).toHaveAttribute('title', 'Arm 4 instead of 1: a tap on a cell then enters 4');
+    await four.tap();
+    await expect(armed).toHaveText('4');
+    // nothing entered in the selected cell
+    await expect(status).toHaveText('Row 9, column 1: 1.');
+    // r1c1, empty: it takes the 4
+    const d = await cellBox(page, 0);
+    await page.touchscreen.tap(d.x, d.y);
+    await expect(status).toHaveText('Row 1, column 1: 4.');
+    await expect(armed).toHaveText('4');
+    await four.tap();
+    await expect(armed).toHaveCount(0);
+  });
+
+  test('a tap on a number key counts once, in Chromium’s order of events and in iOS Safari’s', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const c = await cellBox(page, 72);
+    await page.touchscreen.tap(c.x, c.y);
+    await expect(status).toHaveText('Row 9, column 1: empty.');
+    const five = page.locator('.num-btn', { hasText: /^5$/ });
+    // a real tap: the 5 goes in, once (twice would take it out again)
+    await five.tap();
+    await expect(status).toHaveText('Row 9, column 1: 5.');
+    await five.tap();
+    await expect(status).toHaveText('Row 9, column 1: empty.');
+    // the events as iOS Safari may send them: its click can carry a detail
+    // of 0, as a keyboard's does, and a pointerleave can come before the
+    // pointerup; each tap still counts once, so the 5 goes in and out in turn
+    const tapAs = (order: string[]) =>
+      five.evaluate((key, order) => {
+        const r = key.getBoundingClientRect();
+        const at = { clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 };
+        const pointer = (type: string, bubbles = true) =>
+          key.dispatchEvent(
+            new PointerEvent(type, { bubbles, cancelable: true, composed: true, pointerType: 'touch', pointerId: 9, isPrimary: true, button: 0, buttons: type === 'pointerdown' ? 1 : 0, relatedTarget: null, ...at })
+          );
+        for (const e of order) {
+          if (e === 'down') pointer('pointerdown');
+          if (e === 'up') pointer('pointerup');
+          // React hears a leave from the pointerout before it
+          if (e === 'leave') {
+            pointer('pointerout');
+            pointer('pointerleave', false);
+          }
+          if (e === 'click') key.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true, detail: 0, ...at }));
+        }
+      }, order);
+    const orders = [
+      ['down', 'up', 'leave', 'click'],
+      ['down', 'leave', 'up', 'click'],
+      ['down', 'click', 'up', 'leave'],
+      ['down', 'up', 'leave']
+    ];
+    let shown = false;
+    for (const order of orders) {
+      await tapAs(order);
+      shown = !shown;
+      await expect(status, order.join(', ')).toHaveText(shown ? 'Row 9, column 1: 5.' : 'Row 9, column 1: empty.');
+    }
+    // and with nothing selected, a tap arms the digit (twice would put it straight down)
+    await page.touchscreen.tap(c.x, c.y);
+    await expect(status).toHaveText('No cell selected.');
+    await tapAs(['down', 'up', 'leave', 'click']);
+    await expect(page.locator('.num-btn.armed')).toHaveText('5');
+    await tapAs(['down', 'leave', 'up', 'click']);
+    await expect(page.locator('.num-btn.armed')).toHaveCount(0);
+  });
+
+  test('the Assist box folds into one row that keeps Hint, the menu under it then in view, and the phone remembers', async ({ page }) => {
+    await open(page);
+    const fold = page.getByRole('button', { name: 'Assist buttons' });
+    const menu = page.locator('.menu-row');
+    const zone = page.locator('.assist-zone');
+    const inView = async () => {
+      const b = (await menu.boundingBox())!;
+      return b.y >= 0 && b.y + b.height <= 844;
+    };
+    const scrolled = () => page.evaluate(() => Math.max(window.scrollY, ...[...document.querySelectorAll('*')].map((el) => el.scrollTop)));
+    // open, as it was: every assist, the menu below the screen's edge
+    await expect(fold).toHaveAttribute('aria-expanded', 'true');
+    await expect(fold).toHaveAttribute('aria-controls', 'assist-buttons');
+    await expect(page.locator('#assist-buttons')).toBeVisible();
+    expect(await inView()).toBe(false);
+    await fold.tap();
+    // folded: one row that says it counts as help, Hint in it, and the
+    // menu (New, Learn, Import, Share, Restart) in view without a scroll
+    await expect(fold).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#assist-buttons')).toBeHidden();
+    await expect(zone).toContainText('counts as help');
+    const hint = zone.getByRole('button', { name: 'Hint' });
+    await expect(hint).toBeVisible();
+    const row = (await zone.boundingBox())!;
+    expect(row.height).toBeLessThan(70);
+    expect(await scrolled()).toBe(0);
+    expect(await inView()).toBe(true);
+    for (const name of ['New', 'Learn', 'Import', 'Share', 'Restart']) await expect(menu.getByRole('button', { name })).toBeInViewport({ ratio: 1 });
+    // the folded Hint is the box's Hint: the first assist asks first
+    await hint.tap();
+    await expect(page.getByRole('dialog', { name: 'Use Hint?' })).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel' }).tap();
+    // kept on the device
+    await page.reload();
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect(fold).toHaveAttribute('aria-expanded', 'false');
+    // opened again, as it was, and kept so
+    await fold.tap();
+    await expect(fold).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#assist-buttons').getByRole('button', { name: 'Steps' })).toBeVisible();
+    expect(await inView()).toBe(false);
+    await page.reload();
+    await expect(fold).toHaveAttribute('aria-expanded', 'true');
+    // in every language the folded row fits the column, down to a 320 px phone
+    await fold.tap();
+    await page.setViewportSize({ width: 320, height: 640 });
+    for (const path of ['/', '/nb/', '/es/']) {
+      await page.goto(`${path}#p=${EASY}`);
+      await expect(page.locator('.assist-zone.folded')).toBeVisible();
+      expect(await controlMisfits(page), path).toEqual([]);
+      expect((await zone.boundingBox())!.height, path).toBeLessThan(80);
+    }
+  });
+
+  test('the pause card shows the app’s mark and address, inside the board', async ({ page }) => {
+    await open(page);
+    await page.getByRole('button', { name: 'Pause game' }).tap();
+    const card = page.locator('.pause-card');
+    await expect(card).toBeVisible();
+    await expect(card.locator('.pause-brand')).toHaveText('UIsudokui.app');
+    await expect(card.locator('.pause-site')).toHaveText('sudokui.app');
+    const board = (await page.locator('svg.board').boundingBox())!;
+    for (const part of ['h3', '.pause-tip', '.resume-btn', '.pause-brand']) {
+      const b = (await card.locator(part).boundingBox())!;
+      expect(b.y, part).toBeGreaterThanOrEqual(board.y);
+      expect(b.y + b.height, part).toBeLessThanOrEqual(board.y + board.height);
+    }
+    // read from a seat away: the size of a title
+    expect(await card.locator('.pause-site').evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(20);
+    await card.getByRole('button', { name: /Resume/ }).tap();
+    await expect(card).toHaveCount(0);
+  });
+
+  test('on a 320 px phone the pause card holds the mark and Nutella too, inside the board', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { showPoodle: true }, version: 1 })));
+    await page.setViewportSize({ width: 320, height: 640 });
+    await open(page);
+    await page.getByRole('button', { name: 'Pause game' }).tap();
+    const card = page.locator('.pause-card');
+    await expect(card.locator('.pause-poodle')).toBeVisible();
+    const board = (await page.locator('svg.board').boundingBox())!;
+    for (const part of ['h3', '.pause-tip', '.resume-btn', '.pause-poodle', '.pause-brand']) {
+      const b = (await card.locator(part).boundingBox())!;
+      expect(b.y, part).toBeGreaterThanOrEqual(board.y);
+      expect(b.y + b.height, part).toBeLessThanOrEqual(board.y + board.height);
+      expect(b.x, part).toBeGreaterThanOrEqual(board.x);
+      expect(b.x + b.width, part).toBeLessThanOrEqual(board.x + board.width);
+    }
   });
 
   test('Swap held in Centre mode says where the marks go and gathers them there; sliding off cancels; a tap still swaps', async ({ page }) => {

@@ -7,6 +7,8 @@ import { useGame, EntryMode } from '../state/gameStore';
 import { useSettings, MarkLayer } from '../state/settings';
 import { Modal } from './Dialogs';
 import { PALETTE } from './Grid';
+import { TapGate } from './keyTap';
+import { useMedia, PHONE } from './useMedia';
 
 function eraseTitle(t: Translator, mode: EntryMode, auto: boolean): string {
   if (mode === 'color') return t('Erase colours in selected cells (Backspace) · W wipes everything');
@@ -50,6 +52,29 @@ const textOf = (name: string) => BUTTONS.find((b) => b.name === name)!.text;
  *  (fillCandidates), true whatever the "Keep candidates" setting */
 const FILL_UNDER_AUTO_TITLE = msg('Auto candidates are on: every empty cell already shows its candidates, so there is nothing to fill.');
 
+/**
+ * The Assist box folded into one row, on a phone held upright, as left on
+ * this device: folded, the buttons under the box (New, Import, Share ...)
+ * come into view without scrolling. Storage that cannot be read leaves the
+ * box open, as it is the first time.
+ */
+const FOLD_KEY = 'sudokui-assist-folded';
+function readFolded(): boolean {
+  try {
+    return localStorage.getItem(FOLD_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function keepFolded(folded: boolean): void {
+  try {
+    if (folded) localStorage.setItem(FOLD_KEY, '1');
+    else localStorage.removeItem(FOLD_KEY);
+  } catch {
+    // private browsing or full storage: the box stays as it is until a reload
+  }
+}
+
 const MODES: { id: EntryMode; label: string; key: string }[] = [
   { id: 'digit', label: msg('Digit'), key: 'Z' },
   { id: 'corner', label: msg('Corner'), key: 'X' },
@@ -69,42 +94,51 @@ export function Controls({
   const effectiveMode = tempMode ?? mode;
 
   // A number key tapped enters the digit in the current mode. In Digit mode,
-  // held for a moment it enters a corner mark instead, so a phone needs no
-  // trip to the mode buttons for a pencil mark; the key shows the digit in
-  // its corner while the hold lasts. In the other modes a press is a tap
-  // however long it lasts: a slow tap in Centre mode must not put a corner
-  // mark in the cell instead of the centre mark it was meant for.
-  const keyHold = useRef<{ digit: number; timer: number; fired: boolean } | null>(null);
+  // with cells selected, held for a moment it enters a corner mark instead,
+  // so a phone needs no trip to the mode buttons for a pencil mark; the key
+  // shows the digit in its corner while the hold lasts. In the other modes a
+  // press is a tap however long it lasts: a slow tap in Centre mode must not
+  // put a corner mark in the cell instead of the centre mark it was meant
+  // for. While a digit is armed the keys choose the armed digit (numberKey),
+  // and a hold is a tap too: the armed key always puts the digit down.
+  const keyHold = useRef<{ digit: number; timer: number } | null>(null);
   // a key pressed by a pointer is handled by the pointer's own events,
-  // however long the press: the click the browser sends after it is not a
-  // second press (keyboard and assistive technology click with no pointer)
-  const keyPointer = useRef(false);
+  // however long the press: the click the browser sends after it is the
+  // same press again (keyboard and assistive technology click with no
+  // pointer); keyTap.ts matches the two by time, as iOS Safari needs
+  const [keyTaps] = useState(() => new TapGate<number>());
   const [heldKey, setHeldKey] = useState<number | null>(null);
+  const endHold = () => {
+    const hold = keyHold.current;
+    if (!hold) return;
+    keyHold.current = null;
+    window.clearTimeout(hold.timer);
+    setHeldKey(null);
+  };
   const pressKey = (d: number) => {
-    keyPointer.current = true;
-    if (keyHold.current) window.clearTimeout(keyHold.current.timer);
-    const hold = { digit: d, timer: 0, fired: false };
+    endHold();
+    keyTaps.down(d);
+    const hold = { digit: d, timer: 0 };
     const g = useGame.getState();
-    if ((g.tempMode ?? g.mode) === 'digit')
+    if ((g.tempMode ?? g.mode) === 'digit' && g.armedDigit === null && g.selection.length > 0)
       hold.timer = window.setTimeout(() => {
-        hold.fired = true;
+        if (keyHold.current !== hold || keyTaps.pressing !== d) return;
+        keyTaps.spend();
         setHeldKey(d);
         navigator.vibrate?.(12);
         input(d, 'corner');
       }, 450);
     keyHold.current = hold;
   };
-  const releaseKey = (d: number | null) => {
-    const hold = keyHold.current;
-    if (!hold) return;
-    keyHold.current = null;
-    window.clearTimeout(hold.timer);
-    setHeldKey(null);
+  /** the press on key d ends: lifted on the key (on), or slid off it, or taken by the browser */
+  const releaseKey = (d: number, on: boolean) => {
+    if (keyHold.current?.digit === d) endHold();
     // lifted in time, on the key it landed on: a tap
-    if (!hold.fired && d === hold.digit) input(d);
+    if (keyTaps.up(d, on, performance.now())) numberKey(d);
   };
   const setMode = useGame((s) => s.setMode);
   const input = useGame((s) => s.input);
+  const numberKey = useGame((s) => s.numberKey);
   const erase = useGame((s) => s.erase);
   const undo = useGame((s) => s.undo);
   const redo = useGame((s) => s.redo);
@@ -125,6 +159,15 @@ export function Controls({
   const setMultiSelect = useGame((s) => s.setMultiSelect);
   const [help, setHelp] = useState(false);
   const custom = useGame((s) => s.custom);
+  // the Assist box folds on a phone only: elsewhere it is always open, and
+  // a phone turned on its side opens it (the choice is kept for upright)
+  const phone = useMedia(PHONE);
+  const [foldChoice, setFoldChoice] = useState(readFolded);
+  const folded = phone && foldChoice;
+  const toggleFold = () => {
+    setFoldChoice(!folded);
+    keepFolded(!folded);
+  };
 
   // the first assist of a clean game asks first; after that, and for
   // anyone who has switched the question off, the buttons act at once
@@ -144,17 +187,21 @@ export function Controls({
   // In Digit or Colour mode a hold is a tap
   const gatherMarks = useGame((s) => s.gatherMarks);
   const swapHold = useRef<{ timer: number; layer: MarkLayer | null; armed: boolean } | null>(null);
-  const swapPointer = useRef(false);
+  // as the number keys: the click after a pointer press is that press again
+  const [swapTaps] = useState(() => new TapGate<'swap'>());
   const [gatherArmed, setGatherArmed] = useState<MarkLayer | null>(null);
   const pressSwap = () => {
-    swapPointer.current = true;
     if (swapHold.current) window.clearTimeout(swapHold.current.timer);
+    swapTaps.down('swap');
     const g = useGame.getState();
     const m = g.tempMode ?? g.mode;
     const hold = { timer: 0, layer: m === 'corner' || m === 'center' ? m : null, armed: false };
     if (hold.layer)
       hold.timer = window.setTimeout(() => {
+        if (swapHold.current !== hold) return;
         hold.armed = true;
+        // a hold is never a tap, lifted on the button or not
+        swapTaps.spend();
         setGatherArmed(hold.layer);
         navigator.vibrate?.(12);
       }, 500);
@@ -162,13 +209,14 @@ export function Controls({
   };
   const releaseSwap = (on: boolean) => {
     const hold = swapHold.current;
-    if (!hold) return;
-    swapHold.current = null;
-    window.clearTimeout(hold.timer);
-    setGatherArmed(null);
-    if (!on) return;
-    if (hold.armed && hold.layer) gatherMarks(hold.layer);
-    else convertMarks();
+    if (hold) {
+      swapHold.current = null;
+      window.clearTimeout(hold.timer);
+      setGatherArmed(null);
+    }
+    const tap = swapTaps.up('swap', on, performance.now());
+    if (hold?.armed && hold.layer && on) gatherMarks(hold.layer);
+    else if (tap) convertMarks();
   };
   /** the pointer is over the button (a touch stays the button's while it lasts, so the place is what tells) */
   const onButton = (e: React.PointerEvent<HTMLElement>) => {
@@ -254,9 +302,11 @@ export function Controls({
             aria-pressed={armedDigit === d}
             title={t(
               armedDigit === d
-                ? '{d} is armed: tap a cell to enter it, tap {d} again to put it down'
-                : '{d}. In Digit mode, hold it to enter a corner mark. With nothing selected, arms {d}: every {d} lights up and a tap on a cell enters it',
-              { d }
+                ? '{d} is armed: tap a cell to enter it. Tap {d} again to put it down, whatever is selected'
+                : armedDigit !== null
+                  ? 'Arm {d} instead of {a}: a tap on a cell then enters {d}'
+                  : '{d}. In Digit mode, hold it to enter a corner mark. With nothing selected, arms {d}: every {d} lights up and a tap on a cell enters it',
+              { d, a: armedDigit ?? '' }
             )}
             style={
               effectiveMode === 'color'
@@ -267,16 +317,18 @@ export function Controls({
               if (e.button !== 0) return;
               pressKey(d);
             }}
-            onPointerUp={() => releaseKey(d)}
-            onPointerLeave={() => releaseKey(null)}
-            onPointerCancel={() => releaseKey(null)}
+            onPointerUp={() => releaseKey(d, true)}
+            onPointerLeave={() => releaseKey(d, false)}
+            onPointerCancel={() => releaseKey(d, false)}
             onContextMenu={(e) => e.preventDefault()}
-            onClick={(e) => {
+            onClick={() => {
               // a pointer press was handled above, however long it lasted;
-              // the keyboard (detail 0) and assistive technology enter here
-              const fromPointer = keyPointer.current && e.detail !== 0;
-              keyPointer.current = false;
-              if (!fromPointer) input(d);
+              // the keyboard and assistive technology enter here, and so
+              // does a tap whose lift did not count (keyTap.ts)
+              const pressed = keyTaps.pressing === d;
+              if (!keyTaps.click(d, performance.now())) return;
+              if (pressed) endHold();
+              numberKey(d);
             }}
           >
             {effectiveMode === 'color' ? '' : d}
@@ -305,11 +357,12 @@ export function Controls({
           onPointerLeave={() => releaseSwap(false)}
           onPointerCancel={() => releaseSwap(false)}
           onContextMenu={(e) => e.preventDefault()}
-          onClick={(e) => {
+          onClick={() => {
             // as the number keys: a pointer press was handled above
-            const fromPointer = swapPointer.current && e.detail !== 0;
-            swapPointer.current = false;
-            if (!fromPointer) convertMarks();
+            const pressed = swapTaps.pressing !== null;
+            if (!swapTaps.click('swap', performance.now())) return;
+            if (pressed) releaseSwap(false);
+            convertMarks();
           }}
           title={t('Swap corner and centre marks (S), in the selected cells or the whole board. Held in Corner or Centre mode it gathers those marks into that mode’s layer; Shift+S gathers into the layer Fill uses. Pure notation, never counts as help')}
         >
@@ -322,11 +375,19 @@ export function Controls({
           Not while a puzzle is typed in: there is no game to help with,
           and the one Cancel brings back must come back as it was */}
       {!custom && (
-      <div className="assist-zone">
+      <div className={`assist-zone${folded ? ' folded' : ''}`}>
         <div className="row-caption zone-head">
           <span>
-            {t('Assist')} <span className="zone-note">{t('everything in this box counts as help')}</span>
+            {t('Assist')}{' '}
+            <span className="zone-note">{t(folded ? 'counts as help' : 'everything in this box counts as help')}</span>
           </span>
+          {/* folded, the box keeps the assist used most */}
+          {folded && (
+            <button className="zone-hint" onClick={guarded('Hint', requestHint)} title={t('Hint (H): names the technique first, reveals it only if you ask')}>
+              <span className="btn-icon" aria-hidden="true">💡</span>
+              <span>{t('Hint')}</span>
+            </button>
+          )}
           <button
             className="zone-help"
             onClick={() => setHelp(true)}
@@ -335,72 +396,88 @@ export function Controls({
           >
             ?
           </button>
-        </div>
-        <span className="row-sub">{t('Reveals logic')}</span>
-        <div className="action-row">
-          <button onClick={guarded('Hint', requestHint)} title={t('Hint (H): names the technique first, reveals it only if you ask')}>
-            <span className="btn-icon" aria-hidden="true">💡</span>
-            <span>{t('Hint')}</span>
-          </button>
-          <button onClick={guarded('Check', check)} title={t('Check values and candidate lists against the solution')}>
-            <span className="btn-icon" aria-hidden="true">✓</span>
-            <span>{t('Check')}</span>
-          </button>
-          {onShowSteps && (
+          {phone && (
             <button
-              onClick={guarded('Steps', onShowSteps)}
-              title={t('Show every step of one complete solution and jump to any point. Counts as assistance')}
+              className="zone-fold"
+              onClick={toggleFold}
+              aria-expanded={!folded}
+              aria-controls="assist-buttons"
+              aria-label={t('Assist buttons')}
+              title={t(folded ? 'Show every assist' : 'Fold the box into one row, keeping Hint')}
             >
-              <span className="btn-icon" aria-hidden="true">≡</span><span>{t('Steps')}</span>
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                <path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           )}
-          {onScan && (
-            <button
-              onClick={guarded('Scan', onScan)}
-              title={t('List every technique available in this exact position, not just the easiest. Counts as assistance')}
-            >
-              <span className="btn-icon" aria-hidden="true">🔎</span><span>{t('Scan')}</span>
-            </button>
-          )}
-          <button
-            onClick={guarded('Chain', startChain)}
-            title={t('Build a chain yourself, candidate by candidate; the engine checks each link and says what it proves. Counts as assistance')}
-          >
-            <span className="btn-icon" aria-hidden="true">⛓</span><span>{t('Chain')}</span>
-          </button>
         </div>
+        <div className="assist-body" id="assist-buttons" hidden={folded}>
+          <span className="row-sub">{t('Reveals logic')}</span>
+          <div className="action-row">
+            <button onClick={guarded('Hint', requestHint)} title={t('Hint (H): names the technique first, reveals it only if you ask')}>
+              <span className="btn-icon" aria-hidden="true">💡</span>
+              <span>{t('Hint')}</span>
+            </button>
+            <button onClick={guarded('Check', check)} title={t('Check values and candidate lists against the solution')}>
+              <span className="btn-icon" aria-hidden="true">✓</span>
+              <span>{t('Check')}</span>
+            </button>
+            {onShowSteps && (
+              <button
+                onClick={guarded('Steps', onShowSteps)}
+                title={t('Show every step of one complete solution and jump to any point. Counts as assistance')}
+              >
+                <span className="btn-icon" aria-hidden="true">≡</span><span>{t('Steps')}</span>
+              </button>
+            )}
+            {onScan && (
+              <button
+                onClick={guarded('Scan', onScan)}
+                title={t('List every technique available in this exact position, not just the easiest. Counts as assistance')}
+              >
+                <span className="btn-icon" aria-hidden="true">🔎</span><span>{t('Scan')}</span>
+              </button>
+            )}
+            <button
+              onClick={guarded('Chain', startChain)}
+              title={t('Build a chain yourself, candidate by candidate; the engine checks each link and says what it proves. Counts as assistance')}
+            >
+              <span className="btn-icon" aria-hidden="true">⛓</span><span>{t('Chain')}</span>
+            </button>
+          </div>
 
-        <span className="row-sub">{t('Writes marks for you')}</span>
-        <div className="action-row">
-          <button
-            className={autoCandidates ? 'toggled' : ''}
-            onClick={autoCandidates ? onAutoToggle : guarded('Auto candidates', onAutoToggle)}
-            title={t(
-              !autoCandidates
-                ? 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
-                : !autoOffPromptDone
-                  ? 'Turn off. The first time, you choose whether the candidates stay as your marks, and Ctrl+Z reverts'
-                  : !keepCandidates
-                    ? 'Turn off. Nothing is written into your marks, since Settings is set not to keep the candidates, and Ctrl+Z reverts'
-                    : fillLayer === 'corner'
-                      ? 'Turn off. The candidates are written into your corner marks, and Ctrl+Z reverts'
-                      : 'Turn off. The candidates are written into your centre marks, and Ctrl+Z reverts'
-            )}
-          >
-            <span className="btn-icon" aria-hidden="true">⌗</span><span>{t('Auto candidates')}</span>
-          </button>
-          <button
-            onClick={guarded('Fill candidates', fillCandidates)}
-            title={t(
-              autoCandidates
-                ? FILL_UNDER_AUTO_TITLE
-                : fillLayer === 'corner'
-                  ? 'Fill corner marks with all candidates. With empty cells selected, only those are filled'
-                  : 'Fill centre marks with all candidates. With empty cells selected, only those are filled'
-            )}
-          >
-            <span className="btn-icon" aria-hidden="true">✎</span><span>{t('Fill candidates')}</span>
-          </button>
+          <span className="row-sub">{t('Writes marks for you')}</span>
+          <div className="action-row">
+            <button
+              className={autoCandidates ? 'toggled' : ''}
+              onClick={autoCandidates ? onAutoToggle : guarded('Auto candidates', onAutoToggle)}
+              title={t(
+                !autoCandidates
+                  ? 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
+                  : !autoOffPromptDone
+                    ? 'Turn off. The first time, you choose whether the candidates stay as your marks, and Ctrl+Z reverts'
+                    : !keepCandidates
+                      ? 'Turn off. Nothing is written into your marks, since Settings is set not to keep the candidates, and Ctrl+Z reverts'
+                      : fillLayer === 'corner'
+                        ? 'Turn off. The candidates are written into your corner marks, and Ctrl+Z reverts'
+                        : 'Turn off. The candidates are written into your centre marks, and Ctrl+Z reverts'
+              )}
+            >
+              <span className="btn-icon" aria-hidden="true">⌗</span><span>{t('Auto candidates')}</span>
+            </button>
+            <button
+              onClick={guarded('Fill candidates', fillCandidates)}
+              title={t(
+                autoCandidates
+                  ? FILL_UNDER_AUTO_TITLE
+                  : fillLayer === 'corner'
+                    ? 'Fill corner marks with all candidates. With empty cells selected, only those are filled'
+                    : 'Fill centre marks with all candidates. With empty cells selected, only those are filled'
+              )}
+            >
+              <span className="btn-icon" aria-hidden="true">✎</span><span>{t('Fill candidates')}</span>
+            </button>
+          </div>
         </div>
       </div>
       )}

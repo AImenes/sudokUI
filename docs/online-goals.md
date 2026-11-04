@@ -775,3 +775,17 @@ Built on 2 November 2026: the "Why sudokUI?" page (src/content/why.ts; /why/,
 words as a dialog from its footer and the win screen), and no welcome dialog
 on a first visit. Search counts in every change from here on (docs/README.md,
 Standing rules).
+
+Built on 4 November 2026, at the owner's request: the pause card carries the
+app's mark (the top bar's "UI") and the address, sudokui.app, under its Resume
+button (src/ui/Grid.tsx, the address from src/content/home.ts), in the muted
+ink but at a title's size, so a phone paused on the bus says what it plays to
+the next seat. Beside Nutella when she is shown, so a 320 px board holds both;
+in all four themes, on a phone and at a desk. And on a phone held upright (a
+coarse pointer, 560 px wide or less) the Assist box folds into one row that
+still says it counts as help and keeps Hint, with a chevron button
+(aria-expanded) to open it again; folded, New, Learn, Import, Share and Restart
+come into view on a 390 x 844 phone without scrolling. It opens by default, the
+choice is kept on the device (localStorage, `sudokui-assist-folded`), and a
+desk, a tablet or a phone on its side always shows the box open. Nothing sent
+from the device changed.
