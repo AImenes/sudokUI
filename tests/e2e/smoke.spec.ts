@@ -1520,6 +1520,25 @@ test.describe('phone, 390 x 844', () => {
     }
   });
 
+  for (const lang of ['nb', 'es']) {
+    test(`on a small phone on its side the pause card stays inside the board (/${lang}/)`, async ({ page }) => {
+      await page.setViewportSize({ width: 568, height: 320 });
+      await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+      await page.goto(`/${lang}/#p=${EASY}`);
+      await expect(page.locator('svg.board')).toBeVisible();
+      // the pause key, P, as on any keyboard the phone has; the button's name is in the page's language
+      await page.keyboard.press('p');
+      const card = page.locator('.pause-card');
+      await expect(card.locator('.pause-brand')).toBeVisible();
+      const board = (await page.locator('svg.board').boundingBox())!;
+      for (const part of ['h3', '.resume-btn', '.pause-brand']) {
+        const b = (await card.locator(part).boundingBox())!;
+        expect(b.y, part).toBeGreaterThanOrEqual(board.y);
+        expect(b.y + b.height, part).toBeLessThanOrEqual(board.y + board.height);
+      }
+    });
+  }
+
   test('Swap held in Centre mode says where the marks go and gathers them there; sliding off cancels; a tap still swaps', async ({ page }) => {
     await open(page);
     // the board as saved on the device: each cell's corner and centre marks

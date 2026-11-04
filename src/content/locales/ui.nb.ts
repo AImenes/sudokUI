@@ -247,6 +247,7 @@ const ui: Dictionary = {
   "Using it counts as help, so this solve will no longer be unassisted. Everything else stays as it is.": "Å bruke den teller som hjelp, så denne oppgaven blir ikke lenger løst uten hjelp. Alt annet blir som det er.",
   "Use {name}": "Bruk «{name}»",
   "Use, and stop asking": "Bruk, og ikke spør igjen",
+  "everything here counts as help": "alt her teller som hjelp",
   "counts as help": "teller som hjelp",
   "Keep your candidates?": "Beholde kandidatene?",
   "Centre marks": "Midtnotater",

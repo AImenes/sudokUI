@@ -131,10 +131,13 @@ export function Controls({
     keyHold.current = hold;
   };
   /** the press on key d ends: lifted on the key (on), or slid off it, or taken by the browser */
-  const releaseKey = (d: number, on: boolean) => {
+  // `at` is the event's own time (Event.timeStamp, on performance.now's
+  // clock), so a click the browser hands over late, on a busy phone, is
+  // still matched to the lift it follows
+  const releaseKey = (d: number, on: boolean, at: number) => {
     if (keyHold.current?.digit === d) endHold();
     // lifted in time, on the key it landed on: a tap
-    if (keyTaps.up(d, on, performance.now())) numberKey(d);
+    if (keyTaps.up(d, on, at)) numberKey(d);
   };
   const setMode = useGame((s) => s.setMode);
   const input = useGame((s) => s.input);
@@ -207,14 +210,14 @@ export function Controls({
       }, 500);
     swapHold.current = hold;
   };
-  const releaseSwap = (on: boolean) => {
+  const releaseSwap = (on: boolean, at: number) => {
     const hold = swapHold.current;
     if (hold) {
       swapHold.current = null;
       window.clearTimeout(hold.timer);
       setGatherArmed(null);
     }
-    const tap = swapTaps.up('swap', on, performance.now());
+    const tap = swapTaps.up('swap', on, at);
     if (hold?.armed && hold.layer && on) gatherMarks(hold.layer);
     else if (tap) convertMarks();
   };
@@ -317,16 +320,16 @@ export function Controls({
               if (e.button !== 0) return;
               pressKey(d);
             }}
-            onPointerUp={() => releaseKey(d, true)}
-            onPointerLeave={() => releaseKey(d, false)}
-            onPointerCancel={() => releaseKey(d, false)}
+            onPointerUp={(e) => releaseKey(d, true, e.timeStamp)}
+            onPointerLeave={(e) => releaseKey(d, false, e.timeStamp)}
+            onPointerCancel={(e) => releaseKey(d, false, e.timeStamp)}
             onContextMenu={(e) => e.preventDefault()}
-            onClick={() => {
+            onClick={(e) => {
               // a pointer press was handled above, however long it lasted;
               // the keyboard and assistive technology enter here, and so
               // does a tap whose lift did not count (keyTap.ts)
               const pressed = keyTaps.pressing === d;
-              if (!keyTaps.click(d, performance.now())) return;
+              if (!keyTaps.click(d, e.timeStamp)) return;
               if (pressed) endHold();
               numberKey(d);
             }}
@@ -351,17 +354,17 @@ export function Controls({
             pressSwap();
           }}
           onPointerMove={(e) => {
-            if (swapHold.current && !onButton(e)) releaseSwap(false);
+            if (swapHold.current && !onButton(e)) releaseSwap(false, e.timeStamp);
           }}
-          onPointerUp={(e) => releaseSwap(onButton(e))}
-          onPointerLeave={() => releaseSwap(false)}
-          onPointerCancel={() => releaseSwap(false)}
+          onPointerUp={(e) => releaseSwap(onButton(e), e.timeStamp)}
+          onPointerLeave={(e) => releaseSwap(false, e.timeStamp)}
+          onPointerCancel={(e) => releaseSwap(false, e.timeStamp)}
           onContextMenu={(e) => e.preventDefault()}
-          onClick={() => {
+          onClick={(e) => {
             // as the number keys: a pointer press was handled above
             const pressed = swapTaps.pressing !== null;
-            if (!swapTaps.click('swap', performance.now())) return;
-            if (pressed) releaseSwap(false);
+            if (!swapTaps.click('swap', e.timeStamp)) return;
+            if (pressed) releaseSwap(false, e.timeStamp);
             convertMarks();
           }}
           title={t('Swap corner and centre marks (S), in the selected cells or the whole board. Held in Corner or Centre mode it gathers those marks into that mode’s layer; Shift+S gathers into the layer Fill uses. Pure notation, never counts as help')}
@@ -379,7 +382,7 @@ export function Controls({
         <div className="row-caption zone-head">
           <span>
             {t('Assist')}{' '}
-            <span className="zone-note">{t(folded ? 'counts as help' : 'everything in this box counts as help')}</span>
+            <span className="zone-note">{t(folded ? 'everything here counts as help' : 'everything in this box counts as help')}</span>
           </span>
           {/* folded, the box keeps the assist used most */}
           {folded && (

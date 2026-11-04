@@ -896,6 +896,26 @@ button {
   color: var(--muted);
 }
 
+/* a short board (a small phone on its side): the mark and address a size
+   down and closer, and the tip left out, so the card stays inside the board */
+@media (max-height: 360px) and (orientation: landscape) {
+  .pause-foot {
+    margin-top: 8px;
+  }
+  .pause-brand .brand-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    font-size: 12px;
+  }
+  .pause-site {
+    font-size: 15px;
+  }
+  .pause-tip {
+    display: none;
+  }
+}
+
 .side {
   display: flex;
   flex-direction: column;
