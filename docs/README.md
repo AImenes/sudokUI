@@ -32,6 +32,11 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
 - [launch-log.md](launch-log.md): one dated line per reach action the
   owner takes, the link used and the landing word expected, and the
   numbers read before and after.
+- [play-store-plan.md](play-store-plan.md): sudokUI on Google Play as a
+  Trusted Web Activity (November 2026): Google's rules, the asset links
+  file, the Data safety answers, the listing in three languages, the
+  landing question, the risks, the owner's steps and the code's, and the
+  time it takes.
 
 ## The hints and their drawings
 
