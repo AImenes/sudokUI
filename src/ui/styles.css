@@ -1410,9 +1410,77 @@ html .assist-zone.folded .zone-note {
 }
 
 /* while the board is hidden behind the pause card, the controls rest too */
-.side.paused > *:not(.menu-row) {
+.side.paused > *:not(.menu-row):not(.past-daily) {
   pointer-events: none;
   opacity: 0.45;
+}
+
+/* another day's daily on the board (App.tsx, PastDailyNote): a quiet line
+   at the head of the control column, beside the board on a wide screen and
+   just under it on a phone, never over it. Its link opens today's daily as
+   the Daily button does, so it works while paused, as New does */
+.side > .past-daily {
+  order: -2;
+}
+
+.past-daily {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 2px 2px 12px;
+  border: 1px solid rgba(128, 128, 160, 0.2);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+
+.past-daily p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 7px 0;
+}
+
+.past-daily a {
+  color: var(--accent-text);
+  font-weight: 600;
+  text-decoration: none;
+  /* the link and its arrow wrap as one, never "Today's" alone */
+  white-space: nowrap;
+}
+
+.past-daily a:hover {
+  text-decoration: underline;
+}
+
+.past-daily-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.past-daily-close:hover {
+  background: rgba(128, 128, 160, 0.15);
+  color: var(--text);
+}
+
+/* a finger's target on a touch screen */
+@media (any-pointer: coarse) {
+  .past-daily-close {
+    width: 40px;
+    height: 40px;
+  }
 }
 
 /* ---------- hint panel ---------- */

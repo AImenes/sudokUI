@@ -64,6 +64,72 @@ counted. Only share landings, the three home pages and unknown paths
 reach the Worker, so the budget in [online-goals.md](online-goals.md)
 holds.
 
+## IndexNow: telling Bing what changed
+
+Every push to `main` also tells [IndexNow](https://www.indexnow.org) which
+pages are new or changed, so Bing (and the other engines that share its
+submissions) fetches them within hours instead of whenever its crawler
+next comes by. AI assistants that search the web with Bing see a changed
+page as soon as Bing does. Nothing about players is involved: it is a list
+of the site's own public pages, so the privacy page does not change.
+
+- **The key** is `public/<key>.txt`, a random 32-hex-digit key in a file
+  named after it. It is public by design: IndexNow fetches it from
+  `https://sudokui.app/<key>.txt` to check that a submission comes from
+  the site, so no secret is needed. It is a static file, answered by the
+  asset hosting; no `run_worker_first` pattern catches it
+  (`tests/indexnow.test.ts` checks that, and that the file holds exactly
+  its key).
+- **The build** writes `dist/indexnow.json` as its last step
+  (`scripts/build-indexnow.ts`): every URL of `dist/sitemap.xml`, each
+  with a hash of the page the build wrote for it, and the commit it was
+  built from (`WORKERS_CI_COMMIT_SHA` on Cloudflare, else git). The hash
+  leaves out the fingerprints in the names of the scripts and styles under
+  `/assets/`, so a change to the app's code alone does not count as a
+  change to the home pages. A sitemap URL with no page fails the build.
+- **The job**, [indexnow.yml](../.github/workflows/indexnow.yml), runs on
+  every push to `main`, beside CI. First it reads the live
+  `https://sudokui.app/indexnow.json`, the list from before this push;
+  then it waits, looking every 20 seconds, until the site serves the list
+  of the pushed commit, compares the two, and POSTs only the new or
+  changed URLs (at most 10,000) to `https://api.indexnow.org/indexnow`,
+  with the host, the key and the key's location
+  (`scripts/indexnow.ts`, `submitChanges`). A page that left the sitemap
+  is not sent.
+- **When it sends nothing, or less:** with no old list to read (the
+  first run, or a read that failed) it sends the three home pages only,
+  not every page at once; when the deploy has not shown up after about
+  15 minutes it gives up quietly and sends nothing; when no page changed
+  it sends nothing.
+- **It never fails a push's checks:** every step may fail without failing
+  the job, and the script ends with exit code 0 whatever IndexNow or the
+  network answer. What it did is one line in the job's log
+  (`IndexNow: sent 4 URLs: HTTP 200`, or why it sent nothing).
+
+To see the submissions arrive, open [Bing Webmaster
+Tools](https://www.bing.com/webmasters) for sudokui.app (the site is
+verified with `public/BingSiteAuth.xml`) and go to **IndexNow**: it lists
+the URLs received, when, and whether the key was accepted. HTTP 202 in the
+job's log means the key is still being checked; 403 means the key file was
+not reachable or did not match.
+
+Cloudflare's Crawler Hints ([search.md](search.md), the owner's list), if
+switched on, sends IndexNow its own signals from what Cloudflare sees
+change; it does not replace this job, which follows the sitemap and
+sends a page only when its words changed, and the two do not get in each
+other's way.
+
+To try the job's step by hand without sending anything:
+
+```bash
+curl -s https://sudokui.app/indexnow.json -o /tmp/old.json
+GITHUB_SHA=<a deployed commit> node --experimental-strip-types scripts/indexnow-submit.ts /tmp/old.json --dry-run
+```
+
+To change the key, replace the file in `public/` with a new
+`<key>.txt` holding the new key, and nothing else; the job reads it from
+the checkout.
+
 ## Domain & TLS (one-time, already applicable)
 
 1. In the Worker/Pages project → **Custom Domains** → add `sudokui.app`
@@ -77,7 +143,10 @@ holds.
 
 GitHub Actions ([ci.yml](../.github/workflows/ci.yml)) remains the quality
 gate: typecheck, the full test suite including the technique soundness
-harness, and a build. Cloudflare's build is what actually deploys.
+harness, and a build. Cloudflare's build is what actually deploys. A second
+workflow, [indexnow.yml](../.github/workflows/indexnow.yml), runs on a push
+to `main` only and tells IndexNow what the deploy changed (below); it can
+never fail.
 
 Note they are independent — a push to `main` deploys even if CI fails. For
 stricter gating, protect `main` with a required CI status check in GitHub

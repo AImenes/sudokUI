@@ -46,7 +46,7 @@ const LearnDialog = React.lazy(() => import('./Learn').then((m) => ({ default: m
 import { PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { parseShareUrl, sharePath, clockOf } from '../content/share';
-import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, parseDailyUrl, dailyPath } from '../content/dailies';
+import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, parseDailyUrl, dailyPath, pastDailyOn, dayName } from '../content/dailies';
 import { useDailyStats } from '../state/dailyStats';
 import { useTelemetry } from '../state/telemetry';
 import { RATING_URL, PRIVACY_URL } from '../content/staticRoutes';
@@ -150,6 +150,67 @@ function UpdateBar() {
     );
   }
   return null;
+}
+
+/** the player's local date, kept current across a midnight with the app open and on coming back to it */
+function useToday(): string {
+  const [today, setToday] = useState(() => localDateKey());
+  useEffect(() => {
+    const check = () => setToday(localDateKey());
+    const now = new Date();
+    const untilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime();
+    const id = setTimeout(check, untilMidnight + 1000);
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('focus', check);
+    };
+  }, [today]);
+  return today;
+}
+
+/**
+ * Another day's daily on the board (the last game, resumed when the app
+ * opens, or an old daily's link): a quiet line beside the board that says
+ * which day it is, with the way to today's, which opens it as the Daily
+ * button does. Never for today's daily; put away, it stays away for this
+ * game (src/content/dailies.ts, pastDailyOn). Plain text in the page, so a
+ * screen reader reads it where it stands; no dialog, nothing over the board.
+ */
+function PastDailyNote({ onToday }: { onToday: () => void }) {
+  const info = useGame((s) => s.info);
+  const custom = useGame((s) => s.custom);
+  const hide = useGame((s) => s.hidePastDaily);
+  const lang = useSettings((s) => s.lang);
+  const t = useT();
+  const today = useToday();
+  const day = custom ? null : pastDailyOn(info, today);
+  if (!day) return null;
+  return (
+    <div className="past-daily" role="note">
+      <p>
+        {t('The daily of {date}', { date: dayName(day, t.locale, today) })}
+        <span aria-hidden="true"> · </span>
+        {/* a real address, so a modified click opens today's in a new tab */}
+        <a
+          href={dailyPath(lang, today)}
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+            e.preventDefault();
+            onToday();
+          }}
+        >
+          {t('Today’s daily')}
+          <span aria-hidden="true"> →</span>
+        </a>
+      </p>
+      <button className="past-daily-close" onClick={hide} title={t('Hide this note')} aria-label={t('Hide this note')}>
+        ✕
+      </button>
+    </div>
+  );
 }
 
 function Timer() {
@@ -808,6 +869,7 @@ export default function App() {
           {showPoodle && (!paused || won) && <Poodle />}
         </div>
         <aside className={`side${paused && !won ? ' paused' : ''}`}>
+          <PastDailyNote onToday={() => void startDaily()} />
           <div className="menu-row">
             <button onClick={() => setDialog('new')}>
               <span className="menu-icon">▦</span>{t('New')}
