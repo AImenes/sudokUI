@@ -56,10 +56,10 @@ const words = (text: string) => text.toLowerCase().match(/\p{L}[\p{L}\d'-]*/gu) 
 
 /**
  * Words a translation may share with the English: the brand, HoDoKu,
- * technique names, and words the language itself writes the same way
+ * technique names (X-Wing, Exocet, Death Blossom), and words the language itself writes the same way
  * (Norwegian "hint", "for"; Spanish "app", "online", "paso a paso").
  */
-const SHARED = new Set(['sudokui', 'sudoku', 'hodoku', 'x-wing', 'exocet', 'javascript', 'app', 'hint', 'online', 'for', 'a']);
+const SHARED = new Set(['sudokui', 'sudoku', 'hodoku', 'x-wing', 'exocet', 'death', 'blossom', 'javascript', 'app', 'hint', 'online', 'for', 'a']);
 const englishLeft = (english: string[], translated: string[]) => {
   const vocabulary = new Set(english.flatMap(words));
   return [...new Set(translated.flatMap(words))].filter((w) => vocabulary.has(w) && !SHARED.has(w));
