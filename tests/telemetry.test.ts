@@ -18,6 +18,8 @@ import {
   isLanding,
   isPersonAgent,
   landingFrom,
+  landingWord,
+  assistantTagged,
   LANDING_FROM,
   LANDING_SLOTS,
   PLAY_KINDS,
@@ -529,13 +531,60 @@ describe('the landing count', () => {
     expect(events.points).toEqual(
       ['/', '/nb/', '/es/'].map(() => ({ indexes: ['landing'], blobs: ['', 'home', version, '', 'directory'], doubles: [0, 1, 0, 0, 0, 0] }))
     );
-    // a query, a campaign's say, is still the home page; the word is from the referrer, never the query
+    // a query, a campaign's say, is still the home page; with a referrer the word is the referrer's, never the query's
     await handleRequest(landing('/?utm_source=kode24', { referer: 'https://www.kode24.no/artikkel/1' }), env);
     expect(events.points[3].blobs).toEqual(['', 'home', version, '', 'press']);
     await handleRequest(landing('/nb/'), env);
     expect(events.points[4].blobs).toEqual(['', 'home', version, '', 'none']);
     expect(JSON.stringify(events.points)).not.toContain('kode24');
     expect(LANDING_SLOTS).toEqual(['p', 'daily', 'home']);
+  });
+
+  it('counts a landing with no referrer as ai when an AI assistant tagged its link, reading that one tag and keeping nothing of it', async () => {
+    // the tag names an assistant by the hosts of `ai`, a subdomain included, in any case
+    for (const tag of ['chatgpt.com', 'ChatGPT.com', 'chat.openai.com', 'perplexity.ai', 'www.perplexity.ai', 'claude.ai', 'gemini.google.com', 'copilot.microsoft.com', 'chatgpt.com.'])
+      expect(assistantTagged(`${SITE}/?utm_source=${encodeURIComponent(tag)}`), tag).toBe(true);
+    // anything else is no assistant: another source, a lookalike, a host that only contains one, another parameter
+    for (const address of [
+      `${SITE}/`,
+      `${SITE}/?utm_source=`,
+      `${SITE}/?utm_source=newsletter`,
+      `${SITE}/?utm_source=google.com`,
+      `${SITE}/?utm_source=notchatgpt.com`,
+      `${SITE}/?utm_source=chatgpt.com.evil.example`,
+      `${SITE}/?utm_source=https%3A%2F%2Fchatgpt.com%2F`,
+      `${SITE}/?ref=chatgpt.com`,
+      `${SITE}/?utm_medium=chatgpt.com`,
+      `${SITE}/#utm_source=chatgpt.com`,
+      'not an address'
+    ])
+      expect(assistantTagged(address), address).toBe(false);
+    // the word: with no referrer, the tag; with one, the referrer, whatever the tag says
+    expect(landingWord(landing('/?utm_source=chatgpt.com'))).toBe('ai');
+    expect(landingWord(landing('/?utm_source=newsletter'))).toBe('none');
+    expect(landingWord(landing('/?utm_source=chatgpt.com', { referer: 'https://www.reddit.com/' }))).toBe('reddit');
+    expect(landingWord(landing('/?utm_source=chatgpt.com', { referer: 'https://unknown.example/' }))).toBe('other');
+    expect(landingWord(landing('/', { referer: 'https://chatgpt.com/' }))).toBe('ai');
+    // on the home pages and the share addresses alike, and nothing of the address is written
+    const events = memoryEvents();
+    const env = withHomes({ EVENTS: events });
+    await handleRequest(landing('/?utm_source=chatgpt.com'), env);
+    await handleRequest(landing('/es/?utm_source=perplexity.ai&utm_medium=referral&utm_campaign=sudoku-tips&q=private'), env);
+    expect(events.points).toEqual(
+      ['/', '/es/'].map(() => ({ indexes: ['landing'], blobs: ['', 'home', version, '', 'ai'], doubles: [0, 1, 0, 0, 0, 0] }))
+    );
+    const shares = memoryEvents();
+    await handleRequest(landing(`/nb/p/${EASY}?b=hard&utm_source=chatgpt.com`), assets({ EVENTS: shares }));
+    await handleRequest(landing(`/daily/${DAILY.date}?utm_source=claude.ai`), assets({ EVENTS: shares }));
+    expect(shares.points.map((p) => [p.blobs[1], p.blobs[4]])).toEqual([
+      ['p', 'ai'],
+      ['daily', 'ai']
+    ]);
+    const written = JSON.stringify([...events.points, ...shares.points]);
+    for (const part of ['utm', 'chatgpt', 'perplexity', 'claude', 'referral', 'sudoku-tips', 'private']) expect(written).not.toContain(part);
+    // from inside the site no landing is counted, tag or not
+    await handleRequest(landing('/?utm_source=chatgpt.com', { referer: `${SITE}/learn/` }), env);
+    expect(events.points).toHaveLength(2);
   });
 
   it('counts no home landing from the site itself, from a robot or a preview, for a fetch that is no visit, or on another page', async () => {
@@ -1040,6 +1089,16 @@ describe('the privacy page', () => {
       const text = PRIVACY[lang].sections.flatMap((s) => s.paragraphs).join(' ');
       for (const word of LANDING_FROM) expect(text, `${lang} ${word}`).toContain(WORDS[lang][word]);
       for (const field of FIELDS[lang]) expect(text, lang).toContain(field);
+    }
+    // the one tag read from a link with no referrer, what it is read for, and that nothing else is read or kept
+    const TAG = {
+      en: ['When the browser reports nothing, the server reads one tag in the link itself, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini or Copilot, the word is “an AI assistant”', 'Nothing else in the link is read for this word, and the tag is not kept'],
+      nb: ['Når nettleseren ikke oppgir noe, leser tjeneren én merkelapp i selve lenken, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini eller Copilot, blir ordet «en KI-assistent»', 'Ingenting annet i lenken leses for dette ordet, og merkelappen beholdes ikke'],
+      es: ['Si el navegador no indica nada, el servidor lee una sola etiqueta del propio enlace, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini o Copilot, la palabra es «un asistente de IA»', 'No se lee nada más del enlace para esta palabra, y la etiqueta no se guarda']
+    };
+    for (const lang of HOME_LANGS) {
+      const text = PRIVACY[lang].sections.flatMap((s) => s.paragraphs).join(' ');
+      for (const words of TAG[lang]) expect(text, lang).toContain(words);
     }
     // a practice puzzle is counted now, at the player's own first move
     expect(PRIVACY.en.sections[0].paragraphs[2]).toContain('A practice puzzle may open part-way through');

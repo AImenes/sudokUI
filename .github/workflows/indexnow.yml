@@ -1,0 +1,52 @@
+name: IndexNow
+
+# On every push to main, once Cloudflare has deployed it (Workers Builds,
+# docs/deployment.md), tell IndexNow which pages are new or changed, so Bing,
+# and the AI assistants that search with Bing, fetch them within hours
+# instead of whenever the crawler next comes by. scripts/indexnow.ts has the
+# rules; docs/deployment.md ("IndexNow") the whole picture. The key is public
+# by design (public/<key>.txt), so no secret is needed.
+#
+# This job never fails a push: every step may fail without failing the job,
+# and the script ends quietly whatever happens (no list to compare with, a
+# deploy that never shows, IndexNow refusing). What it did is in its log.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    # the script stops waiting for the deploy after 15 minutes
+    timeout-minutes: 25
+    steps:
+      # first of all, while Cloudflare is still building this push: the list
+      # the site serves now, from before it (a 404 on the first run)
+      - name: Read the list the site serves before the deploy
+        continue-on-error: true
+        run: |
+          curl -fsS --max-time 30 -H 'Cache-Control: no-cache' "https://sudokui.app/indexnow.json?before=${GITHUB_SHA}" -o "$RUNNER_TEMP/indexnow-old.json" \
+            || { echo "No list could be read: only the home pages will go."; rm -f "$RUNNER_TEMP/indexnow-old.json"; }
+
+      # the script and the key file, nothing else
+      - uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          sparse-checkout: |
+            scripts
+            public
+
+      - uses: actions/setup-node@v4
+        continue-on-error: true
+        with:
+          node-version: 22
+
+      # waits for this commit's indexnow.json to go live (up to 15 minutes),
+      # then sends the new and changed URLs to https://api.indexnow.org
+      - name: Send the new and changed pages to IndexNow
+        continue-on-error: true
+        run: node --experimental-strip-types scripts/indexnow-submit.ts "$RUNNER_TEMP/indexnow-old.json"

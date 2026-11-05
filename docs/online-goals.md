@@ -590,6 +590,10 @@ before the launch:
   `chat` where Android names the app. A search engine is matched on its
   search host, not its whole domain, so Google Docs or Sites are `other`;
   a link Gmail passes through Google's redirect still reads as `search`.
+  Since 4 November 2026 the word is `landingWord`'s: with no referrer, a
+  link whose `utm_source` names an AI assistant by its address (ChatGPT
+  tags its links `utm_source=chatgpt.com`) is `ai`. That one parameter
+  is read, nothing else in the address, and nothing of it is written.
 - **A landing can no longer be posted.** `/api/t` takes `started`,
   `completed` and `shared`; before, a forged `landing` line was written
   like the share route's own.
@@ -789,3 +793,19 @@ come into view on a 390 x 844 phone without scrolling. It opens by default, the
 choice is kept on the device (localStorage, `sudokui-assist-folded`), and a
 desk, a tablet or a phone on its side always shows the box open. Nothing sent
 from the device changed.
+
+Later on 4 November 2026: on a phone held upright the folded row is one line
+at every width from 320 to 430 px, "Assist · counts as help" ("Hjelp · vises
+i resultatet", "Ayuda · consta en la partida"), and where even that has no room
+the note gives way rather than wrap; the "?" moved from the box's head to the
+end of the edit row, beside Swap, and where Undo, Redo, Erase and Swap then
+cannot all show their words (Spanish on a 320 px phone) they show their icons
+alone and keep their words as their names (src/ui/Controls.tsx). An AI
+assistant's link counts as `ai` even with no referrer (above, "A landing says
+where it came from"), and sudokUI describes itself to assistants in `/llms.txt`
+and to search in the home pages' JSON-LD ([reach-plan-2026-11.md](reach-plan-2026-11.md),
+"AI assistants"). The first fan who does not know the owner found the app
+through ChatGPT and values playing, looking up techniques and asking for hints
+at his own pace, with no structured course ([launch-log.md](launch-log.md),
+"Notes"): that confirms the positioning, a trainer you use at your own pace
+and never a course.

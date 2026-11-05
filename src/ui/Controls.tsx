@@ -1,7 +1,7 @@
 // The control panel: mode switcher (digit/corner/centre/colour), number pad
 // (doubles as the colour palette in colour mode), undo/redo/erase and the
 // candidate tools (hint, check, auto candidates, fill, convert).
-import React, { useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useT, msg, Translator } from '../content/i18n';
 import { useGame, EntryMode } from '../state/gameStore';
 import { useSettings, MarkLayer } from '../state/settings';
@@ -75,12 +75,41 @@ function keepFolded(folded: boolean): void {
   }
 }
 
+/**
+ * Whether the edit row's words fit beside their icons, all on one row: read
+ * with the words shown, in the font the device really has, and put back as
+ * it was before anything is drawn. A label is never wider than its button
+ * there (styles.css gives each its label's width), so a row whose words do
+ * not fit wraps instead, and that is what tells.
+ */
+function editWordsFit(row: HTMLElement): boolean {
+  const iconsOnly = row.classList.contains('icons');
+  if (iconsOnly) row.classList.remove('icons');
+  const buttons = [...row.children] as HTMLElement[];
+  // a button that starts below the first one's foot has wrapped (the "?"
+  // is shorter, centred on the row)
+  const first = buttons[0];
+  const foot = first ? first.offsetTop + first.offsetHeight : 0;
+  const fit = buttons.every((b) => b.offsetTop < foot && b.scrollWidth <= b.clientWidth);
+  if (iconsOnly) row.classList.add('icons');
+  return fit;
+}
+
 const MODES: { id: EntryMode; label: string; key: string }[] = [
   { id: 'digit', label: msg('Digit'), key: 'Z' },
   { id: 'corner', label: msg('Corner'), key: 'X' },
   { id: 'center', label: msg('Centre'), key: 'C' },
   { id: 'color', label: msg('Colour'), key: 'V' }
 ];
+
+/** the "?": what every button does, in a dialog */
+function HelpButton({ t, onClick }: { t: Translator; onClick: () => void }) {
+  return (
+    <button className="zone-help" onClick={onClick} aria-label={t('What the buttons do')} title={t('What the buttons do')}>
+      ?
+    </button>
+  );
+}
 
 export function Controls({
   onShowSteps,
@@ -171,6 +200,12 @@ export function Controls({
     setFoldChoice(!folded);
     keepFolded(!folded);
   };
+  // on a phone the "?" stands at the end of the edit row, beside Swap, and
+  // the four buttons give it their room: where their words then cannot
+  // fit (a 320 px phone in Spanish), the row shows the icons alone, and
+  // each button keeps its word as its name
+  const editRow = useRef<HTMLDivElement>(null);
+  const [editIcons, setEditIcons] = useState(false);
 
   // the first assist of a clean game asks first; after that, and for
   // anyone who has switched the question off, the buttons act at once
@@ -268,6 +303,29 @@ export function Controls({
   const fillLayer = effectiveMode === 'corner' || effectiveMode === 'center' ? effectiveMode : materializeLayer;
   const keepCandidates = useSettings((s) => s.autoOffMaterialize);
   const autoOffPromptDone = useSettings((s) => s.autoOffPromptDone);
+  const rowHelp = phone && !custom;
+  useLayoutEffect(() => {
+    const row = editRow.current;
+    if (!phone || !row) {
+      setEditIcons(false);
+      return;
+    }
+    // not while Swap is held: Gather's label is not the row's
+    const measure = () => {
+      if (!row.querySelector('.gather-armed')) setEditIcons(!editWordsFit(row));
+    };
+    measure();
+    // a phone turned, a window resized; a browser without the observer
+    // keeps the first reading
+    const seen = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    seen?.observe(row);
+    let live = true;
+    document.fonts?.ready.then(() => live && measure());
+    return () => {
+      live = false;
+      seen?.disconnect();
+    };
+  }, [phone, rowHelp, t.lang]);
   return (
     <div className="controls">
       <div className="mode-row">
@@ -339,11 +397,18 @@ export function Controls({
         ))}
       </div>
 
-      {/* history & notation: none of these count as help */}
-      <div className="action-row">
-        <button onClick={undo} disabled={!canUndo} title={t('Undo (Ctrl+Z)')}>↩ {t('Undo')}</button>
-        <button onClick={redo} disabled={!canRedo} title={t('Redo (Ctrl+Y)')}>↪ {t('Redo')}</button>
-        <button onClick={erase} title={eraseTitle(t, effectiveMode, autoCandidates)}>⌫ {t('Erase')}</button>
+      {/* history & notation: none of these count as help. On a phone the
+          "?" that explains every button ends the row */}
+      <div ref={editRow} className={`action-row edit-row${editIcons ? ' icons' : ''}`}>
+        <button onClick={undo} disabled={!canUndo} title={t('Undo (Ctrl+Z)')}>
+          <span className="edit-icon" aria-hidden="true">↩</span> <span className="edit-word">{t('Undo')}</span>
+        </button>
+        <button onClick={redo} disabled={!canRedo} title={t('Redo (Ctrl+Y)')}>
+          <span className="edit-icon" aria-hidden="true">↪</span> <span className="edit-word">{t('Redo')}</span>
+        </button>
+        <button onClick={erase} title={eraseTitle(t, effectiveMode, autoCandidates)}>
+          <span className="edit-icon" aria-hidden="true">⌫</span> <span className="edit-word">{t('Erase')}</span>
+        </button>
         {/* a tap swaps; held in Corner or Centre mode it arms Gather,
             shows where the marks will go, and lifting on the button does
             it (sliding off cancels) */}
@@ -369,8 +434,16 @@ export function Controls({
           }}
           title={t('Swap corner and centre marks (S), in the selected cells or the whole board. Held in Corner or Centre mode it gathers those marks into that mode’s layer; Shift+S gathers into the layer Fill uses. Pure notation, never counts as help')}
         >
-          {gatherArmed ? t(gatherArmed === 'corner' ? '→ Corner' : '→ Centre') : `⇄ ${t('Swap')}`}
+          {gatherArmed ? (
+            // where the marks will go: on a narrow row the arrow stands over the word
+            <span className="gather-label">{t(gatherArmed === 'corner' ? '→ Corner' : '→ Centre')}</span>
+          ) : (
+            <>
+              <span className="edit-icon" aria-hidden="true">⇄</span> <span className="edit-word">{t('Swap')}</span>
+            </>
+          )}
         </button>
+        {rowHelp && <HelpButton t={t} onClick={() => setHelp(true)} />}
       </div>
 
       {/* one group, one caption: everything inside counts as help, and
@@ -380,9 +453,18 @@ export function Controls({
       {!custom && (
       <div className={`assist-zone${folded ? ' folded' : ''}`}>
         <div className="row-caption zone-head">
-          <span>
+          {/* folded, one line that names the box and says what it costs;
+              where the line has no room for the note, it drops the note
+              (styles.css) rather than taking a second line */}
+          <span className="zone-title">
             {t('Assist')}{' '}
-            <span className="zone-note">{t(folded ? 'everything here counts as help' : 'everything in this box counts as help')}</span>
+            {folded ? (
+              <span className="zone-note">
+                <span className="zone-dot" aria-hidden="true">·</span> {t('counts as help||after the name of the Assist box, folded into one row')}
+              </span>
+            ) : (
+              <span className="zone-note">{t('everything in this box counts as help')}</span>
+            )}
           </span>
           {/* folded, the box keeps the assist used most */}
           {folded && (
@@ -391,14 +473,7 @@ export function Controls({
               <span>{t('Hint')}</span>
             </button>
           )}
-          <button
-            className="zone-help"
-            onClick={() => setHelp(true)}
-            aria-label={t('What the buttons do')}
-            title={t('What the buttons do')}
-          >
-            ?
-          </button>
+          {!phone && <HelpButton t={t} onClick={() => setHelp(true)} />}
           {phone && (
             <button
               className="zone-fold"

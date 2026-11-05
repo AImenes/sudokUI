@@ -400,6 +400,8 @@ export interface GameInfo {
   fromPosition?: boolean;
   /** opened from a link someone shared: a puzzle's share address (/p/), or a position link (#s=); a daily's address opens the daily, and a bare #p= is mostly a Learn page's own link */
   fromLink?: boolean;
+  /** the player put away the note that this daily is another day's (src/content/dailies.ts, pastDailyOn), for this game */
+  pastDailyHidden?: boolean;
 }
 
 /**
@@ -648,6 +650,8 @@ interface GameStore {
   finishCustomEntry: () => string | null;
   /** reset the current puzzle to its starting position, timer included */
   restart: () => void;
+  /** puts away the note that the daily on the board is another day's, for this game (src/ui/App.tsx, PastDailyNote) */
+  hidePastDaily: () => void;
   select: (cells: number[], additive: boolean) => void;
   setMultiSelect: (on: boolean) => void;
   armDigit: (digit: number | null) => void;
@@ -994,17 +998,28 @@ export const useGame = create<GameStore>()(
       restart: () => {
         const s = get();
         if (!s.info) return;
-        const { challenge, dailyNo, fromLink } = s.info;
+        const { challenge, dailyNo, fromLink, pastDailyHidden } = s.info;
         get().startGame(s.info.puzzle, s.info.score, s.info.level, s.info.practiceTech, s.info.dailyKey);
         const t = translator();
         // a challenger's time (a share link's ?vs=) is still the one to
         // beat, a published daily is still that daily, and a puzzle from a
-        // shared link is still from it
+        // shared link is still from it; the same game, so a note put away
+        // stays away
         set((g) => ({
-          info: g.info ? { ...g.info, ...(challenge ? { challenge } : {}), ...(dailyNo ? { dailyNo } : {}), ...(fromLink ? { fromLink } : {}) } : g.info,
+          info: g.info
+            ? {
+                ...g.info,
+                ...(challenge ? { challenge } : {}),
+                ...(dailyNo ? { dailyNo } : {}),
+                ...(fromLink ? { fromLink } : {}),
+                ...(pastDailyHidden ? { pastDailyHidden } : {})
+              }
+            : g.info,
           notice: t('Puzzle restarted')
         }));
       },
+
+      hidePastDaily: () => set((s) => (s.info ? { info: { ...s.info, pastDailyHidden: true } } : {})),
 
       startCustomEntry: () => {
         // the chain trainer closes first, as Done closes it: a tap on the

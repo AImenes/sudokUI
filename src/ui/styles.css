@@ -1038,13 +1038,40 @@ button {
   min-width: 0;
 }
 
-/* folded: one row, the caption, Hint, the "?" and the chevron */
+/* folded: one row, the caption, Hint and the chevron (the "?" is in the
+   edit row above, on a phone) */
 .assist-zone.folded {
   padding: 6px 8px;
 }
 
 .assist-zone.folded .zone-head {
   margin: 0 2px;
+}
+
+/* folded, the box's name and its note share one line, "Assist · counts as
+   help". A note with no room beside the name goes onto a second line that
+   is cut off, so the row never takes a second line; a screen reader still
+   reads it. The note is the first to give way: smaller on the narrowest
+   phones, then gone. Inline here in every language (html: over the open
+   box's note, which Norwegian and Spanish set on a line of its own) */
+.assist-zone.folded .zone-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
+  height: 16px;
+  line-height: 16px;
+  overflow: hidden;
+}
+
+html .assist-zone.folded .zone-note {
+  display: inline;
+  margin-left: 0;
+  white-space: nowrap;
+}
+
+.zone-dot {
+  margin-right: 2px;
 }
 
 .zone-hint {
@@ -1185,6 +1212,69 @@ button {
   -webkit-touch-callout: none;
 }
 
+/* the edit row: Undo, Redo, Erase, Swap, and on a phone the "?". On a
+   phone a label keeps to one line, and where the words cannot all fit,
+   Controls.tsx shows the icons alone and each word stays the button's
+   name. A press lands on the button, never on a part of its label: Swap
+   held changes its label, and a touch that began on a part taken away
+   would no longer be the button's */
+.edit-row button {
+  position: relative;
+}
+
+.edit-row button span {
+  pointer-events: none;
+}
+
+.edit-row.icons .edit-word {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.edit-row.icons .edit-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* on a phone, Gather's label wraps where the button is too narrow for it:
+   the arrow over the word, inside the button's height (desktop and tablet
+   keep the held Swap as it was) */
+@media (pointer: coarse) and (max-width: 560px) {
+  .edit-row .gather-label {
+    white-space: normal;
+    line-height: 1.1;
+  }
+
+  .edit-row button.gather-armed {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+}
+
+/* the "?" at the end of the row keeps its own small round shape, in
+   every language */
+.controls .action-row button.zone-help {
+  flex: none;
+  align-self: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border-color: rgba(128, 128, 160, 0.35);
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.controls .action-row button.zone-help:hover {
+  color: var(--text);
+}
+
 .action-row button.gather-armed {
   background: var(--accent-fill);
   color: var(--on-accent);
@@ -1320,9 +1410,77 @@ button {
 }
 
 /* while the board is hidden behind the pause card, the controls rest too */
-.side.paused > *:not(.menu-row) {
+.side.paused > *:not(.menu-row):not(.past-daily) {
   pointer-events: none;
   opacity: 0.45;
+}
+
+/* another day's daily on the board (App.tsx, PastDailyNote): a quiet line
+   at the head of the control column, beside the board on a wide screen and
+   just under it on a phone, never over it. Its link opens today's daily as
+   the Daily button does, so it works while paused, as New does */
+.side > .past-daily {
+  order: -2;
+}
+
+.past-daily {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 2px 2px 12px;
+  border: 1px solid rgba(128, 128, 160, 0.2);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+
+.past-daily p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 7px 0;
+}
+
+.past-daily a {
+  color: var(--accent-text);
+  font-weight: 600;
+  text-decoration: none;
+  /* the link and its arrow wrap as one, never "Today's" alone */
+  white-space: nowrap;
+}
+
+.past-daily a:hover {
+  text-decoration: underline;
+}
+
+.past-daily-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.past-daily-close:hover {
+  background: rgba(128, 128, 160, 0.15);
+  color: var(--text);
+}
+
+/* a finger's target on a touch screen */
+@media (any-pointer: coarse) {
+  .past-daily-close {
+    width: 40px;
+    height: 40px;
+  }
 }
 
 /* ---------- hint panel ---------- */
@@ -3674,6 +3832,38 @@ html:not([lang='en']) .zone-note {
     font-size: 11px;
     padding-left: 2px;
     padding-right: 2px;
+  }
+}
+
+/* a phone held upright (useMedia's PHONE): the edit row makes room for
+   the "?", its four buttons a little narrower, with a slimmer gap and
+   less padding; under 360 px English takes the size the other languages
+   have */
+@media (pointer: coarse) and (max-width: 560px) {
+  .edit-row {
+    gap: 6px;
+  }
+
+  .edit-row button {
+    padding-left: 2px;
+    padding-right: 2px;
+    white-space: nowrap;
+  }
+}
+
+@media (pointer: coarse) and (max-width: 359.98px) {
+  html[lang='en'] .edit-row button {
+    font-size: 12px;
+  }
+
+  /* and the folded Assist row gives its note room before it lets it go */
+  .assist-zone.folded .zone-note {
+    font-size: 11px;
+  }
+
+  .zone-hint {
+    padding-left: 10px;
+    padding-right: 10px;
   }
 }
 

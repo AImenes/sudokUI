@@ -14,6 +14,7 @@ import { TECHS, PRACTICE_TECHS } from '../../src/engine/ratings';
 import { dialAngle, TREMOR } from '../../src/ui/RatingGauge';
 import { techNames as nbNames } from '../../src/content/locales/names.nb';
 import { techNames as esNames } from '../../src/content/locales/names.es';
+import { HOME, HOME_LANGS, homePath } from '../../src/content/home';
 
 /** the published dailies, read as a file: Playwright's loader takes no JSON import without an attribute */
 const dailies: Daily[] = JSON.parse(new TextDecoder().decode(readFileSync('src/content/dailies.json')));
@@ -96,22 +97,43 @@ async function expectPracticeBarFits(page: Page, path: string, longest: string, 
 /** the keys and buttons of the control column (digits, modes, actions,
  *  the menu) that stick out of the column or whose label overflows its
  *  button, judged by their boxes: a key past the column's edge is cut
- *  off without the page ever scrolling sideways */
+ *  off without the page ever scrolling sideways. And the two rows that
+ *  must stay one: the edit row (Undo, Redo, Erase, Swap and, on a phone,
+ *  the "?"), and the folded Assist row, whose note is shown whole beside
+ *  the box's name or not at all, never cut and never on a line of its own */
 const controlMisfits = (page: Page) =>
   page.locator('.side').evaluate((side) => {
     const column = side.getBoundingClientRect();
     const misfits: string[] = [];
+    const nameOf = (el: HTMLElement) => el.innerText.replace(/\s+/g, ' ').trim() || el.getAttribute('aria-label') || el.textContent!.trim();
     for (const el of side.querySelectorAll<HTMLElement>('.num-btn, .mode-btn, .action-row button, .menu-row button, .zone-head button')) {
       if (!el.getClientRects().length) continue; // not shown here
       const r = el.getBoundingClientRect();
-      const name = el.innerText.replace(/\s+/g, ' ').trim();
+      const name = nameOf(el);
       if (r.left < column.left - 0.5 || r.right > column.right + 0.5) misfits.push(`${name} sticks out of the column`);
       if (el.scrollWidth > el.clientWidth) misfits.push(`${name} overflows its button`);
+    }
+    const edit = [...side.querySelectorAll<HTMLElement>('.edit-row > button')].filter((el) => el.getClientRects().length);
+    const first = edit[0]?.getBoundingClientRect();
+    for (const el of edit.slice(1)) {
+      const r = el.getBoundingClientRect();
+      const mid = (r.top + r.bottom) / 2;
+      if (first && (mid < first.top || mid > first.bottom)) misfits.push(`${nameOf(el)} wraps onto a second row`);
+    }
+    const title = side.querySelector<HTMLElement>('.assist-zone.folded .zone-title');
+    if (title) {
+      const head = title.parentElement!.getBoundingClientRect();
+      const box = title.getBoundingClientRect();
+      const note = title.querySelector<HTMLElement>('.zone-note')!.getBoundingClientRect();
+      const shown = note.top < box.bottom - 0.5;
+      if (head.height > 44) misfits.push('the folded Assist row takes a second line');
+      if (shown && (note.right > box.right + 0.5 || note.bottom > box.bottom + 0.5)) misfits.push('the folded Assist note is cut off');
     }
     return misfits;
   });
 
-/** the control column at one size, in each language */
+/** the control column at one size, in each language, with the Assist box
+ *  open and, where it folds (a phone held upright), folded */
 async function expectControlsFit(page: Page, width: number, height: number) {
   await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
   await page.setViewportSize({ width, height });
@@ -119,6 +141,15 @@ async function expectControlsFit(page: Page, width: number, height: number) {
     await page.goto(`${path}#p=${EASY}`);
     await expect(page.locator('svg.board')).toBeVisible();
     expect(await controlMisfits(page), `${path} at ${width} x ${height}`).toEqual([]);
+    const fold = page.locator('.zone-fold');
+    if (await fold.count()) {
+      await fold.click();
+      await expect(page.locator('.assist-zone.folded')).toBeVisible();
+      expect(await controlMisfits(page), `${path} at ${width} x ${height}, Assist folded`).toEqual([]);
+      // opened again, as the next language should find it
+      await fold.click();
+      await expect(page.locator('.assist-zone.folded')).toHaveCount(0);
+    }
   }
 }
 
@@ -133,6 +164,10 @@ test.describe('desktop, 1280 x 800', () => {
     await expect(page.locator('.assist-zone')).not.toHaveClass(/folded/);
     await expect(page.locator('#assist-buttons').getByRole('button', { name: 'Steps' })).toBeVisible();
     await expect(page.locator('.assist-zone')).toContainText('everything in this box counts as help');
+    // the "?" stays in the box's head, and the edit row keeps its words
+    await expect(page.locator('.zone-head .zone-help')).toBeVisible();
+    await expect(page.locator('.edit-row .zone-help')).toHaveCount(0);
+    await expect(page.locator('.edit-row')).not.toHaveClass(/icons/);
   });
 
   test('the pause card shows the app’s mark and address, inside the board', async ({ page }) => {
@@ -1703,6 +1738,59 @@ test.describe('phone, 390 x 844', () => {
     expect(key.width).toBeLessThan(34);
     expect(key.height).toBeGreaterThanOrEqual(44);
   });
+
+  // the phones in use, from the smallest to the largest held upright: the
+  // edit row with the "?" in it, open and folded, in every language
+  for (const width of [320, 360, 375, 390, 430])
+    test(`at ${width} px the edit row and its "?" keep to one row and the folded Assist row to one line, in every language`, async ({ page }) => {
+      await expectControlsFit(page, width, 844);
+      // from 360 px up the folded note has its room in every language: "Assist · counts as help"
+      if (width >= 360)
+        for (const path of ['/', '/nb/', '/es/']) {
+          await page.addInitScript(() => localStorage.setItem('sudokui-assist-folded', '1'));
+          await page.goto(`${path}#p=${EASY}`);
+          const title = page.locator('.assist-zone.folded .zone-title');
+          const [box, note] = [(await title.boundingBox())!, (await title.locator('.zone-note').boundingBox())!];
+          expect(note.y, `${path}: the note is on the line`).toBeLessThan(box.y + box.height - 1);
+        }
+    });
+
+  test('the "?" ends the edit row, beside Swap; where the words cannot fit the row shows icons and each button keeps its name', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await open(page);
+    const row = page.locator('.edit-row');
+    await expect(page.locator('.zone-head .zone-help')).toHaveCount(0);
+    const help = row.getByRole('button', { name: 'What the buttons do' });
+    await expect(help).toBeVisible();
+    await expect(row.locator('button').last()).toHaveAttribute('aria-label', 'What the buttons do');
+    await expect(row.locator('button').nth(3)).toHaveClass(/swap-btn/);
+    await help.tap();
+    await expect(page.getByRole('dialog', { name: 'What the buttons do' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    // English has its words at 320 px
+    await expect(row).not.toHaveClass(/icons/);
+    for (const name of ['Undo', 'Redo', 'Erase', 'Swap']) await expect(row.getByRole('button', { name, exact: true })).toBeVisible();
+    // Spanish does not: the icons alone, each button still named by its word
+    await page.goto(`/es/#p=${EASY}`);
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect(row).toHaveClass(/icons/);
+    for (const name of ['Deshacer', 'Rehacer', 'Borrar', 'Cambiar', 'Qué hace cada botón'])
+      await expect(row.getByRole('button', { name, exact: true })).toBeVisible();
+    expect((await row.locator('.edit-word').first().boundingBox())!.width).toBeLessThanOrEqual(1);
+    // held in Corner mode, Swap says where Gather puts the marks, whole, inside the button and the row's height
+    await page.locator('.mode-btn').nth(1).tap();
+    const swap = row.locator('.swap-btn');
+    const before = (await swap.boundingBox())!;
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: before.x + before.width / 2, y: before.y + before.height / 2 }] });
+    await expect(swap).toHaveText('→ Esquina');
+    const held = (await swap.boundingBox())!;
+    expect([held.x, held.width, held.height]).toEqual([before.x, before.width, before.height]);
+    expect(await swap.evaluate((el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight)).toBe(true);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(swap).toHaveText('⇄ Cambiar');
+  });
 });
 
 test.describe('phone, 390 x 844, multi-select', () => {
@@ -1787,6 +1875,13 @@ test.describe('phone on its side, 844 x 390', () => {
 
 test.describe('tablet, 820 x 1180', () => {
   test.use({ viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true });
+
+  test('the "?" stays in the Assist box’s head, as at a desk, and the edit row keeps its words', async ({ page }) => {
+    await open(page);
+    await expect(page.locator('.zone-head .zone-help')).toBeVisible();
+    await expect(page.locator('.edit-row button')).toHaveCount(4);
+    await expect(page.locator('.edit-row')).not.toHaveClass(/icons/);
+  });
 
   test('a drag over the board selects at once in any direction, and the page scrolls from beside it', async ({ page }) => {
     await open(page);
@@ -2877,6 +2972,36 @@ test.describe('tablet', () => {
     expect(mode.height).toBeGreaterThanOrEqual(52);
     const wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     expect(wide).toBe(false);
+  });
+});
+
+test.describe('described for AI assistants and search', () => {
+  // as the build writes them: /llms.txt a file of its own, and the home
+  // pages' structured data, with their titles and descriptions as they are
+  test('the build serves /llms.txt as it is, and each home page describes the app in JSON-LD that parses', async ({ page }) => {
+    const llms = await page.request.get('/llms.txt');
+    expect(llms.status()).toBe(200);
+    expect(llms.headers()['content-type']).toMatch(/^text\/plain/);
+    expect(await llms.text()).toBe(new TextDecoder().decode(readFileSync('public/llms.txt')));
+    for (const lang of HOME_LANGS) {
+      const res = await page.request.get(homePath(lang));
+      expect(res.status(), lang).toBe(200);
+      const html = await res.text();
+      expect(html, lang).toContain(`<title>${HOME[lang].title}</title>`);
+      const scripts = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
+      expect(scripts, lang).toHaveLength(1);
+      const data = JSON.parse(scripts[0][1]);
+      const app = data['@graph'].find((node: { '@type': string }) => node['@type'] === 'WebApplication');
+      expect(app, lang).toMatchObject({
+        name: 'sudokUI',
+        description: HOME[lang].appDescription,
+        url: `https://sudokui.app${homePath(lang)}`,
+        applicationCategory: 'GameApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0' },
+        inLanguage: lang
+      });
+    }
   });
 });
 

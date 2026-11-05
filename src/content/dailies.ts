@@ -129,6 +129,38 @@ export function parseDailyUrl(url: { pathname: string; search?: string }): { lan
 /** the path of a daily's address: /daily/2026-10-08, /nb/daily/2026-10-08, with a challenger's time if given */
 export const dailyPath = (lang: Lang, date: string, vs?: number) => `${homePath(lang)}daily/${date}${vs ? `?vs=${vs}` : ''}`;
 
+// ---- another day's daily on the board ---------------------------------------
+
+/**
+ * The day of the daily on the board when it is a published one from
+ * another day than the player's today: the app resumes the last game when
+ * it opens, at the daily's own address, so a player coming back the next
+ * day, or anyone opening an old daily's link, would otherwise be in a past
+ * daily without being told (src/ui/App.tsx, PastDailyNote). Null for
+ * today's daily, for any other game, and once the player has put the note
+ * away for this game (pastDailyHidden, src/state/gameStore.ts).
+ */
+export function pastDailyOn(
+  info: { dailyKey?: string; dailyNo?: number; pastDailyHidden?: boolean } | null | undefined,
+  today = localDateKey()
+): string | null {
+  if (!info?.dailyNo || !info.dailyKey || info.pastDailyHidden) return null;
+  return info.dailyKey === today ? null : info.dailyKey;
+}
+
+/**
+ * A daily's day as the player's language writes it: 30 October, 30.
+ * oktober, 30 de octubre; with the year when it is not today's year
+ */
+export function dayName(date: string, locale: string, today = localDateKey()): string {
+  const d = dateOfKey(date);
+  if (!d) return date;
+  const withYear = date.slice(0, 4) !== today.slice(0, 4);
+  // the key is the day itself, held as its UTC midnight: written in UTC,
+  // it is that day wherever the player is
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', ...(withYear ? { year: 'numeric' } : {}), timeZone: 'UTC' }).format(d);
+}
+
 // ---- the statistics ---------------------------------------------------------
 
 /** the width of a histogram bucket, in seconds */

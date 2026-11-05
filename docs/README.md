@@ -26,12 +26,13 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
   will not cross; share links, the daily, ID-less counting; the reach
   section points to the reach plan.
 - [reach-plan-2026-11.md](reach-plan-2026-11.md): the ranked reach plan of
-  November 2026 (what to build, what the owner does, Reddit's rules, what
-  not to do, how to measure); its evidence in
+  November 2026 (what to build, what the owner does, AI assistants as a
+  channel, Reddit's rules, what not to do, how to measure); its evidence in
   [reach-research-2026-11.md](reach-research-2026-11.md).
 - [launch-log.md](launch-log.md): one dated line per reach action the
-  owner takes, the link used and the landing word expected, and the
-  numbers read before and after.
+  owner takes, the link used and the landing word expected, dated notes on
+  how players arrive and why they stay, and the numbers read before and
+  after.
 - [play-store-plan.md](play-store-plan.md): sudokUI on Google Play as a
   Trusted Web Activity (November 2026): Google's rules, the asset links
   file, the Data safety answers, the listing in three languages, the
