@@ -66,6 +66,22 @@ const shown = (p: Page, visible: boolean) =>
 const left = (p: Page) => p.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false })));
 
 const winScreen = (page: Page) => page.getByRole('dialog', { name: 'Puzzle solved' });
+/** a line's text once it has stopped changing (the moves are credited one by one, in a worker) */
+const settled = async (line: import('@playwright/test').Locator) => {
+  let last = '';
+  await expect
+    .poll(
+      async () => {
+        const now = await line.innerText();
+        const same = now === last;
+        last = now;
+        return same;
+      },
+      { intervals: [700], timeout: 15_000 }
+    )
+    .toBe(true);
+  return last;
+};
 const secondsOn = async (page: Page) => {
   const [m, s] = (await page.locator('.timer').innerText()).split(':').map(Number);
   return m * 60 + s;
@@ -177,7 +193,11 @@ test.describe('a solved game', () => {
     await solveBoard(page, daily.puzzle);
     const dialog = winScreen(page);
     await expect(dialog.getByRole('button', { name: /Send my time and compare/ })).toBeVisible();
+    await expect(dialog).toContainText('with your own marks');
     const result = await dialog.locator('p').first().innerText();
+    // the moves of the player's own, once every one has been credited
+    const moves = await settled(dialog.locator('.solve-summary'));
+    expect(moves).toMatch(/^\d+ moves of your own/);
     await dialog.getByRole('button', { name: 'Admire the grid' }).click();
     await page.getByRole('button', { name: 'Steps', exact: true }).click();
     const path = page.getByRole('dialog', { name: 'Solution path' });
@@ -201,6 +221,53 @@ test.describe('a solved game', () => {
     await expect(again).not.toContainText('Solved with assistance');
     await expect(again.getByRole('button', { name: /Send my time and compare/ })).toBeVisible();
     await expect(again.locator('p').first()).toHaveText(result);
+    // judged as it was solved, with the player's own marks, though the jump
+    // switched auto candidates on; and the moves are the solve's, not twice
+    await expect(again).toContainText('with your own marks');
+    await expect(again).not.toContainText('with automatic candidates');
+    await expect(again.locator('.solve-summary')).toHaveText(moves);
+  });
+
+  test('a daily solved, undone and solved again with a hint is still its unassisted solve: Send sends it with no hint, and it is accepted', async ({ page }) => {
+    test.setTimeout(90_000);
+    const today = localDateKey();
+    const daily = dailies.find((d) => d.date === today)!;
+    expect(daily, `a published daily for ${today}`).toBeTruthy();
+    const no = dailies.indexOf(daily) + 1;
+    // answered as the server answers (worker/daily.ts): an unassisted solve that says it took a hint is refused
+    const sent: { seconds: number; unassisted: boolean; hints: number }[] = [];
+    await page.route('**/api/daily/*/result', async (route) => {
+      const body = route.request().postDataJSON();
+      sent.push(body);
+      if (body.unassisted && body.hints > 0) return route.fulfill({ status: 400, json: { error: 'an unassisted solve used no hints' } });
+      await route.fulfill({ json: { accepted: true, stats: { no, count: 3, median: 600, histogram: [[Math.floor(body.seconds / 15), 3]] } } });
+    });
+    await open(page, `/daily/${today}`);
+    await solveBoard(page, daily.puzzle);
+    const first = winScreen(page);
+    await expect(first).toContainText('Unassisted solve: no help, every mark your own');
+    const result = await first.locator('p').first().innerText();
+    // not sent: put away, the last digit undone, and a hint that places it
+    await page.keyboard.press('Escape');
+    await page.locator('svg.board').focus();
+    await page.keyboard.press('Control+KeyZ');
+    await expect(page.getByRole('button', { name: 'Pause game' })).toBeEnabled();
+    await page.keyboard.press('KeyH');
+    await page.getByRole('button', { name: 'Use Hint' }).click();
+    await page.locator('svg.board').focus();
+    await page.keyboard.press('KeyH');
+    await page.keyboard.press('KeyH');
+    await expect(page.getByRole('button', { name: 'Pause game' })).toBeDisabled();
+    await page.reload();
+    const again = winScreen(page);
+    await expect(again).toContainText('Unassisted solve: no help, every mark your own');
+    await expect(again).not.toContainText('From hints');
+    await expect(again.locator('p').first()).toHaveText(result);
+    await again.getByRole('button', { name: /Send my time and compare/ }).click();
+    await expect(again.locator('.solve-clean', { hasText: '🌍' })).toBeVisible();
+    await expect(again).not.toContainText('Your time was not accepted');
+    const [, m, ss] = /· (\d+):(\d\d)$/.exec(result)!;
+    expect(sent.map((b) => [b.seconds, b.unassisted, b.hints])).toEqual([[Number(m) * 60 + Number(ss), true, 0]]);
   });
 
   test('a daily solved again by Restart shows its win screen, which says the first solve stays the day’s result, and sends and shares that one', async ({ page }) => {

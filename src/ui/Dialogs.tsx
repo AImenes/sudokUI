@@ -1378,6 +1378,8 @@ export function VictoryDialog({
   const assisted = useGame((s) => s.assisted);
   const elapsedMs = useGame((s) => s.elapsedMs);
   const autoCandidates = useGame((s) => s.autoCandidates);
+  // the solve's own: a Steps jump since switched them on (gameStore.ts, recordWin)
+  const solvedAuto = useGame((s) => s.solvedAuto);
   const practiceFound = useGame((s) => s.practiceFound);
   const game = useStats((s) => s.game);
   const bands = useStats((s) => s.bands);
@@ -1432,7 +1434,9 @@ export function VictoryDialog({
   // a practice game, or one opened from a position link, starts part-way
   // through, so its time compares with nothing
   const partWay = !!info.practiceTech || !!info.fromPosition;
-  const mode = autoCandidates ? 'auto' : 'marks';
+  // judged as the solve was made: a board solved again after a Steps jump,
+  // which switched auto candidates on, is still that solve
+  const mode = (solvedAuto ?? autoCandidates) ? 'auto' : 'marks';
   // Beginner and Nightmare puzzles are timed against their own (solveTimes.ts)
   const timedAs = timeBand(info.level, info.score);
   const verdict = partWay ? null : timeVerdict(timedAs, secs, mode);

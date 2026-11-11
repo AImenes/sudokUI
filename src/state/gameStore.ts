@@ -598,10 +598,11 @@ export interface SetAside extends GameBackup {
   customBackup?: GameBackup | null;
   solved?: boolean;
   /** a game solved, then put back in play (Undo, a Steps jump): its solve's
-   *  time and help, and whether it is its day's result, so solved again
+   *  time, help and auto candidates, and whether it is its day's result, so solved again
    *  after Back to it it is still that solve (winClock) */
   solvedMs?: number | null;
   solvedAssisted?: boolean | null;
+  solvedAuto?: boolean | null;
   dailyKept?: boolean;
   practiceTarget?: Step | null;
   practiceFound?: boolean;
@@ -670,6 +671,12 @@ interface GameStore {
    *  saved with the game, and a save from before it existed has it when it
    *  was won, as the game's help flag then */
   solvedAssisted: boolean | null;
+  /** whether auto candidates were on when the solve was recorded
+   *  (recordWin): the win screen judges the solve's time against solvers
+   *  of that kind, and a Steps jump since, which switches them on, does
+   *  not change it. Null before the solve; saved with the game, and a save
+   *  from before it existed has it when it was won, as the board's then */
+  solvedAuto: boolean | null;
   /** this game's solve is the one its day keeps as its result
    *  (recordDaily): not so for a daily solved again. Saved with the game;
    *  absent in a save from before it existed */
@@ -907,7 +914,7 @@ function foundNotice(tech: Tech): string {
 function recordWin(s: GameStore) {
   if (!s.info || s.solved) return;
   // won here, its win screen up: this window's own until it is put away
-  useGame.setState({ solved: true, solvedMs: s.elapsedMs(), solvedAssisted: s.assisted, ownHere: true });
+  useGame.setState({ solved: true, solvedMs: s.elapsedMs(), solvedAssisted: s.assisted, solvedAuto: s.autoCandidates, ownHere: true });
   if (!s.info.practiceTech) useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
   useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000), kindOf(s.info));
   recordDaily(s);
@@ -925,7 +932,9 @@ export function dailyResultOf(s: Pick<GameStore, 'info' | 'cells' | 'assisted' |
     no: s.info.dailyNo,
     grid: s.cells.map((c) => c.value).join(''),
     seconds: Math.floor(s.elapsedMs() / 1000),
-    hints: Object.values(useStats.getState().game.hinted).reduce((sum, n) => sum + (n ?? 0), 0),
+    // an unassisted solve took no hint (the server refuses one that says
+    // it did): a hint used on the board since it was solved is none of it
+    hints: s.assisted ? Object.values(useStats.getState().game.hinted).reduce((sum, n) => sum + (n ?? 0), 0) : 0,
     unassisted: !s.assisted
   };
 }
@@ -1051,6 +1060,7 @@ export const useGame = create<GameStore>()(
       solved: false,
       solvedMs: null,
       solvedAssisted: null,
+      solvedAuto: null,
       assisted: false,
       hint: null,
       hintWith: null,
@@ -1157,6 +1167,7 @@ export const useGame = create<GameStore>()(
           solved: false,
           solvedMs: null,
           solvedAssisted: null,
+          solvedAuto: null,
           dailyKept: false,
           ownHere: false,
           // fast-forwarded practice switches auto candidates on for you,
@@ -1589,9 +1600,14 @@ export const useGame = create<GameStore>()(
           ...(found ? { practiceFound: true, notice: foundNotice(s.info!.practiceTech!) } : {}),
           ...(won ? winClock(get()) : {})
         });
-        if (before) credit(before, moves);
-        const stats = useStats.getState();
-        for (let k = 0; k < wrong; k++) stats.recordError();
+        // a board solved before (an Undo or a Steps jump off it) is the
+        // same solve played again: its moves are no new work, for the
+        // game's tally or the record (the win screen shows the solve's)
+        if (!s.solved) {
+          if (before) credit(before, moves);
+          const stats = useStats.getState();
+          for (let k = 0; k < wrong; k++) stats.recordError();
+        }
         if (won) recordWin(get());
       },
 
@@ -2197,7 +2213,8 @@ export const useGame = create<GameStore>()(
           won,
           ...(won ? winClock(get()) : {})
         });
-        useStats.getState().recordHinted(step.tech);
+        // on a board solved before, no new work (input, above)
+        if (!s.solved) useStats.getState().recordHinted(step.tech);
         if (won) recordWin(get());
       },
 
@@ -2448,8 +2465,9 @@ export const useGame = create<GameStore>()(
           hint: null,
           hintStage: 'hidden'
         });
-        // the player's own logic, checked: credited like any unaided move
-        credit(g, elims.map((e) => ({ cell: e.cell, digit: e.digit, placed: false })));
+        // the player's own logic, checked: credited like any unaided move,
+        // unless the board was solved before (input)
+        if (!s.solved) credit(g, elims.map((e) => ({ cell: e.cell, digit: e.digit, placed: false })));
       },
 
       showProof: (k) => {
@@ -2766,6 +2784,7 @@ export const useGame = create<GameStore>()(
         solved: s.solved,
         solvedMs: s.solvedMs,
         solvedAssisted: s.solvedAssisted,
+        solvedAuto: s.solvedAuto,
         dailyKept: s.dailyKept,
         assisted: s.assisted,
         // the declared meaning of the marks survives a reload with them
@@ -2792,7 +2811,7 @@ export const useGame = create<GameStore>()(
         // (the solve's time and whether it is the day's own start unknown
         // where a save from before they were kept lacks them, not as this
         // window had them)
-        return { ...current, ...freshSession(), solvedMs: null, solvedAssisted: null, dailyKept: undefined, ...p, counted: true };
+        return { ...current, ...freshSession(), solvedMs: null, solvedAssisted: null, solvedAuto: null, dailyKept: undefined, ...p, counted: true };
       },
       onRehydrateStorage: () => (state) => {
         if (state) {
@@ -2818,6 +2837,7 @@ export const useGame = create<GameStore>()(
           state.solved = !!state.solved || state.won;
           if (state.solvedMs === null && state.won) state.solvedMs = state.elapsedBefore;
           if (state.solvedAssisted === null && state.won) state.solvedAssisted = state.assisted;
+          if (state.solvedAuto === null && state.won) state.solvedAuto = state.autoCandidates;
           // the chain trainer, open when the page went, does not come back:
           // it closes as Done closes it, so the auto candidates it switched
           // on go off with the player's marks back (after the count above,
@@ -2920,7 +2940,7 @@ function asideOfSaved(p: Partial<GameStore>): SetAside | null {
     elapsedBefore: p.elapsedBefore ?? 0,
     won: !!p.won,
     solved: !!p.solved || !!p.won,
-    ...(p.solved || p.won ? { solvedMs: p.solvedMs ?? null, solvedAssisted: p.solvedAssisted ?? null, dailyKept: p.dailyKept } : {}),
+    ...(p.solved || p.won ? { solvedMs: p.solvedMs ?? null, solvedAssisted: p.solvedAssisted ?? null, solvedAuto: p.solvedAuto ?? null, dailyKept: p.dailyKept } : {}),
     assisted: !!p.assisted,
     markContract: contract,
     practiceTarget: p.practiceTarget ?? null,
@@ -3176,6 +3196,7 @@ function boardOf(back: SetAside): Partial<GameStore> {
     solved: !!back.solved || back.won,
     solvedMs: back.solvedMs ?? (back.won ? back.elapsedBefore : null),
     solvedAssisted: back.solvedAssisted ?? (back.won ? (back.assisted ?? false) : null),
+    solvedAuto: back.solvedAuto ?? (back.won ? back.autoCandidates : null),
     dailyKept: back.dailyKept,
     counted: !!g.info && !useSettings.getState().dontCount && playedOn(g),
     assisted: back.assisted ?? false,
@@ -3221,7 +3242,7 @@ function asideOf(s: GameStore): SetAside {
     elapsedBefore: s.elapsedMs(),
     won: s.won,
     solved: s.solved,
-    ...(s.solved ? { solvedMs: s.solvedMs, solvedAssisted: s.solvedAssisted, dailyKept: s.dailyKept } : {}),
+    ...(s.solved ? { solvedMs: s.solvedMs, solvedAssisted: s.solvedAssisted, solvedAuto: s.solvedAuto, dailyKept: s.dailyKept } : {}),
     assisted: s.assisted,
     markContract: s.markContract,
     practiceTarget: s.practiceTarget,

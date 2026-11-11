@@ -368,6 +368,60 @@ describe('a daily solved again', () => {
     expect(Math.floor(g.elapsedMs() / 1000)).toBe(first.seconds);
   });
 
+  it('a solve undone and solved again with a hint sends its own solve: no hint, unassisted, and the hint goes in no tally', async () => {
+    startDaily();
+    solveAll();
+    const first = useDailyStats.getState().played[no];
+    expect(first.assisted).toBe(false);
+    const tally = useStats.getState().game;
+    // Undo of the last digit, then a hint that places it
+    useGame.getState().undo();
+    useGame.getState().requestHint();
+    expect(useGame.getState().hint).not.toBeNull();
+    useGame.getState().applyHint();
+    let g = useGame.getState();
+    expect(g.won).toBe(true);
+    expect(g.assisted).toBe(false);
+    // the board solved again took nothing from the hint: the solve's tally
+    expect(useStats.getState().game).toEqual(tally);
+    expect(dailyResultOf(g)).toMatchObject({ seconds: first.seconds, hints: 0, unassisted: true });
+    await reload();
+    g = useGame.getState();
+    expect(dailyResultOf(g)).toMatchObject({ seconds: first.seconds, hints: 0, unassisted: true });
+    expect(await useDailyStats.getState().submit(dailyResultOf(g)!)).toBe('accepted');
+    expect(posts.map((p) => [p.seconds, p.hints, p.unassisted])).toEqual([[first.seconds, 0, true]]);
+  });
+
+  it('a Steps jump on the solved daily played to the end keeps the solve’s own marks for its verdict, and its moves and slips are no new work', async () => {
+    startDaily();
+    solveAll();
+    let g = useGame.getState();
+    expect(g.autoCandidates).toBe(false);
+    expect(g.solvedAuto).toBe(false);
+    const tally = useStats.getState().game;
+    useGame.getState().jumpToStep(3);
+    expect(useGame.getState().autoCandidates).toBe(true);
+    // a slip on the board put back in play counts as no error of the solve
+    const open = useGame.getState().cells.findIndex((c) => !c.value);
+    const wrong = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((d) => d !== Number(solution()[open]))!;
+    play(open, wrong);
+    for (const [cell, c] of useGame.getState().cells.entries()) if (!c.given && c.value !== Number(solution()[cell])) play(cell, Number(solution()[cell]));
+    g = useGame.getState();
+    expect(g.won).toBe(true);
+    expect(g.autoCandidates).toBe(true);
+    // the solve was made with the player's own marks
+    expect(g.solvedAuto).toBe(false);
+    expect(useStats.getState().game).toEqual(tally);
+    await reload();
+    expect(useGame.getState().solvedAuto).toBe(false);
+    // and so after Back to it from the slot
+    useGame.getState().jumpToStep(3);
+    useGame.getState().openOver(() => (useGame.getState().startGame(OTHER_PUZZLE, 1000, 'Medium'), true));
+    expect(useGame.getState().setAside?.solvedAuto).toBe(false);
+    useGame.getState().backToSetAside();
+    expect(useGame.getState().solvedAuto).toBe(false);
+  });
+
   it('a solve with help stays one with help when it is solved again', () => {
     startDaily();
     useGame.getState().markAssisted();
