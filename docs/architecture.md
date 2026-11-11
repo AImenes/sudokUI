@@ -92,7 +92,12 @@ card, after a reload or a reopen too (the owner's choice, 11 November
 when the page is shown again: a friend's position or a fast-forwarded
 practice nobody touched among them, and a board whose only change is the
 auto candidates the chain trainer switched on, which Done and a reload
-take off again. A win pauses the clock for
+take off again. While the pause card covers the board, keys act on
+nothing behind it (no Undo, hint, mode or Escape; only P resumes), a key
+meant for the board says why in the toast, and the board's status line,
+which a screen reader hears, says the game is paused instead of reading
+the hidden cells; it says so again when the page is shown. Resumed from
+the keyboard, the focus goes back to the board. A win pauses the clock for
 good: nothing can resume it, and Undo or a Steps jump off the solved board
 (or Redo of the jump) starts it again from the winning time. Solved again,
 it is the same solve, so the clock stops at the time the solve was recorded

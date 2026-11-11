@@ -596,6 +596,7 @@ export function Grid() {
   const errors = useGame((s) => s.errors);
   const paused = useGame((s) => s.paused);
   const won = useGame((s) => s.won);
+  const away = useGame((s) => s.away);
   const togglePause = useGame((s) => s.togglePause);
   const armedDigit = useGame((s) => s.armedDigit);
   const input = useGame((s) => s.input);
@@ -1720,14 +1721,25 @@ export function Grid() {
         )}
 
       </svg>
+      {/* paused, the card covers the board: the status says so, not what a
+          cell holds, and says it again when the page is shown (a pause the
+          page took while hidden, gameStore.ts setAway, is heard on return) */}
       <div id="board-status" className="sr-only" aria-live="polite" aria-atomic="true">
-        {announced}
+        {paused && !won ? (away ? '' : t('Paused. Press P to resume.')) : announced}
       </div>
       {paused && !won && (
         <div className="pause-card">
           <h3>{t('Paused')}</h3>
           <p className="pause-tip">{t('Did you know? {tip}', { tip: t(pauseTip) })}</p>
-          <button className="resume-btn" onClick={togglePause}>
+          <button
+            className="resume-btn"
+            onClick={(e) => {
+              togglePause();
+              // pressed from the keyboard, the focus goes back to the board
+              // rather than to the page as the card goes (a tap leaves it be)
+              if (e.detail === 0) svgRef.current?.focus();
+            }}
+          >
             ⏵ {t('Resume (P)')}
           </button>
           {/* the app's mark and address, quiet but big enough to read from

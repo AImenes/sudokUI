@@ -629,6 +629,25 @@ export default function App() {
         if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter' || /^(Digit|Numpad)[1-9]$/.test(e.code)) e.preventDefault();
         return;
       }
+      // paused, the pause card covers the board: keys act on nothing behind
+      // it (no Undo, no hint, no mode, the chain trainer stays open). Only P
+      // resumes, and Tab, Enter and Space on a focused button stay the
+      // browser's. A key meant for the board says why it does nothing
+      const now = useGame.getState();
+      if (now.paused && !now.won && k !== 'KeyP') {
+        const forBoard =
+          /^(Digit|Numpad)[0-9]$/.test(e.code) ||
+          e.code.startsWith('Arrow') ||
+          e.code === 'Backspace' ||
+          e.code === 'Delete' ||
+          (k.startsWith('Key') && !e.altKey && (!mod || k === 'KeyZ' || k === 'KeyY')) ||
+          e.code === 'Space';
+        if (forBoard) {
+          e.preventDefault();
+          useGame.setState({ notice: translator()('Paused. Press P to resume.') });
+        }
+        return;
+      }
       // walking a hint: the arrow keys step through its frames, Escape
       // returns to the whole drawing
       const walking = useGame.getState().hintStage === 'walk';
@@ -736,9 +755,14 @@ export default function App() {
           } else convertMarks();
           break;
         }
-        case 'KeyP':
+        case 'KeyP': {
+          // from the pause card's own button, the focus goes back to the
+          // board as the card goes, not to the page
+          const inCard = !!(document.activeElement as Element | null)?.closest?.('.pause-card');
           togglePause();
+          if (inCard) document.querySelector<SVGElement>('svg[role="application"]')?.focus();
           break;
+        }
         case 'KeyL':
           openLearn();
           break;

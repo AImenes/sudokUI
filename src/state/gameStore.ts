@@ -1730,7 +1730,8 @@ export const useGame = create<GameStore>()(
       // candidates on or off, and the marks' contract (Snapshot)
       undo: () => {
         const s = get();
-        if (!s.history.length) return;
+        // paused, the board is covered (App.tsx): nothing changes behind the card
+        if (!s.history.length || (s.paused && !s.won)) return;
         const prev = s.history[s.history.length - 1];
         // Undo of a Steps jump made on the solved board brings it back
         // solved, as Redo of the winning digit does (the game is solved
@@ -1757,7 +1758,7 @@ export const useGame = create<GameStore>()(
 
       redo: () => {
         const s = get();
-        if (!s.future.length) return;
+        if (!s.future.length || (s.paused && !s.won)) return;
         const [next, ...rest] = s.future;
         // redoing the winning move wins again (the game is already
         // solved, so its solve is not recorded twice)

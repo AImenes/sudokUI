@@ -242,6 +242,7 @@ const ui: Dictionary = {
   "Paused": "Pause",
   "Did you know? {tip}": "Visste du? {tip}",
   "Resume (P)": "Fortsett (P)",
+  "Paused. Press P to resume.": "Pause. Trykk P for å fortsette.",
   "drag me": "dra meg",
   "Undo (Ctrl+Z)": "Angre (Ctrl+Z)",
   "Redo (Ctrl+Y)": "Gjør om (Ctrl+Y)",

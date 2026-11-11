@@ -242,6 +242,7 @@ const ui: Dictionary = {
   "Paused": "En pausa",
   "Did you know? {tip}": "¿Lo sabías? {tip}",
   "Resume (P)": "Reanudar (P)",
+  "Paused. Press P to resume.": "En pausa. Pulsa P para reanudar.",
   "drag me": "arrástrame",
   "Undo (Ctrl+Z)": "Deshacer (Ctrl+Z)",
   "Redo (Ctrl+Y)": "Rehacer (Ctrl+Y)",

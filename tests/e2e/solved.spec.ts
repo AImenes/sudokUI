@@ -608,4 +608,48 @@ test.describe('the clock', () => {
     await page.waitForTimeout(3300);
     expect(await secondsOn(page)).toBeGreaterThanOrEqual(before + 2);
   });
+
+  test('a pause the page took while hidden is heard when shown; keys act on nothing behind the card, and Resume from the keyboard gives the focus back to the board', async ({ page }) => {
+    await open(page);
+    const solution = solutionOf(EASY);
+    const [a, b] = empties(EASY);
+    await enter(page, a, solution[a]);
+    await enter(page, b, solution[b]);
+    const status = page.locator('#board-status');
+    const where = (cell: number) => `Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`;
+    await expect(status).toHaveText(`${where(b)}: ${solution[b]}.`);
+    await shown(page, false);
+    // hidden: nothing is said to a page nobody sees
+    await expect(status).toHaveText('');
+    await shown(page, true);
+    await expect(page.locator('.pause-card')).toBeVisible();
+    await expect(page.locator('svg.board')).toBeFocused();
+    await expect(status).toHaveText('Paused. Press P to resume.');
+    const board = () => page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.cells.map((c: { value: number }) => c.value).join(''));
+    const mode = () => page.locator('.mode-row .mode-btn.active:not(.multi)').innerText();
+    const cellsThen = await board();
+    const modeThen = await mode();
+    // no Undo, no cell read out, no mode, no hint behind the card
+    for (const key of ['Control+KeyZ', 'ArrowRight', 'Space', 'KeyH', 'Digit5', 'Backspace']) await page.keyboard.press(key);
+    expect(await board()).toBe(cellsThen);
+    expect(await mode()).toBe(modeThen);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(status).toHaveText('Paused. Press P to resume.');
+    await expect(page.locator('.toast')).toContainText('Paused. Press P to resume.');
+    // Tab to the card's Resume, Enter: the card goes and the board has the focus
+    await page.keyboard.press('Tab');
+    await expect(page.locator('.pause-card .resume-btn')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.pause-card')).toHaveCount(0);
+    await expect(page.locator('svg.board')).toBeFocused();
+    await expect(status).toHaveText(`${where(b)}: ${solution[b]}.`);
+    // P from the card's button does the same
+    await page.keyboard.press('KeyP');
+    await expect(page.locator('.pause-card')).toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect(page.locator('.pause-card .resume-btn')).toBeFocused();
+    await page.keyboard.press('KeyP');
+    await expect(page.locator('.pause-card')).toHaveCount(0);
+    await expect(page.locator('svg.board')).toBeFocused();
+  });
 });
