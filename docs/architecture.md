@@ -87,15 +87,27 @@ comes back after a reload. While the page is hidden (`visibilitychange`,
 as it stood; that is not the player's pause, so no pause card and it is
 saved as running, and the clock runs on when the page is shown again or
 reopened. A win pauses the clock for good: nothing can resume it, and Undo
-or a Steps jump off the solved board starts it again from the winning time.
+or a Steps jump off the solved board (or Redo of the jump) starts it again
+from the winning time. Solved again, it is the same solve, so the clock
+stops at the time the solve was recorded with (`solvedMs`, `winClock`),
+and the win screen tells a daily's own solve from an earlier one by the
+game's `dailyKept`, not by its time.
 
 The game, the record (`stats.ts`) and the dailies (`dailyStats.ts`) are
 each one save shared by every tab and window of the app. A window that is
 hidden takes in what another one saves (a `storage` listener in each
 store), so shown again it plays on from there and its next save does not
-put an older board back; a window in front keeps its own. A game read
-from storage comes without the window's undo steps, hint, chain trainer
-and Check marks, which belonged to the board it had (`freshSession`).
+put an older board back; a window in front keeps its own. The game comes
+in only when it is the window's own game (the same puzzle and day) or the
+window's own is not under way (solved, nothing played on it, or none; a
+practice or a shared position is under way once the player moves on it in
+that window: `takesInSaved`): a hidden window with another game under way
+keeps it,
+so a link or a practice opened in a new tab, or another window going
+away, takes no game from it. The game's own tally (`stats.ts`, `game`)
+goes with the game. A game read from storage comes without the window's
+undo steps, hint, chain trainer and Check marks, which belonged to the
+board it had (`freshSession`).
 
 **Settings** ([settings.ts](../src/state/settings.ts)). Persisted user
 preferences (theme, highlights, timer, auto-off materialisation behaviour).

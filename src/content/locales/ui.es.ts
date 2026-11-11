@@ -352,6 +352,7 @@ const ui: Dictionary = {
   "Technique to look for": "Técnica que buscar",
   "A pencil mark somewhere dropped a digit that belongs in the solution. Run Check to find it before scanning.": "En alguna casilla, las anotaciones han perdido un número que pertenece a la solución. Usa Revisar para encontrarla antes de explorar.",
   "Nothing fires here. You may need a technique beyond the catalogue's reach from this position, or a candidate is off (run Check).": "Aquí no se aplica ninguna técnica. Puede que desde esta posición haga falta una técnica fuera del alcance del catálogo, o que algún candidato esté mal (usa Revisar).",
+  "The board is solved: nothing is left to find.": "El tablero está resuelto: no queda nada por encontrar.",
   "Related techniques that do:": "Técnicas afines que sí se aplican:",
   "The pattern may still be there without removing anything, which is why the solver passes it by.": "Puede que el patrón esté ahí sin eliminar nada, y por eso el resolvedor lo pasa por alto.",
   "No technique called “{q}” is in the catalogue.": "No hay ninguna técnica llamada «{q}» en el catálogo.",

@@ -698,7 +698,9 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
             </p>
           ) : steps.length === 0 ? (
             <p className="dialog-note">
-              {t("Nothing fires here. You may need a technique beyond the catalogue's reach from this position, or a candidate is off (run Check).")}
+              {won
+                ? t('The board is solved: nothing is left to find.')
+                : t("Nothing fires here. You may need a technique beyond the catalogue's reach from this position, or a candidate is off (run Check).")}
             </p>
           ) : (
             <>
@@ -1396,6 +1398,8 @@ export function VictoryDialog({
   // the day's solve as the device keeps it: the first, so for a daily
   // solved again it may be another than this (gameStore.ts, recordDaily)
   const kept = useDailyStats((s) => (dailyNo ? s.played[dailyNo] : undefined));
+  // whether this game's solve is that one (recordDaily)
+  const dailyKept = useGame((s) => s.dailyKept);
   const [sent, setSent] = useState<SubmitOutcome | 'sending' | null>(null);
   const [statsFailed, setStatsFailed] = useState(false);
   useEffect(() => {
@@ -1471,8 +1475,10 @@ export function VictoryDialog({
   const closed = !!info.dailyNo && dailyClosed(info.dailyNo);
   // a daily solved before on this device: that solve stays the day's
   // result, so this one is not offered for everyone's times; the first
-  // one's is, if it was unassisted and never went in (keptResultOf)
-  const before = kept && (kept.seconds !== secs || kept.assisted !== assisted) ? kept : null;
+  // one's is, if it was unassisted and never went in (keptResultOf). This
+  // solve undone and solved again is still the day's own; a save from
+  // before the game said so tells it by its time
+  const before = kept && !(dailyKept ?? (kept.seconds === secs && kept.assisted === assisted)) ? kept : null;
   const keptResult = before && info.dailyNo && !closed && submittedSecs === undefined ? keptResultOf(info.dailyNo, before, info.solution) : null;
 
   // the player's time for the daily, sent when asked (src/state/dailyStats.ts):

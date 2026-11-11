@@ -352,6 +352,7 @@ const ui: Dictionary = {
   "Technique to look for": "Teknikk å se etter",
   "A pencil mark somewhere dropped a digit that belongs in the solution. Run Check to find it before scanning.": "Et sted mangler notatene et tall som hører til løsningen. Bruk Sjekk for å finne det før du skanner.",
   "Nothing fires here. You may need a technique beyond the catalogue's reach from this position, or a candidate is off (run Check).": "Ingen teknikk kan brukes her. Kanskje trengs en teknikk utenfor katalogens rekkevidde fra denne stillingen, eller så er en kandidat feil (bruk Sjekk).",
+  "The board is solved: nothing is left to find.": "Brettet er løst: det er ingenting igjen å finne.",
   "Related techniques that do:": "Beslektede teknikker som kan brukes:",
   "The pattern may still be there without removing anything, which is why the solver passes it by.": "Mønsteret kan likevel finnes uten å fjerne noe, og derfor går løseren forbi det.",
   "No technique called “{q}” is in the catalogue.": "Ingen teknikk som heter «{q}», finnes i katalogen.",

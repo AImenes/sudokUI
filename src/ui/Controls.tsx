@@ -467,7 +467,9 @@ export function Controls({
               (styles.css) rather than taking a second line */}
           <span className="zone-title">
             {t('Assist')}{' '}
-            {folded ? (
+            {/* not on a solved board: Check, Steps and Scan study it for
+                free there, and the rest is greyed out */}
+            {won ? null : folded ? (
               <span className="zone-note">
                 <span className="zone-dot" aria-hidden="true">·</span> {t('counts as help||after the name of the Assist box, folded into one row')}
               </span>

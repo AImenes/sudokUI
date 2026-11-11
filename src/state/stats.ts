@@ -50,6 +50,17 @@ const emptyGame = (): GameTally => ({ unaided: {}, hinted: {}, errors: 0, beyond
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+/** whether the game another window saved is this window's own, or taken
+ *  in (gameStore.ts tells, takesInSaved): the tally of that game (game)
+ *  then comes in with the record */
+let tallyFollows = () => true;
+export function tallyFollowsWhen(follows: () => boolean) {
+  tallyFollows = follows;
+}
+/** this window's game tally stays through a take-in from another window
+ *  (merge, and the listener at the end) */
+let keepTally = false;
+
 export const useStats = create<Stats>()(
   persist(
     (set) => ({
@@ -104,7 +115,7 @@ export const useStats = create<Stats>()(
       // bands', so a record written now still reads in an older build
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<Stats>;
-        return { ...current, ...p, bands: foldBands(p.bands ?? {}) };
+        return { ...current, ...p, bands: foldBands(p.bands ?? {}), ...(keepTally ? { game: current.game } : {}) };
       }
     }
   )
@@ -210,12 +221,21 @@ export function gameSummary(game: GameTally): string {
   return sentences.join(' ');
 }
 
+/** the record another window saved, taken in; the tally of the game goes
+ *  with the game, so a window that keeps its own game keeps its own tally
+ *  (the save is read at once, so the merge runs within the call) */
+export function takeInSavedRecord() {
+  keepTally = !tallyFollows();
+  void useStats.persist.rehydrate();
+  keepTally = false;
+}
+
 // what another window of the app records (a second tab, the installed
 // app's window) is taken in while this one is hidden, as its game is
 // (gameStore.ts), so this window's next save does not put an older record
 // back
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === 'sudokui-stats-v1' && e.newValue && document.visibilityState === 'hidden') void useStats.persist.rehydrate();
+    if (e.key === 'sudokui-stats-v1' && e.newValue && document.visibilityState === 'hidden') takeInSavedRecord();
   });
 }

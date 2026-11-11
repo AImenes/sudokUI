@@ -28,7 +28,7 @@ import type { CellDigit } from '../engine/steps';
 import { Level, Tech, SOLVE_ORDER, hintOrder, asLevel } from '../engine/ratings';
 import { useSettings } from './settings';
 import type { MarkLayer } from './settings';
-import { useStats } from './stats';
+import { useStats, tallyFollowsWhen } from './stats';
 import type { GameTally } from './stats';
 import { useTelemetry, type PlayKind } from './telemetry';
 import { useDailyStats } from './dailyStats';
@@ -276,6 +276,12 @@ const freshSession = (): Partial<GameStore> => ({
  *  other stack keeps the flag it leaves */
 const stepAcross = (s: GameStore, x: Snapshot) =>
   x.assisted === undefined ? { mine: snap(s), flag: {} } : { mine: { ...snap(s), assisted: s.assisted }, flag: { assisted: x.assisted } };
+
+/** the clock as the board is solved: it stops at its time, or, for a game
+ *  solved before (an Undo or a Steps jump off it, then solved again), at
+ *  the time its solve was recorded with (recordWin): the same solve shows
+ *  one time, on the win screen, in its verdict, shared and sent */
+const winClock = (s: GameStore) => ({ elapsedBefore: s.solved && s.solvedMs !== null ? s.solvedMs : s.elapsedMs(), paused: true });
 
 /** the chain trainer runs on auto candidates: an Undo, a Redo or a jump
  *  back that leaves them off closes it, with no handover left for Done,
@@ -638,6 +644,15 @@ interface GameStore {
    *  again is a new game. Saved with the game, like won, for the player's
    *  own record; a save from before it existed has it when it was won */
   solved: boolean;
+  /** the time the solve was recorded with (recordWin): the board solved
+   *  again after an Undo or a Steps jump is the same solve, so its clock
+   *  stops there again (winClock). Null before the solve; saved with the
+   *  game, and a save from before it existed has it when it was won */
+  solvedMs: number | null;
+  /** this game's solve is the one its day keeps as its result
+   *  (recordDaily): not so for a daily solved again. Saved with the game;
+   *  absent in a save from before it existed */
+  dailyKept?: boolean;
   /** true once any assist was used this game — hint, check, steps, scan,
    *  revert, auto candidates or fill. A solve is "clean" only while this
    *  stays false; swapping corner↔centre marks never sets it. Reset by
@@ -857,7 +872,7 @@ function foundNotice(tech: Tech): string {
  *  game (startGame), and its solve counts again */
 function recordWin(s: GameStore) {
   if (!s.info || s.solved) return;
-  useGame.setState({ solved: true });
+  useGame.setState({ solved: true, solvedMs: s.elapsedMs() });
   if (!s.info.practiceTech) useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
   useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000), kindOf(s.info));
   recordDaily(s);
@@ -917,6 +932,8 @@ function recordDaily(s: GameStore) {
   const daily = useDailyStats.getState();
   const kept = daily.played[result.no];
   const stands = !kept || (kept.assisted && result.unassisted);
+  // the win screen says which solve stands by this (VictoryDialog)
+  useGame.setState({ dailyKept: stands });
   if (stands) daily.recordPlayed(result.no, { date: s.info.dailyKey, level: s.info.level, score: s.info.score, seconds: result.seconds, assisted: s.assisted });
   if (!useSettings.getState().autoSendDaily || !result.unassisted || dailyClosed(result.no)) return;
   if (daily.submitted[result.no] !== undefined || daily.pending[result.no] || daily.inFlight[result.no]) return;
@@ -992,6 +1009,7 @@ export const useGame = create<GameStore>()(
       away: false,
       counted: false,
       solved: false,
+      solvedMs: null,
       assisted: false,
       hint: null,
       hintWith: null,
@@ -1056,7 +1074,6 @@ export const useGame = create<GameStore>()(
           // appears on the solver's path
           practiceTarget = solvePath(puzzle).find((step) => step.tech === practiceTech) ?? null;
         }
-        useStats.getState().newGame();
         // the start is counted at the game's first move, not here: a game
         // the app opens by itself, or a link nobody plays, is no game
         // begun (countFirstMove, below the store). Starting the puzzle
@@ -1095,6 +1112,8 @@ export const useGame = create<GameStore>()(
           won: false,
           counted: same && prev.counted,
           solved: false,
+          solvedMs: null,
+          dailyKept: false,
           // fast-forwarded practice switches auto candidates on for you,
           // which under the house rules already counts as assistance
           assisted: !!fastForward,
@@ -1121,6 +1140,10 @@ export const useGame = create<GameStore>()(
           // the pattern, and the game is already marked assisted above.
           autoCandidates: !!fastForward
         });
+        // the game's own tally starts after the game is saved, so another
+        // window that keeps its own game sees this one first and keeps its
+        // tally too (stats.ts, below the store)
+        useStats.getState().newGame();
       },
 
       restart: () => {
@@ -1513,7 +1536,7 @@ export const useGame = create<GameStore>()(
           hintStage: 'hidden',
           errors: [],
           ...(found ? { practiceFound: true, notice: foundNotice(s.info!.practiceTech!) } : {}),
-          ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {})
+          ...(won ? winClock(get()) : {})
         });
         if (before) credit(before, moves);
         const stats = useStats.getState();
@@ -1657,7 +1680,7 @@ export const useGame = create<GameStore>()(
           // the win's own pause (togglePause refuses while won): the board
           // comes back to play, the clock going on from the winning time
           ...(s.won ? { paused: false, startedAt: Date.now() } : {}),
-          ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {}),
+          ...(won ? winClock(get()) : {}),
           hint: null,
           hintStage: 'hidden',
           errors: []
@@ -1683,7 +1706,10 @@ export const useGame = create<GameStore>()(
           hintStage: 'hidden',
           errors: [],
           won,
-          ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {})
+          // off the solved board (Redo of a Steps jump made on it), as
+          // Undo: back to play, the clock going on from the winning time
+          ...(s.won ? { paused: false, startedAt: Date.now() } : {}),
+          ...(won ? winClock(get()) : {})
         });
         if (won) recordWin(get());
       },
@@ -2118,7 +2144,7 @@ export const useGame = create<GameStore>()(
           hint: null,
           hintStage: 'hidden',
           won,
-          ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {})
+          ...(won ? winClock(get()) : {})
         });
         useStats.getState().recordHinted(step.tech);
         if (won) recordWin(get());
@@ -2658,6 +2684,8 @@ export const useGame = create<GameStore>()(
         won: s.won,
         // solved survives an Undo of the winning digit, and a reload with it
         solved: s.solved,
+        solvedMs: s.solvedMs,
+        dailyKept: s.dailyKept,
         assisted: s.assisted,
         // the declared meaning of the marks survives a reload with them
         markContract: s.markContract,
@@ -2680,7 +2708,10 @@ export const useGame = create<GameStore>()(
         if (p.customBackup?.info) p.customBackup = { ...p.customBackup, info: levelled(p.customBackup.info) };
         if (p.setAside?.info) p.setAside = { ...p.setAside, info: levelled(p.setAside.info) };
         if (p.setAside?.customBackup?.info) p.setAside = { ...p.setAside, customBackup: { ...p.setAside.customBackup, info: levelled(p.setAside.customBackup.info) } };
-        return { ...current, ...freshSession(), ...p, counted: true };
+        // (the solve's time and whether it is the day's own start unknown
+        // where a save from before they were kept lacks them, not as this
+        // window had them)
+        return { ...current, ...freshSession(), solvedMs: null, dailyKept: undefined, ...p, counted: true };
       },
       onRehydrateStorage: () => (state) => {
         if (state) {
@@ -2701,8 +2732,10 @@ export const useGame = create<GameStore>()(
           // back is judged by its own saved board)
           const g = state.custom && state.customBackup ? state.customBackup : state;
           state.counted = !!g.info && !useSettings.getState().dontCount && playedOn(g);
-          // a save from before solved was kept has it when it was won
+          // a save from before solved was kept has it when it was won, and
+          // the time it was won at
           state.solved = !!state.solved || state.won;
+          if (state.solvedMs === null && state.won) state.solvedMs = state.elapsedBefore;
           // the chain trainer, open when the page went, does not come back:
           // it closes as Done closes it, so the auto candidates it switched
           // on go off with the player's marks back (after the count above,
@@ -2722,15 +2755,63 @@ export const useGame = create<GameStore>()(
   )
 );
 
-// The game another window of the app saved (a second tab, the installed
-// app's window) while this one is hidden is taken in, so this window,
-// shown again, plays on from it, and its next save (being shown is one,
-// setAway) does not put its own older board back. A window in front keeps
-// its own game. The record that goes with the game follows it the same way
-// (stats.ts, dailyStats.ts); settings follow always (settings.ts)
+/**
+ * Whether this window takes in the game another window of the app saved (a
+ * second tab, the installed app's window) while this one is hidden: the
+ * same game, played on there (the same puzzle, the same day), or any game
+ * when this window's own is not under way (solved, nothing played on it,
+ * or none). A game under way here keeps its board and its moves against
+ * another game saved there, a link or a practice opened in a new tab or
+ * another window going away with its own, so no window gives up its game
+ * to another's. A practice puzzle or a shared position opens with moves
+ * that are not the player's, so it is under way once the player moves on
+ * it here (its undo steps; one read from storage has none, a gap the
+ * other way): one left untouched in a tab does not keep, and put back
+ * when shown, a game played in another.
+ */
+export function takesInSaved(
+  saved: Partial<GameStore> | null | undefined,
+  s: Pick<GameStore, 'info' | 'custom' | 'won' | 'cells' | 'autoCandidates' | 'history'>
+): boolean {
+  if (!saved) return false;
+  const partWay = !!s.info?.practiceTech || !!s.info?.fromPosition;
+  const underWay = s.custom || (!!s.info && !s.won && (partWay ? s.history.length > 0 : playedOn(s)));
+  if (!underWay) return true;
+  const theirs = saved.custom ? null : saved.info;
+  const mine = s.custom ? null : s.info;
+  return (
+    !!theirs &&
+    !!mine &&
+    theirs.puzzle === mine.puzzle &&
+    theirs.dailyKey === mine.dailyKey &&
+    (theirs.practiceTech ?? null) === (mine.practiceTech ?? null)
+  );
+}
+
+/** the game saved on the device, as another window may have left it */
+function savedGame(json: string | null): Partial<GameStore> | null {
+  try {
+    return json ? (JSON.parse(json) as { state?: Partial<GameStore> }).state ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
+// The game another window saved while this one is hidden is taken in when
+// it is this window's own (takesInSaved), so this window, shown again,
+// plays on from it, and its next save (being shown is one, setAway) does
+// not put its own older board back. A window in front keeps its own game,
+// and so does a hidden one with another game under way. The record that
+// goes with the game follows it the same way (stats.ts, dailyStats.ts),
+// the game's own tally only with the game; settings follow always
+// (settings.ts)
+export function takeInSavedGame(json: string) {
+  if (takesInSaved(savedGame(json), useGame.getState())) void useGame.persist.rehydrate();
+}
+tallyFollowsWhen(() => takesInSaved(savedGame(localStorage.getItem('sudokui-game-v1')), useGame.getState()));
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === 'sudokui-game-v1' && e.newValue && document.visibilityState === 'hidden') void useGame.persist.rehydrate();
+    if (e.key === 'sudokui-game-v1' && e.newValue && document.visibilityState === 'hidden') takeInSavedGame(e.newValue);
   });
 }
 

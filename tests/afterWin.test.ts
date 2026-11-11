@@ -29,10 +29,10 @@ let posts: any[] = [];
   return new Response(JSON.stringify({ ok: true, accepted: true, stats }), { status: 200, headers: { 'content-type': 'application/json' } });
 };
 
-const { useGame, dailyResultOf, keptResultOf, solvePath } = await import('../src/state/gameStore');
+const { useGame, dailyResultOf, keptResultOf, solvePath, takesInSaved, takeInSavedGame } = await import('../src/state/gameStore');
 const { useDailyStats } = await import('../src/state/dailyStats');
 const { useSettings } = await import('../src/state/settings');
-const { useStats } = await import('../src/state/stats');
+const { useStats, takeInSavedRecord } = await import('../src/state/stats');
 const { useTelemetry } = await import('../src/state/telemetry');
 const { dailyNumber, dailyDate, localDateKey } = await import('../src/content/dailies');
 
@@ -143,6 +143,14 @@ describe('Undo or a Steps jump off a solved board', () => {
     expect(useGame.getState().won).toBe(true);
     expect(useGame.getState().paused).toBe(true);
     expect(useStats.getState().bands.Easy?.solves).toBe(1);
+    // the same solve, with the one time it was recorded with
+    expect(useGame.getState().elapsedMs()).toBe(winMs);
+    // and so by Undo and Redo of the winning digit
+    useGame.getState().undo();
+    vi.advanceTimersByTime(4000);
+    useGame.getState().redo();
+    expect(useGame.getState().won).toBe(true);
+    expect(useGame.getState().elapsedMs()).toBe(winMs);
   });
 
   it('a Steps jump puts the board back in play too, and its digits go in', () => {
@@ -170,11 +178,10 @@ describe('Undo or a Steps jump off a solved board', () => {
     expect(g.won).toBe(true);
     expect(g.paused).toBe(true);
     expect(g.assisted).toBe(false);
-    // the clock stands still at the time it stood when the board came back
-    const back = g.elapsedMs();
-    expect(back).toBe(winMs + 30_000);
+    // the clock stands at the solve's own time, not the time spent on the jump
+    expect(g.elapsedMs()).toBe(winMs);
     vi.advanceTimersByTime(30_000);
-    expect(useGame.getState().elapsedMs()).toBe(back);
+    expect(useGame.getState().elapsedMs()).toBe(winMs);
     expect(useStats.getState().bands.Easy?.solves).toBe(1);
     // and Redo goes to the jump again, with its help
     useGame.getState().redo();
@@ -183,6 +190,27 @@ describe('Undo or a Steps jump off a solved board', () => {
     useGame.getState().undo();
     expect(useGame.getState().won).toBe(true);
     expect(useGame.getState().assisted).toBe(false);
+    expect(useGame.getState().elapsedMs()).toBe(winMs);
+  });
+
+  it('Redo of the jump after its Undo leaves a board to play on, not a pause card, the clock going on from the winning time', () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    solveAll();
+    const winMs = useGame.getState().elapsedMs();
+    useGame.getState().jumpToStep(3);
+    useGame.getState().undo();
+    expect(useGame.getState().paused).toBe(true);
+    vi.advanceTimersByTime(10_000);
+    useGame.getState().redo();
+    const g = useGame.getState();
+    expect(g.won).toBe(false);
+    expect(g.paused).toBe(false);
+    expect(g.elapsedMs()).toBe(winMs);
+    vi.advanceTimersByTime(2000);
+    expect(useGame.getState().elapsedMs()).toBe(winMs + 2000);
+    const open = g.cells.findIndex((c) => !c.value);
+    play(open, Number(solution()[open]));
+    expect(useGame.getState().cells[open].value).toBe(Number(solution()[open]));
   });
 
   it('a pause the player chose before a jump stays theirs', () => {
@@ -270,6 +298,44 @@ describe('a daily solved again', () => {
     expect(posts.map((p) => p.seconds)).toEqual([kept.seconds]);
   });
 
+  it('a solve undone and solved again is still the day’s own: its time is the one kept, and its win screen names no solve before', async () => {
+    startDaily();
+    solveAll();
+    const first = useDailyStats.getState().played[no];
+    expect(useGame.getState().dailyKept).toBe(true);
+    // Steps, a jump, a while on it, then Ctrl+Z as its notice offers
+    useGame.getState().jumpToStep(3);
+    vi.advanceTimersByTime(6000);
+    useGame.getState().undo();
+    expect(useGame.getState().won).toBe(true);
+    expect(Math.floor(useGame.getState().elapsedMs() / 1000)).toBe(first.seconds);
+    expect(dailyResultOf(useGame.getState())?.seconds).toBe(first.seconds);
+    // across a reload too
+    await reload();
+    expect(useGame.getState().dailyKept).toBe(true);
+    expect(Math.floor(useGame.getState().elapsedMs() / 1000)).toBe(first.seconds);
+    // a replay is not the day's own
+    useGame.getState().restart();
+    expect(useGame.getState().dailyKept).toBe(false);
+    solveAll();
+    expect(useGame.getState().dailyKept).toBe(false);
+    expect(useDailyStats.getState().played[no]).toEqual(first);
+  });
+
+  it('a won game saved before the solve’s time was kept has it at its saved time, and says nothing of being the day’s own', async () => {
+    startDaily();
+    solveAll();
+    const winMs = useGame.getState().elapsedMs();
+    const old = saved();
+    delete old.solvedMs;
+    delete old.dailyKept;
+    storage.set('sudokui-game-v1', JSON.stringify({ state: old, version: 0 }));
+    await reload();
+    expect(useGame.getState().solvedMs).toBe(winMs);
+    // the win screen tells it by its time, as before (VictoryDialog)
+    expect(useGame.getState().dailyKept).toBeUndefined();
+  });
+
   it('never replaces the time sent: a replay after a sent time sends nothing', async () => {
     startDaily();
     solveAll();
@@ -323,6 +389,81 @@ describe('a game another window saved', () => {
     expect(useGame.getState().counted).toBe(true);
     play(EMPTY[4], Number(solution()[EMPTY[4]]));
     expect(started).toBe(0);
+  });
+});
+
+describe('a game another window saved, of another puzzle', () => {
+  const OTHER = '8..6.2.5....89..6.67...5.......4.1.9.1.5.8.3.3.4.2.......7...92.3..89....9.2.4..6';
+  /** the save another window wrote as it went away: a game of its own (a link or a practice opened there) */
+  const otherWindowStarted = (info: Record<string, unknown> = {}) => {
+    const other = saved();
+    other.info = { ...other.info, puzzle: OTHER, dailyKey: undefined, ...info };
+    other.cells = other.cells.map((c: { given: boolean }) => ({ ...c, value: 0, given: false }));
+    other.won = false;
+    other.solved = false;
+    storage.set('sudokui-game-v1', JSON.stringify({ state: other, version: 0 }));
+    return storage.get('sudokui-game-v1')!;
+  };
+  const mine = () => useGame.getState().cells.filter((c) => !c.given && c.value).length;
+
+  it('is left alone while this window has a game under way: its board, its moves and its undo steps stay', () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    for (const cell of EMPTY.slice(0, 4)) play(cell, Number(solution()[cell]));
+    const json = otherWindowStarted({ practiceTech: 'X_WING' });
+    takeInSavedGame(json);
+    const g = useGame.getState();
+    expect(g.info?.puzzle).toBe(EASY);
+    expect(mine()).toBe(4);
+    expect(g.history).toHaveLength(4);
+    // a daily of another day, or the same puzzle as practice, is another game too
+    expect(takesInSaved({ ...JSON.parse(json).state, info: { ...g.info, dailyKey: '2026-11-10' } }, g)).toBe(false);
+    expect(takesInSaved({ ...JSON.parse(json).state, info: { ...g.info, practiceTech: 'X_WING' } }, g)).toBe(false);
+    // the same game, played on there, comes in
+    expect(takesInSaved({ ...JSON.parse(json).state, info: g.info }, g)).toBe(true);
+  });
+
+  it('comes in when this window’s game is solved, or not begun, or there is none: nothing of the player’s is given up', () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    const json = otherWindowStarted();
+    expect(takesInSaved(JSON.parse(json).state, useGame.getState())).toBe(true);
+    takeInSavedGame(json);
+    expect(useGame.getState().info?.puzzle).toBe(OTHER);
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    solveAll();
+    expect(takesInSaved(JSON.parse(otherWindowStarted()).state, useGame.getState())).toBe(true);
+    expect(takesInSaved(JSON.parse(json).state, { ...useGame.getState(), info: null })).toBe(true);
+    // a puzzle being typed in is this window's own work
+    expect(takesInSaved(JSON.parse(json).state, { ...useGame.getState(), custom: true, info: null })).toBe(false);
+  });
+
+  it('comes in over a practice puzzle the player has not moved on here, whose moves are the app’s', () => {
+    useSettings.setState({ practiceFastForward: true });
+    useGame.getState().startGame(EASY, 196, 'Easy', 'NAKED_SINGLE' as never);
+    const other = JSON.parse(otherWindowStarted()).state;
+    expect(takesInSaved(other, useGame.getState())).toBe(true);
+    const open = useGame.getState().cells.findIndex((c) => !c.value);
+    play(open, Number(solution()[open]));
+    expect(takesInSaved(other, useGame.getState())).toBe(false);
+  });
+
+  it('leaves this window its own game’s tally while the record comes in', () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    for (const cell of EMPTY.slice(0, 2)) play(cell, Number(solution()[cell]));
+    useStats.setState((s) => ({ game: { ...s.game, errors: 2 } }));
+    // the other window started its own game (its tally new) and solved one on it before
+    const other = JSON.parse(storage.get('sudokui-stats-v1')!);
+    other.state.game = { unaided: {}, hinted: {}, errors: 0, beyond: 0 };
+    other.state.bands = { Hard: { solves: 1, unassisted: 1, bestMs: 300_000, totalMs: 300_000 } };
+    storage.set('sudokui-stats-v1', JSON.stringify(other));
+    otherWindowStarted();
+    takeInSavedRecord();
+    expect(useStats.getState().game.errors).toBe(2);
+    expect(useStats.getState().bands.Hard?.solves).toBe(1);
+    // the same game saved there: its tally comes in with it
+    storage.set('sudokui-game-v1', JSON.stringify({ state: { ...saved(), info: useGame.getState().info }, version: 0 }));
+    storage.set('sudokui-stats-v1', JSON.stringify(other));
+    takeInSavedRecord();
+    expect(useStats.getState().game.errors).toBe(0);
   });
 });
 

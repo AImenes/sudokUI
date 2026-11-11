@@ -357,13 +357,14 @@ Built, October 2026, with these decisions:
   and the pause button are greyed out on it. Undo of the winning digit, or
   a Steps jump off the solved board, puts the board back in play, the
   clock going on from the winning time; solved again, it is the same
-  solve, recorded once, and its win screen, put away, stays away; Undo of
-  a jump made on the solved board brings it back solved, its help flag as
-  it was. A daily solved again (Restart, or the day chosen anew) is a new
-  game for the band record and shows its own win screen, but the day
-  keeps its first solve as its result, as the server keeps the first time
-  it takes: the replay is not kept, its own time is never sent, and its
-  win screen says
+  solve, recorded once, with the time it was recorded with, and its win
+  screen, put away, stays away; Undo of a jump made on the solved board
+  brings it back solved, its help flag and its time as they were. A
+  daily solved again (Restart, or the day chosen anew) is a new game for
+  the band record and shows its own win screen, but the day keeps its
+  first solve as its result, as the server keeps the first time it takes:
+  the replay is not kept, its own time is never sent, and its win screen
+  (which knows the replay by the game's `dailyKept`, not by its time) says
   "You solved this daily before, in 6:12. That solve stays your result."
   If that first time never went in (unassisted, not sent, the day open),
   the replay's win screen says "That time is the one that goes in." and
