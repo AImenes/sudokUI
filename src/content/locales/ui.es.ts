@@ -119,6 +119,7 @@ const ui: Dictionary = {
   "After each unassisted solve of the daily, your time goes in by itself, as if you had tapped Send, and the win screen shows where your time stands at once. Off, a time goes only when you tap Send": "Cada vez que resuelvas sin ayuda el sudoku del día, tu tiempo se enviará solo, como si hubieras pulsado Enviar, y la pantalla de victoria mostrará al momento cómo queda tu tiempo. Desactivado, un tiempo solo se envía cuando pulsas Enviar",
   "Your result in Daily #{no}": "Tu resultado en el sudoku del día n.º {no}",
   "The time in the results is the first one you sent, {time}.": "El tiempo que cuenta en los resultados es el primero que enviaste, {time}.",
+  "You solved this daily before, in {time}. That solve stays your result.": "Ya habías resuelto este sudoku del día, en {time}. Esa partida sigue siendo tu resultado.",
   "{puzzle} shares a fresh copy from the start. A solved board has no position to share: it would give the solution away.": "{puzzle} comparte una copia nueva desde el principio. Un tablero resuelto no tiene posición que compartir: revelaría la solución.",
   "This link looks cut off, so the entries and marks it shared could not be loaded": "Parece que este enlace está cortado, así que no se han podido cargar los números y las anotaciones que compartía",
   "The entries and marks this link shared could not be read": "No se han podido leer los números y las anotaciones que compartía este enlace",

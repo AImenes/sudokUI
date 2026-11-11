@@ -56,7 +56,7 @@ interface DailyStatsState {
   pending: Record<string, DailyResult>;
   /** the latest statistics seen, by number; a fetch never replaces a fuller answer with an emptier one */
   stats: Record<string, DailyStats>;
-  /** the dailies solved on this device, by number, the latest solve of each; never sent */
+  /** the dailies solved on this device, by number: the first solve of each, or a later unassisted one in place of one with help (gameStore.ts, recordDaily); never sent */
   played: Record<string, PlayedDaily>;
   /** the numbers whose result is on its way right now; not kept */
   inFlight: Record<string, boolean>;

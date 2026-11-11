@@ -350,6 +350,23 @@ Built, October 2026, with these decisions:
   before (the store's version 1), since a kept count is never replaced
   by a smaller one. The share line of an assisted solve carries no
   percentile.
+- **A solve is fixed once it is solved** (the hunt of 11 November 2026).
+  Check, Steps and Scan on a solved board study it and ask nothing; they
+  do not make the solve assisted, take the daily's Send button away or
+  change the win screen's words, and Hint, Chain, Auto candidates, Fill
+  and the pause button are greyed out on it. Undo of the winning digit, or
+  a Steps jump off the solved board, puts the board back in play, the
+  clock going on from the winning time; solved again, it is the same
+  solve, recorded once, and its win screen, put away, stays away. A daily
+  solved again (Restart, or the day chosen anew) is a new game for the
+  band record and shows its own win screen, but the day keeps its first
+  solve as its result, as the server keeps the first time it takes: the
+  replay is not kept, sends nothing, and its win screen says "You solved
+  this daily before, in 6:12. That solve stays your result." The one
+  exception is a first solve with help followed by one without: the
+  assisted one never went in, and its win screen says to restart for an
+  unassisted run, so the unassisted one takes its place
+  (`src/state/gameStore.ts`, `recordDaily`). The privacy page says so.
 - **The share line** is the one above, without the emoji row for now, with
   the place in place of the percentile below twenty times.
 - **The daily's preview names no technique** (2 November 2026), in line

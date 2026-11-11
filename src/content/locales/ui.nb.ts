@@ -119,6 +119,7 @@ const ui: Dictionary = {
   "After each unassisted solve of the daily, your time goes in by itself, as if you had tapped Send, and the win screen shows where your time stands at once. Off, a time goes only when you tap Send": "Når du løser dagens oppgave uten hjelp, sendes tiden din inn av seg selv, som om du hadde trykket på Send, og seiersskjermen viser med en gang hvor tiden din står. Av: en tid sendes bare når du trykker på Send",
   "Your result in Daily #{no}": "Resultatet ditt: Dagens sudoku #{no}",
   "The time in the results is the first one you sent, {time}.": "Tiden som står i resultatene, er den første du sendte, {time}.",
+  "You solved this daily before, in {time}. That solve stays your result.": "Du har løst denne dagens oppgave før, på {time}. Den løsningen blir stående som resultatet ditt.",
   "{puzzle} shares a fresh copy from the start. A solved board has no position to share: it would give the solution away.": "{puzzle} deler en ny kopi fra starten. Et løst brett har ingen stilling å dele: den ville avsløre løsningen.",
   "This link looks cut off, so the entries and marks it shared could not be loaded": "Lenken ser ut til å være kuttet av, så tallene og notatene den delte, kunne ikke lastes inn",
   "The entries and marks this link shared could not be read": "Tallene og notatene denne lenken delte, kunne ikke leses",

@@ -184,6 +184,10 @@ export function Controls({
   const check = useGame((s) => s.check);
   const [autoOffPrompt, setAutoOffPrompt] = useState(false);
   const assisted = useGame((s) => s.assisted);
+  // a solved board: its solve is recorded as it was played. Check, Steps and
+  // Scan still study it, asking nothing, since nothing of the solve changes;
+  // Hint, Chain, Auto and Fill have nothing left to do on it
+  const won = useGame((s) => s.won);
   const pending = useGame((s) => s.pendingAssist);
   const askAssist = useGame((s) => s.askAssist);
   const armedDigit = useGame((s) => s.armedDigit);
@@ -275,7 +279,7 @@ export function Controls({
 
   const startChain = useGame((s) => s.startChain);
   const guarded = (name: string, run: () => void) => () => {
-    if (assisted || !useSettings.getState().confirmAssist) return run();
+    if (assisted || won || !useSettings.getState().confirmAssist) return run();
     askAssist(name);
   };
   // what each named assist runs once the question is answered; the keyboard
@@ -473,7 +477,7 @@ export function Controls({
           </span>
           {/* folded, the box keeps the assist used most */}
           {folded && (
-            <button className="zone-hint" onClick={guarded('Hint', requestHint)} title={t('Hint (H): names the technique first, reveals it only if you ask')}>
+            <button className="zone-hint" onClick={guarded('Hint', requestHint)} disabled={won} title={t('Hint (H): names the technique first, reveals it only if you ask')}>
               <span className="btn-icon" aria-hidden="true">💡</span>
               <span>{t('Hint')}</span>
             </button>
@@ -497,7 +501,7 @@ export function Controls({
         <div className="assist-body" id="assist-buttons" hidden={folded}>
           <span className="row-sub">{t('Reveals logic')}</span>
           <div className="action-row">
-            <button onClick={guarded('Hint', requestHint)} title={t('Hint (H): names the technique first, reveals it only if you ask')}>
+            <button onClick={guarded('Hint', requestHint)} disabled={won} title={t('Hint (H): names the technique first, reveals it only if you ask')}>
               <span className="btn-icon" aria-hidden="true">💡</span>
               <span>{t('Hint')}</span>
             </button>
@@ -523,6 +527,7 @@ export function Controls({
             )}
             <button
               onClick={guarded('Chain', startChain)}
+              disabled={won}
               title={t('Build a chain yourself, candidate by candidate; the engine checks each link and says what it proves. Counts as assistance')}
             >
               <span className="btn-icon" aria-hidden="true">⛓</span><span>{t('Chain')}</span>
@@ -535,6 +540,7 @@ export function Controls({
               className={autoCandidates ? 'toggled' : ''}
               aria-pressed={autoCandidates}
               onClick={autoCandidates ? onAutoToggle : guarded('Auto candidates', onAutoToggle)}
+              disabled={won}
               title={t(
                 !autoCandidates
                   ? 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
@@ -551,6 +557,7 @@ export function Controls({
             </button>
             <button
               onClick={guarded('Fill candidates', fillCandidates)}
+              disabled={won}
               title={t(
                 autoCandidates
                   ? FILL_UNDER_AUTO_TITLE

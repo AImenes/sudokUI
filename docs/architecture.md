@@ -80,6 +80,15 @@ auto-view and check. All mutating actions snapshot into `history` first.
 `listLayer(mode)` says where the app writes a candidate list (the Corner or
 Centre tab's layer, else the "Candidates go in" setting).
 
+The clock is `elapsedBefore` plus the time since `startedAt` while it runs;
+the save writes `elapsedMs()` on every store write. A pause is saved and
+comes back after a reload. While the page is hidden (`visibilitychange`,
+`pagehide`, a reload among them) `setAway` stops the clock and so saves it
+as it stood; that is not the player's pause, so no pause card and it is
+saved as running, and the clock runs on when the page is shown again or
+reopened. A win pauses the clock for good: nothing can resume it, and Undo
+or a Steps jump off the solved board starts it again from the winning time.
+
 **Settings** ([settings.ts](../src/state/settings.ts)). Persisted user
 preferences (theme, highlights, timer, auto-off materialisation behaviour).
 Separate store so settings changes never touch game history. The theme is a

@@ -585,6 +585,11 @@ interface GameStore {
   elapsedBefore: number;
   paused: boolean;
   won: boolean;
+  /** the page is hidden (another app, the screen off, a tab behind
+   *  others): the clock stands still as it does when paused, but this is
+   *  not the player's pause, so no pause card, and it is saved as running
+   *  from where it stopped (setAway). In memory only */
+  away: boolean;
   /** the game's first move has been counted as a start (countFirstMove,
    *  below the store). In memory only, never saved: nothing is stored on
    *  the device for counting, and a game resumed from storage is taken as
@@ -786,6 +791,9 @@ interface GameStore {
   /** remove what the chain proves false */
   chainApply: () => void;
   togglePause: () => void;
+  /** the page hidden or shown again (App.tsx): the clock stops, and is
+   *  saved as it stood, until the player can see the board again */
+  setAway: (away: boolean) => void;
   elapsedMs: () => number;
 }
 
@@ -843,11 +851,20 @@ export function dailyResultOf(s: Pick<GameStore, 'info' | 'cells' | 'assisted' |
  * only for an unassisted solve of a day the server still takes times for,
  * whose time has not gone in before. With the switch off, nothing is sent
  * until the player taps the button.
+ *
+ * A daily solved again (Restart, or the day chosen anew) is a new game for
+ * the band record, but the day's result stays the first solve, as the
+ * server keeps the first time it takes: the replay is not kept and sends
+ * nothing, and its win screen says which solve stands (VictoryDialog).
+ * Unless the first had help and the replay none: a solve with help never
+ * went in, and its win screen says to restart for an unassisted run.
  */
 function recordDaily(s: GameStore) {
   const result = dailyResultOf(s);
   if (!result || !s.info?.dailyKey) return;
   const daily = useDailyStats.getState();
+  const kept = daily.played[result.no];
+  if (kept && !(kept.assisted && result.unassisted)) return;
   daily.recordPlayed(result.no, { date: s.info.dailyKey, level: s.info.level, score: s.info.score, seconds: result.seconds, assisted: s.assisted });
   if (!useSettings.getState().autoSendDaily || !result.unassisted || dailyClosed(result.no)) return;
   if (daily.submitted[result.no] !== undefined || daily.pending[result.no] || daily.inFlight[result.no]) return;
@@ -919,6 +936,7 @@ export const useGame = create<GameStore>()(
       elapsedBefore: 0,
       paused: false,
       won: false,
+      away: false,
       counted: false,
       solved: false,
       assisted: false,
@@ -1577,6 +1595,9 @@ export const useGame = create<GameStore>()(
           history: s.history.slice(0, -1),
           future: [snap(s), ...s.future],
           won: false,
+          // the win's own pause (togglePause refuses while won): the board
+          // comes back to play, the clock going on from the winning time
+          ...(s.won ? { paused: false, startedAt: Date.now() } : {}),
           hint: null,
           hintStage: 'hidden',
           errors: []
@@ -1622,8 +1643,9 @@ export const useGame = create<GameStore>()(
        */
       toggleAutoCandidates: (layer) => {
         const s = get();
-        // a puzzle being typed in is no game yet: nothing to help with
-        if (!s.info) return;
+        // a puzzle being typed in is no game yet: nothing to help with; nor
+        // is a solved board, whose solve is recorded as it was played
+        if (!s.info || s.won) return;
         if (!s.autoCandidates && s.markContract === 'unknown' && cornerOnlyLists(s.cells)) {
           set({ contractPrompt: true, contractFor: 'auto' });
           return;
@@ -2056,7 +2078,9 @@ export const useGame = create<GameStore>()(
           set({ contractPrompt: true, contractFor: 'check' });
           return;
         }
-        set({ assisted: true });
+        // a Check of a solved board is no help with its solve, which is
+        // recorded already, as it was played
+        if (!s.won) set({ assisted: true });
         const errors: number[] = [];
         const eg = s.autoCandidates ? engineGrid(s.cells) : null;
         for (let i = 0; i < 81; i++) {
@@ -2470,9 +2494,13 @@ export const useGame = create<GameStore>()(
         return true;
       },
 
-      markAssisted: () => set({ assisted: true }),
+      // Steps and Scan on a solved board study it: its solve is recorded
+      // already, as it was played, and stays as it was
+      markAssisted: () => {
+        if (!get().won) set({ assisted: true });
+      },
 
-      showStep: (step) => set({ hint: step, hintStage: 'full', assisted: true }),
+      showStep: (step) => set({ hint: step, hintStage: 'full', ...(get().won ? {} : { assisted: true }) }),
 
       jumpToStep: (k) => {
         const s = get();
@@ -2513,6 +2541,8 @@ export const useGame = create<GameStore>()(
           // a board set anew: Done leaves auto candidates on
           chainHandover: null,
           won: false,
+          // off a solved board, as Undo: back to play, the clock going on
+          ...(s.won ? { paused: false, startedAt: Date.now() } : {}),
           hint: null,
           hintStage: 'hidden',
           errors: [],
@@ -2531,9 +2561,19 @@ export const useGame = create<GameStore>()(
         }
       },
 
+      // the time the page is hidden does not count, and the time up to it
+      // is saved (persist writes elapsedMs on every set), so a page the
+      // system closes in the background, or a reload, keeps it
+      setAway: (away) => {
+        const s = get();
+        if (away === s.away) return;
+        if (away) set({ away: true, elapsedBefore: s.elapsedMs() });
+        else set({ away: false, startedAt: Date.now() });
+      },
+
       elapsedMs: () => {
         const s = get();
-        return s.paused ? s.elapsedBefore : s.elapsedBefore + (Date.now() - s.startedAt);
+        return s.paused || s.away ? s.elapsedBefore : s.elapsedBefore + (Date.now() - s.startedAt);
       }
     }),
     {
@@ -2549,6 +2589,8 @@ export const useGame = create<GameStore>()(
         setAside: s.setAside,
         autoCandidates: s.autoCandidates,
         elapsedBefore: s.elapsedMs(),
+        // a game the player paused comes back paused
+        paused: s.paused,
         won: s.won,
         // solved survives an Undo of the winning digit, and a reload with it
         solved: s.solved,
@@ -2574,7 +2616,9 @@ export const useGame = create<GameStore>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.startedAt = Date.now();
-          state.paused = state.won; // stopped timer for finished games
+          // stopped for finished games, and for one the player paused (a
+          // save from before the pause was kept has none: it runs)
+          state.paused = state.won || !!state.paused;
           // the board says whether this game was begun, so nothing about
           // counting needs saving: a move on it was counted when made, and
           // so was a position opened with entries on it (countStart). Not

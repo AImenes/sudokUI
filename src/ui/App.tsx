@@ -418,7 +418,14 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => setVictoryDismissed(false), [info?.puzzle]);
+  // the win screen put away stays away for that solve, an Undo and the
+  // same digit again included (the same solve, recordWin); a new game, the
+  // same puzzle by Restart or the solved daily chosen again among them,
+  // shows its own
+  const solved = useGame((s) => s.solved);
+  useEffect(() => {
+    if (!solved) setVictoryDismissed(false);
+  }, [solved, info?.puzzle]);
 
   // a link opened in this tab (its hash changed): opened as at start-up,
   // a game under way put aside. The path is the address bar's own, the
@@ -486,6 +493,29 @@ export default function App() {
     flush();
     window.addEventListener('online', flush);
     return () => window.removeEventListener('online', flush);
+  }, []);
+
+  // the clock counts only while the board can be seen: it stops when the
+  // page is hidden or left (another app, the screen off, a reload, the
+  // update bar's among them) and is saved as it stood, so a page the
+  // system closes in the background comes back at that time; shown again,
+  // it runs on. A pause the player chose stays theirs (gameStore.ts, setAway)
+  useEffect(() => {
+    const setAway = useGame.getState().setAway;
+    const onVisibility = () => setAway(document.visibilityState === 'hidden');
+    const onHide = () => setAway(true);
+    const onShow = () => {
+      if (document.visibilityState !== 'hidden') setAway(false);
+    };
+    onVisibility();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onHide);
+    window.addEventListener('pageshow', onShow);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onHide);
+      window.removeEventListener('pageshow', onShow);
+    };
   }, []);
 
   // the plays counted (src/state/telemetry.ts): what waits goes on the
@@ -678,7 +708,8 @@ export default function App() {
           const g = useGame.getState();
           if (g.hintStage === 'tech') g.revealHint();
           else if (g.hintStage === 'full' || g.hintStage === 'walk') g.applyHint();
-          else if (g.assisted || !useSettings.getState().confirmAssist) requestHint();
+          // (a solved board has no hint to give, and no question to ask)
+          else if (g.assisted || g.won || !useSettings.getState().confirmAssist) requestHint();
           else g.askAssist('Hint');
           break;
         }
@@ -787,13 +818,15 @@ export default function App() {
         )}
         <div className="topbar-right">
           {showTimer && <Timer />}
+          {/* a solved game's clock has stopped for good: nothing to pause or resume */}
           <button
             className="icon-btn"
             onClick={togglePause}
+            disabled={won}
             title={t('Pause (P)')}
-            aria-label={t(paused ? 'Resume game' : 'Pause game')}
+            aria-label={t(paused && !won ? 'Resume game' : 'Pause game')}
           >
-            {paused ? '⏵' : '⏸'}
+            {paused && !won ? '⏵' : '⏸'}
           </button>
           <button
             className="icon-btn theme-btn"

@@ -1383,6 +1383,9 @@ export function VictoryDialog({
   const inFlight = useDailyStats((s) => (dailyNo ? !!s.inFlight[dailyNo] : false));
   const waiting = useDailyStats((s) => (dailyNo ? !!s.pending[dailyNo] : false));
   const autoSend = useSettings((s) => s.autoSendDaily);
+  // the day's solve as the device keeps it: the first, so for a daily
+  // solved again it may be another than this (gameStore.ts, recordDaily)
+  const kept = useDailyStats((s) => (dailyNo ? s.played[dailyNo] : undefined));
   const [sent, setSent] = useState<SubmitOutcome | 'sending' | null>(null);
   const [statsFailed, setStatsFailed] = useState(false);
   useEffect(() => {
@@ -1404,6 +1407,10 @@ export function VictoryDialog({
   useEffect(() => {
     if (askCount) useSettings.getState().set({ countPlaysAsked: true });
   }, [askCount]);
+  // a dialog as every other: focus in, Tab kept inside, Escape as Admire
+  // the grid (the backdrop takes no tap, so a stray one cannot close it)
+  const { ref, onTab } = useDialog(onClose);
+  const summaryId = React.useId();
   if (!info) return null;
   const secs = Math.floor(elapsedMs() / 1000);
   const mm = Math.floor(secs / 60);
@@ -1452,6 +1459,9 @@ export function VictoryDialog({
   // the server takes a time for a day up to a week on; after that the day
   // is closed and the win screen does not offer what would be refused
   const closed = !!info.dailyNo && dailyClosed(info.dailyNo);
+  // a daily solved before on this device: that solve stays the day's
+  // result, so this one is not offered for everyone's times
+  const before = kept && (kept.seconds !== secs || kept.assisted !== assisted) ? kept : null;
 
   // the player's time for the daily, sent when asked (src/state/dailyStats.ts):
   // the same result the switch sends by itself (gameStore.ts, dailyResultOf)
@@ -1516,9 +1526,18 @@ export function VictoryDialog({
           <i key={i} style={{ '--n': i } as React.CSSProperties} />
         ))}
       </div>
-      <div className="modal victory" role="dialog" aria-modal="true" aria-label={t('Puzzle solved')}>
+      <div
+        ref={ref}
+        tabIndex={-1}
+        className="modal victory"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('Puzzle solved')}
+        aria-describedby={summaryId}
+        onKeyDown={onTab}
+      >
         <h3>{t('Solved!')} 🎉</h3>
-        <p>{t('{level} · HoDoKu rating {score} · {time}', { level: t.level(info.level), score: info.score, time: `${mm}:${ss}` })}</p>
+        <p id={summaryId}>{t('{level} · HoDoKu rating {score} · {time}', { level: t.level(info.level), score: info.score, time: `${mm}:${ss}` })}</p>
         {verdict && (
           <p
             className="solve-verdict"
@@ -1605,6 +1624,8 @@ export function VictoryDialog({
               </>
             ) : sent === 'sending' || inFlight ? (
               <p className="solve-assisted">{t('Sending your time…')}</p>
+            ) : before ? (
+              <p className="solve-assisted">{t('You solved this daily before, in {time}. That solve stays your result.', { time: clockOf(before.seconds) })}</p>
             ) : sent === 'offline' || sent === 'unavailable' || waiting ? (
               <p className="solve-assisted">{t('Your time goes in the next time you open the app online')}</p>
             ) : sent === 'refused' ? (
@@ -1668,26 +1689,20 @@ export function VictoryDialog({
 /** what Tab can land on inside a dialog */
 const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
-export function Modal({
-  title,
-  children,
-  onClose,
-  wide = false
-}: {
-  title: string;
-  children: React.ReactNode;
-  onClose: () => void;
-  /** reading-width dialog for long-form content (the Learn dialog) */
-  wide?: boolean;
-}) {
-  const t = useT();
-  // without this, Tab keeps walking the controls hidden behind the dialog
+/**
+ * What makes a dialog a dialog, for Modal and the win screen: Escape closes
+ * it (capture phase, so the app's own Escape handling, clearing the
+ * selection, doesn't also fire), and only the top one: a question raised
+ * over Settings closes alone (every open dialog listens on the window, so
+ * each asks whether it is the last one on the page, the one painted on
+ * top); focus moves into it when it opens, so a screen reader says what
+ * opened, and goes back where it was when it closes, or to the board when
+ * that is gone; and Tab stays inside, past the last control wrapping to the
+ * first, so nothing behind it can be reached or opened. Returns the
+ * dialog's ref and its keydown handler.
+ */
+function useDialog(onClose: () => void) {
   const ref = React.useRef<HTMLDivElement>(null);
-  // Escape closes the dialog (capture phase so the app's own Escape
-  // handling — clearing the selection — doesn't also fire), and only the
-  // top one: a question raised over Settings closes alone. Every open
-  // dialog listens on the window, so each asks whether it is the last
-  // one on the page, the one painted on top
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code === 'Escape') {
@@ -1704,9 +1719,11 @@ export function Modal({
   React.useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     ref.current?.focus({ preventScroll: true });
-    return () => opener?.focus?.({ preventScroll: true });
+    return () => {
+      const back = opener?.isConnected ? opener : document.querySelector<SVGElement>('svg.board');
+      back?.focus?.({ preventScroll: true });
+    };
   }, []);
-  // and Tab stays inside: past the last control it wraps to the first
   const onTab = (e: React.KeyboardEvent) => {
     if (e.key !== 'Tab' || !ref.current) return;
     const items = [...ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
@@ -1724,6 +1741,23 @@ export function Modal({
       first.focus();
     }
   };
+  return { ref, onTab };
+}
+
+export function Modal({
+  title,
+  children,
+  onClose,
+  wide = false
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+  /** reading-width dialog for long-form content (the Learn dialog) */
+  wide?: boolean;
+}) {
+  const t = useT();
+  const { ref, onTab } = useDialog(onClose);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>

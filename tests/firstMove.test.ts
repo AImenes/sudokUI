@@ -296,11 +296,11 @@ describe('a game solved', () => {
     for (const cell of EMPTY) play(cell, Number(solution()[cell]));
     expect(useGame.getState().won).toBe(true);
   };
-  /** Undo takes the winning digit back; Resume, as the pause button offers */
+  /** Undo takes the winning digit back, and the board is in play again */
   const undoWin = () => {
     useGame.getState().undo();
     expect(useGame.getState().won).toBe(false);
-    if (useGame.getState().paused) useGame.getState().togglePause();
+    expect(useGame.getState().paused).toBe(false);
   };
   const last = () => EMPTY[EMPTY.length - 1];
 

@@ -515,6 +515,13 @@ button {
   background: rgba(128, 128, 160, 0.15);
 }
 
+/* the pause button of a solved game, whose clock has stopped for good */
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  background: none;
+}
+
 /* ---------- layout ---------- */
 .layout {
   flex: 1;
@@ -1101,6 +1108,12 @@ html .assist-zone.folded .zone-note {
 .zone-hint .btn-icon {
   font-size: 16px;
   line-height: 1;
+}
+
+/* on a solved board, as the assist buttons in the box */
+.zone-hint:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .button-help dt {
