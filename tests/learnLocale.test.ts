@@ -158,7 +158,7 @@ for (const [lang, loc] of LOCALES) {
       for (const k of ['name', 'h1', 'lead'] as const) faithful(EN.method[k], m[k], `method.${k}`);
       expect(m.title.length, 'method.title').toBeLessThanOrEqual(60);
       expect(m.description.length, 'method.description').toBeGreaterThanOrEqual(50);
-      expect(m.description.length, 'method.description').toBeLessThanOrEqual(200);
+      expect(m.description.length, 'method.description').toBeLessThanOrEqual(160);
       expect(m.sections.length).toBe(EN.method.sections.length);
       EN.method.sections.forEach((s, i) => {
         faithful(s.heading, m.sections[i].heading, `method.sections[${i}].heading`);
@@ -175,13 +175,13 @@ for (const [lang, loc] of LOCALES) {
         const t = loc.landings[url];
         const page = LANDING_PAGES.find((p) => p.url === url)!;
         for (const k of ['name', 'h1', 'lead', 'cta'] as const) faithful(en[k], t[k], `${url} ${k}`);
-        // what a search result shows: a title that fits, with the brand, and a description of about 155
+        // what a search result shows: a title that fits, with the brand, and a description of 160 characters or fewer
         houseStyle(t.title, `${url} title`);
         expect(t.title.length, `${url} title: ${t.title}`).toBeLessThanOrEqual(60);
         expect(t.title.endsWith(' | sudokUI'), `${url} title`).toBe(true);
         houseStyle(t.description, `${url} description`);
         expect(t.description.length, `${url} description`).toBeGreaterThanOrEqual(50);
-        expect(t.description.length, `${url} description: ${t.description}`).toBeLessThanOrEqual(175);
+        expect(t.description.length, `${url} description: ${t.description}`).toBeLessThanOrEqual(160);
         expect(numbers(t.description, false), `${url} description: numbers`).toBe(numbers(en.description, true));
         expect(t.sections.length, `${url} sections`).toBe(en.sections.length);
         en.sections.forEach((s, i) => {

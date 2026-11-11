@@ -866,7 +866,7 @@ const nb: LearnLocale = {
     "/hodoku/": {
       "name": "HoDoKu",
       "title": "Sudoku vurdert som i HoDoKu, rett i nettleseren | sudokUI",
-      "description": "sudokUI vurderer og forklarer sudoku med HoDoKus poeng og søkerekkefølge, i alle nettlesere: mobil, nettbrett, Mac eller PC. Ingen installasjon, virker uten nett.",
+      "description": "sudokUI vurderer og forklarer sudoku med HoDoKus poeng og søkerekkefølge, i alle nettlesere: mobil, nettbrett, Mac og PC. Ingen installasjon, virker uten nett.",
       "h1": "HoDoKu-kompatibel poengsum, i nettleseren",
       "lead": "sudokUI vurderer og forklarer sudoku slik HoDoKu gjør, uten at du må installere noe. Den kjører i alle nettlesere, på mobil, nettbrett eller datamaskin, og virker videre uten nett.",
       "sections": [
@@ -1996,6 +1996,7 @@ const nb: LearnLocale = {
     "In this puzzle the position comes after harder steps.": "I denne oppgaven kommer stillingen etter vanskeligere steg.",
     "Open this position on the board": "Åpne denne stillingen på brettet",
     "The solver uses this on the hardest puzzles. It has no pattern to spot, so it is not offered in practice.": "Løseren bruker denne på de vanskeligste oppgavene. Den har ikke noe mønster å se etter, så den tilbys ikke i øvingsmodus.",
+    "The solver uses this on the hardest puzzles. So few puzzles need it that it is not offered in practice.": "Løseren bruker denne på de vanskeligste oppgavene. Så få oppgaver trenger den at den ikke tilbys i øvingsmodus.",
     "Implemented, but never needed: an easier technique always reaches the same result first.": "Implementert, men trengs aldri: en lettere teknikk kommer alltid fram til det samme resultatet først.",
     "Only ever needed in puzzles made by hand for it: none can be generated, so it is not offered in practice.": "Trengs bare i oppgaver laget for hånd for den: ingen kan genereres, så den tilbys ikke som øvelse.",
     "Not implemented in sudokUI: the chain engines already find everything it can.": "Ikke implementert i sudokUI: kjedemotorene finner allerede alt den kan finne.",
@@ -2065,7 +2066,7 @@ const nb: LearnLocale = {
     "How the HoDoKu rating works": "Slik regnes HoDoKu-poengsummen ut",
     "More {family}": "Flere teknikker: {family}",
     "Sudoku solving techniques: all {n} explained": "Teknikker for å løse sudoku: alle {n} forklart",
-    "All {n} sudoku solving techniques explained in plain words, from Naked Single to Exocet, grouped by family. Practise each one free in the app.": "Alle {n} teknikker for å løse sudoku, forklart med enkle ord, fra Naken singel til Exocet, ordnet i familier. Øv gratis på hver av dem i appen.",
+    "All {n} sudoku solving techniques explained in plain words, from Naked Single to Exocet, grouped by family. Practise {p} of them free in the app.": "Alle {n} teknikker for å løse sudoku, forklart med enkle ord, fra Naken singel til Exocet, ordnet i familier. Øv gratis på {p} av dem i appen.",
     "Sudoku solving techniques": "Teknikker for å løse sudoku",
     "All {n} solving techniques in sudokUI's catalogue, grouped by the idea behind them. Each one says what the pattern is, why it works and how to spot it.": "Alle {n} løsningsteknikker i katalogen til sudokUI, ordnet etter ideen bak dem. For hver av dem står det hva mønsteret er, hvorfor det virker, og hvordan du finner det.",
     "Play sudokUI": "Spill sudokUI",

@@ -10,7 +10,7 @@ import { renderHome } from '../src/content/home';
 import { TECHS, ALL_TECHS, PRACTICE_TECHS, Tech } from '../src/engine/ratings';
 import { TECH_DOCS } from '../src/content/techniqueDocs';
 import { GLOSSARY, GLOSSARY_GROUPS } from '../src/content/glossary';
-import { CATEGORY_NOTES } from '../src/content/categories';
+import { CATEGORY_NOTES, techStatus } from '../src/content/categories';
 import { RATING_SUMMARY, RATING_POINTS, BAND_NOTES } from '../src/content/rating';
 import { LANDING_PAGES, COUNTS } from '../src/content/landing';
 import { STATIC_ROUTES } from '../src/content/staticRoutes';
@@ -19,6 +19,8 @@ import { linkGlossary } from '../src/content/glossaryLinks';
 import { buildLearnPages, buildSitemap, SITE, LEARN_LANGS, HOME_URLS } from '../src/content/learnPages';
 
 const words = (s: string) => s.trim().split(/\s+/).length;
+/** an attribute's text without the escapes the pages write (esc in learnPages.ts) */
+const unescapeHtml = (s: string) => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 const sentences = (s: string) => (s.match(/[.!?](\s|$)/g) ?? []).length;
 
 /** house style for every player-visible sentence */
@@ -341,8 +343,9 @@ describe('static pages', () => {
         expect(other!.lang).toBe(l);
         expect(other!.alternateOf).toBe(english);
       }
-      // the language line in the footer links to the same versions
-      const line = page.html.match(/<p class="langs"[^>]*>(.*)<\/p>/)![1];
+      // the language line in the footer links to the same versions, under
+      // a name a screen reader announces (a <p> may not carry a label)
+      const line = page.html.match(/<nav class="langs" aria-label="[^"]+">(.*)<\/nav>/)![1];
       for (const [l, href] of versions) {
         if (l === page.lang) expect(line).toContain('<span aria-current="true">');
         else expect(line, `${page.url}: language line`).toContain(`<a href="${href.slice(SITE.length)}" hreflang="${l}" lang="${l}">`);
@@ -387,9 +390,13 @@ describe('static pages', () => {
 
       const title = html.match(/<title>([^<]*)<\/title>/)![1];
       expect(title.length, `title length: ${title}`).toBeLessThanOrEqual(60);
-      const description = html.match(/<meta name="description" content="([^"]*)"/)![1];
+      // the length a search result shows: the text, not its HTML escapes
+      const description = unescapeHtml(html.match(/<meta name="description" content="([^"]*)"/)![1]);
       expect(description.length, 'description length').toBeGreaterThanOrEqual(50);
-      expect(description.length, `description length: ${description}`).toBeLessThanOrEqual(200);
+      expect(description.length, `description length: ${description}`).toBeLessThanOrEqual(160);
+
+      // the brand link is named and indexed "sudokUI": its UI tile is drawn, not written
+      expect(html).toContain(`<a class="brand" href="${home(page.lang)}"><span class="mark" aria-hidden="true"></span>sudokUI</a>`);
 
       // structured data must parse
       for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
@@ -411,6 +418,42 @@ describe('static pages', () => {
       expect(html).not.toMatch(/&lt;(a|p|h\d|span) /);
     });
   }
+
+  it('claims practice only for the techniques the app can practise', () => {
+    for (const lang of LEARN_LANGS) {
+      const own = pages.filter((p) => p.lang === lang);
+      const practised = new Set(own.flatMap((p) => [...p.html.matchAll(/#practice=([A-Z0-9_]+)"/g)].map((m) => m[1])));
+      expect([...practised].sort(), lang).toEqual([...PRACTICE_TECHS].sort());
+      // the technique index's description, its Open Graph copy and its structured data
+      const index = byUrl.get(lang === 'en' ? '/learn/' : `/${lang}/learn/`)!.html;
+      const descriptions = [
+        unescapeHtml(index.match(/<meta name="description" content="([^"]*)"/)![1]),
+        unescapeHtml(index.match(/<meta property="og:description" content="([^"]*)"/)![1]),
+        ...[...index.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+          .map((m) => JSON.parse(m[1]))
+          .filter((o) => o['@type'] === 'CollectionPage')
+          .map((o) => o.description)
+      ];
+      expect(descriptions, lang).toHaveLength(3);
+      for (const d of descriptions) {
+        expect(d, lang).toContain(` ${ALL_TECHS.length} `);
+        expect(d, lang).toContain(` ${PRACTICE_TECHS.length} `);
+      }
+    }
+  });
+
+  it('gives Exocet, a pattern too rare to practise, a reason that is true of it', () => {
+    // it has a "How to spot it": the note under it must not say there is nothing to spot
+    expect(techStatus('EXOCET')!.note).not.toMatch(/no pattern/);
+    expect(techStatus('EXOCET')!.note).toMatch(/So few puzzles need it/);
+    for (const lang of LEARN_LANGS) {
+      const page = byUrl.get(`${lang === 'en' ? '' : `/${lang}`}/learn/exocet/`)!.html;
+      const forcing = byUrl.get(`${lang === 'en' ? '' : `/${lang}`}/learn/forcing-net/`)!.html;
+      // the trial-based last resorts keep theirs, and Exocet's differs from it
+      const note = (html: string) => html.match(/<div class="card">\s*<p>([^<]*)<\/p>/)![1];
+      expect(note(page), lang).not.toBe(note(forcing));
+    }
+  });
 
   it('anchors every glossary link on the glossary page', () => {
     const glossary = pages.find((p) => p.url === '/learn/glossary/')!.html;

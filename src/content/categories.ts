@@ -65,6 +65,12 @@ export function techniquesByFamily(techs: Tech[] = ALL_TECHS): [Category, Tech[]
 export const categoryLabel = (category: Category): string =>
   category === 'Coloring' ? 'Colouring' : category;
 
+/**
+ * Last resorts that are patterns, with something to spot, left out of
+ * practice only because so few puzzles need them (frequency.json)
+ */
+export const TOO_RARE_TO_PRACTISE: Tech[] = ['EXOCET'];
+
 /** why a catalogued technique cannot be practised; null when it can */
 export function techStatus(tech: Tech): { mark: string; note: string } | null {
   const info = TECHS[tech];
@@ -73,6 +79,12 @@ export function techStatus(tech: Tech): { mark: string; note: string } | null {
     return {
       mark: '≈',
       note: 'Only ever needed in puzzles made by hand for it: none can be generated, so it is not offered in practice.'
+    };
+  }
+  if (TOO_RARE_TO_PRACTISE.includes(tech)) {
+    return {
+      mark: '⚙',
+      note: 'The solver uses this on the hardest puzzles. So few puzzles need it that it is not offered in practice.'
     };
   }
   if (info.category === 'Last Resort' && info.implemented && info.enabled) {

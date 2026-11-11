@@ -36,7 +36,7 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
     name: 'Privacy',
     title: 'Privacy: what sudokUI sends',
     description:
-      'What sudokUI sends from your device, exactly: two anonymous lines per game and one per share, while online; never your IP address, no account, no cookies. And what only you can switch on.',
+      'What sudokUI sends: two anonymous lines per game and one per share, while online; never your IP address, no account, no cookies. And what only you switch on.',
     h1: 'What sudokUI sends, and what it keeps',
     lead:
       'sudokUI runs on your device. It has no account, no cookie banner and no advertising, and by default it sends nothing about you. This page lists everything that leaves the device, exactly.',
@@ -104,7 +104,7 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
     name: 'Personvern',
     title: 'Personvern: hva sudokUI sender',
     description:
-      'Hva sudokUI sender: to anonyme linjer per spill og én per deling, bare på nett; aldri IP-adressen din, ingen konto eller informasjonskapsler. Og hva bare du slår på.',
+      'Hva sudokUI sender: to anonyme linjer per spill, én per deling, bare på nett; aldri IP-adressen, ingen konto eller informasjonskapsler. Og hva bare du slår på.',
     h1: 'Hva sudokUI sender, og hva appen beholder',
     lead:
       'sudokUI kjører på enheten din. Appen har ingen konto, ingen samtykkeboks og ingen reklame, og som standard sender den ingenting om deg. Denne siden lister opp alt som forlater enheten, nøyaktig.',
@@ -172,7 +172,7 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
     name: 'Privacidad',
     title: 'Privacidad: qué envía sudokUI',
     description:
-      'Qué envía sudokUI: dos líneas anónimas por partida y una por enlace o imagen compartidos, solo en línea; nunca tu IP, sin cuenta ni cookies. Y qué solo tú activas.',
+      'Qué envía sudokUI: dos líneas anónimas por partida y una por enlace o imagen compartidos, solo en línea; nunca tu IP, sin cuenta ni cookies. Y qué activas tú.',
     h1: 'Qué envía sudokUI y qué conserva',
     lead:
       'sudokUI funciona en tu dispositivo. No tiene cuenta, ni aviso de cookies, ni publicidad, y por defecto no envía nada sobre ti. Esta página enumera todo lo que sale del dispositivo, exactamente.',

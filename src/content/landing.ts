@@ -162,7 +162,7 @@ export const LANDING_PAGES: LandingPage[] = [
     name: 'How the best solve',
     title: 'How the best sudoku solvers play | sudokUI',
     description:
-      'Champion sudoku solvers do not fill in candidates first. They scan for singles, mark only certain pairs, and bring in harder techniques in a fixed order. The order, and how to train it.',
+      'Champion sudoku solvers never start with candidates. They scan for singles, mark only certain pairs and add harder techniques in a fixed order. How to train it.',
     h1: 'How the best sudoku solvers play',
     lead: 'The fastest solvers write almost nothing down. They scan, mark only what is certain, and reach for notation and harder techniques only when the puzzle forces them to. The order they work in is the order sudokUI teaches.',
     sections: [

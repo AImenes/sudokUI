@@ -14,7 +14,7 @@
 // back into the app, in the page's language (/ in English, /nb/ and /es/):
 // /#practice=<KEY> starts a practice puzzle, /nb/#learn=<KEY> opens the
 // guide at that technique in Norwegian.
-import { TECHS, ALL_TECHS, Tech, Category, pickLevel } from '../engine/ratings';
+import { TECHS, ALL_TECHS, PRACTICE_TECHS, Tech, Category, pickLevel } from '../engine/ratings';
 import { rangeOf, TABLE_ORDER } from './rating';
 import type { Lang } from '../state/settings';
 import { setEngineText, EngineTable } from '../engine/text';
@@ -171,11 +171,12 @@ const STYLE = `
 :root{--bg:#14161f;--soft:#1c1f2b;--panel:#222636;--text:#e8eaf2;--muted:#a8b0c2;--accent:#8ab6f7;--line:rgba(128,128,160,.28)}
 @media (prefers-color-scheme:light){:root{--bg:#f2f4f9;--soft:#e8ebf3;--panel:#fff;--text:#23293a;--muted:#555d70;--accent:#2a5aad}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:17px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);font:17px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-wrap:break-word}
 a{color:var(--accent)}
 .site{display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap;padding:12px 20px;background:var(--soft);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-weight:700;font-size:20px}
 .mark{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#5b8fe0,#9b74d8);color:#fff;font-weight:800;font-size:15px}
+.mark::before{content:"UI"}
 .site nav{display:flex;gap:6px 18px;flex-wrap:wrap;margin-left:auto;font-size:15px}
 main{max-width:760px;margin:0 auto;padding:26px 20px 56px}
 h1{font-size:32px;line-height:1.2;margin:10px 0 8px}
@@ -192,6 +193,7 @@ tr.pick td:first-child{padding-left:1.2em}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:18px 0}
 .card p:last-child{margin-bottom:0}
 table{border-collapse:collapse;width:100%;font-size:15px}
+.table-scroll{overflow-x:auto}
 td,th{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .techs{list-style:none;padding:0;margin:0}
@@ -213,7 +215,7 @@ footer a{color:var(--muted)}
 figure{margin:18px 0}
 figure img{display:block;width:100%;max-width:520px;height:auto;border-radius:8px}
 figcaption{color:var(--muted);font-size:15px;margin-top:8px}
-.key{display:inline-block;margin-right:14px;white-space:nowrap}
+.key{display:inline-block;max-width:100%;margin-right:14px;vertical-align:top}
 .key i{display:inline-block;box-sizing:border-box;width:11px;height:11px;border-radius:50%;margin:0 6px 0 2px;vertical-align:-1px}
 h3{font-size:18px;line-height:1.35;margin:26px 0 6px}
 .kin{color:var(--muted);font-size:15px;margin:-4px 0 6px}
@@ -222,7 +224,7 @@ h3{font-size:18px;line-height:1.35;margin:26px 0 6px}
 .eli12 strong{display:block;font-size:13px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
 .eli12 p{margin:4px 0 0}
 .timeline dt{margin-top:12px}
-.langs{font-size:14px}
+.langs{font-size:14px;margin:0 0 14px}
 .langs span{font-weight:600}
 `.trim();
 
@@ -304,7 +306,7 @@ function layout(opts: {
   </head>
   <body>
     <header class="site">
-      <a class="brand" href="${home}"><span class="mark">UI</span>sudokUI</a>
+      <a class="brand" href="${home}"><span class="mark" aria-hidden="true"></span>sudokUI</a>
       <nav aria-label="${esc(lt.s('Learn'))}">
         <a href="${at(opts.lang, '/learn/')}">${esc(lt.s('Techniques'))}</a>
         <a href="${at(opts.lang, INTUITION_URL)}">${esc(lt.s('Intuition'))}</a>
@@ -318,7 +320,7 @@ function layout(opts: {
 ${opts.body}
     </main>
     <footer>
-      <p class="langs" aria-label="${esc(lt.s('Language'))}">${languages}</p>
+      <nav class="langs" aria-label="${esc(lt.s('Language'))}">${languages}</nav>
       <p>${esc(lt.s('sudokUI is a free, open-source sudoku app: no ads, no account, works offline.'))}
       <a href="${home}">${esc(lt.s('Play at sudokui.app'))}</a> ·
       <a href="https://github.com/AImenes/sudokUI">${esc(lt.s('Source on GitHub'))}</a></p>
@@ -488,9 +490,10 @@ function indexPage(lang: Lang): Page {
   const url = at(lang, '/learn/');
   const n = ALL_TECHS.length;
   const title = fitTitle(lt.s('Sudoku solving techniques: all {n} explained', { n }));
+  // practice serves only some of them: the count is the app's own (PRACTICE_TECHS)
   const description = lt.s(
-    'All {n} sudoku solving techniques explained in plain words, from Naked Single to Exocet, grouped by family. Practise each one free in the app.',
-    { n }
+    'All {n} sudoku solving techniques explained in plain words, from Naked Single to Exocet, grouped by family. Practise {p} of them free in the app.',
+    { n, p: PRACTICE_TECHS.length }
   );
   const sections = byCategory()
     .map(
@@ -667,6 +670,10 @@ ${techs
   .join('\n')}`
     )
     .join('\n');
+  // on a narrow phone each table scrolls sideways in a box of its own,
+  // never the page (the table keeps its table semantics: no display:block);
+  // the box is named by the table's heading, and focusable where nothing
+  // inside it is, so a keyboard can scroll it too
   const body = `      <h1>${esc(lt.s('Sudoku difficulty rating'))}</h1>
       <p class="lead">${esc(rating.summary)}</p>
       <h2 id="rate-your-puzzle">${esc(lt.s('Rate your own sudoku'))}</h2>
@@ -682,12 +689,15 @@ ${puzzleForm(lt, lt.s('Rate this puzzle'))}
       )}</p>
 ${rating.points.map((p) => `      <h2>${esc(p.title)}</h2>\n      <p>${esc(p.text)}</p>`).join('\n')}
       <h2 id="bands">${esc(lt.s('The five levels and two picks'))}</h2>
+      <div class="table-scroll" role="region" aria-labelledby="bands" tabindex="0">
       <table>
         <tr><th>${esc(lt.s('Level'))}</th><th class="n">${esc(lt.s('Total score'))}</th><th>${esc(lt.s('Typical techniques'))}</th></tr>
 ${bands}
       </table>
+      </div>
       <h2 id="solve-times">${esc(lt.s('How fast is fast?'))}</h2>
       <p>${esc(rating.solveTimeNote)}</p>
+      <div class="table-scroll" role="region" aria-labelledby="solve-times" tabindex="0">
       <table>
         <tr><th>${esc(lt.s('Level'))}</th><th class="n">${esc(lt.s('Slow'))}</th><th class="n">${esc(lt.s('Typical'))}</th><th class="n">${esc(lt.s('Fast'))}</th><th class="n">${esc(lt.s('Expert'))}</th><th class="n">${esc(lt.s('World class'))}</th></tr>
 ${solveTimeTables(lang).map((t) => {
@@ -701,13 +711,16 @@ ${t.rows
   .join('\n')}`;
 }).join('\n')}
       </table>
+      </div>
       <p>${esc(lt.s('Slow is where the slowest fifth begins. Typical is the median solver. Fast is faster than four solvers in five, Expert faster than 99 in 100, World class faster than 999 in 1,000.'))} ${esc(lt.s('The app says where each of your solves lands.'))}</p>
       <h2 id="scores">${esc(lt.s('Score of every technique'))}</h2>
       <p>${esc(lt.s("The cost added to a puzzle's HoDoKu rating each time the solver needs the technique, and how many of the puzzles sudokUI generates need it at least once (measured on {sample} puzzles).", { sample: lt.num(FREQUENCY.sample) }))}</p>
+      <div class="table-scroll" role="region" aria-labelledby="scores">
       <table>
         <tr><th>${esc(lt.s('Technique'))}</th><th>${esc(lt.s('Class'))}</th><th class="n">${esc(lt.s('Score'))}</th><th>${esc(lt.s('Needed in'))}</th></tr>
 ${scores}
-      </table>`;
+      </table>
+      </div>`;
   return {
     path: `${url.slice(1)}index.html`,
     url,

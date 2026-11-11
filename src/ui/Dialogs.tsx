@@ -42,7 +42,7 @@ import type { ShareKind } from '../state/telemetry';
 import { PRIVACY_URL } from '../content/staticRoutes';
 import { WHY } from '../content/why';
 import { HubTabs } from './HubTabs';
-import { techniquesByFamily } from '../content/categories';
+import { TOO_RARE_TO_PRACTISE, techniquesByFamily } from '../content/categories';
 import { useLearnLocale } from './useLearnLocale';
 import type { LearnLocale } from '../content/learnLocale';
 import { BAND_LEADS, BAND_NOTES, rangeOf } from '../content/rating';
@@ -289,7 +289,7 @@ export function PracticeDialog({
           <span className="pool-dot" /> {t('a puzzle is ready and starts instantly')}
         </li>
         <li>
-          <span className="tech-gear">⚙</span> {t('solver only: there is no pattern to spot, so nothing to practise')}
+          <span className="tech-gear">⚙</span> {t('solver only: no pattern to spot, or too rare to practise')}
         </li>
         <li>
           <span className="tech-tilde">≈</span> {t('never needed: an easier technique always gets there first')}
@@ -309,8 +309,8 @@ export function PracticeDialog({
                 const ok = PRACTICE_TECHS.includes(tech);
                 // three honest reasons a technique can't be practised:
                 // ⚙ last resorts — the solver uses them, but there is no
-                //   pattern to SPOT (they try candidates and propagate), and
-                //   Exocet-grade patterns are too rare to generate on demand;
+                //   pattern to SPOT (they try candidates and propagate), or,
+                //   for Exocet, a pattern too rare to generate on demand;
                 // ≈ provably redundant — never appears in any solve path;
                 // ✗ deliberately not implemented.
                 const lastResort =
@@ -332,10 +332,15 @@ export function PracticeDialog({
                             score: info.score
                           })
                         : lastResort
-                          ? t(
-                              '{name} is implemented and the solver uses it on the hardest puzzles. But there is nothing to spot: it assumes candidates and propagates, so practising it would just be trial and error',
-                              { name }
-                            )
+                          ? TOO_RARE_TO_PRACTISE.includes(tech)
+                            ? t(
+                                '{name} is implemented and the solver uses it on the hardest puzzles, but so few puzzles need it that it cannot be practised',
+                                { name }
+                              )
+                            : t(
+                                '{name} is implemented and the solver uses it on the hardest puzzles. But there is nothing to spot: it assumes candidates and propagates, so practising it would just be trial and error',
+                                { name }
+                              )
                           : redundant
                             ? NOT_PRACTISABLE[tech]
                               ? t('{name} is implemented and the solver uses it, but it cannot be practised: {reason}', {
