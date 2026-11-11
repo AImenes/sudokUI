@@ -118,7 +118,9 @@ keeps its own game, hidden or in front, keeps the other window's as well
 (`keepOthers`): the game on that window's board, if under way, and the
 game in its slot go into this window's slot, unless one is the game on
 this window's own board, by the one-slot rule (below) and with its toast
-when one must go. So a friend's link opened in a new tab, played there
+when one must go (told once per game in a page's life). A hidden window
+that takes the other's game in keeps its own kept game beside what came
+in, by the same rule. So a friend's link opened in a new tab, played there
 and closed, is still kept when the older tab is shown again and saves,
 and moves made in the older tab on the game the newer one put aside reach
 the newer one's copy. The save is read at each `storage` event and again
