@@ -39,6 +39,7 @@ const { dailyNumber, dailyDate, localDateKey } = await import('../src/content/da
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
 const EMPTY = [...EASY].map((ch, i) => (ch === '.' ? i : -1)).filter((i) => i >= 0);
 const LAST = EMPTY[EMPTY.length - 1];
+const OTHER_PUZZLE = '8..6.2.5....89..6.67...5.......4.1.9.1.5.8.3.3.4.2.......7...92.3..89....9.2.4..6';
 
 const play = (cell: number, digit: number) => {
   useGame.getState().select([cell], false);
@@ -320,6 +321,60 @@ describe('a daily solved again', () => {
     solveAll();
     expect(useGame.getState().dailyKept).toBe(false);
     expect(useDailyStats.getState().played[no]).toEqual(first);
+  });
+
+  it('a Steps jump on the solved daily, played on to the end, is still its own unassisted solve: unassisted, its time, sendable, across a reload and Back to it', async () => {
+    startDaily();
+    solveAll();
+    const first = useDailyStats.getState().played[no];
+    expect(useGame.getState().solvedAssisted).toBe(false);
+    // Steps, a jump into the path (help, on the board it sets), a while
+    // on it, and the rest of the board filled from there
+    useGame.getState().jumpToStep(3);
+    expect(useGame.getState().assisted).toBe(true);
+    vi.advanceTimersByTime(20_000);
+    for (const [cell, c] of useGame.getState().cells.entries()) if (!c.value) play(cell, Number(solution()[cell]));
+    let g = useGame.getState();
+    expect(g.won).toBe(true);
+    // the same solve: its time, its help, and the day's own
+    expect(g.assisted).toBe(false);
+    expect(Math.floor(g.elapsedMs() / 1000)).toBe(first.seconds);
+    expect(g.dailyKept).toBe(true);
+    expect(dailyResultOf(g)).toMatchObject({ seconds: first.seconds, unassisted: true });
+    expect(useDailyStats.getState().played[no]).toEqual(first);
+    expect(useStats.getState().bands.Easy?.solves).toBe(1);
+    await reload();
+    g = useGame.getState();
+    expect(g.assisted).toBe(false);
+    expect(dailyResultOf(g)).toMatchObject({ seconds: first.seconds, unassisted: true });
+    // put back in play again and kept aside while another game opens:
+    // back on the board and solved, still that solve
+    useGame.getState().jumpToStep(3);
+    vi.advanceTimersByTime(5000);
+    const daily = useGame.getState().info;
+    useGame.getState().openOver(() => (useGame.getState().startGame(OTHER_PUZZLE, 1000, 'Medium'), true));
+    expect(useGame.getState().setAside?.info).toEqual(daily);
+    const free = useGame.getState().cells.findIndex((c) => !c.value);
+    play(free, Number(solution()[free]));
+    useGame.getState().backToSetAside();
+    expect(useGame.getState().info).toEqual(daily);
+    for (const [cell, c] of useGame.getState().cells.entries()) if (!c.value) play(cell, Number(solution()[cell]));
+    g = useGame.getState();
+    expect(g.won).toBe(true);
+    expect(g.assisted).toBe(false);
+    expect(g.dailyKept).toBe(true);
+    expect(Math.floor(g.elapsedMs() / 1000)).toBe(first.seconds);
+  });
+
+  it('a solve with help stays one with help when it is solved again', () => {
+    startDaily();
+    useGame.getState().markAssisted();
+    solveAll();
+    useGame.getState().undo();
+    play(LAST, Number(solution()[LAST]));
+    expect(useGame.getState().won).toBe(true);
+    expect(useGame.getState().assisted).toBe(true);
+    expect(dailyResultOf(useGame.getState())?.unassisted).toBe(false);
   });
 
   it('a won game saved before the solve’s time was kept has it at its saved time, and says nothing of being the day’s own', async () => {

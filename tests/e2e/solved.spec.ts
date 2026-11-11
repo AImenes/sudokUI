@@ -168,6 +168,41 @@ test.describe('a solved game', () => {
     expect(sent).toEqual([]);
   });
 
+  test('a Steps jump on the solved daily, played on to the end, is the same unassisted solve: after a reload its win screen says so and still offers Send', async ({ page }) => {
+    test.setTimeout(90_000);
+    const today = localDateKey();
+    const daily = dailies.find((d) => d.date === today)!;
+    expect(daily, `a published daily for ${today}`).toBeTruthy();
+    await open(page, `/daily/${today}`);
+    await solveBoard(page, daily.puzzle);
+    const dialog = winScreen(page);
+    await expect(dialog.getByRole('button', { name: /Send my time and compare/ })).toBeVisible();
+    const result = await dialog.locator('p').first().innerText();
+    await dialog.getByRole('button', { name: 'Admire the grid' }).click();
+    await page.getByRole('button', { name: 'Steps', exact: true }).click();
+    const path = page.getByRole('dialog', { name: 'Solution path' });
+    const row = path.locator('.path-list > .path-row').nth(1);
+    if (await row.evaluate((el) => el.classList.contains('path-group'))) await row.locator('.path-jump').click();
+    else await row.click();
+    await expect(path).toHaveCount(0);
+    // the rest of the board, from where the jump left it
+    const solution = solutionOf(daily.puzzle);
+    const open1 = await page.evaluate(() =>
+      (JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.cells as { value: number }[]).map((c, i) => (c.value ? -1 : i)).filter((i) => i >= 0)
+    );
+    expect(open1.length).toBeGreaterThan(0);
+    for (const cell of open1) await enter(page, cell, solution[cell]);
+    await expect(page.getByRole('button', { name: 'Pause game' })).toBeDisabled();
+    // the win screen put away stays away for the same solve
+    await expect(winScreen(page)).toHaveCount(0);
+    await page.reload();
+    const again = winScreen(page);
+    await expect(again).toContainText('Unassisted solve: no help, every mark your own');
+    await expect(again).not.toContainText('Solved with assistance');
+    await expect(again.getByRole('button', { name: /Send my time and compare/ })).toBeVisible();
+    await expect(again.locator('p').first()).toHaveText(result);
+  });
+
   test('a daily solved again by Restart shows its win screen, which says the first solve stays the day’s result, and sends and shares that one', async ({ page }) => {
     test.setTimeout(90_000);
     const today = localDateKey();

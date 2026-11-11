@@ -280,8 +280,15 @@ const stepAcross = (s: GameStore, x: Snapshot) =>
 /** the clock as the board is solved: it stops at its time, or, for a game
  *  solved before (an Undo or a Steps jump off it, then solved again), at
  *  the time its solve was recorded with (recordWin): the same solve shows
- *  one time, on the win screen, in its verdict, shared and sent */
-const winClock = (s: GameStore) => ({ elapsedBefore: s.solved && s.solvedMs !== null ? s.solvedMs : s.elapsedMs(), paused: true });
+ *  one time, and one help flag, on the win screen, in its verdict, shared
+ *  and sent */
+const winClock = (s: GameStore) => ({
+  elapsedBefore: s.solved && s.solvedMs !== null ? s.solvedMs : s.elapsedMs(),
+  paused: true,
+  // and with the help it was recorded with: a Steps jump or a hint since is
+  // no help with the solve that was already made
+  ...(s.solved && s.solvedAssisted !== null ? { assisted: s.solvedAssisted } : {})
+});
 
 /** the chain trainer runs on auto candidates: an Undo, a Redo or a jump
  *  back that leaves them off closes it, with no handover left for Done,
@@ -589,6 +596,12 @@ export interface SetAside extends GameBackup {
   custom?: boolean;
   customBackup?: GameBackup | null;
   solved?: boolean;
+  /** a game solved, then put back in play (Undo, a Steps jump): its solve's
+   *  time and help, and whether it is its day's result, so solved again
+   *  after Back to it it is still that solve (winClock) */
+  solvedMs?: number | null;
+  solvedAssisted?: boolean | null;
+  dailyKept?: boolean;
   practiceTarget?: Step | null;
   practiceFound?: boolean;
   /** the running game's tally (src/state/stats.ts), for its win screen */
@@ -649,6 +662,13 @@ interface GameStore {
    *  stops there again (winClock). Null before the solve; saved with the
    *  game, and a save from before it existed has it when it was won */
   solvedMs: number | null;
+  /** whether help was used before the solve was recorded (recordWin): the
+   *  board solved again is the same solve, so the win screen calls it what
+   *  it was, whatever a Steps jump or a hint did since, and Send still
+   *  sends it when it was unassisted (winClock). Null before the solve;
+   *  saved with the game, and a save from before it existed has it when it
+   *  was won, as the game's help flag then */
+  solvedAssisted: boolean | null;
   /** this game's solve is the one its day keeps as its result
    *  (recordDaily): not so for a daily solved again. Saved with the game;
    *  absent in a save from before it existed */
@@ -872,7 +892,7 @@ function foundNotice(tech: Tech): string {
  *  game (startGame), and its solve counts again */
 function recordWin(s: GameStore) {
   if (!s.info || s.solved) return;
-  useGame.setState({ solved: true, solvedMs: s.elapsedMs() });
+  useGame.setState({ solved: true, solvedMs: s.elapsedMs(), solvedAssisted: s.assisted });
   if (!s.info.practiceTech) useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
   useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000), kindOf(s.info));
   recordDaily(s);
@@ -1010,6 +1030,7 @@ export const useGame = create<GameStore>()(
       counted: false,
       solved: false,
       solvedMs: null,
+      solvedAssisted: null,
       assisted: false,
       hint: null,
       hintWith: null,
@@ -1113,6 +1134,7 @@ export const useGame = create<GameStore>()(
           counted: same && prev.counted,
           solved: false,
           solvedMs: null,
+          solvedAssisted: null,
           dailyKept: false,
           // fast-forwarded practice switches auto candidates on for you,
           // which under the house rules already counts as assistance
@@ -2691,6 +2713,7 @@ export const useGame = create<GameStore>()(
         // solved survives an Undo of the winning digit, and a reload with it
         solved: s.solved,
         solvedMs: s.solvedMs,
+        solvedAssisted: s.solvedAssisted,
         dailyKept: s.dailyKept,
         assisted: s.assisted,
         // the declared meaning of the marks survives a reload with them
@@ -2717,7 +2740,7 @@ export const useGame = create<GameStore>()(
         // (the solve's time and whether it is the day's own start unknown
         // where a save from before they were kept lacks them, not as this
         // window had them)
-        return { ...current, ...freshSession(), solvedMs: null, dailyKept: undefined, ...p, counted: true };
+        return { ...current, ...freshSession(), solvedMs: null, solvedAssisted: null, dailyKept: undefined, ...p, counted: true };
       },
       onRehydrateStorage: () => (state) => {
         if (state) {
@@ -2742,6 +2765,7 @@ export const useGame = create<GameStore>()(
           // the time it was won at
           state.solved = !!state.solved || state.won;
           if (state.solvedMs === null && state.won) state.solvedMs = state.elapsedBefore;
+          if (state.solvedAssisted === null && state.won) state.solvedAssisted = state.assisted;
           // the chain trainer, open when the page went, does not come back:
           // it closes as Done closes it, so the auto candidates it switched
           // on go off with the player's marks back (after the count above,
@@ -2906,6 +2930,9 @@ function boardOf(back: SetAside): Partial<GameStore> {
     won: back.won,
     paused: back.won,
     solved: !!back.solved || back.won,
+    solvedMs: back.solvedMs ?? (back.won ? back.elapsedBefore : null),
+    solvedAssisted: back.solvedAssisted ?? (back.won ? (back.assisted ?? false) : null),
+    dailyKept: back.dailyKept,
     counted: !!g.info && !useSettings.getState().dontCount && playedOn(g),
     assisted: back.assisted ?? false,
     markContract: back.markContract ?? 'unknown',
@@ -2943,6 +2970,7 @@ function asideOf(s: GameStore): SetAside {
     elapsedBefore: s.elapsedMs(),
     won: s.won,
     solved: s.solved,
+    ...(s.solved ? { solvedMs: s.solvedMs, solvedAssisted: s.solvedAssisted, dailyKept: s.dailyKept } : {}),
     assisted: s.assisted,
     markContract: s.markContract,
     practiceTarget: s.practiceTarget,

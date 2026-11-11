@@ -92,8 +92,12 @@ away and runs on when the page is shown again. A win pauses the clock for
 good: nothing can resume it, and Undo or a Steps jump off the solved board
 (or Redo of the jump) starts it again from the winning time. Solved again,
 it is the same solve, so the clock stops at the time the solve was recorded
-with (`solvedMs`, `winClock`), and the win screen tells a daily's own solve
-from an earlier one by the game's `dailyKept`, not by its time.
+with (`solvedMs`, `winClock`) and the game takes back the help flag it was
+recorded with (`solvedAssisted`): a Steps jump or a hint used since does
+not make an unassisted solve one with help, so its win screen still calls
+it unassisted and a daily's still offers Send. The win screen tells a
+daily's own solve from an earlier one by the game's `dailyKept`, not by
+its time. A game put back in play and set aside keeps these with it.
 
 The game, the record (`stats.ts`) and the dailies (`dailyStats.ts`) are
 each one save shared by every tab and window of the app. A window that is
