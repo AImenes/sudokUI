@@ -1034,6 +1034,35 @@ function autoOn(cells: CellState[], contract: MarkContract): string | null {
 let seenSave: string | null = null;
 /** the save being taken in (takeInSavedGame): read as it came, even if this window has written since */
 let takingIn: string | null = null;
+/**
+ * The store is being set in answer to another window's save (takeInSavedGame,
+ * keepOthers, settleSlot, a let-go line): in memory only, never written. The
+ * save at that moment is the other window's own, and already holds those
+ * games; what this window keeps reaches it with its own next write (a move,
+ * or being shown again). So a hidden window never writes over the save a
+ * reloading page has just left for its new page to find
+ */
+let quiet = false;
+function quietly(fn: () => void) {
+  const was = quiet;
+  quiet = true;
+  try {
+    fn();
+  } finally {
+    quiet = was;
+  }
+}
+
+/** where this tab keeps which game is its own (gameKey), for as long as the tab lives: a reload, or a tab the browser restores, finds it again (reclaimOwnGame) */
+const TAB_GAME = 'sudokui-tab-game';
+/** this tab's own game as it last held it, read before the save is */
+const tabGame: string | null = (() => {
+  try {
+    return typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(TAB_GAME);
+  } catch {
+    return null;
+  }
+})();
 
 export const useGame = create<GameStore>()(
   persist(
@@ -1253,7 +1282,8 @@ export const useGame = create<GameStore>()(
         // the game opened is this window's own before it is played, and a
         // game the one slot lets go is named (letGoLine)
         const { slot, dropped } = oneSlot(kept, get().setAside);
-        set({ setAside: slot, ownHere: true, ...(dropped ? { letGo: letGoLine([dropped], slot!) } : {}) });
+        set({ setAside: slot, ownHere: true });
+        if (dropped) tellLetGo([dropped], slot!);
         return true;
       },
 
@@ -1277,7 +1307,8 @@ export const useGame = create<GameStore>()(
           const entry = s.cells.some((c) => c.value) ? { ...asideOf(s), customBackup: null } : null;
           get().cancelCustomEntry();
           const { slot, dropped } = oneSlot(entry, get().setAside);
-          set({ setAside: slot, ...(dropped ? { letGo: letGoLine([dropped], slot!) } : {}) });
+          set({ setAside: slot });
+          if (dropped) tellLetGo([dropped], slot!);
           return true;
         }
         const back = s.setAside;
@@ -1294,7 +1325,8 @@ export const useGame = create<GameStore>()(
           const entry = back.cells.some((c) => c.value) ? { ...back, customBackup: null } : null;
           useStats.setState({ game: back.tally ?? emptyTally() });
           const { slot, dropped } = oneSlot(kept, entry);
-          set({ ...boardOf(aside), setAside: slot, ...(dropped ? { letGo: letGoLine([dropped], slot!) } : {}) });
+          set({ ...boardOf(aside), setAside: slot });
+          if (dropped) tellLetGo([dropped], slot!);
           return true;
         }
         return false;
@@ -2770,6 +2802,7 @@ export const useGame = create<GameStore>()(
         return {
           getItem: (name: string) => (seenSave = takingIn ?? store.getItem(name)),
           setItem: (name: string, value: string) => {
+            if (quiet) return;
             seenSave = value;
             store.setItem(name, value);
           },
@@ -2989,13 +3022,20 @@ function settleSlot(copies: Copy[]) {
   // a board this window cannot read (the error screen is up) is never written over another's save
   if (!Array.isArray(s.cells) || s.cells.length !== 81) return;
   const seen = new Set<string>([gameKey(s)]);
-  const games = copies.filter(({ game }) => {
+  const copiesOf = copies.filter(({ game }) => {
     const key = gameKey(game);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
-  if (!games.length) return;
+  // a game won in the other window is solved: it is not kept, and the older
+  // copy of it here goes with it, its note too, with nothing to tell
+  const games = copiesOf.filter(({ game }) => !game.won);
+  if (!games.length) {
+    const mine = s.setAside;
+    if (mine && copiesOf.some(({ game }) => game.won && gameKey(game) === gameKey(mine))) quietly(() => useGame.setState({ setAside: null }));
+    return;
+  }
   let kept = games[games.length - 1];
   const dropped: SetAside[] = [];
   for (let i = games.length - 2; i >= 0; i--) {
@@ -3008,14 +3048,12 @@ function settleSlot(copies: Copy[]) {
   const unchanged = same && boardKey(mine!) === boardKey(kept.game) && (kept.running || mine!.elapsedBefore === kept.game.elapsedBefore);
   const told = dropped.filter((game) => !toldGone.has(gameKey(game)));
   for (const game of told) toldGone.add(gameKey(game));
-  const letGo = told.length ? { letGo: letGoLine(told, kept.game) } : {};
-  if (unchanged) {
-    if (told.length) useGame.setState(letGo);
-    return;
+  if (!unchanged) {
+    // a game newly kept here has its note shown; the same game keeps its note as it was, unless another went
+    const hidden = same && !dropped.length ? !!mine!.hidden : false;
+    quietly(() => useGame.setState({ setAside: { ...kept.game, hidden } }));
   }
-  // a game newly kept here has its note shown; the same game keeps its note as it was, unless another went
-  const hidden = same && !dropped.length ? !!mine!.hidden : false;
-  useGame.setState({ setAside: { ...kept.game, hidden }, ...letGo });
+  tellLetGo(told, kept.game);
 }
 
 /**
@@ -3032,7 +3070,9 @@ function keepOthers(saved: Partial<GameStore>) {
   const theirs = saved.setAside && typeof saved.setAside === 'object' ? levelledAside(saved.setAside) : null;
   const mine = useGame.getState().setAside;
   settleSlot([
-    ...(board && underWay(board) ? [{ game: board, running: !saved.paused && !saved.won }] : []),
+    // won there, it is the newest copy of that game: an older one kept here
+    // goes (settleSlot), as a solved game is not kept
+    ...(board && (underWay(board) || board.won) ? [{ game: board, running: !saved.paused && !saved.won }] : []),
     ...(theirs ? [{ game: theirs, running: false }] : []),
     ...(mine ? [{ game: mine, running: false }] : [])
   ]);
@@ -3054,6 +3094,11 @@ export function takeInSavedGame(json: string, hidden = true) {
   seenSave = json;
   const saved = savedGame(json);
   if (!saved) return;
+  // in memory only (quiet): nothing is written in answer
+  quietly(() => takeIn(saved, json, hidden));
+}
+
+function takeIn(saved: Partial<GameStore>, json: string, hidden: boolean) {
   const before = useGame.getState().setAside;
   if (hidden && takesInSaved(saved, useGame.getState())) {
     // (the storage is read at once, so the save comes in within the call)
@@ -3179,12 +3224,145 @@ export function gameName(g: { info: GameInfo | null; custom?: boolean; customBac
   return t('your {level} game', { level: t.level(info.level) });
 }
 
-/** what the toast says when the one slot lets games go: which, and which it keeps (docs/architecture.md, "One slot") */
-function letGoLine(dropped: SetAside[], kept: SetAside): string {
+/**
+ * What the toast says when the one slot lets games go (docs/architecture.md,
+ * "One slot"): in one sentence, the games gone, listed the language's way,
+ * and the one kept; and for a game another window of the app still has
+ * open (askOthers), that it is still there, not gone. Two games of the
+ * same name are told apart by their rating. Empty when there is none.
+ */
+export function letGoLine(gone: SetAside[], elsewhere: SetAside[], kept: SetAside): string {
   const t = translator();
-  return dropped
-    .map((game) => t('Only one game in progress is kept at a time: {game} is gone, {kept} is kept', { game: gameName(game), kept: gameName(kept) }))
-    .join(' ');
+  const all = [...gone, ...elsewhere, kept];
+  const name = (g: SetAside) => {
+    const plain = gameName(g);
+    const twin = all.some((o) => o !== g && gameName(o) === plain && gameKey(o) !== gameKey(g));
+    return twin && g.info ? t('{game} (HoDoKu rating {score})', { game: plain, score: g.info.score }) : plain;
+  };
+  const list = (games: SetAside[]) => {
+    const names = games.map(name);
+    try {
+      return new Intl.ListFormat(t.lang, { type: 'conjunction' }).format(names);
+    } catch {
+      return names.join(', ');
+    }
+  };
+  const vars = (games: SetAside[]) => ({ game: list(games), games: list(games), kept: name(kept) });
+  const lines: string[] = [];
+  if (gone.length === 1) lines.push(t('Only one game in progress is kept at a time: {game} is gone, {kept} is kept', vars(gone)));
+  else if (gone.length) lines.push(t('Only one game in progress is kept at a time: {games} are gone, {kept} is kept', vars(gone)));
+  if (elsewhere.length === 1) lines.push(t('Only one game in progress is kept in this tab: {game} is still open in your other tab, {kept} is kept here', vars(elsewhere)));
+  else if (elsewhere.length) lines.push(t('Only one game in progress is kept in this tab: {games} are still open in your other tabs, {kept} is kept here', vars(elsewhere)));
+  // each its own sentence
+  return lines.length > 1 ? lines.map((line) => `${line}.`).join(' ') : (lines[0] ?? '');
+}
+
+/** the games this window holds, by key (gameKey): the one on its board, if under way, and the one in its slot */
+function heldHere(): string[] {
+  const s = useGame.getState();
+  return [...(underWay(s) ? [gameKey(s)] : []), ...(s.setAside ? [gameKey(s.setAside)] : [])];
+}
+
+/** asks the app's other windows open in this browser which of these games (gameKey) they hold, and answers with those held */
+export type AskOthers = (keys: string[], answer: (held: Set<string>) => void) => void;
+
+/** how long an answer is waited for: other windows answer from memory, within a few milliseconds */
+const OTHERS_WAIT_MS = 150;
+
+/**
+ * The other windows of the app, asked through a channel of the browser's
+ * own (BroadcastChannel): nothing leaves the device, and a window that
+ * cannot answer (closed, or frozen by the browser) counts as holding
+ * nothing. Without the channel (an old browser, or no page at all, as in
+ * the tests) the answer is at once: none.
+ */
+function channelAsker(): AskOthers {
+  if (typeof window === 'undefined' || typeof BroadcastChannel !== 'function') return (_keys, answer) => answer(new Set());
+  const asked = new Map<string, Set<string>>();
+  let channel: BroadcastChannel | null = null;
+  const open = () => {
+    try {
+      channel = new BroadcastChannel('sudokui-games');
+    } catch {
+      channel = null;
+      return;
+    }
+    const c = channel;
+    c.onmessage = (e: MessageEvent) => {
+      const m = e.data as { ask?: string; keys?: unknown; answer?: string; held?: unknown } | null;
+      if (typeof m?.ask === 'string' && Array.isArray(m.keys)) {
+        const mine = heldHere();
+        const held = m.keys.filter((k): k is string => typeof k === 'string' && mine.includes(k));
+        if (held.length) c.postMessage({ answer: m.ask, held });
+      } else if (typeof m?.answer === 'string' && Array.isArray(m.held)) {
+        const into = asked.get(m.answer);
+        if (into) for (const k of m.held) if (typeof k === 'string') into.add(k);
+      }
+    };
+  };
+  open();
+  // a page going away, or into the browser's back-forward cache, holds no
+  // game for anyone: it answers nothing until it is shown again
+  window.addEventListener('pagehide', () => {
+    channel?.close();
+    channel = null;
+  });
+  window.addEventListener('pageshow', () => {
+    if (!channel) open();
+  });
+  return (keys, answer) => {
+    if (!channel) return answer(new Set());
+    const id = `${Date.now()}-${Math.random()}`;
+    const held = new Set<string>();
+    asked.set(id, held);
+    channel.postMessage({ ask: id, keys });
+    setTimeout(() => {
+      asked.delete(id);
+      answer(held);
+    }, OTHERS_WAIT_MS);
+  };
+}
+// made at once, so this window answers the others from the start
+let askOthers: AskOthers = channelAsker();
+/** how this window asks the others; the tests give a window of their own */
+export function askOthersWith(ask: AskOthers) {
+  askOthers = ask;
+}
+
+/**
+ * The toast names the games the one slot let go (letGoLine) once the app's
+ * other windows have said which of them they still hold: a game another
+ * window still has open is not gone, and the line says where it is. Said
+ * in memory only (letGo is never saved).
+ */
+function tellLetGo(dropped: SetAside[], kept: SetAside) {
+  if (!dropped.length) return;
+  askOthers(dropped.map(gameKey), (held) => {
+    const line = letGoLine(
+      dropped.filter((g) => !held.has(gameKey(g))),
+      dropped.filter((g) => held.has(gameKey(g))),
+      kept
+    );
+    if (line) quietly(() => useGame.setState({ letGo: line }));
+  });
+}
+
+/**
+ * At start-up, before a link is opened (src/ui/App.tsx): when another window
+ * saved last, the save's board is that window's game, and this tab's own
+ * (the one it last held, kept per tab) may be in the slot, kept there by
+ * that window. It comes back to the board quietly, as the page left it:
+ * behind the pause card if under way (the page paused it as it went), the
+ * other window's game in the slot in its place. True if it did.
+ */
+export function reclaimOwnGame(own = tabGame): boolean {
+  const s = useGame.getState();
+  const back = s.setAside;
+  if (!own || gameKey(s) === own || !back || gameKey(back) !== own) return false;
+  const kept = underWay(s) ? asideOf(s) : null;
+  useStats.setState({ game: back.tally ?? emptyTally() });
+  useGame.setState({ ...boardOf(back), ...(!back.custom && underWay(back) ? { paused: true } : {}), setAside: kept });
+  return true;
 }
 
 const emptyTally = (): GameTally => ({ unaided: {}, hinted: {}, errors: 0, beyond: 0 });
@@ -3292,6 +3470,20 @@ export function countFirstMove(s: GameStore, prev: GameStore) {
   countStart();
 }
 useGame.subscribe(countFirstMove);
+
+// this tab's own game, kept per tab whenever the board's game changes
+// (reclaimOwnGame): in this tab's session storage, nowhere else
+let tabKey = tabGame;
+useGame.subscribe((s) => {
+  const key = gameKey(s);
+  if (key === tabKey || (!s.info && !s.custom)) return;
+  tabKey = key;
+  try {
+    sessionStorage.setItem(TAB_GAME, key);
+  } catch {
+    /* no session storage (a test, a locked-down browser): a reload then finds the save's board */
+  }
+});
 
 // a hint appearing takes note of what it was found under, unless the
 // action that showed it already did (Check's proof, found earlier)

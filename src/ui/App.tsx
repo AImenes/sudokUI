@@ -3,7 +3,7 @@
 // toast display and the first-visit bootstrap game.
 import React, { Suspense, useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { SLOP_PX } from './touchIntent';
-import { useGame, rateImport, Proof, listLayer } from '../state/gameStore';
+import { useGame, rateImport, Proof, listLayer, reclaimOwnGame } from '../state/gameStore';
 import { cellName, PEERS } from '../engine/board';
 import { useSettings } from '../state/settings';
 import { useShownTheme, applyTheme } from './theme';
@@ -391,6 +391,10 @@ export default function App() {
   useEffect(() => {
     if ((window as any).__sudokuiBooted) return;
     (window as any).__sudokuiBooted = true;
+    // another window saved last, keeping this tab's own game in its slot
+    // (a reload while another tab has a game): that game comes back to
+    // the board first, quietly, as this page left it (gameStore.ts)
+    reclaimOwnGame();
     const params = new URLSearchParams(window.location.hash.slice(1));
     const learn = params.get('learn');
     if (learn) openLearn(parseLearnParam(learn));

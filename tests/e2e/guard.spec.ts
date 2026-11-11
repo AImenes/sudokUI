@@ -318,6 +318,63 @@ test.describe('links and Import, laptop', () => {
     await receiver.close();
   });
 
+  test('the Learn page’s Practice tab, reloaded while another tab has the daily under way, comes back to its practice behind the pause card, the daily kept, with no toast', async ({ context }) => {
+    await context.addInitScript(welcomed);
+    const hide = (p: Page) =>
+      p.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+    // tab 1: today's daily, two digits, then behind the other tab (it pauses)
+    const first = await context.newPage();
+    await openDaily(first);
+    await enter(first, false, 2);
+    await hide(first);
+    // tab 2: a Learn page, its Practice link, three digits, then a reload
+    const second = await context.newPage();
+    await second.goto('/learn/x-wing/');
+    await second.locator('a.cta', { hasText: 'Practice X-Wing' }).first().click();
+    await expect(second.locator('.practice-bar')).toBeVisible();
+    await enter(second, false, 3);
+    await expect.poll(async () => (await saved(second)).entries).toBeGreaterThanOrEqual(3);
+    await second.reload();
+    await expect(second.locator('svg.board')).toBeVisible();
+    await expect(second.locator('.practice-bar')).toBeVisible();
+    await expect(second.locator('.pause-card')).toBeVisible();
+    expect(await saved(second)).toMatchObject({ aside: { dailyKey: localDateKey(), entries: 2 } });
+    await expect(note(second)).toBeVisible();
+    // nothing to say: no game came back from elsewhere, none went
+    await second.waitForTimeout(400);
+    await expect(second.locator('.toast')).toHaveCount(0);
+    // tab 1 still has its daily
+    expect(await first.evaluate(() => location.pathname)).toBe(`/daily/${localDateKey()}`);
+  });
+
+  test('a game the one slot lets go in a new tab, still open in the other tab, is said to be there, not gone', async ({ context }) => {
+    await context.addInitScript(welcomed);
+    // tab 1: today's daily (three digits) kept, a friend's puzzle (two digits) on the board, then behind the other tab
+    const first = await context.newPage();
+    await openDaily(first);
+    await enter(first, false, 3);
+    await first.goto(`/p/${EASY}/`);
+    await expect(note(first)).toBeVisible();
+    await enter(first, false, 2);
+    await expect.poll(async () => (await saved(first)).entries).toBe(2);
+    await first.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    // tab 2: another puzzle; the slot keeps the daily, and the friend's puzzle is still on tab 1's board
+    const second = await context.newPage();
+    await second.goto(`/p/${HARD}/`);
+    await expect(second.locator('.toast')).toContainText(
+      'Only one game in progress is kept in this tab: your game on a shared puzzle is still open in your other tab, today’s daily is kept here'
+    );
+    await expect(second.locator('.toast')).not.toContainText('is gone');
+    expect(await saved(second)).toMatchObject({ puzzle: HARD, aside: { dailyKey: localDateKey(), entries: 3 } });
+  });
+
   test('a Learn page’s Practice link puts the daily under way aside', async ({ page }) => {
     await page.addInitScript(welcomed);
     await openDaily(page);

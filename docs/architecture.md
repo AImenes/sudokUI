@@ -132,7 +132,10 @@ keeps its own game, hidden or in front, keeps the other window's as well
 (`keepOthers`): the game on that window's board, if under way, and the
 game in its slot go into this window's slot, unless one is the game on
 this window's own board, by the one-slot rule (below) and with its toast
-when one must go (told once per game in a page's life). A hidden window
+when one must go (told once per game in a page's life). A game won on
+that window's board is the newest copy of it: the older copy kept here
+goes, note and all, with nothing to tell, as a solved game is not kept,
+so Back to it cannot bring it back unsolved and count its solve twice. A hidden window
 that takes the other's game in keeps its own kept game beside what came
 in, by the same rule. So a friend's link opened in a new tab, played there
 and closed, is still kept when the older tab is shown again and saves,
@@ -140,10 +143,18 @@ and moves made in the older tab on the game the newer one put aside reach
 the newer one's copy. The save is read at each `storage` event and again
 when the window is shown, before it saves (`catchUp`: a page the browser
 froze misses its events); games are told apart by puzzle, day and
-practice (`gameKey`), and a window writes only when its slot really
-changes (another game, or the same one played on; the time alone of a
-game whose clock was running is no change), so two windows never answer
-each other's saves for ever. The game's own tally (`stats.ts`, `game`)
+practice (`gameKey`). A window never writes in answer to another's save
+(`quietly`): what it takes in or keeps from it stays in memory and goes
+into the save with the window's own next write (a move, being shown
+again), since the save at that moment is the other window's own and
+holds those games already. So two windows never answer each other's
+saves, and a hidden window cannot write over the save a reloading tab
+has just left for its new page. A page that boots on another window's
+save all the same (that window saved last) finds the game this tab last
+held, which each tab keeps the key of in its own session storage, in the
+slot, and brings it back before any link is opened, quietly and behind
+the pause card if it is under way, the other window's game in the slot
+in its place (`reclaimOwnGame`). The game's own tally (`stats.ts`, `game`)
 goes with the game, and a game kept from another window takes that
 window's saved tally. A game read from storage comes without the window's
 undo steps, hint, chain trainer and Check marks, which belonged to the
@@ -242,9 +253,17 @@ none of the player's work.
   at that moment the toast says which, naming both games as the notes do
   (`gameName`: today's daily, the daily for a date, your game on a shared
   puzzle, your X-Wing practice, your Hard game, the puzzle you were typing
-  in): "Only one game in progress is kept at a time:
-  your game on a shared puzzle is gone, today's daily is kept" (the
-  owner's lead, 11 November 2026: one slot, but never silent). It takes
+  in, and, for two of one name, each with its HoDoKu rating): "Only one
+  game in progress is kept at a time: your game on a shared puzzle is
+  gone, today's daily is kept" (the owner's lead, 11 November 2026: one
+  slot, but never silent); several gone at once, in one sentence, listed
+  the language's way. A game is named gone only when no other window of
+  the app still has it open: the windows ask each other, inside the
+  browser (a `BroadcastChannel`, answered from memory within a few
+  milliseconds; a page going away or kept in the back-forward cache
+  answers nothing), and one still open elsewhere is said to be there:
+  "Only one game in progress is kept in this tab: your game on a shared
+  puzzle is still open in your other tab, today's daily is kept here". It takes
   two games under way, one in the slot and one on the board, and a third
   opened over them by a link, Import, the Daily button or a Learn page's
   Practice link, or three across two windows (`keepOthers`, above). The

@@ -15,7 +15,7 @@
  * challenger's time, a day's daily. And without the published dailies, no
  * other board is passed off as the day's.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const storage = new Map<string, string>();
 (globalThis as any).localStorage = {
@@ -31,7 +31,7 @@ vi.mock('../src/content/dailies', async (importOriginal) => {
   return { ...real, loadDailies: async () => (dailiesFile.fails ? null : real.loadDailies()) };
 });
 
-const { useGame, encodePosition, underWay, workOf, gameName, takeInSavedGame } = await import('../src/state/gameStore');
+const { useGame, encodePosition, underWay, workOf, gameName, takeInSavedGame, askOthersWith, reclaimOwnGame, gameKey, letGoLine } = await import('../src/state/gameStore');
 const { useTelemetry } = await import('../src/state/telemetry');
 const { useSettings } = await import('../src/state/settings');
 const { useStats } = await import('../src/state/stats');
@@ -740,6 +740,8 @@ describe('the app’s own addresses, read one way', () => {
 
 describe('two windows of the app', () => {
   const KEY = 'sudokui-game-v1';
+  // no other window answers unless a test gives one
+  afterEach(() => askOthersWith((_keys, answer) => answer(new Set())));
   const savedState = () => JSON.parse(storage.get(KEY)!).state;
   /**
    * The app in another window (a new tab a chat app opened, a Learn page's
@@ -884,7 +886,7 @@ describe('two windows of the app', () => {
     expect(g().letGo).toBeNull();
   });
 
-  it('writes only when the slot really changes: the same save again, or the other window’s running clock alone, writes nothing', async () => {
+  it('never writes in answer to another window’s save: what it keeps goes into the save with its own next write', async () => {
     await startDaily();
     play(3);
     g().setAway(true);
@@ -892,25 +894,171 @@ describe('two windows of the app', () => {
       await open(`https://sudokui.app/p/${EASY}/`);
       play(5);
     });
-    takeInSavedGame(theirs, true);
     const count = writes();
+    takeInSavedGame(theirs, true);
     takeInSavedGame(theirs, true);
     const state = JSON.parse(theirs).state;
     takeInSavedGame(JSON.stringify({ state: { ...state, paused: false, elapsedBefore: state.elapsedBefore + 5000 }, version: 0 }), true);
     takeInSavedGame(theirs, false);
-    expect(count()).toBe(0);
-    // a move there: the copy kept here is that board, written once
+    // a move there: the copy kept here is that board, in memory
     const moved = structuredClone(state);
     const cell = moved.cells.findIndex((c: { value: number }) => !c.value);
     moved.cells[cell].value = Number(moved.info.solution[cell]);
     takeInSavedGame(JSON.stringify({ state: moved, version: 0 }), true);
-    expect(count()).toBe(1);
     expect(entries(g().setAside!.cells)).toBe(6);
     // paused there, its clock stands: the time it stood at is kept
-    takeInSavedGame(JSON.stringify({ state: { ...moved, paused: true, elapsedBefore: 90_000 }, version: 0 }), true);
-    expect(count()).toBe(2);
+    const paused = JSON.stringify({ state: { ...moved, paused: true, elapsedBefore: 90_000 }, version: 0 });
+    storage.set(KEY, paused);
+    takeInSavedGame(paused, true);
     expect(g().setAside?.elapsedBefore).toBe(90_000);
+    // nothing written: the save is still the other window's own
+    expect(count()).toBe(0);
+    expect(storage.get(KEY)).toBe(paused);
+    // shown again, this window's own write carries both
+    g().setAway(false);
+    expect(count()).toBe(1);
+    expect(savedState().info.dailyKey).toBe(TODAY);
+    expect(savedState().setAside).toMatchObject({ info: { puzzle: EASY }, elapsedBefore: 90_000 });
     vi.restoreAllMocks();
+  });
+
+  it('a tab reloaded while another tab has a game under way comes back to its own game, paused, with the other game kept and no word of a game gone', async () => {
+    // tab 1: today's daily, two digits, then hidden (paused)
+    await startDaily();
+    play(2);
+    g().setAway(true);
+    // tab 2, from that save: a Learn page's Practice, three digits, then reloaded (the page goes: paused, saved)
+    const theirs = await inOtherWindow(async () => {
+      g().openOver(() => (g().startGame(HARD, 1348, 'Hard', 'X_WING'), true));
+      play(3);
+      g().setAway(true);
+    });
+    expect(JSON.parse(theirs).state).toMatchObject({ info: { practiceTech: 'X_WING' }, paused: true, setAside: { info: { dailyKey: TODAY } } });
+    // tab 1 hears that save while hidden: it keeps the practice, and writes nothing
+    const count = writes();
+    takeInSavedGame(theirs, true);
+    expect(g().info?.dailyKey).toBe(TODAY);
+    expect(g().setAside?.info?.practiceTech).toBe('X_WING');
+    expect(count()).toBe(0);
+    vi.restoreAllMocks();
+    // tab 2's new page finds its own save, and its address (the practice's puzzle) opens nothing new
+    await reload();
+    useGame.setState({ away: false });
+    await openAppLink(readAppLink(new URL(`https://sudokui.app/p/${HARD}/`))!, 'boot');
+    expect(g().info?.practiceTech).toBe('X_WING');
+    expect(entries()).toBeGreaterThanOrEqual(3);
+    expect(g().paused).toBe(true);
+    expect(g().setAside?.info?.dailyKey).toBe(TODAY);
+    expect(g().letGo).toBeNull();
+  });
+
+  it('a page that boots on another window’s save finds its own game in the slot and brings it back quietly, paused', async () => {
+    // this tab: a practice under way; another tab: today's daily, kept with the practice in its slot, saved last
+    g().startGame(HARD, 1348, 'Hard', 'X_WING');
+    play(3);
+    const own = gameKey(g());
+    g().setAway(true);
+    await inOtherWindow(async () => {
+      await startDaily();
+      play(2);
+    });
+    expect(savedState()).toMatchObject({ info: { dailyKey: TODAY }, setAside: { info: { practiceTech: 'X_WING' } } });
+    await reload();
+    useGame.setState({ away: false, notice: null });
+    expect(reclaimOwnGame(own)).toBe(true);
+    expect(g().info?.practiceTech).toBe('X_WING');
+    expect(entries()).toBe(3);
+    expect(g().paused).toBe(true);
+    expect(g().practiceTarget).not.toBeNull();
+    expect(g().setAside?.info?.dailyKey).toBe(TODAY);
+    expect(entries(g().setAside!.cells)).toBe(2);
+    expect(g().notice).toBeNull();
+    expect(g().letGo).toBeNull();
+    // its own game on the board already, or not in the slot: nothing happens
+    expect(reclaimOwnGame(own)).toBe(false);
+    expect(reclaimOwnGame(null)).toBe(false);
+  });
+
+  it('a game solved in the other window is no longer kept here: the older copy goes, with nothing said', async () => {
+    g().startGame(HARD, 1348, 'Hard');
+    play(2);
+    await open(`https://sudokui.app/p/${EASY}/`);
+    play(3);
+    g().backToSetAside();
+    // this window: Hard on the board, Easy (3 digits) in the slot
+    expect(g().setAside?.info?.puzzle).toBe(EASY);
+    g().setAway(true);
+    const theirs = await inOtherWindow(() => {
+      g().backToSetAside();
+      const { solution } = g().info!;
+      for (const [cell, c] of g().cells.entries()) {
+        if (c.value) continue;
+        g().select([cell], false);
+        g().input(Number(solution[cell]));
+      }
+      expect(g().won).toBe(true);
+    });
+    takeInSavedGame(theirs, true);
+    expect(g().info?.puzzle).toBe(HARD);
+    expect(g().setAside).toBeNull();
+    expect(g().letGo).toBeNull();
+  });
+
+  it('a game let go here that another window still has open is said to be there, not gone; one nobody has is gone', async () => {
+    // the hidden window: Easy on its board (two digits), today's daily (three) kept
+    await startDaily();
+    play(3);
+    await open(`https://sudokui.app/p/${EASY}/`);
+    play(2);
+    g().setAway(true);
+    const held = [gameKey(g()), gameKey(g().setAside!)];
+    const mine = storage.get(KEY)!;
+    // a new tab opens a Hard puzzle over that save: Easy has the less work, and goes from that tab's slot
+    askOthersWith((keys, answer) => answer(new Set(keys.filter((k) => held.includes(k)))));
+    let line: string | null = null;
+    await inOtherWindow(async () => {
+      await open(`https://sudokui.app/p/${HARD}/`);
+      line = g().letGo;
+    });
+    expect(line).toBe('Only one game in progress is kept in this tab: your game on a shared puzzle is still open in your other tab, today’s daily is kept here');
+    // with nobody holding it (this window closed), it is gone
+    askOthersWith((_keys, answer) => answer(new Set()));
+    storage.set(KEY, mine);
+    await inOtherWindow(async () => {
+      await open(`https://sudokui.app/p/${HARD}/`);
+      line = g().letGo;
+    });
+    expect(line).toBe('Only one game in progress is kept at a time: your game on a shared puzzle is gone, today’s daily is kept');
+  });
+
+  it('two games let go at once are named in one sentence', async () => {
+    // this window: an X-Wing practice (two digits), then a friend's link (one digit) over it; hidden
+    g().startGame(HARD, 1348, 'Hard', 'X_WING');
+    play(2);
+    await open(`https://sudokui.app/p/${EASY}/`);
+    play(1);
+    g().setAway(true);
+    // the other window, from that save: a new Hard game on the same puzzle (three digits), then today's daily (four)
+    const theirs = await inOtherWindow(async () => {
+      g().startGame(HARD, 1348, 'Hard');
+      play(3);
+      await startDaily();
+      play(4);
+    });
+    takeInSavedGame(theirs, true);
+    expect(g().setAside?.info?.dailyKey).toBe(TODAY);
+    expect(g().letGo).toBe('Only one game in progress is kept at a time: your X-Wing practice and your Hard game are gone, today’s daily is kept');
+  });
+
+  it('two games of the same name are told apart by their rating', () => {
+    const game = (puzzle: string, score: number) =>
+      ({ info: { puzzle, solution: '', score, level: 'Hard', practiceTech: null }, cells: [], autoCandidates: false, elapsedBefore: 0, won: false }) as never;
+    expect(letGoLine([game(HARD, 1348)], [], game(EASY, 1290))).toBe(
+      'Only one game in progress is kept at a time: your Hard game (HoDoKu rating 1348) is gone, your Hard game (HoDoKu rating 1290) is kept'
+    );
+    expect(letGoLine([game(HARD, 1348)], [game(EASY, 1290)], { ...(game('x', 900) as object), info: { puzzle: 'x', solution: '', score: 900, level: 'Medium', practiceTech: null } } as never)).toBe(
+      'Only one game in progress is kept at a time: your Hard game (HoDoKu rating 1348) is gone, your Medium game is kept. Only one game in progress is kept in this tab: your Hard game (HoDoKu rating 1290) is still open in your other tab, your Medium game is kept here.'
+    );
   });
 
   it('a game just won here, its win screen still up, is not given up while hidden; put away, it is', async () => {
