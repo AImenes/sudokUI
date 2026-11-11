@@ -154,16 +154,23 @@ export function ChainPanel() {
   // the keyboard's way in and out: focus moves into the panel when the
   // trainer opens, and back to where it was (the Chain button, Build it
   // yourself) when it closes from inside the panel, which takes the
-  // focused button with it
+  // focused button with it. Build it yourself (the one way in with a
+  // goal) is gone by now, hidden as the trainer opens, so the practice
+  // bar's first button stands in for it: it again, or Next puzzle once
+  // the technique is found
   const open = !!chain;
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const back = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const at = document.activeElement;
+    const back = at instanceof HTMLElement && at !== document.body ? at : null;
+    const fromPractice = !!useGame.getState().chainGoal;
     box.current?.focus({ preventScroll: true });
     return () => {
       const now = document.activeElement;
-      if (back?.isConnected && (!now || now === document.body)) back.focus({ preventScroll: true });
+      if (now && now !== document.body) return;
+      const to = back?.isConnected ? back : fromPractice ? document.querySelector<HTMLElement>('.practice-bar button') : null;
+      to?.focus({ preventScroll: true });
     };
   }, [open]);
   if (!chain) return null;

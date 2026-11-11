@@ -2220,7 +2220,9 @@ export const useGame = create<GameStore>()(
 
       chainKey: (digit) => {
         const s = get();
-        if (!s.chain) return;
+        // paused, the trainer is covered as the board is (App.tsx): keys
+        // build nothing, as no tap can
+        if (!s.chain || (s.paused && !s.won)) return;
         if (s.selection.length === 1) return get().chainTap(s.selection[0], digit);
         // nothing or several cells selected: the digit names no candidate
         const t = translator();
@@ -2229,7 +2231,7 @@ export const useGame = create<GameStore>()(
 
       chainUndo: () => {
         const s = get();
-        if (!s.chain?.nodes.length) return;
+        if (!s.chain?.nodes.length || (s.paused && !s.won)) return;
         const chain: Chain = { nodes: s.chain.nodes.slice(0, -1), links: s.chain.links.slice(0, -1) };
         const g = engineGrid(s.cells);
         const drawn = chain.links.length > 0 || (s.chainSuggest && chain.nodes.length > 0);

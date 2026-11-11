@@ -142,6 +142,10 @@
   --given: #a81d47;
   /* deep enough for 4.5:1 on the cell, still lighter than the given */
   --entered: #c93a68;
+  /* errors, and a repeated digit on the board, in a vermilion well apart
+     from the raspberry of Rosé's own digits (daylight's crimson read as a
+     thin given): 5.6:1 on the cell, 4.6:1 on the selected cell */
+  --danger-text: #b93a0e;
   --sel-bg: rgba(212, 86, 138, 0.18);
   --sel-border: #d4568a;
   --peer-bg: rgba(212, 86, 138, 0.07);

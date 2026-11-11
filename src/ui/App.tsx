@@ -548,9 +548,9 @@ export default function App() {
       // (N stays live, for "next puzzle" from the victory dialog)
       if (document.querySelector('.modal-backdrop') && k !== 'KeyN') return;
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
-      // Space presses a button the keyboard brought focus to, as anywhere
-      // else; on the board, the page or a key the mouse pressed it cycles
-      // the mode
+      // Space presses a button the player reached with Tab, as anywhere
+      // else; on the board, the page or a button the mouse pressed (focus
+      // given back to it by Escape too) it cycles the mode
       if (e.code === 'Space' && keyFocus.current?.spaceIsControls(e)) return;
       if (!e.metaKey) {
         const other = e.ctrlKey || e.altKey;

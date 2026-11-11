@@ -57,6 +57,24 @@ describe('the chain trainer takes typed digits', () => {
     expect(g().cells[R1C3].value).toBe(3);
   });
 
+  it('while the game is paused, a typed digit and Backspace leave the chain as it is', () => {
+    g().select([R1C1], false);
+    g().chainKey(4);
+    expect(g().chain!.nodes).toHaveLength(1);
+    const note = g().chainNote;
+    g().togglePause();
+    expect(g().paused).toBe(true);
+    g().chainKey(5);
+    g().chainUndo();
+    expect(g().chain!.nodes).toEqual([{ cell: R1C1, digit: 4 }]);
+    expect(g().chainNote).toBe(note);
+    g().togglePause();
+    g().chainKey(5);
+    expect(g().chain!.nodes).toHaveLength(2);
+    g().chainUndo();
+    expect(g().chain!.nodes).toHaveLength(1);
+  });
+
   it('with no cell or several selected, the digit arms nothing and enters nothing: the note says how', () => {
     const before = board();
     g().select([], false);

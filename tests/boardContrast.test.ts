@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { contrast, over } from './colourScience';
+import { contrast, over, de2000, linToLab, toLinear } from './colourScience';
 
 const css = new TextDecoder().decode(readFileSync('src/ui/styles.css')).replace(/\r\n/g, '\n');
 
@@ -48,6 +48,21 @@ describe('the board’s own digits and marks', () => {
       for (const token of ['--given', '--entered', '--cand', '--danger-text']) {
         expect(contrast(v[token], cell), `${theme} ${token} ${v[token]} on ${cell}`).toBeGreaterThanOrEqual(4.5);
         expect(contrast(v[token], selected), `${theme} ${token} ${v[token]} selected`).toBeGreaterThanOrEqual(3);
+      }
+    });
+  }
+});
+
+describe('a repeated digit stands apart from the theme’s own digits', () => {
+  // Rosé's digits are red, and daylight's crimson beside its raspberry
+  // givens read as a thin given (the check of November 2026): the
+  // conflict ink must differ in colour, not only by its underline
+  const lab = (hex: string) => linToLab(toLinear(hex));
+  for (const [theme, v] of Object.entries(THEMES)) {
+    it(`${theme}: the conflict ink is far from the given and the entered digit`, () => {
+      for (const token of ['--given', '--entered']) {
+        const de = de2000(lab(v['--danger-text']), lab(v[token]));
+        expect(de, `${theme} --danger-text ${v['--danger-text']} vs ${token} ${v[token]}`).toBeGreaterThanOrEqual(15);
       }
     });
   }

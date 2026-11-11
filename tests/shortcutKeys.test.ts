@@ -40,9 +40,31 @@ describe('a shortcut follows the letter printed on the key', () => {
   });
 
   it('a layout with punctuation on letter places (Dvorak) gives no letter shortcut by place', () => {
+    expect(press('KeyJ', 'h')).toBe('KeyH'); // a Latin letter typed
     expect(press('KeyW', ',')).toBe('');
     expect(press('KeyZ', ';')).toBe('');
     expect(press('KeySlash', 'z')).toBe('KeyZ');
+  });
+
+  it('on a Hebrew keyboard, whose W place types an apostrophe, W still wipes once a Hebrew letter was typed', () => {
+    expect(press('KeyH', 'י')).toBe('KeyH');
+    expect(press('KeyW', "'")).toBe('KeyW');
+    expect(press('KeyQ', '/')).toBe('KeyQ');
+    // a letter typed with Ctrl, Alt or Cmd says nothing of the layout
+    expect(shortcutKey({ code: 'KeyZ', key: 'z', ctrlKey: true })).toBe('KeyZ');
+    expect(press('KeyW', "'")).toBe('KeyW');
+    // switched to a Latin layout: punctuation is no shortcut again
+    expect(press('KeyS', 's')).toBe('KeyS');
+    expect(press('KeyW', ',')).toBe('');
+    // Option on a Mac types a Greek letter there: the layout is still Latin
+    expect(shortcutKey({ code: 'KeyP', key: 'π', altKey: true })).toBe('KeyP');
+    expect(press('KeyM', ',')).toBe('');
+  });
+
+  it('a keydown with no key or code (an autofill suggestion picked) is no shortcut, and no error', () => {
+    expect(shortcutKey({} as KeyboardEvent)).toBe('');
+    expect(shortcutKey({ code: 'KeyW' } as KeyboardEvent)).toBe('KeyW');
+    expect(shortcutKey({ key: 'w' } as KeyboardEvent)).toBe('KeyW');
   });
 
   it('another script, a dead key, an input method or Option on a Mac: by place, so the shortcuts stay', () => {
@@ -86,16 +108,32 @@ describe('Space and the focused control', () => {
     const board = new FakeElement(false);
     const { target, on } = fakeWindow();
     const follow = followKeyFocus(target);
+    const key = (k: string) => on.get('keydown')!({ key: k });
     // Tab to the button
-    on.get('keydown')!({});
+    key('Tab');
     on.get('focusin')!({ target: button });
     expect(follow.spaceIsControls(space(button))).toBe(true);
     // the mouse clicks the button: Space must not press it again
     on.get('pointerdown')!({});
     on.get('focusin')!({ target: button });
     expect(follow.spaceIsControls(space(button))).toBe(false);
-    // a key that moves focus (Escape closing a dialog, focus back on its button)
-    on.get('keydown')!({});
+    // the button opened a dialog, and Escape gives focus back to it: the
+    // mouse pressed it, so Space is still the mode's, and the dialog does
+    // not open again
+    key('Escape');
+    on.get('focusin')!({ target: button });
+    expect(follow.spaceIsControls(space(button))).toBe(false);
+    // so after Enter or Ctrl+Z
+    key('Enter');
+    key('z');
+    on.get('focusin')!({ target: button });
+    expect(follow.spaceIsControls(space(button))).toBe(false);
+    // Tab to it, open its dialog and Escape: back on the button by the
+    // keyboard's way, so Space presses it again
+    key('Tab');
+    on.get('focusin')!({ target: button });
+    key('Enter');
+    key('Escape');
     on.get('focusin')!({ target: button });
     expect(follow.spaceIsControls(space(button))).toBe(true);
     // the board, reached by Tab, is no button: Space is the mode's
@@ -105,7 +143,7 @@ describe('Space and the focused control', () => {
     expect(follow.spaceIsControls(space(button))).toBe(false);
     // Tab back to the button, then a click somewhere that takes no focus:
     // the mouse is in use again, and Space is the mode's
-    on.get('keydown')!({});
+    key('Tab');
     on.get('focusin')!({ target: button });
     on.get('pointerdown')!({});
     expect(follow.spaceIsControls(space(button))).toBe(false);

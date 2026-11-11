@@ -709,6 +709,44 @@ test.describe('reachable by keyboard and screen reader', () => {
     await expect(mode).toContainText('Centre');
   });
 
+  test('Space after Escape, back on a button the mouse pressed, changes the mode: Settings, the hint question and the trainer stay shut', async ({ page }) => {
+    await open(page);
+    const mode = page.locator('.mode-btn.active');
+    const dialogs = page.getByRole('dialog');
+    const c = await cellBox(page, 0);
+    await page.mouse.click(c.x, c.y);
+    // Settings, opened with the mouse and shut with Escape, which gives
+    // focus back to the gear
+    const gear = page.getByRole('button', { name: 'Settings' });
+    await gear.click();
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialogs).toHaveCount(0);
+    await expect(gear).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(mode).toContainText('Corner');
+    await expect(dialogs).toHaveCount(0);
+    // the question the Hint button asks
+    await page.getByRole('button', { name: /^Hint/ }).first().click();
+    await expect(page.getByRole('dialog', { name: 'Use Hint?' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialogs).toHaveCount(0);
+    await page.keyboard.press('Space');
+    await expect(mode).toContainText('Centre');
+    await expect(dialogs).toHaveCount(0);
+    // the chain trainer, opened and left: Space does not open it again,
+    // where the next digits would go to the chain
+    await page.getByRole('button', { name: /Chain/ }).first().click();
+    await page.getByRole('button', { name: 'Use Chain' }).click();
+    const panel = page.getByRole('region', { name: 'Build a chain' });
+    await expect(panel).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await page.keyboard.press('Space');
+    await expect(mode).toContainText('Colour');
+    await expect(panel).toHaveCount(0);
+  });
+
   test('Ctrl+Z undoes on a German and a French keyboard, and the French Z is no wipe', async ({ page }) => {
     await open(page);
     const status = page.locator('#board-status');
@@ -883,6 +921,26 @@ test.describe('the chain trainer', () => {
     await expect(panel).toHaveCount(0);
     await expect(chain).toBeFocused();
     await expect(status).toContainText('Row 1, column 1: empty.');
+  });
+
+  test('on a practice puzzle, Build it yourself has focus again when the trainer closes', async ({ page }) => {
+    await openPractice(page);
+    const build = page.getByRole('button', { name: 'Build it yourself' });
+    const panel = page.getByRole('region', { name: 'Build a chain' });
+    // the button is hidden while the trainer is open: the one that comes
+    // back takes focus, after Escape and after Done
+    await build.focus();
+    await page.keyboard.press('Enter');
+    await expect(panel).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await expect(build).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(panel).toBeFocused();
+    await panel.getByRole('button', { name: 'Done' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(panel).toHaveCount(0);
+    await expect(build).toBeFocused();
   });
 
   test('a reload while it is open closes it as Done does: auto candidates off, the player’s marks back', async ({ page }) => {
