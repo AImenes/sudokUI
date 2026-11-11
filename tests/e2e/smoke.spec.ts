@@ -2052,7 +2052,7 @@ test.describe('a share link', () => {
     // would tell the recipient what to look for
     await dialog.getByRole('button', { name: 'Puzzle link' }).click();
     const link = await copied(page);
-    expect(link).toMatch(new RegExp(`^http://localhost:4173/p/${puzzle}\\?b=[a-z]+&s=\\d+$`));
+    expect(link).toMatch(new RegExp(`^http://localhost:\\d+/p/${puzzle}\\?b=[a-z]+&s=\\d+$`));
     await dialog.getByRole('button', { name: 'Position link' }).click();
     const position = await copied(page);
     expect(position.startsWith(link + '#s=')).toBe(true);
@@ -2062,7 +2062,7 @@ test.describe('a share link', () => {
     await box.check();
     await dialog.getByRole('button', { name: 'Puzzle link' }).click();
     const named = await copied(page);
-    expect(named).toMatch(new RegExp(`^http://localhost:4173/p/${puzzle}\\?b=[a-z]+&s=\\d+&t=[a-z0-9-]+(,[a-z0-9-]+){0,2}$`));
+    expect(named).toMatch(new RegExp(`^http://localhost:\\d+/p/${puzzle}\\?b=[a-z]+&s=\\d+&t=[a-z0-9-]+(,[a-z0-9-]+){0,2}$`));
     expect(named.startsWith(`${link}&t=`)).toBe(true);
     await dialog.getByRole('button', { name: 'Position link' }).click();
     expect((await copied(page)).startsWith(named + '#s=')).toBe(true);
@@ -2141,7 +2141,7 @@ test.describe('the daily', () => {
     await page.locator('.menu-row button', { hasText: 'Share' }).click();
     const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
     await dialog.getByRole('button', { name: 'Puzzle link' }).click();
-    expect(await copied(page)).toBe(`http://localhost:4173/daily/${third.date}`);
+    expect(await copied(page)).toBe(`${new URL(page.url()).origin}/daily/${third.date}`);
   });
 
   test('a finished daily sends its time when asked, hears how it compares, and shares the day', async ({ page }) => {
