@@ -166,6 +166,13 @@ Two settings keep the pages reachable:
 - The build emits `nb/index.html` and `es/index.html` beside `index.html`
   (a plugin in `vite.config.ts`), so the service worker precaches all three
   home pages and `/nb/` and `/es/` open offline too.
+- Of the static pages, only the privacy page is precached, in all three
+  languages (`OFFLINE_PAGES` in `src/content/staticRoutes.ts`): the app's
+  footer opens it in place, and offline that must not land on the
+  browser's error page. It is written after the service worker, so
+  `vite.config.ts` names it with the commit as its revision; a page
+  missing from the build would stop the service worker installing, which
+  `tests/resilience.test.ts` guards.
 - `wrangler.jsonc` answers unknown addresses with a real 404 instead of the
   app. Cloudflare serves the nearest `404.html` up the path, so
   `public/nb/404.html` and `public/es/404.html` answer under `/nb/` and

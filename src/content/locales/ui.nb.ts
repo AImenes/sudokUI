@@ -65,7 +65,7 @@ const ui: Dictionary = {
   "{cell} cannot be {wrong}: a {tech} removes it.": "{cell} kan ikke være {wrong}: teknikken {tech} fjerner {wrong} der.",
   "{cell} cannot be {wrong}: a {tech} removes it after {n} easier step.": "{cell} kan ikke være {wrong}: teknikken {tech} fjerner {wrong} der etter {n} lettere steg.",
   "{cell} cannot be {wrong}: a {tech} removes it after {n} easier steps.": "{cell} kan ikke være {wrong}: teknikken {tech} fjerner {wrong} der etter {n} lettere steg.",
-  "sudokUI was updated while this tab was open, and a part of it could not load. Reload to continue; your game is saved.": "sudokUI ble oppdatert mens denne fanen var åpen, og en del av appen kunne ikke lastes inn. Last inn på nytt for å fortsette; spillet ditt er lagret.",
+  "A part of sudokUI could not load. Reload to continue; your game is saved.": "En del av sudokUI kunne ikke lastes inn. Last inn på nytt for å fortsette; spillet ditt er lagret.",
   "A new version of sudokUI is ready. Reload when it suits you; your game is saved.": "En ny versjon av sudokUI er klar. Last inn på nytt når det passer deg; spillet ditt er lagret.",
   "Reload": "Last inn på nytt",
   "Later": "Senere",

@@ -38,10 +38,25 @@ import { buildable } from '../engine/chainTrainer';
 import { ProgressDialog } from './Progress';
 import { Modal } from './Dialogs';
 import type { LearnTarget } from './Learn';
+import { partOrStandIn } from './lazyPart';
+
+type GuideProps = React.ComponentProps<typeof import('./Learn').LearnDialog>;
+
+/** the guide's file could not be fetched: the dialog closes, and the
+ *  update bar says so and offers the reload, over the game as it was */
+function GuideUnavailable({ onClose }: GuideProps) {
+  useEffect(() => {
+    useAppStatus.getState().setUpdateReady('chunk');
+    onClose();
+  }, [onClose]);
+  return null;
+}
 
 // the guide is a third of the app's code and prose: fetched the first time
 // it opens (and precached for offline), never as part of loading the game
-const LearnDialog = React.lazy(() => import('./Learn').then((m) => ({ default: m.LearnDialog })));
+const LearnDialog = React.lazy(
+  partOrStandIn<React.ComponentType<GuideProps>>(() => import('./Learn').then((m) => m?.LearnDialog), GuideUnavailable)
+);
 import { PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { sharePath, readAppLink } from '../content/share';
@@ -108,8 +123,9 @@ function proofText(p: Proof, t: Translator): string {
       );
 }
 
-/** a new version waiting, or a file this version can no longer load: the
- *  player decides when to reload; the game is saved either way */
+/** a new version waiting, or a file that could not load (offline in a
+ *  first visit, or a deploy took it): the player decides when to reload;
+ *  the game is saved either way */
 function UpdateBar() {
   const updateReady = useAppStatus((s) => s.updateReady);
   const reason = useAppStatus((s) => s.reason);
@@ -129,7 +145,7 @@ function UpdateBar() {
         <span>
           {t(
             reason === 'chunk'
-              ? 'sudokUI was updated while this tab was open, and a part of it could not load. Reload to continue; your game is saved.'
+              ? 'A part of sudokUI could not load. Reload to continue; your game is saved.'
               : 'A new version of sudokUI is ready. Reload when it suits you; your game is saved.'
           )}
         </span>

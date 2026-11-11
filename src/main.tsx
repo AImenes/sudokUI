@@ -11,7 +11,7 @@ import App from './ui/App';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import './ui/styles.css';
 import { useGame } from './state/gameStore';
-import { useAppStatus } from './state/appStatus';
+import { useAppStatus, reloadIntoLatest } from './state/appStatus';
 import { useSettings } from './state/settings';
 import { startLocales, langOfPath } from './content/i18n';
 
@@ -47,13 +47,21 @@ const updateSW = registerSW({
     }, HOUR);
   }
 });
+// Reload does what it says, with a new worker waiting or without one; the
+// game is written first, its clock included (zustand's persist writes on
+// every set, even one that changes nothing and so wakes no listener)
 useAppStatus.getState().setReload(() => {
-  updateSW(true).catch(() => window.location.reload());
+  void reloadIntoLatest(
+    () => updateSW(true),
+    () => useGame.setState((s) => s)
+  );
 });
 
-// a lazily loaded file this version can no longer fetch (the deploy moved
-// on while the tab was open): say so and offer the reload, instead of a
-// broken dialog
+// a lazily loaded file that cannot be fetched (the deploy moved on while
+// the tab was open, or a first visit went offline before a service worker
+// controlled it): say so and offer the reload. The import then resolves to
+// nothing, which every loader takes as a failure (src/ui/lazyPart.ts for
+// the guide), instead of a broken dialog
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault();
   useAppStatus.getState().setUpdateReady('chunk');

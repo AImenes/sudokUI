@@ -10,5 +10,12 @@ export const RATING_URL = '/sudoku-difficulty-rating/';
 /** what the app sends, exactly, in the three languages (src/content/privacy.ts) */
 export const PRIVACY_URL = '/privacy/';
 
+/**
+ * The static pages the service worker keeps for offline use: the privacy
+ * page, the one the app's own footer opens in place, in each language
+ * (about 7 KB compressed apiece). The rest are read online.
+ */
+export const OFFLINE_PAGES = [PRIVACY_URL, `/nb${PRIVACY_URL}`, `/es${PRIVACY_URL}`];
+
 /** what sudokUI is for and promises, in the three languages (src/content/why.ts) */
 export const WHY_URL = '/why/';

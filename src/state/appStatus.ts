@@ -20,6 +20,34 @@ export interface AppStatus {
   setReload: (fn: () => void) => void;
 }
 
+/**
+ * Reloads into the newest build, the game saved first. A new service
+ * worker waiting (a routine update) is asked to take over, and the page
+ * reloads once it has: vite-plugin-pwa reloads a page the old worker
+ * controlled, and this a page no worker controlled yet (a first visit).
+ * With none waiting, the page reloads at once: a file that failed in a
+ * tab no worker controls, a browser without service workers, or another
+ * tab took the update already. Should the worker never take over, the
+ * page reloads anyway after `wait` ms.
+ */
+export async function reloadIntoLatest(skipWaiting: () => Promise<void>, save: () => void, wait = 3000): Promise<void> {
+  try {
+    save();
+  } catch {
+    /* storage unavailable: the reload goes ahead */
+  }
+  const sw = typeof navigator === 'undefined' ? undefined : navigator.serviceWorker;
+  const waiting = sw ? await sw.getRegistration().then((r) => r?.waiting ?? null, () => null) : null;
+  if (!sw || !waiting) return window.location.reload();
+  if (!sw.controller) {
+    waiting.addEventListener('statechange', () => {
+      if (waiting.state === 'activated') window.location.reload();
+    });
+  }
+  await skipWaiting().catch(() => {});
+  setTimeout(() => window.location.reload(), wait);
+}
+
 export const useAppStatus = create<AppStatus>()((set) => ({
   updateReady: false,
   reason: null,

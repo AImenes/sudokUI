@@ -102,10 +102,19 @@ the daily days ([technique-stats.md](technique-stats.md)).
 **App status** ([appStatus.ts](../src/state/appStatus.ts)). The app's own
 health: a new build waiting (the service worker registers in `prompt` mode
 from `src/main.tsx`, so a deploy never replaces a running tab until the
-player reloads), a lazily loaded file this version can no longer fetch
-(Vite's `vite:preloadError`), offline readiness. The update bar in App
-shows it; the error boundary in `src/ui/ErrorBoundary.tsx` catches a
-render error with a reload and a clear-the-board recovery.
+player reloads), a lazily loaded file that cannot be fetched (Vite's
+`vite:preloadError`: a deploy took it, or a first visit, which no service
+worker controls yet, went offline), offline readiness. The update bar in
+App shows it. Its Reload (`reloadIntoLatest`) saves the game, clock
+included, then asks a waiting worker to take over and reloads once it has,
+or reloads at once when none is waiting. The guide, the one part loaded
+with `React.lazy`, has a stand-in for a file that cannot be had
+([lazyPart.ts](../src/ui/lazyPart.ts)): the dialog closes and the bar
+offers the reload, with the game still on the board. The error boundary in
+`src/ui/ErrorBoundary.tsx` catches a render error with a reload and a
+clear-the-board recovery. Offline, the precache holds the app, its lazy
+files, Nutella (`public/poodle.png`) and the privacy page in its three
+languages ([search.md](search.md)).
 
 ### A game is never lost
 
