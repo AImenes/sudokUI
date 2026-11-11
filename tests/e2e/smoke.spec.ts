@@ -1786,6 +1786,11 @@ test.describe('phone, 390 x 844', () => {
       await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
       await page.goto(`/${lang}/#p=${EASY}`);
       await expect(page.locator('svg.board')).toBeVisible();
+      // the link's game on the board (it opens just after the board is
+      // drawn, and a game that opens starts its clock running)
+      await expect
+        .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state?.info?.puzzle ?? null))
+        .toBe(EASY);
       // the pause key, P, as on any keyboard the phone has; the button's name is in the page's language
       await page.keyboard.press('p');
       const card = page.locator('.pause-card');
