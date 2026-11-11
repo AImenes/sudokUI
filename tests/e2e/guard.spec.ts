@@ -335,12 +335,17 @@ test.describe('links and Import, laptop', () => {
     await enter(page, false, 3);
     await page.goto(`/p/${EASY}/`);
     await expect(note(page)).toBeVisible();
-    // a save the board cannot draw: the error screen
-    await page.evaluate(() => {
+    // a save the board cannot draw, as the next page finds it (the page
+    // going away saves its own good board first, so the save is broken
+    // once that page has gone): the error screen
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('break-the-save') !== '1') return;
+      sessionStorage.removeItem('break-the-save');
       const save = JSON.parse(localStorage.getItem('sudokui-game-v1')!);
       save.state.cells = 'broken';
       localStorage.setItem('sudokui-game-v1', JSON.stringify(save));
     });
+    await page.evaluate(() => sessionStorage.setItem('break-the-save', '1'));
     await page.reload();
     await expect(page.getByRole('alert')).toContainText('Something went wrong');
     await page.getByRole('button', { name: 'Clear the board and reload' }).click();
@@ -366,6 +371,34 @@ test.describe('links and Import, laptop', () => {
     await expect(page.locator('.toast')).toHaveText(told);
     expect(await saved(page)).toMatchObject({ puzzle: HARD, aside: { dailyKey: localDateKey(), entries: 3 } });
     await expect(note(page)).toBeVisible();
+  });
+
+  test('after a crash with a puzzle being typed in and nothing set aside, Clear the board keeps the game it was typed over', async ({ page }) => {
+    await page.addInitScript(welcomed);
+    await openDaily(page);
+    await enter(page, false, 3);
+    await page.locator('.menu-row button', { hasText: 'New' }).click();
+    await page.getByRole('dialog', { name: 'New game' }).getByRole('button', { name: /^Custom/ }).click();
+    const { x, y } = await cellPoint(page, 0);
+    await page.mouse.click(x, y);
+    await page.keyboard.press('Digit5');
+    await expect.poll(async () => (await saved(page)).custom).toBe(true);
+    expect((await saved(page)).aside).toBeNull();
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('break-the-save') !== '1') return;
+      sessionStorage.removeItem('break-the-save');
+      const save = JSON.parse(localStorage.getItem('sudokui-game-v1')!);
+      save.state.cells = 'broken';
+      localStorage.setItem('sudokui-game-v1', JSON.stringify(save));
+    });
+    await page.evaluate(() => sessionStorage.setItem('break-the-save', '1'));
+    await page.reload();
+    await expect(page.getByRole('alert')).toContainText('Something went wrong');
+    await page.getByRole('button', { name: 'Clear the board and reload' }).click();
+    await expect(note(page)).toBeVisible();
+    await expect.poll(() => saved(page)).toMatchObject({ custom: false, aside: { dailyKey: localDateKey(), entries: 3 } });
+    await note(page).getByRole('button', { name: 'Back to it' }).click();
+    await expect.poll(() => saved(page)).toMatchObject({ dailyKey: localDateKey(), entries: 3 });
   });
 
   test('Back to it by keyboard leaves the focus on the board, and the toast says which game is back', async ({ context, page }) => {
