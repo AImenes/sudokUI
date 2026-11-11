@@ -170,11 +170,21 @@ test.describe('desktop, 1280 x 800', () => {
     await expect(page.locator('.edit-row')).not.toHaveClass(/icons/);
   });
 
+  test('the top bar’s name is read once: its UI tile is a picture of the name beside it', async ({ page }) => {
+    await open(page);
+    const brand = page.locator('header.topbar .brand');
+    await expect(brand.locator('.brand-mark')).toHaveText('UI');
+    await expect(brand).toMatchAriaSnapshot('- heading "sudokUI" [level=1]');
+    expect(await brand.ariaSnapshot()).not.toContain('text: UI');
+  });
+
   test('the pause card shows the app’s mark and address, inside the board', async ({ page }) => {
     await open(page);
     await page.keyboard.press('KeyP');
     const card = page.locator('.pause-card');
-    await expect(card.locator('.pause-brand')).toHaveText('UIsudokui.app');
+    // the tile shows UI; a screen reader hears the address alone
+    await expect(card.locator('.pause-brand .brand-mark')).toHaveText('UI');
+    await expect(card.locator('.pause-brand')).toMatchAriaSnapshot('- paragraph: sudokui.app');
     const board = (await page.locator('svg.board').boundingBox())!;
     const brand = (await card.locator('.pause-brand').boundingBox())!;
     const resume = (await card.locator('.resume-btn').boundingBox())!;
@@ -1738,7 +1748,8 @@ test.describe('phone, 390 x 844', () => {
     await page.getByRole('button', { name: 'Pause game' }).tap();
     const card = page.locator('.pause-card');
     await expect(card).toBeVisible();
-    await expect(card.locator('.pause-brand')).toHaveText('UIsudokui.app');
+    await expect(card.locator('.pause-brand .brand-mark')).toHaveText('UI');
+    await expect(card.locator('.pause-brand')).toMatchAriaSnapshot('- paragraph: sudokui.app');
     await expect(card.locator('.pause-site')).toHaveText('sudokui.app');
     const board = (await page.locator('svg.board').boundingBox())!;
     for (const part of ['h3', '.pause-tip', '.resume-btn', '.pause-brand']) {

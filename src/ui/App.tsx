@@ -780,7 +780,9 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">{BRAND[1]}</span>
+          {/* the tile is a picture of the name beside it: a screen reader
+              hears the name once, "sudokUI", as on the static pages */}
+          <span className="brand-mark" aria-hidden="true">{BRAND[1]}</span>
           <h1>
             {BRAND[0]}<span className="brand-ui">{BRAND[1]}</span>
           </h1>
