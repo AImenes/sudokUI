@@ -486,8 +486,9 @@ can be trusted:
   game whose moves were all undone or erased before a reload counts
   again at its next move, and a game counted, then left out of the
   counts across a reload, counts again when the switch goes off. Starting the
-  puzzle still on the board again (Restart, or choosing the same daily
-  anew) before it was ever solved is the same game; a puzzle played
+  puzzle still on the board again (Restart; the Daily button and a link
+  to it now bring it back as it was instead) before it was ever solved
+  is the same game; a puzzle played
   again after a solve, even one undone, is a new one (`countFirstMove`
   in `src/state/gameStore.ts`). A solve counts once per game, in the
   counts and in the player's own record: one undone and solved again by

@@ -1141,6 +1141,12 @@ html .assist-zone.folded .zone-note {
   border-color: var(--accent);
 }
 
+/* Share while a puzzle is being typed in: it has no link yet, and a tap
+   says so (App.tsx) */
+.menu-row button[aria-disabled='true'] {
+  opacity: 0.5;
+}
+
 /* Practice stays lit while a practice puzzle is running */
 .menu-row button.active {
   background: var(--accent-fill);
@@ -1453,6 +1459,12 @@ html .assist-zone.folded .zone-note {
 
 .past-daily a:hover {
   text-decoration: underline;
+}
+
+/* the set-aside note's Back to it (App.tsx, SetAsideNote) reads as the
+   past-daily note's link */
+.past-daily .link-button {
+  font-weight: 600;
 }
 
 .past-daily-close {

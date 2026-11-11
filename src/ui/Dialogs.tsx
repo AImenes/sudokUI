@@ -25,7 +25,9 @@ import { timeVerdict, timeBand, percentileText, MODE_LABEL, SolveMode } from '..
 import { useT, translator, msg, rich, Translator } from '../content/i18n';
 import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
 import { parsePencilGrid, looksLikeGrid } from '../content/textGrid';
-import { puzzleFromLink } from '../content/importLinks';
+import { puzzleFromLink, findUrl } from '../content/importLinks';
+import { readAppLink } from '../content/share';
+import { openAppLink } from './links';
 import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
 import { dailyNumber, localDateKey, dailyClosed, standingOf } from '../content/dailies';
 import { dailyLine, standingPhrase, asLine } from '../content/dailyLine';
@@ -912,7 +914,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState('');
   const t = useT();
 
-  const doImport = () => {
+  const doImport = async () => {
     // a position drawn as text (src/content/textGrid.ts): a pencil-mark
     // grid, a HoDoKu library string, or the 81 characters with their
     // candidates; its candidates come along as centre marks
@@ -923,14 +925,25 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       else onClose();
       return;
     }
-    // a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach, the
-    // app's own share link, or the bare 81 characters (src/content/importLinks.ts)
+    // an address of the app's own opens as it does when the link is
+    // opened (src/ui/links.ts): a position with its entries and marks, a
+    // challenger's time, a day's daily
+    const url = findUrl(text.trim());
+    const own = url && readAppLink(url);
+    if (own) {
+      const { opened, refused } = await openAppLink(own, 'import');
+      if (opened) onClose();
+      else setError(refused ?? '');
+      return;
+    }
+    // a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach, or
+    // the bare 81 characters (src/content/importLinks.ts)
     const link = puzzleFromLink(text);
     if (!link) {
       setError(
         looksLikeGrid(text)
           ? t('The pencil-mark grid could not be read: it needs 9 rows of 9 cells, each a digit or its candidates.')
-          : t('A puzzle needs exactly 81 characters (digits and dots), or a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach.')
+          : t('A puzzle needs exactly 81 characters (digits and dots), a sudokUI link, or a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach.')
       );
       return;
     }
@@ -947,7 +960,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     <Modal title={t('Import a puzzle')} onClose={onClose}>
       <p className="dialog-note">
         {t(
-          'Paste an 81-character puzzle string (dots or zeros for empty cells), a pencil-mark grid with its candidates, or a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach.'
+          'Paste an 81-character puzzle string (dots or zeros for empty cells), a pencil-mark grid with its candidates, a sudokUI link, or a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach.'
         )}
       </p>
       <textarea
@@ -961,7 +974,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       />
       {error && <p className="dialog-error">{error}</p>}
       <div className="hint-actions">
-        <button onClick={doImport}>{t('Load puzzle')}</button>
+        <button onClick={() => void doImport()}>{t('Load puzzle')}</button>
       </div>
       <h4 className="setting-group">{t('Scan a photo')}</h4>
       <ScanControls onDone={onClose} />

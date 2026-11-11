@@ -3,9 +3,8 @@
 // toast display and the first-visit bootstrap game.
 import React, { Suspense, useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { SLOP_PX } from './touchIntent';
-import { useGame, rateImport, validatePuzzle, Proof, listLayer } from '../state/gameStore';
+import { useGame, rateImport, Proof, listLayer } from '../state/gameStore';
 import { cellName, PEERS } from '../engine/board';
-import { dailyPuzzle } from '../engine/daily';
 import { useSettings } from '../state/settings';
 import { useShownTheme, applyTheme } from './theme';
 import { useAppStatus } from '../state/appStatus';
@@ -45,8 +44,9 @@ import type { LearnTarget } from './Learn';
 const LearnDialog = React.lazy(() => import('./Learn').then((m) => ({ default: m.LearnDialog })));
 import { PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
-import { parseShareUrl, sharePath, clockOf } from '../content/share';
-import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, parseDailyUrl, dailyPath, pastDailyOn, dayName } from '../content/dailies';
+import { sharePath, readAppLink } from '../content/share';
+import { localDateKey, dailyPath, pastDailyOn, dayName } from '../content/dailies';
+import { startDaily, openAppLink } from './links';
 import { useDailyStats } from '../state/dailyStats';
 import { useTelemetry } from '../state/telemetry';
 import { RATING_URL, PRIVACY_URL } from '../content/staticRoutes';
@@ -213,6 +213,33 @@ function PastDailyNote({ onToday }: { onToday: () => void }) {
   );
 }
 
+/**
+ * A game under way that a link opened another over, kept (src/ui/links.ts):
+ * a quiet line beside the board, in the past-daily note's place and look,
+ * whose Back to it swaps the two games, so neither is lost. It goes when
+ * the kept game comes back, or when it is put away; the game stays kept.
+ */
+function SetAsideNote() {
+  const shown = useGame((s) => !!s.setAside && !s.setAside.hidden);
+  const back = useGame((s) => s.backToSetAside);
+  const hide = useGame((s) => s.hideSetAside);
+  const t = useT();
+  if (!shown) return null;
+  return (
+    <div className="past-daily set-aside" role="note">
+      <p>
+        {t('Your game in progress is kept.')}{' '}
+        <button className="link-button" onClick={back}>
+          {t('Back to it')}
+        </button>
+      </p>
+      <button className="past-daily-close" onClick={hide} title={t('Hide this note')} aria-label={t('Hide this note')}>
+        ✕
+      </button>
+    </div>
+  );
+}
+
 function Timer() {
   const elapsedMs = useGame((s) => s.elapsedMs);
   const paused = useGame((s) => s.paused);
@@ -307,31 +334,9 @@ export default function App() {
   const [report, setReport] = useState<{ kind: ReportKind; hint?: Step } | null>(null);
   // a first visit opens straight on the board, an easy puzzle and no
   // dialog over it: the playing says what the app is (the owner's call,
-  // 2 November 2026); what it stands for is under ⓘ and after a win
-  // the daily for a day, today's unless a date is given: the published
-  // puzzle (src/content/dailies.ts), which has global statistics; or, for
-  // a day the published list does not cover, the one derived from the date
-  // as before (src/engine/daily.ts), which has none
-  const startDaily = async (date = localDateKey()) => {
-    const published = findDaily(await loadDailies(), date);
-    const no = dailyNumber(date);
-    if (published && no) {
-      useGame.getState().startGame(published.puzzle, published.score, published.level, null, date);
-      useGame.setState((s) => ({ info: s.info && { ...s.info, dailyNo: no } }));
-    } else {
-      const d = dailyPuzzle(dateOfKey(date) ?? new Date());
-      useGame.getState().startGame(d.puzzle, d.score, d.level, null, date);
-    }
-    // translator(), not the render's t: the boot effect calls this from its
-    // first render's closure
-    const t = translator();
-    useGame.setState({
-      notice:
-        date === localDateKey()
-          ? t('Daily puzzle for {date}. Everyone gets this same board today', { date })
-          : t('The daily for {date}', { date })
-    });
-  };
+  // 2 November 2026); what it stands for is under ⓘ and after a win.
+  // The day's daily (startDaily) and the app's own links (openAppLink)
+  // open through src/ui/links.ts, which never loses a game under way
 
   // before the first paint, so the app never shows a frame in the wrong look;
   // under Match device the look follows the device while the app is open
@@ -342,13 +347,15 @@ export default function App() {
     document.documentElement.dataset.font = font;
   }, [font]);
 
-  // boot: a shared link wins over everything — #s= carries a full position
-  // (entries, marks, colours), /p/<puzzle> and #p= just the puzzle, and a
-  // share path may carry a challenger's time (src/content/share.ts);
-  // otherwise a saved game resumes (or a puzzle being typed in, which has
-  // no address of its own), otherwise start an easy one. The
-  // /learn/ pages deep-link in with #practice=<technique> (start practising
-  // it) and #learn=<topic> (open the guide there). StrictMode-guarded.
+  // boot: a link of the app's own opens first (src/ui/links.ts): #s=
+  // carries a full position (entries, marks, colours), /p/<puzzle> and #p=
+  // just the puzzle, /daily/<date> and #daily a day's daily, and a share
+  // path may carry a challenger's time (src/content/share.ts). A game under
+  // way is put aside, never lost, and the note beside the board offers it
+  // back. Otherwise a saved game resumes (or a puzzle being typed in, which
+  // has no address of its own), otherwise start an easy one. The /learn/
+  // pages deep-link in with #practice=<technique> (start practising it) and
+  // #learn=<topic> (open the guide there). StrictMode-guarded.
   useEffect(() => {
     if ((window as any).__sudokuiBooted) return;
     (window as any).__sudokuiBooted = true;
@@ -360,114 +367,34 @@ export default function App() {
       start({ kind: 'tech', tech: practice });
       return;
     }
-    const sharedPosition = params.get('s');
-    const position = sharedPosition ? useGame.getState().loadPosition(sharedPosition) : null;
-    if (position === true) return;
-    // a position that cannot be loaded (a chat or a copy cut the link
-    // short, most likely): the puzzle under it opens as below, from the
-    // start, and the player is told why the marks are not there
-    const positionRefused = () => {
-      if (!position) return;
-      const t = translator();
-      useGame.setState({
-        notice:
-          position === 'cut'
-            ? t('This link looks cut off, so the entries and marks it shared could not be loaded')
-            : t('The entries and marks this link shared could not be read')
-      });
+    const fallBack = () => {
+      const now = useGame.getState();
+      if (!now.info && !now.custom) start({ kind: 'level', level: 'Easy' });
     };
-    const share = parseShareUrl(window.location);
-    // a puzzle string may write its empty cells as zeros; the app writes dots
-    const shared = (share?.puzzle ?? params.get('p') ?? '').replace(/[^0-9.]/g, '').replace(/0/g, '.');
-    const game = useGame.getState();
-    /** the challenger's time becomes the one to beat, and the player is told */
-    const challenge = (vs: number) => {
-      const t = translator();
-      useGame.setState((s) => ({
-        info: s.info && { ...s.info, challenge: vs },
-        notice: t('A challenge: solve it faster than {time}', { time: clockOf(vs) })
-      }));
-    };
-    /** a game nobody has touched: its clock may have run, nothing else has happened */
-    const untouched = () => game.cells.every((c) => c.given || (!c.value && !c.corner && !c.center && !c.colors.length));
-    /** the game on the board is now the one a share link opened, for the counts (gameStore.ts, kindOf) */
-    const fromLink = () => useGame.setState((s) => ({ info: s.info && { ...s.info, fromLink: true } }));
-    /** the challenger's time over the game already on the board */
-    const challengeCurrent = (vs: number) => {
-      // a finished game, or one not yet begun, starts over against that
-      // time, as the link's game; one under way keeps its moves and takes
-      // the time on
-      if (game.won || untouched()) {
-        game.restart();
-        fromLink();
-      }
-      challenge(vs);
-    };
-    // a daily's address, or #daily for today's: that day's board, unless it
-    // is the one already on the board (a reload lands here), and a
-    // challenger's time once the board is there
-    const daily = parseDailyUrl(window.location) ?? (params.has('daily') ? { lang: 'en' as const, date: localDateKey() } : null);
-    if (daily) {
-      if (game.info?.dailyKey === daily.date) {
-        if (daily.vs) challengeCurrent(daily.vs);
-        positionRefused();
-        return;
-      }
-      void startDaily(daily.date).then(() => {
-        if (daily.vs) challenge(daily.vs);
-        positionRefused();
-      });
-      return;
-    }
-    if (shared && shared === game.info?.puzzle) {
-      // the puzzle already on the board (a reload lands here), perhaps with
-      // a challenger's time for it
-      if (share?.vs) challengeCurrent(share.vs);
-      positionRefused();
-      return;
-    }
-    if (shared) {
-      const v = shared.length === 81 ? validatePuzzle(shared) : null;
-      if (v && v.ok) {
-        game.startGame(shared, v.score, v.level);
-        // a share address is someone's link; a bare #p= is mostly the
-        // Learn pages' own (their examples and their paste box), so its
-        // game is counted as a new one
-        if (share) fromLink();
-        if (share?.vs) challenge(share.vs);
-        positionRefused();
-        return;
-      }
-      // a share page promised a puzzle the app cannot play (no solution,
-      // several, too few clues): say so, then go on as with no link
-      if (share) {
+    const link = readAppLink(window.location);
+    if (!link) return fallBack();
+    void openAppLink(link, 'boot').then(({ opened, refused }) => {
+      if (opened) return;
+      // a share page promised a puzzle the app cannot play: say so, then
+      // go on as with no link
+      if (refused !== undefined && link.puzzle?.share) {
         const t = translator();
-        useGame.setState({ notice: t('The shared puzzle could not be opened. {reason}', { reason: v ? v.reason : '' }).trim() });
+        useGame.setState({ notice: t('The shared puzzle could not be opened. {reason}', { reason: refused }).trim() });
       }
-    }
-    const now = useGame.getState();
-    if (!now.info && !now.custom) start({ kind: 'level', level: 'Easy' });
-    // (a share page whose puzzle cannot be opened has said so already)
-    if (!useGame.getState().notice) positionRefused();
+      fallBack();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => setVictoryDismissed(false), [info?.puzzle]);
 
-  // a shared link opened in this tab: load it, unless a game is under way
+  // a link opened in this tab (its hash changed): opened as at start-up,
+  // a game under way put aside. The path is the address bar's own, the
+  // puzzle on the board, so only the hash is read
   useEffect(() => {
     const onHash = () => {
-      const params = new URLSearchParams(window.location.hash.slice(1));
-      const shared = (params.get('p') ?? '').replace(/[^0-9.]/g, '').replace(/0/g, '.');
-      const g = useGame.getState();
-      if (shared.length !== 81 || shared === g.info?.puzzle) return;
-      if (g.history.length > 0 && !g.won) {
-        const t = translator();
-        useGame.setState({ notice: t('A puzzle link was opened. Finish or restart this game first, or open the link in a new tab') });
-        return;
-      }
-      const rating = rateImport(shared);
-      if (rating) g.startGame(shared, rating.score, rating.level);
+      const link = readAppLink({ pathname: '/', search: '', hash: window.location.hash });
+      if (link) void openAppLink(link, 'tab');
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
@@ -869,6 +796,7 @@ export default function App() {
           {showPoodle && (!paused || won) && <Poodle />}
         </div>
         <aside className={`side${paused && !won ? ' paused' : ''}`}>
+          <SetAsideNote />
           <PastDailyNote onToday={() => void startDaily()} />
           <div className="menu-row">
             <button onClick={() => setDialog('new')}>
@@ -884,7 +812,15 @@ export default function App() {
             <button onClick={() => setDialog('io')}>
               <span className="menu-icon">⇅</span>{t('Import')}
             </button>
-            <button onClick={() => setDialog('share')}>
+            {/* a puzzle being typed in has no link yet: the tap says so */}
+            <button
+              aria-disabled={custom || undefined}
+              onClick={() =>
+                custom
+                  ? useGame.setState({ notice: t('A puzzle being typed in has no link yet. Press {button} first', { button: t('Check & play') }) })
+                  : setDialog('share')
+              }
+            >
               <span className="menu-icon">🔗</span>{t('Share')}
             </button>
             <button onClick={() => setDialog('restart')} title={t('Reset this puzzle and the timer')}>
@@ -1068,7 +1004,7 @@ export default function App() {
           }}
           onDaily={() => {
             setDialog('none');
-            startDaily();
+            void startDaily();
           }}
           onCustom={() => {
             setDialog('none');
@@ -1164,13 +1100,15 @@ export default function App() {
         />
       )}
       {dialog === 'restart' && (
-        <Modal title={t('Restart puzzle?')} onClose={() => setDialog('none')}>
+        <Modal title={custom ? t('Clear the board?') : t('Restart puzzle?')} onClose={() => setDialog('none')}>
           <p className="dialog-note">
-            {t(
-              info?.practiceTech
-                ? 'The board and timer reset to the beginning of the practice position. Your progress on this puzzle is lost.'
-                : 'The board and timer reset to the beginning. Your progress on this puzzle is lost.'
-            )}
+            {custom
+              ? t('Every digit on the board is cleared.')
+              : t(
+                  info?.practiceTech
+                    ? 'The board and timer reset to the beginning of the practice position. Your progress on this puzzle is lost.'
+                    : 'The board and timer reset to the beginning. Your progress on this puzzle is lost.'
+                )}
           </p>
           <div className="hint-actions">
             <button

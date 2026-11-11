@@ -107,6 +107,62 @@ player reloads), a lazily loaded file this version can no longer fetch
 shows it; the error boundary in `src/ui/ErrorBoundary.tsx` catches a
 render error with a reload and a clear-the-board recovery.
 
+### A game is never lost
+
+The rule (November 2026): a game under way is never lost silently. *Under
+way* is `underWay` in the game store: not won, and played on (`playedOn`),
+or a puzzle being typed in that has a digit on it or was opened over a game
+under way (an empty entry board over nothing begun holds nothing to lose).
+
+- **Links and Import set it aside.** A link of the app's own (a share or
+  challenge link, a position link `#s=`, another day's daily), opened at
+  start-up, in a new tab of the same browser or in the same tab (a hash
+  change), and anything Import opens, go through `openOver`: the game
+  under way is put into **one saved slot**, `setAside` (a `GameBackup` like
+  a custom entry's, with its solved flag, practice target, the running
+  game's tally and, for a puzzle being typed in, the game Cancel brings
+  back), then the other game opens. The address is read one way
+  everywhere, `readAppLink` (src/content/share.ts), and opened one way,
+  `openAppLink` (src/ui/links.ts); the same-tab path no longer refuses.
+- **The note brings it back.** While the slot holds a game, a quiet line
+  beside the board in the past-daily note's place says "Your game in
+  progress is kept" with **Back to it**, which swaps: the kept game
+  returns, and the game on the board takes the slot if it is under way, so
+  neither is lost. The note goes with the swap (the game now in the slot
+  has its note put away) or when the player puts it away; the game stays
+  kept either way, until a newer one replaces it.
+- **Asking for it again brings it back.** A link to the puzzle on the board
+  resumes it, as a reload does; a link to the puzzle in the slot, or Import
+  of it, swaps it back where it was left (a challenger's time then goes on
+  its moves). Practice is another game and never matches.
+- **One slot, the most work kept.** When the slot already holds a game and
+  another under way is replaced, the slot keeps whichever of the two holds
+  more of the player's work, `workOf`: the cells written in (a digit, a
+  mark, a strike or a colour), with those of the game a typed-in puzzle was
+  opened over; on a tie, the newer. The other is the only loss the rule
+  allows, and it is never the one with more work. It takes a player
+  juggling three games by links without going back to any.
+- **The daily.** New, then Daily puzzle (and the past-daily note's link)
+  go on with today's daily when it is on the board, solved or not, or in
+  the slot; only a daily never started, or one restarted by Restart,
+  starts fresh (`startDaily`, src/ui/links.ts). Without the published list
+  (`loadDailies` gives null: offline before the app could keep the file, a
+  network error) a day the list should cover is not made up from the date:
+  the board stays as it was and the player is told; a day before the list
+  began is still derived from its date.
+- **Custom entry.** Opened again over a puzzle being typed in (New, then
+  Custom, or a scan from New), the backup stays the game the first entry
+  was opened over, so Cancel always brings that back. Restart there asks,
+  then clears the typed digits; Share says the puzzle has no link until
+  Check & play.
+- **Undo is not saved.** The undo history stays in memory: a reload (and
+  Cancel of a custom entry) keeps the board but not the steps back. Each
+  step is a full copy of the 81 cells, about 6 KB as saved, so even a short
+  history would multiply the save written at every move; a compact form
+  needs an encoding of every cell field and is left for later.
+- Two tabs of one browser each hold the game in memory, and each saves
+  over the other's at its next move; that is not solved here.
+
 ## UI (`src/ui/`) — React components
 
 - [App.tsx](../src/ui/App.tsx): layout shell, global keyboard handling,
@@ -114,6 +170,10 @@ render error with a reload and a clear-the-board recovery.
   is loaded on demand (`React.lazy`), so the guide's prose and diagrams
   are their own chunk, precached for offline but never parsed to start a
   game.
+- [links.ts](../src/ui/links.ts): what opens from outside, a link of the
+  app's own (at start-up, in the same tab, pasted into Import) or the
+  day's daily, with a game under way set aside first ("A game is never
+  lost", above).
 - [Progress.tsx](../src/ui/Progress.tsx): the path and the record
   ([technique-stats.md](technique-stats.md)).
 - [ErrorBoundary.tsx](../src/ui/ErrorBoundary.tsx): the recovery panel.

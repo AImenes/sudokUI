@@ -24,7 +24,7 @@ import { TECHS, LEVELS, Tech, Level, asLevel } from '../engine/ratings';
 import type { Lang } from '../state/settings';
 import { techSlug, techFromParam } from './slugs';
 import { SITE, homePath, ogCard, fillTemplate } from './home';
-import { parseDailyUrl, dailyPath, findDaily, dailyNumber } from './dailies';
+import { parseDailyUrl, dailyPath, findDaily, dailyNumber, localDateKey } from './dailies';
 import type { Daily } from './dailies';
 import * as namesNb from './locales/names.nb';
 import * as namesEs from './locales/names.es';
@@ -82,6 +82,36 @@ export function parseShareUrl(url: { pathname: string; search: string }): ShareP
   const vs = Number(q.get('vs'));
   if (q.has('vs') && Number.isInteger(vs) && vs > 0 && vs < 24 * 3600) params.vs = vs;
   return params;
+}
+
+/**
+ * What an address of the app's own opens, read the one way wherever it
+ * arrives (src/ui/links.ts): at start-up, in the same tab (a hash
+ * change) and pasted into Import. A whole position (#s=: entries, marks
+ * and colours), over the puzzle a share address names; a daily's day
+ * (/daily/<date>, or #daily for today's); a puzzle, from a share address
+ * (/p/<puzzle>: someone's link) or a bare #p= (mostly the Learn pages'
+ * own); each with a challenger's time (?vs=) where one rides along. Null
+ * when the address names none of these.
+ */
+export interface AppLink {
+  position?: string;
+  daily?: { date: string; vs?: number };
+  puzzle?: { cells: string; share: boolean; vs?: number };
+}
+
+export function readAppLink(url: { pathname: string; search: string; hash: string }, today = localDateKey()): AppLink | null {
+  const params = new URLSearchParams(url.hash.replace(/^#/, ''));
+  const link: AppLink = {};
+  const position = params.get('s');
+  if (position) link.position = position;
+  const daily: { date: string; vs?: number } | null = parseDailyUrl(url) ?? (params.has('daily') ? { date: today } : null);
+  if (daily) link.daily = daily.vs ? { date: daily.date, vs: daily.vs } : { date: daily.date };
+  const share = parseShareUrl(url);
+  // a puzzle string may write its empty cells as zeros; the app writes dots
+  const cells = (share?.puzzle ?? params.get('p') ?? '').replace(/[^0-9.]/g, '').replace(/0/g, '.');
+  if (cells.length === 81) link.puzzle = share?.vs ? { cells, share: true, vs: share.vs } : { cells, share: !!share };
+  return link.position || link.daily || link.puzzle ? link : null;
 }
 
 /**

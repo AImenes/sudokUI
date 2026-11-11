@@ -65,7 +65,9 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
 
 ## The engine and the content
 
-- [architecture.md](architecture.md): how the app is put together.
+- [architecture.md](architecture.md): how the app is put together, and
+  the rule that a game under way is never lost (links, Import, the daily,
+  custom entry and the set-aside slot).
 - [candidates-2026-11.md](candidates-2026-11.md): auto candidates and the
   two mark layers: the owner's report and the hunt of November 2026, what
   was fixed (undo, strikes, erase, Check, the chain trainer), Gather and the
