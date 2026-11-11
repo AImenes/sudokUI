@@ -350,6 +350,24 @@ test.describe('links and Import, laptop', () => {
     await expect.poll(() => saved(page)).toMatchObject({ dailyKey: localDateKey(), entries: 3 });
   });
 
+  test('with a game kept and another under way, a third opened by a link lets one go and the toast, read to a screen reader, says which', async ({ page }) => {
+    await page.addInitScript(welcomed);
+    await openDaily(page);
+    await enter(page, false, 3);
+    await page.goto(`/p/${EASY}/`);
+    await expect(note(page)).toBeVisible();
+    await enter(page, false, 1);
+    await expect.poll(async () => (await saved(page)).entries).toBe(1);
+    // the toast is a live region before it has anything to say
+    await expect(page.locator('[role="status"][aria-live="polite"]').first()).toBeAttached();
+    await page.goto(`/p/${HARD}/`);
+    const told = 'Only one game in progress is kept at a time: your game on a shared puzzle is gone, today’s daily is kept';
+    await expect(page.getByRole('status').filter({ hasText: told })).toBeVisible();
+    await expect(page.locator('.toast')).toHaveText(told);
+    expect(await saved(page)).toMatchObject({ puzzle: HARD, aside: { dailyKey: localDateKey(), entries: 3 } });
+    await expect(note(page)).toBeVisible();
+  });
+
   test('Back to it by keyboard leaves the focus on the board, and the toast says which game is back', async ({ context, page }) => {
     await context.addInitScript(welcomed);
     await openDaily(page);

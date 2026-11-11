@@ -3304,6 +3304,21 @@ kbd {
   line-height: 1.4;
 }
 
+.toast-line {
+  display: block;
+  margin-top: 4px;
+}
+
+/* the toast's live region while there is nothing to say */
+.toast-idle {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;

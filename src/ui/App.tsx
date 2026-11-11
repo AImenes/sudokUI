@@ -296,6 +296,8 @@ export default function App() {
   const erase = useGame((s) => s.erase);
   const wipe = useGame((s) => s.wipe);
   const notice = useGame((s) => s.notice);
+  const letGo = useGame((s) => s.letGo);
+  const away = useGame((s) => s.away);
   const clearNotice = useGame((s) => s.clearNotice);
   const undo = useGame((s) => s.undo);
   const redo = useGame((s) => s.redo);
@@ -426,6 +428,11 @@ export default function App() {
   useEffect(() => {
     if (!solved) setVictoryDismissed(false);
   }, [solved, info?.puzzle]);
+  // put away, a game just won here is no longer kept against another
+  // window's (gameStore.ts, ownHere)
+  useEffect(() => {
+    if (victoryDismissed && useGame.getState().ownHere) useGame.setState({ ownHere: false });
+  }, [victoryDismissed]);
 
   // a link opened in this tab (its hash changed): opened as at start-up,
   // a game under way put aside. The path is the address bar's own, the
@@ -537,13 +544,16 @@ export default function App() {
     };
   }, []);
 
-  // toasts fade after a few seconds
+  // toasts fade a few seconds after they can be seen: one that came while
+  // the page was hidden (a game let go as another window's was kept,
+  // gameStore.ts, settleSlot) waits until it is shown
+  const toast = [notice, letGo].filter(Boolean).join(' ');
   useEffect(() => {
-    if (!notice) return;
+    if (!toast || away) return;
     // long notices stay long enough to be read
-    const id = setTimeout(clearNotice, Math.max(3500, notice.length * 70));
+    const id = setTimeout(clearNotice, Math.max(3500, toast.length * 70));
     return () => clearTimeout(id);
-  }, [notice, clearNotice]);
+  }, [toast, away, clearNotice]);
 
   // hold-modifier temporary modes: Shift = corner, Ctrl/Alt = centre,
   // Shift together with Ctrl/Alt = colour; release returns to the base mode
@@ -1265,11 +1275,18 @@ export default function App() {
         <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} asked={contractFor} />
       )}
       <UpdateBar />
-      {notice && (
-        <div className="toast" role="status" aria-live="polite">
-          {notice}
-        </div>
-      )}
+      {/* one live region, always there, so a screen reader hears each
+          notice as its words come in; empty while the page is hidden, so
+          what came then is said when it is shown */}
+      <div className={toast && !away ? 'toast' : 'toast-idle'} role="status" aria-live="polite">
+        {toast && !away && (
+          <>
+            {notice}
+            {notice && letGo ? ' ' : null}
+            {letGo && <span className={notice ? 'toast-line' : undefined}>{letGo}</span>}
+          </>
+        )}
+      </div>
     </div>
   );
 }

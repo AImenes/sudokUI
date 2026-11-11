@@ -448,6 +448,75 @@ test.describe('the clock', () => {
     expect(b.url()).not.toContain(EASY);
   });
 
+  test('a link’s game played in a new tab, and closed there, is kept by the older tab shown again, beside its own daily', async ({ context }) => {
+    const today = localDateKey();
+    const daily = dailies.find((d) => d.date === today)!;
+    expect(daily, `a published daily for ${today}`).toBeTruthy();
+    const kept = (p: Page) =>
+      p.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('sudokui-game-v1')!).state;
+        const own = (cells: { given: boolean; value: number }[]) => cells.filter((c) => !c.given && c.value).length;
+        return { board: s.info.dailyKey ?? s.info.puzzle, entries: own(s.cells), aside: s.setAside && { game: s.setAside.info.dailyKey ?? s.setAside.info.puzzle, entries: own(s.setAside.cells) } };
+      });
+    // tab A: today's daily under way, then behind the chat app
+    const a = await context.newPage();
+    await open(a, `/daily/${today}`);
+    const dsol = solutionOf(daily.puzzle);
+    for (const cell of empties(daily.puzzle).slice(0, 3)) await enter(a, cell, dsol[cell]);
+    await shown(a, false);
+    // tab B: a friend's link, as a chat app opens it; played on, then closed
+    const b = await context.newPage();
+    await open(b, `/p/${EASY}`);
+    const esol = solutionOf(EASY);
+    for (const cell of empties(EASY).slice(0, 5)) await enter(b, cell, esol[cell]);
+    await expect.poll(() => kept(b)).toEqual({ board: EASY, entries: 5, aside: { game: today, entries: 3 } });
+    await shown(b, false);
+    await left(b);
+    await b.close();
+    // A shown again: its own daily on the board, and the friend's game kept with its moves
+    await shown(a, true);
+    await expect.poll(() => kept(a)).toEqual({ board: today, entries: 3, aside: { game: EASY, entries: 5 } });
+    const line = a.getByRole('note').filter({ hasText: 'Your game in progress is kept.' });
+    await expect(line).toBeVisible();
+    await a.getByRole('button', { name: 'Resume game' }).click();
+    await line.getByRole('button', { name: 'Back to it' }).click();
+    await expect.poll(() => kept(a)).toEqual({ board: EASY, entries: 5, aside: { game: today, entries: 3 } });
+  });
+
+  test('a hidden tab keeps a game just won there, its win screen up, and a link opened there not yet played, while another tab’s game is looked at', async ({ context }) => {
+    const a = await context.newPage();
+    await open(a, `/#p=${EASY}`);
+    await solveBoard(a, EASY);
+    await expect(winScreen(a)).toBeVisible();
+    await shown(a, false);
+    const HARD = '...6..9.1..95....4....4985..241....5....3....9....546..7549....3....12..1.2..3...';
+    const b = await context.newPage();
+    await open(b, `/p/${HARD}`);
+    const hsol = solutionOf(HARD);
+    for (const cell of empties(HARD).slice(0, 2)) await enter(b, cell, hsol[cell]);
+    await shown(b, false);
+    await shown(b, true);
+    await shown(b, false);
+    // A shown again: its win screen and its Send stay, and its address
+    await shown(a, true);
+    await expect(winScreen(a)).toBeVisible();
+    await expect(winScreen(a)).toContainText('Unassisted solve');
+    expect(a.url()).toContain(EASY);
+    // a link opened in A, not yet played on: kept too
+    await winScreen(a).getByRole('button', { name: 'Admire the grid' }).click();
+    const OTHER = '8..6.2.5....89..6.67...5.......4.1.9.1.5.8.3.3.4.2.......7...92.3..89....9.2.4..6';
+    await a.evaluate((p) => (location.hash = `#p=${p}`), OTHER);
+    await expect.poll(() => a.url()).toContain('8..6.2.5');
+    await shown(a, false);
+    await shown(b, true);
+    await enter(b, empties(HARD)[2], hsol[empties(HARD)[2]]);
+    await shown(b, false);
+    await shown(a, true);
+    await a.waitForTimeout(300);
+    expect(a.url()).toContain('8..6.2.5');
+    expect(await a.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.info.puzzle)).toBe(OTHER);
+  });
+
   test('a game under way pauses while the page is hidden and comes back behind the pause card; an unplayed one runs on', async ({ page }) => {
     await open(page);
     // not yet played on: hidden and shown again, no card, and the clock goes on

@@ -485,6 +485,9 @@ describe('a game another window saved, of another puzzle', () => {
     expect(useGame.getState().info?.puzzle).toBe(OTHER);
     useGame.getState().startGame(EASY, 196, 'Easy');
     solveAll();
+    // won here, its win screen up, it is this window's own; put away, it is not
+    expect(takesInSaved(JSON.parse(otherWindowStarted()).state, useGame.getState())).toBe(false);
+    useGame.setState({ ownHere: false });
     expect(takesInSaved(JSON.parse(otherWindowStarted()).state, useGame.getState())).toBe(true);
     expect(takesInSaved(JSON.parse(json).state, { ...useGame.getState(), info: null })).toBe(true);
     // a puzzle being typed in is this window's own work

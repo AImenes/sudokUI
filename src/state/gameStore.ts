@@ -5,7 +5,7 @@
 //   auto          = engine-computed list minus per-cell exclusions (strikes)
 // engineGrid() bridges UI cell state to the engine's Grid for hints/fill/check.
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import {
   Grid,
   emptyGrid,
@@ -33,7 +33,7 @@ import type { GameTally } from './stats';
 import { useTelemetry, type PlayKind } from './telemetry';
 import { useDailyStats } from './dailyStats';
 import type { DailyResult, PlayedDaily } from './dailyStats';
-import { dailyClosed } from '../content/dailies';
+import { dailyClosed, localDateKey } from '../content/dailies';
 import { justifyMove } from './pools';
 import { translator, msg } from '../content/i18n';
 import type { TextPosition } from '../content/textGrid';
@@ -268,7 +268,8 @@ const freshSession = (): Partial<GameStore> => ({
   chainNote: '',
   scanPreview: null,
   scanDoubts: [],
-  chainGoal: null
+  chainGoal: null,
+  ownHere: false
 });
 
 /** Undo or Redo across a step that keeps the help flag (a Steps jump on the
@@ -700,6 +701,19 @@ interface GameStore {
   proofs: Proof[];
   /** transient toast message */
   notice: string | null;
+  /** the game the one slot let go, named (oneSlot, letGoLine): said in the
+   *  toast with the notice that comes with it, so it reaches a screen
+   *  reader too. In memory only, and kept when a game is read from storage,
+   *  so a window that lets a game go while hidden says so when shown */
+  letGo: string | null;
+  /** the game on the board is this window's own though it is not under
+   *  way: just won here, its win screen still up (recordWin), or opened
+   *  here from outside (openOver: a link, Import, the Daily button, a
+   *  Learn page's Practice link) and not yet played. Another window's save
+   *  does not take its place (takesInSaved). In memory only, never saved:
+   *  the win screen put away, a new game, a game read from storage and a
+   *  reload clear it */
+  ownHere: boolean;
   /**
    * Multi-select (the Multi button, M): a tap adds a cell to the selection
    * or takes it out, a drag paints cells in or out, and the board keeps
@@ -892,7 +906,8 @@ function foundNotice(tech: Tech): string {
  *  game (startGame), and its solve counts again */
 function recordWin(s: GameStore) {
   if (!s.info || s.solved) return;
-  useGame.setState({ solved: true, solvedMs: s.elapsedMs(), solvedAssisted: s.assisted });
+  // won here, its win screen up: this window's own until it is put away
+  useGame.setState({ solved: true, solvedMs: s.elapsedMs(), solvedAssisted: s.assisted, ownHere: true });
   if (!s.info.practiceTech) useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
   useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000), kindOf(s.info));
   recordDaily(s);
@@ -1005,6 +1020,11 @@ function autoOn(cells: CellState[], contract: MarkContract): string | null {
   return null;
 }
 
+/** the game save as this window last wrote or read it (the persist storage, takeInSavedGame) */
+let seenSave: string | null = null;
+/** the save being taken in (takeInSavedGame): read as it came, even if this window has written since */
+let takingIn: string | null = null;
+
 export const useGame = create<GameStore>()(
   persist(
     (set, get) => ({
@@ -1042,6 +1062,8 @@ export const useGame = create<GameStore>()(
       errors: [],
       proofs: [],
       notice: null,
+      letGo: null,
+      ownHere: false,
       multiSelect: false,
       revertIndex: null as number | null,
       practiceTarget: null,
@@ -1136,6 +1158,7 @@ export const useGame = create<GameStore>()(
           solvedMs: null,
           solvedAssisted: null,
           dailyKept: false,
+          ownHere: false,
           // fast-forwarded practice switches auto candidates on for you,
           // which under the house rules already counts as assistance
           assisted: !!fastForward,
@@ -1214,8 +1237,12 @@ export const useGame = create<GameStore>()(
         const s = get();
         const kept = underWay(s) ? asideOf(s) : null;
         const opened = open();
-        if (opened && kept) set({ setAside: oneSlot(kept, get().setAside) });
-        return opened;
+        if (!opened) return false;
+        // the game opened is this window's own before it is played, and a
+        // game the one slot lets go is named (letGoLine)
+        const { slot, dropped } = oneSlot(kept, get().setAside);
+        set({ setAside: slot, ownHere: true, ...(dropped ? { letGo: letGoLine([dropped], slot!) } : {}) });
+        return true;
       },
 
       backToSetAside: () => {
@@ -1237,7 +1264,8 @@ export const useGame = create<GameStore>()(
         if (behind?.info && match(behind.info, behind.won)) {
           const entry = s.cells.some((c) => c.value) ? { ...asideOf(s), customBackup: null } : null;
           get().cancelCustomEntry();
-          set({ setAside: oneSlot(entry, get().setAside) });
+          const { slot, dropped } = oneSlot(entry, get().setAside);
+          set({ setAside: slot, ...(dropped ? { letGo: letGoLine([dropped], slot!) } : {}) });
           return true;
         }
         const back = s.setAside;
@@ -1253,7 +1281,8 @@ export const useGame = create<GameStore>()(
           const kept = underWay(s) ? asideOf(s) : null;
           const entry = back.cells.some((c) => c.value) ? { ...back, customBackup: null } : null;
           useStats.setState({ game: back.tally ?? emptyTally() });
-          set({ ...boardOf(aside), setAside: oneSlot(kept, entry) });
+          const { slot, dropped } = oneSlot(kept, entry);
+          set({ ...boardOf(aside), setAside: slot, ...(dropped ? { letGo: letGoLine([dropped], slot!) } : {}) });
           return true;
         }
         return false;
@@ -1679,7 +1708,7 @@ export const useGame = create<GameStore>()(
         });
       },
 
-      clearNotice: () => set({ notice: null }),
+      clearNotice: () => set((s) => (s.notice === null && s.letGo === null ? {} : { notice: null, letGo: null })),
 
       // each step puts back the cells and how the board read them: auto
       // candidates on or off, and the marks' contract (Snapshot)
@@ -2686,7 +2715,13 @@ export const useGame = create<GameStore>()(
         if (away) {
           const pause = !!s.info && !s.won && !s.custom && !s.paused && playedOn(s);
           set({ away: true, elapsedBefore: s.elapsedMs(), ...(pause ? { paused: true } : {}) });
-        } else set({ away: false, startedAt: Date.now() });
+        } else {
+          // what another window saved while this one could not hear it (a
+          // page the browser froze misses its storage events) is read
+          // before this window writes again
+          catchUp();
+          set({ away: false, startedAt: Date.now() });
+        }
       },
 
       elapsedMs: () => {
@@ -2696,6 +2731,19 @@ export const useGame = create<GameStore>()(
     }),
     {
       name: 'sudokui-game-v1',
+      // the save as this window last wrote or read it (seenSave), so being
+      // shown again reads only what another window wrote since
+      storage: createJSONStorage(() => {
+        const store = localStorage;
+        return {
+          getItem: (name: string) => (seenSave = takingIn ?? store.getItem(name)),
+          setItem: (name: string, value: string) => {
+            seenSave = value;
+            store.setItem(name, value);
+          },
+          removeItem: (name: string) => store.removeItem(name)
+        };
+      }),
       partialize: (s) => ({
         info: s.info,
         cells: s.cells,
@@ -2793,19 +2841,21 @@ export const useGame = create<GameStore>()(
  * or none). A game under way here keeps its board and its moves against
  * another game saved there, a link or a practice opened in a new tab or
  * another window going away with its own, so no window gives up its game
- * to another's. A practice puzzle or a shared position opens with moves
- * that are not the player's, so it is under way once the player moves on
- * it here (its undo steps; one read from storage has none, a gap the
- * other way): one left untouched in a tab does not keep, and put back
- * when shown, a game played in another.
+ * to another's; it keeps the other's game too, in its slot (keepOthers).
+ * So does a game just won here, its win screen still up, and one opened
+ * here from outside and not yet played (ownHere). A practice puzzle or a
+ * shared position opens with moves that are not the player's, so it is
+ * under way once the player moves on it here (its undo steps; one read
+ * from storage has none, a gap the other way): one left untouched in a
+ * tab does not keep, and put back when shown, a game played in another.
  */
 export function takesInSaved(
   saved: Partial<GameStore> | null | undefined,
-  s: Pick<GameStore, 'info' | 'custom' | 'won' | 'cells' | 'autoCandidates' | 'history'>
+  s: Pick<GameStore, 'info' | 'custom' | 'won' | 'cells' | 'autoCandidates' | 'history'> & { ownHere?: boolean }
 ): boolean {
   if (!saved) return false;
   const partWay = !!s.info?.practiceTech || !!s.info?.fromPosition;
-  const underWay = s.custom || (!!s.info && !s.won && (partWay ? s.history.length > 0 : playedOn(s)));
+  const underWay = !!s.ownHere || s.custom || (!!s.info && !s.won && (partWay ? s.history.length > 0 : playedOn(s)));
   if (!underWay) return true;
   const theirs = saved.custom ? null : saved.info;
   const mine = s.custom ? null : s.info;
@@ -2827,21 +2877,179 @@ function savedGame(json: string | null): Partial<GameStore> | null {
   }
 }
 
-// The game another window saved while this one is hidden is taken in when
-// it is this window's own (takesInSaved), so this window, shown again,
-// plays on from it, and its next save (being shown is one, setAway) does
-// not put its own older board back. A window in front keeps its own game,
-// and so does a hidden one with another game under way. The record that
-// goes with the game follows it the same way (stats.ts, dailyStats.ts),
-// the game's own tally only with the game; settings follow always
-// (settings.ts)
-export function takeInSavedGame(json: string) {
-  if (takesInSaved(savedGame(json), useGame.getState())) void useGame.persist.rehydrate();
+/**
+ * Which game a board or a kept game is, as two windows and the one slot
+ * tell games apart: its puzzle, its day and its practice; a puzzle being
+ * typed in by the game it was opened over.
+ */
+export function gameKey(g: { info: GameInfo | null; custom?: boolean; customBackup?: GameBackup | null }): string {
+  const of = (info: GameInfo | null | undefined) => (info ? `${info.puzzle}|${info.dailyKey ?? ''}|${info.practiceTech ?? ''}` : '');
+  return g.custom ? `typed:${of(g.customBackup?.info)}` : of(g.info);
+}
+
+/** what a kept game's board holds, to tell a copy played on since from the same one */
+const boardKey = (g: SetAside) => {
+  const cells = (list: CellState[] | null | undefined) =>
+    list?.map((c) => [c.value, c.given ? 1 : 0, c.corner, c.center, c.excluded, [...c.colors].sort()]) ?? null;
+  return JSON.stringify([cells(g.cells), g.autoCandidates, g.won, g.custom ? cells(g.customBackup?.cells) : null]);
+};
+
+/** the game's own tally as the record another window saved it (stats.ts, game) */
+function savedTally(): GameTally | undefined {
+  try {
+    return JSON.parse(localStorage.getItem('sudokui-stats-v1') ?? 'null')?.state?.game ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** the game on the board of another window's save, as the slot keeps it (asideOf): the chain trainer closed as Done closes it */
+function asideOfSaved(p: Partial<GameStore>): SetAside | null {
+  if (!Array.isArray(p.cells) || p.cells.length !== 81 || (!p.custom && !p.info)) return null;
+  const info = p.info ? levelled(p.info) : null;
+  const contract = p.markContract ?? 'unknown';
+  const handover = p.chainHandover && p.autoCandidates && info ? p.chainHandover : null;
+  return {
+    info,
+    cells: handover ? handBack(cloneCells(p.cells), handover, info!.solution, contract) : cloneCells(p.cells),
+    autoCandidates: handover ? false : !!p.autoCandidates,
+    elapsedBefore: p.elapsedBefore ?? 0,
+    won: !!p.won,
+    solved: !!p.solved || !!p.won,
+    ...(p.solved || p.won ? { solvedMs: p.solvedMs ?? null, solvedAssisted: p.solvedAssisted ?? null, dailyKept: p.dailyKept } : {}),
+    assisted: !!p.assisted,
+    markContract: contract,
+    practiceTarget: p.practiceTarget ?? null,
+    practiceFound: !!p.practiceFound,
+    ...(p.custom ? { custom: true, customBackup: p.customBackup ?? null } : {}),
+    tally: savedTally()
+  };
+}
+
+/** a kept game from a save, its band one of the five levels (levelled) */
+const levelledAside = (x: SetAside): SetAside => (x.info ? { ...x, info: levelled(x.info) } : x);
+
+/** a copy of a game another window keeps, and whether its clock was running when saved (its time then is no measure of a change) */
+interface Copy {
+  game: SetAside;
+  running: boolean;
+}
+
+/** the games whose letting go the toast has already told, in this page's life: told once */
+const toldGone = new Set<string>();
+
+/**
+ * The one slot once this window has read another window's save: of the
+ * copies given (newest first: that window's board game, its kept game,
+ * then this window's own kept game), this window's board game is left
+ * out, since it is on the board, and so is an older copy of a game a newer
+ * one is of; of the rest the slot keeps one by the one-slot rule
+ * (oneSlot, the newer on a tie), and the toast names each game let go,
+ * once. The store is set, and so saved, only when the slot really
+ * changes: another game, or the same one played on (its time alone, while
+ * its clock was running, is no change), so two windows never answer each
+ * other's saves for ever.
+ */
+function settleSlot(copies: Copy[]) {
+  const s = useGame.getState();
+  // a board this window cannot read (the error screen is up) is never written over another's save
+  if (!Array.isArray(s.cells) || s.cells.length !== 81) return;
+  const seen = new Set<string>([gameKey(s)]);
+  const games = copies.filter(({ game }) => {
+    const key = gameKey(game);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (!games.length) return;
+  let kept = games[games.length - 1];
+  const dropped: SetAside[] = [];
+  for (let i = games.length - 2; i >= 0; i--) {
+    const { slot, dropped: gone } = oneSlot(games[i].game, kept.game);
+    if (gone && underWay(gone)) dropped.push(gone);
+    kept = slot === games[i].game ? games[i] : { ...kept, game: slot! };
+  }
+  const mine = s.setAside;
+  const same = !!mine && gameKey(mine) === gameKey(kept.game);
+  const unchanged = same && boardKey(mine!) === boardKey(kept.game) && (kept.running || mine!.elapsedBefore === kept.game.elapsedBefore);
+  const told = dropped.filter((game) => !toldGone.has(gameKey(game)));
+  for (const game of told) toldGone.add(gameKey(game));
+  const letGo = told.length ? { letGo: letGoLine(told, kept.game) } : {};
+  if (unchanged) {
+    if (told.length) useGame.setState(letGo);
+    return;
+  }
+  // a game newly kept here has its note shown; the same game keeps its note as it was, unless another went
+  const hidden = same && !dropped.length ? !!mine!.hidden : false;
+  useGame.setState({ setAside: { ...kept.game, hidden }, ...letGo });
+}
+
+/**
+ * A window that keeps its own game against another window's save keeps
+ * that window's games as well: the game on its board, if under way, and
+ * the game in its slot, each unless it is the game on this window's own
+ * board, go into this window's one slot with its own kept game
+ * (settleSlot). So a link's game played in a new tab, and the game that
+ * tab put aside, are not lost when an older window is shown again and
+ * saves.
+ */
+function keepOthers(saved: Partial<GameStore>) {
+  const board = asideOfSaved(saved);
+  const theirs = saved.setAside && typeof saved.setAside === 'object' ? levelledAside(saved.setAside) : null;
+  const mine = useGame.getState().setAside;
+  settleSlot([
+    ...(board && underWay(board) ? [{ game: board, running: !saved.paused && !saved.won }] : []),
+    ...(theirs ? [{ game: theirs, running: false }] : []),
+    ...(mine ? [{ game: mine, running: false }] : [])
+  ]);
+}
+
+// The game another window saved is read when that window saves (the
+// storage event) and when this one is shown again, before it saves
+// (catchUp: a page the browser froze misses the events). While this
+// window is hidden it takes the game in when it is this window's own
+// (takesInSaved), so, shown again, it plays on from it and its next save
+// does not put its own older board back; its own kept game stays kept
+// beside what came in (settleSlot). A window in front keeps its own game,
+// and so does a hidden one with a game of its own (under way, just won,
+// or opened here and not yet played); either keeps the other window's
+// games in its slot (keepOthers). The record that goes with the game
+// follows it the same way (stats.ts, dailyStats.ts), the game's own tally
+// only with the game; settings follow always (settings.ts)
+export function takeInSavedGame(json: string, hidden = true) {
+  seenSave = json;
+  const saved = savedGame(json);
+  if (!saved) return;
+  const before = useGame.getState().setAside;
+  if (hidden && takesInSaved(saved, useGame.getState())) {
+    // (the storage is read at once, so the save comes in within the call)
+    takingIn = json;
+    try {
+      void useGame.persist.rehydrate();
+    } finally {
+      takingIn = null;
+    }
+    const now = useGame.getState().setAside;
+    settleSlot([...(now ? [{ game: now, running: false }] : []), ...(before ? [{ game: before, running: false }] : [])]);
+    return;
+  }
+  keepOthers(saved);
+}
+
+/** shown again: what another window saved since this one last wrote or read the save */
+function catchUp() {
+  let json: string | null = null;
+  try {
+    json = localStorage.getItem('sudokui-game-v1');
+  } catch {
+    return;
+  }
+  if (json && json !== seenSave) takeInSavedGame(json);
 }
 tallyFollowsWhen(() => takesInSaved(savedGame(localStorage.getItem('sudokui-game-v1')), useGame.getState()));
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === 'sudokui-game-v1' && e.newValue && document.visibilityState === 'hidden') takeInSavedGame(e.newValue);
+    if (e.key === 'sudokui-game-v1' && e.newValue) takeInSavedGame(e.newValue, document.visibilityState === 'hidden');
   });
 }
 
@@ -2907,10 +3115,42 @@ function ownCells(opening: { cells: CellState[] } | null, cells: CellState[]): n
  * that stays has its note shown, so a kept game never stays out of sight
  * while another is dropped.
  */
-function oneSlot(kept: SetAside | null, old: SetAside | null): SetAside | null {
-  if (!kept) return old;
-  if (!old || workOf(kept) >= workOf(old)) return kept;
-  return old.hidden ? { ...old, hidden: false } : old;
+function oneSlot(kept: SetAside | null, old: SetAside | null): { slot: SetAside | null; dropped: SetAside | null } {
+  if (!kept) return { slot: old, dropped: null };
+  if (!old) return { slot: kept, dropped: null };
+  if (workOf(kept) >= workOf(old)) return { slot: kept, dropped: old };
+  return { slot: old.hidden ? { ...old, hidden: false } : old, dropped: kept };
+}
+
+/**
+ * A game as the player knows it, in the words the notes and the toasts
+ * use: today's daily, the daily of a date, a practice, the player's game
+ * on a shared puzzle, a game of a level, or the puzzle being typed in
+ * (with the game it was opened over, when that one holds the player's
+ * work too).
+ */
+export function gameName(g: { info: GameInfo | null; custom?: boolean; customBackup?: GameBackup | null }): string {
+  const t = translator();
+  if (g.custom) {
+    const behind = g.customBackup;
+    return behind?.info && underWay({ ...behind, custom: false })
+      ? t('the puzzle you were typing in, with {game} behind it', { game: gameName({ ...behind, custom: false }) })
+      : t('the puzzle you were typing in');
+  }
+  const info = g.info;
+  if (!info) return t('the puzzle you were typing in');
+  if (info.dailyKey) return info.dailyKey === localDateKey() ? t('today’s daily') : t('the daily for {date}', { date: info.dailyKey });
+  if (info.practiceTech) return t('your {name} practice', { name: t.tech(info.practiceTech) });
+  if (info.fromLink) return t('your game on a shared puzzle');
+  return t('your {level} game', { level: t.level(info.level) });
+}
+
+/** what the toast says when the one slot lets games go: which, and which it keeps (docs/architecture.md, "One slot") */
+function letGoLine(dropped: SetAside[], kept: SetAside): string {
+  const t = translator();
+  return dropped
+    .map((game) => t('Only one game in progress is kept at a time: {game} is gone, {kept} is kept', { game: gameName(game), kept: gameName(kept) }))
+    .join(' ');
 }
 
 const emptyTally = (): GameTally => ({ unaided: {}, hinted: {}, errors: 0, beyond: 0 });
@@ -2955,6 +3195,7 @@ function boardOf(back: SetAside): Partial<GameStore> {
     scanPreview: null,
     scanDoubts: [],
     notice: null,
+    ownHere: false,
     // a puzzle being typed in takes digits, as when it was opened
     ...(back.custom ? { mode: 'digit' as EntryMode } : {})
   };

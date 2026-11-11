@@ -67,8 +67,9 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
 
 - [architecture.md](architecture.md): how the app is put together, and
   the rule that a game under way is never lost (links, Import, the daily,
-  custom entry, the set-aside slot and the error screen), with the one
-  loss still open.
+  custom entry, the set-aside slot and the error screen, and two windows
+  keeping each other's games), with what happens when the one slot must
+  let a game go: the toast says which.
 - [candidates-2026-11.md](candidates-2026-11.md): auto candidates and the
   two mark layers: the owner's report and the hunt of November 2026, what
   was fixed (undo, strikes, erase, Check, the chain trainer), Gather and the

@@ -108,10 +108,28 @@ in only when it is the window's own game (the same puzzle and day) or the
 window's own is not under way (solved, nothing played on it, or none; a
 practice or a shared position is under way once the player moves on it in
 that window: `takesInSaved`): a hidden window with another game under way
-keeps it,
-so a link or a practice opened in a new tab, or another window going
-away, takes no game from it. The game's own tally (`stats.ts`, `game`)
-goes with the game. A game read from storage comes without the window's
+keeps it, so a link or a practice opened in a new tab, or another window
+going away, takes no game from it. So does a hidden window whose game was
+won there in this page's life, its win screen still up, or opened there
+from outside (a link, Import, the Daily button, a Learn page's Practice)
+and not yet played (`ownHere`, in memory only: the win screen put away, a
+new game, a game read from storage and a reload clear it). A window that
+keeps its own game, hidden or in front, keeps the other window's as well
+(`keepOthers`): the game on that window's board, if under way, and the
+game in its slot go into this window's slot, unless one is the game on
+this window's own board, by the one-slot rule (below) and with its toast
+when one must go. So a friend's link opened in a new tab, played there
+and closed, is still kept when the older tab is shown again and saves,
+and moves made in the older tab on the game the newer one put aside reach
+the newer one's copy. The save is read at each `storage` event and again
+when the window is shown, before it saves (`catchUp`: a page the browser
+froze misses its events); games are told apart by puzzle, day and
+practice (`gameKey`), and a window writes only when its slot really
+changes (another game, or the same one played on; the time alone of a
+game whose clock was running is no change), so two windows never answer
+each other's saves for ever. The game's own tally (`stats.ts`, `game`)
+goes with the game, and a game kept from another window takes that
+window's saved tally. A game read from storage comes without the window's
 undo steps, hint, chain trainer and Check marks, which belonged to the
 board it had (`freshSession`).
 
@@ -153,8 +171,8 @@ languages ([search.md](search.md)).
 
 ### A game is never lost
 
-The rule (November 2026): a game under way is never lost silently, with
-one exception still open (the one slot, below). *Under way* is `underWay`
+The rule (November 2026): a game under way is never lost silently. The
+one slot (below) may have to let one go, and then the toast says which. *Under way* is `underWay`
 in the game store: not won, and played on by the player since it opened
 (a digit, a mark, a strike or a colour the board did not open with, or
 auto candidates switched); or a puzzle being typed in that has a digit on
@@ -198,18 +216,27 @@ none of the player's work.
   on the board or in the slot: that game comes back as Cancel would bring
   it, and the typed puzzle, once it has a digit, goes into the slot.
   Practice is another game and never matches.
-- **One slot, the most work kept.** When the slot already holds a game and
-  another under way is replaced, the slot keeps whichever of the two holds
-  more of the player's own work, `workOf`: the cells written in since each
-  game opened, with those of the game a typed-in puzzle was opened over;
-  on a tie, the newer. A kept game whose note was put away has it shown
-  again when it stays over another. The other game is dropped, and
-  nothing says so: this is the one loss left, never of the game with more
-  of the player's own work, and it takes two games under way, one in the
-  slot and one on the board, and a third opened over them by a link,
-  Import, the Daily button or a Learn page's Practice link. How to close
-  it (keep two or three games, about 6 KB each; ask before one is dropped;
-  or at least say which was) is the owner's decision.
+- **One slot, the most work kept, and never silently.** When the slot
+  already holds a game and another under way is replaced, the slot keeps
+  whichever of the two holds more of the player's own work, `workOf`: the
+  cells written in since each game opened, with those of the game a
+  typed-in puzzle was opened over; on a tie, the newer. A kept game whose
+  note was put away has it shown again when it stays over another. The
+  other game goes, never the one with more of the player's own work, and
+  at that moment the toast says which, naming both games as the notes do
+  (`gameName`: today's daily, the daily for a date, your game on a shared
+  puzzle, your X-Wing practice, your Hard game, the puzzle you were typing
+  in): "Only one game in progress is kept at a time:
+  your game on a shared puzzle is gone, today's daily is kept" (the
+  owner's lead, 11 November 2026: one slot, but never silent). It takes
+  two games under way, one in the slot and one on the board, and a third
+  opened over them by a link, Import, the Daily button or a Learn page's
+  Practice link, or three across two windows (`keepOthers`, above). The
+  line rides with the notice the opening brings (`letGo`, in memory). The
+  toast is one live region, always in the page (`role="status"`), so a
+  screen reader hears each notice as it comes; it is empty while the page
+  is hidden and fades only once it can be seen, so a game let go in a
+  hidden window is told when it is shown.
 - **The daily.** New, then Daily puzzle (and the past-daily note's link,
   and the daily's own address) go on with that day's daily when it is on
   the board, solved or not, in the slot, or behind a puzzle being typed
@@ -242,8 +269,10 @@ none of the player's work.
   step is a full copy of the 81 cells, about 6 KB as saved, so even a short
   history would multiply the save written at every move; a compact form
   needs an encoding of every cell field and is left for later.
-- Two tabs of one browser each hold the game in memory, and each saves
-  over the other's at its next move; that is not solved here.
+- Two windows in front on the same game each hold it in memory, and each
+  saves over the other's board at its next move; that is not solved here.
+  Two windows on different games keep each other's in their slots
+  (`keepOthers`, above).
 
 ## UI (`src/ui/`) — React components
 
