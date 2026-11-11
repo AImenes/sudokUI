@@ -6,7 +6,7 @@ import { useT, msg, Translator } from '../content/i18n';
 import { useGame, EntryMode } from '../state/gameStore';
 import { useSettings, MarkLayer } from '../state/settings';
 import { Modal } from './Dialogs';
-import { PALETTE } from './Grid';
+import { PALETTE, colourName } from './Grid';
 import { TapGate } from './keyTap';
 import { useMedia, PHONE } from './useMedia';
 
@@ -333,6 +333,7 @@ export function Controls({
           <button
             key={m.id}
             className={`mode-btn ${effectiveMode === m.id ? 'active' : ''}${tempMode === m.id ? ' held' : ''}`}
+            aria-pressed={effectiveMode === m.id}
             onClick={() => setMode(m.id)}
             title={`${t(m.label)} (${m.key})`}
           >
@@ -361,12 +362,16 @@ export function Controls({
             key={d}
             className={`num-btn ${effectiveMode === 'color' ? 'color-btn' : ''}${armedDigit === d ? ' armed' : ''}${heldKey === d ? ' held-corner' : ''}`}
             aria-pressed={armedDigit === d}
+            // a Colour key shows no digit: its name is its colour's
+            aria-label={effectiveMode === 'color' ? colourName(t, d - 1) : undefined}
             title={t(
               armedDigit === d
                 ? '{d} is armed: tap a cell to enter it. Tap {d} again to put it down, whatever is selected'
                 : armedDigit !== null
                   ? 'Arm {d} instead of {a}: a tap on a cell then enters {d}'
-                  : '{d}. In Digit mode, hold it to enter a corner mark. With nothing selected, arms {d}: every {d} lights up and a tap on a cell enters it',
+                  : effectiveMode === 'color'
+                    ? 'Paints the selected cells in this colour, or takes it off when they all have it'
+                    : '{d}. In Digit mode, hold it to enter a corner mark. With nothing selected, arms {d}: every {d} lights up and a tap on a cell enters it',
               { d, a: armedDigit ?? '' }
             )}
             style={
@@ -528,6 +533,7 @@ export function Controls({
           <div className="action-row">
             <button
               className={autoCandidates ? 'toggled' : ''}
+              aria-pressed={autoCandidates}
               onClick={autoCandidates ? onAutoToggle : guarded('Auto candidates', onAutoToggle)}
               title={t(
                 !autoCandidates

@@ -1234,36 +1234,45 @@ export function Grid() {
           return (
             <g key={i}>
               {cell.value > 0 ? (
-                <text
-                  x={x + SIZE / 2}
-                  y={y + SIZE / 2 + 21}
-                  textAnchor="middle"
-                  fontSize={58}
-                  fontWeight={cell.given ? 700 : 500}
-                  fill={
-                    valueMarks.has(i)
-                      ? hintInk(valueMarks.get(i)!)
-                      : conflict
-                        ? 'var(--error-bg)'
-                        : cell.given
-                          ? 'var(--given)'
-                          : 'var(--entered)'
-                  }
-                  // an opt-in slight colour per digit, mixed into the theme's
-                  // own digit colour so every theme keeps its character; a
-                  // browser without color-mix ignores this and keeps `fill`
-                  style={
-                    digitTints && !conflict && !valueMarks.has(i)
-                      ? {
-                          fill: `color-mix(in srgb, var(${
-                            cell.given ? '--given' : '--entered'
-                          }) ${100 - tintStrength}%, var(--tint-${cell.value}))`
-                        }
-                      : undefined
-                  }
-                >
-                  {cell.value}
-                </text>
+                <>
+                  {/* a repeated digit is red and underlined: the line says it
+                      where red alone would not, as beside Rosé's own red
+                      digits or to a colour-blind eye (a rect: the mask that
+                      cuts digits out of the arrows leaves it out) */}
+                  {conflict && (
+                    <rect className="conflict-mark" x={x + SIZE / 2 - 16} y={y + SIZE / 2 + 28} width={32} height={4} rx={2} fill="var(--danger-text)" />
+                  )}
+                  <text
+                    x={x + SIZE / 2}
+                    y={y + SIZE / 2 + 21}
+                    textAnchor="middle"
+                    fontSize={58}
+                    fontWeight={cell.given ? 700 : 500}
+                    fill={
+                      valueMarks.has(i)
+                        ? hintInk(valueMarks.get(i)!)
+                        : conflict
+                          ? 'var(--danger-text)'
+                          : cell.given
+                            ? 'var(--given)'
+                            : 'var(--entered)'
+                    }
+                    // an opt-in slight colour per digit, mixed into the theme's
+                    // own digit colour so every theme keeps its character; a
+                    // browser without color-mix ignores this and keeps `fill`
+                    style={
+                      digitTints && !conflict && !valueMarks.has(i)
+                        ? {
+                            fill: `color-mix(in srgb, var(${
+                              cell.given ? '--given' : '--entered'
+                            }) ${100 - tintStrength}%, var(--tint-${cell.value}))`
+                          }
+                        : undefined
+                    }
+                  >
+                    {cell.value}
+                  </text>
+                </>
               ) : candDisplay ? (
                 digitsOf(candDisplay).map((d) => (
                   <React.Fragment key={d}>
@@ -1740,3 +1749,21 @@ export function Grid() {
 }
 
 export { PALETTE };
+
+/** each palette colour's word, for what a screen reader reads (the
+ *  Colour keys, the set tracker's swatches in Settings) */
+const PALETTE_WORDS = [
+  msg('red||a colour of the Colour keys'),
+  msg('orange||a colour of the Colour keys'),
+  msg('yellow||a colour of the Colour keys'),
+  msg('green||a colour of the Colour keys'),
+  msg('teal||a colour of the Colour keys'),
+  msg('blue||a colour of the Colour keys'),
+  msg('purple||a colour of the Colour keys'),
+  msg('pink||a colour of the Colour keys'),
+  msg('grey||a colour of the Colour keys')
+];
+
+/** a palette colour by its key and its word: "Colour 3, yellow" */
+export const colourName = (t: Translator, k: number) =>
+  t('Colour {n}, {colour}', { n: k + 1, colour: t(PALETTE_WORDS[k]) });

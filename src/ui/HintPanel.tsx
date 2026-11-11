@@ -151,6 +151,21 @@ export function ChainPanel() {
   const revealHint = useGame((s) => s.revealHint);
   const cells = useGame((s) => s.cells);
   const t = useT();
+  // the keyboard's way in and out: focus moves into the panel when the
+  // trainer opens, and back to where it was (the Chain button, Build it
+  // yourself) when it closes from inside the panel, which takes the
+  // focused button with it
+  const open = !!chain;
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const back = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    box.current?.focus({ preventScroll: true });
+    return () => {
+      const now = document.activeElement;
+      if (back?.isConnected && (!now || now === document.body)) back.focus({ preventScroll: true });
+    };
+  }, [open]);
   if (!chain) return null;
   const elims = hint?.eliminations ?? [];
   const n = chain.nodes.length;
@@ -162,7 +177,7 @@ export function ChainPanel() {
   const legend = hint ? legendKinds(hint, frameMarks(hint, frame, (c) => cells[c].value > 0)) : null;
   const words = truthWords(t, { assumed: false, kind: 'candidate' });
   return (
-    <div className="hint-panel" role="region" aria-label={t('Build a chain')} aria-live="polite">
+    <div ref={box} tabIndex={-1} className="hint-panel" role="region" aria-label={t('Build a chain')} aria-live="polite">
       <div className="hint-head">
         <strong>{t('Build a chain')}</strong>
         <span className="hint-level">{n ? t(n === 1 ? '{n} candidate' : '{n} candidates', { n }) : t('your move')}</span>
@@ -296,7 +311,9 @@ export function HintPanel({
   useEffect(() => {
     if (!hint || stage === 'hidden') return;
     if (!window.matchMedia('(max-width: 860px), (max-height: 900px)').matches) return;
-    panel.current?.closest('.layout')?.scrollTo({ top: 0, behavior: 'smooth' });
+    // at once where the player asked for reduced motion
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    panel.current?.closest('.layout')?.scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' });
   }, [hint, stage]);
 
   if (!hint || stage === 'hidden') return null;

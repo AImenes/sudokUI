@@ -1676,12 +1676,19 @@ export function Modal({
   wide?: boolean;
 }) {
   const t = useT();
+  // without this, Tab keeps walking the controls hidden behind the dialog
+  const ref = React.useRef<HTMLDivElement>(null);
   // Escape closes the dialog (capture phase so the app's own Escape
-  // handling — clearing the selection — doesn't also fire)
+  // handling — clearing the selection — doesn't also fire), and only the
+  // top one: a question raised over Settings closes alone. Every open
+  // dialog listens on the window, so each asks whether it is the last
+  // one on the page, the one painted on top
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code === 'Escape') {
         e.stopPropagation();
+        const open = document.querySelectorAll('.modal[role="dialog"]');
+        if (open[open.length - 1] !== ref.current) return;
         onClose();
       }
     };
@@ -1689,8 +1696,6 @@ export function Modal({
     return () => window.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
-  // without this, Tab keeps walking the controls hidden behind the dialog
-  const ref = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     ref.current?.focus({ preventScroll: true });

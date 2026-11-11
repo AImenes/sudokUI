@@ -51,6 +51,7 @@ import { useDailyStats } from '../state/dailyStats';
 import { useTelemetry } from '../state/telemetry';
 import { RATING_URL, PRIVACY_URL } from '../content/staticRoutes';
 import { BRAND } from './brand';
+import { shortcutKey, followKeyFocus } from './shortcutKeys';
 
 /** a no-break space: the &nbsp; after the rating's word in the top bar */
 const NBSP = String.fromCharCode(160);
@@ -526,12 +527,31 @@ export default function App() {
   const emptySpace = (el: EventTarget | null) =>
     el instanceof HTMLElement && (el.classList.contains('layout') || el.classList.contains('board-col'));
 
+  // how focus last arrived, for Space (shortcutKeys.ts): followed from
+  // the start, not anew whenever the handler below is replaced
+  const keyFocus = useRef<ReturnType<typeof followKeyFocus> | null>(null);
+  useEffect(() => {
+    const follow = followKeyFocus();
+    keyFocus.current = follow;
+    return () => {
+      follow.stop();
+      keyFocus.current = null;
+    };
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // the shortcut a key names: a letter by its character, the rest by
+      // its place (shortcutKeys.ts)
+      const k = shortcutKey(e);
       // a dialog is open: its keys must not act on the board behind it
       // (N stays live, for "next puzzle" from the victory dialog)
-      if (document.querySelector('.modal-backdrop') && e.code !== 'KeyN') return;
+      if (document.querySelector('.modal-backdrop') && k !== 'KeyN') return;
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+      // Space presses a button the keyboard brought focus to, as anywhere
+      // else; on the board, the page or a key the mouse pressed it cycles
+      // the mode
+      if (e.code === 'Space' && keyFocus.current?.spaceIsControls(e)) return;
       if (!e.metaKey) {
         const other = e.ctrlKey || e.altKey;
         setTempMode(
@@ -545,7 +565,7 @@ export default function App() {
       // again: only moving, erasing and undo/redo repeat. The repeats the
       // first press kept from the page (scrolling, typing) are kept too
       const repeatable =
-        e.code.startsWith('Arrow') || e.code === 'Backspace' || e.code === 'Delete' || (mod && (e.code === 'KeyZ' || e.code === 'KeyY'));
+        e.code.startsWith('Arrow') || e.code === 'Backspace' || e.code === 'Delete' || (mod && (k === 'KeyZ' || k === 'KeyY'));
       // Enter on a focused button clicks it on every keydown, so its repeats
       // are kept from the page too: one press of a number key, one entry
       if (e.repeat && !repeatable) {
@@ -564,15 +584,21 @@ export default function App() {
         useGame.getState().revealHint();
         return;
       }
-      if (mod && e.code === 'KeyZ' && !e.shiftKey) return void (e.preventDefault(), undo());
-      if (mod && (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey)))
+      if (mod && k === 'KeyZ' && !e.shiftKey) return void (e.preventDefault(), undo());
+      if (mod && (k === 'KeyY' || (k === 'KeyZ' && e.shiftKey)))
         return void (e.preventDefault(), redo());
-      if (mod && e.code === 'KeyA')
+      if (mod && k === 'KeyA')
         return void (e.preventDefault(), select(Array.from({ length: 81 }, (_, i) => i), false));
+      // any other letter with Ctrl or Cmd is the browser's or the system's
+      // (Ctrl+H, Ctrl+P, Cmd+W...): it never wipes, pauses or hints
+      if (mod && k.startsWith('Key')) return;
       if (e.code.startsWith('Digit') || e.code.startsWith('Numpad')) {
         const d = Number(e.code.replace('Digit', '').replace('Numpad', ''));
         if (d >= 1 && d <= 9) {
           e.preventDefault();
+          // the chain trainer open: the digit is the selected cell's
+          // candidate, as a tap on it would be, and never goes on the board
+          if (useGame.getState().chain) return void useGame.getState().chainKey(d);
           // held modifiers already routed via the temporary mode; while a
           // digit is armed the key chooses the armed digit instead, as the
           // number keys on screen do
@@ -580,7 +606,7 @@ export default function App() {
           return;
         }
       }
-      switch (e.code) {
+      switch (k) {
         case 'Backspace':
         case 'Delete':
           if (useGame.getState().chain) {

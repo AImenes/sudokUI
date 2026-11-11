@@ -79,7 +79,8 @@
   --line: #3a4152;
   --given: #1b2233;
   --entered: #2f6fd0;
-  --cand: #707a8e;
+  /* 5.1:1 on the cell (4.5:1 is the rule for these small digits) */
+  --cand: #656e82;
   --sel-bg: rgba(52, 103, 192, 0.18);
   --sel-border: #3467c0;
   --peer-bg: rgba(52, 103, 192, 0.07);
@@ -139,7 +140,8 @@
   --cell-bg: #fffbfd;
   --line: #57414d;
   --given: #a81d47;
-  --entered: #e0567f;
+  /* deep enough for 4.5:1 on the cell, still lighter than the given */
+  --entered: #c93a68;
   --sel-bg: rgba(212, 86, 138, 0.18);
   --sel-border: #d4568a;
   --peer-bg: rgba(212, 86, 138, 0.07);
@@ -4022,14 +4024,19 @@ html:not([lang='en']) .zone-note {
     order: 0;
   }
 
+  /* minmax(0, ...) and no padding: the nine keys shrink with the column
+     rather than run past it, as in a window zoomed to 200% (1024 x 768
+     is 512 x 384 then); where they fit, nothing changes */
   .numpad {
-    grid-template-columns: repeat(9, 1fr);
+    grid-template-columns: repeat(9, minmax(0, 1fr));
     gap: 3px;
   }
 
   .num-btn {
     aspect-ratio: auto;
     min-height: 40px;
+    min-width: 0;
+    padding: 0;
     font-size: 18px;
   }
 

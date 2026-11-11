@@ -778,6 +778,9 @@ interface GameStore {
   endChain: () => void;
   /** add the tapped candidate to the chain, if it links */
   chainTap: (cell: number, digit: number) => void;
+  /** a digit typed while the trainer is open: the selected cell's
+   *  candidate, as a tap on it would be (the keyboard's way to build) */
+  chainKey: (digit: number) => void;
   chainUndo: () => void;
   chainClear: () => void;
   /** remove what the chain proves false */
@@ -2213,6 +2216,15 @@ export const useGame = create<GameStore>()(
             ? { practiceFound: true, notice: t('You built the {name} yourself 🎯', { name: t.tech(s.info.practiceTech) }) }
             : {})
         });
+      },
+
+      chainKey: (digit) => {
+        const s = get();
+        if (!s.chain) return;
+        if (s.selection.length === 1) return get().chainTap(s.selection[0], digit);
+        // nothing or several cells selected: the digit names no candidate
+        const t = translator();
+        set({ chainNote: t('Select one cell with the arrow keys, then type one of its candidates.') });
       },
 
       chainUndo: () => {

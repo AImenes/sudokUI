@@ -51,6 +51,12 @@ rounds 2 and 3).
   a chain that removes it counts as found, like the move itself would.
 - Backspace takes the last candidate off, Clear starts over, Escape or
   Done leaves.
+- From the keyboard (November 2026): focus moves into the panel when the
+  trainer opens, and back to the button that opened it when it closes
+  from the panel. The arrow keys select a cell, and a digit typed while
+  the trainer is open is that cell's candidate, as a tap on it would be
+  (`chainKey`); it never goes onto the board. With no cell or several
+  selected, the note says to select one.
 
 A chain built from the player's own candidates is sound only if those
 candidates are right; a true candidate struck out earlier could mislead

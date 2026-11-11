@@ -221,9 +221,13 @@ test.describe('desktop, 1280 x 800', () => {
     await page.mouse.click(c.x, c.y);
     await page.keyboard.press('Digit3');
     const value = page.locator('svg.board text', { hasText: /^3$/ }).first();
-    await expect(page.locator('svg.board text[fill="var(--error-bg)"]')).toHaveCount(1);
+    await expect(page.locator('svg.board text[fill="var(--danger-text)"]')).toHaveCount(1);
+    // and underlined, for an eye that cannot tell this red from the
+    // theme's own digits (Rosé's are red too)
+    await expect(page.locator('svg.board .conflict-mark')).toHaveCount(1);
     await page.keyboard.press('Digit4'); // the true digit
-    await expect(page.locator('svg.board text[fill="var(--error-bg)"]')).toHaveCount(0);
+    await expect(page.locator('svg.board text[fill="var(--danger-text)"]')).toHaveCount(0);
+    await expect(page.locator('svg.board .conflict-mark')).toHaveCount(0);
     void value;
   });
 
@@ -672,6 +676,123 @@ test.describe('reachable by keyboard and screen reader', () => {
     await expect(page.locator('#board-status')).toHaveText('Row 1, column 3: 3, given.');
   });
 
+  test('Space presses a button reached with Tab; after a mouse click on a number key it still changes the mode', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const mode = page.locator('.mode-btn.active');
+    const gear = page.getByRole('button', { name: 'Settings' });
+    for (let i = 0; i < 40 && !(await gear.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await expect(gear).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(mode).toContainText('Digit');
+    // focus is back on the gear, brought there by a key: Space presses it again
+    await expect(gear).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    // a number key clicked with the mouse keeps focus, and Space is the
+    // mode's as before: the 5 is not pressed a second time, which would
+    // take it out again
+    const c = await cellBox(page, 40);
+    await page.mouse.click(c.x, c.y);
+    await page.locator('.num-btn', { hasText: '5' }).click();
+    await expect(status).toContainText('Row 5, column 5: 5.');
+    await page.keyboard.press('Space');
+    await expect(mode).toContainText('Corner');
+    await expect(status).toContainText('Row 5, column 5: 5.');
+    // the board itself, with focus: Space cycles the mode
+    await page.locator('svg.board').focus();
+    await page.keyboard.press('Space');
+    await expect(mode).toContainText('Centre');
+  });
+
+  test('Ctrl+Z undoes on a German and a French keyboard, and the French Z is no wipe', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const undo = page.locator('.action-row button', { hasText: 'Undo' });
+    // a key as that keyboard sends it: its US place (code) and the letter
+    // printed on it (key); then Ctrl let go
+    const send = (code: string, key: string, mods: { ctrlKey?: boolean; metaKey?: boolean } = {}) =>
+      page.evaluate(
+        ({ code, key, mods }) => {
+          const at = document.activeElement ?? document.body;
+          at.dispatchEvent(new KeyboardEvent('keydown', { code, key, ...mods, bubbles: true, cancelable: true }));
+          at.dispatchEvent(new KeyboardEvent('keyup', { code, key, ...mods, bubbles: true, cancelable: true }));
+          at.dispatchEvent(new KeyboardEvent('keyup', { code: 'ControlLeft', key: 'Control', bubbles: true, cancelable: true }));
+        },
+        { code, key, mods }
+      );
+    const c = await cellBox(page, 0);
+    await page.mouse.click(c.x, c.y);
+    for (const [layout, code, mods] of [
+      ['QWERTZ, Ctrl', 'KeyY', { ctrlKey: true }],
+      ['AZERTY, Ctrl', 'KeyW', { ctrlKey: true }],
+      ['AZERTY, Cmd', 'KeyW', { metaKey: true }]
+    ] as const) {
+      await page.keyboard.press('Digit4');
+      await expect(status).toContainText('Row 1, column 1: 4.');
+      await send(code, 'z', mods);
+      await expect(status, layout).toContainText('Row 1, column 1: empty.');
+      await expect(undo, layout).toBeDisabled();
+    }
+    // the key printed Z on a French keyboard (the US W's place) is Digit
+    // mode, as Z is: corner marks stay
+    const d = await cellBox(page, 1);
+    await page.mouse.click(d.x, d.y);
+    await page.keyboard.press('KeyX');
+    await page.keyboard.press('Digit4');
+    await page.keyboard.press('Digit8');
+    await expect(status).toContainText('Row 1, column 2: empty, corner marks 4 8.');
+    await send('KeyW', 'z');
+    await expect(page.locator('.mode-btn.active')).toContainText('Digit');
+    await expect(status).toContainText('Row 1, column 2: empty, corner marks 4 8.');
+  });
+
+  test('the mode buttons, Auto candidates and the Colour keys say their state and colour', async ({ page }) => {
+    await open(page);
+    await expect(page.getByRole('button', { name: 'Digit Z', exact: true, pressed: true })).toBeVisible();
+    await page.keyboard.press('KeyX');
+    await expect(page.getByRole('button', { name: 'Corner X', exact: true, pressed: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Digit Z', exact: true, pressed: false })).toBeVisible();
+    await page.keyboard.press('KeyV');
+    await expect(page.getByRole('button', { name: 'Colour V', exact: true, pressed: true })).toBeVisible();
+    const words = ['red', 'orange', 'yellow', 'green', 'teal', 'blue', 'purple', 'pink', 'grey'];
+    for (const [k, word] of words.entries()) {
+      await expect(page.getByRole('button', { name: `Colour ${k + 1}, ${word}`, exact: true })).toBeVisible();
+    }
+    await page.keyboard.press('KeyZ');
+    await expect(page.getByRole('button', { name: '1', exact: true })).toBeVisible();
+    const auto = page.getByRole('button', { name: 'Auto candidates', exact: true });
+    await expect(auto).toHaveAttribute('aria-pressed', 'false');
+    await auto.click();
+    await page.getByRole('button', { name: 'Use Auto candidates' }).click();
+    await expect(auto).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('Escape on the mark question raised from Settings closes the question alone', async ({ page }) => {
+    await open(page);
+    // corner marks in r1c1, so the ring must ask how to read them
+    const c = await cellBox(page, 0);
+    await page.mouse.click(c.x, c.y);
+    await page.keyboard.press('KeyX');
+    await page.keyboard.press('Digit4');
+    await page.keyboard.press('Digit5');
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const ring = page.getByRole('switch', { name: /Highlight cells with two candidates/ });
+    await ring.click();
+    const question = page.getByRole('dialog', { name: 'How should the board read your pencil marks?' });
+    await expect(question).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(question).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+    await expect(ring).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
   test('Tab stays inside an open dialog', async ({ page }) => {
     await open(page);
     await page.getByRole('button', { name: /New/ }).first().click();
@@ -729,6 +850,39 @@ test.describe('the chain trainer', () => {
     await expect(panel).toContainText('1 candidate');
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
+  });
+
+  test('from the keyboard: focus goes into it, a typed digit is the selected cell’s candidate, and Done brings focus back', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const chain = page.getByRole('button', { name: /Chain/ }).first();
+    await chain.focus();
+    await page.keyboard.press('Enter');
+    const use = page.getByRole('button', { name: 'Use Chain' });
+    for (let i = 0; i < 10 && !(await use.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    const panel = page.getByRole('region', { name: 'Build a chain' });
+    await expect(panel).toBeFocused();
+    // from the centre to r1c1 (candidates 4 and 5) with the arrow keys
+    for (let k = 0; k < 4; k++) {
+      await page.keyboard.press('ArrowUp');
+      await page.keyboard.press('ArrowLeft');
+    }
+    await expect(status).toContainText('Row 1, column 1: empty, candidates 4 5.');
+    await page.keyboard.press('Digit4');
+    await expect(panel).toContainText('starts the chain');
+    await expect(panel).toContainText('1 candidate');
+    await page.keyboard.press('Digit5');
+    await expect(panel).toContainText('Strong link');
+    // nothing went onto the board
+    await expect(status).toContainText('Row 1, column 1: empty, candidates 4 5.');
+    await page.keyboard.press('Shift+Tab');
+    const done = panel.getByRole('button', { name: 'Done' });
+    for (let i = 0; i < 10 && !(await done.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    await expect(panel).toHaveCount(0);
+    await expect(chain).toBeFocused();
+    await expect(status).toContainText('Row 1, column 1: empty.');
   });
 
   test('a reload while it is open closes it as Done does: auto candidates off, the player’s marks back', async ({ page }) => {
@@ -1870,6 +2024,51 @@ test.describe('phone on its side, 844 x 390', () => {
 
   test('a 320 px phone on its side: every key and button fits the column beside the board, in every language', async ({ page }) => {
     await expectControlsFit(page, 568, 320);
+  });
+});
+
+test.describe('zoomed to 200%: a 1024 x 768 window', () => {
+  test.use({ viewport: { width: 512, height: 384 }, deviceScaleFactor: 2 });
+
+  test('the nine keys fit beside the board, and the play area does not scroll sideways', async ({ page }) => {
+    await open(page);
+    for (const [width, height] of [[512, 384], [640, 450]]) {
+      await page.setViewportSize({ width, height });
+      const side = (await page.locator('.side').boundingBox())!;
+      for (const d of [7, 8, 9]) {
+        const key = page.getByRole('button', { name: String(d), exact: true });
+        await expect(key, `${d} at ${width} x ${height}`).toBeInViewport({ ratio: 1 });
+        const box = (await key.boundingBox())!;
+        expect(box.x + box.width, `${d} at ${width} x ${height}`).toBeLessThanOrEqual(side.x + side.width + 0.5);
+      }
+      expect(await page.locator('.layout').evaluate((el) => el.scrollWidth - el.clientWidth), `${width} x ${height}`).toBe(0);
+    }
+  });
+});
+
+test.describe('reduced motion', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('a hint brings the page back to the top at once, without the smooth scroll', async ({ page }) => {
+    // how the page is asked to scroll
+    await page.addInitScript(() => {
+      const asked: unknown[] = [];
+      (window as unknown as { scrolls: unknown[] }).scrolls = asked;
+      const own = Element.prototype.scrollTo;
+      Element.prototype.scrollTo = function (this: Element, ...args: unknown[]) {
+        asked.push(args[0]);
+        return (own as (...a: unknown[]) => void).apply(this, args);
+      };
+    });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await open(page);
+    await page.locator('.layout').evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await page.evaluate(() => ((window as unknown as { scrolls: unknown[] }).scrolls.length = 0));
+    await page.getByRole('button', { name: /Hint/ }).first().click();
+    await page.getByRole('button', { name: 'Use Hint' }).click();
+    await expect(page.locator('.hint-panel')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { scrolls: unknown[] }).scrolls)).toContainEqual({ top: 0, behavior: 'auto' });
+    expect(await page.evaluate(() => (window as unknown as { scrolls: { behavior?: string }[] }).scrolls.some((s) => s?.behavior === 'smooth'))).toBe(false);
   });
 });
 

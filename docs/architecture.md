@@ -209,6 +209,11 @@ none of the player's work.
   app's own (at start-up, in the same tab, pasted into Import) or the
   day's daily, with a game under way set aside first ("A game is never
   lost", above).
+- [shortcutKeys.ts](../src/ui/shortcutKeys.ts): which shortcut a key is
+  (a letter by the character printed on it, so Ctrl+Z undoes on QWERTZ
+  and AZERTY; anything else, and a letter of another script, by its
+  place), and whether Space is a focused button's (the keyboard brought
+  focus there) or the board's mode cycle.
 - [Progress.tsx](../src/ui/Progress.tsx): the path and the record
   ([technique-stats.md](technique-stats.md)).
 - [ErrorBoundary.tsx](../src/ui/ErrorBoundary.tsx): the recovery panel.
