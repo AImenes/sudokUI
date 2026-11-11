@@ -498,8 +498,9 @@ export default function App() {
   // the clock counts only while the board can be seen: it stops when the
   // page is hidden or left (another app, the screen off, a reload, the
   // update bar's among them) and is saved as it stood, so a page the
-  // system closes in the background comes back at that time; shown again,
-  // it runs on. A pause the player chose stays theirs (gameStore.ts, setAway)
+  // system closes in the background comes back at that time. A game under
+  // way pauses, so the player comes back to the pause card; one not yet
+  // played on runs on when shown again (gameStore.ts, setAway)
   useEffect(() => {
     const setAway = useGame.getState().setAway;
     const onVisibility = () => setAway(document.visibilityState === 'hidden');

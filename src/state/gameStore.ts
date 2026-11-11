@@ -629,9 +629,9 @@ interface GameStore {
   paused: boolean;
   won: boolean;
   /** the page is hidden (another app, the screen off, a tab behind
-   *  others): the clock stands still as it does when paused, but this is
-   *  not the player's pause, so no pause card, and it is saved as running
-   *  from where it stopped (setAway). In memory only */
+   *  others, a reload or the page closed): the clock stands still, and a
+   *  game under way is paused as the Pause button pauses it, so it comes
+   *  back behind the pause card (setAway). In memory only */
   away: boolean;
   /** the game's first move has been counted as a start (countFirstMove,
    *  below the store). In memory only, never saved: nothing is stored on
@@ -2653,12 +2653,18 @@ export const useGame = create<GameStore>()(
 
       // the time the page is hidden does not count, and the time up to it
       // is saved (persist writes elapsedMs on every set), so a page the
-      // system closes in the background, or a reload, keeps it
+      // system closes in the background, or a reload, keeps it. A game under
+      // way (played on, not won, not a puzzle being typed in) pauses as the
+      // Pause button pauses it: the player comes back to the pause card, and
+      // a reload or a reopened page does too. A game not yet played on only
+      // stands still while away, and runs on when shown again
       setAway: (away) => {
         const s = get();
         if (away === s.away) return;
-        if (away) set({ away: true, elapsedBefore: s.elapsedMs() });
-        else set({ away: false, startedAt: Date.now() });
+        if (away) {
+          const pause = !!s.info && !s.won && !s.custom && !s.paused && playedOn(s);
+          set({ away: true, elapsedBefore: s.elapsedMs(), ...(pause ? { paused: true } : {}) });
+        } else set({ away: false, startedAt: Date.now() });
       },
 
       elapsedMs: () => {

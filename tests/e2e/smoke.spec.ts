@@ -963,6 +963,8 @@ test.describe('the chain trainer', () => {
     await expect(page.locator('svg.board')).toBeVisible();
     await expect(page.getByRole('region', { name: 'Build a chain' })).toHaveCount(0);
     await expect(auto).not.toHaveClass(/toggled/);
+    // the game was under way when the page went, so it comes back paused
+    await page.getByRole('button', { name: 'Resume game' }).click();
     await page.mouse.click(c.x, c.y);
     await expect(status).toContainText('Row 1, column 2: empty, corner marks 4 5.');
   });

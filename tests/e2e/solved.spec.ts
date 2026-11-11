@@ -7,9 +7,9 @@
  * again shows its win screen, says which solve stays its result, and still
  * sends and shares that one; and the clock: a paused game reloads paused, a
  * reload keeps the time since the last move, the time the page is hidden
- * does not count, a second tab shown again does not put its older board
- * back, and a tab with a game under way keeps it while another tab opens
- * another puzzle.
+ * does not count and a game under way comes back behind the pause card, a
+ * second tab shown again does not put its older board back, and a tab with
+ * a game under way keeps it while another tab opens another puzzle.
  */
 import { test, expect, Page } from '@playwright/test';
 import { parseGrid, gridToString } from '../../src/engine/board';
@@ -337,7 +337,11 @@ test.describe('the clock', () => {
     await page.evaluate(() => location.reload());
     await expect(page.locator('svg.board')).toBeVisible();
     expect(await secondsOn(page)).toBeGreaterThanOrEqual(before);
+    // a game under way comes back paused (the page was left), its time kept
+    await expect(page.locator('.pause-card')).toBeVisible();
+    await page.getByRole('button', { name: 'Resume game' }).click();
     await expect(page.locator('.pause-card')).toHaveCount(0);
+    expect(await secondsOn(page)).toBeGreaterThanOrEqual(before);
   });
 
   test('a second tab, shown again, plays on from the moves made in the other and does not put its older board back', async ({ context }) => {
@@ -362,7 +366,10 @@ test.describe('the clock', () => {
     expect(await filledInSave(b)).toBe(givens + 4);
     await left(b);
     expect(await filledInSave(b)).toBe(givens + 4);
-    // and B's board has A's moves on it, to play on from
+    // and B's board has A's moves on it, to play on from, behind the pause
+    // card A's game was left with
+    await expect(b.locator('.pause-card')).toBeVisible();
+    await b.getByRole('button', { name: 'Resume game' }).click();
     const c = await cellBox(b, played[3]);
     await b.mouse.click(c.x, c.y);
     await expect(b.locator('#board-status')).toHaveText(`Row ${Math.floor(played[3] / 9) + 1}, column ${(played[3] % 9) + 1}: ${solution[played[3]]}.`);
@@ -393,6 +400,9 @@ test.describe('the clock', () => {
     await shown(a, true);
     await expect.poll(async () => (await savedInfo(a)).puzzle).toBe(EASY);
     expect(a.url()).toContain(EASY);
+    // (behind the pause card it was hidden with)
+    await expect(a.locator('.pause-card')).toBeVisible();
+    await a.getByRole('button', { name: 'Resume game' }).click();
     // (the last cell played is still selected, and a click on it lets it go)
     const c = await cellBox(a, played[0]);
     await a.mouse.click(c.x, c.y);
@@ -403,17 +413,27 @@ test.describe('the clock', () => {
     expect(b.url()).not.toContain(EASY);
   });
 
-  test('the time the page is hidden does not count, and the clock runs on when it is shown', async ({ page }) => {
+  test('a game under way pauses while the page is hidden and comes back behind the pause card; an unplayed one runs on', async ({ page }) => {
     await open(page);
+    // not yet played on: hidden and shown again, no card, and the clock goes on
+    await shown(page, false);
+    await page.waitForTimeout(1200);
+    await shown(page, true);
+    await expect(page.locator('.pause-card')).toHaveCount(0);
     const cells = empties(EASY);
     await enter(page, cells[0], solutionOf(EASY)[cells[0]]);
     const before = await secondsOn(page);
     await shown(page, false);
     await page.waitForTimeout(4300);
     await shown(page, true);
+    // under way: the pause card, the clock still while it shows
+    await expect(page.locator('.pause-card')).toBeVisible();
     expect(await secondsOn(page)).toBeLessThanOrEqual(before + 1);
-    // not a pause: no card, and the clock goes on (the timer redraws once a second)
+    await page.waitForTimeout(1500);
+    expect(await secondsOn(page)).toBeLessThanOrEqual(before + 1);
+    await page.getByRole('button', { name: 'Resume game' }).click();
     await expect(page.locator('.pause-card')).toHaveCount(0);
+    // resumed, the clock goes on (the timer redraws once a second)
     await page.waitForTimeout(3300);
     expect(await secondsOn(page)).toBeGreaterThanOrEqual(before + 2);
   });

@@ -8,8 +8,8 @@
  * again is the same solve, recorded once. A daily solved again keeps its
  * first solve as the day's result, unless that one had help and the new
  * one had none. And the clock is saved when it matters: a pause comes back
- * after a reload, and the time the page is hidden does not count
- * (src/state/gameStore.ts, setAway; src/ui/App.tsx).
+ * after a reload, the time the page is hidden does not count, and a game
+ * under way pauses then (src/state/gameStore.ts, setAway; src/ui/App.tsx).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -491,7 +491,7 @@ describe('the clock', () => {
     expect(useGame.getState().paused).toBe(false);
   });
 
-  it('stops while the page is hidden, saved as it stood, and runs on when it is shown again', async () => {
+  it('a game under way pauses when the page is hidden, saved paused as it stood, and comes back behind the pause card', async () => {
     useGame.getState().startGame(EASY, 196, 'Easy');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     // ten seconds of thinking, no move: the save still holds the last move's time
@@ -500,17 +500,22 @@ describe('the clock', () => {
     const before = useGame.getState().elapsedMs();
     useGame.getState().setAway(true);
     expect(saved().elapsedBefore).toBe(before);
-    // not the player's pause: no pause card, and it is not saved as one
-    expect(useGame.getState().paused).toBe(false);
-    expect(saved().paused).toBe(false);
+    // the player's own pause: the pause card, and saved as one
+    expect(useGame.getState().paused).toBe(true);
+    expect(saved().paused).toBe(true);
     vi.advanceTimersByTime(600_000);
     expect(useGame.getState().elapsedMs()).toBe(before);
+    // shown again: still paused, the clock still, until the player resumes
     useGame.getState().setAway(false);
+    vi.advanceTimersByTime(3000);
+    expect(useGame.getState().paused).toBe(true);
+    expect(useGame.getState().elapsedMs()).toBe(before);
+    useGame.getState().togglePause();
     vi.advanceTimersByTime(3000);
     expect(useGame.getState().elapsedMs()).toBe(before + 3000);
   });
 
-  it('a page the system closed while hidden (or a reload) comes back at the time it stood, running', async () => {
+  it('a page the system closed while hidden (or a reload) comes back paused at the time it stood', async () => {
     useGame.getState().startGame(EASY, 196, 'Easy');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     vi.advanceTimersByTime(15_000);
@@ -518,10 +523,35 @@ describe('the clock', () => {
     useGame.getState().setAway(true);
     vi.advanceTimersByTime(3_600_000);
     await reload();
-    expect(useGame.getState().paused).toBe(false);
+    expect(useGame.getState().paused).toBe(true);
     expect(useGame.getState().elapsedMs()).toBe(before);
+    useGame.getState().togglePause();
     vi.advanceTimersByTime(2000);
     expect(useGame.getState().elapsedMs()).toBe(before + 2000);
+  });
+
+  it('a game not yet played on only stands still while the page is hidden, and runs on when shown', () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    vi.advanceTimersByTime(4000);
+    const before = useGame.getState().elapsedMs();
+    useGame.getState().setAway(true);
+    expect(useGame.getState().paused).toBe(false);
+    expect(saved().paused).toBe(false);
+    vi.advanceTimersByTime(60_000);
+    expect(useGame.getState().elapsedMs()).toBe(before);
+    useGame.getState().setAway(false);
+    vi.advanceTimersByTime(2000);
+    expect(useGame.getState().elapsedMs()).toBe(before + 2000);
+  });
+
+  it('a puzzle being typed in is not paused when the page is hidden', () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    play(EMPTY[0], Number(solution()[EMPTY[0]]));
+    useGame.setState({ custom: true });
+    useGame.getState().setAway(true);
+    expect(useGame.getState().paused).toBe(false);
+    useGame.getState().setAway(false);
+    useGame.setState({ custom: false });
   });
 
   it('a pause taken while the page is hidden, or a solve, is kept as it is', () => {
