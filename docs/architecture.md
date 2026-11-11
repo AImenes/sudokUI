@@ -169,18 +169,27 @@ none of the player's work.
 - **The daily.** New, then Daily puzzle (and the past-daily note's link,
   and the daily's own address) go on with that day's daily when it is on
   the board, solved or not, in the slot, or behind a puzzle being typed
-  in, on the board or in the slot; never a second copy of it. Only a
-  daily never started, or one restarted by Restart, starts fresh
-  (`startDaily`, src/ui/links.ts). Without the published list
-  (`loadDailies` gives null: offline before the app could keep the file, a
-  network error) a day the list should cover is not made up from the date:
-  the board stays as it was and the player is told; a day before the list
-  began is still derived from its date.
+  in, on the board or in the slot; never a second copy of it. A daily in
+  none of those places starts fresh: one never started, and one that has
+  gone, solved and then replaced by another game (a solved game is not
+  kept), or dropped by New and a level, which keeps nothing. Restart
+  starts the one on the board again (`startDaily`, src/ui/links.ts).
+  Without the published list (`loadDailies` gives null: offline before
+  the app could keep the file, a network error) a day the list should
+  cover is not made up from the date: the board stays as it was and the
+  player is told; a day before the list began is still derived from its
+  date.
 - **Custom entry.** Opened again over a puzzle being typed in (New, then
   Custom, or a scan from New), the backup stays the game the first entry
   was opened over, so Cancel always brings that back. Restart there asks
   "Clear the board?" (Clear, Keep typing), then clears the typed digits;
   Share says the puzzle has no link until Check & play.
+- **The error screen.** Its Clear the board and reload
+  (src/ui/ErrorBoundary.tsx) clears the game on the board, and with a
+  puzzle being typed in the game it was opened over, since what broke is
+  most likely there. The slot's game stays: it is never drawn until it
+  comes back, so it cannot be what broke, and the note (or New) still
+  offers it back.
 - **Undo is not saved.** The undo history stays in memory: a reload (and
   Cancel of a custom entry) keeps the board but not the steps back. Each
   step is a full copy of the 81 cells, about 6 KB as saved, so even a short

@@ -2221,6 +2221,10 @@ test.describe('the daily', () => {
         await page.keyboard.press(`Digit${solution[cell]}`);
       }
     };
+    /** the day's daily is on the board: until the dailies file has loaded,
+     *  the board shown is still the last game, and digits would go on it */
+    const onBoard = (date: string) =>
+      expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state?.info?.dailyKey)).toBe(date);
     const results: string[] = [];
     page.on('request', (r) => {
       if (r.method() === 'POST' && r.url().includes('/api/daily/')) results.push(new URL(r.url()).pathname);
@@ -2229,6 +2233,7 @@ test.describe('the daily', () => {
     // the first daily: nothing goes until the player taps Send
     await page.goto(`/daily/${yesterday}`);
     await expect(page.locator('svg.board')).toBeVisible();
+    await onBoard(yesterday);
     await solveDaily(first);
     const dialog = page.getByRole('dialog', { name: 'Puzzle solved' });
     await expect(dialog).toBeVisible();
@@ -2245,6 +2250,7 @@ test.describe('the daily', () => {
     // the next daily goes in by itself, and its place shows at once
     await page.goto(`/daily/${today}`);
     await expect(page.locator('svg.board')).toBeVisible();
+    await onBoard(today);
     await solveDaily(next);
     const second = page.getByRole('dialog', { name: 'Puzzle solved' });
     await expect(second).toBeVisible();

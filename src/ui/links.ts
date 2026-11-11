@@ -65,7 +65,9 @@ export type DailyOpened = 'resumed' | 'started' | 'unavailable';
  * day the published list does not cover, the one derived from the date
  * (src/engine/daily.ts), which has none. The day's daily on the board, set
  * aside, or behind a puzzle being typed in, is the one that opens, where
- * it was left, solved or not: only Restart starts it again. Without the
+ * it was left, solved or not: only Restart starts it again. One in none of
+ * those places (never started, or gone: solved and then replaced, since a
+ * solved game is not kept, or dropped by New) starts fresh. Without the
  * published list (offline before the app could keep it, a network error)
  * no other board is passed off as the day's: the board stays as it is, and
  * the player is told.

@@ -11,7 +11,8 @@
  * typed in too. Custom entry opened twice, then Cancel, brings back the
  * game from before the first; Share there says why there is no link yet,
  * and Restart clears the typed digits. Import of a Position link keeps its
- * entries and marks.
+ * entries and marks. After a crash, the error screen's Clear the board
+ * keeps the game set aside.
  */
 import { test, expect, Page, Locator, BrowserContext, Browser } from '@playwright/test';
 import { localDateKey } from '../../src/content/dailies';
@@ -326,6 +327,27 @@ test.describe('links and Import, laptop', () => {
     await expect(page.locator('.practice-bar')).toBeVisible();
     await expect.poll(() => saved(page)).toMatchObject({ aside: { dailyKey: localDateKey(), entries: 3 } });
     await expect(note(page)).toBeVisible();
+  });
+
+  test('after a crash, Clear the board and reload keeps the game set aside, and the note brings it back', async ({ page }) => {
+    await page.addInitScript(welcomed);
+    await openDaily(page);
+    await enter(page, false, 3);
+    await page.goto(`/p/${EASY}/`);
+    await expect(note(page)).toBeVisible();
+    // a save the board cannot draw: the error screen
+    await page.evaluate(() => {
+      const save = JSON.parse(localStorage.getItem('sudokui-game-v1')!);
+      save.state.cells = 'broken';
+      localStorage.setItem('sudokui-game-v1', JSON.stringify(save));
+    });
+    await page.reload();
+    await expect(page.getByRole('alert')).toContainText('Something went wrong');
+    await page.getByRole('button', { name: 'Clear the board and reload' }).click();
+    await expect(note(page)).toBeVisible();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, entries: 0, aside: { dailyKey: localDateKey(), entries: 3 } });
+    await note(page).getByRole('button', { name: 'Back to it' }).click();
+    await expect.poll(() => saved(page)).toMatchObject({ dailyKey: localDateKey(), entries: 3 });
   });
 
   test('Back to it by keyboard leaves the focus on the board, and the toast says which game is back', async ({ context, page }) => {

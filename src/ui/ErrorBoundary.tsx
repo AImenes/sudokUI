@@ -2,7 +2,7 @@
 // panel instead of a blank page. The game is saved in localStorage, so a
 // reload usually brings it back; if the saved game itself is what breaks,
 // the second button clears it and starts fresh. Settings, stats and pools
-// are left alone.
+// are left alone, and so is a game kept aside (boardCleared).
 import React from 'react';
 import { translator, makeTranslator, rich } from '../content/i18n';
 import type { Translator } from '../content/i18n';
@@ -18,6 +18,22 @@ function panelTranslator(): Translator {
     return translator();
   } catch {
     return makeTranslator('en');
+  }
+}
+
+/**
+ * The save once the board is cleared: only the game kept aside (a link
+ * opened over it, src/ui/links.ts), which is never drawn until it comes
+ * back, so cannot be what broke, and the note still offers it back. Null
+ * when there is none, or the save cannot be read: then all of it goes.
+ */
+export function boardCleared(saved: string | null): string | null {
+  try {
+    const save = saved ? JSON.parse(saved) : null;
+    const kept = save?.state?.setAside;
+    return kept && typeof kept === 'object' ? JSON.stringify({ state: { setAside: kept }, version: save.version ?? 0 }) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -41,7 +57,9 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     if (!error) return this.props.children;
     const reset = () => {
       try {
+        const left = boardCleared(localStorage.getItem(GAME_KEY));
         localStorage.removeItem(GAME_KEY);
+        if (left) localStorage.setItem(GAME_KEY, left);
       } catch {
         /* storage unavailable: a reload is all that is left */
       }

@@ -40,6 +40,7 @@ const { findUrl } = await import('../src/content/importLinks');
 const { localDateKey, findDaily, dailyNumber } = await import('../src/content/dailies');
 const real = await vi.importActual<typeof import('../src/content/dailies')>('../src/content/dailies');
 const { startDaily, openAppLink, backToKept } = await import('../src/ui/links');
+const { boardCleared } = await import('../src/ui/ErrorBoundary');
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
 const HARD = '...6..9.1..95....4....4985..241....5....3....9....546..7549....3....12..1.2..3...';
@@ -311,6 +312,25 @@ describe('the Daily button', () => {
     expect(g().notice).toBe('You have solved this daily. Restart plays it again');
   });
 
+  it('starts afresh a daily that has gone from the board: solved, then replaced by a link, or dropped by New', async () => {
+    await startDaily();
+    play(81);
+    // a solved game is not kept
+    await open(`https://sudokui.app/p/${EASY}/`);
+    expect(g().setAside).toBeNull();
+    expect(await startDaily()).toBe('started');
+    expect(g().info?.dailyKey).toBe(TODAY);
+    expect(g().won).toBe(false);
+    expect(entries()).toBe(0);
+    expect(g().notice).toBe(`Daily puzzle for ${TODAY}. Everyone gets this same board today`);
+    // New and a level keeps nothing, under way or not
+    play(3);
+    g().startGame(HARD, 1348, 'Hard');
+    expect(g().setAside).toBeNull();
+    expect(await startDaily()).toBe('started');
+    expect(entries()).toBe(0);
+  });
+
   it('brings back today’s daily from behind a puzzle being typed in over it, never a second copy; the typed puzzle goes aside', async () => {
     await startDaily();
     play(7);
@@ -421,6 +441,31 @@ describe('custom entry', () => {
     g().cancelCustomEntry();
     expect(g().info?.puzzle).toBe(HARD);
     expect(entries()).toBe(2);
+  });
+});
+
+describe('the error screen', () => {
+  it('Clear the board and reload clears the game on the board and keeps the one set aside', async () => {
+    await startDaily();
+    play(4);
+    await open(`https://sudokui.app/p/${EASY}/`);
+    play(2);
+    // what the button leaves, then the reload, from that alone
+    const left = boardCleared(storage.get('sudokui-game-v1')!)!;
+    useGame.setState({ ...useGame.getInitialState(), setAside: null });
+    storage.set('sudokui-game-v1', left);
+    await useGame.persist.rehydrate();
+    expect(g().info).toBeNull();
+    expect(entries()).toBe(0);
+    expect(g().setAside?.info?.dailyKey).toBe(TODAY);
+    expect(g().setAside?.hidden).toBeFalsy();
+    backToKept();
+    expect(g().info?.dailyKey).toBe(TODAY);
+    expect(entries()).toBe(4);
+    // with nothing aside, or a save that cannot be read, all of it goes
+    expect(boardCleared(JSON.stringify({ state: { info: null, setAside: null }, version: 0 }))).toBeNull();
+    expect(boardCleared('{"state":')).toBeNull();
+    expect(boardCleared(null)).toBeNull();
   });
 });
 
