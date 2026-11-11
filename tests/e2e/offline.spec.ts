@@ -96,6 +96,9 @@ test.describe('Reload', () => {
     expect(await page.evaluate(() => (window as any).__sameDocument ?? false)).toBe(false);
     expect(seconds(await page.locator('.timer').innerText())).toBeGreaterThanOrEqual(before);
     await expect(page.locator('.update-bar')).toHaveCount(0);
+    // a game under way comes back behind the pause card (the page was left)
+    await expect(page.locator('.pause-card')).toBeVisible();
+    await page.getByRole('button', { name: 'Resume game' }).click();
     // the move is still on the board, and the guide opens now
     const box = (await page.locator('svg.board').boundingBox())!;
     const size = box.width / 9;
