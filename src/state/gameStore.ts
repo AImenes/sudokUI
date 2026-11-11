@@ -2705,15 +2705,19 @@ export const useGame = create<GameStore>()(
       // the time the page is hidden does not count, and the time up to it
       // is saved (persist writes elapsedMs on every set), so a page the
       // system closes in the background, or a reload, keeps it. A game under
-      // way (played on, not won, not a puzzle being typed in) pauses as the
-      // Pause button pauses it: the player comes back to the pause card, and
-      // a reload or a reopened page does too. A game not yet played on only
-      // stands still while away, and runs on when shown again
+      // way (underWay: played on by the player since it opened, not won;
+      // not a puzzle being typed in) pauses as the Pause button pauses it:
+      // the player comes back to the pause card, and a reload or a reopened
+      // page does too. A game not yet played on only stands still while
+      // away, and runs on when shown again: a shared position or a
+      // fast-forwarded practice nobody touched among them, and a board whose
+      // only change is the chain trainer's own auto candidates, which Done
+      // and a reload take off again (doneBoard)
       setAway: (away) => {
         const s = get();
         if (away === s.away) return;
         if (away) {
-          const pause = !!s.info && !s.won && !s.custom && !s.paused && playedOn(s);
+          const pause = !s.custom && !s.paused && underWay({ ...s, ...doneBoard(s) });
           set({ away: true, elapsedBefore: s.elapsedMs(), ...(pause ? { paused: true } : {}) });
         } else {
           // what another window saved while this one could not hear it (a
@@ -3201,13 +3205,19 @@ function boardOf(back: SetAside): Partial<GameStore> {
   };
 }
 
+/** the board as Done (and a reload) would leave it with the chain trainer open: the auto candidates it switched on off again, the player's marks back (handBack) */
+function doneBoard(s: Pick<GameStore, 'info' | 'cells' | 'autoCandidates' | 'chainHandover' | 'markContract'>): { cells: CellState[]; autoCandidates: boolean } {
+  const handover = s.chainHandover && s.autoCandidates && s.info ? s.chainHandover : null;
+  return handover ? { cells: handBack(s.cells, handover, s.info!.solution, s.markContract), autoCandidates: false } : { cells: s.cells, autoCandidates: s.autoCandidates };
+}
+
 /** the game on the board, as the set-aside slot keeps it: with the chain trainer open, as Done (and a reload) would leave it */
 function asideOf(s: GameStore): SetAside {
-  const handover = s.chainHandover && s.autoCandidates && s.info ? s.chainHandover : null;
+  const done = doneBoard(s);
   return {
     info: s.info,
-    cells: cloneCells(handover ? handBack(s.cells, handover, s.info!.solution, s.markContract) : s.cells),
-    autoCandidates: handover ? false : s.autoCandidates,
+    cells: cloneCells(done.cells),
+    autoCandidates: done.autoCandidates,
     elapsedBefore: s.elapsedMs(),
     won: s.won,
     solved: s.solved,

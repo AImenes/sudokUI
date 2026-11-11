@@ -84,11 +84,15 @@ The clock is `elapsedBefore` plus the time since `startedAt` while it runs;
 the save writes `elapsedMs()` on every store write. A pause is saved and
 comes back after a reload. While the page is hidden (`visibilitychange`,
 `pagehide`, a reload among them) `setAway` stops the clock and so saves it
-as it stood. A game under way (played on, not won, not a custom entry) is
-paused then, as the Pause button pauses it, and saved paused: the player
-comes back to the pause card, after a reload or a reopen too (the owner's
-choice, 11 November 2026). A game not yet played on only stands still while
-away and runs on when the page is shown again. A win pauses the clock for
+as it stood. A game under way (`underWay`: played on by the player since
+it opened, not won; not a custom entry) is paused then, as the Pause
+button pauses it, and saved paused: the player comes back to the pause
+card, after a reload or a reopen too (the owner's choice, 11 November
+2026). A game not yet played on only stands still while away and runs on
+when the page is shown again: a friend's position or a fast-forwarded
+practice nobody touched among them, and a board whose only change is the
+auto candidates the chain trainer switched on, which Done and a reload
+take off again. A win pauses the clock for
 good: nothing can resume it, and Undo or a Steps jump off the solved board
 (or Redo of the jump) starts it again from the winning time. Solved again,
 it is the same solve, so the clock stops at the time the solve was recorded

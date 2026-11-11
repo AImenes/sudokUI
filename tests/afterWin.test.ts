@@ -29,7 +29,7 @@ let posts: any[] = [];
   return new Response(JSON.stringify({ ok: true, accepted: true, stats }), { status: 200, headers: { 'content-type': 'application/json' } });
 };
 
-const { useGame, dailyResultOf, keptResultOf, solvePath, takesInSaved, takeInSavedGame } = await import('../src/state/gameStore');
+const { useGame, dailyResultOf, keptResultOf, solvePath, takesInSaved, takeInSavedGame, underWay, encodePosition } = await import('../src/state/gameStore');
 const { useDailyStats } = await import('../src/state/dailyStats');
 const { useSettings } = await import('../src/state/settings');
 const { useStats, takeInSavedRecord } = await import('../src/state/stats');
@@ -40,6 +40,8 @@ const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..
 const EMPTY = [...EASY].map((ch, i) => (ch === '.' ? i : -1)).filter((i) => i >= 0);
 const LAST = EMPTY[EMPTY.length - 1];
 const OTHER_PUZZLE = '8..6.2.5....89..6.67...5.......4.1.9.1.5.8.3.3.4.2.......7...92.3..89....9.2.4..6';
+/** a Hard puzzle whose path meets an X-Wing, for a fast-forwarded practice */
+const PRACTICE = '...6..9.1..95....4....4985..241....5....3....9....546..7549....3....12..1.2..3...';
 
 const play = (cell: number, digit: number) => {
   useGame.getState().select([cell], false);
@@ -600,6 +602,65 @@ describe('the clock', () => {
     useGame.getState().setAway(false);
     vi.advanceTimersByTime(2000);
     expect(useGame.getState().elapsedMs()).toBe(before + 2000);
+  });
+
+  /** hidden, then shown: whether the game came back paused, and its clock stood still while away */
+  const awayAndBack = () => {
+    const before = useGame.getState().elapsedMs();
+    useGame.getState().setAway(true);
+    const paused = useGame.getState().paused;
+    expect(saved().paused).toBe(paused);
+    vi.advanceTimersByTime(60_000);
+    expect(useGame.getState().elapsedMs()).toBe(before);
+    useGame.getState().setAway(false);
+    vi.advanceTimersByTime(2000);
+    return { paused: useGame.getState().paused, ran: useGame.getState().elapsedMs() - before };
+  };
+
+  it('a shared position nobody touched only stands still while the page is hidden, and runs on; a move of the player’s pauses it', async () => {
+    // someone's position: five digits of theirs on the board
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    for (const cell of EMPTY.slice(0, 5)) play(cell, Number(solution()[cell]));
+    const payload = encodePosition(useGame.getState().cells, false);
+    useGame.getState().startGame(OTHER_PUZZLE, 1000, 'Medium');
+    expect(useGame.getState().loadPosition(payload)).toBe(true);
+    expect(underWay(useGame.getState())).toBe(false);
+    expect(awayAndBack()).toEqual({ paused: false, ran: 2000 });
+    // and across a reload, as the page left
+    useGame.getState().setAway(true);
+    await reload();
+    expect(useGame.getState().paused).toBe(false);
+    useGame.setState({ away: false });
+    // the player's own digit: under way, paused when hidden
+    play(EMPTY[5], Number(solution()[EMPTY[5]]));
+    expect(awayAndBack()).toEqual({ paused: true, ran: 0 });
+  });
+
+  it('a fast-forwarded practice nobody touched only stands still while the page is hidden; a move of the player’s pauses it', () => {
+    useSettings.setState({ practiceFastForward: true });
+    useGame.getState().startGame(PRACTICE, 1348, 'Hard', 'X_WING');
+    const g = useGame.getState();
+    expect(g.autoCandidates).toBe(true);
+    expect(g.cells.some((c) => !c.given && c.value)).toBe(true);
+    expect(underWay(g)).toBe(false);
+    expect(awayAndBack()).toEqual({ paused: false, ran: 2000 });
+    // a digit of the player's on the app's position
+    const open = g.cells.findIndex((c) => !c.value);
+    play(open, Number(solution()[open]));
+    expect(underWay(useGame.getState())).toBe(true);
+    expect(awayAndBack()).toEqual({ paused: true, ran: 0 });
+  });
+
+  it('the chain trainer opened on a game nobody touched does not make it under way: it stands still, and comes back running after a reload', async () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    useGame.getState().startChain();
+    expect(useGame.getState().autoCandidates).toBe(true);
+    expect(awayAndBack()).toEqual({ paused: false, ran: 2000 });
+    useGame.getState().setAway(true);
+    await reload();
+    expect(useGame.getState().autoCandidates).toBe(false);
+    expect(useGame.getState().paused).toBe(false);
+    useGame.setState({ away: false });
   });
 
   it('a puzzle being typed in is not paused when the page is hidden', () => {
