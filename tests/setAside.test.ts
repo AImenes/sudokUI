@@ -560,6 +560,79 @@ describe('the error screen', () => {
     expect(JSON.parse(boardCleared(storage.get('sudokui-game-v1')!)!).state.setAside.info.puzzle).toBe(HARD);
   });
 
+  it('a solved game put back in play behind a typed puzzle keeps its solve: back from the slot or the error screen, solved again, it is recorded once', async () => {
+    let solves = 0;
+    useStats.setState({ recordSolve: () => void solves++ } as never);
+    /** solved, its last digit undone, then a typed puzzle over it */
+    const solvedThenTyping = () => {
+      g().startGame(EASY, 196, 'Easy');
+      play(81);
+      expect(g().won).toBe(true);
+      g().undo();
+      expect(g().solved).toBe(true);
+      g().startCustomEntry();
+      g().select([0], false);
+      g().input(5);
+    };
+    const lastDigit = () => {
+      const { solution } = g().info!;
+      const cell = g().cells.findIndex((c) => !c.value);
+      g().select([cell], false);
+      g().input(Number(solution[cell]));
+    };
+    // a link sets the typed puzzle aside, and the link of the game behind it brings that back
+    solvedThenTyping();
+    const solvedMs = g().solvedMs;
+    await open(`https://sudokui.app/p/${HARD}/`);
+    expect(g().setAside?.custom).toBe(true);
+    await open(`https://sudokui.app/p/${EASY}/`);
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(g().solved).toBe(true);
+    expect(g().solvedMs).toBe(solvedMs);
+    lastDigit();
+    expect(g().won).toBe(true);
+    expect(g().elapsedMs()).toBe(solvedMs);
+    expect(solves).toBe(1);
+    // the error screen: the game behind the typed puzzle takes the slot with its solve
+    solves = 0;
+    useGame.setState({ setAside: null });
+    solvedThenTyping();
+    const left = boardCleared(storage.get('sudokui-game-v1')!)!;
+    useGame.setState({ ...useGame.getInitialState(), setAside: null });
+    storage.set('sudokui-game-v1', left);
+    await useGame.persist.rehydrate();
+    expect(g().setAside?.solved).toBe(true);
+    g().startGame(HARD, 1348, 'Hard');
+    backToKept();
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(g().solved).toBe(true);
+    lastDigit();
+    expect(g().won).toBe(true);
+    expect(solves).toBe(1);
+    // a save from before the backup kept the solve: the save's own fields are the game behind's
+    useGame.setState({ setAside: null });
+    solvedThenTyping();
+    const save = JSON.parse(storage.get('sudokui-game-v1')!);
+    for (const key of ['solved', 'solvedMs', 'solvedAssisted', 'solvedAuto', 'dailyKept', 'practiceTarget', 'practiceFound']) delete save.state.customBackup[key];
+    expect(JSON.parse(boardCleared(JSON.stringify(save))!).state.setAside).toMatchObject({ solved: true, solvedMs: g().solvedMs });
+  });
+
+  it('a practice behind a typed puzzle keeps its target through the error screen', async () => {
+    g().startGame(HARD, 1348, 'Hard', 'X_WING');
+    expect(g().practiceTarget).not.toBeNull();
+    play(2);
+    g().startCustomEntry();
+    g().select([0], false);
+    g().input(5);
+    const left = boardCleared(storage.get('sudokui-game-v1')!)!;
+    useGame.setState({ ...useGame.getInitialState(), setAside: null });
+    storage.set('sudokui-game-v1', left);
+    await useGame.persist.rehydrate();
+    backToKept();
+    expect(g().info?.practiceTech).toBe('X_WING');
+    expect(g().practiceTarget).not.toBeNull();
+  });
+
   it('a save that cannot be read is cleared whole', () => {
     expect(boardCleared('{"state":')).toBeNull();
     expect(boardCleared(null)).toBeNull();

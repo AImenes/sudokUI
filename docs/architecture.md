@@ -268,7 +268,11 @@ none of the player's work.
   date.
 - **Custom entry.** Opened again over a puzzle being typed in (New, then
   Custom, or a scan from New), the backup stays the game the first entry
-  was opened over, so Cancel always brings that back. Restart there asks
+  was opened over, so Cancel always brings that back. The backup keeps
+  that game's solve (a solved game put back in play by Undo or a Steps
+  jump) and its practice target, so wherever it comes back from (Cancel,
+  a link asking for it, the slot, the error screen) it is still the same
+  solve, recorded once. Restart there asks
   "Clear the board?" (Clear, Keep typing), then clears the typed digits;
   Share says the puzzle has no link until Check & play.
 - **The error screen.** Its Clear the board and reload
@@ -277,8 +281,8 @@ none of the player's work.
   is never drawn until it comes back, so it cannot be what broke, and the
   note (or New) still offers it back. With a puzzle being typed in, the
   game it was opened over is not drawn either: with the slot empty it
-  takes the slot, and the note offers it back (unless it was solved, as a
-  solved game is not kept); with a game in the slot already, that one
+  takes the slot, with its solve and practice target, and the note offers
+  it back (unless it was won, as a solved game is not kept); with a game in the slot already, that one
   stays and the game behind the typed puzzle goes with the board.
 - **Undo is not saved.** The undo history stays in memory: a reload (and
   Cancel of a custom entry) keeps the board but not the steps back. Each

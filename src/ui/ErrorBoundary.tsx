@@ -37,8 +37,20 @@ export function boardCleared(saved: string | null): string | null {
     const state = save?.state;
     const aside = state?.setAside;
     const behind = state?.custom ? state.customBackup : null;
+    // while a puzzle is typed in, the save's solve and practice fields are
+    // those of the game behind it (a backup saved before it kept them has none)
+    const own = (b: Record<string, unknown>) =>
+      'solved' in b || !state.solved
+        ? b
+        : { ...b, solved: true, solvedMs: state.solvedMs ?? null, solvedAssisted: state.solvedAssisted ?? null, solvedAuto: state.solvedAuto ?? null, dailyKept: state.dailyKept };
+    const withTarget = (b: Record<string, unknown>) =>
+      'practiceTarget' in b ? b : { ...b, practiceTarget: state.practiceTarget ?? null, practiceFound: !!state.practiceFound };
     const kept =
-      aside && typeof aside === 'object' ? aside : behind && typeof behind === 'object' && behind.info && !behind.won ? behind : null;
+      aside && typeof aside === 'object'
+        ? aside
+        : behind && typeof behind === 'object' && behind.info && !behind.won
+          ? withTarget(own(behind))
+          : null;
     return kept ? JSON.stringify({ state: { setAside: kept }, version: save.version ?? 0 }) : null;
   } catch {
     return null;

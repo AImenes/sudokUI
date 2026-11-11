@@ -583,6 +583,17 @@ interface GameBackup {
    *  on the blank entry board must not reach it (absent in older saves) */
   assisted?: boolean;
   markContract?: MarkContract;
+  /** a game solved, then put back in play (Undo, a Steps jump): its solve,
+   *  so solved again it is still that solve (winClock), wherever it comes
+   *  back from (Cancel, a link asking for it, the error screen's slot);
+   *  and a practice's target. Absent in older saves */
+  solved?: boolean;
+  solvedMs?: number | null;
+  solvedAssisted?: boolean | null;
+  solvedAuto?: boolean | null;
+  dailyKept?: boolean;
+  practiceTarget?: Step | null;
+  practiceFound?: boolean;
 }
 
 /**
@@ -596,16 +607,6 @@ export interface SetAside extends GameBackup {
   /** a puzzle being typed in, and the game Cancel brings back */
   custom?: boolean;
   customBackup?: GameBackup | null;
-  solved?: boolean;
-  /** a game solved, then put back in play (Undo, a Steps jump): its solve's
-   *  time, help and auto candidates, and whether it is its day's result, so solved again
-   *  after Back to it it is still that solve (winClock) */
-  solvedMs?: number | null;
-  solvedAssisted?: boolean | null;
-  solvedAuto?: boolean | null;
-  dailyKept?: boolean;
-  practiceTarget?: Step | null;
-  practiceFound?: boolean;
   /** the running game's tally (src/state/stats.ts), for its win screen */
   tally?: GameTally;
   /** the note that offers it back was put away; the game stays kept */
@@ -1320,7 +1321,10 @@ export const useGame = create<GameStore>()(
                 elapsedBefore: s.elapsedMs(),
                 won: s.won,
                 assisted: s.assisted,
-                markContract: s.markContract
+                markContract: s.markContract,
+                ...(s.solved ? { solved: true, solvedMs: s.solvedMs, solvedAssisted: s.solvedAssisted, solvedAuto: s.solvedAuto, dailyKept: s.dailyKept } : {}),
+                practiceTarget: s.practiceTarget,
+                practiceFound: s.practiceFound
               },
           custom: true,
           info: null,
@@ -1392,6 +1396,11 @@ export const useGame = create<GameStore>()(
           // in reaches it (a save from before these were kept leaves them)
           ...(b?.assisted !== undefined ? { assisted: b.assisted } : {}),
           ...(b?.markContract !== undefined ? { markContract: b.markContract } : {}),
+          // its solve, if it was solved, and its practice target
+          ...(b?.solved !== undefined
+            ? { solved: b.solved, solvedMs: b.solvedMs ?? null, solvedAssisted: b.solvedAssisted ?? null, solvedAuto: b.solvedAuto ?? null, dailyKept: b.dailyKept }
+            : {}),
+          ...(b && 'practiceTarget' in b ? { practiceTarget: b.practiceTarget ?? null, practiceFound: !!b.practiceFound } : {}),
           contractPrompt: false,
           notice: null,
           selection: [],
