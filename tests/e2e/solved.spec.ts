@@ -2,10 +2,12 @@
  * A solved game in a real browser (the hunt of November 2026): the win
  * screen is a dialog as every other, Check, Steps and the rest used after
  * the win leave the solve as it was played, Undo or a Steps jump after it
- * puts the board back in play, a daily solved again shows its win screen
- * and says which solve stays its result; and the clock: a paused game
- * reloads paused, a reload keeps the time since the last move, and the
- * time the page is hidden does not count.
+ * puts the board back in play, and Undo of the jump brings the solved board
+ * back; a daily solved again shows its win screen, says which solve stays
+ * its result, and still sends and shares that one; and the clock: a paused
+ * game reloads paused, a reload keeps the time since the last move, the
+ * time the page is hidden does not count, and a second tab shown again
+ * does not put its older board back.
  */
 import { test, expect, Page } from '@playwright/test';
 import { parseGrid, gridToString } from '../../src/engine/board';
@@ -86,6 +88,13 @@ test.describe('a solved game', () => {
     const pause = page.getByRole('button', { name: 'Pause game' });
     await expect(pause).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Resume game' })).toHaveCount(0);
+    // after a reload the win screen opens with nothing focused before it:
+    // closed, it still gives the focus to the board, not to the page
+    await page.reload();
+    await expect(winScreen(page)).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(winScreen(page)).toHaveCount(0);
+    await expect(page.locator('svg.board')).toBeFocused();
   });
 
   test('after a win, Check, Steps and Scan leave the daily unassisted: its Send button and its words stay, across a reload', async ({ page }) => {
@@ -128,21 +137,34 @@ test.describe('a solved game', () => {
     expect(sent).toEqual([]);
   });
 
-  test('a daily solved again by Restart shows its win screen, which says the first solve stays the day’s result', async ({ page }) => {
+  test('a daily solved again by Restart shows its win screen, which says the first solve stays the day’s result, and sends and shares that one', async ({ page }) => {
     test.setTimeout(90_000);
     const today = localDateKey();
     const daily = dailies.find((d) => d.date === today)!;
     expect(daily, `a published daily for ${today}`).toBeTruthy();
-    const sent: string[] = [];
-    page.on('request', (r) => {
-      if (r.method() === 'POST' && r.url().includes('/api/daily/')) sent.push(r.url());
+    const no = dailies.indexOf(daily) + 1;
+    // what is sent, answered as the server would; what is shared, from the clipboard
+    const sent: { seconds: number; unassisted: boolean; grid: string }[] = [];
+    await page.route('**/api/daily/*/result', async (route) => {
+      const body = route.request().postDataJSON();
+      sent.push(body);
+      await route.fulfill({ json: { accepted: true, stats: { no, count: 3, median: 600, histogram: [[Math.floor(body.seconds / 15), 3]] } } });
     });
+    await page.addInitScript(() => {
+      (window as unknown as { copied: string[] }).copied = [];
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (text: string) => void (window as unknown as { copied: string[] }).copied.push(text) }
+      });
+    });
+    const copied = () => page.evaluate(() => (window as unknown as { copied: string[] }).copied);
     await page.clock.install();
     await open(page, `/daily/${today}`);
     await solveBoard(page, daily.puzzle);
     const first = winScreen(page);
     await expect(first.getByRole('button', { name: /Send my time and compare/ })).toBeVisible();
     const [, firstTime] = /· (\d+:\d\d)$/.exec(await first.locator('p').first().innerText())!;
+    // not sent: the win screen is put away
     await first.getByRole('button', { name: 'Admire the grid' }).click();
     await page.locator('.menu-row button', { hasText: 'Restart' }).click();
     await page.getByRole('dialog', { name: 'Restart puzzle?' }).getByRole('button', { name: 'Restart' }).click();
@@ -151,9 +173,25 @@ test.describe('a solved game', () => {
     await solveBoard(page, daily.puzzle, () => page.clock.fastForward(45_000));
     const second = winScreen(page);
     await expect(second).toBeVisible();
-    await expect(second).toContainText(`You solved this daily before, in ${firstTime}. That solve stays your result.`);
-    await expect(second.getByRole('button', { name: /Send my time and compare/ })).toHaveCount(0);
+    const [, secondTime] = /· (\d+:\d\d)$/.exec(await second.locator('p').first().innerText())!;
+    expect(secondTime).not.toBe(firstTime);
+    // the first solve's time never went in: it is the one Send offers
+    await expect(second).toContainText(`You solved this daily before, in ${firstTime}. That time is the one that goes in.`);
+    // and the one a friend is challenged with, as the Share dialog's
+    await second.getByRole('button', { name: /Challenge a friend/ }).click();
+    await expect.poll(copied).toHaveLength(1);
+    expect((await copied())[0]).toContain(`· ${firstTime} ·`);
+    expect((await copied())[0]).not.toContain(secondTime);
+    // still there after a reload
+    await page.reload();
+    const again = winScreen(page);
+    await expect(again).toContainText(`You solved this daily before, in ${firstTime}. That time is the one that goes in.`);
     expect(sent).toEqual([]);
+    await again.getByRole('button', { name: /Send my time and compare/ }).click();
+    await expect(again).toContainText(`The time in the results is the first one you sent, ${firstTime}.`);
+    const [m, ss] = firstTime.split(':').map(Number);
+    expect(sent.map((r) => [r.seconds, r.unassisted, r.grid])).toEqual([[m * 60 + ss, true, solutionOf(daily.puzzle)]]);
+    await expect(again.getByRole('button', { name: /Send my time and compare/ })).toHaveCount(0);
   });
 
   test('Undo after a win, or a Steps jump, leaves a board to play on, not a pause card', async ({ page }) => {
@@ -184,6 +222,38 @@ test.describe('a solved game', () => {
     const open1 = cells[0];
     await enter(page, open1, solution[open1]);
     await expect(page.locator('#board-status')).toHaveText(`Row ${Math.floor(open1 / 9) + 1}, column ${(open1 % 9) + 1}: ${solution[open1]}.`);
+  });
+
+  test('Ctrl+Z after a Steps jump on the solved board, as its notice offers, brings the solved board back as it was: stopped, unassisted', async ({ page }) => {
+    await open(page);
+    await solveBoard(page, EASY);
+    await winScreen(page).getByRole('button', { name: 'Admire the grid' }).click();
+    // on a solved board, looking is no help with its solve, and nothing says it is
+    const steps = page.getByRole('button', { name: 'Steps', exact: true });
+    await expect(steps).toHaveAttribute('title', 'Show every step of one complete solution and jump to any point');
+    await steps.click();
+    const path = page.getByRole('dialog', { name: 'Solution path' });
+    await expect(path).toContainText('The crux, the single most expensive step, is highlighted.');
+    await expect(path).not.toContainText('counts as assistance');
+    const row = path.locator('.path-list > .path-row').first();
+    await expect(row).toBeVisible();
+    if (await row.evaluate((el) => el.classList.contains('path-group'))) await row.locator('.path-jump').click();
+    else await row.click();
+    await expect(page.getByText(/Jumped to step \d+ of \d+ \(Ctrl\+Z goes back\)/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Pause game' })).toBeEnabled();
+    await page.locator('svg.board').focus();
+    await page.keyboard.press('Control+KeyZ');
+    // solved again: the clock stands still, and nothing is left to pause or hint
+    await expect(page.getByRole('button', { name: 'Pause game' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Hint', exact: true })).toBeDisabled();
+    await expect(page.locator('.pause-card')).toHaveCount(0);
+    const at = await page.locator('.timer').innerText();
+    await page.waitForTimeout(2200);
+    await expect(page.locator('.timer')).toHaveText(at);
+    // the win screen put away stays away; a reload shows it, as the solve was played
+    await expect(winScreen(page)).toHaveCount(0);
+    await page.reload();
+    await expect(winScreen(page)).toContainText('Unassisted solve: no help, every mark your own');
   });
 });
 
@@ -220,6 +290,41 @@ test.describe('the clock', () => {
     await expect(page.locator('svg.board')).toBeVisible();
     expect(await secondsOn(page)).toBeGreaterThanOrEqual(before);
     await expect(page.locator('.pause-card')).toHaveCount(0);
+  });
+
+  test('a second tab, shown again, plays on from the moves made in the other and does not put its older board back', async ({ context }) => {
+    const shown = (p: Page, visible: boolean) =>
+      p.evaluate((v) => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (v ? 'visible' : 'hidden') });
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => !v });
+        document.dispatchEvent(new Event('visibilitychange'));
+      }, visible);
+    const left = (p: Page) => p.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false })));
+    const filledInSave = (p: Page) =>
+      p.evaluate(() => (JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.cells as { value: number }[]).filter((c) => c.value).length);
+    const givens = 81 - empties(EASY).length;
+    // tab B opens the puzzle, then goes behind tab A, which opens the same game
+    const b = await context.newPage();
+    await open(b, `/#p=${EASY}`);
+    await shown(b, false);
+    const a = await context.newPage();
+    await open(a, '/');
+    const solution = solutionOf(EASY);
+    const played = empties(EASY).slice(0, 4);
+    for (const cell of played) await enter(a, cell, solution[cell]);
+    await expect.poll(() => filledInSave(a)).toBe(givens + 4);
+    // A is closed, the browser shows B, then is quit from B
+    await left(a);
+    await a.close();
+    await shown(b, true);
+    await b.waitForTimeout(300);
+    expect(await filledInSave(b)).toBe(givens + 4);
+    await left(b);
+    expect(await filledInSave(b)).toBe(givens + 4);
+    // and B's board has A's moves on it, to play on from
+    const c = await cellBox(b, played[3]);
+    await b.mouse.click(c.x, c.y);
+    await expect(b.locator('#board-status')).toHaveText(`Row ${Math.floor(played[3] / 9) + 1}, column ${(played[3] % 9) + 1}: ${solution[played[3]]}.`);
   });
 
   test('the time the page is hidden does not count, and the clock runs on when it is shown', async ({ page }) => {

@@ -218,3 +218,14 @@ export const useDailyStats = create<DailyStatsState>()(
     }
   )
 );
+
+// the dailies another window of the app played and sent (a second tab, the
+// installed app's window) are taken in while this one is hidden, as its
+// game is (gameStore.ts), so this window's next save (its win screen
+// fetching the day's numbers is one) does not drop a time sent there, or
+// its token
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'sudokui-daily-v1' && e.newValue && document.visibilityState === 'hidden') void useDailyStats.persist.rehydrate();
+  });
+}

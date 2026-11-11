@@ -209,3 +209,13 @@ export function gameSummary(game: GameTally): string {
   if (game.errors) sentences.push(t(game.errors === 1 ? '{n} wrong digit.' : '{n} wrong digits.', { n: game.errors }));
   return sentences.join(' ');
 }
+
+// what another window of the app records (a second tab, the installed
+// app's window) is taken in while this one is hidden, as its game is
+// (gameStore.ts), so this window's next save does not put an older record
+// back
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'sudokui-stats-v1' && e.newValue && document.visibilityState === 'hidden') void useStats.persist.rehydrate();
+  });
+}

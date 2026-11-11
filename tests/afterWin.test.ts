@@ -29,7 +29,7 @@ let posts: any[] = [];
   return new Response(JSON.stringify({ ok: true, accepted: true, stats }), { status: 200, headers: { 'content-type': 'application/json' } });
 };
 
-const { useGame, dailyResultOf, solvePath } = await import('../src/state/gameStore');
+const { useGame, dailyResultOf, keptResultOf, solvePath } = await import('../src/state/gameStore');
 const { useDailyStats } = await import('../src/state/dailyStats');
 const { useSettings } = await import('../src/state/settings');
 const { useStats } = await import('../src/state/stats');
@@ -157,6 +157,34 @@ describe('Undo or a Steps jump off a solved board', () => {
     expect(useGame.getState().cells[open].value).toBe(Number(solution()[open]));
   });
 
+  it('Undo of a jump made on the solved board brings it back solved, as it was played: stopped, unassisted, recorded once', () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    solveAll();
+    const winMs = useGame.getState().elapsedMs();
+    useGame.getState().jumpToStep(3);
+    expect(useGame.getState().assisted).toBe(true);
+    vi.advanceTimersByTime(30_000);
+    useGame.getState().undo();
+    const g = useGame.getState();
+    expect(g.cells.every((c, i) => c.value === Number(solution()[i]))).toBe(true);
+    expect(g.won).toBe(true);
+    expect(g.paused).toBe(true);
+    expect(g.assisted).toBe(false);
+    // the clock stands still at the time it stood when the board came back
+    const back = g.elapsedMs();
+    expect(back).toBe(winMs + 30_000);
+    vi.advanceTimersByTime(30_000);
+    expect(useGame.getState().elapsedMs()).toBe(back);
+    expect(useStats.getState().bands.Easy?.solves).toBe(1);
+    // and Redo goes to the jump again, with its help
+    useGame.getState().redo();
+    expect(useGame.getState().won).toBe(false);
+    expect(useGame.getState().assisted).toBe(true);
+    useGame.getState().undo();
+    expect(useGame.getState().won).toBe(true);
+    expect(useGame.getState().assisted).toBe(false);
+  });
+
   it('a pause the player chose before a jump stays theirs', () => {
     useGame.getState().startGame(EASY, 196, 'Easy');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
@@ -173,7 +201,7 @@ describe('a daily solved again', () => {
     useGame.setState((s) => ({ info: s.info && { ...s.info, dailyNo: no } }));
   };
 
-  it('keeps the first solve as the day’s result, sends nothing for the replay, and counts the day once in the streak', async () => {
+  it('keeps the first solve as the day’s result, never sends the replay’s time, and counts the day once in the streak', async () => {
     // the first solve, with the switch off: kept, not sent
     startDaily();
     solveAll();
@@ -189,10 +217,42 @@ describe('a daily solved again', () => {
     expect(useGame.getState().won).toBe(true);
     expect(Math.floor(useGame.getState().elapsedMs() / 1000)).not.toBe(first.seconds);
     expect(useDailyStats.getState().played[no]).toEqual(first);
-    expect(posts).toEqual([]);
+    // the first solve's time had never gone in: the switch sends it, as Send would
+    expect(posts.map((p) => [p.seconds, p.unassisted, p.grid])).toEqual([[first.seconds, true, solution()]]);
     // the band record counts a second game, the streak the day once
     expect(useStats.getState().bands.Easy?.solves).toBe(2);
     expect(useStats.getState().dailyDays).toEqual([dailyDate(no)]);
+  });
+
+  it('a first solve never sent can still be sent once from the replay’s win screen, its own time', async () => {
+    startDaily();
+    solveAll();
+    const first = useDailyStats.getState().played[no];
+    useGame.getState().restart();
+    vi.advanceTimersByTime(20_000);
+    solveAll();
+    await settle();
+    // the switch off: nothing goes by itself
+    expect(posts).toEqual([]);
+    // what the win screen's Send sends for it (VictoryDialog)
+    const result = keptResultOf(no, useDailyStats.getState().played[no], solution());
+    expect(result).toEqual({ no, grid: solution(), seconds: first.seconds, hints: 0, unassisted: true });
+    expect(await useDailyStats.getState().submit(result!)).toBe('accepted');
+    expect(useDailyStats.getState().submitted[no]).toBe(first.seconds);
+    expect(posts.map((p) => p.seconds)).toEqual([first.seconds]);
+    // a solve with help kept has nothing to send
+    expect(keptResultOf(no, { ...first, assisted: true }, solution())).toBeNull();
+  });
+
+  it('an assisted replay sends nothing by itself, the switch on', async () => {
+    startDaily();
+    solveAll();
+    useSettings.setState({ autoSendDaily: true });
+    useGame.getState().restart();
+    useGame.getState().markAssisted();
+    solveAll();
+    await settle();
+    expect(posts).toEqual([]);
   });
 
   it('takes an unassisted replay in place of a first solve with help, which never went in', async () => {
@@ -221,6 +281,48 @@ describe('a daily solved again', () => {
     await settle();
     expect(posts).toHaveLength(1);
     expect(useDailyStats.getState().submitted[no]).toBe(sent);
+  });
+});
+
+describe('a game another window saved', () => {
+  /** the save another window wrote: this game with four more digits on it */
+  const otherWindowPlayed = () => {
+    const other = saved();
+    for (const cell of EMPTY.slice(0, 4)) other.cells[cell].value = Number(solution()[cell]);
+    storage.set('sudokui-game-v1', JSON.stringify({ state: other, version: 0 }));
+  };
+  const filled = () => useGame.getState().cells.filter((c) => c.value).length;
+  const GIVENS = 81 - EMPTY.length;
+
+  it('comes in without this window’s undo steps, hint or Check marks', async () => {
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    play(EMPTY[0], Number(solution()[EMPTY[0]]));
+    useGame.setState({ errors: [3] });
+    otherWindowPlayed();
+    await useGame.persist.rehydrate();
+    const g = useGame.getState();
+    expect(filled()).toBe(GIVENS + 4);
+    expect(g.history).toEqual([]);
+    expect(g.future).toEqual([]);
+    expect(g.errors).toEqual([]);
+    expect(g.hint).toBeNull();
+    // Undo cannot bring back this window's older board
+    useGame.getState().undo();
+    expect(filled()).toBe(GIVENS + 4);
+  });
+
+  it('is not counted again as begun: the window that played it counted it', async () => {
+    let started = 0;
+    useSettings.setState({ dontCount: false });
+    useTelemetry.setState({ track: (kind: string) => void (kind === 'started' && started++) } as never);
+    // this window opened the puzzle and never played it
+    useGame.getState().startGame(EASY, 196, 'Easy');
+    otherWindowPlayed();
+    await useGame.persist.rehydrate();
+    expect(filled()).toBe(GIVENS + 4);
+    expect(useGame.getState().counted).toBe(true);
+    play(EMPTY[4], Number(solution()[EMPTY[4]]));
+    expect(started).toBe(0);
   });
 });
 

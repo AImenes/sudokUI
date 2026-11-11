@@ -7,6 +7,7 @@ import {
   solvePath,
   encodePosition,
   dailyResultOf,
+  keptResultOf,
   contractGrid,
   hasManualMarks,
   markSlip,
@@ -399,10 +400,13 @@ type PathRow = { kind: 'single'; index: number; step: Step } | { kind: 'group'; 
  * The solution path: every solver step from the puzzle's start, with runs of
  * singles collapsed and the hardest technique's first step marked as the crux. Clicking
  * a row sets the board to the position just before that step (and flags the
- * game as assisted — opening this dialog already does).
+ * game as assisted — opening this dialog already does, but not on a solved
+ * board, whose solve is recorded as it was played, so its note says nothing
+ * of help there).
  */
 export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
   const info = useGame((s) => s.info);
+  const won = useGame((s) => s.won);
   const jumpToStep = useGame((s) => s.jumpToStep);
   const markAssisted = useGame((s) => s.markAssisted);
   const [steps, setSteps] = useState<Step[] | null>(null);
@@ -452,7 +456,9 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={t('Solution path')} onClose={onClose}>
       <p className="dialog-note">
-        {t('Every step of one complete solution, easiest technique first. Click a step to set the board to the position just before it. The crux, the single most expensive step, is highlighted. Viewing this counts as assistance.')}
+        {won
+          ? t('Every step of one complete solution, easiest technique first. Click a step to set the board to the position just before it. The crux, the single most expensive step, is highlighted.')
+          : t('Every step of one complete solution, easiest technique first. Click a step to set the board to the position just before it. The crux, the single most expensive step, is highlighted. Viewing this counts as assistance.')}
       </p>
       {!steps ? (
         <div className="spinner" />
@@ -609,6 +615,8 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
   const contract = useGame((s) => s.markContract);
   const setMarkContract = useGame((s) => s.setMarkContract);
   const markAssisted = useGame((s) => s.markAssisted);
+  // a solved board: looking is no help with its solve, recorded already
+  const won = useGame((s) => s.won);
   const showStep = useGame((s) => s.showStep);
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [slip, setSlip] = useState(false);
@@ -670,7 +678,9 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
       ) : (
         <>
           <p className="dialog-note">
-            {t('Every technique the solver can apply right now, with your exact candidates, easiest first. Click one to see it highlighted on the board. Counts as assistance.')}
+            {won
+              ? t('Every technique the solver can apply right now, with your exact candidates, easiest first. Click one to see it highlighted on the board.')
+              : t('Every technique the solver can apply right now, with your exact candidates, easiest first. Click one to see it highlighted on the board. Counts as assistance.')}
           </p>
           <input
             className="learn-search"
@@ -1460,13 +1470,16 @@ export function VictoryDialog({
   // is closed and the win screen does not offer what would be refused
   const closed = !!info.dailyNo && dailyClosed(info.dailyNo);
   // a daily solved before on this device: that solve stays the day's
-  // result, so this one is not offered for everyone's times
+  // result, so this one is not offered for everyone's times; the first
+  // one's is, if it was unassisted and never went in (keptResultOf)
   const before = kept && (kept.seconds !== secs || kept.assisted !== assisted) ? kept : null;
+  const keptResult = before && info.dailyNo && !closed && submittedSecs === undefined ? keptResultOf(info.dailyNo, before, info.solution) : null;
 
   // the player's time for the daily, sent when asked (src/state/dailyStats.ts):
-  // the same result the switch sends by itself (gameStore.ts, dailyResultOf)
+  // the same result the switch sends by itself (gameStore.ts, dailyResultOf),
+  // or for a daily solved again the first solve's
   const sendDaily = async () => {
-    const result = dailyResultOf(useGame.getState());
+    const result = before ? keptResult : dailyResultOf(useGame.getState());
     if (!result) return;
     setSent('sending');
     setSent(await useDailyStats.getState().submit(result));
@@ -1499,7 +1512,9 @@ export function VictoryDialog({
     };
     const text =
       info.dailyNo && info.dailyKey
-        ? dailyLine(t, info.dailyNo, { date: info.dailyKey, level: info.level, score: info.score, seconds: secs, assisted }, stats, submittedSecs)
+        ? // the day's result as the device keeps it, as the Share dialog
+          // shares it: for a daily solved again, the first solve
+          dailyLine(t, info.dailyNo, kept ?? { date: info.dailyKey, level: info.level, score: info.score, seconds: secs, assisted }, stats, submittedSecs)
         : verdict
       ? assisted
         ? t('I solved a {level} sudoku (HoDoKu rating {score}) in {time}, {standing} on sudokUI. Can you beat that? {link}', vars)
@@ -1624,12 +1639,19 @@ export function VictoryDialog({
               </>
             ) : sent === 'sending' || inFlight ? (
               <p className="solve-assisted">{t('Sending your time…')}</p>
-            ) : before ? (
-              <p className="solve-assisted">{t('You solved this daily before, in {time}. That solve stays your result.', { time: clockOf(before.seconds) })}</p>
             ) : sent === 'offline' || sent === 'unavailable' || waiting ? (
               <p className="solve-assisted">{t('Your time goes in the next time you open the app online')}</p>
             ) : sent === 'refused' ? (
               <p className="solve-assisted">{t('Your time was not accepted')}</p>
+            ) : keptResult && before ? (
+              <>
+                <p className="solve-assisted">{t('You solved this daily before, in {time}. That time is the one that goes in.', { time: clockOf(before.seconds) })}</p>
+                <button className="daily-send" onClick={sendDaily}>
+                  🌍 {t('Send my time and compare')}
+                </button>
+              </>
+            ) : before ? (
+              <p className="solve-assisted">{t('You solved this daily before, in {time}. That solve stays your result.', { time: clockOf(before.seconds) })}</p>
             ) : closed ? (
               <p className="solve-assisted">{t('This daily is closed for new times')}</p>
             ) : assisted ? (
@@ -1720,7 +1742,9 @@ function useDialog(onClose: () => void) {
     const opener = document.activeElement as HTMLElement | null;
     ref.current?.focus({ preventScroll: true });
     return () => {
-      const back = opener?.isConnected ? opener : document.querySelector<SVGElement>('svg.board');
+      // (a dialog that opened with nothing focused, the win screen after a
+      // reload among them, found the page itself: the board is the place)
+      const back = opener && opener !== document.body && opener.isConnected ? opener : document.querySelector<SVGElement>('svg.board');
       back?.focus?.({ preventScroll: true });
     };
   }, []);

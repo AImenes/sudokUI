@@ -357,13 +357,21 @@ Built, October 2026, with these decisions:
   and the pause button are greyed out on it. Undo of the winning digit, or
   a Steps jump off the solved board, puts the board back in play, the
   clock going on from the winning time; solved again, it is the same
-  solve, recorded once, and its win screen, put away, stays away. A daily
-  solved again (Restart, or the day chosen anew) is a new game for the
-  band record and shows its own win screen, but the day keeps its first
-  solve as its result, as the server keeps the first time it takes: the
-  replay is not kept, sends nothing, and its win screen says "You solved
-  this daily before, in 6:12. That solve stays your result." The one
-  exception is a first solve with help followed by one without: the
+  solve, recorded once, and its win screen, put away, stays away; Undo of
+  a jump made on the solved board brings it back solved, its help flag as
+  it was. A daily solved again (Restart, or the day chosen anew) is a new
+  game for the band record and shows its own win screen, but the day
+  keeps its first solve as its result, as the server keeps the first time
+  it takes: the replay is not kept, its own time is never sent, and its
+  win screen says
+  "You solved this daily before, in 6:12. That solve stays your result."
+  If that first time never went in (unassisted, not sent, the day open),
+  the replay's win screen says "That time is the one that goes in." and
+  keeps Send, which sends the first solve (`keptResultOf`), and the
+  switch sends it by itself after an unassisted replay; so a replay
+  never shuts out a time that was never sent. "Challenge a friend" on
+  the replay shares the first solve too, as the Share dialog does. The
+  one exception is a first solve with help followed by one without: the
   assisted one never went in, and its win screen says to restart for an
   unassisted run, so the unassisted one takes its place
   (`src/state/gameStore.ts`, `recordDaily`). The privacy page says so.

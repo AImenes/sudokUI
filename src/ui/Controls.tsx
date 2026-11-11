@@ -512,7 +512,11 @@ export function Controls({
             {onShowSteps && (
               <button
                 onClick={guarded('Steps', onShowSteps)}
-                title={t('Show every step of one complete solution and jump to any point. Counts as assistance')}
+                title={
+                  won
+                    ? t('Show every step of one complete solution and jump to any point')
+                    : t('Show every step of one complete solution and jump to any point. Counts as assistance')
+                }
               >
                 <span className="btn-icon" aria-hidden="true">≡</span><span>{t('Steps')}</span>
               </button>
@@ -520,7 +524,11 @@ export function Controls({
             {onScan && (
               <button
                 onClick={guarded('Scan', onScan)}
-                title={t('List every technique available in this exact position, not just the easiest. Counts as assistance')}
+                title={
+                  won
+                    ? t('List every technique available in this exact position, not just the easiest')
+                    : t('List every technique available in this exact position, not just the easiest. Counts as assistance')
+                }
               >
                 <span className="btn-icon" aria-hidden="true">🔎</span><span>{t('Scan')}</span>
               </button>

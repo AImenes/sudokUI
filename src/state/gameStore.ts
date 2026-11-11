@@ -32,7 +32,7 @@ import { useStats } from './stats';
 import type { GameTally } from './stats';
 import { useTelemetry, type PlayKind } from './telemetry';
 import { useDailyStats } from './dailyStats';
-import type { DailyResult } from './dailyStats';
+import type { DailyResult, PlayedDaily } from './dailyStats';
 import { dailyClosed } from '../content/dailies';
 import { justifyMove } from './pools';
 import { translator, msg } from '../content/i18n';
@@ -228,6 +228,11 @@ export interface Snapshot {
   auto: boolean;
   contract: MarkContract;
   handover: ChainHandover | null;
+  /** whether help was used, kept only on the two sides of a Steps jump
+   *  made on the solved board (jumpToStep): the jump marks the board it
+   *  sets as helped, and Undo of it brings the solved board back as it was
+   *  played (stepAcross) */
+  assisted?: boolean;
 }
 
 const snap = (s: { cells: CellState[]; autoCandidates: boolean; markContract: MarkContract; chainHandover: ChainHandover | null }): Snapshot => ({
@@ -239,6 +244,38 @@ const snap = (s: { cells: CellState[]; autoCandidates: boolean; markContract: Ma
 
 /** the state a snapshot puts back */
 const restore = (x: Snapshot) => ({ cells: cloneCells(x.cells), autoCandidates: x.auto, markContract: x.contract });
+
+/** what belongs to the board in this window's memory and is never saved:
+ *  undo steps, a hint, the chain trainer, Check's marks, the selection, a
+ *  question or a notice. A game read from storage comes without it (merge),
+ *  as on a fresh page */
+const freshSession = (): Partial<GameStore> => ({
+  history: [],
+  future: [],
+  selection: [],
+  armedDigit: null,
+  pendingAssist: null,
+  hint: null,
+  hintWith: null,
+  hintStage: 'hidden',
+  walkIndex: 0,
+  contractPrompt: false,
+  errors: [],
+  proofs: [],
+  notice: null,
+  revertIndex: null,
+  chain: null,
+  chainNote: '',
+  scanPreview: null,
+  scanDoubts: [],
+  chainGoal: null
+});
+
+/** Undo or Redo across a step that keeps the help flag (a Steps jump on the
+ *  solved board): the flag comes back with the board, and the step on the
+ *  other stack keeps the flag it leaves */
+const stepAcross = (s: GameStore, x: Snapshot) =>
+  x.assisted === undefined ? { mine: snap(s), flag: {} } : { mine: { ...snap(s), assisted: s.assisted }, flag: { assisted: x.assisted } };
 
 /** the chain trainer runs on auto candidates: an Undo, a Redo or a jump
  *  back that leaves them off closes it, with no handover left for Done,
@@ -844,6 +881,18 @@ export function dailyResultOf(s: Pick<GameStore, 'info' | 'cells' | 'assisted' |
 }
 
 /**
+ * The result of a daily's kept solve (dailyStats, played): what Send sends
+ * from the win screen of a later solve of that day when the kept one is
+ * unassisted and its time never went in, so a replay cannot shut that time
+ * out. The finished grid is the solution, and an unassisted solve took no
+ * hint. Null for a kept solve that had help, which never goes in.
+ */
+export function keptResultOf(no: number, kept: PlayedDaily, solution: string): DailyResult | null {
+  if (kept.assisted) return null;
+  return { no, grid: solution, seconds: kept.seconds, hints: 0, unassisted: true };
+}
+
+/**
  * A solved published daily is kept on the device for its share line, and,
  * when the player has switched on sending daily times automatically
  * (Settings, offered on the win screen after a first send), its time goes
@@ -854,21 +903,25 @@ export function dailyResultOf(s: Pick<GameStore, 'info' | 'cells' | 'assisted' |
  *
  * A daily solved again (Restart, or the day chosen anew) is a new game for
  * the band record, but the day's result stays the first solve, as the
- * server keeps the first time it takes: the replay is not kept and sends
- * nothing, and its win screen says which solve stands (VictoryDialog).
- * Unless the first had help and the replay none: a solve with help never
- * went in, and its win screen says to restart for an unassisted run.
+ * server keeps the first time it takes: the replay is not kept, its own
+ * time is never sent, and its win screen says which solve stands
+ * (VictoryDialog). If the first one's time never went in, the replay's
+ * win screen offers to send it, and the switch sends it by itself after
+ * an unassisted replay, as the button would (keptResultOf). Unless the
+ * first had help and the replay none: a solve with help never went in,
+ * and its win screen says to restart for an unassisted run.
  */
 function recordDaily(s: GameStore) {
   const result = dailyResultOf(s);
   if (!result || !s.info?.dailyKey) return;
   const daily = useDailyStats.getState();
   const kept = daily.played[result.no];
-  if (kept && !(kept.assisted && result.unassisted)) return;
-  daily.recordPlayed(result.no, { date: s.info.dailyKey, level: s.info.level, score: s.info.score, seconds: result.seconds, assisted: s.assisted });
+  const stands = !kept || (kept.assisted && result.unassisted);
+  if (stands) daily.recordPlayed(result.no, { date: s.info.dailyKey, level: s.info.level, score: s.info.score, seconds: result.seconds, assisted: s.assisted });
   if (!useSettings.getState().autoSendDaily || !result.unassisted || dailyClosed(result.no)) return;
   if (daily.submitted[result.no] !== undefined || daily.pending[result.no] || daily.inFlight[result.no]) return;
-  void daily.submit({ ...result, auto: true });
+  const send = stands ? result : keptResultOf(result.no, kept, s.info.solution);
+  if (send) void daily.submit({ ...send, auto: true });
 }
 
 /**
@@ -1589,19 +1642,27 @@ export const useGame = create<GameStore>()(
         const s = get();
         if (!s.history.length) return;
         const prev = s.history[s.history.length - 1];
+        // Undo of a Steps jump made on the solved board brings it back
+        // solved, as Redo of the winning digit does (the game is solved
+        // already, so its solve is not recorded twice)
+        const won = s.info ? checkWin(prev.cells, s.info.solution) : false;
+        const across = stepAcross(s, prev);
         set({
           ...restore(prev),
           ...trainerAfter(!!s.chain, prev),
+          ...across.flag,
           history: s.history.slice(0, -1),
-          future: [snap(s), ...s.future],
-          won: false,
+          future: [across.mine, ...s.future],
+          won,
           // the win's own pause (togglePause refuses while won): the board
           // comes back to play, the clock going on from the winning time
           ...(s.won ? { paused: false, startedAt: Date.now() } : {}),
+          ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {}),
           hint: null,
           hintStage: 'hidden',
           errors: []
         });
+        if (won) recordWin(get());
       },
 
       redo: () => {
@@ -1611,11 +1672,13 @@ export const useGame = create<GameStore>()(
         // redoing the winning move wins again (the game is already
         // solved, so its solve is not recorded twice)
         const won = s.info ? checkWin(next.cells, s.info.solution) : false;
+        const across = stepAcross(s, next);
         set({
           ...restore(next),
           ...trainerAfter(!!s.chain, next),
+          ...across.flag,
           future: rest,
-          history: [...s.history, snap(s)],
+          history: [...s.history, across.mine],
           hint: null,
           hintStage: 'hidden',
           errors: [],
@@ -2534,7 +2597,8 @@ export const useGame = create<GameStore>()(
         set({
           cells,
           selection: [],
-          history: [...s.history, snap(s)],
+          // off the solved board, its help flag is kept with it for Undo
+          history: [...s.history, s.won ? { ...snap(s), assisted: s.assisted } : snap(s)],
           future: [],
           assisted: true,
           autoCandidates: true,
@@ -2604,14 +2668,19 @@ export const useGame = create<GameStore>()(
         practiceFound: s.practiceFound
       }),
       // a game saved under a band name from before HoDoKu's five levels
-      // plays on as its level (ratings.ts, asLevel)
+      // plays on as its level (ratings.ts, asLevel). A game read from
+      // storage, at the start or from another window (below the store),
+      // comes without what belonged to the board this window had
+      // (freshSession), and its arrival is no first move of the player's
+      // (countFirstMove): whether it was begun is judged from its board
+      // once it is in (onRehydrateStorage)
       merge: (persisted, current) => {
         const p = { ...(persisted as Partial<GameStore>) };
         if (p.info) p.info = levelled(p.info);
         if (p.customBackup?.info) p.customBackup = { ...p.customBackup, info: levelled(p.customBackup.info) };
         if (p.setAside?.info) p.setAside = { ...p.setAside, info: levelled(p.setAside.info) };
         if (p.setAside?.customBackup?.info) p.setAside = { ...p.setAside, customBackup: { ...p.setAside.customBackup, info: levelled(p.setAside.customBackup.info) } };
-        return { ...current, ...p };
+        return { ...current, ...freshSession(), ...p, counted: true };
       },
       onRehydrateStorage: () => (state) => {
         if (state) {
@@ -2652,6 +2721,18 @@ export const useGame = create<GameStore>()(
     }
   )
 );
+
+// The game another window of the app saved (a second tab, the installed
+// app's window) while this one is hidden is taken in, so this window,
+// shown again, plays on from it, and its next save (being shown is one,
+// setAway) does not put its own older board back. A window in front keeps
+// its own game. The record that goes with the game follows it the same way
+// (stats.ts, dailyStats.ts); settings follow always (settings.ts)
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'sudokui-game-v1' && e.newValue && document.visibilityState === 'hidden') void useGame.persist.rehydrate();
+  });
+}
 
 /** a saved game's info with its band as one of HoDoKu's five levels; a name that is no band at all is left as it was */
 export function levelled(info: GameInfo): GameInfo {

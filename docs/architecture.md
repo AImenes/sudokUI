@@ -89,6 +89,14 @@ saved as running, and the clock runs on when the page is shown again or
 reopened. A win pauses the clock for good: nothing can resume it, and Undo
 or a Steps jump off the solved board starts it again from the winning time.
 
+The game, the record (`stats.ts`) and the dailies (`dailyStats.ts`) are
+each one save shared by every tab and window of the app. A window that is
+hidden takes in what another one saves (a `storage` listener in each
+store), so shown again it plays on from there and its next save does not
+put an older board back; a window in front keeps its own. A game read
+from storage comes without the window's undo steps, hint, chain trainer
+and Check marks, which belonged to the board it had (`freshSession`).
+
 **Settings** ([settings.ts](../src/state/settings.ts)). Persisted user
 preferences (theme, highlights, timer, auto-off materialisation behaviour).
 Separate store so settings changes never touch game history. The theme is a
