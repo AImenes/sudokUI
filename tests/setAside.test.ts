@@ -467,6 +467,46 @@ describe('the error screen', () => {
     expect(boardCleared('{"state":')).toBeNull();
     expect(boardCleared(null)).toBeNull();
   });
+
+  it('with the slot empty, keeps the game a puzzle being typed in was opened over, and the note offers it back', async () => {
+    g().startGame(HARD, 1348, 'Hard');
+    play(3);
+    g().startCustomEntry();
+    g().select([0], false);
+    g().input(5);
+    expect(g().setAside).toBeNull();
+    const left = boardCleared(storage.get('sudokui-game-v1')!)!;
+    expect(left).not.toBeNull();
+    useGame.setState({ ...useGame.getInitialState(), setAside: null });
+    storage.set('sudokui-game-v1', left);
+    await useGame.persist.rehydrate();
+    // the typed puzzle is gone, the game behind it kept
+    expect(g().custom).toBe(false);
+    expect(g().info).toBeNull();
+    expect(g().setAside?.info?.puzzle).toBe(HARD);
+    expect(g().setAside?.hidden).toBeFalsy();
+    backToKept();
+    expect(g().info?.puzzle).toBe(HARD);
+    expect(entries()).toBe(3);
+    expect(g().notice).toBe('Your game on this puzzle, where you left it');
+    // a solved game behind it is not kept, as nowhere else
+    const save = JSON.parse(storage.get('sudokui-game-v1')!);
+    const solvedBehind = { ...save, state: { ...save.state, custom: true, setAside: null, customBackup: { ...save.state.setAside, won: true } } };
+    expect(boardCleared(JSON.stringify(solvedBehind))).toBeNull();
+    // and a game in the slot stays the one kept
+    await open(`https://sudokui.app/p/${EASY}/`);
+    g().startCustomEntry();
+    g().select([0], false);
+    g().input(5);
+    const both = JSON.parse(storage.get('sudokui-game-v1')!).state;
+    expect(both.setAside.info.puzzle).toBe(HARD);
+    expect(JSON.parse(boardCleared(storage.get('sudokui-game-v1')!)!).state.setAside.info.puzzle).toBe(HARD);
+  });
+
+  it('a save that cannot be read is cleared whole', () => {
+    expect(boardCleared('{"state":')).toBeNull();
+    expect(boardCleared(null)).toBeNull();
+  });
 });
 
 describe('Import', () => {

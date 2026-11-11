@@ -229,11 +229,14 @@ none of the player's work.
   "Clear the board?" (Clear, Keep typing), then clears the typed digits;
   Share says the puzzle has no link until Check & play.
 - **The error screen.** Its Clear the board and reload
-  (src/ui/ErrorBoundary.tsx) clears the game on the board, and with a
-  puzzle being typed in the game it was opened over, since what broke is
-  most likely there. The slot's game stays: it is never drawn until it
-  comes back, so it cannot be what broke, and the note (or New) still
-  offers it back.
+  (src/ui/ErrorBoundary.tsx, `boardCleared`) clears the game on the
+  board, since what broke is most likely there. The slot's game stays: it
+  is never drawn until it comes back, so it cannot be what broke, and the
+  note (or New) still offers it back. With a puzzle being typed in, the
+  game it was opened over is not drawn either: with the slot empty it
+  takes the slot, and the note offers it back (unless it was solved, as a
+  solved game is not kept); with a game in the slot already, that one
+  stays and the game behind the typed puzzle goes with the board.
 - **Undo is not saved.** The undo history stays in memory: a reload (and
   Cancel of a custom entry) keeps the board but not the steps back. Each
   step is a full copy of the 81 cells, about 6 KB as saved, so even a short

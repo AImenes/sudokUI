@@ -2,7 +2,8 @@
 // panel instead of a blank page. The game is saved in localStorage, so a
 // reload usually brings it back; if the saved game itself is what breaks,
 // the second button clears it and starts fresh. Settings, stats and pools
-// are left alone, and so is a game kept aside (boardCleared).
+// are left alone, and so is a game kept aside, or the game a puzzle being
+// typed in was opened over (boardCleared).
 import React from 'react';
 import { translator, makeTranslator, rich } from '../content/i18n';
 import type { Translator } from '../content/i18n';
@@ -24,14 +25,21 @@ function panelTranslator(): Translator {
 /**
  * The save once the board is cleared: only the game kept aside (a link
  * opened over it, src/ui/links.ts), which is never drawn until it comes
- * back, so cannot be what broke, and the note still offers it back. Null
- * when there is none, or the save cannot be read: then all of it goes.
+ * back, so cannot be what broke, and the note still offers it back. With
+ * the slot empty and a puzzle being typed in, the game that puzzle was
+ * opened over, which is not drawn either, takes the slot (unless it was
+ * solved: a solved game is not kept), so the note offers it back. Null
+ * when there is neither, or the save cannot be read: then all of it goes.
  */
 export function boardCleared(saved: string | null): string | null {
   try {
     const save = saved ? JSON.parse(saved) : null;
-    const kept = save?.state?.setAside;
-    return kept && typeof kept === 'object' ? JSON.stringify({ state: { setAside: kept }, version: save.version ?? 0 }) : null;
+    const state = save?.state;
+    const aside = state?.setAside;
+    const behind = state?.custom ? state.customBackup : null;
+    const kept =
+      aside && typeof aside === 'object' ? aside : behind && typeof behind === 'object' && behind.info && !behind.won ? behind : null;
+    return kept ? JSON.stringify({ state: { setAside: kept }, version: save.version ?? 0 }) : null;
   } catch {
     return null;
   }
