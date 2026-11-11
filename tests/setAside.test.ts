@@ -3,14 +3,17 @@
  * never lost"; src/ui/links.ts; gameStore.ts, openOver): a link opened at
  * start-up or in the same tab, or Import, puts it aside in one saved slot
  * before another game opens, and Back to it swaps the two, so neither is
- * lost. The slot keeps whichever of two games holds more of the player's
- * work. A link or the Daily button asking for the game on the board, or
- * the one set aside, brings it back where it was left; only Restart starts
- * it again. A second custom entry, or a scan from one, keeps the game the
- * first was opened over, for Cancel; Restart there clears the typed
- * digits. Import reads the app's own links as the boot does: a position
- * with its entries and marks, a challenger's time, a day's daily. And
- * without the published dailies, no other board is passed off as the day's.
+ * lost, the note then offering the other. The slot keeps whichever of two
+ * games holds more of the player's own work: what a shared position or a
+ * fast-forwarded practice opened with is not theirs. A link or the Daily
+ * button asking for the game on the board, the one set aside, or the one
+ * behind a puzzle being typed in, brings it back where it was left; only
+ * Restart starts it again. A second custom entry, or a scan from one,
+ * keeps the game the first was opened over, for Cancel; Restart there
+ * clears the typed digits. Import reads the app's own links (and only
+ * those) as the boot does: a position with its entries and marks, a
+ * challenger's time, a day's daily. And without the published dailies, no
+ * other board is passed off as the day's.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -32,11 +35,11 @@ const { useGame, encodePosition, underWay, workOf } = await import('../src/state
 const { useTelemetry } = await import('../src/state/telemetry');
 const { useSettings } = await import('../src/state/settings');
 const { useStats } = await import('../src/state/stats');
-const { readAppLink } = await import('../src/content/share');
+const { readAppLink, isAppAddress } = await import('../src/content/share');
 const { findUrl } = await import('../src/content/importLinks');
 const { localDateKey, findDaily, dailyNumber } = await import('../src/content/dailies');
 const real = await vi.importActual<typeof import('../src/content/dailies')>('../src/content/dailies');
-const { startDaily, openAppLink } = await import('../src/ui/links');
+const { startDaily, openAppLink, backToKept } = await import('../src/ui/links');
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
 const HARD = '...6..9.1..95....4....4985..241....5....3....9....546..7549....3....12..1.2..3...';
@@ -91,8 +94,9 @@ describe('a link opened over a game under way', () => {
     await reload();
     expect(g().info?.puzzle).toBe(EASY);
     expect(g().setAside?.info?.dailyKey).toBe(TODAY);
-    g().backToSetAside();
+    backToKept();
     expect(g().info).toMatchObject({ dailyKey: TODAY, dailyNo: dailyNumber(TODAY) });
+    expect(g().notice).toBe('Today’s daily, where you left it');
     expect(entries()).toBe(4);
     expect(g().elapsedMs()).toBeGreaterThanOrEqual(65_000);
     // the challenge was never played: nothing to keep
@@ -112,7 +116,7 @@ describe('a link opened over a game under way', () => {
     expect(g().setAside).toBeNull();
   });
 
-  it('swaps on Back to it: the link’s game under way takes the slot, its note put away, and its link brings it back', async () => {
+  it('swaps on Back to it: the link’s game under way takes the slot with its note shown, and its link brings it back with the other offered', async () => {
     g().startGame(HARD, 1348, 'Hard');
     play(3);
     await open(`https://sudokui.app/p/${EASY}/`);
@@ -121,14 +125,28 @@ describe('a link opened over a game under way', () => {
     expect(g().info?.puzzle).toBe(HARD);
     expect(entries()).toBe(3);
     expect(g().setAside?.info?.puzzle).toBe(EASY);
-    expect(g().setAside?.hidden).toBe(true);
-    // the friend's link again: that game, where it was left, and the other kept
+    // the note now offers the friend's game: either game is one tap away
+    expect(g().setAside?.hidden).toBeFalsy();
+    // the friend's link again: that game, where it was left, and the other
+    // kept with its note shown, though it has no link of its own
     await open(`https://sudokui.app/p/${EASY}/`);
     expect(g().info?.puzzle).toBe(EASY);
     expect(entries()).toBe(2);
     expect(g().notice).toBe('Your game on this puzzle, where you left it');
     expect(g().setAside?.info?.puzzle).toBe(HARD);
     expect(entries(g().setAside!.cells)).toBe(3);
+    expect(g().setAside?.hidden).toBeFalsy();
+  });
+
+  it('a kept game whose note was put away, and which stays in the slot over another, has its note shown again', async () => {
+    g().startGame(HARD, 1348, 'Hard');
+    play(5);
+    await open(`https://sudokui.app/p/${EASY}/`);
+    g().hideSetAside();
+    play(2);
+    await open('https://sudokui.app/daily/2026-11-01');
+    expect(g().setAside?.info?.puzzle).toBe(HARD);
+    expect(g().setAside?.hidden).toBeFalsy();
   });
 
   it('keeps in its one slot the game with more of the player’s work, the newer on a tie', async () => {
@@ -146,6 +164,63 @@ describe('a link opened over a game under way', () => {
     expect(workOf(g())).toBe(workOf(g().setAside!));
     await open(`https://sudokui.app/p/${EASY}/`);
     expect(g().setAside?.info?.dailyKey).toBe(OTHER_DAY);
+  });
+
+  it('counts only the player’s own work: two links in a row, the first a friend’s position nobody touched, keep today’s daily', async () => {
+    // a friend's position, with five entries and a mark of theirs on it
+    g().startGame(EASY, 196, 'Easy');
+    play(5);
+    const cells = g().cells.map((c) => ({ ...c, colors: [...c.colors] }));
+    cells[cells.findIndex((c) => !c.value)].corner = 0b110;
+    const payload = encodePosition(cells, false);
+    useGame.setState({ info: null });
+    await startDaily();
+    play(3);
+    expect(g().setAside).toBeNull();
+    await open(`https://sudokui.app/p/${EASY}?b=easy&s=196#s=${payload}`);
+    expect(entries()).toBe(5);
+    expect(g().setAside?.info?.dailyKey).toBe(TODAY);
+    // the sender's entries and marks are theirs: nothing of the player's yet
+    expect(underWay(g())).toBe(false);
+    expect(workOf(g())).toBe(0);
+    await reload();
+    expect(underWay(g())).toBe(false);
+    // a second friend's challenge: the daily stays in the slot
+    await open(`https://sudokui.app/p/${HARD}?vs=600`);
+    expect(g().info?.puzzle).toBe(HARD);
+    expect(g().setAside?.info?.dailyKey).toBe(TODAY);
+    expect(entries(g().setAside!.cells)).toBe(3);
+  });
+
+  it('a move on a shared position counts as one cell of work, not the sender’s five', async () => {
+    g().startGame(EASY, 196, 'Easy');
+    play(5);
+    const payload = encodePosition(g().cells, false);
+    useGame.setState({ info: null });
+    g().startGame(HARD, 1348, 'Hard');
+    play(3);
+    await open(`https://sudokui.app/p/${EASY}/#s=${payload}`);
+    play(1, 5);
+    expect(underWay(g())).toBe(true);
+    expect(workOf(g())).toBe(1);
+    // the slot keeps the Hard game (3) over the position (1)
+    await open('https://sudokui.app/daily/2026-11-01');
+    expect(g().setAside?.info?.puzzle).toBe(HARD);
+  });
+
+  it('a practice puzzle fast-forwarded by the app is not under way until the player moves on it', () => {
+    useSettings.setState({ practiceFastForward: true });
+    g().startGame(HARD, 1348, 'Hard', 'NAKED_PAIR');
+    expect(g().autoCandidates).toBe(true);
+    expect(g().info?.opening).toBeTruthy();
+    expect(underWay(g())).toBe(false);
+    expect(workOf(g())).toBe(0);
+    play(1);
+    expect(underWay(g())).toBe(true);
+    expect(workOf(g())).toBe(1);
+    // started again, it opens as the app put it: nothing of the player's
+    g().restart();
+    expect(underWay(g())).toBe(false);
   });
 
   it('a position link sets the game aside too, and opens with its entries, marks and colours', async () => {
@@ -236,6 +311,63 @@ describe('the Daily button', () => {
     expect(g().notice).toBe('You have solved this daily. Restart plays it again');
   });
 
+  it('brings back today’s daily from behind a puzzle being typed in over it, never a second copy; the typed puzzle goes aside', async () => {
+    await startDaily();
+    play(7);
+    useGame.setState({ elapsedBefore: 30_000, startedAt: Date.now() });
+    g().startCustomEntry();
+    g().select([0], false);
+    g().input(5);
+    expect(await startDaily()).toBe('resumed');
+    expect(g().custom).toBe(false);
+    expect(g().info?.dailyKey).toBe(TODAY);
+    expect(entries()).toBe(7);
+    expect(g().elapsedMs()).toBeGreaterThanOrEqual(30_000);
+    expect(g().notice).toBe('Today’s daily, where you left it');
+    // the typed digit is kept, without a second copy of the daily behind it
+    expect(g().setAside).toMatchObject({ custom: true, customBackup: null });
+    expect(g().setAside?.cells[0].value).toBe(5);
+  });
+
+  it('the daily’s own link at start-up does the same, and an empty entry board over it leaves nothing aside', async () => {
+    await startDaily();
+    play(4);
+    g().startCustomEntry();
+    await reload();
+    expect(await open(`https://sudokui.app/daily/${TODAY}`)).toEqual({ opened: true });
+    expect(g().info?.dailyKey).toBe(TODAY);
+    expect(entries()).toBe(4);
+    expect(g().setAside).toBeNull();
+  });
+
+  it('brings back today’s daily from behind a puzzle being typed in that a link set aside', async () => {
+    await startDaily();
+    play(6);
+    g().startCustomEntry();
+    g().select([0], false);
+    g().input(5);
+    await open(`https://sudokui.app/p/${EASY}/`);
+    expect(g().setAside).toMatchObject({ custom: true, customBackup: { info: { dailyKey: TODAY } } });
+    play(1);
+    expect(await startDaily()).toBe('resumed');
+    expect(g().info?.dailyKey).toBe(TODAY);
+    expect(entries()).toBe(6);
+    // the slot keeps one of the other two, the one with more work: the
+    // friend's game (1 entry) on a tie with the typed puzzle (1 digit) is the newer
+    expect(g().setAside?.info?.puzzle).toBe(EASY);
+  });
+
+  it('a link to the puzzle behind a puzzle being typed in brings that game back', async () => {
+    g().startGame(HARD, 1348, 'Hard');
+    play(3);
+    g().startCustomEntry();
+    await open(`https://sudokui.app/p/${HARD}/`);
+    expect(g().custom).toBe(false);
+    expect(g().info?.puzzle).toBe(HARD);
+    expect(entries()).toBe(3);
+    expect(g().notice).toBe('Your game on this puzzle, where you left it');
+  });
+
   it('without the published list, says so and keeps the board, rather than passing another puzzle off as the day’s', async () => {
     g().startGame(HARD, 1348, 'Hard');
     play(2);
@@ -296,7 +428,7 @@ describe('Import', () => {
   /** text pasted into Import, read as the dialog reads it (src/ui/Dialogs.tsx) */
   const paste = (text: string) => {
     const url = findUrl(text.trim());
-    const own = url && readAppLink(url);
+    const own = url && isAppAddress(url, 'localhost') && readAppLink(url);
     return own ? openAppLink(own, 'import') : null;
   };
 
@@ -344,6 +476,23 @@ describe('Import', () => {
     const r = await paste(`https://sudokui.app/p/${'.'.repeat(81)}/`);
     expect(r?.opened).toBe(false);
     expect(r?.refused).toBeTruthy();
+  });
+
+  it('a position that cannot be read is refused in the dialog alone, not again behind it', async () => {
+    g().startGame(HARD, 1348, 'Hard');
+    play(2);
+    const r = await openAppLink(readAppLink(new URL('https://sudokui.app/#s=abc'))!, 'import');
+    expect(r).toEqual({ opened: false, refused: 'The entries and marks this link shared could not be read' });
+    expect(g().notice).toBeNull();
+    expect(g().info?.puzzle).toBe(HARD);
+  });
+
+  it('reads only the app’s own addresses: sudokui.app, or the host this copy is served from', () => {
+    expect(isAppAddress(new URL('https://sudokui.app/#s=abc'), 'localhost:5173')).toBe(true);
+    expect(isAppAddress(new URL('https://www.sudokui.app/p/x'), 'localhost:5173')).toBe(true);
+    expect(isAppAddress(new URL('http://localhost:5173/daily/2026-11-01'), 'localhost:5173')).toBe(true);
+    expect(isAppAddress(new URL('https://example.org/#s=abc'), 'localhost:5173')).toBe(false);
+    expect(isAppAddress(new URL('https://notsudokui.app/p/x'), 'localhost:5173')).toBe(false);
   });
 
   it('a puzzle string sets a game under way aside, and the puzzle set aside comes back where it was left', () => {

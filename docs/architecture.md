@@ -109,52 +109,78 @@ render error with a reload and a clear-the-board recovery.
 
 ### A game is never lost
 
-The rule (November 2026): a game under way is never lost silently. *Under
-way* is `underWay` in the game store: not won, and played on (`playedOn`),
-or a puzzle being typed in that has a digit on it or was opened over a game
-under way (an empty entry board over nothing begun holds nothing to lose).
+The rule (November 2026): a game under way is never lost silently, with
+one exception still open (the one slot, below). *Under way* is `underWay`
+in the game store: not won, and played on by the player since it opened
+(a digit, a mark, a strike or a colour the board did not open with, or
+auto candidates switched); or a puzzle being typed in that has a digit on
+it or was opened over a game under way (an empty entry board over nothing
+begun holds nothing to lose). A board that opens with more than its
+givens, a shared position, a practice puzzle the app fast-forwarded, a
+pasted pencil-mark grid, keeps how it opened (`GameInfo.opening`, packed
+as a position link packs a board): what it opened with is someone else's
+work, so a friend's position nobody touched is not under way, and holds
+none of the player's work.
 
 - **Links and Import set it aside.** A link of the app's own (a share or
   challenge link, a position link `#s=`, another day's daily), opened at
   start-up, in a new tab of the same browser or in the same tab (a hash
-  change), and anything Import opens, go through `openOver`: the game
-  under way is put into **one saved slot**, `setAside` (a `GameBackup` like
-  a custom entry's, with its solved flag, practice target, the running
-  game's tally and, for a puzzle being typed in, the game Cancel brings
-  back), then the other game opens. The address is read one way
-  everywhere, `readAppLink` (src/content/share.ts), and opened one way,
-  `openAppLink` (src/ui/links.ts); the same-tab path no longer refuses.
+  change), a Learn page's Practice link (`#practice=`, at start-up, where
+  the game under way cannot be seen), and anything Import opens, go
+  through `openOver`: the game under way is put into **one saved slot**,
+  `setAside` (a `GameBackup` like a custom entry's, with its solved flag,
+  practice target, the running game's tally and, for a puzzle being typed
+  in, the game Cancel brings back), then the other game opens. The address
+  is read one way everywhere, `readAppLink` (src/content/share.ts), and
+  opened one way, `openAppLink` (src/ui/links.ts); the same-tab path no
+  longer refuses. Import reads only the app's own addresses that way
+  (sudokui.app, or the host the app is served from); another site's
+  `/p/`, `/daily/` or `#s=` is not taken for one.
 - **The note brings it back.** While the slot holds a game, a quiet line
   beside the board in the past-daily note's place says "Your game in
   progress is kept" with **Back to it**, which swaps: the kept game
-  returns, and the game on the board takes the slot if it is under way, so
-  neither is lost. The note goes with the swap (the game now in the slot
-  has its note put away) or when the player puts it away; the game stays
-  kept either way, until a newer one replaces it.
+  returns, and the game on the board takes the slot if it is under way,
+  so neither is lost, and the note then offers that one, so either game
+  is one tap away. The toast says which game is back; pressed from the
+  keyboard, the focus goes on from the board. While this note shows, the past-daily note does not (two
+  notes would push the digit keys off a small phone's screen; New still
+  has the daily). Put away (✕), the note goes but the game stays kept,
+  and **New** offers it at the top of its list ("Back to your game in
+  progress") for as long as the slot holds it.
 - **Asking for it again brings it back.** A link to the puzzle on the board
   resumes it, as a reload does; a link to the puzzle in the slot, or Import
   of it, swaps it back where it was left (a challenger's time then goes on
-  its moves). Practice is another game and never matches.
+  its moves). So does a link to the game behind a puzzle being typed in,
+  on the board or in the slot: that game comes back as Cancel would bring
+  it, and the typed puzzle, once it has a digit, goes into the slot.
+  Practice is another game and never matches.
 - **One slot, the most work kept.** When the slot already holds a game and
   another under way is replaced, the slot keeps whichever of the two holds
-  more of the player's work, `workOf`: the cells written in (a digit, a
-  mark, a strike or a colour), with those of the game a typed-in puzzle was
-  opened over; on a tie, the newer. The other is the only loss the rule
-  allows, and it is never the one with more work. It takes a player
-  juggling three games by links without going back to any.
-- **The daily.** New, then Daily puzzle (and the past-daily note's link)
-  go on with today's daily when it is on the board, solved or not, or in
-  the slot; only a daily never started, or one restarted by Restart,
-  starts fresh (`startDaily`, src/ui/links.ts). Without the published list
+  more of the player's own work, `workOf`: the cells written in since each
+  game opened, with those of the game a typed-in puzzle was opened over;
+  on a tie, the newer. A kept game whose note was put away has it shown
+  again when it stays over another. The other game is dropped, and
+  nothing says so: this is the one loss left, never of the game with more
+  of the player's own work, and it takes two games under way, one in the
+  slot and one on the board, and a third opened over them by a link,
+  Import, the Daily button or a Learn page's Practice link. How to close
+  it (keep two or three games, about 6 KB each; ask before one is dropped;
+  or at least say which was) is the owner's decision.
+- **The daily.** New, then Daily puzzle (and the past-daily note's link,
+  and the daily's own address) go on with that day's daily when it is on
+  the board, solved or not, in the slot, or behind a puzzle being typed
+  in, on the board or in the slot; never a second copy of it. Only a
+  daily never started, or one restarted by Restart, starts fresh
+  (`startDaily`, src/ui/links.ts). Without the published list
   (`loadDailies` gives null: offline before the app could keep the file, a
   network error) a day the list should cover is not made up from the date:
   the board stays as it was and the player is told; a day before the list
   began is still derived from its date.
 - **Custom entry.** Opened again over a puzzle being typed in (New, then
   Custom, or a scan from New), the backup stays the game the first entry
-  was opened over, so Cancel always brings that back. Restart there asks,
-  then clears the typed digits; Share says the puzzle has no link until
-  Check & play.
+  was opened over, so Cancel always brings that back. Restart there asks
+  "Clear the board?" (Clear, Keep typing), then clears the typed digits;
+  Share says the puzzle has no link until Check & play.
 - **Undo is not saved.** The undo history stays in memory: a reload (and
   Cancel of a custom entry) keeps the board but not the steps back. Each
   step is a full copy of the 81 cells, about 6 KB as saved, so even a short

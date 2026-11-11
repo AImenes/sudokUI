@@ -26,7 +26,7 @@ import { useT, translator, msg, rich, Translator } from '../content/i18n';
 import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
 import { parsePencilGrid, looksLikeGrid } from '../content/textGrid';
 import { puzzleFromLink, findUrl } from '../content/importLinks';
-import { readAppLink } from '../content/share';
+import { readAppLink, isAppAddress } from '../content/share';
 import { openAppLink } from './links';
 import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
 import { dailyNumber, localDateKey, dailyClosed, standingOf } from '../content/dailies';
@@ -84,14 +84,25 @@ export function useNewGame() {
   const [genState, setGenState] = useState<GenState | null>(null);
   const cancelled = useRef(false);
 
-  const start = async (req: GenRequest) => {
+  /**
+   * Starts a game of a level or a technique's practice. With `setAside`
+   * (a Learn page's Practice link, opened from outside) the game under
+   * way goes aside first, at the moment the new one lands, as for any
+   * link (src/ui/links.ts).
+   */
+  const start = async (req: GenRequest, { setAside = false } = {}) => {
     const key = req.kind === 'level' ? levelKey(req.level) : techKey(req.tech);
     // named in the player's language where it is shown (GeneratingDialog)
     const label: GenRequest = req;
+    const begin = (puzzle: string, score: number, level: Level) => {
+      const go = () => startGame(puzzle, score, level, req.kind === 'tech' ? req.tech : null);
+      if (setAside) useGame.getState().openOver(() => (go(), true));
+      else go();
+    };
     // a pooled puzzle filed before the practice ceiling existed may be above it
     const pooled = takePoolEntry(key, (e) => req.kind !== 'tech' || practisable(e, req.tech));
     if (pooled) {
-      startGame(pooled.puzzle, pooled.score, pooled.level, req.kind === 'tech' ? req.tech : null);
+      begin(pooled.puzzle, pooled.score, pooled.level);
       topUp(req);
       return true;
     }
@@ -118,7 +129,7 @@ export function useNewGame() {
       return false;
     }
     if (entry) {
-      startGame(entry.puzzle, entry.score, entry.level, req.kind === 'tech' ? req.tech : null);
+      begin(entry.puzzle, entry.score, entry.level);
       topUp(req);
       return true;
     }
@@ -175,18 +186,27 @@ export function NewGameDialog({
   onClose,
   onStart,
   onCustom,
-  onDaily
+  onDaily,
+  onKept
 }: {
   onClose: () => void;
   onStart: (level: LevelPick) => void;
   onCustom: () => void;
   onDaily: () => void;
+  /** a game under way kept aside (src/ui/links.ts): offered back here too, so it is reachable when its note is put away */
+  onKept?: () => void;
 }) {
   const t = useT();
   const loc = useLearnLocale();
   return (
     <Modal title={t('New game')} onClose={onClose}>
       <div className="level-list">
+        {onKept && (
+          <button className="level-btn" onClick={onKept}>
+            <strong>{t('Back to your game in progress')}</strong>
+            <span>{t('Kept as you left it when another game opened over it')}</span>
+          </button>
+        )}
         <button className="level-btn daily" onClick={onDaily}>
           <strong>{t('Daily puzzle')}</strong>
           <span>
@@ -925,11 +945,12 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       else onClose();
       return;
     }
-    // an address of the app's own opens as it does when the link is
-    // opened (src/ui/links.ts): a position with its entries and marks, a
-    // challenger's time, a day's daily
+    // an address of the app's own (sudokui.app, or this copy's host)
+    // opens as it does when the link is opened (src/ui/links.ts): a
+    // position with its entries and marks, a challenger's time, a day's
+    // daily; its dialog says why one cannot be opened
     const url = findUrl(text.trim());
-    const own = url && readAppLink(url);
+    const own = url && isAppAddress(url, window.location.host) && readAppLink(url);
     if (own) {
       const { opened, refused } = await openAppLink(own, 'import');
       if (opened) onClose();

@@ -100,6 +100,17 @@ export interface AppLink {
   puzzle?: { cells: string; share: boolean; vs?: number };
 }
 
+/**
+ * Whether a pasted address is the app's own (Import reads it with
+ * readAppLink): sudokui.app, or `here`, the host this copy of the app is
+ * served from (a local or preview build). Another site's /p/, /daily/ or
+ * #s= is not.
+ */
+export function isAppAddress(url: URL, here: string): boolean {
+  const site = new URL(SITE).hostname;
+  return url.hostname === site || url.hostname.endsWith(`.${site}`) || url.host === here;
+}
+
 export function readAppLink(url: { pathname: string; search: string; hash: string }, today = localDateKey()): AppLink | null {
   const params = new URLSearchParams(url.hash.replace(/^#/, ''));
   const link: AppLink = {};

@@ -46,7 +46,7 @@ import { PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { sharePath, readAppLink } from '../content/share';
 import { localDateKey, dailyPath, pastDailyOn, dayName } from '../content/dailies';
-import { startDaily, openAppLink } from './links';
+import { startDaily, openAppLink, backToKept } from './links';
 import { useDailyStats } from '../state/dailyStats';
 import { useTelemetry } from '../state/telemetry';
 import { RATING_URL, PRIVACY_URL } from '../content/staticRoutes';
@@ -182,11 +182,14 @@ function useToday(): string {
 function PastDailyNote({ onToday }: { onToday: () => void }) {
   const info = useGame((s) => s.info);
   const custom = useGame((s) => s.custom);
+  // the kept game's note stands in its place: two notes would push the
+  // digit keys off a small phone's screen (New still has the daily)
+  const kept = useGame((s) => !!s.setAside && !s.setAside.hidden);
   const hide = useGame((s) => s.hidePastDaily);
   const lang = useSettings((s) => s.lang);
   const t = useT();
   const today = useToday();
-  const day = custom ? null : pastDailyOn(info, today);
+  const day = custom || kept ? null : pastDailyOn(info, today);
   if (!day) return null;
   return (
     <div className="past-daily" role="note">
@@ -216,15 +219,24 @@ function PastDailyNote({ onToday }: { onToday: () => void }) {
 /**
  * A game under way that a link opened another over, kept (src/ui/links.ts):
  * a quiet line beside the board, in the past-daily note's place and look,
- * whose Back to it swaps the two games, so neither is lost. It goes when
- * the kept game comes back, or when it is put away; the game stays kept.
+ * whose Back to it swaps the two games, so neither is lost: the game it
+ * leaves goes aside in turn, and the note then offers that one. It goes
+ * when nothing is left to keep, or when it is put away; the game stays
+ * kept, and New still offers it.
  */
 function SetAsideNote() {
   const shown = useGame((s) => !!s.setAside && !s.setAside.hidden);
-  const back = useGame((s) => s.backToSetAside);
   const hide = useGame((s) => s.hideSetAside);
   const t = useT();
   if (!shown) return null;
+  const back = (e: React.MouseEvent) => {
+    backToKept();
+    // pressed from the keyboard (a click with no pointer behind it), the
+    // focus goes on from the board, since the note may go with the swap;
+    // the toast says which game is back. A tap leaves the focus alone, so
+    // no ring is drawn round the board
+    if (e.detail === 0) document.querySelector<SVGElement>('svg[role="application"]')?.focus();
+  };
   return (
     <div className="past-daily set-aside" role="note">
       <p>
@@ -289,6 +301,7 @@ export default function App() {
   const selection = useGame((s) => s.selection);
   const select = useGame((s) => s.select);
   const custom = useGame((s) => s.custom);
+  const kept = useGame((s) => !!s.setAside);
   const contractPrompt = useGame((s) => s.contractPrompt);
   const contractFor = useGame((s) => s.contractFor);
   const answerContract = useGame((s) => s.answerContract);
@@ -364,7 +377,9 @@ export default function App() {
     if (learn) openLearn(parseLearnParam(learn));
     const practice = techFromParam(params.get('practice') ?? '');
     if (practice && PRACTICE_TECHS.includes(practice)) {
-      start({ kind: 'tech', tech: practice });
+      // a Learn page's Practice link: from a page, the game under way
+      // cannot be seen, so it goes aside as for any link
+      start({ kind: 'tech', tech: practice }, { setAside: true });
       return;
     }
     const fallBack = () => {
@@ -823,7 +838,7 @@ export default function App() {
             >
               <span className="menu-icon">🔗</span>{t('Share')}
             </button>
-            <button onClick={() => setDialog('restart')} title={t('Reset this puzzle and the timer')}>
+            <button onClick={() => setDialog('restart')} title={custom ? t('Clear the board') : t('Reset this puzzle and the timer')}>
               <span className="menu-icon">↺</span>{t('Restart')}
             </button>
           </div>
@@ -1011,6 +1026,14 @@ export default function App() {
             setCustomError(null);
             startCustomEntry();
           }}
+          onKept={
+            kept
+              ? () => {
+                  setDialog('none');
+                  backToKept();
+                }
+              : undefined
+          }
         />
       )}
       {dialog === 'practice' && (
@@ -1117,10 +1140,10 @@ export default function App() {
                 restart();
               }}
             >
-              {t('Restart')}
+              {custom ? t('Clear||the board, while a puzzle is typed in') : t('Restart')}
             </button>
             <button className="ghost" onClick={() => setDialog('none')}>
-              {t('Keep playing')}
+              {custom ? t('Keep typing') : t('Keep playing')}
             </button>
           </div>
         </Modal>

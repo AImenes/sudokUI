@@ -403,6 +403,13 @@ export interface GameInfo {
   fromLink?: boolean;
   /** the player put away the note that this daily is another day's (src/content/dailies.ts, pastDailyOn), for this game */
   pastDailyHidden?: boolean;
+  /**
+   * The board as it opened, when it opened with more than its givens on
+   * it (a shared position, a practice puzzle fast-forwarded, a pasted
+   * grid), packed as a position link packs it (encodePosition): only what
+   * differs from it is the player's own work (underWay, workOf)
+   */
+  opening?: string;
 }
 
 /**
@@ -679,14 +686,21 @@ interface GameStore {
    * Opens a game from outside over the board: `open` puts it there and
    * says whether it did. A game under way goes aside first, into the one
    * slot (setAside), unless the game already there holds more of the
-   * player's work (workOf); returns what `open` returned.
+   * player's own work (workOf); returns what `open` returned.
    */
   openOver: (open: () => boolean) => boolean;
-  /** Back to it: the set-aside game returns, and the game on the board takes its place in the slot if it is under way */
+  /** Back to it: the set-aside game returns, and the game on the board takes its place in the slot if it is under way, its note shown, so either game is one tap away */
   backToSetAside: () => void;
-  /** the set-aside game returns (as Back to it) when it is the one asked for: a link to its puzzle, or its daily; true if it did */
-  resumeSetAside: (match: (info: GameInfo) => boolean) => boolean;
-  /** puts away the note that offers the set-aside game back; the game stays kept */
+  /**
+   * The game asked for (a link to its puzzle, its daily) comes back where
+   * it was left when it is kept: set aside (as Back to it), or behind a
+   * puzzle being typed in, on the board or set aside (as Cancel would
+   * bring it; the typed puzzle, with a digit on it, goes aside). `match`
+   * sees each kept game's info and whether it was solved; true if one
+   * came back.
+   */
+  resumeSetAside: (match: (info: GameInfo, won: boolean) => boolean) => boolean;
+  /** puts away the note that offers the set-aside game back; the game stays kept, and New still offers it */
   hideSetAside: () => void;
   select: (cells: number[], additive: boolean) => void;
   setMultiSelect: (on: boolean) => void;
@@ -985,7 +999,10 @@ export const useGame = create<GameStore>()(
             score,
             level,
             practiceTech,
-            ...(dailyKey ? { dailyKey } : {})
+            ...(dailyKey ? { dailyKey } : {}),
+            // the app's own digits, strikes and candidates are not the
+            // player's work: only what differs from them is (workOf)
+            ...(fastForward ? { opening: encodePosition(cells, true) } : {})
           },
           practiceTarget,
           practiceFound: false,
@@ -1078,11 +1095,7 @@ export const useGame = create<GameStore>()(
         const s = get();
         const kept = underWay(s) ? asideOf(s) : null;
         const opened = open();
-        if (!opened || !kept) return opened;
-        // one slot: of the game already in it and this one, the one with
-        // more of the player's work stays; a tie keeps the newer
-        const old = get().setAside;
-        if (!old || workOf(kept) >= workOf(old)) set({ setAside: kept });
+        if (opened && kept) set({ setAside: oneSlot(kept, get().setAside) });
         return opened;
       },
 
@@ -1090,56 +1103,41 @@ export const useGame = create<GameStore>()(
         const s = get();
         const back = s.setAside;
         if (!back) return;
-        // the game on the board goes aside in its place, its note put
-        // away: the slot's game has come back
-        const kept = underWay(s) ? { ...asideOf(s), hidden: true } : null;
-        useStats.setState({ game: back.tally ?? { unaided: {}, hinted: {}, errors: 0, beyond: 0 } });
-        // the board says whether the game was begun, as after a reload
-        const g = back.custom && back.customBackup ? back.customBackup : back;
-        set({
-          info: back.info,
-          cells: cloneCells(back.cells),
-          custom: !!back.custom,
-          customBackup: back.custom ? (back.customBackup ?? null) : null,
-          setAside: kept,
-          autoCandidates: back.autoCandidates,
-          elapsedBefore: back.elapsedBefore,
-          startedAt: Date.now(),
-          won: back.won,
-          paused: back.won,
-          solved: !!back.solved || back.won,
-          counted: !!g.info && !useSettings.getState().dontCount && playedOn(g),
-          assisted: back.assisted ?? false,
-          markContract: back.markContract ?? 'unknown',
-          practiceTarget: back.practiceTarget ?? null,
-          practiceFound: !!back.practiceFound,
-          selection: [],
-          armedDigit: null,
-          history: [],
-          future: [],
-          hint: null,
-          hintStage: 'hidden',
-          contractPrompt: false,
-          errors: [],
-          proofs: [],
-          revertIndex: null,
-          chain: null,
-          chainNote: '',
-          chainGoal: null,
-          chainHandover: null,
-          scanPreview: null,
-          scanDoubts: [],
-          notice: null,
-          // a puzzle being typed in takes digits, as when it was opened
-          ...(back.custom ? { mode: 'digit' as EntryMode } : {})
-        });
+        // the game on the board goes aside in its place, and the note
+        // offers it back: either game is one tap away
+        const kept = underWay(s) ? asideOf(s) : null;
+        useStats.setState({ game: back.tally ?? emptyTally() });
+        set({ ...boardOf(back), setAside: kept });
       },
 
       resumeSetAside: (match) => {
-        const back = get().setAside;
-        if (!back?.info || back.custom || !match(back.info)) return false;
-        get().backToSetAside();
-        return true;
+        const s = get();
+        // behind the puzzle being typed in on the board: back as Cancel
+        // brings it, and the typed puzzle, once it has a digit, goes aside
+        const behind = s.custom ? s.customBackup : null;
+        if (behind?.info && match(behind.info, behind.won)) {
+          const entry = s.cells.some((c) => c.value) ? { ...asideOf(s), customBackup: null } : null;
+          get().cancelCustomEntry();
+          set({ setAside: oneSlot(entry, get().setAside) });
+          return true;
+        }
+        const back = s.setAside;
+        if (back?.info && !back.custom && match(back.info, back.won)) {
+          get().backToSetAside();
+          return true;
+        }
+        // behind a puzzle being typed in that was set aside: that game
+        // comes back, and the slot keeps the typed puzzle (once it has a
+        // digit) or the game on the board, whichever holds more work
+        const aside = back?.custom ? back.customBackup : null;
+        if (back && aside?.info && match(aside.info, aside.won)) {
+          const kept = underWay(s) ? asideOf(s) : null;
+          const entry = back.cells.some((c) => c.value) ? { ...back, customBackup: null } : null;
+          useStats.setState({ game: back.tally ?? emptyTally() });
+          set({ ...boardOf(aside), setAside: oneSlot(kept, entry) });
+          return true;
+        }
+        return false;
       },
 
       hideSetAside: () => set((s) => (s.setAside ? { setAside: { ...s.setAside, hidden: true } } : {})),
@@ -2386,8 +2384,9 @@ export const useGame = create<GameStore>()(
           return {
             cells,
             // digits already placed mean the game starts part-way through,
-            // so its time compares with nothing (as a position link's does)
-            info: placed && s.info ? { ...s.info, fromPosition: true } : s.info,
+            // so its time compares with nothing (as a position link's does);
+            // what it opened with was pasted, not played here (workOf)
+            info: s.info && { ...s.info, ...(placed ? { fromPosition: true } : {}), opening: encodePosition(cells, false) },
             ...(position.cands
               ? {
                   markContract: 'exhaustive' as MarkContract,
@@ -2405,14 +2404,15 @@ export const useGame = create<GameStore>()(
       importPuzzle: (puzzle, site) => {
         const v = validatePuzzle(puzzle);
         if (!v.ok) return v.reason;
-        // the puzzle already under way, on the board or set aside, goes
-        // on where it was left (Restart starts it again), unless that is
-        // its practice, which is another game; any other opens with a game
-        // under way set aside first, as for a link
+        // the puzzle already under way, on the board, set aside or behind
+        // a puzzle being typed in, goes on where it was left (Restart
+        // starts it again), unless that is its practice, which is another
+        // game; any other opens with a game under way set aside first, as
+        // for a link
         const p = puzzle.replace(/0/g, '.');
         const s = get();
         const same = (info: GameInfo | null) => info?.puzzle === p && !info.practiceTech;
-        if ((same(s.info) && !s.custom && !s.won) || get().resumeSetAside(same)) {
+        if ((same(s.info) && !s.custom && !s.won) || get().resumeSetAside((info, won) => same(info) && !won)) {
           const t = translator();
           set({ notice: t('Your game on this puzzle, where you left it') });
           return null;
@@ -2437,18 +2437,22 @@ export const useGame = create<GameStore>()(
         // the shared progress: entries, marks, exclusions and colours
         get().startGame(givens, v.score, v.level);
         const t = translator();
-        set((s) => ({
-          // a position link is someone's share, counted as one when it
-          // opens with moves on it, in this same change
-          info: s.info && { ...s.info, fromPosition: true, fromLink: true },
+        set((s) => {
           // with auto candidates off, a struck true digit the board cannot
           // show (a link made before strikes went with auto off) goes
-          cells: !decoded.autoCandidates && s.info ? dropHiddenSlips(decoded.cells, s.info.solution) : decoded.cells,
-          autoCandidates: decoded.autoCandidates,
-          // auto candidates count as help, whoever switched them on
-          ...(decoded.autoCandidates ? { assisted: true } : {}),
-          notice: t('Shared position loaded, with entries, marks and colours')
-        }));
+          const cells = !decoded.autoCandidates && s.info ? dropHiddenSlips(decoded.cells, s.info.solution) : decoded.cells;
+          return {
+            // a position link is someone's share, counted as one when it
+            // opens with moves on it, in this same change; what it opened
+            // with is the sender's work, not the player's (workOf)
+            info: s.info && { ...s.info, fromPosition: true, fromLink: true, opening: encodePosition(cells, decoded.autoCandidates) },
+            cells,
+            autoCandidates: decoded.autoCandidates,
+            // auto candidates count as help, whoever switched them on
+            ...(decoded.autoCandidates ? { assisted: true } : {}),
+            notice: t('Shared position loaded, with entries, marks and colours')
+          };
+        });
         return true;
       },
 
@@ -2605,20 +2609,102 @@ export function playedOn(s: Pick<GameStore, 'cells' | 'autoCandidates'>): boolea
 /**
  * A game under way, which a link or Import never replaces without putting
  * it aside first (docs/architecture.md, "A game is never lost"): not won,
- * and played on (playedOn); or a puzzle being typed in, once it has a
- * digit on it or the game it was opened over is under way. An empty entry
- * board over nothing begun holds nothing to lose.
+ * and played on by the player since it opened (a digit, a mark, a strike
+ * or a colour the board did not open with, or auto candidates switched);
+ * or a puzzle being typed in, once it has a digit on it or the game it was
+ * opened over is under way. A shared position or a fast-forwarded practice
+ * nobody has touched, or an empty entry board over nothing begun, holds
+ * nothing of the player's to lose.
  */
 export function underWay(s: { info: GameInfo | null; cells: CellState[]; autoCandidates: boolean; won: boolean; custom?: boolean; customBackup?: GameBackup | null }): boolean {
   if (s.won) return false;
   if (s.custom) return s.cells.some((c) => c.value) || (!!s.customBackup && underWay({ ...s.customBackup, custom: false }));
-  return !!s.info && playedOn(s);
+  if (!s.info) return false;
+  const opening = openingOf(s.info);
+  return ownCells(opening, s.cells) > 0 || s.autoCandidates !== (opening?.autoCandidates ?? false);
 }
 
-/** how much of the player's work a game holds: the cells written in (a digit, a mark, a strike or a colour), with those of the game a puzzle being typed in was opened over */
-export function workOf(g: { cells: CellState[]; custom?: boolean; customBackup?: GameBackup | null }): number {
-  const written = (cells: CellState[]) => cells.filter((c) => (!c.given && c.value) || c.corner || c.center || c.excluded || c.colors.length).length;
-  return written(g.cells) + (g.custom && g.customBackup ? written(g.customBackup.cells) : 0);
+/** how much of the player's own work a game holds: the cells written in since it opened (ownCells), with those of the game a puzzle being typed in was opened over */
+export function workOf(g: { info: GameInfo | null; cells: CellState[]; custom?: boolean; customBackup?: GameBackup | null }): number {
+  const behind = g.custom && g.customBackup ? ownCells(openingOf(g.customBackup.info), g.customBackup.cells) : 0;
+  return ownCells(openingOf(g.info), g.cells) + behind;
+}
+
+/** the board a game opened with, when that was more than its givens (GameInfo.opening) */
+function openingOf(info: GameInfo | null | undefined) {
+  return info?.opening ? decodePosition(info.opening) : null;
+}
+
+/**
+ * The cells the player has written in: a digit, a mark, a strike or a
+ * colour; on a board that opened with some of these (a shared position, a
+ * fast-forwarded practice), only the cells that differ from how it opened,
+ * compared as a position link carries a cell (its digit and colours, and
+ * an open cell's marks).
+ */
+function ownCells(opening: { cells: CellState[] } | null, cells: CellState[]): number {
+  const sameColours = (a: number[], b: number[]) => a.length === b.length && a.every((k) => b.includes(k));
+  return cells.filter((c, i) => {
+    const o = opening?.cells[i];
+    if (!o) return (!c.given && c.value) || c.corner || c.center || c.excluded || c.colors.length;
+    return c.value !== o.value || !sameColours(c.colors, o.colors) || (!c.value && (c.corner !== o.corner || c.center !== o.center || c.excluded !== o.excluded));
+  }).length;
+}
+
+/**
+ * One slot: of the game going aside and the one already there, the one
+ * with more of the player's own work stays, the newer on a tie. The one
+ * that stays has its note shown, so a kept game never stays out of sight
+ * while another is dropped.
+ */
+function oneSlot(kept: SetAside | null, old: SetAside | null): SetAside | null {
+  if (!kept) return old;
+  if (!old || workOf(kept) >= workOf(old)) return kept;
+  return old.hidden ? { ...old, hidden: false } : old;
+}
+
+const emptyTally = (): GameTally => ({ unaided: {}, hinted: {}, errors: 0, beyond: 0 });
+
+/** the board a kept game comes back to (Back to it, or a link asking for it): where it was left, as after a reload */
+function boardOf(back: SetAside): Partial<GameStore> {
+  // the board says whether the game was begun, as after a reload
+  const g = back.custom && back.customBackup ? back.customBackup : back;
+  return {
+    info: back.info,
+    cells: cloneCells(back.cells),
+    custom: !!back.custom,
+    customBackup: back.custom ? (back.customBackup ?? null) : null,
+    autoCandidates: back.autoCandidates,
+    elapsedBefore: back.elapsedBefore,
+    startedAt: Date.now(),
+    won: back.won,
+    paused: back.won,
+    solved: !!back.solved || back.won,
+    counted: !!g.info && !useSettings.getState().dontCount && playedOn(g),
+    assisted: back.assisted ?? false,
+    markContract: back.markContract ?? 'unknown',
+    practiceTarget: back.practiceTarget ?? null,
+    practiceFound: !!back.practiceFound,
+    selection: [],
+    armedDigit: null,
+    history: [],
+    future: [],
+    hint: null,
+    hintStage: 'hidden',
+    contractPrompt: false,
+    errors: [],
+    proofs: [],
+    revertIndex: null,
+    chain: null,
+    chainNote: '',
+    chainGoal: null,
+    chainHandover: null,
+    scanPreview: null,
+    scanDoubts: [],
+    notice: null,
+    // a puzzle being typed in takes digits, as when it was opened
+    ...(back.custom ? { mode: 'digit' as EntryMode } : {})
+  };
 }
 
 /** the game on the board, as the set-aside slot keeps it: with the chain trainer open, as Done (and a reload) would leave it */

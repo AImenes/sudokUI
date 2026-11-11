@@ -5,9 +5,9 @@
 // way is never lost silently (docs/architecture.md, "A game is never
 // lost"). It goes aside before another opens over it (gameStore.ts,
 // openOver), and the note beside the board offers it back; a link or the
-// Daily button that asks for the very game on the board, or the one set
-// aside, brings it back where it was left. Only Restart starts a game
-// under way again.
+// Daily button that asks for the very game on the board, the one set
+// aside, or the one behind a puzzle being typed in, brings it back where
+// it was left. Only Restart starts a game under way again.
 import { useGame, validatePuzzle } from '../state/gameStore';
 import type { PositionRefusal } from '../state/gameStore';
 import { dailyPuzzle } from '../engine/daily';
@@ -63,22 +63,21 @@ export type DailyOpened = 'resumed' | 'started' | 'unavailable';
  * The daily for a day, today's unless a date is given: the published
  * puzzle (src/content/dailies.ts), which has global statistics; or, for a
  * day the published list does not cover, the one derived from the date
- * (src/engine/daily.ts), which has none. The day's daily on the board, or
- * set aside, is the one that opens, where it was left, solved or not: only
- * Restart starts it again. Without the published list (offline before the
- * app could keep it, a network error) no other board is passed off as the
- * day's: the board stays as it is, and the player is told.
+ * (src/engine/daily.ts), which has none. The day's daily on the board, set
+ * aside, or behind a puzzle being typed in, is the one that opens, where
+ * it was left, solved or not: only Restart starts it again. Without the
+ * published list (offline before the app could keep it, a network error)
+ * no other board is passed off as the day's: the board stays as it is, and
+ * the player is told.
  */
 export async function startDaily(date = localDateKey()): Promise<DailyOpened> {
   const t = translator();
   const today = date === localDateKey();
   const leftIt = () => (today ? t('Today’s daily, where you left it') : t('The daily for {date}, where you left it', { date }));
-  if (dailyOnBoard(date)) {
+  // on the board, set aside, or behind a puzzle being typed in (on the
+  // board or set aside): that daily, never a second copy of it
+  if (dailyOnBoard(date) || useGame.getState().resumeSetAside((info) => info.dailyKey === date)) {
     useGame.setState({ notice: useGame.getState().won ? t('You have solved this daily. Restart plays it again') : leftIt() });
-    return 'resumed';
-  }
-  if (useGame.getState().resumeSetAside((info) => info.dailyKey === date)) {
-    useGame.setState({ notice: leftIt() });
     return 'resumed';
   }
   const list = await loadDailies();
@@ -177,11 +176,12 @@ export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOp
       positionRefused();
       return { opened: true };
     }
-    // the puzzle set aside, asked for again: it comes back where it was
-    // left, under way, so a challenger's time goes on its moves
-    if (g.resumeSetAside((info) => info.puzzle === cells && !info.practiceTech)) {
+    // the puzzle set aside, or behind a puzzle being typed in, asked for
+    // again: it comes back where it was left, and a challenger's time
+    // goes on its moves (on the same terms as the board's, above)
+    if (g.resumeSetAside((info, won) => info.puzzle === cells && !info.practiceTech && (from !== 'import' || !won))) {
       useGame.setState({ notice: t('Your game on this puzzle, where you left it') });
-      if (vs) challenge(vs);
+      if (vs) challengeCurrent(vs);
       positionRefused();
       return { opened: true };
     }
@@ -201,11 +201,32 @@ export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOp
       return { opened: true };
     }
     // a share page promised a puzzle the app cannot play (no solution,
-    // several, too few clues)
-    positionRefused();
+    // several, too few clues); Import says why in its own dialog
+    if (from !== 'import') positionRefused();
     return { opened: false, refused: v.reason };
   }
   // a position alone, whose puzzle came with it and could not be read
-  positionRefused();
+  if (from !== 'import') positionRefused();
   return { opened: false, ...(refusal ? { refused: refusal } : {}) };
+}
+
+/**
+ * Back to it (the note beside the board, or New): the kept game returns
+ * where it was left, the game on the board takes its place if it is under
+ * way, and the player is told which game is back.
+ */
+export function backToKept() {
+  const t = translator();
+  useGame.getState().backToSetAside();
+  const g = useGame.getState();
+  const day = g.info?.dailyKey;
+  useGame.setState({
+    notice: g.custom
+      ? t('The puzzle you were typing in, where you left it')
+      : day === localDateKey()
+        ? t('Today’s daily, where you left it')
+        : day
+          ? t('The daily for {date}, where you left it', { date: day })
+          : t('Your game on this puzzle, where you left it')
+  });
 }
