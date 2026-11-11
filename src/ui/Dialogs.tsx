@@ -786,12 +786,22 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     if (camera && video.current) video.current.srcObject = camera;
   }, [camera]);
+  // the photo reader is a file of its own, fetched when first used: one a
+  // deploy has taken, or a first visit gone offline, cannot be had (the
+  // import then resolves to nothing, src/main.tsx), and the update bar
+  // offers the reload. Null then, and the dialog says so in words
+  const reader = async () => {
+    const mod = await import('../scan/scanner').catch(() => undefined);
+    if (!mod) setScanError(t('The photo reader could not be loaded. Reload to continue; your game is saved.'));
+    return mod ?? null;
+  };
   const scan = async (blob: Blob) => {
     setBusy(true);
     setScanError('');
     try {
-      const { scanImage } = await import('../scan/scanner');
-      const r = await scanImage(blob);
+      const mod = await reader();
+      if (!mod) return;
+      const r = await mod.scanImage(blob);
       const found = r.digits.filter(Boolean).length;
       if (found < 17) {
         const read = r.foundGrid
@@ -827,8 +837,14 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
   };
   const snap = async () => {
     if (!video.current) return;
-    const { captureFrame } = await import('../scan/scanner');
-    await scan(await captureFrame(video.current));
+    setScanError('');
+    try {
+      const mod = await reader();
+      if (!mod) return;
+      await scan(await mod.captureFrame(video.current));
+    } catch {
+      setScanError(t('The photo could not be read.'));
+    }
   };
   return (
     <>

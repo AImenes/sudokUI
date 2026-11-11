@@ -381,6 +381,7 @@ const ui: Dictionary = {
   "Only {n} digits could be read, and no grid was found.": "Bare {n} tall kunne leses, og ikke noe brett ble funnet.",
   "Printed puzzles only; fill the frame with the grid, in good light, and try again.": "Bare trykte oppgaver; fyll bildet med brettet, i godt lys, og prøv igjen.",
   "The photo could not be read.": "Bildet kunne ikke leses.",
+  "The photo reader could not be loaded. Reload to continue; your game is saved.": "Bildeleseren kunne ikke lastes inn. Last inn på nytt for å fortsette; spillet ditt er lagret.",
   "The camera could not be opened. Take a photo with the camera app and choose the file instead.": "Kameraet kunne ikke åpnes. Ta et bilde med kameraappen, og velg heller filen.",
   "Printed puzzles: a newspaper, a book, a screen. Fill the frame with the grid; a tilt, a turn or a mirror image is read anyway. The digits land on the board with the scanner's doubts in red, for you to check before playing.": "Trykte oppgaver: en avis, en bok, en skjerm. Fyll bildet med brettet; skjevt, rotert eller speilvendt leses det likevel. Tallene havner på brettet, og det skanneren var usikker på, vises i rødt, så du kan sjekke det før du spiller.",
   "Reading…": "Leser…",

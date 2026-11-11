@@ -190,7 +190,9 @@ included, then asks a waiting worker to take over and reloads once it has,
 or reloads at once when none is waiting. The guide, the one part loaded
 with `React.lazy`, has a stand-in for a file that cannot be had
 ([lazyPart.ts](../src/ui/lazyPart.ts)): the dialog closes and the bar
-offers the reload, with the game still on the board. The error boundary in
+offers the reload, with the game still on the board. The photo reader
+(`src/scan/`), fetched when Import first scans a photo, says the same in
+the dialog's own words when its file cannot be had. The error boundary in
 `src/ui/ErrorBoundary.tsx` catches a render error with a reload and a
 clear-the-board recovery. Offline, the precache holds the app, its lazy
 files, Nutella (`public/poodle.png`) and the privacy page in its three
@@ -291,7 +293,10 @@ none of the player's work.
   that game's solve (a solved game put back in play by Undo or a Steps
   jump) and its practice target, so wherever it comes back from (Cancel,
   a link asking for it, the slot, the error screen) it is still the same
-  solve, recorded once. Restart there asks
+  solve, recorded once. Check & play puts that game, if under way, into
+  the slot as a link would (`openOver`), by the one-slot rule and with
+  its toast when one must go, then starts the typed puzzle; the game's
+  own puzzle typed in again brings it back where it was left instead. Restart there asks
   "Clear the board?" (Clear, Keep typing), then clears the typed digits;
   Share says the puzzle has no link until Check & play.
 - **The error screen.** Its Clear the board and reload

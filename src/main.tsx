@@ -61,7 +61,8 @@ useAppStatus.getState().setReload(() => {
 // the tab was open, or a first visit went offline before a service worker
 // controlled it): say so and offer the reload. The import then resolves to
 // nothing, which every loader takes as a failure (src/ui/lazyPart.ts for
-// the guide), instead of a broken dialog
+// the guide, the photo reader in src/ui/Dialogs.tsx, ScanControls),
+// instead of a broken dialog
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault();
   useAppStatus.getState().setUpdateReady('chunk');

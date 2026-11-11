@@ -1452,10 +1452,26 @@ export const useGame = create<GameStore>()(
         const puzzle = s.cells.map((c) => (c.value ? String(c.value) : '.')).join('');
         const v = validatePuzzle(puzzle);
         if (!v.ok) return v.reason;
+        const t = translator();
+        // the game the puzzle was typed over, if under way, is never lost
+        // silently: it goes into the slot as a link would put it there
+        // (openOver), its tally with it; typed in again, its own puzzle
+        // brings it back where it was left, as its link would
+        const behind = s.customBackup;
+        const kept = behind?.info && underWay({ ...behind, custom: false }) ? { ...behind, tally: useStats.getState().game } : null;
+        if (kept && kept.info!.puzzle === puzzle && !kept.info!.dailyKey && !kept.info!.practiceTech) {
+          get().cancelCustomEntry();
+          set({ notice: t('Your game on this puzzle, where you left it') });
+          return null;
+        }
         set({ custom: false, customBackup: null, scanPreview: null, scanDoubts: [] });
         get().startGame(puzzle, v.score, v.level);
-        const t = translator();
-        set({ notice: t('Puzzle checked: unique solution, HoDoKu rating {score} ({level})', { score: v.score, level: t.level(v.level) }) });
+        const { slot, dropped } = oneSlot(kept, get().setAside);
+        set({
+          setAside: slot,
+          notice: t('Puzzle checked: unique solution, HoDoKu rating {score} ({level})', { score: v.score, level: t.level(v.level) })
+        });
+        if (dropped) tellLetGo([dropped], slot!);
         return null;
       },
 

@@ -381,6 +381,7 @@ const ui: Dictionary = {
   "Only {n} digits could be read, and no grid was found.": "Solo se han podido leer {n} números, y no se ha encontrado ninguna cuadrícula.",
   "Printed puzzles only; fill the frame with the grid, in good light, and try again.": "Solo sudokus impresos; encuadra la cuadrícula para que llene la imagen, con buena luz, y vuelve a intentarlo.",
   "The photo could not be read.": "No se ha podido leer la foto.",
+  "The photo reader could not be loaded. Reload to continue; your game is saved.": "No se ha podido cargar el lector de fotos. Recarga para continuar; tu partida está guardada.",
   "The camera could not be opened. Take a photo with the camera app and choose the file instead.": "No se ha podido abrir la cámara. Haz una foto con la aplicación de la cámara y elige el archivo en su lugar.",
   "Printed puzzles: a newspaper, a book, a screen. Fill the frame with the grid; a tilt, a turn or a mirror image is read anyway. The digits land on the board with the scanner's doubts in red, for you to check before playing.": "Sudokus impresos: un periódico, un libro, una pantalla. Encuadra la cuadrícula para que llene la imagen; aunque esté inclinada, girada o reflejada, se lee igualmente. Los números aparecen en el tablero con las dudas del escáner en rojo, para que las revises antes de jugar.",
   "Reading…": "Leyendo…",

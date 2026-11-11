@@ -499,6 +499,46 @@ describe('custom entry', () => {
     expect(g().info?.puzzle).toBe(HARD);
     expect(entries()).toBe(2);
   });
+
+  /** a puzzle's givens typed onto the entry board */
+  const typeIn = (puzzle: string) =>
+    [...puzzle].forEach((ch, i) => {
+      if (ch === '.') return;
+      g().select([i], false);
+      g().input(Number(ch));
+    });
+
+  it('Check & play keeps the game it was typed over in the slot, as a link would, and its own puzzle typed in brings it back', () => {
+    g().startGame(HARD, 1348, 'Hard');
+    play(3);
+    g().startCustomEntry();
+    typeIn(EASY);
+    expect(g().finishCustomEntry()).toBeNull();
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(g().setAside).toMatchObject({ info: { puzzle: HARD } });
+    expect(entries(g().setAside!.cells)).toBe(3);
+    expect(g().setAside?.hidden).toBeFalsy();
+    expect(g().notice).toMatch(/^Puzzle checked: unique solution/);
+    expect(g().letGo).toBeNull();
+    backToKept();
+    expect(g().info?.puzzle).toBe(HARD);
+    expect(entries()).toBe(3);
+    // the same puzzle typed in again: that game, where it was left
+    g().startCustomEntry();
+    typeIn(HARD);
+    expect(g().finishCustomEntry()).toBeNull();
+    expect(g().custom).toBe(false);
+    expect(g().info?.puzzle).toBe(HARD);
+    expect(entries()).toBe(3);
+    expect(g().notice).toBe('Your game on this puzzle, where you left it');
+    // a game not under way behind it is no loss: nothing is kept
+    useGame.setState({ setAside: null });
+    g().startGame(HARD, 1348, 'Hard');
+    g().startCustomEntry();
+    typeIn(EASY);
+    expect(g().finishCustomEntry()).toBeNull();
+    expect(g().setAside).toBeNull();
+  });
 });
 
 describe('the error screen', () => {

@@ -3299,6 +3299,10 @@ kbd {
   z-index: 60;
   animation: toast-in 0.25s ease-out;
   pointer-events: none;
+  /* as wide as its words need, up to the cap: centred by translate, its
+     width would otherwise shrink to the room right of the middle, half
+     the screen, and a long line stand as a narrow column on a phone */
+  width: max-content;
   max-width: min(90vw, 480px);
   text-align: center;
   line-height: 1.4;
