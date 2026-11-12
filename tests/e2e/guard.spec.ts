@@ -293,6 +293,40 @@ for (const [name, use] of [
   });
 }
 
+test.describe('Back and Forward, phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('three games in one tab, then Back twice: the game set aside comes back, and a puzzle nobody played on opens nothing over it, the daily keeping its digit', async ({ page }) => {
+    await page.addInitScript(welcomed);
+    const today = localDateKey();
+    // a friend's puzzle, untouched; a Hard one over it, two digits; today's daily over that, one
+    await page.goto(`/p/${EASY}/`);
+    await expect.poll(async () => (await saved(page)).puzzle).toBe(EASY);
+    await page.evaluate((p) => (location.hash = `#p=${p}`), HARD);
+    await expect.poll(async () => (await saved(page)).puzzle).toBe(HARD);
+    await enter(page, true, 2);
+    await page.evaluate(() => (location.hash = '#daily'));
+    await expect.poll(async () => (await saved(page)).dailyKey).toBe(today);
+    await enter(page, true, 1);
+    await expect.poll(() => saved(page)).toMatchObject({ dailyKey: today, entries: 1, aside: { puzzle: HARD, entries: 2 } });
+    // Back: the Hard game comes back, the daily goes into the slot
+    await page.goBack();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: HARD, entries: 2, aside: { dailyKey: today, entries: 1 } });
+    // Back again, to the friend's puzzle nobody played on and nobody kept:
+    // nothing opens over the Hard game, the daily stays kept, and the
+    // address is the board's again
+    await page.goBack();
+    await page.waitForTimeout(600);
+    expect(await saved(page)).toMatchObject({ puzzle: HARD, entries: 2, aside: { dailyKey: today, entries: 1 } });
+    expect(page.url()).toContain(HARD);
+    await expect(page.locator('.toast')).not.toContainText('is gone');
+    // Forward to the daily brings it back with its digit, never a fresh one
+    await page.goForward();
+    await page.goForward();
+    await expect.poll(() => saved(page)).toMatchObject({ dailyKey: today, entries: 1, aside: { puzzle: HARD, entries: 2 } });
+  });
+});
+
 test.describe('links and Import, laptop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 

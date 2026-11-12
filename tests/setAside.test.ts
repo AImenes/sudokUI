@@ -39,7 +39,7 @@ const { readAppLink, isAppAddress } = await import('../src/content/share');
 const { findUrl } = await import('../src/content/importLinks');
 const { localDateKey, findDaily, dailyNumber } = await import('../src/content/dailies');
 const real = await vi.importActual<typeof import('../src/content/dailies')>('../src/content/dailies');
-const { startDaily, openAppLink, backToKept } = await import('../src/ui/links');
+const { startDaily, openAppLink, backToKept, holds } = await import('../src/ui/links');
 const { boardCleared } = await import('../src/ui/ErrorBoundary');
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
@@ -349,6 +349,47 @@ describe('a link opened over a game under way', () => {
     g().select([0], false);
     g().input(5);
     expect(underWay(g())).toBe(true);
+  });
+});
+
+describe('Back and Forward', () => {
+  it('bring back only a game this page holds: on the board, in the slot, or behind a puzzle being typed in', async () => {
+    await open(`https://sudokui.app/p/${EASY}/`);
+    await open(`https://sudokui.app/#p=${HARD}`, 'tab');
+    play(2);
+    await startDaily();
+    play(1);
+    // the daily on the board, the Hard game in the slot; the friend's puzzle, never played on, is held nowhere
+    expect(holds(link(`https://sudokui.app/daily/${TODAY}`))).toBe(true);
+    expect(holds(link(`https://sudokui.app/p/${HARD}/`))).toBe(true);
+    expect(holds(link(`https://sudokui.app/p/${EASY}/`))).toBe(false);
+    expect(holds(link(`https://sudokui.app/daily/${OTHER_DAY}`))).toBe(false);
+    // behind a puzzle being typed in, the daily is still held
+    g().startCustomEntry();
+    expect(holds(link(`https://sudokui.app/daily/${TODAY}`))).toBe(true);
+    expect(holds(link(`https://sudokui.app/p/${HARD}/`))).toBe(true);
+  });
+});
+
+describe('the toast over a game that opens', () => {
+  it('a game that opens with no notice of its own leaves no notice, nor a let-go line, standing over it from the game before', async () => {
+    g().startGame(HARD, 1348, 'Hard');
+    play(2);
+    await open(`https://sudokui.app/#p=${EASY}`, 'tab');
+    play(1);
+    // a third game over the two: one goes, and the toast says which
+    await startDaily();
+    expect(g().letGo).toContain('is gone');
+    expect(g().notice).not.toBeNull();
+    // a fresh game from New: nothing said of the daily stays over it
+    g().startGame(HARD, 1348, 'Hard');
+    expect(g().notice).toBeNull();
+    expect(g().letGo).toBeNull();
+    // Back to it says which game is back, and nothing else
+    play(1);
+    backToKept();
+    expect(g().letGo).toBeNull();
+    expect(g().notice).not.toBeNull();
   });
 });
 

@@ -231,6 +231,30 @@ function whereLeft(info: GameInfo | null | undefined): string {
 }
 
 /**
+ * Whether the game an address names is one this page holds: on the board,
+ * in the slot, or behind a puzzle being typed in (on the board or in the
+ * slot); a day's daily by its date, any other game by its puzzle (a
+ * practice of it too, as the address bar names a practice by its puzzle).
+ * Back and Forward bring back only such a game (src/ui/App.tsx).
+ */
+export function holds(link: AppLink): boolean {
+  const g = useGame.getState();
+  const games = [
+    g.custom ? g.customBackup?.info : g.info,
+    g.setAside?.custom ? g.setAside.customBackup?.info : g.setAside?.info
+  ].filter((info): info is GameInfo => !!info);
+  if (link.daily) {
+    const { date } = link.daily;
+    return games.some((info) => info.dailyKey === date);
+  }
+  if (link.puzzle) {
+    const { cells } = link.puzzle;
+    return games.some((info) => info.puzzle === cells);
+  }
+  return false;
+}
+
+/**
  * Back to it (the note beside the board, or New): the kept game returns
  * where it was left, the game on the board takes its place if it is under
  * way, and the player is told which game is back.

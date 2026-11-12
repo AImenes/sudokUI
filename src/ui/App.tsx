@@ -62,7 +62,7 @@ import { PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { sharePath, readAppLink } from '../content/share';
 import { localDateKey, dailyPath, pastDailyOn, dayName } from '../content/dailies';
-import { startDaily, openAppLink, backToKept } from './links';
+import { startDaily, openAppLink, backToKept, holds } from './links';
 import { useDailyStats } from '../state/dailyStats';
 import { useTelemetry } from '../state/telemetry';
 import { RATING_URL, PRIVACY_URL } from '../content/staticRoutes';
@@ -186,6 +186,25 @@ function UpdateBar() {
     );
   }
   return null;
+}
+
+/**
+ * The address of the game on the board, as the address bar shows it: a
+ * published daily's day, any other game's share address in the app's
+ * language, without the band and the score while the rating is hidden and
+ * the game is on; a puzzle being typed in, which has no address yet, the
+ * home page. Null with no game.
+ */
+function boardAddress(): string | null {
+  const g = useGame.getState();
+  const { lang, hideRating } = useSettings.getState();
+  if (g.custom) return langRoot(lang);
+  const info = g.info;
+  if (!info?.puzzle) return null;
+  const rated = !(hideRating && !g.won);
+  return info.dailyNo && info.dailyKey
+    ? dailyPath(lang, info.dailyKey)
+    : sharePath({ lang, puzzle: info.puzzle, level: rated ? info.level : undefined, score: rated ? info.score : undefined });
 }
 
 /** a line as a sentence of its own: ended with a full stop, unless it ends with one (or a question mark, an exclamation mark, an ellipsis) already */
@@ -500,11 +519,13 @@ export default function App() {
 
   // a link opened in this tab (its hash changed): opened as at start-up,
   // a game under way put aside. The path is the address bar's own, the
-  // puzzle on the board, so only the hash is read
-  // Back and Forward to an address of the app's own (popstate) open it the
-  // same way, so the board is again the game the address bar names: a
-  // game set aside by a link in this tab swaps back. A hash link is the
-  // hashchange listener's own
+  // puzzle on the board, so only the hash is read.
+  // Back and Forward (popstate) bring back a game this page holds, as a link
+  // to it does: the game set aside by a link in this tab swaps back, so the
+  // board is again the game the address bar names. An address that names
+  // no game held here (one let go, one never played on and replaced) opens
+  // nothing over the board: the address goes back to the board's game. A
+  // hash link is the hashchange listener's own
   useEffect(() => {
     // (a view acts on nothing: src/state/play.ts)
     const onHash = () => {
@@ -516,7 +537,14 @@ export default function App() {
       if (!play.acts()) return;
       if (readAppLink({ pathname: '/', search: '', hash: window.location.hash })) return;
       const link = readAppLink(window.location);
-      if (link) void openAppLink(link, 'tab');
+      if (link && holds(link)) return void openAppLink(link, 'tab');
+      const back = boardAddress();
+      if (!back) return;
+      try {
+        window.history.replaceState(null, '', back);
+      } catch {
+        /* an origin that allows no path of its own: the address stays */
+      }
     };
     window.addEventListener('hashchange', onHash);
     window.addEventListener('popstate', onPop);
@@ -560,14 +588,9 @@ export default function App() {
       return;
     }
     if (!info?.puzzle) return;
-    const rated = !(hideRating && !won);
     try {
       // a published daily's address is its day (src/content/dailies.ts)
-      const path =
-        info.dailyNo && info.dailyKey
-          ? dailyPath(lang, info.dailyKey)
-          : sharePath({ lang, puzzle: info.puzzle, level: rated ? info.level : undefined, score: rated ? info.score : undefined });
-      window.history.replaceState(null, '', path);
+      window.history.replaceState(null, '', boardAddress()!);
     } catch {
       // an origin that allows no path of its own (a file:// build): the
       // hash link still names the puzzle, and the app still reads it

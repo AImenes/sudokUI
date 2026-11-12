@@ -1142,6 +1142,10 @@ export const useGame = create<GameStore>()(
           revertIndex: null,
           custom: false,
           customBackup: null,
+          // a toast standing over the game before (a notice, a game let go)
+          // is no word about this one: what opens it says its own after
+          notice: null,
+          letGo: null,
           cells,
           selection: [],
           armedDigit: null,
@@ -1389,6 +1393,7 @@ export const useGame = create<GameStore>()(
           ...(b && 'practiceTarget' in b ? { practiceTarget: b.practiceTarget ?? null, practiceFound: !!b.practiceFound } : {}),
           contractPrompt: false,
           notice: null,
+          letGo: null,
           selection: [],
           history: [],
           future: [],
@@ -3049,6 +3054,7 @@ function boardOf(back: SetAside): Partial<GameStore> {
     scanPreview: null,
     scanDoubts: [],
     notice: null,
+    letGo: null,
     // a puzzle being typed in takes digits, as when it was opened
     ...(back.custom ? { mode: 'digit' as EntryMode } : {})
   };
