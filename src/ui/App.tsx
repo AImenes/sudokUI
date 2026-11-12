@@ -3,7 +3,7 @@
 // toast display and the first-visit bootstrap game.
 import React, { Suspense, useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { SLOP_PX } from './touchIntent';
-import { useGame, rateImport, Proof, listLayer, reclaimOwnGame } from '../state/gameStore';
+import { useGame, rateImport, Proof, listLayer, reclaimOwnGame, useResting } from '../state/gameStore';
 import { cellName, PEERS } from '../engine/board';
 import { useSettings } from '../state/settings';
 import { useShownTheme, applyTheme } from './theme';
@@ -133,6 +133,24 @@ function UpdateBar() {
   const reload = useAppStatus((s) => s.reload);
   const dismiss = useAppStatus((s) => s.dismiss);
   const t = useT();
+  // the bar and the toast share the foot of the screen: while the bar is
+  // up, the toast stands above it (styles.css, --update-bar-h), so a line
+  // saying which game went is never under it
+  const bar = useRef<HTMLDivElement>(null);
+  const shown = updateReady || offlineReady;
+  useLayoutEffect(() => {
+    const el = bar.current;
+    const root = document.documentElement.style;
+    if (!shown || !el) return void root.removeProperty('--update-bar-h');
+    const measure = () => root.setProperty('--update-bar-h', `${el.offsetHeight}px`);
+    measure();
+    const seen = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    seen?.observe(el);
+    return () => {
+      seen?.disconnect();
+      root.removeProperty('--update-bar-h');
+    };
+  }, [shown, updateReady]);
   // the offline note is good news, not a decision: it goes by itself
   useEffect(() => {
     if (!offlineReady || updateReady) return;
@@ -141,7 +159,7 @@ function UpdateBar() {
   }, [offlineReady, updateReady, dismiss]);
   if (updateReady) {
     return (
-      <div className="update-bar" role="status">
+      <div className="update-bar" role="status" ref={bar}>
         <span>
           {t(
             reason === 'chunk'
@@ -158,7 +176,7 @@ function UpdateBar() {
   }
   if (offlineReady) {
     return (
-      <div className="update-bar" role="status">
+      <div className="update-bar" role="status" ref={bar}>
         <span>{t('sudokUI is ready to play offline.')}</span>
         <button className="ghost" onClick={dismiss}>
           OK
@@ -168,6 +186,9 @@ function UpdateBar() {
   }
   return null;
 }
+
+/** a line as a sentence of its own: ended with a full stop, unless it ends with one (or a question mark, an exclamation mark, an ellipsis) already */
+const ended = (line: string) => (/[.!?…]$/.test(line.trim()) ? line : `${line}.`);
 
 /** the player's local date, kept current across a midnight with the app open and on coming back to it */
 function useToday(): string {
@@ -291,6 +312,7 @@ export default function App() {
   const info = useGame((s) => s.info);
   const won = useGame((s) => s.won);
   const paused = useGame((s) => s.paused);
+  const resting = useResting();
   const togglePause = useGame((s) => s.togglePause);
   const numberKey = useGame((s) => s.numberKey);
   const erase = useGame((s) => s.erase);
@@ -441,13 +463,26 @@ export default function App() {
   // a link opened in this tab (its hash changed): opened as at start-up,
   // a game under way put aside. The path is the address bar's own, the
   // puzzle on the board, so only the hash is read
+  // Back and Forward to an address of the app's own (popstate) open it the
+  // same way, so the board is again the game the address bar names: a
+  // game set aside by a link in this tab swaps back. A hash link is the
+  // hashchange listener's own
   useEffect(() => {
     const onHash = () => {
       const link = readAppLink({ pathname: '/', search: '', hash: window.location.hash });
       if (link) void openAppLink(link, 'tab');
     };
+    const onPop = () => {
+      if (readAppLink({ pathname: '/', search: '', hash: window.location.hash })) return;
+      const link = readAppLink(window.location);
+      if (link) void openAppLink(link, 'tab');
+    };
     window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+    window.addEventListener('popstate', onPop);
+    return () => {
+      window.removeEventListener('hashchange', onHash);
+      window.removeEventListener('popstate', onPop);
+    };
   }, []);
 
   // keep the address bar shareable: it always points at the current
@@ -926,7 +961,10 @@ export default function App() {
           {/* while paused, Nutella moves onto the pause card instead */}
           {showPoodle && (!paused || won) && <Poodle />}
         </div>
-        <aside className={`side${paused && !won ? ' paused' : ''}`}>
+        {/* behind the pause card the controls rest: dimmed, and inert, so
+            Tab and a screen reader reach only the notes and the menu row
+            beside it (useResting) */}
+        <aside className={`side${resting ? ' paused' : ''}`}>
           <SetAsideNote />
           <PastDailyNote onToday={() => void startDaily()} />
           <div className="menu-row">
@@ -963,7 +1001,7 @@ export default function App() {
             onScan={info && !custom ? () => setDialog('scan') : undefined}
           />
           {info?.practiceTech && !custom && (
-            <div className="practice-bar">
+            <div className="practice-bar" inert={resting ? '' : undefined}>
               <span className="practice-label">
                 {rich(t('Practicing {tech}'), { tech: <strong>{t.tech(info.practiceTech)}</strong> })}
                 {practiceFound && <span className="practice-found"> · {t('found||the technique being practised')} 🎯</span>}
@@ -997,7 +1035,7 @@ export default function App() {
             />
           )}
           {custom && (
-            <div className="hint-panel">
+            <div className="hint-panel" inert={resting ? '' : undefined}>
               <div className="hint-head">
                 <strong>{t('Custom puzzle')}</strong>
               </div>
@@ -1045,7 +1083,7 @@ export default function App() {
             </div>
           )}
           {errors.length > 0 && (revertIndex !== null || proofs.length > 0) && (
-            <div className="hint-panel" role="region" aria-label={t('Mistakes found')}>
+            <div className="hint-panel" role="region" aria-label={t('Mistakes found')} inert={resting ? '' : undefined}>
               <div className="hint-head">
                 <strong>{t('Mistakes found')}</strong>
               </div>
@@ -1080,7 +1118,7 @@ export default function App() {
               </div>
             </div>
           )}
-          <footer className="app-footer">
+          <footer className="app-footer" inert={resting ? '' : undefined}>
             {/* the static pages exist in every language: /learn/, /nb/learn/, /es/learn/ */}
             <nav className="footer-learn" aria-label={t('Learn sudoku')}>
               <span>{t('Learn:')} </span>
@@ -1309,9 +1347,11 @@ export default function App() {
       <div className={toast && !away ? 'toast' : 'toast-idle'} role="status" aria-live="polite">
         {toast && !away && (
           <>
-            {notice}
+            {/* a notice and the let-go line are two sentences, each
+                ended, so a screen reader reads them as two */}
+            {notice && letGo ? ended(notice) : notice}
             {notice && letGo ? ' ' : null}
-            {letGo && <span className={notice ? 'toast-line' : undefined}>{letGo}</span>}
+            {letGo && <span className={notice ? 'toast-line' : undefined}>{notice ? ended(letGo) : letGo}</span>}
           </>
         )}
       </div>

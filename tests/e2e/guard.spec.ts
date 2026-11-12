@@ -100,6 +100,25 @@ async function positionLink(browser: Browser, puzzle: string, n: number): Promis
   return position;
 }
 
+/** a page behind others (hidden) or in front again, as the browser tells it */
+const setHidden = (p: Page, hidden: boolean) =>
+  p.evaluate((h) => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (h ? 'hidden' : 'visible') });
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, hidden);
+
+/** correct digits in n cells that are open on the board as saved (a practice opens with the app's digits in some) */
+async function enterOpen(page: Page, n: number) {
+  const state = await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state as { info: { solution: string }; cells: { value: number }[] });
+  const open = state.cells.map((c, i) => (c.value ? -1 : i)).filter((i) => i >= 0);
+  for (const cell of open.slice(0, n)) {
+    const { x, y } = await cellPoint(page, cell);
+    await page.mouse.click(x, y);
+    await page.keyboard.press(`Digit${state.info.solution[cell]}`);
+  }
+}
+
 /** today's daily on the board, as #daily opens it */
 async function openDaily(page: Page) {
   await page.goto('/#daily');
@@ -369,10 +388,95 @@ test.describe('links and Import, laptop', () => {
     const second = await context.newPage();
     await second.goto(`/p/${HARD}/`);
     await expect(second.locator('.toast')).toContainText(
-      'Only one game in progress is kept in this tab: your game on a shared puzzle is still open in your other tab, today’s daily is kept here'
+      'Only one game in progress is kept in this tab: your game on a shared puzzle (HoDoKu rating 196) is still open in your other tab, today’s daily is kept here'
     );
     await expect(second.locator('.toast')).not.toContainText('is gone');
     expect(await saved(second)).toMatchObject({ puzzle: HARD, aside: { dailyKey: localDateKey(), entries: 3 } });
+  });
+
+  test('the Daily button in a second tab plays on the daily the first tab holds, not a fresh copy, and the first tab keeps its moves', async ({ context }) => {
+    await context.addInitScript(welcomed);
+    const today = localDateKey();
+    // tab 1: a friend's game (four digits), then today's daily over it (three), then behind the other tab
+    const first = await context.newPage();
+    await first.goto(`/p/${EASY}/`);
+    await expect(first.locator('svg.board')).toBeVisible();
+    await expect.poll(async () => (await saved(first)).puzzle).toBe(EASY);
+    await enter(first, false, 4);
+    await openDaily(first);
+    await expect(note(first)).toBeVisible();
+    await enter(first, false, 3);
+    await expect.poll(async () => (await saved(first)).entries).toBe(3);
+    await setHidden(first, true);
+    // tab 2: a Hard link lets the daily go from this tab's slot, still open in tab 1
+    const second = await context.newPage();
+    await second.goto(`/p/${HARD}/`);
+    await expect(second.locator('.toast')).toContainText('today’s daily is still open in your other tab');
+    expect(await saved(second)).toMatchObject({ puzzle: HARD, aside: { puzzle: EASY, entries: 4 } });
+    // New, then Daily puzzle: tab 1's daily comes over, where it was left
+    await second.locator('.menu-row button', { hasText: 'New' }).click();
+    await second.getByRole('dialog', { name: 'New game' }).getByRole('button', { name: /Daily puzzle/ }).first().click();
+    await expect(second.locator('.toast')).toContainText('Today’s daily, where you left it');
+    await expect.poll(() => saved(second)).toMatchObject({ dailyKey: today, entries: 3, aside: { puzzle: EASY, entries: 4 } });
+    await enter(second, false, 1, 3);
+    await expect.poll(async () => (await saved(second)).entries).toBe(4);
+    await setHidden(second, true);
+    // tab 1 shown again: the same daily, with tab 2's digit on top of its own three
+    await setHidden(first, false);
+    await first.locator('.pause-card .resume-btn').click();
+    await expect.poll(() => saved(first)).toMatchObject({ dailyKey: today, entries: 4, aside: { puzzle: EASY, entries: 4 } });
+    await expect(first.getByText('is gone')).toHaveCount(0);
+  });
+
+  test('a game said to be still open in the other tab is said to be gone once that tab has closed', async ({ context }) => {
+    await context.addInitScript(welcomed);
+    const first = await context.newPage();
+    await openDaily(first);
+    await enter(first, false, 3);
+    await first.goto(`/p/${EASY}/`);
+    await expect(note(first)).toBeVisible();
+    await enter(first, false, 2);
+    await expect.poll(async () => (await saved(first)).entries).toBe(2);
+    await setHidden(first, true);
+    // tab 2: a Hard game with a digit; tab 1 keeps the daily, the Hard game said to be in tab 2
+    const second = await context.newPage();
+    await second.goto(`/p/${HARD}/`);
+    await expect(second.locator('svg.board')).toBeVisible();
+    await expect.poll(async () => (await saved(second)).puzzle).toBe(HARD);
+    await enter(second, false, 1);
+    await expect.poll(async () => (await saved(second)).entries).toBe(1);
+    await second.close({ runBeforeUnload: true });
+    // tab 1 shown: no other tab is open, and the line says so
+    await setHidden(first, false);
+    await expect(first.locator('.toast')).toContainText('(HoDoKu rating 1348) is gone, today’s daily is kept');
+    await expect(first.locator('.toast')).not.toContainText('still open');
+  });
+
+  test('a practice set aside by a link in the same tab comes back with Back, and again after a reload', async ({ page }) => {
+    await page.addInitScript(welcomed);
+    await page.goto('/learn/x-wing/');
+    await page.locator('a.cta', { hasText: 'Practice X-Wing' }).first().click();
+    await expect(page.locator('.practice-bar')).toBeVisible();
+    await expect.poll(async () => (await saved(page)).puzzle).not.toBeNull();
+    const start = await saved(page);
+    await enterOpen(page, 2);
+    await expect.poll(async () => (await saved(page)).entries).toBe(start.entries + 2);
+    // a friend's link in the same tab: the practice goes aside
+    await page.evaluate((p) => (location.hash = `#p=${p}`), EASY);
+    await expect.poll(async () => (await saved(page)).puzzle).toBe(EASY);
+    await enter(page, false, 3);
+    await expect.poll(async () => (await saved(page)).entries).toBe(3);
+    // Back: the address is the practice's again, and so is the board
+    await page.goBack();
+    await expect(page.locator('.practice-bar')).toBeVisible();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: start.puzzle, entries: start.entries + 2, aside: { puzzle: EASY, entries: 3 } });
+    // a reload of that address keeps the practice, behind the pause card, and lets nothing go
+    await page.reload();
+    await expect(page.locator('.practice-bar')).toBeVisible();
+    await expect(page.locator('.pause-card')).toBeVisible();
+    expect(await saved(page)).toMatchObject({ puzzle: start.puzzle, entries: start.entries + 2, aside: { puzzle: EASY, entries: 3 } });
+    await page.waitForTimeout(400);
+    await expect(page.locator('.toast')).toHaveCount(0);
   });
 
   test('a Learn page’s Practice link puts the daily under way aside', async ({ page }) => {
@@ -423,7 +527,8 @@ test.describe('links and Import, laptop', () => {
     // the toast is a live region before it has anything to say
     await expect(page.locator('[role="status"][aria-live="polite"]').first()).toBeAttached();
     await page.goto(`/p/${HARD}/`);
-    const told = 'Only one game in progress is kept at a time: your game on a shared puzzle is gone, today’s daily is kept';
+    // the friend's game is named apart from the other friend's game now on the board, by its rating
+    const told = 'Only one game in progress is kept at a time: your game on a shared puzzle (HoDoKu rating 196) is gone, today’s daily is kept';
     await expect(page.getByRole('status').filter({ hasText: told })).toBeVisible();
     await expect(page.locator('.toast')).toHaveText(told);
     expect(await saved(page)).toMatchObject({ puzzle: HARD, aside: { dailyKey: localDateKey(), entries: 3 } });

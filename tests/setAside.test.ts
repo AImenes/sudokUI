@@ -31,7 +31,7 @@ vi.mock('../src/content/dailies', async (importOriginal) => {
   return { ...real, loadDailies: async () => (dailiesFile.fails ? null : real.loadDailies()) };
 });
 
-const { useGame, encodePosition, underWay, workOf, gameName, takeInSavedGame, askOthersWith, reclaimOwnGame, gameKey, letGoLine } = await import('../src/state/gameStore');
+const { useGame, encodePosition, underWay, workOf, gameName, takeInSavedGame, askOthersWith, fetchOthersWith, forgetLetGo, reclaimOwnGame, gameKey, letGoLine } = await import('../src/state/gameStore');
 const { useTelemetry } = await import('../src/state/telemetry');
 const { useSettings } = await import('../src/state/settings');
 const { useStats } = await import('../src/state/stats');
@@ -49,6 +49,10 @@ const OTHER_DAY = '2026-11-01';
 
 beforeEach(() => {
   storage.clear();
+  // a new page: nothing told yet, and no other window answers
+  forgetLetGo();
+  askOthersWith((_keys, answer) => answer(new Set()));
+  fetchOthersWith((_want, answer) => answer(null));
   dailiesFile.fails = false;
   useSettings.setState({ dontCount: false, countPlays: false, practiceFastForward: false });
   useTelemetry.setState({ track: () => {} } as never);
@@ -338,6 +342,28 @@ describe('a link opened over a game under way', () => {
   });
 });
 
+describe('a practice’s address', () => {
+  it('brings back the practice kept in the slot at a reload, Back or Forward; Import plays the puzzle itself', async () => {
+    g().startGame(HARD, 1348, 'Hard', 'X_WING');
+    play(2);
+    await open(`https://sudokui.app/p/${EASY}/`, 'tab');
+    play(3);
+    expect(g().setAside?.info?.practiceTech).toBe('X_WING');
+    // the address bar back on the practice's puzzle (Back, then a reload)
+    await open(`https://sudokui.app/p/${HARD}/?b=hard&s=1348`, 'boot');
+    expect(g().info?.practiceTech).toBe('X_WING');
+    expect(entries()).toBe(2);
+    expect(g().setAside?.info?.puzzle).toBe(EASY);
+    expect(g().notice).toBe('Your X-Wing practice, where you left it');
+    expect(g().letGo).toBeNull();
+    // Import of that puzzle: the puzzle itself, a game of its own
+    g().backToSetAside();
+    await open(`https://sudokui.app/p/${HARD}/`, 'import');
+    expect(g().info?.puzzle).toBe(HARD);
+    expect(g().info?.practiceTech).toBeNull();
+  });
+});
+
 describe('the Daily button', () => {
   it('brings back today’s daily under way as it was: its entries and its time, no restart', async () => {
     await startDaily();
@@ -563,6 +589,31 @@ describe('the error screen', () => {
     expect(boardCleared(JSON.stringify({ state: { info: null, setAside: null }, version: 0 }))).toBeNull();
     expect(boardCleared('{"state":')).toBeNull();
     expect(boardCleared(null)).toBeNull();
+  });
+
+  it('the game behind a typed puzzle comes back from the error screen with its tally: its slips and moves from before the crash', async () => {
+    g().startGame(EASY, 196, 'Easy');
+    const { solution } = g().info!;
+    const cell = [...EASY].findIndex((ch) => ch === '.');
+    const wrong = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((d) => d !== Number(solution[cell]))!;
+    g().select([cell], false);
+    g().input(wrong);
+    g().input(Number(solution[cell]));
+    expect(useStats.getState().game.errors).toBe(1);
+    g().startCustomEntry();
+    g().select([0], false);
+    g().input(5);
+    const left = boardCleared(storage.get('sudokui-game-v1')!, storage.get('sudokui-stats-v1') ?? null)!;
+    expect(JSON.parse(left).state.setAside.tally.errors).toBe(1);
+    useGame.setState({ ...useGame.getInitialState(), setAside: null });
+    storage.set('sudokui-game-v1', left);
+    await useGame.persist.rehydrate();
+    // the boot's new game starts a tally of its own; Back to it brings the kept one back
+    g().startGame(HARD, 1348, 'Hard');
+    expect(useStats.getState().game.errors).toBe(0);
+    backToKept();
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(useStats.getState().game.errors).toBe(1);
   });
 
   it('with the slot empty, keeps the game a puzzle being typed in was opened over, and the note offers it back', async () => {
@@ -1088,6 +1139,281 @@ describe('two windows of the app', () => {
     takeInSavedGame(theirs, true);
     expect(g().setAside?.info?.dailyKey).toBe(TODAY);
     expect(g().letGo).toBe('Only one game in progress is kept at a time: your X-Wing practice and your Hard game are gone, today’s daily is kept');
+  });
+
+  /** the game on this window's board as it would hand it over (gameStore.ts, heldCopy) */
+  const copyOfBoard = () => {
+    const s = g();
+    return {
+      info: s.info,
+      cells: structuredClone(s.cells),
+      autoCandidates: s.autoCandidates,
+      elapsedBefore: s.elapsedMs(),
+      won: s.won,
+      solved: s.solved,
+      assisted: s.assisted,
+      markContract: s.markContract,
+      practiceTarget: s.practiceTarget,
+      practiceFound: s.practiceFound,
+      tally: useStats.getState().game
+    };
+  };
+
+  it('a fresh start of a game another window holds is another game: the hidden window keeps its own board and moves', async () => {
+    // this window: a friend's game (four entries) kept, today's daily (three) on the board, hidden
+    await open(`https://sudokui.app/p/${EASY}/`);
+    play(4);
+    await startDaily();
+    play(3);
+    const daily = gameKey(g());
+    g().setAway(true);
+    // the other window: a Hard link over that save lets the daily go (still open here), then the Daily button, with no window answering it
+    askOthersWith((keys, answer) => answer(new Set(keys.filter((k) => k === daily))));
+    let fresh = '';
+    const theirs = await inOtherWindow(async () => {
+      await open(`https://sudokui.app/p/${HARD}/`);
+      expect(g().setAside?.info?.puzzle).toBe(EASY);
+      await startDaily();
+      expect(g().info?.dailyKey).toBe(TODAY);
+      expect(entries()).toBe(0);
+      fresh = gameKey(g());
+      play(1);
+    });
+    expect(fresh).not.toBe(daily);
+    // heard here while hidden: not the same game, so this window's daily and its moves stay
+    takeInSavedGame(theirs, true);
+    expect(gameKey(g())).toBe(daily);
+    expect(entries()).toBe(3);
+    expect(g().history).toHaveLength(3);
+    // the one slot keeps the friend's game, with more work than the fresh copy
+    expect(g().setAside?.info?.puzzle).toBe(EASY);
+    expect(entries(g().setAside!.cells)).toBe(4);
+    g().setAway(false);
+    expect(savedState().info.dailyKey).toBe(TODAY);
+    expect(entries(savedState().cells)).toBe(3);
+  });
+
+  it('the Daily button in another window plays on this window’s copy of the day’s daily, the same game, rather than starting a second one', async () => {
+    await open(`https://sudokui.app/p/${EASY}/`);
+    play(4);
+    await startDaily();
+    play(3);
+    const daily = gameKey(g());
+    const copy = copyOfBoard();
+    g().setAway(true);
+    // this window answers the other's ask, and hands its daily over
+    askOthersWith((keys, answer) => answer(new Set(keys.filter((k) => k === daily))));
+    fetchOthersWith((want, answer) => answer(want.key === daily || want.dailyKey === TODAY ? (copy as never) : null));
+    const theirs = await inOtherWindow(async () => {
+      await open(`https://sudokui.app/p/${HARD}/`);
+      expect(await startDaily()).toBe('resumed');
+      expect(gameKey(g())).toBe(daily);
+      expect(entries()).toBe(3);
+      expect(g().notice).toBe('Today’s daily, where you left it');
+      play(1, 3);
+    });
+    // the same game: heard while hidden, this window plays on from it
+    takeInSavedGame(theirs, true);
+    expect(gameKey(g())).toBe(daily);
+    expect(entries()).toBe(4);
+    expect(g().setAside?.info?.puzzle).toBe(EASY);
+    expect(entries(g().setAside!.cells)).toBe(4);
+  });
+
+  it('a link to a game let go here while another window had it brings that window’s copy over; a link in a window that let nothing go opens a game of its own', async () => {
+    await startDaily();
+    play(3);
+    await open(`https://sudokui.app/p/${EASY}/`);
+    play(2);
+    const easy = gameKey(g());
+    const copy = copyOfBoard();
+    g().setAway(true);
+    askOthersWith((keys, answer) => answer(new Set(keys.filter((k) => k === easy))));
+    fetchOthersWith((want, answer) => answer(want.key === easy ? (copy as never) : null));
+    await inOtherWindow(async () => {
+      // Hard over that save: the friend's game goes from the slot, still open here
+      await open(`https://sudokui.app/p/${HARD}/`);
+      expect(g().setAside?.info?.dailyKey).toBe(TODAY);
+      // the friend's link again, in the same tab: the copy this window has comes over
+      await open(`https://sudokui.app/p/${EASY}/`, 'tab');
+      expect(gameKey(g())).toBe(easy);
+      expect(entries()).toBe(2);
+      expect(g().notice).toBe('Your game on this puzzle, where you left it');
+    });
+    // nothing let go: a link asks no window, and opens a game of its own
+    forgetLetGo();
+    let asked = 0;
+    fetchOthersWith((_want, answer) => (asked++, answer(null)));
+    g().startGame(HARD, 1348, 'Hard');
+    await open(`https://sudokui.app/p/${EASY}/`, 'tab');
+    expect(asked).toBe(0);
+    expect(gameKey(g())).not.toBe(easy);
+  });
+
+  it('a game said to be still open in another window is said to be gone once that window has closed and its last save drops it again', async () => {
+    await startDaily();
+    play(3);
+    await open(`https://sudokui.app/p/${EASY}/`);
+    play(2);
+    g().setAway(true);
+    const held = [gameKey(g()), gameKey(g().setAside!)];
+    askOthersWith((keys, answer) => answer(new Set(keys.filter((k) => held.includes(k)))));
+    let hard = '';
+    let score = 0;
+    const theirs = await inOtherWindow(async () => {
+      await open(`https://sudokui.app/p/${HARD}/`);
+      play(1);
+      hard = gameKey(g());
+      score = g().info!.score;
+    });
+    // that window still open: the Hard game is there, named apart from the friend's game on this board
+    askOthersWith((keys, answer) => answer(new Set(keys.filter((k) => k === hard))));
+    takeInSavedGame(theirs, true);
+    expect(g().setAside?.info?.dailyKey).toBe(TODAY);
+    expect(g().letGo).toBe(
+      `Only one game in progress is kept in this tab: your game on a shared puzzle (HoDoKu rating ${score}) is still open in your other tab, today’s daily is kept here`
+    );
+    // it closes: its last save (paused there), and it holds nothing any more
+    askOthersWith((_keys, answer) => answer(new Set()));
+    const last = JSON.parse(theirs);
+    last.state.paused = true;
+    takeInSavedGame(JSON.stringify(last), true);
+    expect(g().letGo).toBe(`Only one game in progress is kept at a time: your game on a shared puzzle (HoDoKu rating ${score}) is gone, today’s daily is kept`);
+    // said once
+    g().clearNotice();
+    takeInSavedGame(JSON.stringify(last), true);
+    expect(g().letGo).toBeNull();
+  });
+
+  it('shown again, a game said to be still open in another window that no window has any more is said to be gone', async () => {
+    await startDaily();
+    play(3);
+    await open(`https://sudokui.app/p/${EASY}/`);
+    play(2);
+    g().setAway(true);
+    let hard = '';
+    const theirs = await inOtherWindow(async () => {
+      await open(`https://sudokui.app/p/${HARD}/`);
+      play(1);
+      hard = gameKey(g());
+    });
+    askOthersWith((keys, answer) => answer(new Set(keys.filter((k) => k === hard))));
+    takeInSavedGame(theirs, true);
+    expect(g().letGo).toContain('is still open in your other tab');
+    // that window went without a word (killed, or its page frozen): asked again when this one is shown
+    askOthersWith((_keys, answer) => answer(new Set()));
+    g().setAway(false);
+    expect(g().letGo).toContain('is gone, today’s daily is kept');
+    expect(g().letGo).not.toContain('still open');
+  });
+
+  it('a hidden page that goes puts a game the save has lost into the save’s slot when it holds more work than the one kept there, in one write; else it writes nothing', async () => {
+    // another window's save: a friend's game nobody touched on its board, today's daily (three entries) kept
+    await startDaily();
+    play(3);
+    await open(`https://sudokui.app/p/${EASY}/`);
+    const othersSave = storage.get(KEY)!;
+    // this page: a Hard game of its own over it, five entries, then hidden (it saves)
+    await open(`https://sudokui.app/p/${HARD}/`);
+    play(5);
+    g().setAway(true);
+    // the other window saves after it, without the Hard game; then this page goes
+    storage.set(KEY, othersSave);
+    const count = writes();
+    g().setAway(true);
+    expect(count()).toBe(1);
+    expect(savedState().info.puzzle).toBe(EASY);
+    expect(savedState().setAside.info.puzzle).toBe(HARD);
+    expect(entries(savedState().setAside.cells)).toBe(5);
+    vi.restoreAllMocks();
+    // with less work than the daily kept there, the daily stays and nothing is written
+    await open(`https://sudokui.app/p/${HARD}/`);
+    useGame.setState({ away: false });
+    g().restart();
+    play(2);
+    g().setAway(true);
+    storage.set(KEY, othersSave);
+    const none = writes();
+    g().setAway(true);
+    expect(none()).toBe(0);
+    expect(storage.get(KEY)).toBe(othersSave);
+    vi.restoreAllMocks();
+  });
+
+  it('moves made in another window on the game behind a puzzle typed here reach that copy, and no second copy of it takes the slot', async () => {
+    g().startGame(EASY, 196, 'Easy');
+    play(3);
+    const early = storage.get(KEY)!;
+    g().startCustomEntry();
+    g().select([0], false);
+    g().input(5);
+    g().setAway(true);
+    storage.set(KEY, early);
+    const theirs = await inOtherWindow(() => play(2, 3));
+    takeInSavedGame(theirs, true);
+    expect(g().custom).toBe(true);
+    expect(entries(g().customBackup!.cells)).toBe(5);
+    expect(g().setAside).toBeNull();
+    expect(g().letGo).toBeNull();
+    g().cancelCustomEntry();
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(entries()).toBe(5);
+  });
+
+  it('a game won in another window replaces the older copy kept here behind a puzzle being typed in: Cancel, or its link, brings it back solved, its solve counted once', async () => {
+    let solves = 0;
+    useStats.setState({ recordSolve: () => void solves++ } as never);
+    const solveIt = () => {
+      const { solution } = g().info!;
+      for (const [cell, c] of g().cells.entries()) {
+        if (c.value) continue;
+        g().select([cell], false);
+        g().input(Number(solution[cell]));
+      }
+      expect(g().won).toBe(true);
+    };
+    // on the board: a friend's game, three entries, then a puzzle typed over it; the other window had the game too
+    g().startGame(EASY, 196, 'Easy');
+    play(3);
+    const early = storage.get(KEY)!;
+    g().startCustomEntry();
+    g().setAway(true);
+    storage.set(KEY, early);
+    const theirs = await inOtherWindow(solveIt);
+    expect(solves).toBe(1);
+    takeInSavedGame(theirs, true);
+    expect(g().custom).toBe(true);
+    expect(g().customBackup?.won).toBe(true);
+    g().cancelCustomEntry();
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(g().won).toBe(true);
+    expect(g().solved).toBe(true);
+    expect(solves).toBe(1);
+
+    // in the slot: the typed puzzle (with a digit) set aside by a link, the friend's game behind it
+    solves = 0;
+    useGame.setState({ setAside: null, away: false });
+    g().startGame(EASY, 196, 'Easy');
+    play(3);
+    const before = storage.get(KEY)!;
+    g().startCustomEntry();
+    g().select([0], false);
+    g().input(5);
+    await open(`https://sudokui.app/p/${HARD}/`);
+    expect(g().setAside?.custom).toBe(true);
+    g().setAway(true);
+    const mine = storage.get(KEY)!;
+    storage.set(KEY, before);
+    const solvedThere = await inOtherWindow(solveIt);
+    storage.set(KEY, mine);
+    takeInSavedGame(solvedThere, true);
+    expect(g().setAside?.custom).toBe(true);
+    expect(g().setAside?.customBackup?.won).toBe(true);
+    useGame.setState({ away: false });
+    await open(`https://sudokui.app/p/${EASY}/`, 'tab');
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(g().won).toBe(true);
+    expect(solves).toBe(1);
   });
 
   it('two games of the same name are told apart by their rating', () => {

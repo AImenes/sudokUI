@@ -652,4 +652,86 @@ test.describe('the clock', () => {
     await expect(page.locator('.pause-card')).toHaveCount(0);
     await expect(page.locator('svg.board')).toBeFocused();
   });
+
+  test('a game a reload brings back behind the pause card is heard to be paused: the status line comes after the page does', async ({ page }) => {
+    // every text the board's status line has, from before the app draws it
+    await page.addInitScript(() => {
+      const said: string[] = ((window as any).__said = []);
+      new MutationObserver(() => {
+        const el = document.getElementById('board-status');
+        if (el && said[said.length - 1] !== el.textContent) said.push(el.textContent ?? '');
+      }).observe(document, { subtree: true, childList: true, characterData: true });
+    });
+    await open(page);
+    const [a] = empties(EASY);
+    await enter(page, a, solutionOf(EASY)[a]);
+    await page.reload();
+    await expect(page.locator('.pause-card')).toBeVisible();
+    await expect(page.locator('#board-status')).toHaveText('Paused. Press P to resume.');
+    // the region was there, empty, before the words came: a change, which a screen reader reads out
+    const said = await page.evaluate(() => (window as any).__said as string[]);
+    expect(said[0]).toBe('');
+    expect(said).toContain('Paused. Press P to resume.');
+  });
+
+  test('behind the pause card the controls rest: Tab reaches only Resume and the menu row, and Enter on a control focused before the pause does nothing', async ({ page }) => {
+    await open(page);
+    const solution = solutionOf(EASY);
+    const [a] = empties(EASY);
+    await enter(page, a, solution[a]);
+    // the mouse's way: Hint asked about, then put off, the focus left on it
+    await page.getByRole('button', { name: 'Hint', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Use Hint?' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    const saved = () =>
+      page.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('sudokui-game-v1')!).state;
+        return { cells: s.cells.map((c: { value: number; corner: number; center: number }) => `${c.value}${c.corner}${c.center}`).join(','), assisted: s.assisted, auto: s.autoCandidates, paused: s.paused };
+      });
+    const mode = () => page.locator('.mode-row .mode-btn.active:not(.multi)').innerText();
+    await shown(page, false);
+    await shown(page, true);
+    await expect(page.locator('.pause-card')).toBeVisible();
+    const then = await saved();
+    expect(then).toMatchObject({ assisted: false, auto: false, paused: true });
+    const modeThen = await mode();
+    // Enter where the focus was: no question over the paused board
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    // dimmed and inert: out of the Tab order and of a screen reader's reach
+    for (const part of ['.controls', '.app-footer']) await expect(page.locator(`.side ${part}`)).toHaveAttribute('inert', '');
+    await page.locator('svg.board').focus();
+    const reached: string[] = [];
+    for (let i = 0; i < 24; i++) {
+      await page.keyboard.press('Tab');
+      reached.push(
+        await page.evaluate(() => {
+          const el = document.activeElement as HTMLElement | null;
+          if (!el || el === document.body) return 'page';
+          const where = el.closest('.pause-card')
+            ? 'card'
+            : el.closest('.side')
+              ? el.closest('.menu-row')
+                ? 'menu'
+                : el.closest('.past-daily')
+                  ? 'note'
+                  : 'dimmed'
+              : 'other';
+          return `${where}:${(el.getAttribute('aria-label') ?? el.textContent ?? '').trim()}`;
+        })
+      );
+    }
+    expect(reached.filter((r) => r.startsWith('dimmed'))).toEqual([]);
+    expect(reached.some((r) => r.startsWith('card:') && r.includes('Resume'))).toBe(true);
+    expect(reached.some((r) => r.startsWith('menu:') && r.includes('New'))).toBe(true);
+    // Enter on each of them in turn would open a dialog at most; nothing on the board changed
+    expect(await saved()).toEqual(then);
+    expect(await mode()).toBe(modeThen);
+    // resumed, the controls are live again
+    await page.getByRole('button', { name: 'Resume game' }).click();
+    await expect(page.locator('.side .controls')).not.toHaveAttribute('inert', '');
+    await page.locator('.mode-row .mode-btn', { hasText: 'Corner' }).click();
+    expect(await mode()).toContain('Corner');
+  });
 });

@@ -1354,6 +1354,15 @@ export function Grid() {
   // what a screen reader hears: the selected cell and what is in it, read
   // out as the selection moves (the arrow keys move it; digits enter)
   const announced = describeSelection(cells, selection, autoCandidates, t);
+  // the status line starts empty and is filled a moment after the page
+  // comes up: a live region that has its words from the start is not read
+  // out, and a game brought back behind the pause card (a reload, the app
+  // opened again) should be heard to be paused
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setSettled(true), 300);
+    return () => clearTimeout(id);
+  }, []);
 
   return (
     <div className="grid-wrap">
@@ -1725,7 +1734,7 @@ export function Grid() {
           cell holds, and says it again when the page is shown (a pause the
           page took while hidden, gameStore.ts setAway, is heard on return) */}
       <div id="board-status" className="sr-only" aria-live="polite" aria-atomic="true">
-        {paused && !won ? (away ? '' : t('Paused. Press P to resume.')) : announced}
+        {!settled ? '' : paused && !won ? (away ? '' : t('Paused. Press P to resume.')) : announced}
       </div>
       {paused && !won && (
         <div className="pause-card">

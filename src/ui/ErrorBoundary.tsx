@@ -28,10 +28,12 @@ function panelTranslator(): Translator {
  * back, so cannot be what broke, and the note still offers it back. With
  * the slot empty and a puzzle being typed in, the game that puzzle was
  * opened over, which is not drawn either, takes the slot (unless it was
- * solved: a solved game is not kept), so the note offers it back. Null
- * when there is neither, or the save cannot be read: then all of it goes.
+ * solved: a solved game is not kept), so the note offers it back, with
+ * its tally from the record (`record`, the stats save: while a puzzle is
+ * typed in, its game tally is still that game's). Null when there is
+ * neither, or the save cannot be read: then all of it goes.
  */
-export function boardCleared(saved: string | null): string | null {
+export function boardCleared(saved: string | null, record: string | null = null): string | null {
   try {
     const save = saved ? JSON.parse(saved) : null;
     const state = save?.state;
@@ -45,11 +47,19 @@ export function boardCleared(saved: string | null): string | null {
         : { ...b, solved: true, solvedMs: state.solvedMs ?? null, solvedAssisted: state.solvedAssisted ?? null, solvedAuto: state.solvedAuto ?? null, dailyKept: state.dailyKept };
     const withTarget = (b: Record<string, unknown>) =>
       'practiceTarget' in b ? b : { ...b, practiceTarget: state.practiceTarget ?? null, practiceFound: !!state.practiceFound };
+    const tally = (b: Record<string, unknown>) => {
+      try {
+        const game = record ? JSON.parse(record)?.state?.game : undefined;
+        return game && typeof game === 'object' ? { ...b, tally: game } : b;
+      } catch {
+        return b;
+      }
+    };
     const kept =
       aside && typeof aside === 'object'
         ? aside
         : behind && typeof behind === 'object' && behind.info && !behind.won
-          ? withTarget(own(behind))
+          ? tally(withTarget(own(behind)))
           : null;
     return kept ? JSON.stringify({ state: { setAside: kept }, version: save.version ?? 0 }) : null;
   } catch {
@@ -77,7 +87,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     if (!error) return this.props.children;
     const reset = () => {
       try {
-        const left = boardCleared(localStorage.getItem(GAME_KEY));
+        const left = boardCleared(localStorage.getItem(GAME_KEY), localStorage.getItem('sudokui-stats-v1'));
         localStorage.removeItem(GAME_KEY);
         if (left) localStorage.setItem(GAME_KEY, left);
       } catch {

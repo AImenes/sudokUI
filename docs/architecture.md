@@ -96,8 +96,17 @@ take off again. While the pause card covers the board, keys act on
 nothing behind it (no Undo, hint, mode or Escape; only P resumes), a key
 meant for the board says why in the toast, and the board's status line,
 which a screen reader hears, says the game is paused instead of reading
-the hidden cells; it says so again when the page is shown. Resumed from
-the keyboard, the focus goes back to the board. A win pauses the clock for
+the hidden cells; it says so again when the page is shown, and a page
+that comes up behind the card (a reload, the app opened again) has the
+line empty for a moment first, so the words arrive as a change and are
+read out. The controls the card dims beside it rest too (`useResting`):
+they are inert, out of the Tab order and a screen reader's reach, so Tab
+reaches the card's Resume, the menu row and the notes only; their
+questions (Use Hint?, Keep your candidates?) wait until the game resumes;
+and the store's actions behind them (the mode, Hint, Check, Auto and Fill
+candidates, the chain trainer, Steps and its jumps, Back to correct)
+change nothing while paused, as input and Undo do not. Resumed from the
+keyboard, the focus goes back to the board. A win pauses the clock for
 good: nothing can resume it, and Undo or a Steps jump off the solved board
 (or Redo of the jump) starts it again from the winning time. Solved again,
 it is the same solve, so the clock stops at the time the solve was recorded
@@ -109,7 +118,9 @@ hint (`dailyResultOf`: an unassisted solve took none). Its verdict judges
 the time with the candidates the solve was made with (`solvedAuto`), not
 the auto candidates a Steps jump switched on, and moves, slips and hints
 on a board solved before are no new work: they go into neither the
-game's tally nor the record, so the win screen shows the solve's. The win screen tells a
+game's tally nor the record, so the win screen shows the solve's; nor
+does a practice's target found on it (`practiceFound`), so the win screen
+keeps the verdict the solve was made with. The win screen tells a
 daily's own solve from an earlier one by the game's `dailyKept`, not by
 its time. A game put back in play and set aside keeps these with it.
 
@@ -118,9 +129,13 @@ each one save shared by every tab and window of the app. A window that is
 hidden takes in what another one saves (a `storage` listener in each
 store), so shown again it plays on from there and its next save does not
 put an older board back; a window in front keeps its own. The game comes
-in only when it is the window's own game (the same puzzle and day) or the
-window's own is not under way (solved, nothing played on it, or none; a
-practice or a shared position is under way once the player moves on it in
+in only when it is the window's own game (the very game, `gameKey`: the
+same puzzle, day and practice, and the same id, `GameInfo.id`, which a
+game gets when it starts and anew on Restart, so a fresh start of the
+same puzzle in another window is another game and never takes this
+window's board and moves) or the window's own is not under way (solved,
+nothing played on it, or none; a practice or a shared position is under
+way once the player moves on it in
 that window: `takesInSaved`): a hidden window with another game under way
 keeps it, so a link or a practice opened in a new tab, or another window
 going away, takes no game from it. So does a hidden window whose game was
@@ -132,19 +147,32 @@ keeps its own game, hidden or in front, keeps the other window's as well
 (`keepOthers`): the game on that window's board, if under way, and the
 game in its slot go into this window's slot, unless one is the game on
 this window's own board, by the one-slot rule (below) and with its toast
-when one must go (told once per game in a page's life). A game won on
+when one must go (told once per game in a page's life, unless it was said
+to be still open in the other window: see below). A game won on
 that window's board is the newest copy of it: the older copy kept here
 goes, note and all, with nothing to tell, as a solved game is not kept,
-so Back to it cannot bring it back unsolved and count its solve twice. A hidden window
+so Back to it cannot bring it back unsolved and count its solve twice.
+A copy kept here behind a puzzle being typed in, on the board or in the
+slot, becomes the copy on that window's board, won there or played on
+(`behindTyped`), and is no game for the slot: Cancel, a link or the
+Daily button bring it back as it is there, a solved game solved, its
+solve recorded once. A hidden window
 that takes the other's game in keeps its own kept game beside what came
 in, by the same rule. So a friend's link opened in a new tab, played there
 and closed, is still kept when the older tab is shown again and saves,
 and moves made in the older tab on the game the newer one put aside reach
 the newer one's copy. The save is read at each `storage` event and again
-when the window is shown, before it saves (`catchUp`: a page the browser
-froze misses its events); games are told apart by puzzle, day and
-practice (`gameKey`). A window never writes in answer to another's save
-(`quietly`): what it takes in or keeps from it stays in memory and goes
+when the window is shown, before it saves (`catchUp`: a page the
+browser froze misses its events); games are told apart by puzzle, day,
+practice and id (`gameKey`). A page that goes while hidden already (a tab
+closed, or the browser closed, behind others: `pagehide` after
+`visibilitychange`) wrote when it was hidden; if another window has saved
+since without one of its games under way, that game goes into the save's
+slot by the one-slot rule, against the game kept there, which stays on a
+tie, in one write with the save's board untouched (`leaveWith`), so the
+last copy does not leave with the page and a window still open hears of
+it and keeps it, or says it is gone. A window never writes in answer to
+another's save (`quietly`): what it takes in or keeps from it stays in memory and goes
 into the save with the window's own next write (a move, being shown
 again), since the save at that moment is the other window's own and
 holds those games already. So two windows never answer each other's
@@ -244,7 +272,16 @@ none of the player's work.
   its moves). So does a link to the game behind a puzzle being typed in,
   on the board or in the slot: that game comes back as Cancel would bring
   it, and the typed puzzle, once it has a digit, goes into the slot.
-  Practice is another game and never matches.
+  Practice is another game: Import of its puzzle plays the puzzle. But
+  the address bar names a practice by its puzzle (`/p/`), so that address
+  at start-up or in the tab (a reload, Back, Forward) brings back a kept
+  practice of the puzzle when no plain game of it is kept, with "Your
+  X-Wing practice, where you left it". Back and Forward to an address of
+  the app's own (`popstate`) open it as a link in the tab does, so the
+  board is again the game the address bar names. A game this window let
+  go because another window still had it open (below), asked for again
+  by a link or Import, comes over from that window (`fromOthers`): its
+  copy, the same game, not a second one.
 - **One slot, the most work kept, and never silently.** When the slot
   already holds a game and another under way is replaced, the slot keeps
   whichever of the two holds more of the player's own work, `workOf`: the
@@ -265,19 +302,37 @@ none of the player's work.
   milliseconds; a page going away or kept in the back-forward cache
   answers nothing), and one still open elsewhere is said to be there:
   "Only one game in progress is kept in this tab: your game on a shared
-  puzzle is still open in your other tab, today's daily is kept here". It takes
+  puzzle is still open in your other tab, today's daily is kept here".
+  That is remembered for the page's life, and asked again when the same
+  game is dropped again (the other window's last save as it closes),
+  when a window going away says which games it held, and when this page
+  is shown again: once no window has it, this one included, it is said
+  to be gone (the line still up is reworded, not repeated). A game won
+  in the other window is no loss, and is not named. A window asked for a
+  game hands its copy over (the game on its board, under way or won, or
+  the one in its slot); windows greet each other as they open, so a
+  window alone asks for nothing and never waits. Two games of one name,
+  the game on this window's board among them, are told apart by their
+  rating (a rating that tells nothing apart, two copies of one daily, is
+  left out). It takes
   two games under way, one in the slot and one on the board, and a third
   opened over them by a link, Import, the Daily button or a Learn page's
   Practice link, or three across two windows (`keepOthers`, above). The
-  line rides with the notice the opening brings (`letGo`, in memory). The
+  line rides with the notice the opening brings (`letGo`, in memory), each
+  ended as a sentence of its own, so a screen reader reads two. The
   toast is one live region, always in the page (`role="status"`), so a
   screen reader hears each notice as it comes; it is empty while the page
   is hidden and fades only once it can be seen, so a game let go in a
-  hidden window is told when it is shown.
+  hidden window is told when it is shown. While the update bar is up the
+  toast stands above it, so neither covers the other.
 - **The daily.** New, then Daily puzzle (and the past-daily note's link,
   and the daily's own address) go on with that day's daily when it is on
   the board, solved or not, in the slot, or behind a puzzle being typed
-  in, on the board or in the slot; never a second copy of it. A daily in
+  in, on the board or in the slot, or open in another window of the app,
+  whose copy comes over (`fromOthers`); never a second copy of it (a
+  window that cannot answer, closed or frozen by the browser, or one not
+  yet heard from as a page comes up, is not asked: a daily started then
+  is a game of its own, and the one slot decides). A daily in
   none of those places starts fresh: one never started, and one that has
   gone, solved and then replaced by another game (a solved game is not
   kept), or dropped by New and a level, which keeps nothing. Restart
@@ -305,9 +360,11 @@ none of the player's work.
   is never drawn until it comes back, so it cannot be what broke, and the
   note (or New) still offers it back. With a puzzle being typed in, the
   game it was opened over is not drawn either: with the slot empty it
-  takes the slot, with its solve and practice target, and the note offers
-  it back (unless it was won, as a solved game is not kept); with a game in the slot already, that one
-  stays and the game behind the typed puzzle goes with the board.
+  takes the slot, with its solve, its practice target and its tally (the
+  record's, which is still that game's while a puzzle is typed in), and
+  the note offers it back (unless it was won, as a solved game is not
+  kept); with a game in the slot already, that one stays and the game
+  behind the typed puzzle goes with the board.
 - **Undo is not saved.** The undo history stays in memory: a reload (and
   Cancel of a custom entry) keeps the board but not the steps back. Each
   step is a full copy of the 81 cells, about 6 KB as saved, so even a short
@@ -315,6 +372,8 @@ none of the player's work.
   needs an encoding of every cell field and is left for later.
 - Two windows in front on the same game each hold it in memory, and each
   saves over the other's board at its next move; that is not solved here.
+  A copy one window hands another (`fromOthers`) is such a game: while
+  the window that gave it stays hidden it takes the other's moves in.
   Two windows on different games keep each other's in their slots
   (`keepOthers`, above).
 

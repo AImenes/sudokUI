@@ -3313,6 +3313,12 @@ kbd {
   margin-top: 4px;
 }
 
+/* the update bar up (App.tsx, UpdateBar): the toast stands above it, so
+   neither covers the other */
+.update-bar ~ .toast {
+  bottom: calc(26px + env(safe-area-inset-bottom) + var(--update-bar-h, 56px) + 10px);
+}
+
 /* the toast's live region while there is nothing to say */
 .toast-idle {
   position: fixed;

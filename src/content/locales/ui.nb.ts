@@ -81,6 +81,7 @@ const ui: Dictionary = {
   "Back to your game in progress": "Tilbake til spillet du holdt på med",
   "Kept as you left it when another game opened over it": "Tatt vare på slik du forlot det da et annet spill ble åpnet over det",
   "Your game on this puzzle, where you left it": "Spillet ditt i denne oppgaven, der du slapp",
+  "Your {name} practice, where you left it": "Øvingsoppgaven din for {name}, der du slapp",
   "Today’s daily, where you left it": "Dagens oppgave, der du slapp",
   "The daily for {date}, where you left it": "Dagens oppgave for {date}, der du slapp",
   "the puzzle you were typing in, with {game} behind it": "oppgaven du skrev inn, med {game} bak seg",

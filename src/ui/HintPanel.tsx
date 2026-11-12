@@ -4,7 +4,7 @@
 // highlights themselves are rendered by Grid from the Step's
 // primary/secondary/fin/elimination data.
 import React, { useEffect, useRef, useState } from 'react';
-import { useGame } from '../state/gameStore';
+import { useGame, useResting } from '../state/gameStore';
 import { TECHS, Tech } from '../engine/ratings';
 import type { Step } from '../engine/steps';
 import { TECH_DOCS } from '../content/techniqueDocs';
@@ -150,6 +150,7 @@ export function ChainPanel() {
   const walkHint = useGame((s) => s.walkHint);
   const revealHint = useGame((s) => s.revealHint);
   const cells = useGame((s) => s.cells);
+  const resting = useResting();
   const t = useT();
   // the keyboard's way in and out: focus moves into the panel when the
   // trainer opens, and back to where it was (the Chain button, Build it
@@ -184,7 +185,7 @@ export function ChainPanel() {
   const legend = hint ? legendKinds(hint, frameMarks(hint, frame, (c) => cells[c].value > 0)) : null;
   const words = truthWords(t, { assumed: false, kind: 'candidate' });
   return (
-    <div ref={box} tabIndex={-1} className="hint-panel" role="region" aria-label={t('Build a chain')} aria-live="polite">
+    <div ref={box} tabIndex={-1} className="hint-panel" role="region" aria-label={t('Build a chain')} aria-live="polite" inert={resting ? '' : undefined}>
       <div className="hint-head">
         <strong>{t('Build a chain')}</strong>
         <span className="hint-level">{n ? t(n === 1 ? '{n} candidate' : '{n} candidates', { n }) : t('your move')}</span>
@@ -286,6 +287,7 @@ export function HintPanel({
   const applyHint = useGame((s) => s.applyHint);
   const dismissHint = useGame((s) => s.dismissHint);
   const cells = useGame((s) => s.cells);
+  const resting = useResting();
   const t = useT();
   const techWhat = useTechWhat();
 
@@ -357,7 +359,7 @@ export function HintPanel({
     `swatch-${role}${legend.onValue.has(role) ? ' on-value' : legend.onBand.has(role) ? ' on-band' : ''}`;
 
   return (
-    <div className="hint-panel" ref={panel} role="region" aria-label={t('Hint')} aria-live="polite">
+    <div className="hint-panel" ref={panel} role="region" aria-label={t('Hint')} aria-live="polite" inert={resting ? '' : undefined}>
       <div className="hint-head">
         <button
           className="hint-tech"

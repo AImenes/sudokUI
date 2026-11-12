@@ -3,7 +3,7 @@
 // candidate tools (hint, check, auto candidates, fill, convert).
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useT, msg, Translator } from '../content/i18n';
-import { useGame, EntryMode } from '../state/gameStore';
+import { useGame, EntryMode, useResting } from '../state/gameStore';
 import { useSettings, MarkLayer } from '../state/settings';
 import { Modal } from './Dialogs';
 import { PALETTE, colourName } from './Grid';
@@ -188,6 +188,9 @@ export function Controls({
   // Scan still study it, asking nothing, since nothing of the solve changes;
   // Hint, Chain, Auto and Fill have nothing left to do on it
   const won = useGame((s) => s.won);
+  // behind the pause card the controls rest: inert, and their questions
+  // wait until the game resumes (App.tsx)
+  const resting = useResting();
   const pending = useGame((s) => s.pendingAssist);
   const askAssist = useGame((s) => s.askAssist);
   const armedDigit = useGame((s) => s.armedDigit);
@@ -331,7 +334,7 @@ export function Controls({
     };
   }, [phone, rowHelp, t.lang]);
   return (
-    <div className="controls">
+    <div className="controls" inert={resting ? '' : undefined}>
       <div className="mode-row">
         {MODES.map((m) => (
           <button
@@ -583,7 +586,7 @@ export function Controls({
       </div>
       )}
 
-      {pending && (
+      {pending && !resting && (
         <Modal title={t('Use {name}?', { name: t(pending) })} onClose={() => askAssist(null)}>
           <p className="dialog-note">{t(textOf(pending))}</p>
           <p className="dialog-note">
@@ -601,7 +604,7 @@ export function Controls({
         </Modal>
       )}
 
-      {help && (
+      {help && !resting && (
         <Modal title={t('What the buttons do')} onClose={() => setHelp(false)}>
           <dl className="learn-points button-help">
             {BUTTONS.map((b) => (
@@ -620,7 +623,7 @@ export function Controls({
         </Modal>
       )}
 
-      {autoOffPrompt && (
+      {autoOffPrompt && !resting && (
         <Modal title={t('Keep your candidates?')} onClose={() => setAutoOffPrompt(false)}>
           <p className="dialog-note">
             {t(

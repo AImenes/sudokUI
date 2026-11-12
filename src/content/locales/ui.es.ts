@@ -81,6 +81,7 @@ const ui: Dictionary = {
   "Back to your game in progress": "Volver a tu partida en curso",
   "Kept as you left it when another game opened over it": "Guardada tal como la dejaste cuando se abrió otra partida encima",
   "Your game on this puzzle, where you left it": "Tu partida de este sudoku, donde la dejaste",
+  "Your {name} practice, where you left it": "Tu sudoku para practicar {name}, donde lo dejaste",
   "Today’s daily, where you left it": "El sudoku de hoy, donde lo dejaste",
   "The daily for {date}, where you left it": "El sudoku del día {date}, donde lo dejaste",
   "the puzzle you were typing in, with {game} behind it": "el sudoku que estabas escribiendo, con {game} detrás",
