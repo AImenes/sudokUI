@@ -3086,7 +3086,10 @@ function boardOf(back: SetAside): Partial<GameStore> {
     history: [],
     future: [],
     hint: null,
+    hintWith: null,
     hintStage: 'hidden',
+    // (a question asked of the game that goes, Use Hint? among them, goes with it)
+    pendingAssist: null,
     contractPrompt: false,
     errors: [],
     proofs: [],

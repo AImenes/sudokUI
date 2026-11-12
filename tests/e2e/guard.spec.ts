@@ -339,6 +339,32 @@ test.describe('Back and Forward, phone', () => {
     await page.goForward();
     await expect.poll(() => saved(page)).toMatchObject({ dailyKey: today, entries: 1, aside: { puzzle: HARD, entries: 2 } });
   });
+
+  test('a question asked of the game on the board, then Back swaps the game: the question goes with it, and its answer can no longer act on the other game', async ({ page }) => {
+    await page.addInitScript(welcomed);
+    await page.goto(`/#p=${EASY}`);
+    await expect.poll(async () => (await saved(page)).puzzle).toBe(EASY);
+    await enter(page, true, 2);
+    await page.evaluate((p) => (location.hash = `#p=${p}`), HARD);
+    await expect.poll(async () => (await saved(page)).puzzle).toBe(HARD);
+    await enter(page, true, 3);
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: HARD, entries: 3, aside: { puzzle: EASY, entries: 2 } });
+    // Restart? asked of the Hard game, then Back: the Easy game comes back, and the question is gone
+    await press(true, page.getByRole('button', { name: /Restart$/ }).first());
+    await expect(page.getByRole('dialog', { name: 'Restart puzzle?' })).toBeVisible();
+    await page.goBack();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, entries: 2, aside: { puzzle: HARD, entries: 3 } });
+    await expect(page.getByRole('dialog', { name: 'Restart puzzle?' })).toHaveCount(0);
+    // Forward, Use Hint? asked of the Hard game, then Back: gone too, and neither game had help
+    await page.goForward();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: HARD, entries: 3, aside: { puzzle: EASY, entries: 2 } });
+    await press(true, page.getByRole('button', { name: /Hint$/ }).first());
+    await expect(page.getByRole('dialog', { name: 'Use Hint?' })).toBeVisible();
+    await page.goBack();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, entries: 2, aside: { puzzle: HARD, entries: 3 } });
+    await expect(page.getByRole('dialog', { name: 'Use Hint?' })).toHaveCount(0);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.assisted)).toBe(false);
+  });
 });
 
 test.describe('Back and Forward across pages of the app, phone', () => {

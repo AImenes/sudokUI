@@ -410,7 +410,9 @@ none of the player's work.
   your X-Wing practice, where you left it". Back and Forward (`popstate`)
   bring back only a game the page holds (on the board, in the slot, or
   behind a puzzle being typed in: `holds`, src/ui/links.ts), as a link to
-  it does, so the board is again the game the address bar names; an
+  it does, so the board is again the game the address bar names (a
+  question or dialog asked of the game swapped away, Restart?, Use Hint?
+  or Steps, goes with it, so its answer never acts on the other); an
   address that names no kept game (one let go, a friend's puzzle nobody
   played on and replaced) opens nothing over the board, and the address
   goes back to the board's game. Nor do they ever let a game go: the

@@ -645,8 +645,17 @@ export default function App() {
       if (!play.acts()) return;
       if (readAppLink({ pathname: '/', search: '', hash: window.location.hash })) return;
       const link = readAppLink(window.location);
-      // a game this page holds comes back, never by letting one go (backTo)
-      if (link && holds(link) && backTo(link)) return;
+      // a game this page holds comes back, never by letting one go
+      // (backTo); a dialog asked about the game it swaps away (Restart?,
+      // Steps, Share) goes with that game, as the store's questions do
+      const was = useGame.getState().info;
+      if (link && holds(link) && backTo(link)) {
+        if (useGame.getState().info !== was) {
+          setDialog('none');
+          setReport(null);
+        }
+        return;
+      }
       const back = boardAddress();
       if (!back) return;
       try {
