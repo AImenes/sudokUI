@@ -132,6 +132,10 @@ export function doorDay(date: string, locale: string, month: 'long' | 'short' = 
 export const findDoor = (doors: AdventDoor[], year: number, door: number): AdventDoor | undefined =>
   doors.find((d) => d.door === door && d.date === doorDate(year, door));
 
+/** the years a published list has calendars for, oldest first (the public page shows the last, the dashboard the one in season) */
+export const calendarYears = (doors: AdventDoor[]): number[] =>
+  [...new Set(doors.map((d) => Number(d.date.slice(0, 4))))].sort((a, b) => a - b);
+
 // ---- the address ------------------------------------------------------------
 
 /** a door's address, in any language, with or without a trailing slash: /advent/2026/5, /nb/advent/2026/5 */

@@ -38,6 +38,7 @@ What it does not do:
 - [How the best sudoku solvers play](https://sudokui.app/how-the-best-solve/): the order champions solve in, and how to train it
 - [Sudoku difficulty rating](https://sudokui.app/sudoku-difficulty-rating/): how a puzzle's difficulty is scored, and the five levels
 - [Daily sudoku](https://sudokui.app/daily-sudoku/): one puzzle a day, identical for every player
+- [Sudoku advent calendar](https://sudokui.app/advent/): a sudoku behind each door in December, from Easy to Extreme, the same for every player
 - [Sudoku solver that explains every step](https://sudokui.app/sudoku-solver/): enter any sudoku and see each step named and drawn
 
 ## Optional

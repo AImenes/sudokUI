@@ -17,9 +17,11 @@
 // structure. Terminology: docs/translations.md and the published glossary.
 //
 // vite.config.ts bundles this file, so it imports nothing heavier than
-// staticRoutes.
+// staticRoutes and the quiet line to the advent calendar (adventLine.ts,
+// which imports nothing more itself).
 import type { Lang } from '../state/settings';
 import { RATING_URL } from './staticRoutes';
+import { seasonLine } from './adventLine';
 
 export const SITE = 'https://sudokui.app';
 const SOURCE = 'https://github.com/AImenes/sudokUI';
@@ -301,6 +303,8 @@ function parts(lang: Lang): Record<string, string> {
       '<ul>',
       ...BOOT_LINKS.map((path, i) => `  <li><a href="${inLang(lang, path)}">${esc(c.links[i])}</a></li>`),
       '</ul>',
+      // the advent calendar's page, a quiet line in November and December (adventLine.ts)
+      ...seasonLine(lang),
       `<p>${esc(c.loading)}</p>`,
       '<noscript>',
       '  <p>',

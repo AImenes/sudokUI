@@ -7,7 +7,8 @@ about 2400), the same puzzle for everyone. A door is a game like any
 other: the one slot keeps it, Back to it brings it back, and its
 unassisted time can go into everyone's times on its day and up to a week
 late, on the daily's own tables. This page says how it works, what it
-sends and keeps, and how to make next year's doors.
+sends and keeps, the public pages that show the doors to search engines,
+and how to make next year's doors.
 
 ## The season, in dates
 
@@ -68,12 +69,10 @@ Worker still refuses a time for a door whose day has not come anywhere
   `/advent/<year>/<door>` in the app's language (`boardAddress`, App.tsx).
   The service worker answers it with the app (`APP_NAVIGATION`,
   src/content/home.ts), and `langOfPath` reads its language. The static
-  calendar pages of decision 5 (`/advent/`, `/nb/julekalender/`,
-  `/es/calendario-de-adviento/`) are another branch's: their entry in
-  `STATIC_ROUTES` must match those pages alone, not
+  calendar pages (below) are matched by `STATIC_ROUTES` alone, never
   `/advent/<year>/<door>`, or an installed app would fetch a door's
   address from the network instead of answering it offline
-  (tests/advent.test.ts checks it).
+  (tests/advent.test.ts and tests/adventPage.test.ts check it).
 - **Its win screen.** As the daily's: the door's numbers fetched when it
   opens, and "Send my time and compare" for an unassisted solve while the
   door's time can still count (`doorCounts`: its day and up to
@@ -144,6 +143,81 @@ no band, rating or puzzle. `wrangler.jsonc` sends `/advent/*` (and
 under them, the static `/advent/` page among them, goes back to the assets
 as it is.
 
+## The public pages
+
+Decision 5: a page for search engines and for anyone a link brings, live
+all year, in three languages, each under its own name: `/advent/`,
+`/nb/julekalender/` and `/es/calendario-de-adviento/`. The copy is in
+[src/content/adventPage.ts](../src/content/adventPage.ts);
+src/content/learnPages.ts builds the pages with the Learn pages
+(`adventCalendarPage`), so scripts/build-learn.ts writes them into dist/
+and the sitemap, and the dev server serves them.
+
+- **What it shows.** The latest calendar in `advent.json`
+  (`pageCalendar`): its 24 doors in a grid, three a row on a phone, four,
+  then six, each with its day, its level and its HoDoKu rating, and a word
+  for where it stands. A status line says where the calendar stands, a
+  section says how it works (a door opens on its day by the player's
+  clock and stays open until 31 December; door n is rated about
+  n x 100; an unassisted time can be sent on the door's day and up to a
+  week late; from 1 January the calendar is closed and a door under way
+  can still be finished), and the card at the end links to the app and
+  to today's daily (`/#daily`), each in the page's language. No puzzle is
+  ever on the page.
+- **The doors open by the visitor's date.** The page is one file for
+  everyone, so every door is written locked: an `<a>` with no address,
+  its day, its rating and the word Locked. A small inline script
+  (`doorScript`, no file to fetch, nothing stored or sent: it reads the
+  device's date only) gives each door whose day has come its address in
+  the app, `/advent/2026/5` (under `/nb/` and `/es/` on those pages), the
+  class `open` (and `today` on its own day, with a holly ring) and the
+  word Open, and from 1 January marks every door Closed. Its rule is the
+  calendar's own, `doorOpen`; tests/adventPage.test.ts runs the script
+  over a stand-in for the page on every day from 25 November to 3 January
+  and checks it door by door against `doorOpen`. Without JavaScript every
+  door reads as locked, with its day, and the status line says what is
+  true on any day ("Door 1 opens on 1 December 2026, and door 24 on 24
+  December"). A door opened from here is opened, or refused, by the app
+  (`startDoor`): the page is a way in, not the lock.
+- **For search.** Title and description in each language, within 60 and
+  160 characters, with the year ("Sudoku advent calendar 2026: 24
+  puzzles, easy to extreme", "Sudoku-julekalender 2026: 24 luker, fra
+  lett til ekstrem", "Calendario de adviento de sudoku 2026: de fácil a
+  extremo"); canonical; hreflang among the three and x-default to
+  `/advent/` (`Page.alternates`, since the names differ); the sitemap, with
+  the same three; structured data that is true: a `CollectionPage` whose
+  `ItemList` names the 24 doors with their days and ratings, and no
+  `Event`. The address stays the same every year; the year is in the
+  title.
+- **Its card.** `og:type` website and a card of its own per language,
+  `public/og-advent-2026.png` (`.nb.png`, `.es.png`), made by
+  `scripts/og-advent-card.ts`: the name and the year, and 24 closed doors
+  in pine and gold, out of order as on a paper calendar. A new year's
+  doors need their card (the test fails without it).
+- **The look.** The site's own night and day, with the season's colours
+  on the calendar alone: pine doors with gold numbers once open, dashed
+  ones while locked, a ribbon of holly and gold above them. It fits 320
+  px (tests/e2e/pages.spec.ts checks every sitemap page at 320, 360 and
+  390 px).
+- **Where it is linked from.** One quiet line, "Advent calendar: a sudoku
+  behind each door, from 1 to 24 December", on the home pages (in the
+  block crawlers read before the app starts) and on `/learn/`, in each
+  language (`seasonLine`, src/content/adventLine.ts, kept apart so the
+  app's bundle, which carries home.ts, takes the line and not the page's
+  copy). It is in the HTML all year, hidden, and a
+  one-line script shows it in November and December by the visitor's
+  date, so a search engine finds the link and a reader sees it only in
+  season. llms.txt lists the page too.
+- **Not the app's.** `STATIC_ROUTES` matches the three pages, so the
+  service worker never answers them with the app; `/advent/` is under
+  `/advent/*` in wrangler.jsonc's `run_worker_first`, and the Worker hands
+  it back to the assets as it is, counting nothing (tests/telemetry.test.ts).
+- **IndexNow** reads the sitemap (scripts/build-indexnow.ts), so the
+  three pages go to IndexNow on the first deploy with them, and again
+  whenever they change. No other page's HTML changes with them but the
+  home pages' and `/learn/`'s, in their three languages, which carry the
+  quiet line.
+
 ## The doors of 2026
 
 Made by `scripts/build-advent.ts 2026` (69 seconds on the development
@@ -180,10 +254,16 @@ be in the band its target names or the one above (door 6 is Medium at
 2. Read what it prints: each door's rating, band and distance from its
    target. A door that could not come within its tolerance in its fixed
    number of tries is the nearest found, and says so by its distance.
-3. Run the tests (tests/adventDoors.test.ts checks every published year's
-   doors: one solution, the hash, the rating, rising), update the table
-   above, and commit the file. Nothing else changes: the app, the Worker
-   and the calendar take the year from the date.
+3. Make the public page's card for the year: `npx vite-node
+   scripts/og-advent-card.ts` (OG_BROWSER or PW_CHROMIUM may name a
+   Chromium), which writes `public/og-advent-<year>.png` and its `.nb` and
+   `.es` versions.
+4. Run the tests (tests/adventDoors.test.ts checks every published year's
+   doors: one solution, the hash, the rating, rising;
+   tests/adventPage.test.ts that the page shows the new year with its
+   card), update the table above, and commit the files. Nothing else
+   changes: the app, the Worker and the calendar take the year from the
+   date, the public page and the dashboard the year from the file.
 
 How a door is found (scripts/adventDoors.ts): its own seed, the year and
 the door, and a fixed number of tries, so a run on any machine makes the
