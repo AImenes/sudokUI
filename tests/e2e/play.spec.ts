@@ -450,6 +450,24 @@ test.describe('one page plays at a time', () => {
     await expect.poll(() => decodeURI(new URL(b.url()).pathname)).toBe(`/p/${HARD}`);
   });
 
+  test('an entry an earlier build of the app wrote (no history state), reached by Back: it follows the rule of Back and Forward, and opens nothing over the game under way', async ({ context }) => {
+    const a = await context.newPage();
+    // a friend's puzzle nobody played on, its entry as the build before left it
+    await open(a, `/p/${EASY}`);
+    await a.waitForTimeout(300);
+    await a.evaluate(() => history.replaceState(null, ''));
+    await open(a, `/p/${HARD}`);
+    await enter(a, 2);
+    await expect.poll(() => saved(a)).toMatchObject({ puzzle: HARD, entries: 2, aside: null });
+    await a.goBack();
+    await expect(a.locator('svg.board')).toBeVisible();
+    expect(await a.evaluate(() => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).type)).toBe('back_forward');
+    await a.waitForTimeout(800);
+    // no fresh copy of the friend's puzzle over the Hard game: the board stays, and the address is its again
+    expect(await saved(a)).toMatchObject({ puzzle: HARD, entries: 2, aside: null });
+    await expect.poll(() => decodeURI(new URL(a.url()).pathname)).toBe(`/p/${HARD}`);
+  });
+
   test('the browser restores its last session, a link it opened in a background tab never looked at: the restored tab opens its link, the game under way kept', async ({ baseURL, launchOptions }, testInfo) => {
     const dir = testInfo.outputPath('profile');
     const launch = () =>

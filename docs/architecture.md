@@ -341,7 +341,11 @@ worker controls yet, went offline), offline readiness. The update bar in
 App shows it. Its Reload (`reloadIntoLatest`) saves the game, clock
 included (from the page that plays; a view writes nothing), then asks a
 waiting worker to take over and reloads once it has,
-or reloads at once when none is waiting. The guide, the one part loaded
+or reloads at once when none is waiting. Every page that offered the
+update reloads as the new worker takes over; one where Reload was not
+pressed (the window beside) marks its reload as a page reloading itself
+to take the play does, so it starts as one shown again (from no page or
+a hidden one) and the window where the player pressed Reload plays. The guide, the one part loaded
 with `React.lazy`, has a stand-in for a file that cannot be had
 ([lazyPart.ts](../src/ui/lazyPart.ts)): the dialog closes and the bar
 offers the reload, with the game still on the board. The photo reader
@@ -425,15 +429,18 @@ none of the player's work.
   from the back-forward cache and reloaded into the saves: `traversed`),
   so an address no game here answers to never opens a fresh copy over
   the game under way (with no game saved at all, it opens). It holds for
-  an entry the app has started on: App's start-up leaves a mark in the
-  entry's history state (`sudokuiStarted`, src/ui/links.ts, kept by every
-  address the app writes; it says only that, stays in the tab's history
-  and is never sent). A tab the browser restores (its last session, or
+  every entry but one the app has not yet started on: a page that loads
+  on an entry with no mark of the app's marks it as one not yet started
+  on (`sudokuiLink`, src/ui/links.ts), and App's start-up replaces that
+  with its own mark (`sudokuiStarted`, kept by every address the app
+  writes); an entry an earlier build of the app wrote has neither, and
+  follows the rule. They say only that, stay in the tab's history and are
+  never sent, and the privacy page says so. A tab the browser restores (its last session, or
   Reopen closed tab) loads as Back and Forward do: where the app had
   started, it follows this rule; where it never started (a link opened in
-  a background tab and never looked at, which kept its link) it opens its
-  link as a link does once it is seen, the game under way set aside and
-  any game the one slot lets go told. A link opened in the same tab by its hash (`#s=`,
+  a background tab and never looked at, which kept its link and its mark)
+  it opens its link as a link does once it is seen, the game under way
+  set aside and any game the one slot lets go told. A link opened in the same tab by its hash (`#s=`,
   `#p=`, `#daily`) leaves the address once it has opened, which goes to
   the board's game, so a reload, or Back then Forward, never opens it
   again over the game played on since.

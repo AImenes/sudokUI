@@ -53,9 +53,14 @@ if (import.meta.env.DEV) {
 // keeps the files it started with until then. Checked again every hour,
 // for a tab that stays open all day.
 const HOUR = 60 * 60 * 1000;
+/** the update bar offered a new build (every page that offered it reloads once the new worker takes over), and whether this page's Reload was pressed */
+const update = { offered: false, pressed: false };
 const updateSW = registerSW({
   immediate: true,
-  onNeedRefresh: () => useAppStatus.getState().setUpdateReady('update'),
+  onNeedRefresh: () => {
+    update.offered = true;
+    useAppStatus.getState().setUpdateReady('update');
+  },
   onOfflineReady: () => useAppStatus.getState().setOfflineReady(),
   onRegisteredSW: (_url, registration) => {
     if (!registration) return;
@@ -68,11 +73,32 @@ const updateSW = registerSW({
 // game is written first, its clock included (zustand's persist writes on
 // every set, even one that changes nothing and so wakes no listener)
 useAppStatus.getState().setReload(() => {
+  update.pressed = true;
   void reloadIntoLatest(
     () => updateSW(true),
     () => useGame.setState((s) => s)
   );
 });
+
+// the new worker taking over reloads every page that offered it, the
+// window beside the one where Reload was pressed among them (the
+// registration's own reload as the worker takes control, from
+// virtual:pwa-register): such a page starts as one that reloaded itself
+// does, taking the play only from no page or a hidden one
+// (src/state/play.ts, Play.boot), so the window where the player pressed
+// Reload plays. (Heard before that reload: this listener comes first, as
+// the registration's is added once workbox-window has loaded)
+if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || !update.offered || update.pressed) return;
+    try {
+      window.history.replaceState(entryState({ sudokuiReload: { again: true } }), '');
+    } catch {
+      /* an origin that allows no history state: it starts as any page does */
+    }
+  });
+}
 
 // a lazily loaded file that cannot be fetched (the deploy moved on while
 // the tab was open, or a first visit went offline before a service worker

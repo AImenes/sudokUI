@@ -280,46 +280,55 @@ export function backTo(link: AppLink): boolean {
 }
 
 /**
- * The mark the app leaves in a history entry once its start-up has run on
- * it (App: markStarted), which every address the app writes keeps
- * (entryState). Back or Forward to an entry that has it follows the rule
- * of Back and Forward (traversed); an entry that never started (a link
- * opened in a background tab that was never looked at, then brought back
- * by the browser's session restore or Reopen closed tab, which load it as
- * Back and Forward do) opens its link as a link does. It says only that,
- * stays in the tab's history, and is never sent.
+ * The marks the app leaves in a history entry. One for an entry it has not
+ * yet started on (`sudokuiLink`), written as the page loads: a link opened
+ * in a background tab that was never looked at keeps it, so when the
+ * browser's session restore or Reopen closed tab loads it again (as Back
+ * and Forward load a page) it opens its link as a link does. And one for an
+ * entry it has started on (`sudokuiStarted`, App: markStarted), which every
+ * address the app writes from then keeps (entryState): Back or Forward to
+ * it follows the rule of Back and Forward (traversed), and so does an entry
+ * with neither, which an earlier build of the app wrote. They say only
+ * that, stay in the tab's history, and are never sent.
  */
 const STARTED = 'sudokuiStarted';
+const LINK = 'sudokuiLink';
 
-const hasMark = (state: unknown) => !!state && typeof state === 'object' && (state as Record<string, unknown>)[STARTED] === true;
+const flagged = (state: unknown, key: string) => !!state && typeof state === 'object' && (state as Record<string, unknown>)[key] === true;
 
-/** this page's history entry had the mark as the page loaded: the app started on it before */
-const startedBefore = (() => {
-  if (typeof window === 'undefined') return false;
+/** this page's history entry as the page loaded: started on before (its mark), or not yet started on (its link's mark) */
+const entryAtLoad = (() => {
+  if (typeof window === 'undefined') return { started: false, link: false };
   try {
-    return hasMark(window.history.state);
+    const state = window.history.state as unknown;
+    const at = { started: flagged(state, STARTED), link: flagged(state, LINK) };
+    // not started on: marked so until the start-up runs (the rest of the
+    // state kept, a reload's mark among it)
+    if (!at.started && !at.link) window.history.replaceState({ ...(state && typeof state === 'object' ? state : {}), [LINK]: true }, '');
+    return at;
   } catch {
-    return false;
+    return { started: false, link: false };
   }
 })();
+const startedBefore = entryAtLoad.started;
 
 /** this page's start-up has run (markStarted) */
 let startedNow = false;
 
 /**
  * The history state the app writes with an address (replaceState): the
- * mark, once this page has started or when its entry has it, and what
- * else is asked for (a reload's mark).
+ * started mark, once this page has started or when its entry has it, and
+ * else the mark of an entry not yet started on; and what else is asked
+ * for (a reload's mark).
  */
-export function entryState(extra?: Record<string, unknown>): Record<string, unknown> | null {
-  let keep = startedNow || startedBefore;
+export function entryState(extra?: Record<string, unknown>): Record<string, unknown> {
+  let started = startedNow || startedBefore;
   try {
-    if (!keep && typeof window !== 'undefined') keep = hasMark(window.history.state);
+    if (!started && typeof window !== 'undefined') started = flagged(window.history.state, STARTED);
   } catch {
     /* no history to read: the flags above say it */
   }
-  if (!keep && !extra) return null;
-  return { ...(keep ? { [STARTED]: true } : {}), ...extra };
+  return { [started ? STARTED : LINK]: true, ...extra };
 }
 
 /** App's start-up runs: this entry, and every address the app writes from now, carries the mark */
@@ -366,14 +375,15 @@ export function cameBack() {
 /**
  * This page was reached by Back or Forward (a page of the app another
  * document of the tab left, or one come back from the back-forward cache
- * and reloaded into the saves) on an entry the app had started on (its
- * mark): its start follows the rule of Back and Forward, as in the tab
- * (backTo), not a link's. A tab the browser restores or reopens loads as
- * Back and Forward do; one whose entry never started (a link opened in a
- * background tab and never looked at) opens its link as a link does.
+ * and reloaded into the saves) on an entry the app had started on, or one
+ * an earlier build wrote (neither mark): its start follows the rule of
+ * Back and Forward, as in the tab (backTo), not a link's. A tab the
+ * browser restores or reopens loads as Back and Forward do; one whose
+ * entry never started (a link opened in a background tab and never looked
+ * at: the link's mark) opens its link as a link does.
  */
 export function traversed(): boolean {
-  if (!startedBefore) return false;
+  if (entryAtLoad.link) return false;
   if (reloadMark.back) return true;
   try {
     const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
