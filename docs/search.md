@@ -60,7 +60,14 @@ All of it is in `src/content/`, and the app reads the same modules:
 `tests/content.test.ts` holds the content to its rules: a documented entry
 for every technique, hard word limits, house style (British spelling, no
 dashes as punctuation), no dangling glossary references, and pages that are
-well-formed, self-canonical and fully linked. `tests/intuition.test.ts` does
+well-formed, self-canonical and fully linked, each with a title of 60
+characters or fewer and a description of 160 or fewer (the landing, privacy
+and Why pages included, not only the technique pages that `fitDescription`
+fits), and that claim practice only for the techniques the app can practise.
+`tests/e2e/pages.spec.ts` opens every address in the sitemap on a phone at
+320, 360 and 390 px and fails if any page is wider than the screen: a
+worked example's legend wraps in its column, and the rating page's tables
+scroll in boxes of their own, never the page. `tests/intuition.test.ts` does
 the same for the Intuition guide and the kin lines, and checks that no
 "like I'm 12" text uses notation: no cell names, no letters standing for
 digits.
@@ -166,6 +173,13 @@ Two settings keep the pages reachable:
 - The build emits `nb/index.html` and `es/index.html` beside `index.html`
   (a plugin in `vite.config.ts`), so the service worker precaches all three
   home pages and `/nb/` and `/es/` open offline too.
+- Of the static pages, only the privacy page is precached, in all three
+  languages (`OFFLINE_PAGES` in `src/content/staticRoutes.ts`): the app's
+  footer opens it in place, and offline that must not land on the
+  browser's error page. It is written after the service worker, so
+  `vite.config.ts` names it with the commit as its revision; a page
+  missing from the build would stop the service worker installing, which
+  `tests/resilience.test.ts` guards.
 - `wrangler.jsonc` answers unknown addresses with a real 404 instead of the
   app. Cloudflare serves the nearest `404.html` up the path, so
   `public/nb/404.html` and `public/es/404.html` answer under `/nb/` and

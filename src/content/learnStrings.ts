@@ -41,6 +41,7 @@ export const LEARN_STRINGS = [
   'In this puzzle the position comes after harder steps.',
   'Open this position on the board',
   'The solver uses this on the hardest puzzles. It has no pattern to spot, so it is not offered in practice.',
+  'The solver uses this on the hardest puzzles. So few puzzles need it that it is not offered in practice.',
   'Implemented, but never needed: an easier technique always reaches the same result first.',
   'Only ever needed in puzzles made by hand for it: none can be generated, so it is not offered in practice.',
   'Not implemented in sudokUI: the chain engines already find everything it can.',
@@ -118,7 +119,7 @@ export const LEARN_STRINGS = [
   'More {family}',
   // static pages: the technique index
   'Sudoku solving techniques: all {n} explained',
-  'All {n} sudoku solving techniques explained in plain words, from Naked Single to Exocet, grouped by family. Practise each one free in the app.',
+  'All {n} sudoku solving techniques explained in plain words, from Naked Single to Exocet, grouped by family. Practise {p} of them free in the app.',
   'Sudoku solving techniques',
   "All {n} solving techniques in sudokUI's catalogue, grouped by the idea behind them. Each one says what the pattern is, why it works and how to spot it.",
   'Play sudokUI',

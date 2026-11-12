@@ -1,12 +1,12 @@
 // The control panel: mode switcher (digit/corner/centre/colour), number pad
 // (doubles as the colour palette in colour mode), undo/redo/erase and the
 // candidate tools (hint, check, auto candidates, fill, convert).
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useT, msg, Translator } from '../content/i18n';
-import { useGame, EntryMode } from '../state/gameStore';
+import { useGame, EntryMode, useResting } from '../state/gameStore';
 import { useSettings, MarkLayer } from '../state/settings';
 import { Modal } from './Dialogs';
-import { PALETTE } from './Grid';
+import { PALETTE, colourName } from './Grid';
 import { TapGate } from './keyTap';
 import { useMedia, PHONE } from './useMedia';
 
@@ -183,7 +183,20 @@ export function Controls({
   const requestHint = useGame((s) => s.requestHint);
   const check = useGame((s) => s.check);
   const [autoOffPrompt, setAutoOffPrompt] = useState(false);
+  // a question asked of the game on the board goes with that game: another
+  // game brought in (Back or Forward, a link in this tab, the slot) closes
+  // it, so its answer never acts on the game that came in
+  const boardGame = useGame((s) => s.info);
+  const boardCustom = useGame((s) => s.custom);
+  useEffect(() => setAutoOffPrompt(false), [boardGame, boardCustom]);
   const assisted = useGame((s) => s.assisted);
+  // a solved board: its solve is recorded as it was played. Check, Steps and
+  // Scan still study it, asking nothing, since nothing of the solve changes;
+  // Hint, Chain, Auto and Fill have nothing left to do on it
+  const won = useGame((s) => s.won);
+  // behind the pause card the controls rest: inert, and their questions
+  // wait until the game resumes (App.tsx)
+  const resting = useResting();
   const pending = useGame((s) => s.pendingAssist);
   const askAssist = useGame((s) => s.askAssist);
   const armedDigit = useGame((s) => s.armedDigit);
@@ -275,7 +288,7 @@ export function Controls({
 
   const startChain = useGame((s) => s.startChain);
   const guarded = (name: string, run: () => void) => () => {
-    if (assisted || !useSettings.getState().confirmAssist) return run();
+    if (assisted || won || !useSettings.getState().confirmAssist) return run();
     askAssist(name);
   };
   // what each named assist runs once the question is answered; the keyboard
@@ -327,12 +340,13 @@ export function Controls({
     };
   }, [phone, rowHelp, t.lang]);
   return (
-    <div className="controls">
+    <div className="controls" inert={resting ? '' : undefined}>
       <div className="mode-row">
         {MODES.map((m) => (
           <button
             key={m.id}
             className={`mode-btn ${effectiveMode === m.id ? 'active' : ''}${tempMode === m.id ? ' held' : ''}`}
+            aria-pressed={effectiveMode === m.id}
             onClick={() => setMode(m.id)}
             title={`${t(m.label)} (${m.key})`}
           >
@@ -361,12 +375,16 @@ export function Controls({
             key={d}
             className={`num-btn ${effectiveMode === 'color' ? 'color-btn' : ''}${armedDigit === d ? ' armed' : ''}${heldKey === d ? ' held-corner' : ''}`}
             aria-pressed={armedDigit === d}
+            // a Colour key shows no digit: its name is its colour's
+            aria-label={effectiveMode === 'color' ? colourName(t, d - 1) : undefined}
             title={t(
               armedDigit === d
                 ? '{d} is armed: tap a cell to enter it. Tap {d} again to put it down, whatever is selected'
                 : armedDigit !== null
                   ? 'Arm {d} instead of {a}: a tap on a cell then enters {d}'
-                  : '{d}. In Digit mode, hold it to enter a corner mark. With nothing selected, arms {d}: every {d} lights up and a tap on a cell enters it',
+                  : effectiveMode === 'color'
+                    ? 'Paints the selected cells in this colour, or takes it off when they all have it'
+                    : '{d}. In Digit mode, hold it to enter a corner mark. With nothing selected, arms {d}: every {d} lights up and a tap on a cell enters it',
               { d, a: armedDigit ?? '' }
             )}
             style={
@@ -458,7 +476,9 @@ export function Controls({
               (styles.css) rather than taking a second line */}
           <span className="zone-title">
             {t('Assist')}{' '}
-            {folded ? (
+            {/* not on a solved board: Check, Steps and Scan study it for
+                free there, and the rest is greyed out */}
+            {won ? null : folded ? (
               <span className="zone-note">
                 <span className="zone-dot" aria-hidden="true">·</span> {t('counts as help||after the name of the Assist box, folded into one row')}
               </span>
@@ -468,7 +488,7 @@ export function Controls({
           </span>
           {/* folded, the box keeps the assist used most */}
           {folded && (
-            <button className="zone-hint" onClick={guarded('Hint', requestHint)} title={t('Hint (H): names the technique first, reveals it only if you ask')}>
+            <button className="zone-hint" onClick={guarded('Hint', requestHint)} disabled={won} title={t('Hint (H): names the technique first, reveals it only if you ask')}>
               <span className="btn-icon" aria-hidden="true">💡</span>
               <span>{t('Hint')}</span>
             </button>
@@ -492,7 +512,7 @@ export function Controls({
         <div className="assist-body" id="assist-buttons" hidden={folded}>
           <span className="row-sub">{t('Reveals logic')}</span>
           <div className="action-row">
-            <button onClick={guarded('Hint', requestHint)} title={t('Hint (H): names the technique first, reveals it only if you ask')}>
+            <button onClick={guarded('Hint', requestHint)} disabled={won} title={t('Hint (H): names the technique first, reveals it only if you ask')}>
               <span className="btn-icon" aria-hidden="true">💡</span>
               <span>{t('Hint')}</span>
             </button>
@@ -503,7 +523,11 @@ export function Controls({
             {onShowSteps && (
               <button
                 onClick={guarded('Steps', onShowSteps)}
-                title={t('Show every step of one complete solution and jump to any point. Counts as assistance')}
+                title={
+                  won
+                    ? t('Show every step of one complete solution and jump to any point')
+                    : t('Show every step of one complete solution and jump to any point. Counts as assistance')
+                }
               >
                 <span className="btn-icon" aria-hidden="true">≡</span><span>{t('Steps')}</span>
               </button>
@@ -511,13 +535,18 @@ export function Controls({
             {onScan && (
               <button
                 onClick={guarded('Scan', onScan)}
-                title={t('List every technique available in this exact position, not just the easiest. Counts as assistance')}
+                title={
+                  won
+                    ? t('List every technique available in this exact position, not just the easiest')
+                    : t('List every technique available in this exact position, not just the easiest. Counts as assistance')
+                }
               >
                 <span className="btn-icon" aria-hidden="true">🔎</span><span>{t('Scan')}</span>
               </button>
             )}
             <button
               onClick={guarded('Chain', startChain)}
+              disabled={won}
               title={t('Build a chain yourself, candidate by candidate; the engine checks each link and says what it proves. Counts as assistance')}
             >
               <span className="btn-icon" aria-hidden="true">⛓</span><span>{t('Chain')}</span>
@@ -528,7 +557,9 @@ export function Controls({
           <div className="action-row">
             <button
               className={autoCandidates ? 'toggled' : ''}
+              aria-pressed={autoCandidates}
               onClick={autoCandidates ? onAutoToggle : guarded('Auto candidates', onAutoToggle)}
+              disabled={won}
               title={t(
                 !autoCandidates
                   ? 'Maintain candidates automatically (keeps your centre-mark eliminations); strike digits with pencil input'
@@ -545,6 +576,7 @@ export function Controls({
             </button>
             <button
               onClick={guarded('Fill candidates', fillCandidates)}
+              disabled={won}
               title={t(
                 autoCandidates
                   ? FILL_UNDER_AUTO_TITLE
@@ -560,7 +592,7 @@ export function Controls({
       </div>
       )}
 
-      {pending && (
+      {pending && !resting && (
         <Modal title={t('Use {name}?', { name: t(pending) })} onClose={() => askAssist(null)}>
           <p className="dialog-note">{t(textOf(pending))}</p>
           <p className="dialog-note">
@@ -578,7 +610,7 @@ export function Controls({
         </Modal>
       )}
 
-      {help && (
+      {help && !resting && (
         <Modal title={t('What the buttons do')} onClose={() => setHelp(false)}>
           <dl className="learn-points button-help">
             {BUTTONS.map((b) => (
@@ -597,7 +629,7 @@ export function Controls({
         </Modal>
       )}
 
-      {autoOffPrompt && (
+      {autoOffPrompt && !resting && (
         <Modal title={t('Keep your candidates?')} onClose={() => setAutoOffPrompt(false)}>
           <p className="dialog-note">
             {t(

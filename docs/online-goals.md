@@ -350,6 +350,32 @@ Built, October 2026, with these decisions:
   before (the store's version 1), since a kept count is never replaced
   by a smaller one. The share line of an assisted solve carries no
   percentile.
+- **A solve is fixed once it is solved** (the hunt of 11 November 2026).
+  Check, Steps and Scan on a solved board study it and ask nothing; they
+  do not make the solve assisted, take the daily's Send button away or
+  change the win screen's words, and Hint, Chain, Auto candidates, Fill
+  and the pause button are greyed out on it. Undo of the winning digit, or
+  a Steps jump off the solved board, puts the board back in play, the
+  clock going on from the winning time; solved again, it is the same
+  solve, recorded once, with the time it was recorded with, and its win
+  screen, put away, stays away; Undo of a jump made on the solved board
+  brings it back solved, its help flag and its time as they were. A
+  daily solved again (Restart, or the day chosen anew) is a new game for
+  the band record and shows its own win screen, but the day keeps its
+  first solve as its result, as the server keeps the first time it takes:
+  the replay is not kept, its own time is never sent, and its win screen
+  (which knows the replay by the game's `dailyKept`, not by its time) says
+  "You solved this daily before, in 6:12. That solve stays your result."
+  If that first time never went in (unassisted, not sent, the day open),
+  the replay's win screen says "That time is the one that goes in." and
+  keeps Send, which sends the first solve (`keptResultOf`), and the
+  switch sends it by itself after an unassisted replay; so a replay
+  never shuts out a time that was never sent. "Challenge a friend" on
+  the replay shares the first solve too, as the Share dialog does. The
+  one exception is a first solve with help followed by one without: the
+  assisted one never went in, and its win screen says to restart for an
+  unassisted run, so the unassisted one takes its place
+  (`src/state/gameStore.ts`, `recordDaily`). The privacy page says so.
 - **The share line** is the one above, without the emoji row for now, with
   the place in place of the percentile below twenty times.
 - **The daily's preview names no technique** (2 November 2026), in line
@@ -486,8 +512,9 @@ can be trusted:
   game whose moves were all undone or erased before a reload counts
   again at its next move, and a game counted, then left out of the
   counts across a reload, counts again when the switch goes off. Starting the
-  puzzle still on the board again (Restart, or choosing the same daily
-  anew) before it was ever solved is the same game; a puzzle played
+  puzzle still on the board again (Restart; the Daily button and a link
+  to it now bring it back as it was instead) before it was ever solved
+  is the same game; a puzzle played
   again after a solve, even one undone, is a new one (`countFirstMove`
   in `src/state/gameStore.ts`). A solve counts once per game, in the
   counts and in the player's own record: one undone and solved again by

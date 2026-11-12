@@ -13,7 +13,8 @@
 // device only, so its share line can be built again after the win screen
 // has closed.
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { play } from './play';
 import type { DailyStats } from '../content/dailies';
 import type { Level } from '../engine/ratings';
 import { useSettings } from './settings';
@@ -52,11 +53,11 @@ interface DailyStatsState {
   tokens: Record<string, string>;
   /** the seconds this device has submitted, by number: the panel shows the percentile from then on */
   submitted: Record<string, number>;
-  /** results that could not be sent, by number, sent on the next open */
+  /** results that could not be sent, or whose answer has not come yet, by number, sent on the next open */
   pending: Record<string, DailyResult>;
   /** the latest statistics seen, by number; a fetch never replaces a fuller answer with an emptier one */
   stats: Record<string, DailyStats>;
-  /** the dailies solved on this device, by number, the latest solve of each; never sent */
+  /** the dailies solved on this device, by number: the first solve of each, or a later unassisted one in place of one with help (gameStore.ts, recordDaily); never sent */
   played: Record<string, PlayedDaily>;
   /** the numbers whose result is on its way right now; not kept */
   inFlight: Record<string, boolean>;
@@ -151,8 +152,13 @@ export const useDailyStats = create<DailyStatsState>()(
           set((s) => ({ pending: { ...s.pending, [key]: result } }));
           return 'offline';
         }
-        // on its way: the win screen says so, whether a tap or the switch sent it
-        set((s) => ({ inFlight: { ...s.inFlight, [key]: true } }));
+        // on its way: the win screen says so, whether a tap or the switch
+        // sent it. It waits as sent later until a definite answer, so if
+        // this page cannot write what came of it (another tab took the play
+        // meanwhile, src/state/play.ts, or the page closed), the page that
+        // plays next sends it again with the same token, and the record
+        // that it went comes back without asking the player
+        set((s) => ({ inFlight: { ...s.inFlight, [key]: true }, pending: { ...s.pending, [key]: result } }));
         try {
           let res: Response;
           try {
@@ -205,6 +211,8 @@ export const useDailyStats = create<DailyStatsState>()(
       flushPending: async () => {
         const auto = useSettings.getState().autoSendDaily;
         for (const result of Object.values(get().pending)) {
+          // (one on its way from this page already is not sent twice)
+          if (get().inFlight[String(result.no)]) continue;
           if (result.auto && !auto) set((s) => ({ pending: without(s.pending, String(result.no)) }));
           else await get().submit(result);
         }
@@ -213,6 +221,8 @@ export const useDailyStats = create<DailyStatsState>()(
     {
       name: 'sudokui-daily-v1',
       version: 1,
+      // written only by the page that holds the play (src/state/play.ts)
+      storage: createJSONStorage(() => play.storage()),
       migrate: migrateKept,
       partialize: (s): Kept => ({ tokens: s.tokens, submitted: s.submitted, pending: s.pending, stats: s.stats, played: s.played })
     }

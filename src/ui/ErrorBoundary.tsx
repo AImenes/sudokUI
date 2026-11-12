@@ -2,10 +2,12 @@
 // panel instead of a blank page. The game is saved in localStorage, so a
 // reload usually brings it back; if the saved game itself is what breaks,
 // the second button clears it and starts fresh. Settings, stats and pools
-// are left alone.
+// are left alone, and so is a game kept aside, or the game a puzzle being
+// typed in was opened over (boardCleared).
 import React from 'react';
 import { translator, makeTranslator, rich } from '../content/i18n';
 import type { Translator } from '../content/i18n';
+import { play, setClearing } from '../state/play';
 
 const GAME_KEY = 'sudokui-game-v1';
 const ISSUES = 'github.com/AImenes/sudokUI/issues';
@@ -18,6 +20,51 @@ function panelTranslator(): Translator {
     return translator();
   } catch {
     return makeTranslator('en');
+  }
+}
+
+/**
+ * The save once the board is cleared: only the game kept aside (a link
+ * opened over it, src/ui/links.ts), which is never drawn until it comes
+ * back, so cannot be what broke, and the note still offers it back. With
+ * the slot empty and a puzzle being typed in, the game that puzzle was
+ * opened over, which is not drawn either, takes the slot (unless it was
+ * solved: a solved game is not kept), so the note offers it back, with
+ * its tally from the record (`record`, the stats save: while a puzzle is
+ * typed in, its game tally is still that game's). Null when there is
+ * neither, or the save cannot be read: then all of it goes.
+ */
+export function boardCleared(saved: string | null, record: string | null = null): string | null {
+  try {
+    const save = saved ? JSON.parse(saved) : null;
+    const state = save?.state;
+    const aside = state?.setAside;
+    const behind = state?.custom ? state.customBackup : null;
+    // while a puzzle is typed in, the save's solve and practice fields are
+    // those of the game behind it (a backup saved before it kept them has none)
+    const own = (b: Record<string, unknown>) =>
+      'solved' in b || !state.solved
+        ? b
+        : { ...b, solved: true, solvedMs: state.solvedMs ?? null, solvedAssisted: state.solvedAssisted ?? null, solvedAuto: state.solvedAuto ?? null, dailyKept: state.dailyKept };
+    const withTarget = (b: Record<string, unknown>) =>
+      'practiceTarget' in b ? b : { ...b, practiceTarget: state.practiceTarget ?? null, practiceFound: !!state.practiceFound };
+    const tally = (b: Record<string, unknown>) => {
+      try {
+        const game = record ? JSON.parse(record)?.state?.game : undefined;
+        return game && typeof game === 'object' ? { ...b, tally: game } : b;
+      } catch {
+        return b;
+      }
+    };
+    const kept =
+      aside && typeof aside === 'object'
+        ? aside
+        : behind && typeof behind === 'object' && behind.info && !behind.won
+          ? tally(withTarget(own(behind)))
+          : null;
+    return kept ? JSON.stringify({ state: { setAside: kept }, version: save.version ?? 0 }) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -39,9 +86,21 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
-    const reset = () => {
+    const reset = async () => {
+      // only the page that holds the play writes the save (src/state/play.ts):
+      // a view takes the play first, as Play here does, and then clears; it
+      // reads the saves another page wrote meanwhile in place instead of
+      // reloading into them, so the board it clears is the one in the save
+      if (!play.mayWrite()) {
+        setClearing(true);
+        await play.here().catch(() => {});
+      }
       try {
-        localStorage.removeItem(GAME_KEY);
+        if (play.mayWrite()) {
+          const left = boardCleared(localStorage.getItem(GAME_KEY), localStorage.getItem('sudokui-stats-v1'));
+          localStorage.removeItem(GAME_KEY);
+          if (left) localStorage.setItem(GAME_KEY, left);
+        }
       } catch {
         /* storage unavailable: a reload is all that is left */
       }
@@ -59,7 +118,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
         <p className="crash-detail">{String(error.message || error)}</p>
         <div className="hint-actions">
           <button onClick={() => window.location.reload()}>{t('Reload')}</button>
-          <button className="ghost" onClick={reset} title={t('Clears the saved game only; settings and your record stay')}>
+          <button className="ghost" onClick={() => void reset()} title={t('Clears the saved game only; settings and your record stay')}>
             {t('Clear the board and reload')}
           </button>
         </div>

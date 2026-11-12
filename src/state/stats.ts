@@ -4,7 +4,8 @@
 // easiest technique that justifies it (src/engine/justify.ts), every
 // applied hint with its technique. Nothing leaves the device.
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { play } from './play';
 import { Tech, Level, TECHS, asLevel } from '../engine/ratings';
 import { worth } from '../content/frequency';
 import { translator } from '../content/i18n';
@@ -99,6 +100,8 @@ export const useStats = create<Stats>()(
     }),
     {
       name: 'sudokui-stats-v1',
+      // written only by the page that holds the play (src/state/play.ts)
+      storage: createJSONStorage(() => play.storage()),
       // records kept under the band names from before HoDoKu's five levels
       // are read as their level's (foldBands); the five names are also old
       // bands', so a record written now still reads in an older build

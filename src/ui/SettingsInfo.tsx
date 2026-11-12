@@ -11,7 +11,7 @@ import { RATING_SUMMARY } from '../content/rating';
 import { useLearnLocale } from './useLearnLocale';
 import { PRIVACY_URL } from '../content/staticRoutes';
 import { WHY } from '../content/why';
-import { PALETTE } from './Grid';
+import { PALETTE, colourName } from './Grid';
 
 // The rating summary in the chosen language. English is at hand; a
 // translation comes from the guide's own locale file (useLearnLocale.ts),
@@ -198,7 +198,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                   key={k}
                   role="radio"
                   aria-checked={s.setColors[side] === k}
-                  aria-label={t('Colour {n}', { n: k + 1 })}
+                  aria-label={colourName(t, k)}
                   className={`swatch${s.setColors[side] === k ? ' on' : ''}`}
                   style={{ background: colour }}
                   onClick={() => {

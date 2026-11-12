@@ -278,13 +278,17 @@ export function standingOf(stats: DailyStats, seconds: number): Standing | null 
   return { kind: 'place', place: Math.min(faster + 1, stats.count), of: stats.count, tied: same > 1 };
 }
 
-/** the published dailies, loaded only when one is needed (the app's bundle stays light) */
-export async function loadDailies(): Promise<Daily[]> {
+/**
+ * The published dailies, loaded only when one is needed (the app's bundle
+ * stays light); null when the file cannot be fetched (offline before the
+ * app could keep it, a flaky network, a deploy that moved on). The app
+ * then makes up no other board for a day the list covers: it says the day's
+ * daily could not be loaded (src/ui/links.ts, startDaily)
+ */
+export async function loadDailies(): Promise<Daily[] | null> {
   try {
     return (await import('./dailies.json')).default as Daily[];
   } catch {
-    // a file that cannot be fetched (a deploy moved on, a flaky network)
-    // means no pinned daily today: the app falls back to deriving one
-    return [];
+    return null;
   }
 }

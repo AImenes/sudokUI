@@ -47,7 +47,10 @@ the solver.
 What is a move: a digit placed; a candidate struck out with auto
 candidates on; a mark taken away under the exhaustive contract (when the
 marks are declared to be the candidates). Marks that are notes (the open
-contract, or undeclared) are not moves.
+contract, or undeclared) are not moves. Nor is anything done on a board
+solved before (an Undo or a Steps jump off it, then solved again): that
+is the same solve, already credited, so its moves, slips and hints go
+into neither the game's tally nor the record.
 
 ## Storage
 

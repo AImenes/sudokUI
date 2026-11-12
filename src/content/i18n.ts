@@ -24,7 +24,7 @@
 // renders in it (src/main.tsx); English players never download them. The
 // same file carries the engine's sentences (src/engine/text.ts) and the
 // names of techniques, bands and families.
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { create } from 'zustand';
 import { useSettings, Lang } from '../state/settings';
 import { TECHS, Tech, LevelPick, Category } from '../engine/ratings';
@@ -164,10 +164,12 @@ export function startLocales(): Promise<void> {
     // on /nb/ or /es/ the address follows the language, so a reload or a
     // copied link keeps it; on / it stays / until a game is on the board,
     // from when on the app keeps the address at the puzzle's share path in
-    // the chosen language (src/ui/App.tsx)
+    // the chosen language (src/ui/App.tsx). Only the language's part of it
+    // changes: a link's puzzle or day not yet read stays in it
     if (typeof window !== 'undefined' && langOfPath(window.location.pathname)) {
-      const { search, hash } = window.location;
-      window.history.replaceState(window.history.state, '', langRoot(s.lang) + search + hash);
+      const { pathname, search, hash } = window.location;
+      const rest = pathname.replace(/^\/(nb|es)(?=\/|$)/, '').replace(/^\//, '');
+      window.history.replaceState(window.history.state, '', langRoot(s.lang) + rest + search + hash);
       // and the tab's title is that address's own (src/content/home.ts, fetched only here)
       import('./home').then((m) => (document.title = m.HOME[s.lang].title)).catch(() => {});
     }
@@ -177,6 +179,30 @@ export function startLocales(): Promise<void> {
   useLocales.subscribe(sync);
   sync();
   return loadLocale(useSettings.getState().lang).then(sync);
+}
+
+/**
+ * Whether the chosen language's tables are in, or could not be had (the
+ * app is then in English): App's start-up waits for it, so a link's first
+ * words (its toast) are in the language a /nb/ or /es/ link chose, even
+ * when the choice came after the first render (a page that took the play
+ * once it was shown, src/main.tsx)
+ */
+export function useTablesReady(): boolean {
+  const lang = useSettings((s) => s.lang);
+  const loaded = useLocales((s) => lang === 'en' || !!s.loaded[lang]);
+  const [failed, setFailed] = useState<Lang | null>(null);
+  useEffect(() => {
+    if (loaded) return;
+    let live = true;
+    void loadLocale(lang).then(() => {
+      if (live && !useLocales.getState().loaded[lang]) setFailed(lang);
+    });
+    return () => {
+      live = false;
+    };
+  }, [lang, loaded]);
+  return loaded || failed === lang;
 }
 
 /** t('New game') in the chosen language; re-renders when the language changes */

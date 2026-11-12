@@ -100,6 +100,37 @@ describe('the daily statistics store', () => {
     expect(useDailyStats.getState().submitted[9]).toBeUndefined();
   });
 
+  it('keeps a result as sent later until its answer comes, so a page that cannot write what came of it leaves it for the page that plays next, which sends it once more with the same token', async () => {
+    let answer: (r: Response) => void = () => {};
+    globalThis.fetch = ((url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return new Promise<Response>((done) => (answer = done));
+    }) as typeof fetch;
+    const sending = useDailyStats.getState().submit(result);
+    // on its way: kept, and not sent a second time by this page meanwhile
+    expect(useDailyStats.getState().pending[7]).toEqual(result);
+    expect(useDailyStats.getState().inFlight[7]).toBe(true);
+    await useDailyStats.getState().flushPending();
+    expect(calls).toHaveLength(1);
+    // what was kept as it went (the save another tab reads once it takes the play)
+    const kept = JSON.parse(JSON.stringify({ tokens: useDailyStats.getState().tokens, pending: useDailyStats.getState().pending }));
+    answer(json({ ok: true, accepted: true, stats: stats(1) }));
+    expect(await sending).toBe('accepted');
+    expect(useDailyStats.getState().pending).toEqual({});
+    // the next page plays from what was kept: it sends the same result with the same token, and the server's answer is the repeat
+    reset();
+    useDailyStats.setState({ ...kept, inFlight: {} });
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return json({ ok: true, accepted: false, stats: stats(1) });
+    }) as typeof fetch;
+    await useDailyStats.getState().flushPending();
+    expect(calls).toHaveLength(2);
+    expect(JSON.parse(String(calls[1].init?.body)).token).toBe(JSON.parse(String(calls[0].init?.body)).token);
+    expect(useDailyStats.getState().submitted[7]).toBe(552);
+    expect(useDailyStats.getState().pending).toEqual({});
+  });
+
   it('sends a result an older build kept without where the app ran', async () => {
     // kept by a build from before 21 October 2026, which sent source too
     useDailyStats.setState({ pending: { 7: { ...result, source: 'tab' } as DailyResult } });

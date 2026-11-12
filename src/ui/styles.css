@@ -79,7 +79,8 @@
   --line: #3a4152;
   --given: #1b2233;
   --entered: #2f6fd0;
-  --cand: #707a8e;
+  /* 5.1:1 on the cell (4.5:1 is the rule for these small digits) */
+  --cand: #656e82;
   --sel-bg: rgba(52, 103, 192, 0.18);
   --sel-border: #3467c0;
   --peer-bg: rgba(52, 103, 192, 0.07);
@@ -139,7 +140,12 @@
   --cell-bg: #fffbfd;
   --line: #57414d;
   --given: #a81d47;
-  --entered: #e0567f;
+  /* deep enough for 4.5:1 on the cell, still lighter than the given */
+  --entered: #c93a68;
+  /* errors, and a repeated digit on the board, in a vermilion well apart
+     from the raspberry of Rosé's own digits (daylight's crimson read as a
+     thin given): 5.6:1 on the cell, 4.6:1 on the selected cell */
+  --danger-text: #b93a0e;
   --sel-bg: rgba(212, 86, 138, 0.18);
   --sel-border: #d4568a;
   --peer-bg: rgba(212, 86, 138, 0.07);
@@ -507,6 +513,13 @@ button {
 
 .icon-btn:hover {
   background: rgba(128, 128, 160, 0.15);
+}
+
+/* the pause button of a solved game, whose clock has stopped for good */
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  background: none;
 }
 
 /* ---------- layout ---------- */
@@ -916,6 +929,44 @@ button {
   }
 }
 
+/* another tab or window of the app plays (src/state/play.ts): the pause
+   card's frost over the whole app, its line and Play here in the middle */
+.play-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  isolation: isolate;
+}
+
+.play-cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg);
+  opacity: 0.88;
+  backdrop-filter: blur(3px);
+}
+
+.play-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 420px;
+  text-align: center;
+}
+
+.play-card p {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
 .side {
   display: flex;
   flex-direction: column;
@@ -1097,6 +1148,12 @@ html .assist-zone.folded .zone-note {
   line-height: 1;
 }
 
+/* on a solved board, as the assist buttons in the box */
+.zone-hint:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .button-help dt {
   display: flex;
   align-items: baseline;
@@ -1139,6 +1196,12 @@ html .assist-zone.folded .zone-note {
 .menu-row button:hover,
 .action-row button:hover:not(:disabled) {
   border-color: var(--accent);
+}
+
+/* Share while a puzzle is being typed in: it has no link yet, and a tap
+   says so (App.tsx) */
+.menu-row button[aria-disabled='true'] {
+  opacity: 0.5;
 }
 
 /* Practice stays lit while a practice puzzle is running */
@@ -1453,6 +1516,12 @@ html .assist-zone.folded .zone-note {
 
 .past-daily a:hover {
   text-decoration: underline;
+}
+
+/* the set-aside note's Back to it (App.tsx, SetAsideNote) reads as the
+   past-daily note's link */
+.past-daily .link-button {
+  font-weight: 600;
 }
 
 .past-daily-close {
@@ -3268,9 +3337,34 @@ kbd {
   z-index: 60;
   animation: toast-in 0.25s ease-out;
   pointer-events: none;
+  /* as wide as its words need, up to the cap: centred by translate, its
+     width would otherwise shrink to the room right of the middle, half
+     the screen, and a long line stand as a narrow column on a phone */
+  width: max-content;
   max-width: min(90vw, 480px);
   text-align: center;
   line-height: 1.4;
+}
+
+.toast-line {
+  display: block;
+  margin-top: 4px;
+}
+
+/* the update bar up (App.tsx, UpdateBar): the toast stands above it, so
+   neither covers the other */
+.update-bar ~ .toast {
+  bottom: calc(26px + env(safe-area-inset-bottom) + var(--update-bar-h, 56px) + 10px);
+}
+
+/* the toast's live region while there is nothing to say */
+.toast-idle {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 @keyframes toast-in {
@@ -3984,18 +4078,22 @@ html:not([lang='en']) .zone-note {
 /* a phone on its side: the board takes the height, the controls sit
    beside it in a scrolling column, so the keypad is never off screen */
 @media (max-width: 1000px) and (max-height: 520px) and (orientation: landscape) {
+  /* installed on a phone on its side, the page reaches under the notch on
+     one side and the home bar below: the board and the column beside it
+     keep clear of both, as the top bar does (no inset: 8px 10px as ever) */
   .layout {
     flex-direction: row;
     align-items: flex-start;
     justify-content: center;
     gap: 12px;
-    padding: 8px 10px;
+    padding: 8px max(10px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
   }
 
   .board-col {
     flex: none;
-    width: calc(100vh - 72px);
-    max-width: calc(100vh - 72px);
+    width: calc(100vh - 72px - env(safe-area-inset-bottom));
+    max-width: calc(100vh - 72px - env(safe-area-inset-bottom));
   }
 
   .side {
@@ -4010,14 +4108,19 @@ html:not([lang='en']) .zone-note {
     order: 0;
   }
 
+  /* minmax(0, ...) and no padding: the nine keys shrink with the column
+     rather than run past it, as in a window zoomed to 200% (1024 x 768
+     is 512 x 384 then); where they fit, nothing changes */
   .numpad {
-    grid-template-columns: repeat(9, 1fr);
+    grid-template-columns: repeat(9, minmax(0, 1fr));
     gap: 3px;
   }
 
   .num-btn {
     aspect-ratio: auto;
     min-height: 40px;
+    min-width: 0;
+    padding: 0;
     font-size: 18px;
   }
 

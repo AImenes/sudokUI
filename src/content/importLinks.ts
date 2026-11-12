@@ -505,7 +505,7 @@ const SITE_IN_TEXT =
   /\b(?:www\.)?(?:(?:beta\.)?sudokupad\.app|sudokupad\.svencodes\.com|(?:app|test)\.crackingthecryptic\.com|f-puzzles\.com|sudokuexchange\.com|sudoku\.coach|sudokui\.app)\/[^\s<>"'`]*/i;
 
 /** the first address in the text, with or without its scheme; a link quoted in a sentence drops the full stop or bracket it drags along */
-function findUrl(text: string): URL | null {
+export function findUrl(text: string): URL | null {
   const m = URL_IN_TEXT.exec(text) ?? SITE_IN_TEXT.exec(text);
   if (!m) return null;
   let raw = m[0];

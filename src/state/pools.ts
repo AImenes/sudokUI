@@ -4,6 +4,7 @@ import { LevelPick, LEVELS, Tech, practiceCeiling, subPick } from '../engine/rat
 import type { Grid } from '../engine/board';
 import type { Move, Budget } from '../engine/justify';
 import type { PoolEntry, WorkerRequest, WorkerResponse } from '../engine/worker';
+import { play } from './play';
 
 // v12: HoDoKu's five levels, and the picks inside them. v11 filed the
 // eight bands from before; a pool is only a cache, so it is dropped, not read
@@ -21,7 +22,10 @@ function load(): Pools {
   }
 }
 
+// (a page that does not play writes nothing, this cache among it: what
+// its workers find meanwhile is not kept, src/state/play.ts)
 function save(pools: Pools) {
+  if (!play.acts()) return;
   try {
     localStorage.removeItem(OLD_KEY);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pools));

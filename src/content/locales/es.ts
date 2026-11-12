@@ -873,7 +873,7 @@ const es: LearnLocale = {
     "/sudoku-solver/": {
       "name": "Resolvedor de sudokus",
       "title": "Resolver sudoku paso a paso, con explicaciones | sudokUI",
-      "description": "Introduce cualquier sudoku y míralo resuelto paso a paso: cada técnica con su nombre, dibujada en el tablero y explicada. Gratis, privado y funciona sin conexión.",
+      "description": "Introduce cualquier sudoku y míralo resuelto paso a paso: cada técnica con su nombre, dibujada en el tablero y explicada. Gratis, privado y sin conexión.",
       "h1": "Un resolvedor de sudokus que explica cada paso",
       "lead": "Introduce cualquier sudoku y sudokUI lo resuelve como lo haría una persona: una técnica cada vez, con su nombre, dibujada en el tablero y explicada con palabras.",
       "sections": [
@@ -918,7 +918,7 @@ const es: LearnLocale = {
     "/hodoku/": {
       "name": "HoDoKu",
       "title": "Sudoku puntuado como en HoDoKu, en tu navegador | sudokUI",
-      "description": "sudokUI puntúa y explica sudokus con los puntos y el orden de búsqueda de HoDoKu, en cualquier navegador: móvil, tableta, Mac o PC. Sin instalar nada y funciona sin conexión.",
+      "description": "sudokUI puntúa y explica sudokus con los puntos y el orden de HoDoKu en cualquier navegador: móvil, tableta, Mac o PC. Sin instalar; funciona sin conexión.",
       "h1": "Puntuaciones compatibles con HoDoKu, en tu navegador",
       "lead": "sudokUI puntúa y explica los sudokus como lo hace HoDoKu, sin instalar nada. Funciona en cualquier navegador, en el móvil, la tableta o el ordenador, y sigue funcionando sin conexión.",
       "sections": [
@@ -2059,6 +2059,7 @@ const es: LearnLocale = {
     "In this puzzle the position comes after harder steps.": "En este sudoku, la posición llega después de pasos más difíciles.",
     "Open this position on the board": "Abrir esta posición en el tablero",
     "The solver uses this on the hardest puzzles. It has no pattern to spot, so it is not offered in practice.": "El resolvedor la usa en los sudokus más difíciles. No tiene ningún patrón que detectar, así que no se ofrece en el modo de práctica.",
+    "The solver uses this on the hardest puzzles. So few puzzles need it that it is not offered in practice.": "El resolvedor la usa en los sudokus más difíciles. La necesitan tan pocos sudokus que no se ofrece en el modo de práctica.",
     "Implemented, but never needed: an easier technique always reaches the same result first.": "Implementada, pero nunca necesaria: una técnica más fácil siempre llega antes al mismo resultado.",
     "Only ever needed in puzzles made by hand for it: none can be generated, so it is not offered in practice.": "Solo hace falta en sudokus construidos a mano para ella: no se puede generar ninguno, así que no se ofrece para practicar.",
     "Not implemented in sudokUI: the chain engines already find everything it can.": "No implementada en sudokUI: los motores de cadenas ya encuentran todo lo que ella podría encontrar.",
@@ -2128,7 +2129,7 @@ const es: LearnLocale = {
     "How the HoDoKu rating works": "Cómo funciona la puntuación HoDoKu",
     "More {family}": "Otras técnicas de la familia: {family}",
     "Sudoku solving techniques: all {n} explained": "Técnicas de sudoku: las {n} explicadas una a una",
-    "All {n} sudoku solving techniques explained in plain words, from Naked Single to Exocet, grouped by family. Practise each one free in the app.": "Las {n} técnicas para resolver sudokus explicadas con sencillez, del Único desnudo al Exocet y agrupadas por familias. Practica cada una gratis en la app.",
+    "All {n} sudoku solving techniques explained in plain words, from Naked Single to Exocet, grouped by family. Practise {p} of them free in the app.": "Las {n} técnicas para resolver sudokus explicadas con sencillez, del Único desnudo al Exocet y agrupadas por familias. Practica {p} de ellas gratis en la app.",
     "Sudoku solving techniques": "Técnicas para resolver sudokus",
     "All {n} solving techniques in sudokUI's catalogue, grouped by the idea behind them. Each one says what the pattern is, why it works and how to spot it.": "Las {n} técnicas de resolución del catálogo de sudokUI, agrupadas según la idea en la que se basan. Cada una explica cuál es el patrón, por qué funciona y cómo detectarlo.",
     "Play sudokUI": "Juega en sudokUI",

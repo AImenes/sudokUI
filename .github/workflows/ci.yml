@@ -38,9 +38,12 @@ jobs:
           path: dist/
           retention-days: 7
 
-  # the first minute in a real browser, against the production build
+  # the first minute in a real browser, against the production build.
+  # Pinned to 24.04: ubuntu-latest moved to 26.04, where Playwright 1.56
+  # cannot install Chromium's system packages; 24.04 is also the system
+  # whose fonts the layout tests (and tests/e2e/ci-fonts.conf) were made on
   browser-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

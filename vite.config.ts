@@ -24,8 +24,10 @@ function buildCommit(): string {
 }
 const COMMIT = buildCommit();
 const BUILD_VERSION = /^[0-9a-f]{7}$/.test(COMMIT) ? `${version}+${COMMIT}` : version;
+/** a build with no commit to name it by: its time instead, so nothing it precaches is taken for an older copy */
+const BUILD_STAMP = String(Date.now());
 import type { Plugin } from 'vite';
-import { STATIC_ROUTES } from './src/content/staticRoutes';
+import { STATIC_ROUTES, OFFLINE_PAGES } from './src/content/staticRoutes';
 import { renderHome, homeLangOfPath, HOME_LANGS, APP_NAVIGATION } from './src/content/home';
 import { shareParamsOf, renderSharePage } from './src/content/share';
 import { handleDailyApi, memoryStore } from './worker/daily';
@@ -214,7 +216,8 @@ export default defineConfig({
       // a game in progress
       registerType: 'prompt',
       injectRegister: null,
-      includeAssets: ['icon.svg'],
+      // Nutella (src/ui/Poodle.tsx and the pause card) is there offline too
+      includeAssets: ['icon.svg', 'poodle.png'],
       workbox: {
         // The app lives at "/", "/nb/" and "/es/" and at the share
         // addresses, /p/<puzzle>, under them (src/content/home.ts,
@@ -227,7 +230,13 @@ export default defineConfig({
         // and they stay out of the precache: they are generated after this
         // step anyway, but a player should never download 80 articles. So
         // do the 404 pages, in every language.
-        globIgnores: ['learn/**', '**/404.html']
+        globIgnores: ['learn/**', '**/404.html'],
+        // all but the privacy page, which the footer opens in place: it
+        // reads offline too (src/content/staticRoutes.ts, OFFLINE_PAGES).
+        // scripts/build-learn.ts writes it after this step, so it is named
+        // here, with the commit for its revision: each new build fetches it
+        // afresh, and an old copy never outlives the code it describes
+        additionalManifestEntries: OFFLINE_PAGES.map((url) => ({ url: url.slice(1), revision: COMMIT || BUILD_STAMP }))
       },
       manifest: {
         name: 'sudokUI',

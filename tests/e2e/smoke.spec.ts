@@ -170,11 +170,21 @@ test.describe('desktop, 1280 x 800', () => {
     await expect(page.locator('.edit-row')).not.toHaveClass(/icons/);
   });
 
+  test('the top bar’s name is read once: its UI tile is a picture of the name beside it', async ({ page }) => {
+    await open(page);
+    const brand = page.locator('header.topbar .brand');
+    await expect(brand.locator('.brand-mark')).toHaveText('UI');
+    await expect(brand).toMatchAriaSnapshot('- heading "sudokUI" [level=1]');
+    expect(await brand.ariaSnapshot()).not.toContain('text: UI');
+  });
+
   test('the pause card shows the app’s mark and address, inside the board', async ({ page }) => {
     await open(page);
     await page.keyboard.press('KeyP');
     const card = page.locator('.pause-card');
-    await expect(card.locator('.pause-brand')).toHaveText('UIsudokui.app');
+    // the tile shows UI; a screen reader hears the address alone
+    await expect(card.locator('.pause-brand .brand-mark')).toHaveText('UI');
+    await expect(card.locator('.pause-brand')).toMatchAriaSnapshot('- paragraph: sudokui.app');
     const board = (await page.locator('svg.board').boundingBox())!;
     const brand = (await card.locator('.pause-brand').boundingBox())!;
     const resume = (await card.locator('.resume-btn').boundingBox())!;
@@ -221,9 +231,13 @@ test.describe('desktop, 1280 x 800', () => {
     await page.mouse.click(c.x, c.y);
     await page.keyboard.press('Digit3');
     const value = page.locator('svg.board text', { hasText: /^3$/ }).first();
-    await expect(page.locator('svg.board text[fill="var(--error-bg)"]')).toHaveCount(1);
+    await expect(page.locator('svg.board text[fill="var(--danger-text)"]')).toHaveCount(1);
+    // and underlined, for an eye that cannot tell this red from the
+    // theme's own digits (Rosé's are red too)
+    await expect(page.locator('svg.board .conflict-mark')).toHaveCount(1);
     await page.keyboard.press('Digit4'); // the true digit
-    await expect(page.locator('svg.board text[fill="var(--error-bg)"]')).toHaveCount(0);
+    await expect(page.locator('svg.board text[fill="var(--danger-text)"]')).toHaveCount(0);
+    await expect(page.locator('svg.board .conflict-mark')).toHaveCount(0);
     void value;
   });
 
@@ -672,6 +686,161 @@ test.describe('reachable by keyboard and screen reader', () => {
     await expect(page.locator('#board-status')).toHaveText('Row 1, column 3: 3, given.');
   });
 
+  test('Space presses a button reached with Tab; after a mouse click on a number key it still changes the mode', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const mode = page.locator('.mode-btn.active');
+    const gear = page.getByRole('button', { name: 'Settings' });
+    for (let i = 0; i < 40 && !(await gear.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await expect(gear).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(mode).toContainText('Digit');
+    // focus is back on the gear, brought there by a key: Space presses it again
+    await expect(gear).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    // a number key clicked with the mouse keeps focus, and Space is the
+    // mode's as before: the 5 is not pressed a second time, which would
+    // take it out again
+    const c = await cellBox(page, 40);
+    await page.mouse.click(c.x, c.y);
+    await page.locator('.num-btn', { hasText: '5' }).click();
+    await expect(status).toContainText('Row 5, column 5: 5.');
+    await page.keyboard.press('Space');
+    await expect(mode).toContainText('Corner');
+    await expect(status).toContainText('Row 5, column 5: 5.');
+    // the board itself, with focus: Space cycles the mode
+    await page.locator('svg.board').focus();
+    await page.keyboard.press('Space');
+    await expect(mode).toContainText('Centre');
+  });
+
+  test('Space after Escape, back on a button the mouse pressed, changes the mode: Settings, the hint question and the trainer stay shut', async ({ page }) => {
+    await open(page);
+    const mode = page.locator('.mode-btn.active');
+    const dialogs = page.getByRole('dialog');
+    const c = await cellBox(page, 0);
+    await page.mouse.click(c.x, c.y);
+    // Settings, opened with the mouse and shut with Escape, which gives
+    // focus back to the gear
+    const gear = page.getByRole('button', { name: 'Settings' });
+    await gear.click();
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialogs).toHaveCount(0);
+    await expect(gear).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(mode).toContainText('Corner');
+    await expect(dialogs).toHaveCount(0);
+    // the question the Hint button asks
+    await page.getByRole('button', { name: /^Hint/ }).first().click();
+    await expect(page.getByRole('dialog', { name: 'Use Hint?' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialogs).toHaveCount(0);
+    await page.keyboard.press('Space');
+    await expect(mode).toContainText('Centre');
+    await expect(dialogs).toHaveCount(0);
+    // the chain trainer, opened and left: Space does not open it again,
+    // where the next digits would go to the chain
+    await page.getByRole('button', { name: /Chain/ }).first().click();
+    await page.getByRole('button', { name: 'Use Chain' }).click();
+    const panel = page.getByRole('region', { name: 'Build a chain' });
+    await expect(panel).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await page.keyboard.press('Space');
+    await expect(mode).toContainText('Colour');
+    await expect(panel).toHaveCount(0);
+  });
+
+  test('Ctrl+Z undoes on a German and a French keyboard, and the French Z is no wipe', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const undo = page.locator('.action-row button', { hasText: 'Undo' });
+    // a key as that keyboard sends it: its US place (code) and the letter
+    // printed on it (key); then Ctrl let go
+    const send = (code: string, key: string, mods: { ctrlKey?: boolean; metaKey?: boolean } = {}) =>
+      page.evaluate(
+        ({ code, key, mods }) => {
+          const at = document.activeElement ?? document.body;
+          at.dispatchEvent(new KeyboardEvent('keydown', { code, key, ...mods, bubbles: true, cancelable: true }));
+          at.dispatchEvent(new KeyboardEvent('keyup', { code, key, ...mods, bubbles: true, cancelable: true }));
+          at.dispatchEvent(new KeyboardEvent('keyup', { code: 'ControlLeft', key: 'Control', bubbles: true, cancelable: true }));
+        },
+        { code, key, mods }
+      );
+    const c = await cellBox(page, 0);
+    await page.mouse.click(c.x, c.y);
+    for (const [layout, code, mods] of [
+      ['QWERTZ, Ctrl', 'KeyY', { ctrlKey: true }],
+      ['AZERTY, Ctrl', 'KeyW', { ctrlKey: true }],
+      ['AZERTY, Cmd', 'KeyW', { metaKey: true }]
+    ] as const) {
+      await page.keyboard.press('Digit4');
+      await expect(status).toContainText('Row 1, column 1: 4.');
+      await send(code, 'z', mods);
+      await expect(status, layout).toContainText('Row 1, column 1: empty.');
+      await expect(undo, layout).toBeDisabled();
+    }
+    // the key printed Z on a French keyboard (the US W's place) is Digit
+    // mode, as Z is: corner marks stay
+    const d = await cellBox(page, 1);
+    await page.mouse.click(d.x, d.y);
+    await page.keyboard.press('KeyX');
+    await page.keyboard.press('Digit4');
+    await page.keyboard.press('Digit8');
+    await expect(status).toContainText('Row 1, column 2: empty, corner marks 4 8.');
+    await send('KeyW', 'z');
+    await expect(page.locator('.mode-btn.active')).toContainText('Digit');
+    await expect(status).toContainText('Row 1, column 2: empty, corner marks 4 8.');
+  });
+
+  test('the mode buttons, Auto candidates and the Colour keys say their state and colour', async ({ page }) => {
+    await open(page);
+    await expect(page.getByRole('button', { name: 'Digit Z', exact: true, pressed: true })).toBeVisible();
+    await page.keyboard.press('KeyX');
+    await expect(page.getByRole('button', { name: 'Corner X', exact: true, pressed: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Digit Z', exact: true, pressed: false })).toBeVisible();
+    await page.keyboard.press('KeyV');
+    await expect(page.getByRole('button', { name: 'Colour V', exact: true, pressed: true })).toBeVisible();
+    const words = ['red', 'orange', 'yellow', 'green', 'teal', 'blue', 'purple', 'pink', 'grey'];
+    for (const [k, word] of words.entries()) {
+      await expect(page.getByRole('button', { name: `Colour ${k + 1}, ${word}`, exact: true })).toBeVisible();
+    }
+    await page.keyboard.press('KeyZ');
+    await expect(page.getByRole('button', { name: '1', exact: true })).toBeVisible();
+    const auto = page.getByRole('button', { name: 'Auto candidates', exact: true });
+    await expect(auto).toHaveAttribute('aria-pressed', 'false');
+    await auto.click();
+    await page.getByRole('button', { name: 'Use Auto candidates' }).click();
+    await expect(auto).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('Escape on the mark question raised from Settings closes the question alone', async ({ page }) => {
+    await open(page);
+    // corner marks in r1c1, so the ring must ask how to read them
+    const c = await cellBox(page, 0);
+    await page.mouse.click(c.x, c.y);
+    await page.keyboard.press('KeyX');
+    await page.keyboard.press('Digit4');
+    await page.keyboard.press('Digit5');
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const ring = page.getByRole('switch', { name: /Highlight cells with two candidates/ });
+    await ring.click();
+    const question = page.getByRole('dialog', { name: 'How should the board read your pencil marks?' });
+    await expect(question).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(question).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+    await expect(ring).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
   test('Tab stays inside an open dialog', async ({ page }) => {
     await open(page);
     await page.getByRole('button', { name: /New/ }).first().click();
@@ -731,6 +900,59 @@ test.describe('the chain trainer', () => {
     await expect(panel).toHaveCount(0);
   });
 
+  test('from the keyboard: focus goes into it, a typed digit is the selected cell’s candidate, and Done brings focus back', async ({ page }) => {
+    await open(page);
+    const status = page.locator('#board-status');
+    const chain = page.getByRole('button', { name: /Chain/ }).first();
+    await chain.focus();
+    await page.keyboard.press('Enter');
+    const use = page.getByRole('button', { name: 'Use Chain' });
+    for (let i = 0; i < 10 && !(await use.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    const panel = page.getByRole('region', { name: 'Build a chain' });
+    await expect(panel).toBeFocused();
+    // from the centre to r1c1 (candidates 4 and 5) with the arrow keys
+    for (let k = 0; k < 4; k++) {
+      await page.keyboard.press('ArrowUp');
+      await page.keyboard.press('ArrowLeft');
+    }
+    await expect(status).toContainText('Row 1, column 1: empty, candidates 4 5.');
+    await page.keyboard.press('Digit4');
+    await expect(panel).toContainText('starts the chain');
+    await expect(panel).toContainText('1 candidate');
+    await page.keyboard.press('Digit5');
+    await expect(panel).toContainText('Strong link');
+    // nothing went onto the board
+    await expect(status).toContainText('Row 1, column 1: empty, candidates 4 5.');
+    await page.keyboard.press('Shift+Tab');
+    const done = panel.getByRole('button', { name: 'Done' });
+    for (let i = 0; i < 10 && !(await done.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    await expect(panel).toHaveCount(0);
+    await expect(chain).toBeFocused();
+    await expect(status).toContainText('Row 1, column 1: empty.');
+  });
+
+  test('on a practice puzzle, Build it yourself has focus again when the trainer closes', async ({ page }) => {
+    await openPractice(page);
+    const build = page.getByRole('button', { name: 'Build it yourself' });
+    const panel = page.getByRole('region', { name: 'Build a chain' });
+    // the button is hidden while the trainer is open: the one that comes
+    // back takes focus, after Escape and after Done
+    await build.focus();
+    await page.keyboard.press('Enter');
+    await expect(panel).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await expect(build).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(panel).toBeFocused();
+    await panel.getByRole('button', { name: 'Done' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(panel).toHaveCount(0);
+    await expect(build).toBeFocused();
+  });
+
   test('a reload while it is open closes it as Done does: auto candidates off, the player’s marks back', async ({ page }) => {
     await open(page);
     const status = page.locator('#board-status');
@@ -751,6 +973,8 @@ test.describe('the chain trainer', () => {
     await expect(page.locator('svg.board')).toBeVisible();
     await expect(page.getByRole('region', { name: 'Build a chain' })).toHaveCount(0);
     await expect(auto).not.toHaveClass(/toggled/);
+    // the game was under way when the page went, so it comes back paused
+    await page.getByRole('button', { name: 'Resume game' }).click();
     await page.mouse.click(c.x, c.y);
     await expect(status).toContainText('Row 1, column 2: empty, corner marks 4 5.');
   });
@@ -1524,7 +1748,8 @@ test.describe('phone, 390 x 844', () => {
     await page.getByRole('button', { name: 'Pause game' }).tap();
     const card = page.locator('.pause-card');
     await expect(card).toBeVisible();
-    await expect(card.locator('.pause-brand')).toHaveText('UIsudokui.app');
+    await expect(card.locator('.pause-brand .brand-mark')).toHaveText('UI');
+    await expect(card.locator('.pause-brand')).toMatchAriaSnapshot('- paragraph: sudokui.app');
     await expect(card.locator('.pause-site')).toHaveText('sudokui.app');
     const board = (await page.locator('svg.board').boundingBox())!;
     for (const part of ['h3', '.pause-tip', '.resume-btn', '.pause-brand']) {
@@ -1561,6 +1786,11 @@ test.describe('phone, 390 x 844', () => {
       await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
       await page.goto(`/${lang}/#p=${EASY}`);
       await expect(page.locator('svg.board')).toBeVisible();
+      // the link's game on the board (it opens just after the board is
+      // drawn, and a game that opens starts its clock running)
+      await expect
+        .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state?.info?.puzzle ?? null))
+        .toBe(EASY);
       // the pause key, P, as on any keyboard the phone has; the button's name is in the page's language
       await page.keyboard.press('p');
       const card = page.locator('.pause-card');
@@ -1873,6 +2103,51 @@ test.describe('phone on its side, 844 x 390', () => {
   });
 });
 
+test.describe('zoomed to 200%: a 1024 x 768 window', () => {
+  test.use({ viewport: { width: 512, height: 384 }, deviceScaleFactor: 2 });
+
+  test('the nine keys fit beside the board, and the play area does not scroll sideways', async ({ page }) => {
+    await open(page);
+    for (const [width, height] of [[512, 384], [640, 450]]) {
+      await page.setViewportSize({ width, height });
+      const side = (await page.locator('.side').boundingBox())!;
+      for (const d of [7, 8, 9]) {
+        const key = page.getByRole('button', { name: String(d), exact: true });
+        await expect(key, `${d} at ${width} x ${height}`).toBeInViewport({ ratio: 1 });
+        const box = (await key.boundingBox())!;
+        expect(box.x + box.width, `${d} at ${width} x ${height}`).toBeLessThanOrEqual(side.x + side.width + 0.5);
+      }
+      expect(await page.locator('.layout').evaluate((el) => el.scrollWidth - el.clientWidth), `${width} x ${height}`).toBe(0);
+    }
+  });
+});
+
+test.describe('reduced motion', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('a hint brings the page back to the top at once, without the smooth scroll', async ({ page }) => {
+    // how the page is asked to scroll
+    await page.addInitScript(() => {
+      const asked: unknown[] = [];
+      (window as unknown as { scrolls: unknown[] }).scrolls = asked;
+      const own = Element.prototype.scrollTo;
+      Element.prototype.scrollTo = function (this: Element, ...args: unknown[]) {
+        asked.push(args[0]);
+        return (own as (...a: unknown[]) => void).apply(this, args);
+      };
+    });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await open(page);
+    await page.locator('.layout').evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await page.evaluate(() => ((window as unknown as { scrolls: unknown[] }).scrolls.length = 0));
+    await page.getByRole('button', { name: /Hint/ }).first().click();
+    await page.getByRole('button', { name: 'Use Hint' }).click();
+    await expect(page.locator('.hint-panel')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { scrolls: unknown[] }).scrolls)).toContainEqual({ top: 0, behavior: 'auto' });
+    expect(await page.evaluate(() => (window as unknown as { scrolls: { behavior?: string }[] }).scrolls.some((s) => s?.behavior === 'smooth'))).toBe(false);
+  });
+});
+
 test.describe('tablet, 820 x 1180', () => {
   test.use({ viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true });
 
@@ -2052,7 +2327,7 @@ test.describe('a share link', () => {
     // would tell the recipient what to look for
     await dialog.getByRole('button', { name: 'Puzzle link' }).click();
     const link = await copied(page);
-    expect(link).toMatch(new RegExp(`^http://localhost:4173/p/${puzzle}\\?b=[a-z]+&s=\\d+$`));
+    expect(link).toMatch(new RegExp(`^http://localhost:\\d+/p/${puzzle}\\?b=[a-z]+&s=\\d+$`));
     await dialog.getByRole('button', { name: 'Position link' }).click();
     const position = await copied(page);
     expect(position.startsWith(link + '#s=')).toBe(true);
@@ -2062,7 +2337,7 @@ test.describe('a share link', () => {
     await box.check();
     await dialog.getByRole('button', { name: 'Puzzle link' }).click();
     const named = await copied(page);
-    expect(named).toMatch(new RegExp(`^http://localhost:4173/p/${puzzle}\\?b=[a-z]+&s=\\d+&t=[a-z0-9-]+(,[a-z0-9-]+){0,2}$`));
+    expect(named).toMatch(new RegExp(`^http://localhost:\\d+/p/${puzzle}\\?b=[a-z]+&s=\\d+&t=[a-z0-9-]+(,[a-z0-9-]+){0,2}$`));
     expect(named.startsWith(`${link}&t=`)).toBe(true);
     await dialog.getByRole('button', { name: 'Position link' }).click();
     expect((await copied(page)).startsWith(named + '#s=')).toBe(true);
@@ -2141,7 +2416,7 @@ test.describe('the daily', () => {
     await page.locator('.menu-row button', { hasText: 'Share' }).click();
     const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
     await dialog.getByRole('button', { name: 'Puzzle link' }).click();
-    expect(await copied(page)).toBe(`http://localhost:4173/daily/${third.date}`);
+    expect(await copied(page)).toBe(`${new URL(page.url()).origin}/daily/${third.date}`);
   });
 
   test('a finished daily sends its time when asked, hears how it compares, and shares the day', async ({ page }) => {
@@ -2221,6 +2496,10 @@ test.describe('the daily', () => {
         await page.keyboard.press(`Digit${solution[cell]}`);
       }
     };
+    /** the day's daily is on the board: until the dailies file has loaded,
+     *  the board shown is still the last game, and digits would go on it */
+    const onBoard = (date: string) =>
+      expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state?.info?.dailyKey)).toBe(date);
     const results: string[] = [];
     page.on('request', (r) => {
       if (r.method() === 'POST' && r.url().includes('/api/daily/')) results.push(new URL(r.url()).pathname);
@@ -2229,6 +2508,7 @@ test.describe('the daily', () => {
     // the first daily: nothing goes until the player taps Send
     await page.goto(`/daily/${yesterday}`);
     await expect(page.locator('svg.board')).toBeVisible();
+    await onBoard(yesterday);
     await solveDaily(first);
     const dialog = page.getByRole('dialog', { name: 'Puzzle solved' });
     await expect(dialog).toBeVisible();
@@ -2245,6 +2525,7 @@ test.describe('the daily', () => {
     // the next daily goes in by itself, and its place shows at once
     await page.goto(`/daily/${today}`);
     await expect(page.locator('svg.board')).toBeVisible();
+    await onBoard(today);
     await solveDaily(next);
     const second = page.getByRole('dialog', { name: 'Puzzle solved' });
     await expect(second).toBeVisible();

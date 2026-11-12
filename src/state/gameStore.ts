@@ -5,7 +5,7 @@
 //   auto          = engine-computed list minus per-cell exclusions (strikes)
 // engineGrid() bridges UI cell state to the engine's Grid for hints/fill/check.
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import {
   Grid,
   emptyGrid,
@@ -29,11 +29,13 @@ import { Level, Tech, SOLVE_ORDER, hintOrder, asLevel } from '../engine/ratings'
 import { useSettings } from './settings';
 import type { MarkLayer } from './settings';
 import { useStats } from './stats';
+import type { GameTally } from './stats';
 import { useTelemetry, type PlayKind } from './telemetry';
 import { useDailyStats } from './dailyStats';
-import type { DailyResult } from './dailyStats';
-import { dailyClosed } from '../content/dailies';
+import type { DailyResult, PlayedDaily } from './dailyStats';
+import { dailyClosed, localDateKey } from '../content/dailies';
 import { justifyMove } from './pools';
+import { play } from './play';
 import { translator, msg } from '../content/i18n';
 import type { TextPosition } from '../content/textGrid';
 import { formatPencilGrid } from '../content/textGrid';
@@ -227,6 +229,11 @@ export interface Snapshot {
   auto: boolean;
   contract: MarkContract;
   handover: ChainHandover | null;
+  /** whether help was used, kept only on the two sides of a Steps jump
+   *  made on the solved board (jumpToStep): the jump marks the board it
+   *  sets as helped, and Undo of it brings the solved board back as it was
+   *  played (stepAcross) */
+  assisted?: boolean;
 }
 
 const snap = (s: { cells: CellState[]; autoCandidates: boolean; markContract: MarkContract; chainHandover: ChainHandover | null }): Snapshot => ({
@@ -238,6 +245,51 @@ const snap = (s: { cells: CellState[]; autoCandidates: boolean; markContract: Ma
 
 /** the state a snapshot puts back */
 const restore = (x: Snapshot) => ({ cells: cloneCells(x.cells), autoCandidates: x.auto, markContract: x.contract });
+
+/** what belongs to the board in this page's memory and is never saved:
+ *  undo steps, a hint, the chain trainer, Check's marks, the selection, a
+ *  question or a notice. A game read from storage comes without it (merge),
+ *  as on a fresh page */
+const freshSession = (): Partial<GameStore> => ({
+  history: [],
+  future: [],
+  selection: [],
+  armedDigit: null,
+  pendingAssist: null,
+  hint: null,
+  hintWith: null,
+  hintStage: 'hidden',
+  walkIndex: 0,
+  contractPrompt: false,
+  errors: [],
+  proofs: [],
+  notice: null,
+  revertIndex: null,
+  chain: null,
+  chainNote: '',
+  scanPreview: null,
+  scanDoubts: [],
+  chainGoal: null
+});
+
+/** Undo or Redo across a step that keeps the help flag (a Steps jump on the
+ *  solved board): the flag comes back with the board, and the step on the
+ *  other stack keeps the flag it leaves */
+const stepAcross = (s: GameStore, x: Snapshot) =>
+  x.assisted === undefined ? { mine: snap(s), flag: {} } : { mine: { ...snap(s), assisted: s.assisted }, flag: { assisted: x.assisted } };
+
+/** the clock as the board is solved: it stops at its time, or, for a game
+ *  solved before (an Undo or a Steps jump off it, then solved again), at
+ *  the time its solve was recorded with (recordWin): the same solve shows
+ *  one time, and one help flag, on the win screen, in its verdict, shared
+ *  and sent */
+const winClock = (s: GameStore) => ({
+  elapsedBefore: s.solved && s.solvedMs !== null ? s.solvedMs : s.elapsedMs(),
+  paused: true,
+  // and with the help it was recorded with: a Steps jump or a hint since is
+  // no help with the solve that was already made
+  ...(s.solved && s.solvedAssisted !== null ? { assisted: s.solvedAssisted } : {})
+});
 
 /** the chain trainer runs on auto candidates: an Undo, a Redo or a jump
  *  back that leaves them off closes it, with no handover left for Done,
@@ -402,6 +454,13 @@ export interface GameInfo {
   fromLink?: boolean;
   /** the player put away the note that this daily is another day's (src/content/dailies.ts, pastDailyOn), for this game */
   pastDailyHidden?: boolean;
+  /**
+   * The board as it opened, when it opened with more than its givens on
+   * it (a shared position, a practice puzzle fast-forwarded, a pasted
+   * grid), packed as a position link packs it (encodePosition): only what
+   * differs from it is the player's own work (underWay, workOf)
+   */
+  opening?: string;
 }
 
 /**
@@ -524,6 +583,34 @@ interface GameBackup {
    *  on the blank entry board must not reach it (absent in older saves) */
   assisted?: boolean;
   markContract?: MarkContract;
+  /** a game solved, then put back in play (Undo, a Steps jump): its solve,
+   *  so solved again it is still that solve (winClock), wherever it comes
+   *  back from (Cancel, a link asking for it, the error screen's slot);
+   *  and a practice's target. Absent in older saves */
+  solved?: boolean;
+  solvedMs?: number | null;
+  solvedAssisted?: boolean | null;
+  solvedAuto?: boolean | null;
+  dailyKept?: boolean;
+  practiceTarget?: Step | null;
+  practiceFound?: boolean;
+}
+
+/**
+ * The game under way that a link (or Import) opened another over, kept so
+ * that it is never lost (docs/architecture.md, "A game is never lost"):
+ * the board as a custom entry's backup keeps it, with what else it needs
+ * to come back whole, and a puzzle being typed in with the game it was
+ * opened over. One slot, saved with the game.
+ */
+export interface SetAside extends GameBackup {
+  /** a puzzle being typed in, and the game Cancel brings back */
+  custom?: boolean;
+  customBackup?: GameBackup | null;
+  /** the running game's tally (src/state/stats.ts), for its win screen */
+  tally?: GameTally;
+  /** the note that offers it back was put away; the game stays kept */
+  hidden?: boolean;
 }
 
 interface GameStore {
@@ -532,6 +619,8 @@ interface GameStore {
   /** true while the user is typing in a custom puzzle */
   custom: boolean;
   customBackup: GameBackup | null;
+  /** the game under way a link opened another over (SetAside), offered back beside the board */
+  setAside: SetAside | null;
   selection: number[];
   /** number-first entry: a digit pressed with nothing selected arms it;
    *  every cell and pencil mark of that digit lights up (a digit filter)
@@ -555,6 +644,11 @@ interface GameStore {
   elapsedBefore: number;
   paused: boolean;
   won: boolean;
+  /** the page is hidden (another app, the screen off, a tab behind
+   *  others, a reload or the page closed): the clock stands still, and a
+   *  game under way is paused as the Pause button pauses it, so it comes
+   *  back behind the pause card (setAway). In memory only */
+  away: boolean;
   /** the game's first move has been counted as a start (countFirstMove,
    *  below the store). In memory only, never saved: nothing is stored on
    *  the device for counting, and a game resumed from storage is taken as
@@ -566,6 +660,28 @@ interface GameStore {
    *  again is a new game. Saved with the game, like won, for the player's
    *  own record; a save from before it existed has it when it was won */
   solved: boolean;
+  /** the time the solve was recorded with (recordWin): the board solved
+   *  again after an Undo or a Steps jump is the same solve, so its clock
+   *  stops there again (winClock). Null before the solve; saved with the
+   *  game, and a save from before it existed has it when it was won */
+  solvedMs: number | null;
+  /** whether help was used before the solve was recorded (recordWin): the
+   *  board solved again is the same solve, so the win screen calls it what
+   *  it was, whatever a Steps jump or a hint did since, and Send still
+   *  sends it when it was unassisted (winClock). Null before the solve;
+   *  saved with the game, and a save from before it existed has it when it
+   *  was won, as the game's help flag then */
+  solvedAssisted: boolean | null;
+  /** whether auto candidates were on when the solve was recorded
+   *  (recordWin): the win screen judges the solve's time against solvers
+   *  of that kind, and a Steps jump since, which switches them on, does
+   *  not change it. Null before the solve; saved with the game, and a save
+   *  from before it existed has it when it was won, as the board's then */
+  solvedAuto: boolean | null;
+  /** this game's solve is the one its day keeps as its result
+   *  (recordDaily): not so for a daily solved again. Saved with the game;
+   *  absent in a save from before it existed */
+  dailyKept?: boolean;
   /** true once any assist was used this game — hint, check, steps, scan,
    *  revert, auto candidates or fill. A solve is "clean" only while this
    *  stays false; swapping corner↔centre marks never sets it. Reset by
@@ -593,6 +709,14 @@ interface GameStore {
   proofs: Proof[];
   /** transient toast message */
   notice: string | null;
+  /** a new number with every notice or let-go line set (noticeIds): the
+   *  toast is said, and timed, anew for each, the same words again too
+   *  (App.tsx). In memory only */
+  noticeId: number;
+  /** the game the one slot let go, named (oneSlot, letGoLine): said in the
+   *  toast with the notice that comes with it, so it reaches a screen
+   *  reader too. In memory only */
+  letGo: string | null;
   /**
    * Multi-select (the Multi button, M): a tap adds a cell to the selection
    * or takes it out, a drag paints cells in or out, and the board keeps
@@ -652,6 +776,27 @@ interface GameStore {
   restart: () => void;
   /** puts away the note that the daily on the board is another day's, for this game (src/ui/App.tsx, PastDailyNote) */
   hidePastDaily: () => void;
+  /**
+   * Opens a game from outside over the board: `open` puts it there and
+   * says whether it did. A game under way goes aside first, into the one
+   * slot (setAside), unless the game already there holds more of the
+   * player's own work (workOf); returns what `open` returned.
+   */
+  openOver: (open: () => boolean) => boolean;
+  /** Back to it: the set-aside game returns, and the game on the board takes its place in the slot if it is under way, its note shown, so either game is one tap away */
+  backToSetAside: () => void;
+  /**
+   * The game asked for (a link to its puzzle, its daily) comes back where
+   * it was left when it is kept: set aside (as Back to it), or behind a
+   * puzzle being typed in, on the board or set aside (as Cancel would
+   * bring it; the typed puzzle, with a digit on it, goes aside). `match`
+   * sees each kept game's info and whether it was solved; true if one
+   * came back. With `keep` (Back and Forward, src/ui/links.ts), a swap
+   * that would make the one slot let a game go is not made: false.
+   */
+  resumeSetAside: (match: (info: GameInfo, won: boolean) => boolean, keep?: boolean) => boolean;
+  /** puts away the note that offers the set-aside game back; the game stays kept, and New still offers it */
+  hideSetAside: () => void;
   select: (cells: number[], additive: boolean) => void;
   setMultiSelect: (on: boolean) => void;
   armDigit: (digit: number | null) => void;
@@ -728,11 +873,17 @@ interface GameStore {
   endChain: () => void;
   /** add the tapped candidate to the chain, if it links */
   chainTap: (cell: number, digit: number) => void;
+  /** a digit typed while the trainer is open: the selected cell's
+   *  candidate, as a tap on it would be (the keyboard's way to build) */
+  chainKey: (digit: number) => void;
   chainUndo: () => void;
   chainClear: () => void;
   /** remove what the chain proves false */
   chainApply: () => void;
   togglePause: () => void;
+  /** the page hidden or shown again (App.tsx): the clock stops, and is
+   *  saved as it stood, until the player can see the board again */
+  setAway: (away: boolean) => void;
   elapsedMs: () => number;
 }
 
@@ -759,7 +910,7 @@ function foundNotice(tech: Tech): string {
  *  game (startGame), and its solve counts again */
 function recordWin(s: GameStore) {
   if (!s.info || s.solved) return;
-  useGame.setState({ solved: true });
+  useGame.setState({ solved: true, solvedMs: s.elapsedMs(), solvedAssisted: s.assisted, solvedAuto: s.autoCandidates });
   if (!s.info.practiceTech) useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
   useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000), kindOf(s.info));
   recordDaily(s);
@@ -777,9 +928,23 @@ export function dailyResultOf(s: Pick<GameStore, 'info' | 'cells' | 'assisted' |
     no: s.info.dailyNo,
     grid: s.cells.map((c) => c.value).join(''),
     seconds: Math.floor(s.elapsedMs() / 1000),
-    hints: Object.values(useStats.getState().game.hinted).reduce((sum, n) => sum + (n ?? 0), 0),
+    // an unassisted solve took no hint (the server refuses one that says
+    // it did): a hint used on the board since it was solved is none of it
+    hints: s.assisted ? Object.values(useStats.getState().game.hinted).reduce((sum, n) => sum + (n ?? 0), 0) : 0,
     unassisted: !s.assisted
   };
+}
+
+/**
+ * The result of a daily's kept solve (dailyStats, played): what Send sends
+ * from the win screen of a later solve of that day when the kept one is
+ * unassisted and its time never went in, so a replay cannot shut that time
+ * out. The finished grid is the solution, and an unassisted solve took no
+ * hint. Null for a kept solve that had help, which never goes in.
+ */
+export function keptResultOf(no: number, kept: PlayedDaily, solution: string): DailyResult | null {
+  if (kept.assisted) return null;
+  return { no, grid: solution, seconds: kept.seconds, hints: 0, unassisted: true };
 }
 
 /**
@@ -790,15 +955,30 @@ export function dailyResultOf(s: Pick<GameStore, 'info' | 'cells' | 'assisted' |
  * only for an unassisted solve of a day the server still takes times for,
  * whose time has not gone in before. With the switch off, nothing is sent
  * until the player taps the button.
+ *
+ * A daily solved again (Restart, or the day chosen anew) is a new game for
+ * the band record, but the day's result stays the first solve, as the
+ * server keeps the first time it takes: the replay is not kept, its own
+ * time is never sent, and its win screen says which solve stands
+ * (VictoryDialog). If the first one's time never went in, the replay's
+ * win screen offers to send it, and the switch sends it by itself after
+ * an unassisted replay, as the button would (keptResultOf). Unless the
+ * first had help and the replay none: a solve with help never went in,
+ * and its win screen says to restart for an unassisted run.
  */
 function recordDaily(s: GameStore) {
   const result = dailyResultOf(s);
   if (!result || !s.info?.dailyKey) return;
   const daily = useDailyStats.getState();
-  daily.recordPlayed(result.no, { date: s.info.dailyKey, level: s.info.level, score: s.info.score, seconds: result.seconds, assisted: s.assisted });
+  const kept = daily.played[result.no];
+  const stands = !kept || (kept.assisted && result.unassisted);
+  // the win screen says which solve stands by this (VictoryDialog)
+  useGame.setState({ dailyKept: stands });
+  if (stands) daily.recordPlayed(result.no, { date: s.info.dailyKey, level: s.info.level, score: s.info.score, seconds: result.seconds, assisted: s.assisted });
   if (!useSettings.getState().autoSendDaily || !result.unassisted || dailyClosed(result.no)) return;
   if (daily.submitted[result.no] !== undefined || daily.pending[result.no] || daily.inFlight[result.no]) return;
-  void daily.submit({ ...result, auto: true });
+  const send = stands ? result : keptResultOf(result.no, kept, s.info.solution);
+  if (send) void daily.submit({ ...send, auto: true });
 }
 
 /**
@@ -845,13 +1025,33 @@ function autoOn(cells: CellState[], contract: MarkContract): string | null {
   return null;
 }
 
+/**
+ * The store's set, every notice or let-go line it sets numbered anew
+ * (noticeId), so the toast is said and timed again when the same words
+ * come again (two presses of Back to it in a row)
+ */
+function noticeIds<S extends (partial: never, replace?: never) => void>(set: S, get: () => GameStore): S {
+  return ((partial: Partial<GameStore> | ((s: GameStore) => Partial<GameStore>), replace?: boolean) => {
+    const p = typeof partial === 'function' ? partial(get()) : partial;
+    (set as unknown as (p: Partial<GameStore>, r?: boolean) => void)(p && (p.notice || p.letGo) ? { ...p, noticeId: get().noticeId + 1 } : p, replace);
+  }) as unknown as S;
+}
+
+/** the game is behind the pause card: paused, and not won (a win's own pause is no pause card) */
+const resting = (s: { paused: boolean; won: boolean }) => s.paused && !s.won;
+
 export const useGame = create<GameStore>()(
   persist(
-    (set, get) => ({
+    (rawSet, get, api) => {
+      // every notice numbered anew (noticeIds), set from inside or outside
+      const set = noticeIds(rawSet, get);
+      api.setState = noticeIds(api.setState, get);
+      return {
       info: null,
       cells: Array.from({ length: 81 }, emptyCell),
       custom: false,
       customBackup: null as GameBackup | null,
+      setAside: null as SetAside | null,
       selection: [],
       armedDigit: null,
       pendingAssist: null,
@@ -865,8 +1065,12 @@ export const useGame = create<GameStore>()(
       elapsedBefore: 0,
       paused: false,
       won: false,
+      away: false,
       counted: false,
       solved: false,
+      solvedMs: null,
+      solvedAssisted: null,
+      solvedAuto: null,
       assisted: false,
       hint: null,
       hintWith: null,
@@ -878,6 +1082,8 @@ export const useGame = create<GameStore>()(
       errors: [],
       proofs: [],
       notice: null,
+      noticeId: 0,
+      letGo: null,
       multiSelect: false,
       revertIndex: null as number | null,
       practiceTarget: null,
@@ -931,7 +1137,6 @@ export const useGame = create<GameStore>()(
           // appears on the solver's path
           practiceTarget = solvePath(puzzle).find((step) => step.tech === practiceTech) ?? null;
         }
-        useStats.getState().newGame();
         // the start is counted at the game's first move, not here: a game
         // the app opens by itself, or a link nobody plays, is no game
         // begun (countFirstMove, below the store). Starting the puzzle
@@ -948,7 +1153,10 @@ export const useGame = create<GameStore>()(
             score,
             level,
             practiceTech,
-            ...(dailyKey ? { dailyKey } : {})
+            ...(dailyKey ? { dailyKey } : {}),
+            // the app's own digits, strikes and candidates are not the
+            // player's work: only what differs from them is (workOf)
+            ...(fastForward ? { opening: encodePosition(cells, true) } : {})
           },
           practiceTarget,
           practiceFound: false,
@@ -956,6 +1164,10 @@ export const useGame = create<GameStore>()(
           revertIndex: null,
           custom: false,
           customBackup: null,
+          // a toast standing over the game before (a notice, a game let go)
+          // is no word about this one: what opens it says its own after
+          notice: null,
+          letGo: null,
           cells,
           selection: [],
           armedDigit: null,
@@ -967,6 +1179,10 @@ export const useGame = create<GameStore>()(
           won: false,
           counted: same && prev.counted,
           solved: false,
+          solvedMs: null,
+          solvedAssisted: null,
+          solvedAuto: null,
+          dailyKept: false,
           // fast-forwarded practice switches auto candidates on for you,
           // which under the house rules already counts as assistance
           assisted: !!fastForward,
@@ -993,10 +1209,28 @@ export const useGame = create<GameStore>()(
           // the pattern, and the game is already marked assisted above.
           autoCandidates: !!fastForward
         });
+        // the game's own tally starts with it (stats.ts)
+        useStats.getState().newGame();
       },
 
       restart: () => {
         const s = get();
+        // a puzzle being typed in starts again from an empty board; the
+        // game it was opened over stays, for Cancel
+        if (s.custom) {
+          const t = translator();
+          set({
+            cells: Array.from({ length: 81 }, emptyCell),
+            selection: [],
+            armedDigit: null,
+            history: [],
+            future: [],
+            scanDoubts: [],
+            errors: [],
+            notice: t('Board cleared')
+          });
+          return;
+        }
         if (!s.info) return;
         const { challenge, dailyNo, fromLink, pastDailyHidden } = s.info;
         get().startGame(s.info.puzzle, s.info.score, s.info.level, s.info.practiceTech, s.info.dailyKey);
@@ -1021,6 +1255,67 @@ export const useGame = create<GameStore>()(
 
       hidePastDaily: () => set((s) => (s.info ? { info: { ...s.info, pastDailyHidden: true } } : {})),
 
+      openOver: (open) => {
+        const s = get();
+        const kept = underWay(s) ? asideOf(s) : null;
+        const opened = open();
+        if (!opened) return false;
+        // a game the one slot lets go is named (letGoLine)
+        const { slot, dropped } = oneSlot(kept, get().setAside);
+        set({ setAside: slot });
+        if (dropped) tellLetGo([dropped], slot!);
+        return true;
+      },
+
+      backToSetAside: () => {
+        const s = get();
+        const back = s.setAside;
+        if (!back) return;
+        // the game on the board goes aside in its place, and the note
+        // offers it back: either game is one tap away
+        const kept = underWay(s) ? asideOf(s) : null;
+        useStats.setState({ game: back.tally ?? emptyTally() });
+        set({ ...boardOf(back), setAside: kept });
+      },
+
+      resumeSetAside: (match, keep = false) => {
+        const s = get();
+        // behind the puzzle being typed in on the board: back as Cancel
+        // brings it, and the typed puzzle, once it has a digit, goes aside
+        const behind = s.custom ? s.customBackup : null;
+        if (behind?.info && match(behind.info, behind.won)) {
+          const entry = s.cells.some((c) => c.value) ? { ...asideOf(s), customBackup: null } : null;
+          if (keep && entry && s.setAside) return false;
+          get().cancelCustomEntry();
+          const { slot, dropped } = oneSlot(entry, get().setAside);
+          set({ setAside: slot });
+          if (dropped) tellLetGo([dropped], slot!);
+          return true;
+        }
+        const back = s.setAside;
+        if (back?.info && !back.custom && match(back.info, back.won)) {
+          get().backToSetAside();
+          return true;
+        }
+        // behind a puzzle being typed in that was set aside: that game
+        // comes back, and the slot keeps the typed puzzle (once it has a
+        // digit) or the game on the board, whichever holds more work
+        const aside = back?.custom ? back.customBackup : null;
+        if (back && aside?.info && match(aside.info, aside.won)) {
+          const kept = underWay(s) ? asideOf(s) : null;
+          const entry = back.cells.some((c) => c.value) ? { ...back, customBackup: null } : null;
+          if (keep && kept && entry) return false;
+          useStats.setState({ game: back.tally ?? emptyTally() });
+          const { slot, dropped } = oneSlot(kept, entry);
+          set({ ...boardOf(aside), setAside: slot });
+          if (dropped) tellLetGo([dropped], slot!);
+          return true;
+        }
+        return false;
+      },
+
+      hideSetAside: () => set((s) => (s.setAside ? { setAside: { ...s.setAside, hidden: true } } : {})),
+
       startCustomEntry: () => {
         // the chain trainer closes first, as Done closes it: a tap on the
         // entry board selects a cell for a given, and the game comes back
@@ -1028,15 +1323,23 @@ export const useGame = create<GameStore>()(
         if (get().chain) get().endChain();
         const s = get();
         set({
-          customBackup: {
-            info: s.info,
-            cells: cloneCells(s.cells),
-            autoCandidates: s.autoCandidates,
-            elapsedBefore: s.elapsedMs(),
-            won: s.won,
-            assisted: s.assisted,
-            markContract: s.markContract
-          },
+          // opened again over a puzzle being typed in (New, then Custom
+          // again, or a scan), the backup is still the game the first
+          // entry was opened over: Cancel brings that one back
+          customBackup: s.custom
+            ? s.customBackup
+            : {
+                info: s.info,
+                cells: cloneCells(s.cells),
+                autoCandidates: s.autoCandidates,
+                elapsedBefore: s.elapsedMs(),
+                won: s.won,
+                assisted: s.assisted,
+                markContract: s.markContract,
+                ...(s.solved ? { solved: true, solvedMs: s.solvedMs, solvedAssisted: s.solvedAssisted, solvedAuto: s.solvedAuto, dailyKept: s.dailyKept } : {}),
+                practiceTarget: s.practiceTarget,
+                practiceFound: s.practiceFound
+              },
           custom: true,
           info: null,
           cells: Array.from({ length: 81 }, emptyCell),
@@ -1052,7 +1355,12 @@ export const useGame = create<GameStore>()(
           errors: [],
           autoCandidates: false,
           contractPrompt: false,
-          mode: 'digit'
+          mode: 'digit',
+          // the toast standing over the game before (a link's, the one
+          // slot's told drop) goes, as when a game opens: the entry board's
+          // own words stand alone (a scan says its own after)
+          notice: null,
+          letGo: null
         });
       },
 
@@ -1107,8 +1415,14 @@ export const useGame = create<GameStore>()(
           // in reaches it (a save from before these were kept leaves them)
           ...(b?.assisted !== undefined ? { assisted: b.assisted } : {}),
           ...(b?.markContract !== undefined ? { markContract: b.markContract } : {}),
+          // its solve, if it was solved, and its practice target
+          ...(b?.solved !== undefined
+            ? { solved: b.solved, solvedMs: b.solvedMs ?? null, solvedAssisted: b.solvedAssisted ?? null, solvedAuto: b.solvedAuto ?? null, dailyKept: b.dailyKept }
+            : {}),
+          ...(b && 'practiceTarget' in b ? { practiceTarget: b.practiceTarget ?? null, practiceFound: !!b.practiceFound } : {}),
           contractPrompt: false,
           notice: null,
+          letGo: null,
           selection: [],
           history: [],
           future: [],
@@ -1126,10 +1440,37 @@ export const useGame = create<GameStore>()(
         const puzzle = s.cells.map((c) => (c.value ? String(c.value) : '.')).join('');
         const v = validatePuzzle(puzzle);
         if (!v.ok) return v.reason;
+        const t = translator();
+        // the game the puzzle was typed over, if under way, is never lost
+        // silently: it goes into the slot as a link would put it there
+        // (openOver), its tally with it; typed in again, its own puzzle
+        // brings it back where it was left, as its link would
+        const behind = s.customBackup;
+        const kept = behind?.info && underWay({ ...behind, custom: false }) ? { ...behind, tally: useStats.getState().game } : null;
+        if (kept && kept.info!.puzzle === puzzle && !kept.info!.dailyKey && !kept.info!.practiceTech) {
+          get().cancelCustomEntry();
+          set({ notice: whereLeft() });
+          return null;
+        }
+        // the puzzle of the game in the slot, typed in: that game comes
+        // back where it was left, as Import of it brings it, and the game
+        // the entry was opened over takes the slot in its place, so
+        // nothing is let go (the typed givens are that game's own)
+        const aside = s.setAside;
+        if (aside?.info && !aside.custom && !aside.won && aside.info.puzzle === puzzle && !aside.info.dailyKey && !aside.info.practiceTech) {
+          get().cancelCustomEntry();
+          get().backToSetAside();
+          set({ notice: whereLeft() });
+          return null;
+        }
         set({ custom: false, customBackup: null, scanPreview: null, scanDoubts: [] });
         get().startGame(puzzle, v.score, v.level);
-        const t = translator();
-        set({ notice: t('Puzzle checked: unique solution, HoDoKu rating {score} ({level})', { score: v.score, level: t.level(v.level) }) });
+        const { slot, dropped } = oneSlot(kept, get().setAside);
+        set({
+          setAside: slot,
+          notice: t('Puzzle checked: unique solution, HoDoKu rating {score} ({level})', { score: v.score, level: t.level(v.level) })
+        });
+        if (dropped) tellLetGo([dropped], slot!);
         return null;
       },
 
@@ -1170,10 +1511,18 @@ export const useGame = create<GameStore>()(
             .filter((i) => i >= 0)
         })),
 
-      setMode: (mode) => set({ mode }),
+      // paused, the pause card covers the board and the controls rest
+      // behind it (App.tsx): the mode, hints, Check, the candidates, the
+      // chain trainer and Steps change nothing until the game resumes, as
+      // input and Undo do not (resting)
+      setMode: (mode) => {
+        if (!resting(get())) set({ mode });
+      },
       setTempMode: (tempMode) =>
         set((s) => (s.tempMode === tempMode ? {} : { tempMode })),
-      setActiveColor: (activeColor) => set({ activeColor, mode: 'color' }),
+      setActiveColor: (activeColor) => {
+        if (!resting(get())) set({ activeColor, mode: 'color' });
+      },
 
       // While a digit is armed, the number keys choose the armed digit:
       // the armed one again puts it down and another arms that one, with
@@ -1298,8 +1647,11 @@ export const useGame = create<GameStore>()(
         }
         if (!changed) return;
         const won = s.info ? checkWin(cells, s.info.solution) : false;
-        // practice: did one of these moves do what the target does?
+        // practice: did one of these moves do what the target does? Not
+        // on a board solved before: the solve keeps the verdict it was
+        // made with, as its tally and its time do
         const found =
+          !s.solved &&
           !s.practiceFound &&
           !!s.practiceTarget &&
           !!before &&
@@ -1313,11 +1665,16 @@ export const useGame = create<GameStore>()(
           hintStage: 'hidden',
           errors: [],
           ...(found ? { practiceFound: true, notice: foundNotice(s.info!.practiceTech!) } : {}),
-          ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {})
+          ...(won ? winClock(get()) : {})
         });
-        if (before) credit(before, moves);
-        const stats = useStats.getState();
-        for (let k = 0; k < wrong; k++) stats.recordError();
+        // a board solved before (an Undo or a Steps jump off it) is the
+        // same solve played again: its moves are no new work, for the
+        // game's tally or the record (the win screen shows the solve's)
+        if (!s.solved) {
+          if (before) credit(before, moves);
+          const stats = useStats.getState();
+          for (let k = 0; k < wrong; k++) stats.recordError();
+        }
         if (won) recordWin(get());
       },
 
@@ -1434,43 +1791,60 @@ export const useGame = create<GameStore>()(
         });
       },
 
-      clearNotice: () => set({ notice: null }),
+      clearNotice: () => set((s) => (s.notice === null && s.letGo === null ? {} : { notice: null, letGo: null })),
 
       // each step puts back the cells and how the board read them: auto
       // candidates on or off, and the marks' contract (Snapshot)
       undo: () => {
         const s = get();
-        if (!s.history.length) return;
+        // paused, the board is covered (App.tsx): nothing changes behind the card
+        if (!s.history.length || (s.paused && !s.won)) return;
         const prev = s.history[s.history.length - 1];
+        // Undo of a Steps jump made on the solved board brings it back
+        // solved, as Redo of the winning digit does (the game is solved
+        // already, so its solve is not recorded twice)
+        const won = s.info ? checkWin(prev.cells, s.info.solution) : false;
+        const across = stepAcross(s, prev);
         set({
           ...restore(prev),
           ...trainerAfter(!!s.chain, prev),
+          ...across.flag,
           history: s.history.slice(0, -1),
-          future: [snap(s), ...s.future],
-          won: false,
+          future: [across.mine, ...s.future],
+          won,
+          // the win's own pause (togglePause refuses while won): the board
+          // comes back to play, the clock going on from the winning time
+          ...(s.won ? { paused: false, startedAt: Date.now() } : {}),
+          ...(won ? winClock(get()) : {}),
           hint: null,
           hintStage: 'hidden',
           errors: []
         });
+        if (won) recordWin(get());
       },
 
       redo: () => {
         const s = get();
-        if (!s.future.length) return;
+        if (!s.future.length || (s.paused && !s.won)) return;
         const [next, ...rest] = s.future;
         // redoing the winning move wins again (the game is already
         // solved, so its solve is not recorded twice)
         const won = s.info ? checkWin(next.cells, s.info.solution) : false;
+        const across = stepAcross(s, next);
         set({
           ...restore(next),
           ...trainerAfter(!!s.chain, next),
+          ...across.flag,
           future: rest,
-          history: [...s.history, snap(s)],
+          history: [...s.history, across.mine],
           hint: null,
           hintStage: 'hidden',
           errors: [],
           won,
-          ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {})
+          // off the solved board (Redo of a Steps jump made on it), as
+          // Undo: back to play, the clock going on from the winning time
+          ...(s.won ? { paused: false, startedAt: Date.now() } : {}),
+          ...(won ? winClock(get()) : {})
         });
         if (won) recordWin(get());
       },
@@ -1493,8 +1867,10 @@ export const useGame = create<GameStore>()(
        */
       toggleAutoCandidates: (layer) => {
         const s = get();
-        // a puzzle being typed in is no game yet: nothing to help with
-        if (!s.info) return;
+        // a puzzle being typed in is no game yet: nothing to help with; nor
+        // is a solved board, whose solve is recorded as it was played, nor
+        // one behind the pause card
+        if (!s.info || s.won || resting(s)) return;
         if (!s.autoCandidates && s.markContract === 'unknown' && cornerOnlyLists(s.cells)) {
           set({ contractPrompt: true, contractFor: 'auto' });
           return;
@@ -1747,7 +2123,7 @@ export const useGame = create<GameStore>()(
 
       requestHint: () => {
         const s = get();
-        if (!s.info || s.won) return;
+        if (!s.info || s.won || resting(s)) return;
         // manual marks whose meaning was never declared: ask the one-time
         // contract question first (the answer re-enters this action)
         if (!s.autoCandidates && s.markContract === 'unknown' && hasManualMarks(s.cells)) {
@@ -1832,6 +2208,8 @@ export const useGame = create<GameStore>()(
       },
 
       answerContract: (contract) => {
+        // behind the pause card the question waits (App.tsx), and so does its answer
+        if (resting(get()) && get().contractFor !== 'text') return;
         const asked = get().contractFor;
         get().setMarkContract(contract);
         // raised on the way to a hint, by Check or by auto candidates
@@ -1888,7 +2266,7 @@ export const useGame = create<GameStore>()(
       applyHint: () => {
         const s = get();
         const step = s.hint;
-        if (!step) return;
+        if (!step || resting(s)) return;
         const cells = cloneCells(s.cells);
         for (const { cell, digit } of step.eliminations) {
           cells[cell].excluded |= bit(digit);
@@ -1904,9 +2282,10 @@ export const useGame = create<GameStore>()(
           hint: null,
           hintStage: 'hidden',
           won,
-          ...(won ? { elapsedBefore: get().elapsedMs(), paused: true } : {})
+          ...(won ? winClock(get()) : {})
         });
-        useStats.getState().recordHinted(step.tech);
+        // on a board solved before, no new work (input, above)
+        if (!s.solved) useStats.getState().recordHinted(step.tech);
         if (won) recordWin(get());
       },
 
@@ -1917,7 +2296,7 @@ export const useGame = create<GameStore>()(
        *  solution digit. */
       check: () => {
         const s = get();
-        if (!s.info) return;
+        if (!s.info || resting(s)) return;
         // Check reads a cell's centre marks as its list, and its corner marks
         // too once the marks are declared complete: when some corner mark
         // would count only then, it asks the one-time question first, as
@@ -1927,7 +2306,9 @@ export const useGame = create<GameStore>()(
           set({ contractPrompt: true, contractFor: 'check' });
           return;
         }
-        set({ assisted: true });
+        // a Check of a solved board is no help with its solve, which is
+        // recorded already, as it was played
+        if (!s.won) set({ assisted: true });
         const errors: number[] = [];
         const eg = s.autoCandidates ? engineGrid(s.cells) : null;
         for (let i = 0; i < 81; i++) {
@@ -1983,7 +2364,7 @@ export const useGame = create<GameStore>()(
 
       revertToValid: () => {
         const s = get();
-        if (s.revertIndex === null || !s.history[s.revertIndex]) return;
+        if (s.revertIndex === null || !s.history[s.revertIndex] || resting(s)) return;
         const t = translator();
         set({
           ...restore(s.history[s.revertIndex]),
@@ -2003,7 +2384,7 @@ export const useGame = create<GameStore>()(
 
       startChain: (goal) => {
         const s = get();
-        if (!s.info || s.won) return;
+        if (!s.info || s.won || resting(s)) return;
         const t = translator();
         // the goal and the instructions are separate sentences
         const list = goal?.map((c) => t('{digit} from {cell}', { digit: c.digit, cell: cellName(c.cell) })).join(', ');
@@ -2075,7 +2456,7 @@ export const useGame = create<GameStore>()(
         const drawn = r.chain.links.length > 0 || (s.chainSuggest && r.chain.nodes.length > 0);
         // practice: the goal is met once the chain removes one of its candidates
         const removed = r.ok ? conclusions(g, r.chain) : [];
-        const met = !!s.chainGoal && !s.practiceFound && s.chainGoal.some((c) => removed.some((e) => e.cell === c.cell && e.digit === c.digit));
+        const met = !!s.chainGoal && !s.solved && !s.practiceFound && s.chainGoal.some((c) => removed.some((e) => e.cell === c.cell && e.digit === c.digit));
         const t = translator();
         set({
           chain: r.chain,
@@ -2089,9 +2470,20 @@ export const useGame = create<GameStore>()(
         });
       },
 
+      chainKey: (digit) => {
+        const s = get();
+        // paused, the trainer is covered as the board is (App.tsx): keys
+        // build nothing, as no tap can
+        if (!s.chain || (s.paused && !s.won)) return;
+        if (s.selection.length === 1) return get().chainTap(s.selection[0], digit);
+        // nothing or several cells selected: the digit names no candidate
+        const t = translator();
+        set({ chainNote: t('Select one cell with the arrow keys, then type one of its candidates.') });
+      },
+
       chainUndo: () => {
         const s = get();
-        if (!s.chain?.nodes.length) return;
+        if (!s.chain?.nodes.length || (s.paused && !s.won)) return;
         const chain: Chain = { nodes: s.chain.nodes.slice(0, -1), links: s.chain.links.slice(0, -1) };
         const g = engineGrid(s.cells);
         const drawn = chain.links.length > 0 || (s.chainSuggest && chain.nodes.length > 0);
@@ -2144,14 +2536,15 @@ export const useGame = create<GameStore>()(
           hint: null,
           hintStage: 'hidden'
         });
-        // the player's own logic, checked: credited like any unaided move
-        credit(g, elims.map((e) => ({ cell: e.cell, digit: e.digit, placed: false })));
+        // the player's own logic, checked: credited like any unaided move,
+        // unless the board was solved before (input)
+        if (!s.solved) credit(g, elims.map((e) => ({ cell: e.cell, digit: e.digit, placed: false })));
       },
 
       showProof: (k) => {
         const s = get();
         const proof = s.proofs[k];
-        if (!proof || !s.info) return;
+        if (!proof || !s.info || resting(s)) return;
         const t = translator();
         if (proof.conflict !== null) {
           set({
@@ -2244,7 +2637,8 @@ export const useGame = create<GameStore>()(
         const givens = position.values.map((v, i) => (v && position.given[i] ? String(v) : '.')).join('');
         const v = validatePuzzle(givens);
         if (!v.ok) return v.reason;
-        get().startGame(givens, v.score, v.level);
+        // a game under way goes aside first (openOver), as for a link
+        get().openOver(() => (get().startGame(givens, v.score, v.level), true));
         const placed = position.values.some((d, i) => d && !position.given[i]);
         if (!position.cands && !placed) return null;
         const t = translator();
@@ -2257,8 +2651,9 @@ export const useGame = create<GameStore>()(
           return {
             cells,
             // digits already placed mean the game starts part-way through,
-            // so its time compares with nothing (as a position link's does)
-            info: placed && s.info ? { ...s.info, fromPosition: true } : s.info,
+            // so its time compares with nothing (as a position link's does);
+            // what it opened with was pasted, not played here (workOf)
+            info: s.info && { ...s.info, ...(placed ? { fromPosition: true } : {}), opening: encodePosition(cells, false) },
             ...(position.cands
               ? {
                   markContract: 'exhaustive' as MarkContract,
@@ -2276,7 +2671,25 @@ export const useGame = create<GameStore>()(
       importPuzzle: (puzzle, site) => {
         const v = validatePuzzle(puzzle);
         if (!v.ok) return v.reason;
-        get().startGame(puzzle, v.score, v.level);
+        // the puzzle already under way, on the board, set aside or behind
+        // a puzzle being typed in, goes on where it was left (Restart
+        // starts it again), unless that is its practice, which is another
+        // game; any other opens with a game under way set aside first, as
+        // for a link
+        const p = puzzle.replace(/0/g, '.');
+        const s = get();
+        const same = (info: GameInfo | null) => info?.puzzle === p && !info.practiceTech;
+        if (same(s.info) && !s.custom && !s.won) {
+          const t = translator();
+          set({ notice: t('Your game on this puzzle, where you left it') });
+          return null;
+        }
+        // kept, it comes back, named as Back to it names it
+        if (get().resumeSetAside((info, won) => same(info) && !won)) {
+          set({ notice: whereLeft() });
+          return null;
+        }
+        get().openOver(() => (get().startGame(puzzle, v.score, v.level), true));
         if (site) {
           const t = translator();
           set({ notice: t('Imported from {site}, HoDoKu rating {score} ({level})', { site, score: v.score, level: t.level(v.level) }) });
@@ -2296,28 +2709,38 @@ export const useGame = create<GameStore>()(
         // the shared progress: entries, marks, exclusions and colours
         get().startGame(givens, v.score, v.level);
         const t = translator();
-        set((s) => ({
-          // a position link is someone's share, counted as one when it
-          // opens with moves on it, in this same change
-          info: s.info && { ...s.info, fromPosition: true, fromLink: true },
+        set((s) => {
           // with auto candidates off, a struck true digit the board cannot
           // show (a link made before strikes went with auto off) goes
-          cells: !decoded.autoCandidates && s.info ? dropHiddenSlips(decoded.cells, s.info.solution) : decoded.cells,
-          autoCandidates: decoded.autoCandidates,
-          // auto candidates count as help, whoever switched them on
-          ...(decoded.autoCandidates ? { assisted: true } : {}),
-          notice: t('Shared position loaded, with entries, marks and colours')
-        }));
+          const cells = !decoded.autoCandidates && s.info ? dropHiddenSlips(decoded.cells, s.info.solution) : decoded.cells;
+          return {
+            // a position link is someone's share, counted as one when it
+            // opens with moves on it, in this same change; what it opened
+            // with is the sender's work, not the player's (workOf)
+            info: s.info && { ...s.info, fromPosition: true, fromLink: true, opening: encodePosition(cells, decoded.autoCandidates) },
+            cells,
+            autoCandidates: decoded.autoCandidates,
+            // auto candidates count as help, whoever switched them on
+            ...(decoded.autoCandidates ? { assisted: true } : {}),
+            notice: t('Shared position loaded, with entries, marks and colours')
+          };
+        });
         return true;
       },
 
-      markAssisted: () => set({ assisted: true }),
+      // Steps and Scan on a solved board study it: its solve is recorded
+      // already, as it was played, and stays as it was
+      markAssisted: () => {
+        if (!get().won && !resting(get())) set({ assisted: true });
+      },
 
-      showStep: (step) => set({ hint: step, hintStage: 'full', assisted: true }),
+      showStep: (step) => {
+        if (!resting(get())) set({ hint: step, hintStage: 'full', ...(get().won ? {} : { assisted: true }) });
+      },
 
       jumpToStep: (k) => {
         const s = get();
-        if (!s.info) return;
+        if (!s.info || resting(s)) return;
         // the path the Steps dialog listed: without uniqueness, if so set
         const steps = solvePath(s.info.puzzle, hintOrder(useSettings.getState().useUniqueness));
         const cells = Array.from({ length: 81 }, (_, i) => {
@@ -2347,13 +2770,16 @@ export const useGame = create<GameStore>()(
         set({
           cells,
           selection: [],
-          history: [...s.history, snap(s)],
+          // off the solved board, its help flag is kept with it for Undo
+          history: [...s.history, s.won ? { ...snap(s), assisted: s.assisted } : snap(s)],
           future: [],
           assisted: true,
           autoCandidates: true,
           // a board set anew: Done leaves auto candidates on
           chainHandover: null,
           won: false,
+          // off a solved board, as Undo: back to play, the clock going on
+          ...(s.won ? { paused: false, startedAt: Date.now() } : {}),
           hint: null,
           hintStage: 'hidden',
           errors: [],
@@ -2372,13 +2798,38 @@ export const useGame = create<GameStore>()(
         }
       },
 
+      // the time the page is hidden does not count, and the time up to it
+      // is saved (persist writes elapsedMs on every set), so a page the
+      // system closes in the background, or a reload, keeps it. A game under
+      // way (underWay: played on by the player since it opened, not won;
+      // not a puzzle being typed in) pauses as the Pause button pauses it:
+      // the player comes back to the pause card, and a reload or a reopened
+      // page does too. A game not yet played on only stands still while
+      // away, and runs on when shown again: a shared position or a
+      // fast-forwarded practice nobody touched among them, and a board whose
+      // only change is the chain trainer's own auto candidates, which Done
+      // and a reload take off again (doneBoard)
+      setAway: (away) => {
+        const s = get();
+        if (away === s.away) return;
+        if (away) {
+          const pause = !s.custom && !s.paused && underWay({ ...s, ...doneBoard(s) });
+          set({ away: true, elapsedBefore: s.elapsedMs(), ...(pause ? { paused: true } : {}) });
+        } else {
+          set({ away: false, startedAt: Date.now() });
+        }
+      },
+
       elapsedMs: () => {
         const s = get();
-        return s.paused ? s.elapsedBefore : s.elapsedBefore + (Date.now() - s.startedAt);
+        return s.paused || s.away ? s.elapsedBefore : s.elapsedBefore + (Date.now() - s.startedAt);
       }
-    }),
+      };
+    },
     {
       name: 'sudokui-game-v1',
+      // written only by the page that holds the play (src/state/play.ts)
+      storage: createJSONStorage(() => play.storage()),
       partialize: (s) => ({
         info: s.info,
         cells: s.cells,
@@ -2386,11 +2837,19 @@ export const useGame = create<GameStore>()(
         // game it was opened over, which Cancel brings back
         custom: s.custom,
         customBackup: s.custom ? s.customBackup : null,
+        // the game a link opened another over, until it comes back
+        setAside: s.setAside,
         autoCandidates: s.autoCandidates,
         elapsedBefore: s.elapsedMs(),
+        // a game the player paused comes back paused
+        paused: s.paused,
         won: s.won,
         // solved survives an Undo of the winning digit, and a reload with it
         solved: s.solved,
+        solvedMs: s.solvedMs,
+        solvedAssisted: s.solvedAssisted,
+        solvedAuto: s.solvedAuto,
+        dailyKept: s.dailyKept,
         assisted: s.assisted,
         // the declared meaning of the marks survives a reload with them
         markContract: s.markContract,
@@ -2401,17 +2860,26 @@ export const useGame = create<GameStore>()(
         practiceFound: s.practiceFound
       }),
       // a game saved under a band name from before HoDoKu's five levels
-      // plays on as its level (ratings.ts, asLevel)
+      // plays on as its level (ratings.ts, asLevel). A game read from
+      // storage (at the start, or read again once the page holds the play:
+      // src/main.tsx) comes without what belonged to a board in memory
+      // (freshSession), and its arrival is no first move of the player's
+      // (countFirstMove): whether it was begun is judged from its board
+      // once it is in (onRehydrateStorage)
       merge: (persisted, current) => {
         const p = { ...(persisted as Partial<GameStore>) };
         if (p.info) p.info = levelled(p.info);
         if (p.customBackup?.info) p.customBackup = { ...p.customBackup, info: levelled(p.customBackup.info) };
-        return { ...current, ...p };
+        if (p.setAside?.info) p.setAside = { ...p.setAside, info: levelled(p.setAside.info) };
+        if (p.setAside?.customBackup?.info) p.setAside = { ...p.setAside, customBackup: { ...p.setAside.customBackup, info: levelled(p.setAside.customBackup.info) } };
+        // (the solve's time and whether it is the day's own start unknown
+        // where a save from before they were kept lacks them, not as this
+        // page had them)
+        return { ...current, ...freshSession(), solvedMs: null, solvedAssisted: null, solvedAuto: null, dailyKept: undefined, ...p, counted: true };
       },
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.startedAt = Date.now();
-          state.paused = state.won; // stopped timer for finished games
           // the board says whether this game was begun, so nothing about
           // counting needs saving: a move on it was counted when made, and
           // so was a position opened with entries on it (countStart). Not
@@ -2425,21 +2893,11 @@ export const useGame = create<GameStore>()(
           // back is judged by its own saved board)
           const g = state.custom && state.customBackup ? state.customBackup : state;
           state.counted = !!g.info && !useSettings.getState().dontCount && playedOn(g);
-          // a save from before solved was kept has it when it was won
-          state.solved = !!state.solved || state.won;
-          // the chain trainer, open when the page went, does not come back:
-          // it closes as Done closes it, so the auto candidates it switched
-          // on go off with the player's marks back (after the count above,
-          // which they were part of). A save from before the handover was
-          // kept has none, and keeps auto as it was
-          if (state.chainHandover && state.autoCandidates && state.info) {
-            state.cells = handBack(state.cells, state.chainHandover, state.info.solution, state.markContract);
-            state.autoCandidates = false;
-          }
-          state.chainHandover = null;
-          // a save from before strikes went with auto candidates off may
-          // hold a struck true digit the board cannot show: it goes
-          if (state.info && !state.autoCandidates) state.cells = dropHiddenSlips(state.cells, state.info.solution);
+          // then the save as a page reading it takes it in: solved and its
+          // time for an old save, the chain trainer closed as Done closes
+          // it (after the count above, which its auto candidates were part
+          // of), no struck true digit the board cannot show (asRead)
+          Object.assign(state, readFields(state));
         }
       }
     }
@@ -2455,6 +2913,271 @@ export function levelled(info: GameInfo): GameInfo {
 /** the board shows a move of the player's: a digit, a mark, an exclusion, a colour, or auto candidates switched on */
 export function playedOn(s: Pick<GameStore, 'cells' | 'autoCandidates'>): boolean {
   return s.autoCandidates || s.cells.some((c) => (!c.given && c.value) || c.corner || c.center || c.excluded || c.colors.length);
+}
+
+/**
+ * A game under way, which a link or Import never replaces without putting
+ * it aside first (docs/architecture.md, "A game is never lost"): not won,
+ * and played on by the player since it opened (a digit, a mark, a strike
+ * or a colour the board did not open with, or auto candidates switched);
+ * or a puzzle being typed in, once it has a digit on it or the game it was
+ * opened over is under way. A shared position or a fast-forwarded practice
+ * nobody has touched, or an empty entry board over nothing begun, holds
+ * nothing of the player's to lose.
+ */
+export function underWay(s: { info: GameInfo | null; cells: CellState[]; autoCandidates: boolean; won: boolean; custom?: boolean; customBackup?: GameBackup | null }): boolean {
+  if (s.won) return false;
+  if (s.custom) return s.cells.some((c) => c.value) || (!!s.customBackup && underWay({ ...s.customBackup, custom: false }));
+  if (!s.info) return false;
+  const opening = openingOf(s.info);
+  return ownCells(opening, s.cells) > 0 || s.autoCandidates !== (opening?.autoCandidates ?? false);
+}
+
+/** how much of the player's own work a game holds: the cells written in since it opened (ownCells), with those of the game a puzzle being typed in was opened over */
+export function workOf(g: { info: GameInfo | null; cells: CellState[]; custom?: boolean; customBackup?: GameBackup | null }): number {
+  const behind = g.custom && g.customBackup ? ownCells(openingOf(g.customBackup.info), g.customBackup.cells) : 0;
+  return ownCells(openingOf(g.info), g.cells) + behind;
+}
+
+/** the board a game opened with, when that was more than its givens (GameInfo.opening) */
+function openingOf(info: GameInfo | null | undefined) {
+  return info?.opening ? decodePosition(info.opening) : null;
+}
+
+/**
+ * The cells the player has written in: a digit, a mark, a strike or a
+ * colour; on a board that opened with some of these (a shared position, a
+ * fast-forwarded practice), only the cells that differ from how it opened,
+ * compared as a position link carries a cell (its digit and colours, and
+ * an open cell's marks).
+ */
+function ownCells(opening: { cells: CellState[] } | null, cells: CellState[]): number {
+  const sameColours = (a: number[], b: number[]) => a.length === b.length && a.every((k) => b.includes(k));
+  return cells.filter((c, i) => {
+    const o = opening?.cells[i];
+    if (!o) return (!c.given && c.value) || c.corner || c.center || c.excluded || c.colors.length;
+    return c.value !== o.value || !sameColours(c.colors, o.colors) || (!c.value && (c.corner !== o.corner || c.center !== o.center || c.excluded !== o.excluded));
+  }).length;
+}
+
+/**
+ * One slot: of the game going aside and the one already there, the one
+ * with more of the player's own work stays, the newer on a tie. The one
+ * that stays has its note shown, so a kept game never stays out of sight
+ * while another is dropped.
+ */
+function oneSlot(kept: SetAside | null, old: SetAside | null): { slot: SetAside | null; dropped: SetAside | null } {
+  if (!kept) return { slot: old, dropped: null };
+  if (!old) return { slot: kept, dropped: null };
+  if (workOf(kept) >= workOf(old)) return { slot: kept, dropped: old };
+  return { slot: old.hidden ? { ...old, hidden: false } : old, dropped: kept };
+}
+
+/**
+ * A game as the player knows it, in the words the notes and the toasts
+ * use: today's daily, the daily of a date, a practice, the player's game
+ * on a shared puzzle, a game of a level, or the puzzle being typed in
+ * (with the game it was opened over, when that one holds the player's
+ * work too).
+ */
+export function gameName(g: { info: GameInfo | null; custom?: boolean; customBackup?: GameBackup | null }): string {
+  const t = translator();
+  if (g.custom) {
+    const behind = g.customBackup;
+    return behind?.info && underWay({ ...behind, custom: false })
+      ? t('the puzzle you were typing in, with {game} behind it', { game: gameName({ ...behind, custom: false }) })
+      : t('the puzzle you were typing in');
+  }
+  const info = g.info;
+  if (!info) return t('the puzzle you were typing in');
+  if (info.dailyKey) return info.dailyKey === localDateKey() ? t('today’s daily') : t('the daily for {date}', { date: info.dailyKey });
+  if (info.practiceTech) return t('your {name} practice', { name: t.tech(info.practiceTech) });
+  if (info.fromLink) return t('your game on a shared puzzle');
+  return t('your {level} game', { level: t.level(info.level) });
+}
+
+/** a game as gameName names it: its info, and for a puzzle being typed in the game behind it */
+type Named = { info: GameInfo | null; custom?: boolean; customBackup?: GameBackup | null };
+
+/**
+ * A game's name (gameName) among others: with its HoDoKu rating when
+ * another of them has the same name and another rating (two Hard games),
+ * so the words say which is which; a rating that tells nothing apart (two
+ * copies of one daily) is left out.
+ */
+export function nameAmong(g: Named, among: Named[]): string {
+  const t = translator();
+  const plain = gameName(g);
+  const twin = among.some((o) => o !== g && gameName(o) === plain && o.info?.score !== g.info?.score);
+  return twin && g.info ? t('{game} (HoDoKu rating {score})', { game: plain, score: g.info.score }) : plain;
+}
+
+/**
+ * The notice for a game back where it was left (Back to it, a link or
+ * Import asking for a kept game, its puzzle typed in): the game named as
+ * the notes name it (gameName), with its rating when the game now in the
+ * slot has the same name, so the words say which of two Hard games came
+ * back
+ */
+export function whereLeft(): string {
+  const t = translator();
+  const g = useGame.getState();
+  return t('Back to {game}, where you left it', { game: nameAmong(g, [g, ...(g.setAside ? [g.setAside] : [])]) });
+}
+
+/**
+ * What the toast says when the one slot lets games go (docs/architecture.md,
+ * "One slot"): in one sentence, the games gone, listed the language's way,
+ * and the one kept. Two games of the same name, among these and the game on
+ * the board (`board`), are told apart by their rating (nameAmong). Empty
+ * when there is none.
+ */
+export function letGoLine(gone: SetAside[], kept: SetAside, board?: Named | null): string {
+  const t = translator();
+  if (!gone.length) return '';
+  const all: Named[] = [...gone, kept, ...(board?.info || board?.custom ? [board] : [])];
+  const names = gone.map((g) => nameAmong(g, all));
+  let list: string;
+  try {
+    list = new Intl.ListFormat(t.lang, { type: 'conjunction' }).format(names);
+  } catch {
+    list = names.join(', ');
+  }
+  const vars = { game: list, games: list, kept: nameAmong(kept, all) };
+  return gone.length === 1
+    ? t('Only one game in progress is kept at a time: {game} is gone, {kept} is kept', vars)
+    : t('Only one game in progress is kept at a time: {games} are gone, {kept} is kept', vars);
+}
+
+/** the toast names the games the one slot let go (letGoLine), with the notice the opening brings: in memory only (letGo is never saved) */
+function tellLetGo(dropped: SetAside[], kept: SetAside) {
+  const text = letGoLine(dropped, kept, useGame.getState());
+  if (text) useGame.setState({ letGo: text });
+}
+
+const emptyTally = (): GameTally => ({ unaided: {}, hinted: {}, errors: 0, beyond: 0 });
+
+/** the board a kept game comes back to (Back to it, or a link asking for it): where it was left, as after a reload */
+function boardOf(back: SetAside): Partial<GameStore> {
+  // the board says whether the game was begun, as after a reload
+  const g = back.custom && back.customBackup ? back.customBackup : back;
+  return {
+    info: back.info,
+    cells: cloneCells(back.cells),
+    custom: !!back.custom,
+    customBackup: back.custom ? (back.customBackup ?? null) : null,
+    autoCandidates: back.autoCandidates,
+    elapsedBefore: back.elapsedBefore,
+    startedAt: Date.now(),
+    won: back.won,
+    paused: back.won,
+    solved: !!back.solved || back.won,
+    solvedMs: back.solvedMs ?? (back.won ? back.elapsedBefore : null),
+    solvedAssisted: back.solvedAssisted ?? (back.won ? (back.assisted ?? false) : null),
+    solvedAuto: back.solvedAuto ?? (back.won ? back.autoCandidates : null),
+    dailyKept: back.dailyKept,
+    counted: !!g.info && !useSettings.getState().dontCount && playedOn(g),
+    assisted: back.assisted ?? false,
+    markContract: back.markContract ?? 'unknown',
+    practiceTarget: back.practiceTarget ?? null,
+    practiceFound: !!back.practiceFound,
+    selection: [],
+    armedDigit: null,
+    history: [],
+    future: [],
+    hint: null,
+    hintWith: null,
+    hintStage: 'hidden',
+    // (a question asked of the game that goes, Use Hint? among them, goes with it)
+    pendingAssist: null,
+    contractPrompt: false,
+    errors: [],
+    proofs: [],
+    revertIndex: null,
+    chain: null,
+    chainNote: '',
+    chainGoal: null,
+    chainHandover: null,
+    scanPreview: null,
+    scanDoubts: [],
+    notice: null,
+    letGo: null,
+    // a puzzle being typed in takes digits, as when it was opened
+    ...(back.custom ? { mode: 'digit' as EntryMode } : {})
+  };
+}
+
+/** the fields of a game's save that asRead reads */
+export type SavedGame = Pick<
+  GameStore,
+  'info' | 'cells' | 'autoCandidates' | 'chainHandover' | 'markContract' | 'won' | 'paused' | 'solved' | 'solvedMs' | 'solvedAssisted' | 'solvedAuto' | 'elapsedBefore' | 'assisted'
+>;
+
+/** what reading a save changes of it (asRead) */
+function readFields(s: SavedGame): Pick<SavedGame, 'paused' | 'solved' | 'solvedMs' | 'solvedAssisted' | 'solvedAuto' | 'cells' | 'autoCandidates' | 'chainHandover'> {
+  const won = !!s.won;
+  // the chain trainer, open when the page went, does not come back: it
+  // closes as Done closes it, so the auto candidates it switched on go off
+  // with the player's marks back. A save from before the handover was kept
+  // has none, and keeps auto as it was
+  const board = doneBoard(s);
+  return {
+    // stopped for finished games, and for one the player paused (a save
+    // from before the pause was kept has none: it runs)
+    paused: won || !!s.paused,
+    // a save from before solved was kept has it when it was won, and the
+    // time it was won at
+    solved: !!s.solved || won,
+    solvedMs: s.solvedMs == null && won ? s.elapsedBefore : s.solvedMs,
+    solvedAssisted: s.solvedAssisted == null && won ? s.assisted : s.solvedAssisted,
+    solvedAuto: s.solvedAuto == null && won ? s.autoCandidates : s.solvedAuto,
+    // a save from before strikes went with auto candidates off may hold a
+    // struck true digit the board cannot show: it goes
+    cells: s.info && !board.autoCandidates ? dropHiddenSlips(board.cells, s.info.solution) : board.cells,
+    autoCandidates: board.autoCandidates,
+    chainHandover: null
+  };
+}
+
+/**
+ * A game's save as a page that reads it takes it in (onRehydrateStorage):
+ * a won game stopped, a solve's time and help for a save from before they
+ * were kept, the chain trainer open when it was written closed as Done
+ * closes it (its auto candidates off again, the player's marks back), and
+ * no struck true digit the board cannot show. A page that takes the play
+ * back reads its own last write and the save this way (src/main.tsx,
+ * clockOnly): a page that read the save and wrote it back with nothing
+ * played changed nothing of the game, though the trainer it closed left
+ * the save's auto candidates off.
+ */
+export function asRead<T extends SavedGame>(s: T): T {
+  return { ...s, ...readFields(s) };
+}
+
+/** the board as Done (and a reload) would leave it with the chain trainer open: the auto candidates it switched on off again, the player's marks back (handBack) */
+function doneBoard(s: Pick<GameStore, 'info' | 'cells' | 'autoCandidates' | 'chainHandover' | 'markContract'>): { cells: CellState[]; autoCandidates: boolean } {
+  const handover = s.chainHandover && s.autoCandidates && s.info ? s.chainHandover : null;
+  return handover ? { cells: handBack(s.cells, handover, s.info!.solution, s.markContract), autoCandidates: false } : { cells: s.cells, autoCandidates: s.autoCandidates };
+}
+
+/** the game on the board, as the set-aside slot keeps it: with the chain trainer open, as Done (and a reload) would leave it */
+function asideOf(s: GameStore): SetAside {
+  const done = doneBoard(s);
+  return {
+    info: s.info,
+    cells: cloneCells(done.cells),
+    autoCandidates: done.autoCandidates,
+    elapsedBefore: s.elapsedMs(),
+    won: s.won,
+    solved: s.solved,
+    ...(s.solved ? { solvedMs: s.solvedMs, solvedAssisted: s.solvedAssisted, solvedAuto: s.solvedAuto, dailyKept: s.dailyKept } : {}),
+    assisted: s.assisted,
+    markContract: s.markContract,
+    practiceTarget: s.practiceTarget,
+    practiceFound: s.practiceFound,
+    ...(s.custom ? { custom: true, customBackup: s.customBackup } : {}),
+    tally: useStats.getState().game
+  };
 }
 
 /**
@@ -2488,6 +3211,14 @@ export function countFirstMove(s: GameStore, prev: GameStore) {
 }
 useGame.subscribe(countFirstMove);
 
+/**
+ * The game rests behind the pause card (paused, and not won): the controls
+ * the pause card dims beside it are inert then (App.tsx), out of the Tab
+ * order and a screen reader's reach, and the store's actions behind them
+ * change nothing (resting)
+ */
+export const useResting = () => useGame(resting);
+
 // a hint appearing takes note of what it was found under, unless the
 // action that showed it already did (Check's proof, found earlier)
 useGame.subscribe((s, prev) => {
@@ -2503,8 +3234,9 @@ useSettings.subscribe((s, prev) => {
   if (prev.dontCount && !s.dontCount && !useGame.getState().won) countStart();
 });
 
-/** counts the game on the board as begun, once, with its kind: not while the device is left out */
+/** counts the game on the board as begun, once, with its kind: not while the device is left out, nor from a view (the page that plays counts it: src/state/play.ts) */
 function countStart() {
+  if (!play.acts()) return;
   const s = useGame.getState();
   // a solved game is past counting: its start was counted before the
   // win, or the device was left out of it, and its solve too

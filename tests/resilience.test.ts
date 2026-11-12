@@ -2,9 +2,12 @@
  * Nothing waits forever and nothing goes blank: a worker that dies settles
  * every request waiting on it and is replaced; a lazily loaded file that
  * cannot be fetched leaves the generator without seeds rather than the
- * player without a game; the app's health signals drive the update bar.
+ * player without a game, and the guide closed rather than the app crashed;
+ * Reload reloads, with a new service worker waiting or without one; the
+ * pages kept for offline use exist; the app's health signals drive the
+ * update bar.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 const store = new Map<string, string>();
 (globalThis as any).localStorage = {
@@ -85,6 +88,112 @@ describe('files that cannot be fetched', () => {
     const { practiceSeeds } = await import('../src/content/practicePuzzles');
     expect(await practiceSeeds('AIC')).toEqual([]);
     vi.doUnmock('../src/content/practicePuzzles.json');
+  });
+});
+
+const { partOrStandIn } = await import('../src/ui/lazyPart');
+const { reloadIntoLatest } = await import('../src/state/appStatus');
+
+describe('a part of the app whose file cannot be fetched', () => {
+  const Part = () => null;
+  const StandIn = () => null;
+
+  it('is the part when its file comes', async () => {
+    expect(await partOrStandIn(() => Promise.resolve(Part), StandIn)()).toEqual({ default: Part });
+  });
+
+  it("is the stand-in when Vite's preload error resolved the import to nothing", async () => {
+    expect(await partOrStandIn(() => Promise.resolve(undefined), StandIn)()).toEqual({ default: StandIn });
+  });
+
+  it('is the stand-in when the import fails outright, so React.lazy never throws to the crash panel', async () => {
+    const load = () => Promise.reject(new TypeError('Failed to fetch dynamically imported module'));
+    expect(await partOrStandIn(load, StandIn)()).toEqual({ default: StandIn });
+  });
+});
+
+describe('Reload', () => {
+  /** a service worker that can be moved through its states */
+  class FakeSW extends EventTarget {
+    state = 'installed';
+    become(state: string) {
+      this.state = state;
+      this.dispatchEvent(new Event('statechange'));
+    }
+  }
+
+  /** a page with this service worker API (none: undefined), which records what happens */
+  function page(serviceWorker?: object) {
+    const done: string[] = [];
+    vi.stubGlobal('window', { location: { reload: () => done.push('reload') } });
+    vi.stubGlobal('navigator', serviceWorker ? { serviceWorker } : {});
+    const skipWaiting = async () => void done.push('skip waiting');
+    const save = () => void done.push('save');
+    return { done, skipWaiting, save };
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it('with no service worker (an in-app browser), saves the game and reloads at once', async () => {
+    const p = page();
+    await reloadIntoLatest(p.skipWaiting, p.save);
+    expect(p.done).toEqual(['save', 'reload']);
+  });
+
+  it('with no worker waiting (a file failed in a first visit, or another tab took the update), reloads at once', async () => {
+    const p = page({ controller: null, getRegistration: async () => ({ waiting: null, active: new FakeSW() }) });
+    await reloadIntoLatest(p.skipWaiting, p.save);
+    expect(p.done).toEqual(['save', 'reload']);
+    const q = page({ controller: {}, getRegistration: async () => undefined });
+    await reloadIntoLatest(q.skipWaiting, q.save);
+    expect(q.done).toEqual(['save', 'reload']);
+    const r = page({ controller: {}, getRegistration: () => Promise.reject(new Error('blocked')) });
+    await reloadIntoLatest(r.skipWaiting, r.save);
+    expect(r.done).toEqual(['save', 'reload']);
+  });
+
+  it('with a worker waiting on a page the old one controls, asks it to take over (the plugin reloads), and reloads anyway if it never does', async () => {
+    vi.useFakeTimers();
+    const waiting = new FakeSW();
+    const p = page({ controller: {}, getRegistration: async () => ({ waiting }) });
+    await reloadIntoLatest(p.skipWaiting, p.save, 3000);
+    expect(p.done).toEqual(['save', 'skip waiting']);
+    waiting.become('activated');
+    expect(p.done).toEqual(['save', 'skip waiting']);
+    vi.advanceTimersByTime(3000);
+    expect(p.done).toEqual(['save', 'skip waiting', 'reload']);
+  });
+
+  it('with a worker waiting on a page no worker controls, reloads once it has taken over', async () => {
+    const waiting = new FakeSW();
+    const p = page({ controller: null, getRegistration: async () => ({ waiting }) });
+    await reloadIntoLatest(p.skipWaiting, p.save, 60_000);
+    expect(p.done).toEqual(['save', 'skip waiting']);
+    waiting.become('activating');
+    expect(p.done).toEqual(['save', 'skip waiting']);
+    waiting.become('activated');
+    expect(p.done).toEqual(['save', 'skip waiting', 'reload']);
+  });
+
+  it('reloads even when the game cannot be written', async () => {
+    const p = page();
+    await reloadIntoLatest(p.skipWaiting, () => {
+      throw new Error('quota');
+    });
+    expect(p.done).toEqual(['reload']);
+  });
+});
+
+describe('the pages kept for offline use', () => {
+  it('are pages the build writes, so the service worker can install them', async () => {
+    const { OFFLINE_PAGES } = await import('../src/content/staticRoutes');
+    const { buildLearnPages } = await import('../src/content/learnPages');
+    const urls = new Set(buildLearnPages().map((p) => p.url));
+    expect(OFFLINE_PAGES).toEqual(['/privacy/', '/nb/privacy/', '/es/privacy/']);
+    for (const url of OFFLINE_PAGES) expect(urls.has(url), url).toBe(true);
   });
 });
 

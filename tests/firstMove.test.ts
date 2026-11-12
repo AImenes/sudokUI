@@ -102,8 +102,9 @@ describe('a game begun', () => {
     expect(useGame.getState().counted).toBe(true);
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     expect(tracked).toEqual(['started']);
-    // New game > Daily puzzle while that daily is under way: the board
-    // starts over, and it is still the same game
+    // the same puzzle started again while it is under way (the Daily
+    // button now goes on with it instead: src/ui/links.ts, startDaily):
+    // the board starts over, and it is still the same game
     useGame.getState().startGame(EASY, 196, 'Easy', null, '2026-10-21');
     expect(useGame.getState().counted).toBe(true);
     play(EMPTY[1], Number(solution()[EMPTY[1]]));
@@ -295,11 +296,11 @@ describe('a game solved', () => {
     for (const cell of EMPTY) play(cell, Number(solution()[cell]));
     expect(useGame.getState().won).toBe(true);
   };
-  /** Undo takes the winning digit back; Resume, as the pause button offers */
+  /** Undo takes the winning digit back, and the board is in play again */
   const undoWin = () => {
     useGame.getState().undo();
     expect(useGame.getState().won).toBe(false);
-    if (useGame.getState().paused) useGame.getState().togglePause();
+    expect(useGame.getState().paused).toBe(false);
   };
   const last = () => EMPTY[EMPTY.length - 1];
 

@@ -42,6 +42,21 @@ describe('practice target', () => {
     useGame.getState().setMode('digit');
   });
 
+  it('a move on a board solved before is no new find: the solve keeps the practice verdict it was made with', () => {
+    const ex = EXAMPLES.X_WING!;
+    useGame.getState().startGame(ex.puzzle, 800, 'Hard', 'X_WING');
+    // solved once, then put back in play (an Undo past a hint)
+    useGame.setState({ solved: true });
+    const e = ex.step.eliminations[0];
+    const s = useGame.getState();
+    s.select([e.cell], false);
+    s.setMode('center');
+    s.input(e.digit);
+    expect(useGame.getState().cells[e.cell].excluded & bit(e.digit)).toBeTruthy();
+    expect(useGame.getState().practiceFound).toBe(false);
+    useGame.getState().setMode('digit');
+  });
+
   it('matches a placement, a removal, or a digit placed where the removals leave only it', () => {
     const g = parseGrid(EASY)!;
     const target = { tech: 'X_WING' as const, placements: [{ cell: 0, digit: 4 }], eliminations: [{ cell: 1, digit: 5 }], description: '' };

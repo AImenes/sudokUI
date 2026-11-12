@@ -596,6 +596,7 @@ export function Grid() {
   const errors = useGame((s) => s.errors);
   const paused = useGame((s) => s.paused);
   const won = useGame((s) => s.won);
+  const away = useGame((s) => s.away);
   const togglePause = useGame((s) => s.togglePause);
   const armedDigit = useGame((s) => s.armedDigit);
   const input = useGame((s) => s.input);
@@ -1234,36 +1235,45 @@ export function Grid() {
           return (
             <g key={i}>
               {cell.value > 0 ? (
-                <text
-                  x={x + SIZE / 2}
-                  y={y + SIZE / 2 + 21}
-                  textAnchor="middle"
-                  fontSize={58}
-                  fontWeight={cell.given ? 700 : 500}
-                  fill={
-                    valueMarks.has(i)
-                      ? hintInk(valueMarks.get(i)!)
-                      : conflict
-                        ? 'var(--error-bg)'
-                        : cell.given
-                          ? 'var(--given)'
-                          : 'var(--entered)'
-                  }
-                  // an opt-in slight colour per digit, mixed into the theme's
-                  // own digit colour so every theme keeps its character; a
-                  // browser without color-mix ignores this and keeps `fill`
-                  style={
-                    digitTints && !conflict && !valueMarks.has(i)
-                      ? {
-                          fill: `color-mix(in srgb, var(${
-                            cell.given ? '--given' : '--entered'
-                          }) ${100 - tintStrength}%, var(--tint-${cell.value}))`
-                        }
-                      : undefined
-                  }
-                >
-                  {cell.value}
-                </text>
+                <>
+                  {/* a repeated digit is red and underlined: the line says it
+                      where red alone would not, as beside Rosé's own red
+                      digits or to a colour-blind eye (a rect: the mask that
+                      cuts digits out of the arrows leaves it out) */}
+                  {conflict && (
+                    <rect className="conflict-mark" x={x + SIZE / 2 - 16} y={y + SIZE / 2 + 28} width={32} height={4} rx={2} fill="var(--danger-text)" />
+                  )}
+                  <text
+                    x={x + SIZE / 2}
+                    y={y + SIZE / 2 + 21}
+                    textAnchor="middle"
+                    fontSize={58}
+                    fontWeight={cell.given ? 700 : 500}
+                    fill={
+                      valueMarks.has(i)
+                        ? hintInk(valueMarks.get(i)!)
+                        : conflict
+                          ? 'var(--danger-text)'
+                          : cell.given
+                            ? 'var(--given)'
+                            : 'var(--entered)'
+                    }
+                    // an opt-in slight colour per digit, mixed into the theme's
+                    // own digit colour so every theme keeps its character; a
+                    // browser without color-mix ignores this and keeps `fill`
+                    style={
+                      digitTints && !conflict && !valueMarks.has(i)
+                        ? {
+                            fill: `color-mix(in srgb, var(${
+                              cell.given ? '--given' : '--entered'
+                            }) ${100 - tintStrength}%, var(--tint-${cell.value}))`
+                          }
+                        : undefined
+                    }
+                  >
+                    {cell.value}
+                  </text>
+                </>
               ) : candDisplay ? (
                 digitsOf(candDisplay).map((d) => (
                   <React.Fragment key={d}>
@@ -1344,6 +1354,15 @@ export function Grid() {
   // what a screen reader hears: the selected cell and what is in it, read
   // out as the selection moves (the arrow keys move it; digits enter)
   const announced = describeSelection(cells, selection, autoCandidates, t);
+  // the status line starts empty and is filled a moment after the page
+  // comes up: a live region that has its words from the start is not read
+  // out, and a game brought back behind the pause card (a reload, the app
+  // opened again) should be heard to be paused
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setSettled(true), 300);
+    return () => clearTimeout(id);
+  }, []);
 
   return (
     <div className="grid-wrap">
@@ -1711,14 +1730,25 @@ export function Grid() {
         )}
 
       </svg>
+      {/* paused, the card covers the board: the status says so, not what a
+          cell holds, and says it again when the page is shown (a pause the
+          page took while hidden, gameStore.ts setAway, is heard on return) */}
       <div id="board-status" className="sr-only" aria-live="polite" aria-atomic="true">
-        {announced}
+        {!settled ? '' : paused && !won ? (away ? '' : t('Paused. Press P to resume.')) : announced}
       </div>
       {paused && !won && (
         <div className="pause-card">
           <h3>{t('Paused')}</h3>
           <p className="pause-tip">{t('Did you know? {tip}', { tip: t(pauseTip) })}</p>
-          <button className="resume-btn" onClick={togglePause}>
+          <button
+            className="resume-btn"
+            onClick={(e) => {
+              togglePause();
+              // pressed from the keyboard, the focus goes back to the board
+              // rather than to the page as the card goes (a tap leaves it be)
+              if (e.detail === 0) svgRef.current?.focus();
+            }}
+          >
             ⏵ {t('Resume (P)')}
           </button>
           {/* the app's mark and address, quiet but big enough to read from
@@ -1740,3 +1770,21 @@ export function Grid() {
 }
 
 export { PALETTE };
+
+/** each palette colour's word, for what a screen reader reads (the
+ *  Colour keys, the set tracker's swatches in Settings) */
+const PALETTE_WORDS = [
+  msg('red||a colour of the Colour keys'),
+  msg('orange||a colour of the Colour keys'),
+  msg('yellow||a colour of the Colour keys'),
+  msg('green||a colour of the Colour keys'),
+  msg('teal||a colour of the Colour keys'),
+  msg('blue||a colour of the Colour keys'),
+  msg('purple||a colour of the Colour keys'),
+  msg('pink||a colour of the Colour keys'),
+  msg('grey||a colour of the Colour keys')
+];
+
+/** a palette colour by its key and its word: "Colour 3, yellow" */
+export const colourName = (t: Translator, k: number) =>
+  t('Colour {n}, {colour}', { n: k + 1, colour: t(PALETTE_WORDS[k]) });

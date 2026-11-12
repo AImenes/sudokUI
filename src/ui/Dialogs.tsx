@@ -7,6 +7,7 @@ import {
   solvePath,
   encodePosition,
   dailyResultOf,
+  keptResultOf,
   contractGrid,
   hasManualMarks,
   markSlip,
@@ -25,11 +26,14 @@ import { timeVerdict, timeBand, percentileText, MODE_LABEL, SolveMode } from '..
 import { useT, translator, msg, rich, Translator } from '../content/i18n';
 import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
 import { parsePencilGrid, looksLikeGrid } from '../content/textGrid';
-import { puzzleFromLink } from '../content/importLinks';
+import { puzzleFromLink, findUrl } from '../content/importLinks';
+import { readAppLink, isAppAddress } from '../content/share';
+import { openAppLink } from './links';
 import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
 import { dailyNumber, localDateKey, dailyClosed, standingOf } from '../content/dailies';
 import { dailyLine, standingPhrase, asLine } from '../content/dailyLine';
 import { useDailyStats, SubmitOutcome } from '../state/dailyStats';
+import { play } from '../state/play';
 import { sendText, copyText } from './send';
 import { ShareImage } from './ShareImage';
 import type { PictureCell } from '../content/boardImage';
@@ -40,7 +44,7 @@ import type { ShareKind } from '../state/telemetry';
 import { PRIVACY_URL } from '../content/staticRoutes';
 import { WHY } from '../content/why';
 import { HubTabs } from './HubTabs';
-import { techniquesByFamily } from '../content/categories';
+import { TOO_RARE_TO_PRACTISE, techniquesByFamily } from '../content/categories';
 import { useLearnLocale } from './useLearnLocale';
 import type { LearnLocale } from '../content/learnLocale';
 import { BAND_LEADS, BAND_NOTES, rangeOf } from '../content/rating';
@@ -82,14 +86,25 @@ export function useNewGame() {
   const [genState, setGenState] = useState<GenState | null>(null);
   const cancelled = useRef(false);
 
-  const start = async (req: GenRequest) => {
+  /**
+   * Starts a game of a level or a technique's practice. With `setAside`
+   * (a Learn page's Practice link, opened from outside) the game under
+   * way goes aside first, at the moment the new one lands, as for any
+   * link (src/ui/links.ts).
+   */
+  const start = async (req: GenRequest, { setAside = false } = {}) => {
     const key = req.kind === 'level' ? levelKey(req.level) : techKey(req.tech);
     // named in the player's language where it is shown (GeneratingDialog)
     const label: GenRequest = req;
+    const begin = (puzzle: string, score: number, level: Level) => {
+      const go = () => startGame(puzzle, score, level, req.kind === 'tech' ? req.tech : null);
+      if (setAside) useGame.getState().openOver(() => (go(), true));
+      else go();
+    };
     // a pooled puzzle filed before the practice ceiling existed may be above it
     const pooled = takePoolEntry(key, (e) => req.kind !== 'tech' || practisable(e, req.tech));
     if (pooled) {
-      startGame(pooled.puzzle, pooled.score, pooled.level, req.kind === 'tech' ? req.tech : null);
+      begin(pooled.puzzle, pooled.score, pooled.level);
       topUp(req);
       return true;
     }
@@ -99,7 +114,9 @@ export function useNewGame() {
     // generated, with the rating capped at what was asked for. A game that
     // starts meanwhile (the daily tapped in the welcome while the first
     // visit's own game is still being made, a link) wins: what arrives
-    // after it is dropped, never put over it
+    // after it is dropped, never put over it. So is what arrives once the
+    // play has gone to another page (the player switched tabs meanwhile):
+    // a view opens nothing, as it writes nothing (src/state/play.ts)
     const asked = useGame.getState().info;
     const seeds = req.kind === 'level' ? await seedPuzzles(req.level) : await practiceSeeds(req.tech);
     const { promise, handle } = requestPuzzle(
@@ -111,12 +128,12 @@ export function useNewGame() {
     const entry = await promise;
     clearTimeout(show);
     setGenState(null);
-    if (useGame.getState().info !== asked) {
+    if (useGame.getState().info !== asked || !play.acts()) {
       cancelled.current = false;
       return false;
     }
     if (entry) {
-      startGame(entry.puzzle, entry.score, entry.level, req.kind === 'tech' ? req.tech : null);
+      begin(entry.puzzle, entry.score, entry.level);
       topUp(req);
       return true;
     }
@@ -173,18 +190,27 @@ export function NewGameDialog({
   onClose,
   onStart,
   onCustom,
-  onDaily
+  onDaily,
+  onKept
 }: {
   onClose: () => void;
   onStart: (level: LevelPick) => void;
   onCustom: () => void;
   onDaily: () => void;
+  /** a game under way kept aside (src/ui/links.ts): offered back here too, so it is reachable when its note is put away */
+  onKept?: () => void;
 }) {
   const t = useT();
   const loc = useLearnLocale();
   return (
     <Modal title={t('New game')} onClose={onClose}>
       <div className="level-list">
+        {onKept && (
+          <button className="level-btn" onClick={onKept}>
+            <strong>{t('Back to your game in progress')}</strong>
+            <span>{t('Kept as you left it when another game opened over it')}</span>
+          </button>
+        )}
         <button className="level-btn daily" onClick={onDaily}>
           <strong>{t('Daily puzzle')}</strong>
           <span>
@@ -267,7 +293,7 @@ export function PracticeDialog({
           <span className="pool-dot" /> {t('a puzzle is ready and starts instantly')}
         </li>
         <li>
-          <span className="tech-gear">⚙</span> {t('solver only: there is no pattern to spot, so nothing to practise')}
+          <span className="tech-gear">⚙</span> {t('solver only: no pattern to spot, or too rare to practise')}
         </li>
         <li>
           <span className="tech-tilde">≈</span> {t('never needed: an easier technique always gets there first')}
@@ -287,8 +313,8 @@ export function PracticeDialog({
                 const ok = PRACTICE_TECHS.includes(tech);
                 // three honest reasons a technique can't be practised:
                 // ⚙ last resorts — the solver uses them, but there is no
-                //   pattern to SPOT (they try candidates and propagate), and
-                //   Exocet-grade patterns are too rare to generate on demand;
+                //   pattern to SPOT (they try candidates and propagate), or,
+                //   for Exocet, a pattern too rare to generate on demand;
                 // ≈ provably redundant — never appears in any solve path;
                 // ✗ deliberately not implemented.
                 const lastResort =
@@ -310,10 +336,15 @@ export function PracticeDialog({
                             score: info.score
                           })
                         : lastResort
-                          ? t(
-                              '{name} is implemented and the solver uses it on the hardest puzzles. But there is nothing to spot: it assumes candidates and propagates, so practising it would just be trial and error',
-                              { name }
-                            )
+                          ? TOO_RARE_TO_PRACTISE.includes(tech)
+                            ? t(
+                                '{name} is implemented and the solver uses it on the hardest puzzles, but so few puzzles need it that it cannot be practised',
+                                { name }
+                              )
+                            : t(
+                                '{name} is implemented and the solver uses it on the hardest puzzles. But there is nothing to spot: it assumes candidates and propagates, so practising it would just be trial and error',
+                                { name }
+                              )
                           : redundant
                             ? NOT_PRACTISABLE[tech]
                               ? t('{name} is implemented and the solver uses it, but it cannot be practised: {reason}', {
@@ -372,10 +403,13 @@ type PathRow = { kind: 'single'; index: number; step: Step } | { kind: 'group'; 
  * The solution path: every solver step from the puzzle's start, with runs of
  * singles collapsed and the hardest technique's first step marked as the crux. Clicking
  * a row sets the board to the position just before that step (and flags the
- * game as assisted — opening this dialog already does).
+ * game as assisted — opening this dialog already does, but not on a solved
+ * board, whose solve is recorded as it was played, so its note says nothing
+ * of help there).
  */
 export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
   const info = useGame((s) => s.info);
+  const won = useGame((s) => s.won);
   const jumpToStep = useGame((s) => s.jumpToStep);
   const markAssisted = useGame((s) => s.markAssisted);
   const [steps, setSteps] = useState<Step[] | null>(null);
@@ -425,7 +459,9 @@ export function SolutionPathDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={t('Solution path')} onClose={onClose}>
       <p className="dialog-note">
-        {t('Every step of one complete solution, easiest technique first. Click a step to set the board to the position just before it. The crux, the single most expensive step, is highlighted. Viewing this counts as assistance.')}
+        {won
+          ? t('Every step of one complete solution, easiest technique first. Click a step to set the board to the position just before it. The crux, the single most expensive step, is highlighted.')
+          : t('Every step of one complete solution, easiest technique first. Click a step to set the board to the position just before it. The crux, the single most expensive step, is highlighted. Viewing this counts as assistance.')}
       </p>
       {!steps ? (
         <div className="spinner" />
@@ -582,6 +618,8 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
   const contract = useGame((s) => s.markContract);
   const setMarkContract = useGame((s) => s.setMarkContract);
   const markAssisted = useGame((s) => s.markAssisted);
+  // a solved board: looking is no help with its solve, recorded already
+  const won = useGame((s) => s.won);
   const showStep = useGame((s) => s.showStep);
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [slip, setSlip] = useState(false);
@@ -643,7 +681,9 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
       ) : (
         <>
           <p className="dialog-note">
-            {t('Every technique the solver can apply right now, with your exact candidates, easiest first. Click one to see it highlighted on the board. Counts as assistance.')}
+            {won
+              ? t('Every technique the solver can apply right now, with your exact candidates, easiest first. Click one to see it highlighted on the board.')
+              : t('Every technique the solver can apply right now, with your exact candidates, easiest first. Click one to see it highlighted on the board. Counts as assistance.')}
           </p>
           <input
             className="learn-search"
@@ -661,7 +701,9 @@ export function ScanDialog({ onClose, lookFor }: { onClose: () => void; lookFor?
             </p>
           ) : steps.length === 0 ? (
             <p className="dialog-note">
-              {t("Nothing fires here. You may need a technique beyond the catalogue's reach from this position, or a candidate is off (run Check).")}
+              {won
+                ? t('The board is solved: nothing is left to find.')
+                : t("Nothing fires here. You may need a technique beyond the catalogue's reach from this position, or a candidate is off (run Check).")}
             </p>
           ) : (
             <>
@@ -747,12 +789,22 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     if (camera && video.current) video.current.srcObject = camera;
   }, [camera]);
+  // the photo reader is a file of its own, fetched when first used: one a
+  // deploy has taken, or a first visit gone offline, cannot be had (the
+  // import then resolves to nothing, src/main.tsx), and the update bar
+  // offers the reload. Null then, and the dialog says so in words
+  const reader = async () => {
+    const mod = await import('../scan/scanner').catch(() => undefined);
+    if (!mod) setScanError(t('The photo reader could not be loaded. Reload to continue; your game is saved.'));
+    return mod ?? null;
+  };
   const scan = async (blob: Blob) => {
     setBusy(true);
     setScanError('');
     try {
-      const { scanImage } = await import('../scan/scanner');
-      const r = await scanImage(blob);
+      const mod = await reader();
+      if (!mod) return;
+      const r = await mod.scanImage(blob);
       const found = r.digits.filter(Boolean).length;
       if (found < 17) {
         const read = r.foundGrid
@@ -766,6 +818,9 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
         setScanError(`${read} ${t('Printed puzzles only; fill the frame with the grid, in good light, and try again.')}`);
         return;
       }
+      // (a photo read once the play went to another page opens nothing: a
+      // view writes nothing, src/state/play.ts)
+      if (!play.acts()) return;
       closeCamera();
       loadScan(r.digits, r.doubts, r.preview);
       onDone();
@@ -788,8 +843,14 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
   };
   const snap = async () => {
     if (!video.current) return;
-    const { captureFrame } = await import('../scan/scanner');
-    await scan(await captureFrame(video.current));
+    setScanError('');
+    try {
+      const mod = await reader();
+      if (!mod) return;
+      await scan(await mod.captureFrame(video.current));
+    } catch {
+      setScanError(t('The photo could not be read.'));
+    }
   };
   return (
     <>
@@ -912,7 +973,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState('');
   const t = useT();
 
-  const doImport = () => {
+  const doImport = async () => {
     // a position drawn as text (src/content/textGrid.ts): a pencil-mark
     // grid, a HoDoKu library string, or the 81 characters with their
     // candidates; its candidates come along as centre marks
@@ -923,14 +984,26 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       else onClose();
       return;
     }
-    // a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach, the
-    // app's own share link, or the bare 81 characters (src/content/importLinks.ts)
+    // an address of the app's own (sudokui.app, or this copy's host)
+    // opens as it does when the link is opened (src/ui/links.ts): a
+    // position with its entries and marks, a challenger's time, a day's
+    // daily; its dialog says why one cannot be opened
+    const url = findUrl(text.trim());
+    const own = url && isAppAddress(url, window.location.host) && readAppLink(url);
+    if (own) {
+      const { opened, refused } = await openAppLink(own, 'import');
+      if (opened) onClose();
+      else setError(refused ?? '');
+      return;
+    }
+    // a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach, or
+    // the bare 81 characters (src/content/importLinks.ts)
     const link = puzzleFromLink(text);
     if (!link) {
       setError(
         looksLikeGrid(text)
           ? t('The pencil-mark grid could not be read: it needs 9 rows of 9 cells, each a digit or its candidates.')
-          : t('A puzzle needs exactly 81 characters (digits and dots), or a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach.')
+          : t('A puzzle needs exactly 81 characters (digits and dots), a sudokUI link, or a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach.')
       );
       return;
     }
@@ -947,7 +1020,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     <Modal title={t('Import a puzzle')} onClose={onClose}>
       <p className="dialog-note">
         {t(
-          'Paste an 81-character puzzle string (dots or zeros for empty cells), a pencil-mark grid with its candidates, or a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach.'
+          'Paste an 81-character puzzle string (dots or zeros for empty cells), a pencil-mark grid with its candidates, a sudokUI link, or a link from SudokuPad, f-puzzles, Sudoku Exchange or sudoku.coach.'
         )}
       </p>
       <textarea
@@ -961,7 +1034,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       />
       {error && <p className="dialog-error">{error}</p>}
       <div className="hint-actions">
-        <button onClick={doImport}>{t('Load puzzle')}</button>
+        <button onClick={() => void doImport()}>{t('Load puzzle')}</button>
       </div>
       <h4 className="setting-group">{t('Scan a photo')}</h4>
       <ScanControls onDone={onClose} />
@@ -1327,6 +1400,8 @@ export function VictoryDialog({
   const assisted = useGame((s) => s.assisted);
   const elapsedMs = useGame((s) => s.elapsedMs);
   const autoCandidates = useGame((s) => s.autoCandidates);
+  // the solve's own: a Steps jump since switched them on (gameStore.ts, recordWin)
+  const solvedAuto = useGame((s) => s.solvedAuto);
   const practiceFound = useGame((s) => s.practiceFound);
   const game = useStats((s) => s.game);
   const bands = useStats((s) => s.bands);
@@ -1344,6 +1419,11 @@ export function VictoryDialog({
   const inFlight = useDailyStats((s) => (dailyNo ? !!s.inFlight[dailyNo] : false));
   const waiting = useDailyStats((s) => (dailyNo ? !!s.pending[dailyNo] : false));
   const autoSend = useSettings((s) => s.autoSendDaily);
+  // the day's solve as the device keeps it: the first, so for a daily
+  // solved again it may be another than this (gameStore.ts, recordDaily)
+  const kept = useDailyStats((s) => (dailyNo ? s.played[dailyNo] : undefined));
+  // whether this game's solve is that one (recordDaily)
+  const dailyKept = useGame((s) => s.dailyKept);
   const [sent, setSent] = useState<SubmitOutcome | 'sending' | null>(null);
   const [statsFailed, setStatsFailed] = useState(false);
   useEffect(() => {
@@ -1365,6 +1445,10 @@ export function VictoryDialog({
   useEffect(() => {
     if (askCount) useSettings.getState().set({ countPlaysAsked: true });
   }, [askCount]);
+  // a dialog as every other: focus in, Tab kept inside, Escape as Admire
+  // the grid (the backdrop takes no tap, so a stray one cannot close it)
+  const { ref, onTab } = useDialog(onClose);
+  const summaryId = React.useId();
   if (!info) return null;
   const secs = Math.floor(elapsedMs() / 1000);
   const mm = Math.floor(secs / 60);
@@ -1372,7 +1456,9 @@ export function VictoryDialog({
   // a practice game, or one opened from a position link, starts part-way
   // through, so its time compares with nothing
   const partWay = !!info.practiceTech || !!info.fromPosition;
-  const mode = autoCandidates ? 'auto' : 'marks';
+  // judged as the solve was made: a board solved again after a Steps jump,
+  // which switched auto candidates on, is still that solve
+  const mode = (solvedAuto ?? autoCandidates) ? 'auto' : 'marks';
   // Beginner and Nightmare puzzles are timed against their own (solveTimes.ts)
   const timedAs = timeBand(info.level, info.score);
   const verdict = partWay ? null : timeVerdict(timedAs, secs, mode);
@@ -1413,11 +1499,19 @@ export function VictoryDialog({
   // the server takes a time for a day up to a week on; after that the day
   // is closed and the win screen does not offer what would be refused
   const closed = !!info.dailyNo && dailyClosed(info.dailyNo);
+  // a daily solved before on this device: that solve stays the day's
+  // result, so this one is not offered for everyone's times; the first
+  // one's is, if it was unassisted and never went in (keptResultOf). This
+  // solve undone and solved again is still the day's own; a save from
+  // before the game said so tells it by its time
+  const before = kept && !(dailyKept ?? (kept.seconds === secs && kept.assisted === assisted)) ? kept : null;
+  const keptResult = before && info.dailyNo && !closed && submittedSecs === undefined ? keptResultOf(info.dailyNo, before, info.solution) : null;
 
   // the player's time for the daily, sent when asked (src/state/dailyStats.ts):
-  // the same result the switch sends by itself (gameStore.ts, dailyResultOf)
+  // the same result the switch sends by itself (gameStore.ts, dailyResultOf),
+  // or for a daily solved again the first solve's
   const sendDaily = async () => {
-    const result = dailyResultOf(useGame.getState());
+    const result = before ? keptResult : dailyResultOf(useGame.getState());
     if (!result) return;
     setSent('sending');
     setSent(await useDailyStats.getState().submit(result));
@@ -1450,7 +1544,9 @@ export function VictoryDialog({
     };
     const text =
       info.dailyNo && info.dailyKey
-        ? dailyLine(t, info.dailyNo, { date: info.dailyKey, level: info.level, score: info.score, seconds: secs, assisted }, stats, submittedSecs)
+        ? // the day's result as the device keeps it, as the Share dialog
+          // shares it: for a daily solved again, the first solve
+          dailyLine(t, info.dailyNo, kept ?? { date: info.dailyKey, level: info.level, score: info.score, seconds: secs, assisted }, stats, submittedSecs)
         : verdict
       ? assisted
         ? t('I solved a {level} sudoku (HoDoKu rating {score}) in {time}, {standing} on sudokUI. Can you beat that? {link}', vars)
@@ -1477,9 +1573,18 @@ export function VictoryDialog({
           <i key={i} style={{ '--n': i } as React.CSSProperties} />
         ))}
       </div>
-      <div className="modal victory" role="dialog" aria-modal="true" aria-label={t('Puzzle solved')}>
+      <div
+        ref={ref}
+        tabIndex={-1}
+        className="modal victory"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('Puzzle solved')}
+        aria-describedby={summaryId}
+        onKeyDown={onTab}
+      >
         <h3>{t('Solved!')} 🎉</h3>
-        <p>{t('{level} · HoDoKu rating {score} · {time}', { level: t.level(info.level), score: info.score, time: `${mm}:${ss}` })}</p>
+        <p id={summaryId}>{t('{level} · HoDoKu rating {score} · {time}', { level: t.level(info.level), score: info.score, time: `${mm}:${ss}` })}</p>
         {verdict && (
           <p
             className="solve-verdict"
@@ -1570,6 +1675,15 @@ export function VictoryDialog({
               <p className="solve-assisted">{t('Your time goes in the next time you open the app online')}</p>
             ) : sent === 'refused' ? (
               <p className="solve-assisted">{t('Your time was not accepted')}</p>
+            ) : keptResult && before ? (
+              <>
+                <p className="solve-assisted">{t('You solved this daily before, in {time}. That time is the one that goes in.', { time: clockOf(before.seconds) })}</p>
+                <button className="daily-send" onClick={sendDaily}>
+                  🌍 {t('Send my time and compare')}
+                </button>
+              </>
+            ) : before ? (
+              <p className="solve-assisted">{t('You solved this daily before, in {time}. That solve stays your result.', { time: clockOf(before.seconds) })}</p>
             ) : closed ? (
               <p className="solve-assisted">{t('This daily is closed for new times')}</p>
             ) : assisted ? (
@@ -1629,25 +1743,27 @@ export function VictoryDialog({
 /** what Tab can land on inside a dialog */
 const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
-export function Modal({
-  title,
-  children,
-  onClose,
-  wide = false
-}: {
-  title: string;
-  children: React.ReactNode;
-  onClose: () => void;
-  /** reading-width dialog for long-form content (the Learn dialog) */
-  wide?: boolean;
-}) {
-  const t = useT();
-  // Escape closes the dialog (capture phase so the app's own Escape
-  // handling — clearing the selection — doesn't also fire)
+/**
+ * What makes a dialog a dialog, for Modal and the win screen: Escape closes
+ * it (capture phase, so the app's own Escape handling, clearing the
+ * selection, doesn't also fire), and only the top one: a question raised
+ * over Settings closes alone (every open dialog listens on the window, so
+ * each asks whether it is the last one on the page, the one painted on
+ * top); focus moves into it when it opens, so a screen reader says what
+ * opened, and goes back where it was when it closes, or to the board when
+ * that is gone; and Tab stays inside, past the last control wrapping to the
+ * first, so nothing behind it can be reached or opened. Returns the
+ * dialog's ref and its keydown handler.
+ */
+function useDialog(onClose: () => void) {
+  const ref = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Escape') {
+      // a page that does not hold the play is a view: nothing behind its cover acts (src/state/play.ts)
+      if (e.code === 'Escape' && play.acts()) {
         e.stopPropagation();
+        const open = document.querySelectorAll('.modal[role="dialog"]');
+        if (open[open.length - 1] !== ref.current) return;
         onClose();
       }
     };
@@ -1655,14 +1771,16 @@ export function Modal({
     return () => window.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
-  // without this, Tab keeps walking the controls hidden behind the dialog
-  const ref = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     ref.current?.focus({ preventScroll: true });
-    return () => opener?.focus?.({ preventScroll: true });
+    return () => {
+      // (a dialog that opened with nothing focused, the win screen after a
+      // reload among them, found the page itself: the board is the place)
+      const back = opener && opener !== document.body && opener.isConnected ? opener : document.querySelector<SVGElement>('svg.board');
+      back?.focus?.({ preventScroll: true });
+    };
   }, []);
-  // and Tab stays inside: past the last control it wraps to the first
   const onTab = (e: React.KeyboardEvent) => {
     if (e.key !== 'Tab' || !ref.current) return;
     const items = [...ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
@@ -1680,6 +1798,23 @@ export function Modal({
       first.focus();
     }
   };
+  return { ref, onTab };
+}
+
+export function Modal({
+  title,
+  children,
+  onClose,
+  wide = false
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+  /** reading-width dialog for long-form content (the Learn dialog) */
+  wide?: boolean;
+}) {
+  const t = useT();
+  const { ref, onTab } = useDialog(onClose);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
