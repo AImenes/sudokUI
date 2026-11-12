@@ -14,7 +14,7 @@ import { dailyPuzzle } from '../engine/daily';
 import { translator } from '../content/i18n';
 import { clockOf } from '../content/share';
 import type { AppLink } from '../content/share';
-import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber } from '../content/dailies';
+import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, dailyLocked, dayAfter, dayName } from '../content/dailies';
 import { play } from '../state/play';
 
 /** the challenger's time becomes the one to beat, and the player is told */
@@ -58,11 +58,24 @@ const unavailable = (date: string) => {
 };
 
 /**
- * what startDaily did: brought back the day's daily where it was left,
- * started it, could not load it, or let it go because the page no longer
- * held the play when the day's list came (`dropped`)
+ * why a day's daily does not open: its day is after the player's local
+ * today (dailies.ts, dailyLocked), and when it does open: "Tomorrow's daily
+ * opens at midnight", "The daily of 20 November opens on 20 November"
  */
-export type DailyOpened = 'resumed' | 'started' | 'unavailable' | 'dropped';
+export function lockedLine(date: string, today = localDateKey()): string {
+  const t = translator();
+  return date === dayAfter(today)
+    ? t('Tomorrow’s daily opens at midnight')
+    : t('The daily of {date} opens on {date}', { date: dayName(date, t.locale, today) });
+}
+
+/**
+ * what startDaily did: brought back the day's daily where it was left,
+ * started it, could not load it, let it go because the page no longer
+ * held the play when the day's list came (`dropped`), or opened nothing
+ * because the day has not come (`locked`)
+ */
+export type DailyOpened = 'resumed' | 'started' | 'unavailable' | 'dropped' | 'locked';
 
 /**
  * The daily for a day, today's unless a date is given: the published
@@ -74,11 +87,19 @@ export type DailyOpened = 'resumed' | 'started' | 'unavailable' | 'dropped';
  * of those places (never started, or gone: solved and then replaced,
  * since a solved game is not kept, or dropped by New) starts fresh. Without the published list (offline
  * before the app could keep it, a network error) no other board is passed
- * off as the day's: the board stays as it is, and the player is told.
+ * off as the day's: the board stays as it is, and the player is told. A
+ * day after the player's local today (dailyLocked) opens nothing at all,
+ * whatever asked for it: the board stays, and the player is told when it
+ * opens (lockedLine).
  */
 export async function startDaily(date = localDateKey()): Promise<DailyOpened> {
   const t = translator();
-  const today = date === localDateKey();
+  const now = localDateKey();
+  if (dailyLocked(date, now)) {
+    useGame.setState({ notice: lockedLine(date, now) });
+    return 'locked';
+  }
+  const today = date === now;
   const leftIt = () => (today ? t('Today’s daily, where you left it') : t('The daily for {date}, where you left it', { date }));
   // on the board, set aside, or behind a puzzle being typed in (on the
   // board or set aside): that daily, never a second copy of it
@@ -158,6 +179,14 @@ export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOp
   };
   if (link.daily) {
     const { date, vs } = link.daily;
+    // a day that has not come opens nothing, not even over its own copy
+    // (startDaily says when it opens); Import says it in its own dialog
+    if (dailyLocked(date)) {
+      const line = lockedLine(date);
+      if (from === 'import') return { opened: false, refused: line };
+      useGame.setState({ notice: line });
+      return { opened: false };
+    }
     // the day's board already on the board: a reload lands here, quietly
     if (from !== 'import' && dailyOnBoard(date)) {
       if (vs) challengeCurrent(vs);

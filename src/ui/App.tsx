@@ -62,7 +62,7 @@ import { PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { sharePath, readAppLink } from '../content/share';
 import type { AppLink } from '../content/share';
-import { localDateKey, dailyPath, pastDailyOn, dayName } from '../content/dailies';
+import { localDateKey, dailyPath, pastDailyOn, dayName, dailyLocked } from '../content/dailies';
 import { startDaily, openAppLink, backToKept, holds, backTo, traversed, markStarted, markEntry, entryState } from './links';
 import { useDailyStats } from '../state/dailyStats';
 import { useTelemetry } from '../state/telemetry';
@@ -577,18 +577,18 @@ export default function App() {
       start({ kind: 'tech', tech: practice }, { setAside: true });
       return;
     }
-    const fallBack = () => {
+    const fallBack = async () => {
       const now = useGame.getState();
       // (a link whose day's list came once the play had gone opened nothing: a view starts nothing either)
-      if (!now.info && !now.custom && play.acts()) start({ kind: 'level', level: 'Easy' });
+      if (!now.info && !now.custom && play.acts()) await start({ kind: 'level', level: 'Easy' });
     };
     const link = readAppLink(window.location);
     if (backForward) {
       if (link && holds(link)) backTo(link);
-      return fallBack();
+      return void fallBack();
     }
-    if (!link) return fallBack();
-    void openAppLink(link, 'boot').then(({ opened, refused }) => {
+    if (!link) return void fallBack();
+    void openAppLink(link, 'boot').then(async ({ opened, refused }) => {
       if (opened) return;
       // a share page promised a puzzle the app cannot play: say so, then
       // go on as with no link
@@ -596,7 +596,12 @@ export default function App() {
         const t = translator();
         useGame.setState({ notice: t('The shared puzzle could not be opened. {reason}', { reason: refused }).trim() });
       }
-      fallBack();
+      // a daily whose day has not come opened nothing (src/ui/links.ts):
+      // the first game of a new player, which starts in its place, keeps
+      // the line that says when it opens
+      const locked = link.daily && dailyLocked(link.daily.date) ? useGame.getState().notice : null;
+      await fallBack();
+      if (locked && !useGame.getState().notice) useGame.setState({ notice: locked });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, seen, tables]);

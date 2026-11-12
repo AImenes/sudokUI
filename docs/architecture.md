@@ -495,6 +495,28 @@ none of the player's work.
   cover is not made up from the date: the board stays as it was and the
   player is told; a day before the list began is still derived from its
   date.
+- **A daily whose day has not come.** A daily after the player's local
+  today opens nothing (the owner's decision of 12 November 2026: before
+  it, changing the address to `/daily/<tomorrow>` played tomorrow's
+  daily and could send its time). One check says so, `dailyLocked`
+  (src/content/dailies.ts), and the two ways a daily opens ask it first:
+  `startDaily` (the Daily button in New, the past-daily note's link)
+  and `openAppLink` (its address at start-up or on a
+  reload, a `#daily` or share link in the tab, Import), before anything
+  else, so not even a copy of that day already on the board is opened
+  again. The board stays as it is, no game goes aside, and the toast says
+  when the daily opens: "Tomorrow's daily opens at midnight", "The daily
+  of 20 November opens on 20 November" (Import says it in its own
+  dialog). A new player's first game, which starts in its place, keeps
+  that line. Back and Forward bring back only a game the page holds
+  (`holds`), so they open no locked daily either; a copy an earlier
+  build opened stays where it is (never lost), on the board or in the
+  slot. `#daily` is always the player's today, and today's and earlier
+  dailies open as before. The server is left as it was: it takes a
+  result for a day up to `EARLY_DAYS` (one) ahead of UTC, since it knows
+  only UTC, and a player in UTC+14 reaches their own today a day before
+  UTC does; the lock is the player's local date, which the app knows and
+  the server does not.
 - **Custom entry.** Opened again over a puzzle being typed in (New, then
   Custom, or a scan from New), the backup stays the game the first entry
   was opened over, so Cancel always brings that back. The backup keeps

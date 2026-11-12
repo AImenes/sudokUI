@@ -73,6 +73,8 @@ const ui: Dictionary = {
   "Daily puzzle for {date}. Everyone gets this same board today": "Sudoku del día, {date}. Hoy todo el mundo recibe este mismo tablero",
   "The daily for {date}": "El sudoku del día {date}",
   "The daily of {date}": "El sudoku del {date}",
+  "Tomorrow’s daily opens at midnight": "El sudoku de mañana se abre a medianoche",
+  "The daily of {date} opens on {date}": "El sudoku del {date} se abre el {date}",
   "Today’s daily": "El sudoku de hoy",
   "Hide this note": "Ocultar este aviso",
   "sudokUI is open in another tab or window, and your game carries on there.": "sudokUI está abierto en otra pestaña o ventana, y tu partida sigue allí.",
