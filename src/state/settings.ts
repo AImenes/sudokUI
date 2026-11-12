@@ -70,6 +70,8 @@ export interface ThemeState {
   themeBefore: ThemeChoice | null;
   /** the season (its year) in which the Christmas look last went on by itself, so it does so once a season */
   themeAutoYear: number | null;
+  /** the season (its year) the Christmas look on now belongs to: it goes when that season is over, even for a player who next comes back in a later one; null while the look is not on */
+  themeSeason: number | null;
 }
 
 /**
@@ -78,36 +80,47 @@ export interface ThemeState {
  * look going at its end. Choosing Christmas keeps the theme it replaces,
  * to give it back on 1 January; choosing any other drops that.
  */
-export function pickedTheme(s: ThemeState, theme: ThemeChoice): ThemeState {
+export function pickedTheme(s: ThemeState, theme: ThemeChoice, today = localDateKey()): ThemeState {
   return {
     theme,
     themePicked: true,
     themeBefore: theme !== 'christmas' ? null : s.theme === 'christmas' ? s.themeBefore : s.theme,
-    themeAutoYear: s.themeAutoYear
+    themeAutoYear: s.themeAutoYear,
+    themeSeason: theme === 'christmas' ? seasonYear(today) : null
   };
 }
 
 /**
  * The season's rules for the theme on a day (the player's local date,
  * src/content/season.ts), or null when they change nothing:
- * - outside the season (1 January to 31 October) a player on the
- *   Christmas look gets back the theme they had before it (the default,
- *   dark, when none was kept), and the look cannot be chosen;
+ * - outside the season (1 January to 31 October), or in a later season
+ *   than the one the look went on in (a player who did not come back
+ *   between 1 January and 31 October), a player on the Christmas look gets
+ *   back the theme they had before it (the default, dark, when none was
+ *   kept), and outside the season the look cannot be chosen;
  * - from 1 December a player who never picked a theme gets the look by
  *   itself, once a season: anyone can switch it off, which is a pick, and
  *   a player who picked any theme keeps it.
  */
 export function seasonTheme(s: ThemeState, today: string): Partial<ThemeState> | null {
-  if (!lookAvailable(today)) {
-    // (a kept Christmas, which no choice writes, would only bring the look back)
-    if (s.theme === 'christmas') return { theme: s.themeBefore && s.themeBefore !== 'christmas' ? s.themeBefore : 'dark', themeBefore: null };
-    return s.themeBefore !== null ? { themeBefore: null } : null;
-  }
   const year = seasonYear(today);
-  if (lookAuto(today) && !s.themePicked && s.theme !== 'christmas' && s.themeAutoYear !== year) {
-    return { theme: 'christmas', themeBefore: s.theme, themeAutoYear: year };
+  const inSeason = lookAvailable(today);
+  // the look's own season is over: outside the season, or a later one (an
+  // unknown season, kept by no deployed build, counts as this one). A kept
+  // Christmas, which no choice writes, would only bring the look back
+  const over = s.theme === 'christmas' && (!inSeason || (s.themeSeason != null && s.themeSeason !== year));
+  const back: Partial<ThemeState> | null = over
+    ? { theme: s.themeBefore && s.themeBefore !== 'christmas' ? s.themeBefore : 'dark', themeBefore: null, themeSeason: null }
+    : !inSeason && (s.themeBefore !== null || s.themeSeason != null)
+      ? { themeBefore: null, themeSeason: null }
+      : null;
+  if (!inSeason) return back;
+  const now = back ? { ...s, ...back } : s;
+  // December: on by itself, once a season, for a player who never picked
+  if (lookAuto(today) && !now.themePicked && now.theme !== 'christmas' && now.themeAutoYear !== year) {
+    return { ...(back ?? {}), theme: 'christmas', themeBefore: now.theme, themeAutoYear: year, themeSeason: year };
   }
-  return null;
+  return back;
 }
 
 /** typefaces already on the device: nothing to download, works offline */
@@ -226,6 +239,7 @@ export const useSettings = create<Settings>()(
       themePicked: false,
       themeBefore: null,
       themeAutoYear: null,
+      themeSeason: null,
       font: 'classic',
       highlightPeers: true,
       highlightSameDigit: true,

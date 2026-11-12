@@ -326,18 +326,22 @@ allows on the player's local date, as a key (`lookAvailable`, `lookAuto`,
 everything else asks it: the look can be chosen from 1 November to
 31 December, goes on by itself from 1 December, and the advent calendar is
 there from 1 November with door n opening on n December and every door
-closed from 1 January. The settings keep three things for it
+closed from 1 January. The settings keep four things for it
 (`ThemeState`): `themePicked`, set whenever the player chooses a theme
 (Settings, or the top bar's button: `pickedTheme`, through `set` and
-`toggleTheme`), `themeBefore`, the theme the look took the place of, and
-`themeAutoYear`, the season it last went on by itself in. `seasonTheme`
+`toggleTheme`), `themeBefore`, the theme the look took the place of,
+`themeAutoYear`, the season it last went on by itself in, and
+`themeSeason`, the season the look on now belongs to. `seasonTheme`
 holds the rules: from 1 December a player who never picked a theme gets
 the look, once a season (switching it off is a pick, so it stays off;
-a player who picked any theme keeps it); outside the season a player on
-it gets `themeBefore` back (the default, dark, when none was kept) and the
-look is offered nowhere (not in Settings, not after Forest on the top
-bar's button). App applies them (`applySeason`) in a layout effect before
-the first paint and again whenever its day changes with the page open
+a player who picked any theme keeps it); outside the season, or in a
+later season than its own (a player who did not come back between
+1 January and 31 October), a player on it gets `themeBefore` back (the
+default, dark, when none was kept), and outside the season the look is
+offered nowhere (not in Settings, not after Forest on the top bar's
+button). The rules are applied once before the first render
+(src/main.tsx) and by App (`applySeason`) in a layout effect, and again
+whenever its day changes with the page open
 ([useToday.ts](../src/ui/useToday.ts): a moment after midnight, and when
 the page is shown again or its window gets the focus), so a page left open
 across midnight into December or into January follows. "Never picked" is
@@ -552,11 +556,13 @@ none of the player's work.
   `startDaily` (the Daily button in New, the past-daily note's link)
   and `openAppLink` (its address at start-up or on a
   reload, a `#daily` or share link in the tab, Import), before anything
-  else, so not even a copy of that day already on the board is opened
-  again. The board stays as it is, no game goes aside, and the toast says
-  when the daily opens: "Tomorrow's daily opens at midnight", "The daily
-  of 20 November opens on 20 November" (Import says it in its own
-  dialog). A new player's first game, which starts in its place, keeps
+  else, a position shared on that day's address (`/daily/<date>#s=…`)
+  included, so no game goes aside for it. The board stays as it is, and
+  the toast says when the daily opens: "Tomorrow's daily opens at
+  midnight", "That daily opens on 20 November" (Import says it in its
+  own dialog); a copy of that day already on the board (an earlier
+  build opened it, or the device's clock went back) is left as it is,
+  quietly. A new player's first game, which starts in its place, keeps
   that line. Back and Forward bring back only a game the page holds
   (`holds`), so they open no locked daily either; a copy an earlier
   build opened stays where it is (never lost), on the board or in the

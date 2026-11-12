@@ -221,7 +221,29 @@ describe('the Christmas season', () => {
     expect(s().themeBefore).toBe('forest');
     s().set({ theme: 'light' });
     expect(s().themeBefore).toBeNull();
-    expect(pickedTheme({ theme: 'light', themePicked: true, themeBefore: null, themeAutoYear: null }, 'christmas').themeBefore).toBe('light');
+    expect(pickedTheme({ theme: 'light', themePicked: true, themeBefore: null, themeAutoYear: null, themeSeason: null }, 'christmas').themeBefore).toBe('light');
+  });
+
+  it('goes when its own season is over, for a player who does not come back between 1 January and 31 October', () => {
+    // on by itself on 10 December 2026, next seen on 1 November 2027: dark again, and on by itself again on 1 December
+    applySeason('2026-12-10');
+    expect(s()).toMatchObject({ theme: 'christmas', themeBefore: 'dark', themeSeason: 2026 });
+    applySeason('2027-11-01');
+    expect(s()).toMatchObject({ theme: 'dark', themeBefore: null, themeSeason: null });
+    applySeason('2027-12-01');
+    expect(s()).toMatchObject({ theme: 'christmas', themeBefore: 'dark', themeAutoYear: 2027, themeSeason: 2027 });
+  });
+
+  it('chosen in one season, gives the theme from before back in the next, even on the first day seen there', () => {
+    s().set({ theme: 'light' });
+    applySeason('2026-11-05');
+    useSettings.setState(pickedTheme(s(), 'christmas', '2026-11-05'));
+    expect(s()).toMatchObject({ theme: 'christmas', themeBefore: 'light', themeSeason: 2026 });
+    applySeason('2027-12-15');
+    expect(s()).toMatchObject({ theme: 'light', themeBefore: null, themeSeason: null });
+    // a player who picked is not switched on by itself
+    applySeason('2027-12-16');
+    expect(s().theme).toBe('light');
   });
 
   it('with no theme kept from before, gives back the default, dark', () => {
@@ -250,9 +272,9 @@ describe('the Christmas season', () => {
   });
 
   it('changes nothing for a theme of the player’s own outside the season, and tidies a kept theme', () => {
-    const state = { theme: 'rose' as const, themePicked: true, themeBefore: null, themeAutoYear: 2026 };
+    const state = { theme: 'rose' as const, themePicked: true, themeBefore: null, themeAutoYear: 2026, themeSeason: null };
     for (const day of ['2027-01-01', '2027-06-01', '2027-10-31']) expect(seasonTheme(state, day)).toBeNull();
-    expect(seasonTheme({ ...state, themeBefore: 'light' }, '2027-02-01')).toEqual({ themeBefore: null });
+    expect(seasonTheme({ ...state, themeBefore: 'light' }, '2027-02-01')).toEqual({ themeBefore: null, themeSeason: null });
   });
 
   it('is kept: whether the player picked, the theme from before and the season it went on in', async () => {

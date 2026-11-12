@@ -90,8 +90,8 @@ describe('the one check', () => {
 
   it('says when the day’s daily opens, in plain words', () => {
     expect(lockedLine('2026-11-13', '2026-11-12')).toBe('Tomorrow’s daily opens at midnight');
-    expect(lockedLine('2026-11-20', '2026-11-12')).toBe('The daily of 20 November opens on 20 November');
-    expect(lockedLine('2027-01-03', '2026-11-12')).toBe('The daily of 3 January 2027 opens on 3 January 2027');
+    expect(lockedLine('2026-11-20', '2026-11-12')).toBe('That daily opens on 20 November');
+    expect(lockedLine('2027-01-03', '2026-11-12')).toBe('That daily opens on 3 January 2027');
   });
 
   it('leaves the server its day of grace: it knows only UTC, and UTC+14 is a day ahead of it', () => {
@@ -107,7 +107,7 @@ describe('a daily after today', () => {
     expect(g().setAside).toBeNull();
     expect(g().notice).toBe('Tomorrow’s daily opens at midnight');
     expect(await startDaily('2026-11-20')).toBe('locked');
-    expect(g().notice).toBe('The daily of 20 November opens on 20 November');
+    expect(g().notice).toBe('That daily opens on 20 November');
   });
 
   it('opens nothing by its address, at start-up or in the tab, and says when it opens', async () => {
@@ -124,7 +124,7 @@ describe('a daily after today', () => {
     expect(await openAppLink(link('https://sudokui.app/nb/daily/2026-11-21?vs=300'), 'boot')).toEqual({ opened: false });
     expect(g().info).toBe(was);
     expect(g().info?.challenge).toBeUndefined();
-    expect(g().notice).toBe('The daily of 21 November opens on 21 November');
+    expect(g().notice).toBe('That daily opens on 21 November');
   });
 
   it('pasted into Import, is refused in the dialog’s own words', async () => {
@@ -138,18 +138,43 @@ describe('a daily after today', () => {
     expect(g().notice).toBeNull();
   });
 
-  it('opens nothing even over a copy of it already on the board, and is not a game this page holds', async () => {
-    // a copy opened by an earlier build, before the lock: it stays where it is, never lost
+  it('leaves a copy of it already on the board as it is, quietly, and it is a game this page holds', async () => {
+    // a copy opened by an earlier build, before the lock, or one whose device clock went back: it stays where it is, never lost,
+    // and its own address does not say on every reload that it has not opened
     const list = (await loadDailies())!;
     const tomorrow = findDaily(list, '2026-11-13')!;
     g().startGame(tomorrow.puzzle, tomorrow.score, tomorrow.level, null, '2026-11-13');
     const was = g().info;
     useGame.setState({ notice: null });
-    expect(await openAppLink(link('https://sudokui.app/daily/2026-11-13'), 'boot')).toEqual({ opened: false });
+    expect(await openAppLink(link('https://sudokui.app/daily/2026-11-13'), 'boot')).toEqual({ opened: true });
     expect(g().info).toBe(was);
-    expect(g().notice).toBe('Tomorrow’s daily opens at midnight');
+    expect(g().notice).toBeNull();
+    // Import still says it has not opened, and opens nothing
+    expect(await openAppLink(link('https://sudokui.app/daily/2026-11-13'), 'import')).toEqual({ opened: false, refused: 'Tomorrow’s daily opens at midnight' });
     // Back and Forward bring back only what the page holds: that copy, as it is
     expect(holds(link('https://sudokui.app/daily/2026-11-13'))).toBe(true);
+  });
+
+  it('opens nothing for a position shared on its address, and lets no game go', async () => {
+    underWay();
+    const before = g().info;
+    // a Position link of tomorrow's daily, as the Share dialog makes it: /daily/<date>#s=… (its board, with one entry)
+    const list = (await loadDailies())!;
+    const tomorrow = findDaily(list, '2026-11-13')!;
+    const { encodePosition } = await import('../src/state/gameStore');
+    const cells = [...tomorrow.puzzle].map((ch) => ({
+      value: ch === '.' ? 0 : Number(ch), given: ch !== '.', corner: 0, center: 0, excluded: 0, colors: [] as number[]
+    }));
+    // a pencil mark of the sender's on the first empty cell
+    cells[tomorrow.puzzle.indexOf('.')].corner = 0b11;
+    const pos = link('https://sudokui.app/daily/2026-11-13#s=' + encodePosition(cells, false));
+    expect(pos.position).toBeTruthy();
+    expect(await openAppLink(pos, 'tab')).toEqual({ opened: false });
+    expect(g().info).toBe(before);
+    expect(g().setAside).toBeNull();
+    expect(g().notice).toBe('Tomorrow’s daily opens at midnight');
+    expect(await openAppLink(pos, 'import')).toEqual({ opened: false, refused: 'Tomorrow’s daily opens at midnight' });
+    expect(g().info).toBe(before);
   });
 
   it('opens once its day comes', async () => {

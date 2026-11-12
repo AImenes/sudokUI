@@ -60,13 +60,13 @@ const unavailable = (date: string) => {
 /**
  * why a day's daily does not open: its day is after the player's local
  * today (dailies.ts, dailyLocked), and when it does open: "Tomorrow's daily
- * opens at midnight", "The daily of 20 November opens on 20 November"
+ * opens at midnight", "That daily opens on 20 November"
  */
 export function lockedLine(date: string, today = localDateKey()): string {
   const t = translator();
   return date === dayAfter(today)
     ? t('Tomorrow’s daily opens at midnight')
-    : t('The daily of {date} opens on {date}', { date: dayName(date, t.locale, today) });
+    : t('That daily opens on {date}', { date: dayName(date, t.locale, today) });
 }
 
 /**
@@ -167,6 +167,18 @@ export interface LinkOpened {
 export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOpened> {
   const t = translator();
   const game = useGame.getState;
+  // a daily whose day has not come opens nothing, not even a position
+  // shared on it (/daily/<date>#s=…): before anything else, so no game
+  // goes aside for it. Its own copy already on the board (an earlier
+  // build opened it, or the device's clock went back) stays as it is,
+  // quietly; startDaily says when it opens, and Import in its dialog
+  if (link.daily && dailyLocked(link.daily.date)) {
+    if (from !== 'import' && dailyOnBoard(link.daily.date)) return { opened: true };
+    const line = lockedLine(link.daily.date);
+    if (from === 'import') return { opened: false, refused: line };
+    useGame.setState({ notice: line });
+    return { opened: false };
+  }
   const position = link.position ? openPosition(link.position) : null;
   if (position === true) return { opened: true };
   const refusal = position === 'cut'

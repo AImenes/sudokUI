@@ -58,7 +58,7 @@ test.describe('a daily whose day has not come', () => {
     await page.mouse.click(box.x + ((cell % 9) + 0.5) * (box.width / 9), box.y + (Math.floor(cell / 9) + 0.5) * (box.width / 9));
     await page.keyboard.press('Digit5');
     await page.goto('/daily/2026-11-20');
-    await expect(toast(page, 'The daily of 20 November opens on 20 November')).toBeVisible();
+    await expect(toast(page, 'That daily opens on 20 November')).toBeVisible();
     await expect.poll(() => saved(page)).toEqual({ dailyKey: '2026-11-12', puzzle: today, kept: false });
     await expect.poll(() => page.evaluate(() => location.pathname)).toBe('/daily/2026-11-12');
     // in Norwegian, the same, in its words
@@ -338,6 +338,26 @@ for (const [name, use] of [
         });
       await expect.poll(outside).toEqual([]);
       expect(await page.locator('.pause-card h3').evaluate((el) => getComputedStyle(el, '::before').backgroundImage)).toContain('data:image/svg+xml');
+    });
+
+    test('the six looks of the season fit Settings: every choice inside the dialog, its words a full line', async ({ page }) => {
+      await page.addInitScript(welcomed);
+      await page.clock.install({ time: noon('2026-12-02') });
+      await page.goto('/');
+      await expect(page.locator('svg.board')).toBeVisible();
+      await page.getByRole('button', { name: 'Settings' }).first().click();
+      const fit = () =>
+        page.evaluate(() => {
+          const modal = document.querySelector('.modal[role="dialog"]')!.getBoundingClientRect();
+          const choices = [...document.querySelectorAll('.theme-choice button')].map((b) => b.getBoundingClientRect());
+          const words = document.querySelector('.theme-row .setting-text')!.getBoundingClientRect();
+          return {
+            choices: choices.length,
+            outside: choices.filter((r) => r.right > modal.right + 0.5 || r.left < modal.left - 0.5).length,
+            wordsFill: words.width > modal.width * 0.75
+          };
+        });
+      await expect.poll(fit).toEqual({ choices: 6, outside: 0, wordsFill: true });
     });
   });
 }

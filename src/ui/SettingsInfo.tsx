@@ -84,7 +84,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
       <h4 className="setting-group">{t('Appearance')}</h4>
-      <div className="setting-row stack" role="group" aria-label={t('Theme')}>
+      <div className="setting-row stack theme-row" role="group" aria-label={t('Theme')}>
         <div className="setting-text">
           <span>{t('Theme')}</span>
           <small>
@@ -97,7 +97,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           </small>
           {christmas && (
             <small>
-              {t('Christmas can be chosen from 1 November to 31 December, and keeps those colours too. On 1 January the theme you had before comes back')}
+              {t('Christmas can be chosen from 1 November to 31 December, and keeps Daylight’s hint colours. On 1 January the theme you had before comes back')}
             </small>
           )}
         </div>
