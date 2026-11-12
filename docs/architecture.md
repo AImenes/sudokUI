@@ -92,7 +92,10 @@ card, after a reload or a reopen too (the owner's choice, 11 November
 when the page is shown again: a friend's position or a fast-forwarded
 practice nobody touched among them, and a board whose only change is the
 auto candidates the chain trainer switched on, which Done and a reload
-take off again. While the pause card covers the board, keys act on
+take off again. Such a game's clock may run in another tab or window
+that shows it; a page that takes the play back with nothing else changed
+takes that clock on, as it stands in the save, rather than reload
+([main.tsx](../src/main.tsx), `clockOnly`). While the pause card covers the board, keys act on
 nothing behind it (no Undo, hint, mode or Escape; only P resumes), a key
 meant for the board says why in the toast, and the board's status line,
 which a screen reader hears, says the game is paused instead of reading
@@ -156,8 +159,21 @@ taken. Every other open page of the app is a view that writes nothing.
   shown again takes the play back by itself when no page holds it, or
   when the holder is hidden (the player switched tabs in one window): it
   asks, and the hidden holder gives it. Beside a holder in view (two
-  windows side by side) it stays a view, with Play here. A page going
-  into the back-forward cache gives the play up as it goes.
+  windows side by side) it stays a view, with Play here; a holder that
+  kept the play from it so tells it once it is hidden itself (`free`: the
+  two tabs' events can come in either order), and it takes the play. An
+  ask heard while a page is taking the play itself is answered once it
+  holds it, so two views shown at once (the screen unlocked) end with
+  one playing and the other told no, not one taking it from the other
+  after the wait. A page going into the back-forward cache gives the play
+  up as it goes, and one coming back from it takes the play as a page
+  that starts does (the player went Back or Forward to it). A holder that
+  closes, or leaves for a page that is not the app's, says so as it goes
+  (`gone`): a page in view then takes the play by itself after a second
+  (`GONE_MS`), unless a page took it back meanwhile (the one that went,
+  reloading), so the window beside it does not keep a cover for a game
+  that carries on nowhere. A holder whose name was replaced while it was
+  frozen finds out when it is shown again, and asks as a view does.
 - **Read after taking.** The stores read the saves as the page loads;
   the first render waits for the play (and for the language's tables),
   and once the page holds it a save whose text changed meanwhile is read
@@ -169,22 +185,39 @@ taken. Every other open page of the app is a view that writes nothing.
   until it is shown (the address bar follows the board only once the
   start-up has run).
 - **Coming back.** A page that takes the play back goes on as it is when
-  every save is exactly what it last wrote or read: its win screen and
-  Send, its undo steps and its open panels stay. When any save changed
-  (another page played), it reloads, at the home address, so it starts
-  from the saves the way every page starts: the board another page left,
-  and its own game kept in the slot with Back to it. A view wrote nothing
-  of its own, so the reload loses nothing.
+  every save is exactly what it last wrote or read, or differs only in
+  the clock of a game nobody played on (above): its win screen and Send,
+  its undo steps, its open panels and questions stay, and the focus goes
+  back where it was in the app (a dialog left open keeps it, so Tab stays
+  inside; with that gone, the top open dialog, then the board). When a
+  save changed otherwise (another page played), it reloads, at the home
+  address, so it starts from the saves the way every page starts: the
+  board another page left, with what that page did (a link, Import or
+  the Daily button opened over this page's game keeps it in the slot,
+  with Back to it; New and a level keep nothing). A page come back from
+  the back-forward cache keeps its entry's address instead, and its start
+  follows the rule of Back and Forward ("A game is never lost", below).
+  The reload takes the play as a page shown again does, from no page or
+  a hidden one, so it never takes it from the window the player is in. A
+  view wrote nothing of its own, so the reload loses nothing.
 - **The view.** A page that does not hold the play shows a cover over the
   app, in the pause card's look: a line saying sudokUI is open in another
   tab or window and the game carries on there, and Play here, which takes
   the play as a page that starts does (then reloads if the saves
   changed). The app behind it is inert: no key shortcut, no Tab stop, no
   click acts on the game; its clock stands still, as a hidden page's
-  does, and it sends no daily time and no counts of its own. The cover is
-  a dialog with its name, the focus on Play here. It is never drawn on a
-  page nobody sees, nor while a page shown again is taking the play back,
-  so it does not flash up in front of the player.
+  does, and it sends no daily time and no counts of its own (`countStart`
+  and the telemetry store ask `play.acts()`). A page that comes up hidden
+  at `/nb/` or `/es/` takes that language only once it holds the play.
+  The cover is a dialog with its name, the focus on Play here. It is
+  never drawn on a page nobody sees, nor while a page shown again is
+  taking the play back, so it does not flash up in front of the player.
+  A page that has played carries the home address while it is a view
+  (not its old game's, which the address bar no longer follows), so a
+  reload of it, or the browser bringing back a discarded tab, starts from
+  the saves as coming back does; one going into the back-forward cache
+  keeps its own. A link put into a view's address bar (a hash) waits for
+  the play, and opens once the page holds it.
 - **Limits.** Without Web Locks (an old browser) there is no cover and no
   hand-over: every page plays as one window does, and two of them write
   over each other's saves, the last write winning. And the browser's
@@ -192,7 +225,11 @@ taken. Every other open page of the app is a view that writes nothing.
   same instant: a page given the play reads the saves right after the
   holder's last write, and could in that instant read the write before
   it; what that last write carries is mostly the clock and the pause the
-  hand-over itself writes.
+  hand-over itself writes. A tab still on an older build of the app (from
+  before this rule, until it is reloaded) writes the saves outside the
+  play: the page that plays finds a save it did not write when it is
+  shown again, and reloads into it (or reads it again, before its start),
+  but a write of its own while hidden can still go over that tab's.
 
 A game read from storage comes without the page's undo steps, hint,
 chain trainer and Check marks, which belonged to the board it had
@@ -298,7 +335,19 @@ none of the player's work.
   it does, so the board is again the game the address bar names; an
   address that names no kept game (one let go, a friend's puzzle nobody
   played on and replaced) opens nothing over the board, and the address
-  goes back to the board's game.
+  goes back to the board's game. Nor do they ever let a game go: the
+  game behind a puzzle being typed in on the board stays behind it (it
+  is the board's under the entry, and Cancel brings it), and a swap the
+  one slot could not keep whole is not made (`backTo`, `resumeSetAside`'s
+  `keep`): the board stays, and the address goes back to it. The same
+  rule holds at start-up for a page of the app reached by Back or Forward
+  from another document of the tab (`back_forward`, or a page come back
+  from the back-forward cache and reloaded into the saves: `traversed`),
+  so an address no game here answers to never opens a fresh copy over
+  the game under way (with no game saved at all, it opens). A link opened in the same tab by its hash (`#s=`,
+  `#p=`, `#daily`) leaves the address once it has opened, which goes to
+  the board's game, so a reload, or Back then Forward, never opens it
+  again over the game played on since.
 - **One slot, the most work kept, and never silently.** When the slot
   already holds a game and another under way is replaced, the slot keeps
   whichever of the two holds more of the player's own work, `workOf`: the
@@ -356,12 +405,16 @@ none of the player's work.
   solve, recorded once. Check & play puts that game, if under way, into
   the slot as a link would (`openOver`), by the one-slot rule and with
   its toast when one must go, then starts the typed puzzle; the game's
-  own puzzle typed in again brings it back where it was left instead. Restart there asks
+  own puzzle typed in again brings it back where it was left instead,
+  and the puzzle of the game in the slot swaps it back as Back to it
+  does, the game behind the entry taking the slot, so none goes; the
+  toast names the game back. Restart there asks
   "Clear the board?" (Clear, Keep typing), then clears the typed digits;
   Share says the puzzle has no link until Check & play.
 - **The error screen.** Its Clear the board and reload
   (src/ui/ErrorBoundary.tsx, `boardCleared`) clears the game on the
-  board, since what broke is most likely there. The slot's game stays: it
+  board, since what broke is most likely there; a page that does not
+  hold the play takes it first, as Play here does. The slot's game stays: it
   is never drawn until it comes back, so it cannot be what broke, and the
   note (or New) still offers it back. With a puzzle being typed in, the
   game it was opened over is not drawn either: with the slot empty it

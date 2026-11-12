@@ -8,7 +8,7 @@
 // Daily button that asks for the very game on the board, the one set
 // aside, or the one behind a puzzle being typed in, brings it back where
 // it was left. Only Restart starts a game under way again.
-import { useGame, validatePuzzle, nameAmong } from '../state/gameStore';
+import { useGame, validatePuzzle, whereLeft } from '../state/gameStore';
 import type { PositionRefusal, GameInfo } from '../state/gameStore';
 import { dailyPuzzle } from '../engine/daily';
 import { translator } from '../content/i18n';
@@ -223,18 +223,6 @@ export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOp
 }
 
 /**
- * The notice for a game back where it was left (Back to it, or a link
- * asking for a kept game): the game named as the notes name it (gameName),
- * with its rating when the game now in the slot has the same name, so the
- * words say which of two Hard games came back
- */
-function whereLeft(): string {
-  const t = translator();
-  const g = useGame.getState();
-  return t('Back to {game}, where you left it', { game: nameAmong(g, [g, ...(g.setAside ? [g.setAside] : [])]) });
-}
-
-/**
  * Whether the game an address names is one this page holds: on the board,
  * in the slot, or behind a puzzle being typed in (on the board or in the
  * slot); a day's daily by its date, any other game by its puzzle (a
@@ -256,6 +244,69 @@ export function holds(link: AppLink): boolean {
     return games.some((info) => info.puzzle === cells);
   }
   return false;
+}
+
+/**
+ * Back or Forward to an address that names a game this page holds (holds):
+ * that game comes back as a link to it brings it, where it was left, but
+ * never by letting a game go. The game behind a puzzle being typed in on
+ * the board stays behind it (it is the board's already, under the entry,
+ * and Cancel brings it), and a swap the one slot could not keep whole
+ * (resumeSetAside's `keep`) is not made: the board stays as it is. True
+ * when the board is now the game the address names.
+ */
+export function backTo(link: AppLink): boolean {
+  const g = useGame.getState();
+  const named = (info: GameInfo | null | undefined) =>
+    !!info && (link.daily ? info.dailyKey === link.daily.date : !!link.puzzle && info.puzzle === link.puzzle.cells);
+  if (!g.custom && named(g.info)) return true;
+  if (g.custom && named(g.customBackup?.info)) return false;
+  const back = link.daily
+    ? g.resumeSetAside((info) => named(info), true)
+    : // a plain game of the puzzle first, a practice of it only when none is kept (as a link to it)
+      g.resumeSetAside((info) => named(info) && !info.practiceTech, true) || g.resumeSetAside((info, won) => named(info) && !!info.practiceTech && !won, true);
+  if (back) useGame.setState({ notice: whereLeft() });
+  return back;
+}
+
+/**
+ * What a page reloading itself left in its own history entry for its next
+ * start (src/main.tsx): `again`, it reloaded to take the play back (it then
+ * takes it as a page shown again does, src/state/play.ts); `back`, it came
+ * back by Back or Forward. Read once, as the page loads, and taken off the
+ * entry; never sent.
+ */
+export const reloadMark: { again?: boolean; back?: boolean } = (() => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const mark = (window.history.state as { sudokuiReload?: { again?: boolean; back?: boolean } } | null)?.sudokuiReload;
+    if (!mark) return {};
+    window.history.replaceState(null, '');
+    return { again: !!mark.again, back: !!mark.back };
+  } catch {
+    return {};
+  }
+})();
+
+/** this page came back by Back or Forward before it ever started (src/main.tsx) */
+export function cameBack() {
+  reloadMark.back = true;
+}
+
+/**
+ * This page was reached by Back or Forward (a page of the app another
+ * document of the tab left, or one come back from the back-forward cache
+ * and reloaded into the saves): its start follows the rule of Back and
+ * Forward, as in the tab (backTo), not a link's.
+ */
+export function traversed(): boolean {
+  if (reloadMark.back) return true;
+  try {
+    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    return nav?.type === 'back_forward';
+  } catch {
+    return false;
+  }
 }
 
 /**

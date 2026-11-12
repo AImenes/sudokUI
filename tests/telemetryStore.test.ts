@@ -272,6 +272,24 @@ describe('the switch turned on in another window', () => {
     expect(kept.queue[0]).toEqual(line);
     expect(kept.queue[1]).toMatchObject({ event: 'started', returning: localDateKey() > '2026-10-01' });
   });
+
+  it('a page given the play adds to what the page that played before it kept since it read the queue, and sends that', async () => {
+    useSettings.getState().set({ countPlays: true });
+    // this page read the queue empty; the page that played kept a line since
+    useTelemetry.setState({ queue: [], firstSeen: null });
+    const line = { event: 'started', band: 'Easy', bucket: 0, standalone: false, version: '1.0.0', source: 'tab', optin: true, returning: false, offline: true };
+    storage.set(STORAGE_KEY, JSON.stringify({ queue: [line], firstSeen: localDateKey() }));
+    setNavigator({ onLine: false });
+    useTelemetry.getState().track('started', 'Hard', 0, 'new');
+    expect(JSON.parse(storage.get(STORAGE_KEY)!).queue).toHaveLength(2);
+    // and a flush sends both, from what the device keeps
+    useTelemetry.setState({ queue: [] });
+    setNavigator({ onLine: true });
+    answers = [ok()];
+    await useTelemetry.getState().flush();
+    expect(sent(0)).toHaveLength(2);
+    expect(JSON.parse(storage.get(STORAGE_KEY)!).queue).toEqual([]);
+  });
 });
 
 describe('leaving the device out', () => {

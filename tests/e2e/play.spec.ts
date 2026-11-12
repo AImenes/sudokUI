@@ -92,6 +92,7 @@ const saved = (p: Page) =>
       dailyKey: (s.info?.dailyKey ?? null) as string | null,
       entries: entries(s.cells),
       paused: !!s.paused,
+      elapsed: (s.elapsedBefore ?? 0) as number,
       aside: s.setAside ? { puzzle: (s.setAside.info?.puzzle ?? null) as string | null, dailyKey: (s.setAside.info?.dailyKey ?? null) as string | null, entries: entries(s.setAside.cells) } : null
     };
   });
@@ -194,6 +195,103 @@ test.describe('one page plays at a time', () => {
     // and it plays: its win screen's buttons answer
     await won.getByRole('button', { name: 'Admire the grid' }).click();
     await expect(won).toHaveCount(0);
+  });
+
+  test('a game nobody has played on, with Learn open, and another tab opened and left: back in the first, no reload, Learn still open, and the clock is the one that ran in the other tab', async ({ context }) => {
+    const a = await context.newPage();
+    await open(a, `/#p=${EASY}`);
+    await a.getByRole('button', { name: /Learn/ }).first().click();
+    const learn = a.getByRole('dialog', { name: 'Learn' });
+    await expect(learn).toBeVisible();
+    await mark(a);
+    await shown(a, false);
+    // the app opened in another tab: the same game, its clock running there for a while
+    const b = await context.newPage();
+    await open(b, '/');
+    await expect(b.locator('.play-cover')).toHaveCount(0);
+    await b.waitForTimeout(3000);
+    await shown(b, false);
+    const ran = (await saved(b)).elapsed;
+    expect(ran).toBeGreaterThan(2500);
+    await shown(a, true);
+    await a.waitForTimeout(800);
+    expect(await same(a)).toBe(true);
+    await expect(learn).toBeVisible();
+    await expect(a.locator('.play-cover')).toHaveCount(0);
+    // the clock went on from where the other tab left it
+    const secs = await a.locator('.timer').evaluate((el) => {
+      const [m, s] = (el.textContent ?? '0:0').split(':').map(Number);
+      return m * 60 + s;
+    });
+    expect(secs).toBeGreaterThanOrEqual(Math.floor(ran / 1000));
+    expect(secs).toBeLessThanOrEqual(Math.floor(ran / 1000) + 3);
+    // and back and forth again, touching nothing: still no reload
+    await shown(a, false);
+    await shown(b, true);
+    await b.waitForTimeout(600);
+    await shown(b, false);
+    await shown(a, true);
+    await a.waitForTimeout(600);
+    expect(await same(a)).toBe(true);
+    await expect(learn).toBeVisible();
+  });
+
+  test('a page that has played and is a view carries the home address: reloaded (or a discarded tab brought back), it opens no old link over the game under way', async ({ context }) => {
+    const today = localDateKey();
+    const a = await context.newPage();
+    await open(a, `/#p=${EASY}`);
+    await enter(a, 2);
+    await shown(a, false);
+    const b = await context.newPage();
+    await open(b, `/p/${HARD}/`);
+    await enter(b, 2);
+    await b.evaluate(() => (location.hash = 'daily'));
+    await expect.poll(async () => (await saved(b)).dailyKey).toBe(today);
+    await enter(b, 2);
+    const then = await saved(b);
+    expect(then).toMatchObject({ dailyKey: today, aside: { puzzle: HARD, entries: 2 } });
+    // a, the view, no longer names its old game
+    expect(new URL(a.url()).pathname).toBe('/');
+    await shown(b, false);
+    await a.reload();
+    await expect(a.locator('svg.board')).toBeVisible();
+    await a.waitForTimeout(800);
+    expect(await saved(a)).toMatchObject({ dailyKey: today, entries: 2, aside: { puzzle: HARD, entries: 2 } });
+    await expect(a.locator('.toast', { hasText: 'is gone' })).toHaveCount(0);
+  });
+
+  test('the window that plays closed beside a view in view: the view takes the play by itself, its cover gone', async ({ context }) => {
+    const a = await context.newPage();
+    await open(a, `/#p=${EASY}`);
+    await enter(a, 2);
+    const b = await context.newPage();
+    await open(b, '/');
+    await expect(cover(a)).toBeVisible();
+    await b.close();
+    await expect(a.locator('.play-cover')).toHaveCount(0, { timeout: 4000 });
+    await expect(a.locator('.app')).not.toHaveAttribute('inert', '');
+    expect(await a.evaluate(() => navigator.locks.query().then((q) => q.held?.length ?? 0))).toBe(1);
+  });
+
+  test('Play here with a dialog open: the focus goes back into the dialog, not the board behind it, and Tab stays inside', async ({ context }) => {
+    const a = await context.newPage();
+    await open(a, `/#p=${EASY}`);
+    await enter(a, 2);
+    await a.locator('.icon-btn.gear').click();
+    const settings = a.getByRole('dialog', { name: 'Settings' });
+    await expect(settings).toBeVisible();
+    const b = await context.newPage();
+    await open(b, '/');
+    const here = cover(a).getByRole('button', { name: 'Play here' });
+    await expect(here).toBeFocused();
+    await a.keyboard.press('Enter');
+    await expect(a.locator('.play-cover')).toHaveCount(0);
+    await expect(settings).toBeVisible();
+    await expect.poll(() => a.evaluate(() => !!document.activeElement?.closest('.modal[role="dialog"]'))).toBe(true);
+    for (let k = 0; k < 3; k++) {
+      await a.keyboard.press('Tab');
+      expect(await a.evaluate(() => !!document.activeElement?.closest('.modal[role="dialog"]'))).toBe(true);
+    }
   });
 
   test('a page that comes up hidden while another plays is a view and writes nothing; shown, it takes the play and opens its link, the cover never drawn', async ({ context }) => {

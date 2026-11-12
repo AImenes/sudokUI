@@ -7,11 +7,13 @@
 // go of it by itself. A page that wants it asks the holder over a
 // BroadcastChannel: the holder writes its state, its clock included, lets
 // go and becomes a view; a holder that does not answer (a frozen or
-// discarded tab) has it taken after WAIT_MS. Nothing here leaves the
-// device: the holder's page name (a random string) is kept in this
-// browser's storage, so a page that wakes after losing the play while it
-// was frozen sees at once, before it writes, that it no longer holds it.
-// Without Web Locks every page plays as one window does.
+// discarded tab) has it taken after WAIT_MS. A holder that closes says so,
+// and a page in view then takes the play unless a page reloading took it
+// back first (GONE_MS). Nothing here leaves the device: the holder's page
+// name (a random string) is kept in this browser's storage, so a page that
+// wakes after losing the play while it was frozen sees at once, before it
+// writes, that it no longer holds it. Without Web Locks every page plays
+// as one window does.
 import { create } from 'zustand';
 import type { StateStorage } from 'zustand/middleware';
 
@@ -23,6 +25,8 @@ export const HOLDER_KEY = 'sudokui-play';
 export const SAVES = ['sudokui-game-v1', 'sudokui-stats-v1', 'sudokui-daily-v1'] as const;
 /** how long the holder is given to answer before the play is taken from it */
 export const WAIT_MS = 1500;
+/** how long a page in view waits, once the holder said it closes, before it takes the play: a page reloading takes it back itself within it */
+export const GONE_MS = 1000;
 
 /**
  * What this page is: waiting for its first claim (before the first
@@ -59,19 +63,31 @@ export interface PlayDeps {
   hidden: () => boolean;
   id?: string;
   wait?: number;
+  /** GONE_MS */
+  gone?: number;
 }
 
 /** what the app does as the play comes and goes (src/main.tsx) */
 export interface PlayHooks {
   /** this page is about to let go: write its state, its clock included (setAway(true) and a write of the game) */
   give(): void;
-  /** this page holds the play now; `changed`: a save differs from what it last wrote or read */
-  taken(changed: boolean): void;
-  /** this page let go of the play, or had it taken: it is a view */
-  lost(): void;
+  /**
+   * this page holds the play now (or, holding it, found a save written
+   * outside the play); `changed`: a save differs from what it last wrote or
+   * read; `back`: it came back from the back-forward cache (Back or Forward)
+   */
+  taken(changed: boolean, back: boolean): void;
+  /** this page let go of the play, or had it taken: it is a view; `away`: it went into the back-forward cache */
+  lost(away: boolean): void;
 }
 
-type Message = { want: string; ask: number; ifHidden: boolean } | { busy: string; ask: number };
+type Want = { want: string; ask: number; ifHidden: boolean };
+/**
+ * want: a page asks for the play; busy: the holder in view keeps it; free:
+ * the holder that kept it from a page in view is hidden now; gone: the
+ * holder closed, or left for another page
+ */
+type Message = Want | { busy: string; ask: number } | { free: string } | { gone: string };
 
 const randomId = () => {
   try {
@@ -99,6 +115,14 @@ export class Play {
   onChange: () => void = () => {};
 
   private readonly wait: number;
+  private readonly goneWait: number;
+  private goneTimer: ReturnType<typeof setTimeout> | null = null;
+  /** asks heard while this page was taking the play itself, answered once it holds it */
+  private wants: { m: Want; at: number }[] = [];
+  /** this holder kept the play from a page in view since it was last hidden */
+  private refused = false;
+  /** this page went into the back-forward cache, and has not held the play since */
+  private cached = false;
   private grant: { release: () => void } | null = null;
   private channel: Channel | null = null;
   private asks = 0;
@@ -112,6 +136,7 @@ export class Play {
   constructor(private readonly deps: PlayDeps) {
     this.id = deps.id ?? randomId();
     this.wait = deps.wait ?? WAIT_MS;
+    this.goneWait = deps.gone ?? GONE_MS;
     this.role = deps.locks ? 'waiting' : 'solo';
   }
 
@@ -142,6 +167,11 @@ export class Play {
   /** a save read through this page (persist's storage): what it now knows the save to be */
   read(key: string, value: string | null) {
     this.seen.set(key, value);
+  }
+
+  /** a save as this page last wrote or read it (undefined: never) */
+  last(key: string): string | null | undefined {
+    return this.seen.get(key);
   }
 
   /** whether a save differs from what this page last wrote or read */
@@ -206,19 +236,23 @@ export class Play {
    * (the player opened it: a new tab, a link from a chat app, a reload),
    * from the holder if another page has it. A page that comes up hidden
    * takes it only when no page holds it; otherwise it is a view until it
-   * is first shown (shown).
+   * is first shown (shown). A page that reloaded itself to take the play
+   * back (`again`: src/main.tsx) takes it as a page shown again does, from
+   * no page or a hidden one: a reload never takes it from the window the
+   * player is in.
    */
-  async boot(): Promise<void> {
+  async boot(again = false): Promise<void> {
     if (!this.deps.locks) return;
     this.listen();
+    if (again) this.everHeld = true;
     if (this.deps.hidden()) {
       if (await this.request({ ifAvailable: true })) return void this.held();
       this.become('view');
       // shown while it asked: it takes the play as a page shown does
-      if (!this.deps.hidden()) await this.take(false);
+      if (!this.deps.hidden()) await this.take(this.everHeld);
       return;
     }
-    await this.take(false);
+    await this.take(again);
   }
 
   /**
@@ -226,11 +260,27 @@ export class Play {
    * as at start-up; one that has asks for it, and the holder gives it only
    * if it is hidden itself (the player switched tabs in one window): beside
    * a holder in view (two windows side by side) it stays a view, with Play
-   * here.
+   * here. A page come back from the back-forward cache takes it as a page
+   * that starts does: the player went Back or Forward to it. A holder whose
+   * name was replaced while it could not hear (frozen) finds out now and
+   * asks as a view; one that finds a save written outside the play (a tab
+   * of an older build, a page without Web Locks) reads the saves again, as
+   * a page given the play does (taken).
    */
   shown(): Promise<'held' | 'busy'> | null {
+    if (this.role === 'player' && this.mayWrite()) {
+      if (this.changed()) this.hooks.taken(true, false);
+      return null;
+    }
     if (this.role !== 'view') return null;
-    return this.take(this.everHeld);
+    return this.take(this.everHeld && !this.cached);
+  }
+
+  /** the page is hidden: a holder that kept the play from a page in view tells it that it can have it now */
+  hide() {
+    if (this.role !== 'player' || !this.refused) return;
+    this.refused = false;
+    this.post({ free: this.id });
   }
 
   /** Play here, on the cover: the play comes to this page, as at start-up */
@@ -244,7 +294,19 @@ export class Play {
    * the next page does not wait for a page that cannot answer.
    */
   away() {
-    if (this.role === 'player' && this.grant) this.give();
+    this.cached = true;
+    if (this.role !== 'player' || !this.grant) return;
+    this.give(true);
+    this.post({ gone: this.id });
+  }
+
+  /**
+   * The page closes, or leaves for another (pagehide, not into the
+   * back-forward cache): a page in view is told, and takes the play unless
+   * a page takes it back meanwhile (a reload of this one)
+   */
+  gone() {
+    if (this.role === 'player') this.post({ gone: this.id });
   }
 
   /** this page reloads: it writes nothing more, and the lock goes with it */
@@ -312,14 +374,23 @@ export class Play {
       this.nameless = true;
     }
     const changed = this.changed();
+    const back = this.cached;
+    this.cached = false;
     this.everHeld = true;
     this.become('player');
-    this.hooks.taken(changed);
+    this.hooks.taken(changed, back);
+    // the pages that asked meanwhile are answered now, as any ask is: so
+    // none of them waits and then takes it from a page in view
+    const wants = this.wants.splice(0);
+    if (wants.length)
+      queueMicrotask(() => {
+        for (const { m, at } of wants) if (Date.now() - at < this.wait && this.role === 'player' && this.grant) this.answer(m);
+      });
     return 'held';
   }
 
   /** asked for the play: the state is written, the lock let go, and this page is a view */
-  private give() {
+  private give(away = false) {
     try {
       this.hooks.give();
     } catch {
@@ -327,9 +398,19 @@ export class Play {
     }
     const grant = this.grant;
     this.grant = null;
+    this.refused = false;
     this.become('view');
     grant?.release();
-    this.hooks.lost();
+    this.hooks.lost(away);
+  }
+
+  /** an ask, answered: a holder in view keeps the play from a page shown again, any other ask is given it */
+  private answer(m: Want) {
+    if (m.ifHidden && !this.deps.hidden()) {
+      this.refused = true;
+      return this.post({ busy: m.want, ask: m.ask });
+    }
+    this.give();
   }
 
   /** the play was taken from this page (stolen, or another's name in storage): a view, writing nothing */
@@ -340,7 +421,7 @@ export class Play {
     this.become('view');
     grant?.release();
     // not within the write that found it out
-    queueMicrotask(() => this.hooks.lost());
+    queueMicrotask(() => this.hooks.lost(false));
   }
 
   /**
@@ -393,11 +474,24 @@ export class Play {
   private heard(m: Message | null) {
     if (!m || typeof m !== 'object') return;
     if ('want' in m && typeof m.want === 'string' && m.want !== this.id) {
+      // asked while this page is taking the play itself: answered once it holds it
+      if (this.pending && this.role !== 'player') return void this.wants.push({ m, at: Date.now() });
       if (this.role !== 'player' || !this.grant) return;
-      if (m.ifHidden && !this.deps.hidden()) return this.post({ busy: m.want, ask: m.ask });
-      this.give();
+      this.answer(m);
     } else if ('busy' in m && m.busy === this.id) {
       this.busy?.(m.ask);
+    } else if ('free' in m && typeof m.free === 'string' && m.free !== this.id) {
+      // the holder that kept the play from this page in view is hidden now
+      if (this.role === 'view' && !this.deps.hidden() && !this.pending) void this.take(true);
+    } else if ('gone' in m && typeof m.gone === 'string' && m.gone !== this.id) {
+      // the holder closed: a page in view takes the play, unless a page
+      // took it back meanwhile (a reload of that one), which keeps it
+      if (this.role !== 'view' || this.deps.hidden()) return;
+      if (this.goneTimer) clearTimeout(this.goneTimer);
+      this.goneTimer = setTimeout(() => {
+        this.goneTimer = null;
+        if (this.role === 'view' && !this.deps.hidden() && !this.pending) void this.take(true);
+      }, this.goneWait);
     }
   }
 
@@ -460,24 +554,27 @@ export const usePlay = create<{ role: Role; taking: boolean; hidden: boolean }>(
 play.onChange = () => usePlay.setState({ role: play.role, taking: play.taking });
 
 /**
- * Starts the play at start-up (src/main.tsx): claims it, and follows the
- * page being shown (a view then asks for it) and going into the
- * back-forward cache (it gives it up).
+ * Starts the play at start-up (src/main.tsx): claims it (`again`: the page
+ * reloaded itself to take it back, Play.boot), and follows the page being
+ * shown (a view then asks for it) or hidden, going into the back-forward
+ * cache (it gives it up) and coming back from it, and closing.
  */
-export function startPlay(): Promise<void> {
+export function startPlay(again = false): Promise<void> {
   if (typeof window !== 'undefined' && locks) {
     const onShown = () => {
       const hidden = document.visibilityState === 'hidden';
       // the cover never shows to a page nobody sees, nor flashes up as a
       // page shown again takes the play back: the attempt starts first
-      if (!hidden) void play.shown();
+      if (hidden) play.hide();
+      else void play.shown();
       usePlay.setState({ hidden });
     };
     document.addEventListener('visibilitychange', onShown);
     window.addEventListener('pageshow', onShown);
     window.addEventListener('pagehide', (e) => {
       if (e.persisted) play.away();
+      else play.gone();
     });
   }
-  return play.boot();
+  return play.boot(again);
 }

@@ -49,6 +49,7 @@ import type { Level } from '../engine/ratings';
 import { useSettings, type Lang } from './settings';
 import { bucketOf, localDateKey } from '../content/dailies';
 import { playedFrom } from './dailyStats';
+import { play } from './play';
 
 export const TELEMETRY_API = '/api/t';
 /** the most events one request carries: what the Worker turns into points at most */
@@ -126,6 +127,25 @@ function kept(): Kept {
   }
 }
 
+/**
+ * The queue and the date as the device keeps them now, which the page that
+ * played before this one may have added to since this page read them (one
+ * page plays at a time: src/state/play.ts); this page's own when the
+ * storage cannot be read or holds none
+ */
+function keptNow(mine: Kept): Kept {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw === null) return mine;
+    const v = JSON.parse(raw) as Partial<Kept>;
+    const days = [v.firstSeen, mine.firstSeen].filter((d): d is string => typeof d === 'string').sort();
+    // (the counting began on the earlier of the two days known)
+    return { queue: Array.isArray(v.queue) ? v.queue : mine.queue, firstSeen: days[0] ?? null };
+  } catch {
+    return mine;
+  }
+}
+
 function keep(state: Kept): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -190,12 +210,14 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
   pending: [],
 
   track: (event, band, seconds, kind) => {
-    // a device left out of the counts sends nothing and keeps nothing
-    if (leftOut()) return;
+    // a device left out of the counts sends nothing and keeps nothing; a
+    // view sends nothing of its own (the page that plays counts the game)
+    if (leftOut() || !play.acts()) return;
     const source = playedFrom();
     const e: PlayEvent = { event, band, bucket: bucketOf(seconds), standalone: source === 'pwa', version: APP_VERSION, source, kind, lang: useSettings.getState().lang };
     const optin = optedIn();
     if (optin) {
+      set(keptNow(get()));
       const today = localDateKey();
       const first = get().firstSeen ?? today;
       if (!get().firstSeen) {
@@ -218,8 +240,8 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
   },
 
   shared: (what, via, band) => {
-    // live or not at all, and never from a device left out
-    if (leftOut() || !online()) return;
+    // live or not at all, and never from a device left out, nor from a view
+    if (leftOut() || !online() || !play.acts()) return;
     const source = playedFrom();
     sendLive({ event: 'shared', band, bucket: 0, standalone: source === 'pwa', version: APP_VERSION, source, what, via });
   },
@@ -235,7 +257,11 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
       set({ pending: [] });
       for (let i = 0; i < live.length; i += BATCH_MAX) void deliver(live.slice(i, i + BATCH_MAX));
     }
-    if (flushing || !optedIn() || !online() || !get().queue.length) return;
+    if (flushing || !optedIn() || !online() || !play.acts()) return;
+    // what the device keeps now: another page may have added to it since
+    // this one read it
+    set(keptNow(get()));
+    if (!get().queue.length) return;
     flushing = true;
     try {
       while (get().queue.length) {
@@ -244,7 +270,7 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
         // the switch went off while the batch travelled: what it kept is
         // gone already, and must not be written back
         if (!optedIn()) break;
-        const queue = get().queue.slice(chunk.length);
+        const queue = keptNow(get()).queue.slice(chunk.length);
         set({ queue });
         keep({ queue, firstSeen: get().firstSeen });
       }

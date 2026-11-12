@@ -114,14 +114,15 @@ class Browser {
   };
   /** a page of the app, in view or hidden; frozen, it hears nothing */
   page(name: string, { hidden = false } = {}) {
-    const state = { hidden, frozen: false, gave: 0, taken: [] as boolean[], lost: 0, gives: `${name} gave` };
+    const state = { hidden, frozen: false, gave: 0, taken: [] as boolean[], back: [] as boolean[], lost: 0, gives: `${name} gave` };
     const play: Play = new Play({
       locks: this.locks,
       channel: () => this.hub.open(() => state.frozen),
       storage: () => this.storage,
       hidden: () => state.hidden,
       id: name,
-      wait: 40
+      wait: 40,
+      gone: 30
     });
     const save = play.storage();
     play.hooks = {
@@ -130,7 +131,10 @@ class Browser {
         state.gave++;
         save.setItem(GAME, state.gives);
       },
-      taken: (changed) => void state.taken.push(changed),
+      taken: (changed, back) => {
+        state.taken.push(changed);
+        state.back.push(back);
+      },
       lost: () => void state.lost++
     };
     // the page read the save as it started
@@ -323,6 +327,142 @@ describe('one page plays at a time', () => {
     await c.play.boot();
     expect(Date.now() - start).toBeLessThan(30);
     expect(c.play.role).toBe('player');
+  });
+
+  it('the holder closed beside a view in view: the view takes the play after the wait, by itself; of two views in view, one', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    const d = b.page('d');
+    await d.play.boot();
+    const c = b.page('c');
+    await c.play.boot();
+    expect([a.play.role, d.play.role, c.play.role]).toEqual(['view', 'view', 'player']);
+    const takes = a.state.taken.length + d.state.taken.length;
+    // c closes (pagehide): it says so, and the browser lets its lock go
+    c.play.gone();
+    c.state.frozen = true;
+    b.locks.close('sudokui-play');
+    await tick(100);
+    expect([a.play.role, d.play.role].sort()).toEqual(['player', 'view']);
+    expect(a.state.taken.length + d.state.taken.length).toBe(takes + 1);
+  });
+
+  it('the holder reloading beside a view in view: the reloaded page takes the play back within the wait, and the view stays a view', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    const c = b.page('c');
+    await c.play.boot();
+    c.play.gone();
+    c.state.frozen = true;
+    b.locks.close('sudokui-play');
+    // the same tab's new document, a moment later
+    const c2 = b.page('c2');
+    await c2.play.boot();
+    await tick(100);
+    expect(c2.play.role).toBe('player');
+    expect(a.play.role).toBe('view');
+    expect(a.state.taken).toEqual([false]);
+  });
+
+  it('a holder in view that kept the play from a page shown again tells it once it is hidden itself, and that page takes it', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    const c = b.page('c');
+    await c.play.boot();
+    // a is shown before c knows it is hidden: c keeps it
+    expect(await a.play.shown()).toBe('busy');
+    c.state.hidden = true;
+    c.play.hide();
+    await tick(100);
+    expect(a.play.role).toBe('player');
+    expect(c.play.role).toBe('view');
+  });
+
+  it('two views shown at once while the holder is hidden: one takes it, the other hears no from it rather than taking it from a page in view', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    const d = b.page('d');
+    await d.play.boot();
+    const c = b.page('c');
+    await c.play.boot();
+    c.state.hidden = true;
+    const gave = { a: a.state.gave, d: d.state.gave };
+    const [ra, rd] = await Promise.all([a.play.shown(), d.play.shown()]);
+    expect([ra, rd].sort()).toEqual(['busy', 'held']);
+    await tick(100);
+    const held = ra === 'held' ? a : d;
+    const other = ra === 'held' ? d : a;
+    expect(held.play.role).toBe('player');
+    expect(other.play.role).toBe('view');
+    // the one that took it gave nothing: the other was told no, and did not take it
+    expect(held.state.gave).toBe(gave[held === a ? 'a' : 'd']);
+  });
+
+  it('a holder shown again that finds a save written outside the play (a tab of an older build) is told, as a page given the play is', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    a.write('a moved');
+    a.state.hidden = true;
+    expect(a.play.shown()).toBeNull();
+    expect(a.state.taken).toEqual([false]);
+    // an old tab writes the save, which goes round the play
+    b.data.set(GAME, 'old tab moved');
+    a.state.hidden = false;
+    expect(a.play.shown()).toBeNull();
+    expect(a.state.taken).toEqual([false, true]);
+  });
+
+  it('a holder whose name was replaced while it was frozen, shown again, is a view and takes the play back from the hidden holder', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    a.state.frozen = true;
+    b.locks.late = [];
+    const c = b.page('c');
+    await c.play.boot();
+    c.state.hidden = true;
+    // a wakes and is shown before the browser's word of the steal
+    a.state.frozen = false;
+    expect(a.play.role).toBe('player');
+    expect(await a.play.shown()).toBe('held');
+    expect(a.play.role).toBe('player');
+    expect(c.play.role).toBe('view');
+    for (const tell of b.locks.late) tell();
+  });
+
+  it('a page that reloaded itself to take the play back takes it as a page shown again does: not from a holder in view', async () => {
+    const b = new Browser();
+    const c = b.page('c');
+    await c.play.boot();
+    const a = b.page('a');
+    await a.play.boot(true);
+    expect(a.play.role).toBe('view');
+    expect(c.play.role).toBe('player');
+    c.state.hidden = true;
+    expect(await a.play.shown()).toBe('held');
+  });
+
+  it('a page come back from the back-forward cache is told so as it takes the play again, and takes it as a page that starts does', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    a.play.away();
+    a.state.frozen = true;
+    const c = b.page('c');
+    await c.play.boot();
+    // Back: a is shown again; c, the page left, beside it in view does not keep it
+    a.state.frozen = false;
+    expect(await a.play.shown()).toBe('held');
+    expect(a.state.back).toEqual([false, true]);
+    c.state.hidden = true;
+    c.state.hidden = false;
+    expect(await c.play.here()).toBe('held');
+    expect(c.state.back).toEqual([false, false]);
   });
 
   it('without Web Locks every page plays as one window does: no wait, no view', async () => {

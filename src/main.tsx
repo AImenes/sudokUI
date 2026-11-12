@@ -13,15 +13,25 @@ import './ui/styles.css';
 import { useGame } from './state/gameStore';
 import { useStats } from './state/stats';
 import { useDailyStats } from './state/dailyStats';
-import { play, startPlay, acted } from './state/play';
+import { play, startPlay, acted, SAVES } from './state/play';
 import { useAppStatus, reloadIntoLatest } from './state/appStatus';
 import { useSettings } from './state/settings';
 import { startLocales, langOfPath, langRoot } from './content/i18n';
+import { reloadMark, cameBack } from './ui/links';
 
 // /nb/ and /es/ are the app in Norwegian and Spanish, the addresses search
-// engines show for those languages: arriving there chooses the language
+// engines show for those languages: arriving there chooses the language.
+// A page that comes up hidden (a link opened in a background tab) may be a
+// view behind the page that plays, which writes nothing: its language
+// waits until it holds the play (below)
 const arrived = langOfPath(window.location.pathname);
-if (arrived && useSettings.getState().lang !== arrived) useSettings.getState().set({ lang: arrived });
+let arrival = arrived;
+const arrive = () => {
+  const lang = arrival;
+  arrival = null;
+  if (lang && useSettings.getState().lang !== lang) useSettings.getState().set({ lang });
+};
+if (document.visibilityState !== 'hidden') arrive();
 
 if (import.meta.env.DEV) {
   (window as any).__game = useGame;
@@ -83,38 +93,94 @@ const STORES: Record<string, { persist: { rehydrate: () => unknown } }> = {
   'sudokui-stats-v1': useStats,
   'sudokui-daily-v1': useDailyStats
 };
+const GAME = SAVES[0];
+
+/**
+ * The saves differ from what this page last wrote or read only in the
+ * game's clock: another page showed a game nobody played on, and its clock
+ * ran there (a game under way pauses as the play goes, so its clock stands
+ * still). Nobody played, so nothing needs a reload: the clock is taken on
+ * from where it stands, and the page goes on as it is, its open panels
+ * and questions with it. True once it has.
+ */
+function clockOnly(): boolean {
+  if (play.changedSaves().some((key) => key !== GAME)) return false;
+  try {
+    const now = localStorage.getItem(GAME);
+    const before = play.last(GAME);
+    if (!now || !before) return false;
+    const a = JSON.parse(before) as { state?: Record<string, unknown>; version?: number };
+    const b = JSON.parse(now) as { state?: Record<string, unknown>; version?: number };
+    const clock = b.state?.elapsedBefore;
+    if (!a.state || !b.state || typeof clock !== 'number' || a.version !== b.version) return false;
+    if (JSON.stringify({ ...a.state, elapsedBefore: 0 }) !== JSON.stringify({ ...b.state, elapsedBefore: 0 })) return false;
+    play.read(GAME, now);
+    useGame.setState({ elapsedBefore: clock, startedAt: Date.now() });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 play.hooks = {
   give: () => {
     useGame.getState().setAway(true);
     // (zustand's persist writes on every set, even one that changes nothing)
     useGame.setState((s) => s);
   },
-  taken: (changed) => {
+  taken: (changed, back) => {
+    // a page that came up hidden in a link's language has it from now
+    arrive();
     if (!acted()) {
       // (the storage is read at once, so each save comes in within the call)
       for (const key of play.changedSaves()) void STORES[key]?.persist.rehydrate();
+      // come back by Back or Forward before it ever started: its start
+      // follows the rule of Back and Forward (src/ui/App.tsx)
+      if (back) cameBack();
       return;
     }
-    if (!changed) return;
+    if (!changed || clockOnly()) return;
     play.leave();
-    // into the saves as they are: the board another page left, not this
-    // page's address read as a link to its old game (the address follows
-    // the board once the app is up)
+    // into the saves as they are, the way every page starts. A page come
+    // back by Back or Forward (from the back-forward cache) keeps its
+    // entry's address, and its start brings that game back if this page
+    // holds it, as Back does in the tab (src/ui/App.tsx). Any other starts
+    // at the home address: the board another page left, not this page's
+    // old game read as a link (the address follows the board once the app
+    // is up), but with a link put into its address bar while it was a view
+    // (the hash), which its start then opens. The reload takes the play
+    // as a page shown again does, so it never takes it from the window the
+    // player is in (Play.boot)
+    const mark = { sudokuiReload: { again: true, ...(back ? { back: true } : {}) } };
     try {
-      window.history.replaceState(null, '', langRoot(useSettings.getState().lang));
+      if (back) window.history.replaceState(mark, '');
+      else window.history.replaceState(mark, '', langRoot(useSettings.getState().lang) + window.location.hash);
     } catch {
       /* an origin that allows no path of its own: the reload reads the hash */
     }
     window.location.reload();
   },
-  lost: () => {}
+  lost: (away) => {
+    // a page that has played carries the home address from now on, so a
+    // reload of it, or the browser bringing back a discarded tab, starts
+    // from the saves as coming back does, never from its old game's
+    // address read as a link over the game another page has on the board.
+    // Not one going into the back-forward cache: Back to it brings its own
+    // game back (src/ui/App.tsx). A page that never started keeps its link
+    if (!acted() || away) return;
+    try {
+      window.history.replaceState(null, '', langRoot(useSettings.getState().lang));
+    } catch {
+      /* an origin that allows no path of its own */
+    }
+  }
 };
 
 // the first render waits for the chosen language's tables (precached, so a
 // moment even offline), and for the play (a moment, or the holder's wait
 // when it does not answer); if the tables cannot be fetched the app starts
 // in English
-const claimed = Promise.race([startPlay(), new Promise<void>((done) => setTimeout(done, 4000))]).catch(() => {});
+const claimed = Promise.race([startPlay(!!reloadMark.again), new Promise<void>((done) => setTimeout(done, 4000))]).catch(() => {});
 Promise.all([startLocales().catch(() => {}), claimed]).finally(() => {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>

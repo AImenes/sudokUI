@@ -86,10 +86,11 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
-    const reset = () => {
+    const reset = async () => {
+      // only the page that holds the play writes the save (src/state/play.ts):
+      // a view takes the play first, as Play here does, and then clears
+      if (!play.mayWrite()) await play.here().catch(() => {});
       try {
-        // only the page that holds the play writes the save (src/state/play.ts):
-        // a view's reload takes the play first, and its error screen clears then
         if (play.mayWrite()) {
           const left = boardCleared(localStorage.getItem(GAME_KEY), localStorage.getItem('sudokui-stats-v1'));
           localStorage.removeItem(GAME_KEY);
@@ -112,7 +113,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
         <p className="crash-detail">{String(error.message || error)}</p>
         <div className="hint-actions">
           <button onClick={() => window.location.reload()}>{t('Reload')}</button>
-          <button className="ghost" onClick={reset} title={t('Clears the saved game only; settings and your record stay')}>
+          <button className="ghost" onClick={() => void reset()} title={t('Clears the saved game only; settings and your record stay')}>
             {t('Clear the board and reload')}
           </button>
         </div>

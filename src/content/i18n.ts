@@ -164,10 +164,12 @@ export function startLocales(): Promise<void> {
     // on /nb/ or /es/ the address follows the language, so a reload or a
     // copied link keeps it; on / it stays / until a game is on the board,
     // from when on the app keeps the address at the puzzle's share path in
-    // the chosen language (src/ui/App.tsx)
+    // the chosen language (src/ui/App.tsx). Only the language's part of it
+    // changes: a link's puzzle or day not yet read stays in it
     if (typeof window !== 'undefined' && langOfPath(window.location.pathname)) {
-      const { search, hash } = window.location;
-      window.history.replaceState(window.history.state, '', langRoot(s.lang) + search + hash);
+      const { pathname, search, hash } = window.location;
+      const rest = pathname.replace(/^\/(nb|es)(?=\/|$)/, '').replace(/^\//, '');
+      window.history.replaceState(window.history.state, '', langRoot(s.lang) + rest + search + hash);
       // and the tab's title is that address's own (src/content/home.ts, fetched only here)
       import('./home').then((m) => (document.title = m.HOME[s.lang].title)).catch(() => {});
     }

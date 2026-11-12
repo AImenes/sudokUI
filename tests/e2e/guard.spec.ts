@@ -327,6 +327,72 @@ test.describe('Back and Forward, phone', () => {
   });
 });
 
+test.describe('Back and Forward across pages of the app, phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('addresses typed into one tab, then Back twice and Forward twice: the kept game comes back, a friend’s puzzle nobody played on opens nothing, and the daily keeps its digit', async ({ page }) => {
+    await page.addInitScript(welcomed);
+    const today = localDateKey();
+    // each address typed into the tab is a page of its own (no back-forward cache here)
+    await page.goto(`/p/${EASY}/`);
+    await expect.poll(async () => (await saved(page)).puzzle).toBe(EASY);
+    await page.goto(`/p/${HARD}/`);
+    await expect.poll(async () => (await saved(page)).puzzle).toBe(HARD);
+    await enter(page, true, 2);
+    await page.goto(`/daily/${today}`);
+    await expect.poll(async () => (await saved(page)).dailyKey).toBe(today);
+    await enter(page, true, 1);
+    await expect.poll(() => saved(page)).toMatchObject({ dailyKey: today, entries: 1, aside: { puzzle: HARD, entries: 2 } });
+    // Back: the Hard game comes back, the daily goes into the slot
+    await page.goBack();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: HARD, entries: 2, aside: { dailyKey: today, entries: 1 } });
+    // Back again, to the friend's puzzle nobody kept: no fresh copy opens over the Hard game
+    await page.goBack();
+    await expect(page.locator('svg.board')).toBeVisible();
+    await page.waitForTimeout(800);
+    expect(await saved(page)).toMatchObject({ puzzle: HARD, entries: 2, aside: { dailyKey: today, entries: 1 } });
+    expect(page.url()).toContain(HARD);
+    await expect(page.locator('.toast', { hasText: 'is gone' })).toHaveCount(0);
+    // Forward twice: the daily with its digit, never a fresh one
+    await page.goForward();
+    await page.goForward();
+    await expect.poll(() => saved(page)).toMatchObject({ dailyKey: today, entries: 1, aside: { puzzle: HARD, entries: 2 } });
+    await expect(page.locator('.toast', { hasText: 'is gone' })).toHaveCount(0);
+  });
+
+  test('Back while a puzzle is typed in over a game, with another kept, lets no game go: the entry stays on the board', async ({ page }) => {
+    await page.addInitScript(welcomed);
+    await page.goto(`/#p=${EASY}`);
+    await expect.poll(async () => (await saved(page)).puzzle).toBe(EASY);
+    await enter(page, true, 3);
+    await page.evaluate((p) => (location.hash = `#p=${p}`), HARD);
+    await expect.poll(async () => (await saved(page)).puzzle).toBe(HARD);
+    await enter(page, true, 2);
+    // Back to it, on the note: Easy on the board, Hard kept, and the address Easy's
+    await note(page).getByRole('button', { name: 'Back to it' }).tap();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, entries: 3, aside: { puzzle: HARD, entries: 2 } });
+    await expect.poll(() => page.url()).toContain(EASY);
+    // New, Custom, two digits typed
+    await page.locator('.menu-row button', { hasText: 'New' }).tap();
+    await page.getByRole('dialog', { name: 'New game' }).getByRole('button', { name: /^Custom/ }).tap();
+    for (const [cell, key] of [[0, 'Digit5'], [1, 'Digit6']] as const) {
+      const { x, y } = await cellPoint(page, cell);
+      await page.touchscreen.tap(x, y);
+      await page.keyboard.press(key);
+    }
+    await expect.poll(async () => (await saved(page)).typed).toBe(2);
+    // the browser's Back (or the back gesture), to the entry that names Easy, the game behind the entry
+    await page.goBack();
+    expect(page.url()).toContain(EASY);
+    await page.waitForTimeout(600);
+    expect(await saved(page)).toMatchObject({ custom: true, typed: 2, aside: { puzzle: HARD, entries: 2 } });
+    await expect(page.locator('.toast', { hasText: 'is gone' })).toHaveCount(0);
+    // and Cancel still brings back the Easy game behind it
+    await page.locator('.hint-panel', { hasText: 'Custom puzzle' }).getByRole('button', { name: 'Cancel', exact: true }).tap();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, entries: 3, custom: false, aside: { puzzle: HARD, entries: 2 } });
+  });
+});
+
 test.describe('links and Import, laptop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
@@ -339,6 +405,33 @@ test.describe('links and Import, laptop', () => {
     await page.evaluate((p) => (location.hash = `#p=${p}`), EASY);
     await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, aside: { dailyKey: localDateKey(), entries: 2 } });
     await expect(note(page)).toBeVisible();
+  });
+
+  test('a Position link of the board’s own puzzle opened in the tab leaves the address once open: a reload, or Back then Forward, keeps the moves made on it', async ({ browser }) => {
+    const position = await positionLink(browser, EASY, 3);
+    const context = await browser.newContext();
+    await context.addInitScript(welcomed);
+    const page = await context.newPage();
+    await page.goto(`/p/${EASY}/`);
+    await expect.poll(async () => (await saved(page)).puzzle).toBe(EASY);
+    await enter(page, false, 5);
+    // the friend's position of the same puzzle, pasted into the address bar: a hash change
+    await page.evaluate((hash) => (location.hash = hash), new URL(position).hash);
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, entries: 3, aside: { puzzle: EASY, entries: 5 } });
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe('');
+    await enterOpen(page, 4);
+    await expect.poll(async () => (await saved(page)).entries).toBe(7);
+    await page.reload();
+    await expect(page.locator('svg.board')).toBeVisible();
+    await page.waitForTimeout(600);
+    expect(await saved(page)).toMatchObject({ puzzle: EASY, entries: 7, aside: { puzzle: EASY, entries: 5 } });
+    await expect(page.locator('.toast', { hasText: 'is gone' })).toHaveCount(0);
+    await page.goBack();
+    await page.goForward();
+    await page.waitForTimeout(600);
+    expect(await saved(page)).toMatchObject({ puzzle: EASY, entries: 7, aside: { puzzle: EASY, entries: 5 } });
+    await expect(page.locator('.toast', { hasText: 'is gone' })).toHaveCount(0);
+    await context.close();
   });
 
   test('Import of a Position link keeps its entries and marks, and puts the game under way aside', async ({ browser }) => {
@@ -392,8 +485,10 @@ test.describe('links and Import, laptop', () => {
     // nothing to say: no game came back from elsewhere, none went
     await second.waitForTimeout(400);
     await expect(second.locator('.toast')).toHaveCount(0);
-    // tab 1 still has its daily
-    expect(await first.evaluate(() => location.pathname)).toBe(`/daily/${localDateKey()}`);
+    // tab 1, a view now, carries the home address: a reload of it, or the
+    // tab brought back after the browser discarded it, starts from the saves
+    // (the practice, the daily kept) instead of opening its old address
+    expect(await first.evaluate(() => location.pathname)).toBe('/');
   });
 
   test('a practice set aside by a link in the same tab comes back with Back, and again after a reload', async ({ page }) => {

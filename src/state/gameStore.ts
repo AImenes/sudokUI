@@ -791,9 +791,10 @@ interface GameStore {
    * puzzle being typed in, on the board or set aside (as Cancel would
    * bring it; the typed puzzle, with a digit on it, goes aside). `match`
    * sees each kept game's info and whether it was solved; true if one
-   * came back.
+   * came back. With `keep` (Back and Forward, src/ui/links.ts), a swap
+   * that would make the one slot let a game go is not made: false.
    */
-  resumeSetAside: (match: (info: GameInfo, won: boolean) => boolean) => boolean;
+  resumeSetAside: (match: (info: GameInfo, won: boolean) => boolean, keep?: boolean) => boolean;
   /** puts away the note that offers the set-aside game back; the game stays kept, and New still offers it */
   hideSetAside: () => void;
   select: (cells: number[], additive: boolean) => void;
@@ -1277,13 +1278,14 @@ export const useGame = create<GameStore>()(
         set({ ...boardOf(back), setAside: kept });
       },
 
-      resumeSetAside: (match) => {
+      resumeSetAside: (match, keep = false) => {
         const s = get();
         // behind the puzzle being typed in on the board: back as Cancel
         // brings it, and the typed puzzle, once it has a digit, goes aside
         const behind = s.custom ? s.customBackup : null;
         if (behind?.info && match(behind.info, behind.won)) {
           const entry = s.cells.some((c) => c.value) ? { ...asideOf(s), customBackup: null } : null;
+          if (keep && entry && s.setAside) return false;
           get().cancelCustomEntry();
           const { slot, dropped } = oneSlot(entry, get().setAside);
           set({ setAside: slot });
@@ -1302,6 +1304,7 @@ export const useGame = create<GameStore>()(
         if (back && aside?.info && match(aside.info, aside.won)) {
           const kept = underWay(s) ? asideOf(s) : null;
           const entry = back.cells.some((c) => c.value) ? { ...back, customBackup: null } : null;
+          if (keep && kept && entry) return false;
           useStats.setState({ game: back.tally ?? emptyTally() });
           const { slot, dropped } = oneSlot(kept, entry);
           set({ ...boardOf(aside), setAside: slot });
@@ -1441,7 +1444,18 @@ export const useGame = create<GameStore>()(
         const kept = behind?.info && underWay({ ...behind, custom: false }) ? { ...behind, tally: useStats.getState().game } : null;
         if (kept && kept.info!.puzzle === puzzle && !kept.info!.dailyKey && !kept.info!.practiceTech) {
           get().cancelCustomEntry();
-          set({ notice: t('Your game on this puzzle, where you left it') });
+          set({ notice: whereLeft() });
+          return null;
+        }
+        // the puzzle of the game in the slot, typed in: that game comes
+        // back where it was left, as Import of it brings it, and the game
+        // the entry was opened over takes the slot in its place, so
+        // nothing is let go (the typed givens are that game's own)
+        const aside = s.setAside;
+        if (aside?.info && !aside.custom && !aside.won && aside.info.puzzle === puzzle && !aside.info.dailyKey && !aside.info.practiceTech) {
+          get().cancelCustomEntry();
+          get().backToSetAside();
+          set({ notice: whereLeft() });
           return null;
         }
         set({ custom: false, customBackup: null, scanPreview: null, scanDoubts: [] });
@@ -2660,9 +2674,14 @@ export const useGame = create<GameStore>()(
         const p = puzzle.replace(/0/g, '.');
         const s = get();
         const same = (info: GameInfo | null) => info?.puzzle === p && !info.practiceTech;
-        if ((same(s.info) && !s.custom && !s.won) || get().resumeSetAside((info, won) => same(info) && !won)) {
+        if (same(s.info) && !s.custom && !s.won) {
           const t = translator();
           set({ notice: t('Your game on this puzzle, where you left it') });
+          return null;
+        }
+        // kept, it comes back, named as Back to it names it
+        if (get().resumeSetAside((info, won) => same(info) && !won)) {
+          set({ notice: whereLeft() });
           return null;
         }
         get().openOver(() => (get().startGame(puzzle, v.score, v.level), true));
@@ -3006,6 +3025,19 @@ export function nameAmong(g: Named, among: Named[]): string {
 }
 
 /**
+ * The notice for a game back where it was left (Back to it, a link or
+ * Import asking for a kept game, its puzzle typed in): the game named as
+ * the notes name it (gameName), with its rating when the game now in the
+ * slot has the same name, so the words say which of two Hard games came
+ * back
+ */
+export function whereLeft(): string {
+  const t = translator();
+  const g = useGame.getState();
+  return t('Back to {game}, where you left it', { game: nameAmong(g, [g, ...(g.setAside ? [g.setAside] : [])]) });
+}
+
+/**
  * What the toast says when the one slot lets games go (docs/architecture.md,
  * "One slot"): in one sentence, the games gone, listed the language's way,
  * and the one kept. Two games of the same name, among these and the game on
@@ -3164,8 +3196,9 @@ useSettings.subscribe((s, prev) => {
   if (prev.dontCount && !s.dontCount && !useGame.getState().won) countStart();
 });
 
-/** counts the game on the board as begun, once, with its kind: not while the device is left out */
+/** counts the game on the board as begun, once, with its kind: not while the device is left out, nor from a view (the page that plays counts it: src/state/play.ts) */
 function countStart() {
+  if (!play.acts()) return;
   const s = useGame.getState();
   // a solved game is past counting: its start was counted before the
   // win, or the device was left out of it, and its solve too

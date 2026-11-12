@@ -61,8 +61,9 @@ const LearnDialog = React.lazy(
 import { PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { sharePath, readAppLink } from '../content/share';
+import type { AppLink } from '../content/share';
 import { localDateKey, dailyPath, pastDailyOn, dayName } from '../content/dailies';
-import { startDaily, openAppLink, backToKept, holds } from './links';
+import { startDaily, openAppLink, backToKept, holds, backTo, traversed } from './links';
 import { useDailyStats } from '../state/dailyStats';
 import { useTelemetry } from '../state/telemetry';
 import { RATING_URL, PRIVACY_URL } from '../content/staticRoutes';
@@ -207,6 +208,23 @@ function boardAddress(): string | null {
     : sharePath({ lang, puzzle: info.puzzle, level: rated ? info.level : undefined, score: rated ? info.score : undefined });
 }
 
+/**
+ * A link opened in this tab by its hash (a hash change, or one put into
+ * the address bar while this page was a view): opened as at start-up, a
+ * game under way set aside, and then the hash leaves the address, which
+ * goes to the board's game, so a reload, or Back then Forward, never opens
+ * it again over the game it opened
+ */
+async function openHashLink(link: AppLink) {
+  await openAppLink(link, 'tab');
+  if (!play.acts()) return;
+  try {
+    window.history.replaceState(null, '', boardAddress() ?? window.location.pathname + window.location.search);
+  } catch {
+    /* an origin that allows no path of its own: the hash stays */
+  }
+}
+
 /** a line as a sentence of its own: ended with a full stop, unless it ends with one (or a question mark, an exclamation mark, an ellipsis) already */
 const ended = (line: string) => (/[.!?…]$/.test(line.trim()) ? line : `${line}.`);
 
@@ -314,6 +332,9 @@ function SetAsideNote() {
   );
 }
 
+/** Play here was pressed: the focus goes back into the app as the play comes (App) */
+let pressedHere = false;
+
 /**
  * This page does not hold the play (src/state/play.ts): another tab or
  * window of the app does, and the game carries on there. A cover over the
@@ -331,10 +352,11 @@ function PlayCover() {
     if (shown) button.current?.focus({ preventScroll: true });
   }, [shown]);
   if (!shown) return null;
-  const here = async () => {
-    // taken with the saves as this page left them, it goes on as it is
-    // (otherwise it reloads into them): the board has the focus
-    if ((await play.here()) === 'held' && play.acts()) document.querySelector<SVGElement>('svg[role="application"]')?.focus();
+  // taken with the saves as this page left them, it goes on as it is
+  // (otherwise it reloads into them), the focus back where it was (App)
+  const here = () => {
+    pressedHere = true;
+    return play.here();
   };
   return (
     <div className="play-cover">
@@ -421,6 +443,38 @@ export default function App() {
   const playing = usePlay((s) => s.role === 'player' || s.role === 'solo');
   // the start-up has run (below): the address bar follows the board from then
   const [booted, setBooted] = useState(false);
+  // the focus in the app as it was before this page became a view goes
+  // back there when the page holds the play again without a reload (Play
+  // here, or taken back as the page is shown), so a dialog left open keeps
+  // it and Tab stays inside, not on the board behind it or on the page
+  // itself; with that element gone, the top open dialog, then the board
+  const focusWas = useRef<Element | null>(null);
+  const wasView = useRef(false);
+  useEffect(() => {
+    const onFocus = (e: FocusEvent) => {
+      if (play.acts() && e.target instanceof Element) focusWas.current = e.target;
+    };
+    document.addEventListener('focusin', onFocus);
+    return () => document.removeEventListener('focusin', onFocus);
+  }, []);
+  useEffect(() => {
+    if (!playing) {
+      if (usePlay.getState().role === 'view') wasView.current = true;
+      return;
+    }
+    if (!wasView.current) return;
+    wasView.current = false;
+    const asked = pressedHere;
+    pressedHere = false;
+    const now = document.activeElement;
+    if (now && now !== document.body && now.isConnected) return;
+    const was = focusWas.current;
+    if (!was && !asked) return;
+    const open = document.querySelectorAll<HTMLElement>('.modal[role="dialog"]');
+    const top = open[open.length - 1];
+    const to = was?.isConnected && (!top || top.contains(was)) ? was : top ?? document.querySelector<SVGElement>('svg[role="application"]');
+    (to as HTMLElement | null)?.focus?.({ preventScroll: true });
+  }, [playing]);
   // the hardest bands start from seeds: stock their pools while idle, so
   // even the first Nightmare on this device starts at once
   useEffect(() => {
@@ -487,8 +541,16 @@ export default function App() {
     const params = new URLSearchParams(window.location.hash.slice(1));
     const learn = params.get('learn');
     if (learn) openLearn(parseLearnParam(learn));
+    // reached by Back or Forward (another page of the app in this tab left
+    // for this one, or this one came back from the back-forward cache):
+    // as in the tab (popstate, below), only a game this page holds comes
+    // back, and none is let go; an address that names no game held here
+    // opens nothing over the board, and the address goes back to the
+    // board's game. (With no game saved at all, the address opens.)
+    const saved = useGame.getState();
+    const backForward = traversed() && !!(saved.info || saved.custom);
     const practice = techFromParam(params.get('practice') ?? '');
-    if (practice && PRACTICE_TECHS.includes(practice)) {
+    if (practice && PRACTICE_TECHS.includes(practice) && !backForward) {
       // a Learn page's Practice link: from a page, the game under way
       // cannot be seen, so it goes aside as for any link
       start({ kind: 'tech', tech: practice }, { setAside: true });
@@ -499,6 +561,10 @@ export default function App() {
       if (!now.info && !now.custom) start({ kind: 'level', level: 'Easy' });
     };
     const link = readAppLink(window.location);
+    if (backForward) {
+      if (link && holds(link)) backTo(link);
+      return fallBack();
+    }
     if (!link) return fallBack();
     void openAppLink(link, 'boot').then(({ opened, refused }) => {
       if (opened) return;
@@ -522,6 +588,17 @@ export default function App() {
     if (!solved) setVictoryDismissed(false);
   }, [solved, info?.puzzle]);
 
+  // a link put into the address bar while this page was a view: opened
+  // once it holds the play again without a reload (src/main.tsx)
+  const heldLink = useRef<string | null>(null);
+  useEffect(() => {
+    if (!playing || !booted) return;
+    const hash = heldLink.current;
+    heldLink.current = null;
+    const link = hash ? readAppLink({ pathname: '/', search: '', hash }) : null;
+    if (link) void openHashLink(link);
+  }, [playing, booted]);
+
   // a link opened in this tab (its hash changed): opened as at start-up,
   // a game under way put aside. The path is the address bar's own, the
   // puzzle on the board, so only the hash is read.
@@ -532,17 +609,21 @@ export default function App() {
   // nothing over the board: the address goes back to the board's game. A
   // hash link is the hashchange listener's own
   useEffect(() => {
-    // (a view acts on nothing: src/state/play.ts)
     const onHash = () => {
-      if (!play.acts()) return;
-      const link = readAppLink({ pathname: '/', search: '', hash: window.location.hash });
-      if (link) void openAppLink(link, 'tab');
+      const hash = window.location.hash;
+      const link = readAppLink({ pathname: '/', search: '', hash });
+      // a view acts on nothing (src/state/play.ts): a link put into its
+      // address bar waits for the play (below), or for the reload that
+      // takes it, which keeps the hash (src/main.tsx)
+      if (!play.acts()) return void (heldLink.current = link ? hash : null);
+      if (link) void openHashLink(link);
     };
     const onPop = () => {
       if (!play.acts()) return;
       if (readAppLink({ pathname: '/', search: '', hash: window.location.hash })) return;
       const link = readAppLink(window.location);
-      if (link && holds(link)) return void openAppLink(link, 'tab');
+      // a game this page holds comes back, never by letting one go (backTo)
+      if (link && holds(link) && backTo(link)) return;
       const back = boardAddress();
       if (!back) return;
       try {
@@ -573,8 +654,10 @@ export default function App() {
   // game that was on the board before it.
   useEffect(() => {
     // (not before the start-up has read the address: a page that came up
-    // hidden as a view keeps the link it was opened with)
-    if (!booted) return;
+    // hidden as a view keeps the link it was opened with; and not while
+    // this page is a view, which carries the home address, src/main.tsx,
+    // until the play comes back)
+    if (!booted || !playing) return;
     const homeTitle = () =>
       import('../content/home')
         .then((m) => {
@@ -602,7 +685,7 @@ export default function App() {
       window.history.replaceState(null, '', `#p=${info.puzzle}`);
     }
     homeTitle();
-  }, [booted, custom, info?.puzzle, info?.level, info?.score, info?.dailyNo, info?.dailyKey, lang, hideRating, won]);
+  }, [booted, playing, custom, info?.puzzle, info?.level, info?.score, info?.dailyNo, info?.dailyKey, lang, hideRating, won]);
 
   // a daily result that could not be sent goes on the next open, and when
   // the connection comes back (src/state/dailyStats.ts): from the page that

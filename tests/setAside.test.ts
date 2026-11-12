@@ -39,7 +39,7 @@ const { readAppLink, isAppAddress } = await import('../src/content/share');
 const { findUrl } = await import('../src/content/importLinks');
 const { localDateKey, findDaily, dailyNumber } = await import('../src/content/dailies');
 const real = await vi.importActual<typeof import('../src/content/dailies')>('../src/content/dailies');
-const { startDaily, openAppLink, backToKept, holds } = await import('../src/ui/links');
+const { startDaily, openAppLink, backToKept, holds, backTo } = await import('../src/ui/links');
 const { boardCleared } = await import('../src/ui/ErrorBoundary');
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
@@ -369,6 +369,41 @@ describe('Back and Forward', () => {
     expect(holds(link(`https://sudokui.app/daily/${TODAY}`))).toBe(true);
     expect(holds(link(`https://sudokui.app/p/${HARD}/`))).toBe(true);
   });
+
+  it('never let a game go: the game behind a puzzle being typed in stays behind it, and a swap the one slot could not keep whole is not made', async () => {
+    // Easy with three digits, Hard over it with two, then Back to Easy: Hard in the slot
+    await open(`https://sudokui.app/#p=${EASY}`);
+    play(3);
+    await open(`https://sudokui.app/#p=${HARD}`, 'tab');
+    play(2);
+    expect(backTo(link(`https://sudokui.app/p/${EASY}/`))).toBe(true);
+    expect(g()).toMatchObject({ info: { puzzle: EASY }, setAside: { info: { puzzle: HARD } } });
+    expect(g().notice).toBe('Back to your Easy game, where you left it');
+    // a puzzle typed in over Easy, two digits: Back to Easy's address leaves the entry be
+    g().startCustomEntry();
+    g().select([0], false);
+    g().input(1);
+    g().select([1], false);
+    g().input(2);
+    expect(holds(link(`https://sudokui.app/p/${EASY}/`))).toBe(true);
+    expect(backTo(link(`https://sudokui.app/p/${EASY}/`))).toBe(false);
+    expect(g().custom).toBe(true);
+    expect(entries(g().customBackup!.cells)).toBe(3);
+    // and Back to Hard's would put the typed puzzle (with Easy behind it) in the slot over Hard: neither goes
+    expect(backTo(link(`https://sudokui.app/p/${HARD}/`))).toBe(true);
+    expect(g()).toMatchObject({ info: { puzzle: HARD }, setAside: { custom: true } });
+    expect(g().letGo).toBeNull();
+    // the slot holds the typed puzzle with Easy behind it; a game under way on the board: Easy's address would let one go
+    expect(holds(link(`https://sudokui.app/p/${EASY}/`))).toBe(true);
+    expect(backTo(link(`https://sudokui.app/p/${EASY}/`))).toBe(false);
+    expect(g()).toMatchObject({ info: { puzzle: HARD }, setAside: { custom: true, customBackup: { info: { puzzle: EASY } } } });
+    expect(entries()).toBe(2);
+    expect(g().letGo).toBeNull();
+    // a link to it (not Back) still brings it back by the one-slot rule, and says what went
+    await open(`https://sudokui.app/p/${EASY}/`, 'tab');
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(g().letGo).not.toBeNull();
+  });
 });
 
 describe('the toast over a game that opens', () => {
@@ -630,7 +665,25 @@ describe('custom entry', () => {
     expect(g().custom).toBe(false);
     expect(g().info?.puzzle).toBe(HARD);
     expect(entries()).toBe(3);
-    expect(g().notice).toBe('Your game on this puzzle, where you left it');
+    expect(g().notice).toBe('Back to your Hard game, where you left it');
+    // the puzzle of the game in the slot typed in: that game comes back,
+    // and the game the entry was opened over takes the slot; none goes
+    g().startCustomEntry();
+    typeIn(EASY);
+    expect(g().finishCustomEntry()).toBeNull();
+    play(2);
+    g().startCustomEntry();
+    typeIn(HARD);
+    expect(g().finishCustomEntry()).toBeNull();
+    expect(g()).toMatchObject({ custom: false, info: { puzzle: HARD }, setAside: { info: { puzzle: EASY } }, letGo: null });
+    expect(entries()).toBe(3);
+    expect(entries(g().setAside!.cells)).toBe(2);
+    g().startCustomEntry();
+    typeIn(EASY);
+    expect(g().finishCustomEntry()).toBeNull();
+    expect(g()).toMatchObject({ custom: false, info: { puzzle: EASY }, setAside: { info: { puzzle: HARD } }, letGo: null });
+    expect(entries()).toBe(2);
+    expect(g().notice).toBe('Back to your Easy game, where you left it');
     // a game not under way behind it is no loss: nothing is kept
     useGame.setState({ setAside: null });
     g().startGame(HARD, 1348, 'Hard');
