@@ -11,7 +11,7 @@ import App from './ui/App';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import './ui/styles.css';
 import { useGame, asRead } from './state/gameStore';
-import type { SavedGame } from './state/gameStore';
+import type { SavedGame, SetAside } from './state/gameStore';
 import { useStats } from './state/stats';
 import { useDailyStats } from './state/dailyStats';
 import { play, startPlay, acted, clearing, SAVES } from './state/play';
@@ -101,31 +101,50 @@ const STORES: Record<string, { persist: { rehydrate: () => unknown } }> = {
 };
 const GAME = SAVES[0];
 
+/** a game's save as clockOnly compares it (the kept game's note put away or not is taken from the save) */
+type Saved = SavedGame & { setAside?: SetAside | null };
+
 /**
  * The game's save differs from what this page last wrote or read only in
  * the clock, its time and whether it runs: another page showed a game
  * nobody played on, and its clock ran there (a game under way pauses as
- * the play goes, so its clock stands still), or paused or resumed it.
- * Both are compared as a page reading them takes them in (asRead): a page
- * that read the save with the chain trainer open closed the trainer as it
- * read it, so its next write has the trainer's auto candidates off, with
- * nothing played; this page keeps its trainer, and its next write puts
- * them back. Nobody played, so nothing needs a reload: the clock is taken
- * on from where it stands. True once it has.
+ * the play goes, so its clock stands still), or paused or resumed it; or
+ * it put the kept game's note away (✕), which this page then puts away
+ * too. Both are compared as a page reading them takes them in (asRead): a
+ * page that read the save with the chain trainer open closed the trainer
+ * as it read it, so its next write has the trainer's auto candidates off,
+ * with nothing played; this page keeps its trainer, and its next write
+ * puts them back. And the game in this page's memory must still be the
+ * one it last wrote: an opening that landed while it was a view (the
+ * day's list or a new puzzle still coming as the play went) wrote
+ * nothing, and the clock of the game it replaced is not its clock.
+ * Nobody played, so nothing needs a reload: the clock is taken on from
+ * where it stands. True once it has.
  */
 function clockOnly(): boolean {
   try {
     const now = localStorage.getItem(GAME);
     const before = play.last(GAME);
     if (!now || !before) return false;
-    const a = JSON.parse(before) as { state?: SavedGame; version?: number };
-    const b = JSON.parse(now) as { state?: SavedGame; version?: number };
+    const a = JSON.parse(before) as { state?: Saved; version?: number };
+    const b = JSON.parse(now) as { state?: Saved; version?: number };
     const clock = b.state?.elapsedBefore;
     if (!a.state || !b.state || typeof clock !== 'number' || a.version !== b.version) return false;
-    const game = (s: SavedGame) => JSON.stringify({ ...asRead(s), elapsedBefore: 0, paused: false });
-    if (game(a.state) !== game(b.state)) return false;
+    const game = (s: Saved) =>
+      JSON.stringify({ ...asRead(s), elapsedBefore: 0, paused: false, setAside: s.setAside ? { ...s.setAside, hidden: undefined } : (s.setAside ?? null) });
+    // this page's game as its next write would write it
+    const partialize = useGame.persist.getOptions().partialize;
+    if (!partialize) return false;
+    const mine = JSON.parse(JSON.stringify(partialize(useGame.getState()))) as Saved;
+    if (game(a.state) !== game(b.state) || game(mine) !== game(a.state)) return false;
     play.read(GAME, now);
-    useGame.setState({ elapsedBefore: clock, paused: asRead(b.state).paused, startedAt: Date.now() });
+    const kept = useGame.getState().setAside;
+    useGame.setState({
+      elapsedBefore: clock,
+      paused: asRead(b.state).paused,
+      startedAt: Date.now(),
+      ...(kept && !!kept.hidden !== !!b.state.setAside?.hidden ? { setAside: { ...kept, hidden: !!b.state.setAside?.hidden } } : {})
+    });
     return true;
   } catch {
     return false;

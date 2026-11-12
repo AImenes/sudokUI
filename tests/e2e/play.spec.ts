@@ -284,6 +284,35 @@ test.describe('one page plays at a time', () => {
     expect(await same(a)).toBe(true);
   });
 
+  test('a game kept in the slot, and another tab that only puts its note away: back in the first, no reload, the note away there too, and the undo steps still there', async ({ context }) => {
+    const a = await context.newPage();
+    await open(a, `/#p=${EASY}`);
+    await enter(a, 2);
+    // a link in the same tab: the game under way goes into the slot
+    await a.evaluate((p) => (window.location.hash = `p=${p}`), HARD);
+    await expect(note(a)).toBeVisible();
+    await enter(a, 2);
+    await expect.poll(() => saved(a)).toMatchObject({ puzzle: HARD, entries: 2, aside: { puzzle: EASY, entries: 2 } });
+    await mark(a);
+    await shown(a, false);
+    const b = await context.newPage();
+    await open(b, '/');
+    await expect(note(b)).toBeVisible();
+    await note(b).getByRole('button', { name: 'Hide this note' }).click();
+    await expect(note(b)).toHaveCount(0);
+    await shown(b, false);
+    await shown(a, true);
+    await a.waitForTimeout(800);
+    expect(await same(a)).toBe(true);
+    await expect(note(a)).toHaveCount(0);
+    await expect(a.locator('.play-cover')).toHaveCount(0);
+    await a.locator('.pause-card .resume-btn').click();
+    await a.locator('.action-row button', { hasText: 'Undo' }).click();
+    await expect.poll(async () => (await saved(a)).entries).toBe(1);
+    // the slot still holds its game, offered by New
+    expect((await saved(a)).aside).toMatchObject({ puzzle: EASY, entries: 2 });
+  });
+
   test('a page that has played and is a view carries the home address: reloaded (or a discarded tab brought back), it opens no old link over the game under way', async ({ context }) => {
     const today = localDateKey();
     const a = await context.newPage();
@@ -650,5 +679,57 @@ test.describe('one page plays at a time', () => {
     expect(await writesOf(a)).toBe(before);
     expect(await saves(a)).toEqual(then);
     expect(await a.evaluate(() => localStorage.getItem('sudokui-play'))).toBe(await b.evaluate(() => localStorage.getItem('sudokui-play')));
+  });
+});
+
+test.describe('an opening that lands once the play has gone', () => {
+  // (no service worker, so the day's list can be held back on its way)
+  test.use({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+  test.beforeEach(async ({ context }) => {
+    await watch(context);
+  });
+
+  test('the Daily button pressed, and the player switches to another tab before the day’s list comes: the daily opens nowhere, and back in the first tab its game goes on, with the clock and the pause the other tab left', async ({ context }) => {
+    // the day's list slow to come, as a first fetch on a slow connection does
+    let release = () => {};
+    const held = new Promise<void>((done) => (release = done));
+    let asked = false;
+    await context.route(/\/assets\/dailies-[^/]*\.js$/, async (route) => {
+      asked = true;
+      await held;
+      await route.continue();
+    });
+    const a = await context.newPage();
+    await open(a, `/p/${HARD}`);
+    await enter(a, 2);
+    await a.locator('.menu-row button', { hasText: 'New' }).click();
+    await a.getByRole('dialog', { name: 'New game' }).getByRole('button', { name: /Daily puzzle/ }).click();
+    await expect.poll(() => asked).toBe(true);
+    await mark(a);
+    // another tab, before the list is in: it takes the play, and the game resumed there runs a while
+    await shown(a, false);
+    const b = await context.newPage();
+    await open(b, '/');
+    await b.getByRole('button', { name: 'Resume game' }).click();
+    await b.waitForTimeout(2500);
+    // the list reaches the first tab, a view now
+    release();
+    await a.waitForTimeout(800);
+    await shown(b, false);
+    const left = await saved(b);
+    expect(left).toMatchObject({ puzzle: HARD, dailyKey: null, entries: 2, paused: true });
+    expect(left.elapsed).toBeGreaterThan(2000);
+    // back in the first tab: no reload (nobody played), the game under way on the board, not the daily
+    await shown(a, true);
+    await a.waitForTimeout(800);
+    expect(await same(a)).toBe(true);
+    await expect(a.locator('.pause-card')).toBeVisible();
+    expect(await saved(a)).toMatchObject({ puzzle: HARD, dailyKey: null, entries: 2, paused: true, aside: null });
+    const secs = await a.locator('.timer').evaluate((el) => {
+      const [m, s] = (el.textContent ?? '0:0').split(':').map(Number);
+      return m * 60 + s;
+    });
+    expect(secs).toBe(Math.floor(left.elapsed / 1000));
+    expect(a.url()).toContain(HARD);
   });
 });

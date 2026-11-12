@@ -579,7 +579,8 @@ export default function App() {
     }
     const fallBack = () => {
       const now = useGame.getState();
-      if (!now.info && !now.custom) start({ kind: 'level', level: 'Easy' });
+      // (a link whose day's list came once the play had gone opened nothing: a view starts nothing either)
+      if (!now.info && !now.custom && play.acts()) start({ kind: 'level', level: 'Easy' });
     };
     const link = readAppLink(window.location);
     if (backForward) {

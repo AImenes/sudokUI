@@ -15,6 +15,7 @@ import { translator } from '../content/i18n';
 import { clockOf } from '../content/share';
 import type { AppLink } from '../content/share';
 import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber } from '../content/dailies';
+import { play } from '../state/play';
 
 /** the challenger's time becomes the one to beat, and the player is told */
 export function challenge(vs: number) {
@@ -56,8 +57,12 @@ const unavailable = (date: string) => {
     : t('The daily for {date} could not be loaded. Check the connection and try again', { date });
 };
 
-/** what startDaily did: brought back the day's daily where it was left, started it, or could not load it */
-export type DailyOpened = 'resumed' | 'started' | 'unavailable';
+/**
+ * what startDaily did: brought back the day's daily where it was left,
+ * started it, could not load it, or let it go because the page no longer
+ * held the play when the day's list came (`dropped`)
+ */
+export type DailyOpened = 'resumed' | 'started' | 'unavailable' | 'dropped';
 
 /**
  * The daily for a day, today's unless a date is given: the published
@@ -82,6 +87,10 @@ export async function startDaily(date = localDateKey()): Promise<DailyOpened> {
     return 'resumed';
   }
   const list = await loadDailies();
+  // the play went while the list came (the player switched to another
+  // tab, which plays now): a view opens nothing, as it writes nothing, so
+  // the game another page carries on is the one this page comes back to
+  if (!play.acts()) return 'dropped';
   const no = dailyNumber(date);
   if (!list && no) {
     useGame.setState({ notice: unavailable(date) });
@@ -156,6 +165,7 @@ export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOp
       return { opened: true };
     }
     const opened = await startDaily(date);
+    if (opened === 'dropped') return { opened: false };
     if (opened === 'unavailable') {
       // Import says it in its own dialog
       if (from === 'import') useGame.setState({ notice: null });

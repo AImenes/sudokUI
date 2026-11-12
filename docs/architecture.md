@@ -96,13 +96,17 @@ take off again. Such a game's clock may run in another tab or window
 that shows it; a page that takes the play back with nothing else of the
 game changed takes that clock on, its time and whether it is paused, as
 it stands in the save, rather than reload ([main.tsx](../src/main.tsx),
-`clockOnly`, `inPlace`). It compares its own last write with the save as
+`clockOnly`, `inPlace`); and the kept game's note put away there (✕) is
+put away here too. It compares its own last write with the save as
 a page reading them takes them in (`asRead`, the steps the save's read
 makes: the chain trainer closed as Done closes it, among them): a page
 that read the save with the trainer open closed it as it read it, so
 what it wrote back has the trainer's auto candidates off with nothing
 played, and the page that comes back keeps its trainer, its undo steps
-and its auto candidates, which its next write puts back in the save. While the pause card covers the board, keys act on
+and its auto candidates, which its next write puts back in the save. The
+game in its memory must still be the one it last wrote: one that is not
+(an opening that landed while it was a view) has no clock of the save's,
+and the page reloads into the saves instead. While the pause card covers the board, keys act on
 nothing behind it (no Undo, hint, mode or Escape; only P resumes), a key
 meant for the board says why in the toast, and the board's status line,
 which a screen reader hears, says the game is paused instead of reading
@@ -217,9 +221,11 @@ taken. Every other open page of the app is a view that writes nothing.
   play.
 - **Coming back.** A page that takes the play back goes on as it is when
   the game's save is exactly what it last wrote or read, or differs only
-  in the clock of a game nobody played on, both read as a page reading
+  in the clock of a game nobody played on (or in the kept game's note put
+  away), both read as a page reading
   the save takes it in (above: the chain trainer open in this page, and
-  another page that only looked, among them): its win screen and
+  another page that only looked, among them), and its own game is still
+  the one it last wrote: its win screen and
   Send, its undo steps, its open panels and questions stay, and the focus
   goes back where it was in the app (a dialog left open keeps it, so Tab
   stays inside; with that gone, the top open dialog, then the board). The
@@ -248,7 +254,12 @@ taken. Every other open page of the app is a view that writes nothing.
   behind it is inert: no key shortcut, no Tab stop, no
   click acts on the game; its clock stands still, as a hidden page's
   does, and it sends no daily time and no counts of its own (`countStart`
-  and the telemetry store ask `play.acts()`). A page that comes up hidden
+  and the telemetry store ask `play.acts()`). What was still on its way
+  as the play went opens nothing there: the day's list the Daily button
+  (or a daily's link) waits for (`startDaily`), a puzzle New or a
+  practice is still making (`useNewGame`), a photo being read; so the
+  page comes back to the game another page carried on, with its clock,
+  and the player asks again. A page that comes up hidden
   at `/nb/` or `/es/` takes that language only once it holds the play
   (one that plays alone takes it at once).
   The cover is a dialog with its name, the focus on Play here. It is

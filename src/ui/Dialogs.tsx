@@ -114,7 +114,9 @@ export function useNewGame() {
     // generated, with the rating capped at what was asked for. A game that
     // starts meanwhile (the daily tapped in the welcome while the first
     // visit's own game is still being made, a link) wins: what arrives
-    // after it is dropped, never put over it
+    // after it is dropped, never put over it. So is what arrives once the
+    // play has gone to another page (the player switched tabs meanwhile):
+    // a view opens nothing, as it writes nothing (src/state/play.ts)
     const asked = useGame.getState().info;
     const seeds = req.kind === 'level' ? await seedPuzzles(req.level) : await practiceSeeds(req.tech);
     const { promise, handle } = requestPuzzle(
@@ -126,7 +128,7 @@ export function useNewGame() {
     const entry = await promise;
     clearTimeout(show);
     setGenState(null);
-    if (useGame.getState().info !== asked) {
+    if (useGame.getState().info !== asked || !play.acts()) {
       cancelled.current = false;
       return false;
     }
@@ -816,6 +818,9 @@ export function ScanControls({ onDone }: { onDone: () => void }) {
         setScanError(`${read} ${t('Printed puzzles only; fill the frame with the grid, in good light, and try again.')}`);
         return;
       }
+      // (a photo read once the play went to another page opens nothing: a
+      // view writes nothing, src/state/play.ts)
+      if (!play.acts()) return;
       closeCamera();
       loadScan(r.digits, r.doubts, r.preview);
       onDone();
