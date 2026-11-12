@@ -30,6 +30,8 @@ async function open(page: Page, day: string, path: string) {
   await page.goto(path);
   await expect(page.locator('svg.board')).toBeVisible();
 }
+/** the game an address opened is the one on the board (a door comes after its list loads): only then is it played on */
+const opened = (page: Page, puzzle: string) => expect.poll(() => saved(page).then((s) => s.puzzle)).toBe(puzzle);
 
 const cellBox = async (page: Page, cell: number) => {
   const box = (await page.locator('svg.board').boundingBox())!;
@@ -116,6 +118,7 @@ test.describe('the advent calendar', () => {
 
   test('a locked door asked for by its address is refused with a toast, and nothing goes over the game under way', async ({ page }) => {
     await open(page, '2026-12-01', `/#p=${EASY}`);
+    await opened(page, EASY);
     await fill(page, EASY, 3);
     await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, entries: 3 });
     await page.goto('/advent/2026/5');
@@ -142,12 +145,14 @@ test.describe('the advent calendar', () => {
 
   test('on 10 December an earlier door opens over a game under way, which is kept and comes back with Back to it', async ({ page }) => {
     await open(page, '2026-12-10', `/#p=${EASY}`);
+    await opened(page, EASY);
     await fill(page, EASY, 4);
     await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, entries: 4 });
     await page.goto('/es/advent/2026/3');
     await expect(page.locator('svg.board')).toBeVisible();
     await expect.poll(() => saved(page)).toMatchObject({ puzzle: door(3).puzzle, door: 3, aside: EASY });
     await expect(toast(page)).toContainText('Casilla 3 del calendario de adviento');
+    await expect.poll(() => saved(page)).toMatchObject({ entries: 0 });
     const note = page.getByRole('note').filter({ hasText: 'Tu partida en curso está guardada' });
     await expect(note).toBeVisible();
     await fill(page, door(3).puzzle, 2);
@@ -167,7 +172,7 @@ test.describe('the advent calendar', () => {
     test(`door 1 solved ${late} days after its day ${offered ? 'offers' : 'does not offer'} Send for its time`, async ({ page }) => {
       // opened and solved that day: an earlier door stays open all December
       await open(page, `2026-12-${String(1 + late).padStart(2, '0')}`, '/advent/2026/1');
-      await expect.poll(() => saved(page)).toMatchObject({ door: 1 });
+      await opened(page, door(1).puzzle);
       // the server's answer, as the Worker gives it for a door's time on its days
       const posted: unknown[] = [];
       await page.route('**/api/daily/302601/result', async (route) => {
@@ -203,6 +208,7 @@ test.describe('the advent calendar', () => {
 
   test('from 1 January nothing of the calendar shows, and a door game in progress stays and can be finished', async ({ page }) => {
     await open(page, '2026-12-31', '/advent/2026/1');
+    await opened(page, door(1).puzzle);
     await fill(page, door(1).puzzle, 5);
     await expect.poll(() => saved(page)).toMatchObject({ door: 1, entries: 5 });
     await on(page, '2027-01-02');
