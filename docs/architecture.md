@@ -165,8 +165,9 @@ taken. Every other open page of the app is a view that writes nothing.
   the player turned to in the holder's window, which takes it at once as
   it is shown), so the window beside one that was minimised plays; one
   the holder told no a moment before (the two tabs' events can come in
-  either order) takes it at once. A view in view whose window gets the
-  focus (the player clicked into it) asks as one shown again does, and a
+  either order) takes it at once. A view in view that has played, whose
+  window gets the focus (the player clicked into it), asks as one shown
+  again does (never from a holder in view), and a
   view in view looks every three seconds whether any page holds the play
   (`check`, `navigator.locks.query`): a holder that crashed or was
   discarded says nothing as it goes, so once no page has held it for a
@@ -234,7 +235,10 @@ taken. Every other open page of the app is a view that writes nothing.
   (one that plays alone takes it at once).
   The cover is a dialog with its name, the focus on Play here. It is
   never drawn on a page nobody sees, nor while a page shown again is
-  taking the play back, so it does not flash up in front of the player.
+  taking the play back, so it does not flash up in front of the player;
+  and a cover already up stays up while its page asks (its window got
+  the focus, or Play here was pressed), so it does not blink away under
+  the player's click and come back when the answer is no.
   A page that has played carries the home address while it is a view
   (not its old game's, which the address bar no longer follows), so a
   reload of it, or the browser bringing back a discarded tab, starts from
