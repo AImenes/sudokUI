@@ -1,7 +1,7 @@
 // The control panel: mode switcher (digit/corner/centre/colour), number pad
 // (doubles as the colour palette in colour mode), undo/redo/erase and the
 // candidate tools (hint, check, auto candidates, fill, convert).
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useT, msg, Translator } from '../content/i18n';
 import { useGame, EntryMode, useResting } from '../state/gameStore';
 import { useSettings, MarkLayer } from '../state/settings';
@@ -183,6 +183,12 @@ export function Controls({
   const requestHint = useGame((s) => s.requestHint);
   const check = useGame((s) => s.check);
   const [autoOffPrompt, setAutoOffPrompt] = useState(false);
+  // a question asked of the game on the board goes with that game: another
+  // game brought in (Back or Forward, a link in this tab, the slot) closes
+  // it, so its answer never acts on the game that came in
+  const boardGame = useGame((s) => s.info);
+  const boardCustom = useGame((s) => s.custom);
+  useEffect(() => setAutoOffPrompt(false), [boardGame, boardCustom]);
   const assisted = useGame((s) => s.assisted);
   // a solved board: its solve is recorded as it was played. Check, Steps and
   // Scan still study it, asking nothing, since nothing of the solve changes;

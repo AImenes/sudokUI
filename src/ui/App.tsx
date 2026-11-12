@@ -639,7 +639,16 @@ export default function App() {
       // takes it, which keeps the hash (src/main.tsx)
       if (!play.acts()) return void (heldLink.current = link ? hash : null);
       markEntry();
-      if (link) void openHashLink(link);
+      if (!link) return;
+      // a dialog asked about the game the link puts aside (Restart?, Steps,
+      // Share) goes with that game, as it does on Back and Forward below
+      const was = useGame.getState().info;
+      void openHashLink(link).then(() => {
+        if (useGame.getState().info !== was) {
+          setDialog('none');
+          setReport(null);
+        }
+      });
     };
     const onPop = () => {
       if (!play.acts()) return;

@@ -163,7 +163,7 @@ taken. Every other open page of the app is a view that writes nothing.
   (`sudokui-play`); the holder writes its game with its clock first (what
   `setAway(true)` writes for a hidden page: a game under way pauses),
   lets go and becomes a view. A holder that does not answer within a
-  second and a half (a frozen or discarded tab) has the lock taken from it
+  second and a half (a frozen tab: a discarded one has let go of it already) has the lock taken from it
   (`steal`), and writes nothing from then on. A page that starts hidden
   takes the play only when no page holds it; otherwise it is a view,
   writes nothing, and takes the play the first time it is shown. A view
@@ -416,8 +416,10 @@ none of the player's work.
   bring back only a game the page holds (on the board, in the slot, or
   behind a puzzle being typed in: `holds`, src/ui/links.ts), as a link to
   it does, so the board is again the game the address bar names (a
-  question or dialog asked of the game swapped away, Restart?, Use Hint?
-  or Steps, goes with it, so its answer never acts on the other); an
+  question or dialog asked of the game swapped away, Restart?, Use Hint?,
+  Keep your candidates? or Steps, goes with it, as it does when a link
+  opened in the tab brings another game, so its answer never acts on the
+  other); an
   address that names no kept game (one let go, a friend's puzzle nobody
   played on and replaced) opens nothing over the board, and the address
   goes back to the board's game. Nor do they ever let a game go: the

@@ -364,6 +364,31 @@ test.describe('Back and Forward, phone', () => {
     await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, entries: 2, aside: { puzzle: HARD, entries: 3 } });
     await expect(page.getByRole('dialog', { name: 'Use Hint?' })).toHaveCount(0);
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.assisted)).toBe(false);
+    // Forward, Auto candidates on in the Hard game, then off: 'Keep your candidates?' is asked of
+    // the Hard game; Back brings the Easy game, and the question goes with the Hard game, so no
+    // answer can switch the Easy game's candidates on or mark it as helped
+    await page.goForward();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: HARD, entries: 3, aside: { puzzle: EASY, entries: 2 } });
+    await press(true, page.getByRole('button', { name: /Auto candidates/ }).first());
+    await press(true, page.getByRole('button', { name: 'Use Auto candidates' }));
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.autoCandidates)).toBe(true);
+    await press(true, page.getByRole('button', { name: /Auto candidates/ }).first());
+    await expect(page.getByRole('dialog', { name: 'Keep your candidates?' })).toBeVisible();
+    await page.goBack();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, entries: 2, aside: { puzzle: HARD, entries: 3 } });
+    await expect(page.getByRole('dialog', { name: 'Keep your candidates?' })).toHaveCount(0);
+    const easyNow = () => page.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem('sudokui-game-v1')!).state;
+      return { assisted: s.assisted as boolean, auto: s.autoCandidates as boolean };
+    });
+    expect(await easyNow()).toEqual({ assisted: false, auto: false });
+    // a link opened in this tab while Restart? is asked of the Easy game: the link brings the
+    // Hard game back, and the question goes with the Easy game, so Restart cannot wipe the Hard one
+    await press(true, page.getByRole('button', { name: /Restart$/ }).first());
+    await expect(page.getByRole('dialog', { name: 'Restart puzzle?' })).toBeVisible();
+    await page.evaluate((p) => (location.hash = `#p=${p}`), HARD);
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: HARD, entries: 3, aside: { puzzle: EASY, entries: 2 } });
+    await expect(page.getByRole('dialog', { name: 'Restart puzzle?' })).toHaveCount(0);
   });
 });
 

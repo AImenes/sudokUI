@@ -6,8 +6,8 @@
 // is a Web Lock (navigator.locks), so a page that closes or crashes lets
 // go of it by itself. A page that wants it asks the holder over a
 // BroadcastChannel: the holder writes its state, its clock included, lets
-// go and becomes a view; a holder that does not answer (a frozen or
-// discarded tab) has it taken after WAIT_MS. A holder that closes says so,
+// go and becomes a view; a holder that does not answer (a frozen tab;
+// a discarded one has let go of it already) has it taken after WAIT_MS. A holder that closes says so,
 // and a page in view then takes the play unless a page reloading took it
 // back first (GONE_MS). Nothing here leaves the device: the holder's page
 // name (a random string) is kept in this browser's storage, so a page that
@@ -382,8 +382,8 @@ export class Play {
   /**
    * Asks for the play: at once when no page holds it; otherwise the holder
    * is asked over the channel (it writes, then lets go), and one that does
-   * not answer within `wait` has it taken (steal: a frozen or discarded
-   * tab). With `ifHidden`, a holder in view keeps it and says so ('busy').
+   * not answer within `wait` has it taken (steal: a frozen tab; a
+   * discarded one has let go of it already). With `ifHidden`, a holder in view keeps it and says so ('busy').
    * Told no as it was shown again (`asShown`), the page stays taking a
    * moment (SETTLE_MS), so the cover does not flash up while the holder's
    * own hide is on its way: its free makes this page take the play, and
