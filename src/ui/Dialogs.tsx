@@ -33,6 +33,7 @@ import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLink
 import { dailyNumber, localDateKey, dailyClosed, standingOf } from '../content/dailies';
 import { dailyLine, standingPhrase, asLine } from '../content/dailyLine';
 import { useDailyStats, SubmitOutcome } from '../state/dailyStats';
+import { play } from '../state/play';
 import { sendText, copyText } from './send';
 import { ShareImage } from './ShareImage';
 import type { PictureCell } from '../content/boardImage';
@@ -1755,7 +1756,8 @@ function useDialog(onClose: () => void) {
   const ref = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Escape') {
+      // a page that does not hold the play is a view: nothing behind its cover acts (src/state/play.ts)
+      if (e.code === 'Escape' && play.acts()) {
         e.stopPropagation();
         const open = document.querySelectorAll('.modal[role="dialog"]');
         if (open[open.length - 1] !== ref.current) return;

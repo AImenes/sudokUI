@@ -428,30 +428,6 @@ test.describe('links and Import, laptop', () => {
     await expect(first.getByText('is gone')).toHaveCount(0);
   });
 
-  test('a game said to be still open in the other tab is said to be gone once that tab has closed', async ({ context }) => {
-    await context.addInitScript(welcomed);
-    const first = await context.newPage();
-    await openDaily(first);
-    await enter(first, false, 3);
-    await first.goto(`/p/${EASY}/`);
-    await expect(note(first)).toBeVisible();
-    await enter(first, false, 2);
-    await expect.poll(async () => (await saved(first)).entries).toBe(2);
-    await setHidden(first, true);
-    // tab 2: a Hard game with a digit; tab 1 keeps the daily, the Hard game said to be in tab 2
-    const second = await context.newPage();
-    await second.goto(`/p/${HARD}/`);
-    await expect(second.locator('svg.board')).toBeVisible();
-    await expect.poll(async () => (await saved(second)).puzzle).toBe(HARD);
-    await enter(second, false, 1);
-    await expect.poll(async () => (await saved(second)).entries).toBe(1);
-    await second.close({ runBeforeUnload: true });
-    // tab 1 shown: no other tab is open, and the line says so
-    await setHidden(first, false);
-    await expect(first.locator('.toast')).toContainText('(HoDoKu rating 1348) is gone, today’s daily is kept');
-    await expect(first.locator('.toast')).not.toContainText('still open');
-  });
-
   test('a practice set aside by a link in the same tab comes back with Back, and again after a reload', async ({ page }) => {
     await page.addInitScript(welcomed);
     await page.goto('/learn/x-wing/');

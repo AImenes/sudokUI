@@ -3,8 +3,9 @@
 // phase 3). Every sentence describes what the code does: the live lines
 // src/state/telemetry.ts sends by default, what the Settings switch adds,
 // the daily's times (src/state/dailyStats.ts), the share links
-// (src/content/share.ts), the landing count (worker/telemetry.ts) and the
-// reports (src/ui/report.ts, worker/feedback.ts).
+// (src/content/share.ts), the landing count (worker/telemetry.ts), the
+// reports (src/ui/report.ts, worker/feedback.ts) and the name the tab that
+// plays keeps for itself (src/state/play.ts).
 // When one of those changes, change this page.
 //
 // src/content/learnPages.ts builds the page from this copy, like the
@@ -88,7 +89,7 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
       {
         heading: 'What is never collected',
         paragraphs: [
-          'No account, no password, no cookie, no fingerprint, no advertising, no third-party script, and no e-mail address unless you give one in a report or write to feedback@sudokui.app. Your games, pencil marks, statistics, technique record and daily streak stay in your browser’s storage, on your device, and leave it only in the ways this page describes.'
+          'No account, no password, no cookie, no fingerprint, no advertising, no third-party script, and no e-mail address unless you give one in a report or write to feedback@sudokui.app. Your games, pencil marks, statistics, technique record and daily streak stay in your browser’s storage, on your device, and leave it only in the ways this page describes. With the app open in more than one tab or window, one of them plays at a time and the others write nothing: the one that plays keeps a random name for itself in the same storage, so a tab that wakes up after the browser paused it can tell at once that it no longer plays. That name is never sent, and the tabs ask each other for the game inside the browser alone.'
         ]
       },
       {
@@ -156,7 +157,7 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
       {
         heading: 'Hva som aldri samles inn',
         paragraphs: [
-          'Ingen konto, ingen passord, ingen informasjonskapsel, ingen digitale fingeravtrykk, ingen reklame, ingen skript fra tredjeparter, og ingen e-postadresse med mindre du oppgir en i en melding eller skriver til feedback@sudokui.app. Spillene dine, notatene, statistikken, teknikkoversikten og rekken på dagens sudoku blir i nettleserens lagring, på enheten din, og forlater den bare på måtene denne siden beskriver.'
+          'Ingen konto, ingen passord, ingen informasjonskapsel, ingen digitale fingeravtrykk, ingen reklame, ingen skript fra tredjeparter, og ingen e-postadresse med mindre du oppgir en i en melding eller skriver til feedback@sudokui.app. Spillene dine, notatene, statistikken, teknikkoversikten og rekken på dagens sudoku blir i nettleserens lagring, på enheten din, og forlater den bare på måtene denne siden beskriver. Er appen åpen i flere faner eller vinduer, spiller én av dem om gangen, og de andre skriver ingenting: den som spiller, beholder et tilfeldig navn på seg selv i den samme lagringen, slik at en fane som våkner etter at nettleseren satte den på pause, straks ser at den ikke lenger spiller. Navnet sendes aldri, og fanene ber hverandre om spillet bare inne i nettleseren.'
         ]
       },
       {
@@ -224,7 +225,7 @@ export const PRIVACY: Record<Lang, PrivacyCopy> = {
       {
         heading: 'Lo que nunca se recoge',
         paragraphs: [
-          'Sin cuenta, sin contraseña, sin cookie, sin huella digital, sin publicidad, sin scripts de terceros, y sin dirección de correo salvo que la des en un mensaje o escribas a feedback@sudokui.app. Tus partidas, tus anotaciones, tus estadísticas, tu registro de técnicas y tu racha del sudoku del día se quedan en el almacenamiento de tu navegador, en tu dispositivo, y solo salen de él de las maneras que describe esta página.'
+          'Sin cuenta, sin contraseña, sin cookie, sin huella digital, sin publicidad, sin scripts de terceros, y sin dirección de correo salvo que la des en un mensaje o escribas a feedback@sudokui.app. Tus partidas, tus anotaciones, tus estadísticas, tu registro de técnicas y tu racha del sudoku del día se quedan en el almacenamiento de tu navegador, en tu dispositivo, y solo salen de él de las maneras que describe esta página. Con la app abierta en más de una pestaña o ventana, juega una a la vez y las demás no escriben nada: la que juega guarda un nombre aleatorio para sí en ese mismo almacenamiento, para que una pestaña que despierta después de que el navegador la pausara vea al instante que ya no es la que juega. Ese nombre nunca se envía, y las pestañas se piden la partida unas a otras solo dentro del navegador.'
         ]
       },
       {

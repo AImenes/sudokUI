@@ -35,6 +35,7 @@ import { useDailyStats } from './dailyStats';
 import type { DailyResult, PlayedDaily } from './dailyStats';
 import { dailyClosed, localDateKey } from '../content/dailies';
 import { justifyMove } from './pools';
+import { play } from './play';
 import { translator, msg } from '../content/i18n';
 import type { TextPosition } from '../content/textGrid';
 import { formatPencilGrid } from '../content/textGrid';
@@ -2845,25 +2846,12 @@ export const useGame = create<GameStore>()(
       // and a reload take off again (doneBoard)
       setAway: (away) => {
         const s = get();
-        if (away === s.away) {
-          // hidden already and now going (a tab closed, or the browser
-          // closed, behind others): a game it holds that the save no
-          // longer has goes into the save, so the last copy does not leave
-          // with the page (leaveWith)
-          if (away) leaveWith();
-          return;
-        }
+        if (away === s.away) return;
         if (away) {
           const pause = !s.custom && !s.paused && underWay({ ...s, ...doneBoard(s) });
           set({ away: true, elapsedBefore: s.elapsedMs(), ...(pause ? { paused: true } : {}) });
         } else {
-          // what another window saved while this one could not hear it (a
-          // page the browser froze misses its storage events) is read
-          // before this window writes again, and a game said to be still
-          // open in another window is asked about again (recheck)
-          catchUp();
           set({ away: false, startedAt: Date.now() });
-          recheck();
         }
       },
 
@@ -2877,9 +2865,10 @@ export const useGame = create<GameStore>()(
       // the save as this window last wrote or read it (seenSave), so being
       // shown again reads only what another window wrote since
       storage: createJSONStorage(() => {
-        const store = localStorage;
+        // written only by the page that holds the play (src/state/play.ts)
+        const store = play.storage();
         return {
-          getItem: (name: string) => (seenSave = takingIn ?? store.getItem(name)),
+          getItem: (name: string) => (seenSave = takingIn ?? (store.getItem(name) as string | null)),
           setItem: (name: string, value: string) => {
             if (quiet) return;
             seenSave = value;
@@ -3285,11 +3274,6 @@ function catchUp() {
   if (json && json !== seenSave) takeInSavedGame(json);
 }
 tallyFollowsWhen(() => takesInSaved(savedGame(localStorage.getItem('sudokui-game-v1')), useGame.getState()));
-if (typeof window !== 'undefined') {
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'sudokui-game-v1' && e.newValue) takeInSavedGame(e.newValue, document.visibilityState === 'hidden');
-  });
-}
 
 /** a saved game's info with its band as one of HoDoKu's five levels; a name that is no band at all is left as it was */
 export function levelled(info: GameInfo): GameInfo {

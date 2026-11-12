@@ -75,6 +75,8 @@ const ui: Dictionary = {
   "The daily of {date}": "Oppgaven for {date}",
   "Today’s daily": "Dagens oppgave",
   "Hide this note": "Skjul denne merknaden",
+  "sudokUI is open in another tab or window, and your game carries on there.": "sudokUI er åpent i en annen fane eller et annet vindu, og spillet ditt fortsetter der.",
+  "Play here": "Spill her",
   "Your game in progress is kept.": "Spillet du holdt på med, er tatt vare på.",
   "Back to it": "Tilbake til det",
   "The puzzle you were typing in, where you left it": "Oppgaven du skrev inn, der du slapp",

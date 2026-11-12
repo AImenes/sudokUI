@@ -11,9 +11,12 @@ import App from './ui/App';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import './ui/styles.css';
 import { useGame } from './state/gameStore';
+import { useStats } from './state/stats';
+import { useDailyStats } from './state/dailyStats';
+import { play, startPlay, acted } from './state/play';
 import { useAppStatus, reloadIntoLatest } from './state/appStatus';
 import { useSettings } from './state/settings';
-import { startLocales, langOfPath } from './content/i18n';
+import { startLocales, langOfPath, langRoot } from './content/i18n';
 
 // /nb/ and /es/ are the app in Norwegian and Spanish, the addresses search
 // engines show for those languages: arriving there chooses the language
@@ -68,9 +71,51 @@ window.addEventListener('vite:preloadError', (event) => {
   useAppStatus.getState().setUpdateReady('chunk');
 });
 
+// One page of the app plays at a time (src/state/play.ts): asked for the
+// play, this page writes its game, clock included, as a hidden page does
+// (setAway pauses a game under way), then lets go and is a view. Given
+// the play, a page that has not yet acted reads again the saves another
+// page wrote meanwhile; one that has acted goes on as it is when the saves
+// are as it left them, and otherwise reloads, so it starts from them the
+// way every page starts (it wrote nothing of its own while a view)
+const STORES: Record<string, { persist: { rehydrate: () => unknown } }> = {
+  'sudokui-game-v1': useGame,
+  'sudokui-stats-v1': useStats,
+  'sudokui-daily-v1': useDailyStats
+};
+play.hooks = {
+  give: () => {
+    useGame.getState().setAway(true);
+    // (zustand's persist writes on every set, even one that changes nothing)
+    useGame.setState((s) => s);
+  },
+  taken: (changed) => {
+    if (!acted()) {
+      // (the storage is read at once, so each save comes in within the call)
+      for (const key of play.changedSaves()) void STORES[key]?.persist.rehydrate();
+      return;
+    }
+    if (!changed) return;
+    play.leave();
+    // into the saves as they are: the board another page left, not this
+    // page's address read as a link to its old game (the address follows
+    // the board once the app is up)
+    try {
+      window.history.replaceState(null, '', langRoot(useSettings.getState().lang));
+    } catch {
+      /* an origin that allows no path of its own: the reload reads the hash */
+    }
+    window.location.reload();
+  },
+  lost: () => {}
+};
+
 // the first render waits for the chosen language's tables (precached, so a
-// moment even offline); if they cannot be fetched the app starts in English
-startLocales().finally(() => {
+// moment even offline), and for the play (a moment, or the holder's wait
+// when it does not answer); if the tables cannot be fetched the app starts
+// in English
+const claimed = Promise.race([startPlay(), new Promise<void>((done) => setTimeout(done, 4000))]).catch(() => {});
+Promise.all([startLocales().catch(() => {}), claimed]).finally(() => {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <ErrorBoundary>

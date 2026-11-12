@@ -905,20 +905,6 @@ describe('two windows of the app', () => {
     expect(entries(savedState().setAside.cells)).toBe(2);
   });
 
-  it('a save it never heard of (the page frozen while hidden) is read when it is shown, before it saves', async () => {
-    await startDaily();
-    play(3);
-    g().setAway(true);
-    await inOtherWindow(async () => {
-      await open(`https://sudokui.app/p/${EASY}/`);
-      play(5);
-    });
-    g().setAway(false);
-    expect(g().info?.dailyKey).toBe(TODAY);
-    expect(savedState().setAside.info.puzzle).toBe(EASY);
-    expect(entries(savedState().setAside.cells)).toBe(5);
-  });
-
   it('the mirror: moves made on the daily in the older tab reach the copy the newer tab keeps aside', async () => {
     await startDaily();
     play(3);
@@ -1283,61 +1269,6 @@ describe('two windows of the app', () => {
     g().clearNotice();
     takeInSavedGame(JSON.stringify(last), true);
     expect(g().letGo).toBeNull();
-  });
-
-  it('shown again, a game said to be still open in another window that no window has any more is said to be gone', async () => {
-    await startDaily();
-    play(3);
-    await open(`https://sudokui.app/p/${EASY}/`);
-    play(2);
-    g().setAway(true);
-    let hard = '';
-    const theirs = await inOtherWindow(async () => {
-      await open(`https://sudokui.app/p/${HARD}/`);
-      play(1);
-      hard = gameKey(g());
-    });
-    askOthersWith((keys, answer) => answer(new Set(keys.filter((k) => k === hard))));
-    takeInSavedGame(theirs, true);
-    expect(g().letGo).toContain('is still open in your other tab');
-    // that window went without a word (killed, or its page frozen): asked again when this one is shown
-    askOthersWith((_keys, answer) => answer(new Set()));
-    g().setAway(false);
-    expect(g().letGo).toContain('is gone, today’s daily is kept');
-    expect(g().letGo).not.toContain('still open');
-  });
-
-  it('a hidden page that goes puts a game the save has lost into the save’s slot when it holds more work than the one kept there, in one write; else it writes nothing', async () => {
-    // another window's save: a friend's game nobody touched on its board, today's daily (three entries) kept
-    await startDaily();
-    play(3);
-    await open(`https://sudokui.app/p/${EASY}/`);
-    const othersSave = storage.get(KEY)!;
-    // this page: a Hard game of its own over it, five entries, then hidden (it saves)
-    await open(`https://sudokui.app/p/${HARD}/`);
-    play(5);
-    g().setAway(true);
-    // the other window saves after it, without the Hard game; then this page goes
-    storage.set(KEY, othersSave);
-    const count = writes();
-    g().setAway(true);
-    expect(count()).toBe(1);
-    expect(savedState().info.puzzle).toBe(EASY);
-    expect(savedState().setAside.info.puzzle).toBe(HARD);
-    expect(entries(savedState().setAside.cells)).toBe(5);
-    vi.restoreAllMocks();
-    // with less work than the daily kept there, the daily stays and nothing is written
-    await open(`https://sudokui.app/p/${HARD}/`);
-    useGame.setState({ away: false });
-    g().restart();
-    play(2);
-    g().setAway(true);
-    storage.set(KEY, othersSave);
-    const none = writes();
-    g().setAway(true);
-    expect(none()).toBe(0);
-    expect(storage.get(KEY)).toBe(othersSave);
-    vi.restoreAllMocks();
   });
 
   it('moves made in another window on the game behind a puzzle typed here reach that copy, and no second copy of it takes the slot', async () => {

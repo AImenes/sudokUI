@@ -13,7 +13,8 @@
 // device only, so its share line can be built again after the win screen
 // has closed.
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { play } from './play';
 import type { DailyStats } from '../content/dailies';
 import type { Level } from '../engine/ratings';
 import { useSettings } from './settings';
@@ -213,19 +214,10 @@ export const useDailyStats = create<DailyStatsState>()(
     {
       name: 'sudokui-daily-v1',
       version: 1,
+      // written only by the page that holds the play (src/state/play.ts)
+      storage: createJSONStorage(() => play.storage()),
       migrate: migrateKept,
       partialize: (s): Kept => ({ tokens: s.tokens, submitted: s.submitted, pending: s.pending, stats: s.stats, played: s.played })
     }
   )
 );
-
-// the dailies another window of the app played and sent (a second tab, the
-// installed app's window) are taken in while this one is hidden, as its
-// game is (gameStore.ts), so this window's next save (its win screen
-// fetching the day's numbers is one) does not drop a time sent there, or
-// its token
-if (typeof window !== 'undefined') {
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'sudokui-daily-v1' && e.newValue && document.visibilityState === 'hidden') void useDailyStats.persist.rehydrate();
-  });
-}

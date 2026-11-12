@@ -3,7 +3,8 @@
 // toast display and the first-visit bootstrap game.
 import React, { Suspense, useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { SLOP_PX } from './touchIntent';
-import { useGame, rateImport, Proof, listLayer, reclaimOwnGame, useResting } from '../state/gameStore';
+import { useGame, rateImport, Proof, listLayer, useResting } from '../state/gameStore';
+import { play, usePlay, markActed } from '../state/play';
 import { cellName, PEERS } from '../engine/board';
 import { useSettings } from '../state/settings';
 import { useShownTheme, applyTheme } from './theme';
@@ -290,6 +291,40 @@ function SetAsideNote() {
   );
 }
 
+/**
+ * This page does not hold the play (src/state/play.ts): another tab or
+ * window of the app does, and the game carries on there. A cover over the
+ * app, in the pause card's look, says so and offers Play here, which takes
+ * the play as a page that starts does; the app behind it is inert. A
+ * dialog of its own, with its name, the focus on its button. Never shown
+ * to a page nobody sees, nor while the page is taking the play back as it
+ * is shown again, so it does not flash up in front of the player.
+ */
+function PlayCover() {
+  const shown = usePlay((s) => (s.role === 'view' || s.role === 'waiting') && !s.taking && !s.hidden);
+  const t = useT();
+  const button = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (shown) button.current?.focus({ preventScroll: true });
+  }, [shown]);
+  if (!shown) return null;
+  const here = async () => {
+    // taken with the saves as this page left them, it goes on as it is
+    // (otherwise it reloads into them): the board has the focus
+    if ((await play.here()) === 'held' && play.acts()) document.querySelector<SVGElement>('svg[role="application"]')?.focus();
+  };
+  return (
+    <div className="play-cover">
+      <div className="play-card" role="dialog" aria-modal="true" aria-labelledby="play-cover-line">
+        <p id="play-cover-line">{t('sudokUI is open in another tab or window, and your game carries on there.')}</p>
+        <button ref={button} className="resume-btn" onClick={() => void here()}>
+          {t('Play here')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Timer() {
   const elapsedMs = useGame((s) => s.elapsedMs);
   const paused = useGame((s) => s.paused);
@@ -357,12 +392,18 @@ export default function App() {
   const { font, toggleTheme, showTimer, hideRating, showPoodle, lang } = useSettings();
   const t = useT();
   const { start, genState, cancel } = useNewGame();
+  // this page holds the play, or plays alone (src/state/play.ts): only then
+  // does it act on the game; otherwise it is a view behind the cover
+  const playing = usePlay((s) => s.role === 'player' || s.role === 'solo');
+  // the start-up has run (below): the address bar follows the board from then
+  const [booted, setBooted] = useState(false);
   // the hardest bands start from seeds: stock their pools while idle, so
   // even the first Nightmare on this device starts at once
   useEffect(() => {
+    if (!playing) return;
     const t = setTimeout(() => warmSeededPools(), 4000);
     return () => clearTimeout(t);
-  }, []);
+  }, [playing]);
 
   const [dialog, setDialog] = useState<
     'none' | 'new' | 'practice' | 'io' | 'share' | 'shareHint' | 'settings' | 'info' | 'why' | 'restart' | 'steps' | 'scan' | 'learn' | 'progress'
@@ -409,14 +450,16 @@ export default function App() {
   // back. Otherwise a saved game resumes (or a puzzle being typed in, which
   // has no address of its own), otherwise start an easy one. The /learn/
   // pages deep-link in with #practice=<technique> (start practising it) and
-  // #learn=<topic> (open the guide there). StrictMode-guarded.
+  // #learn=<topic> (open the guide there). It runs once the page holds the
+  // play, with the saves read as they are then (src/main.tsx): a link opened
+  // in a new tab puts the game under way aside as one opened in the same
+  // tab does; a page that came up hidden behind the page that plays waits,
+  // as a view, until it is shown. StrictMode-guarded.
   useEffect(() => {
-    if ((window as any).__sudokuiBooted) return;
+    if (!playing || (window as any).__sudokuiBooted) return;
     (window as any).__sudokuiBooted = true;
-    // another window saved last, keeping this tab's own game in its slot
-    // (a reload while another tab has a game): that game comes back to
-    // the board first, quietly, as this page left it (gameStore.ts)
-    reclaimOwnGame();
+    markActed();
+    setBooted(true);
     const params = new URLSearchParams(window.location.hash.slice(1));
     const learn = params.get('learn');
     if (learn) openLearn(parseLearnParam(learn));
@@ -444,7 +487,7 @@ export default function App() {
       fallBack();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [playing]);
 
   // the win screen put away stays away for that solve, an Undo and the
   // same digit again included (the same solve, recordWin); a new game, the
@@ -468,11 +511,14 @@ export default function App() {
   // game set aside by a link in this tab swaps back. A hash link is the
   // hashchange listener's own
   useEffect(() => {
+    // (a view acts on nothing: src/state/play.ts)
     const onHash = () => {
+      if (!play.acts()) return;
       const link = readAppLink({ pathname: '/', search: '', hash: window.location.hash });
       if (link) void openAppLink(link, 'tab');
     };
     const onPop = () => {
+      if (!play.acts()) return;
       if (readAppLink({ pathname: '/', search: '', hash: window.location.hash })) return;
       const link = readAppLink(window.location);
       if (link) void openAppLink(link, 'tab');
@@ -498,6 +544,9 @@ export default function App() {
   // so a reload keeps the entry (the boot, above) rather than reopening the
   // game that was on the board before it.
   useEffect(() => {
+    // (not before the start-up has read the address: a page that came up
+    // hidden as a view keeps the link it was opened with)
+    if (!booted) return;
     const homeTitle = () =>
       import('../content/home')
         .then((m) => {
@@ -530,29 +579,32 @@ export default function App() {
       window.history.replaceState(null, '', `#p=${info.puzzle}`);
     }
     homeTitle();
-  }, [custom, info?.puzzle, info?.level, info?.score, info?.dailyNo, info?.dailyKey, lang, hideRating, won]);
+  }, [booted, custom, info?.puzzle, info?.level, info?.score, info?.dailyNo, info?.dailyKey, lang, hideRating, won]);
 
   // a daily result that could not be sent goes on the next open, and when
-  // the connection comes back (src/state/dailyStats.ts)
+  // the connection comes back (src/state/dailyStats.ts): from the page that
+  // plays, which alone writes what came of it
   useEffect(() => {
+    if (!playing) return;
     const flush = () => void useDailyStats.getState().flushPending();
     flush();
     window.addEventListener('online', flush);
     return () => window.removeEventListener('online', flush);
-  }, []);
+  }, [playing]);
 
   // the clock counts only while the board can be seen: it stops when the
   // page is hidden or left (another app, the screen off, a reload, the
   // update bar's among them) and is saved as it stood, so a page the
   // system closes in the background comes back at that time. A game under
   // way pauses, so the player comes back to the pause card; one not yet
-  // played on runs on when shown again (gameStore.ts, setAway)
+  // played on runs on when shown again (gameStore.ts, setAway). A view's
+  // clock stands still too, as if hidden: the game carries on elsewhere
   useEffect(() => {
     const setAway = useGame.getState().setAway;
-    const onVisibility = () => setAway(document.visibilityState === 'hidden');
+    const onVisibility = () => setAway(document.visibilityState === 'hidden' || !play.acts());
     const onHide = () => setAway(true);
     const onShow = () => {
-      if (document.visibilityState !== 'hidden') setAway(false);
+      if (document.visibilityState !== 'hidden') onVisibility();
     };
     onVisibility();
     document.addEventListener('visibilitychange', onVisibility);
@@ -563,11 +615,13 @@ export default function App() {
       window.removeEventListener('pagehide', onHide);
       window.removeEventListener('pageshow', onShow);
     };
-  }, []);
+  }, [playing]);
 
   // the plays counted (src/state/telemetry.ts): what waits goes on the
-  // open, when the app is hidden or left, and when the connection comes back
+  // open, when the app is hidden or left, and when the connection comes
+  // back; from the page that plays (a view has none of its own)
   useEffect(() => {
+    if (!playing) return;
     const flush = () => void useTelemetry.getState().flush();
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flush();
@@ -581,7 +635,7 @@ export default function App() {
       window.removeEventListener('pagehide', flush);
       window.removeEventListener('online', flush);
     };
-  }, []);
+  }, [playing]);
 
   // toasts fade a few seconds after they can be seen: one that came while
   // the page was hidden (a game let go as another window's was kept,
@@ -637,6 +691,8 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // a view acts on nothing: the cover's own button is the browser's (src/state/play.ts)
+      if (!play.acts()) return;
       // the shortcut a key names: a letter by its character, the rest by
       // its place (shortcutKeys.ts)
       const k = shortcutKey(e);
@@ -850,511 +906,515 @@ export default function App() {
   }, [numberKey, erase, wipe, undo, redo, setMode, requestHint, select, selection, togglePause, convertMarks, start]);
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          {/* the tile is a picture of the name beside it: a screen reader
-              hears the name once, "sudokUI", as on the static pages */}
-          <span className="brand-mark" aria-hidden="true">{BRAND[1]}</span>
-          <h1>
-            {BRAND[0]}<span className="brand-ui">{BRAND[1]}</span>
-          </h1>
-        </div>
-        {info && (
-          <div className="game-meta" ref={metaRef}>
-            {hideRating && !won ? (
-              <button
-                className="score-btn hidden-rating"
-                onClick={() => setDialog('settings')}
-                title={t('Difficulty is hidden until you solve the puzzle. Change this in Settings')}
-              >
-                <span className="level-badge level-hidden">🎲 {t('hidden||the difficulty, until the puzzle is solved')}</span>
-              </button>
-            ) : (
-              <>
-                <RatingGauge level={info.level} score={info.score} puzzle={info.puzzle} />
-                {/* the title names the level where a narrow phone shortens it */}
-                <span className={`level-badge level-${info.level.toLowerCase()}`} title={t.level(info.level)}>
-                  {t.level(info.level)}
-                </span>
+    <>
+      {/* a page that does not hold the play is a view: inert behind the cover */}
+      <div className="app" inert={playing ? undefined : ''}>
+        <header className="topbar">
+          <div className="brand">
+            {/* the tile is a picture of the name beside it: a screen reader
+                hears the name once, "sudokUI", as on the static pages */}
+            <span className="brand-mark" aria-hidden="true">{BRAND[1]}</span>
+            <h1>
+              {BRAND[0]}<span className="brand-ui">{BRAND[1]}</span>
+            </h1>
+          </div>
+          {info && (
+            <div className="game-meta" ref={metaRef}>
+              {hideRating && !won ? (
                 <button
-                  className="score-btn"
-                  onClick={() => openLearn({ tab: 'rating' })}
-                  title={t('How this rating is calculated')}
-                  aria-label={t('HoDoKu rating {score}. How the rating is calculated', { score: info.score })}
+                  className="score-btn hidden-rating"
+                  onClick={() => setDialog('settings')}
+                  title={t('Difficulty is hidden until you solve the puzzle. Change this in Settings')}
                 >
-                  <span className="rating-word">{t("HoDoKu rating||the puzzle's score, before the number")}{NBSP}</span><strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
+                  <span className="level-badge level-hidden">🎲 {t('hidden||the difficulty, until the puzzle is solved')}</span>
                 </button>
-              </>
-            )}
-            {info.practiceTech && (
-              <span className="practice-badge">{t('Practice: {tech}', { tech: t.tech(info.practiceTech) })}</span>
-            )}
-          </div>
-        )}
-        <div className="topbar-right">
-          {showTimer && <Timer />}
-          {/* a solved game's clock has stopped for good: nothing to pause or resume */}
-          <button
-            className="icon-btn"
-            onClick={togglePause}
-            disabled={won}
-            title={t('Pause (P)')}
-            aria-label={t(paused && !won ? 'Resume game' : 'Pause game')}
-          >
-            {paused && !won ? '⏵' : '⏸'}
-          </button>
-          <button
-            className="icon-btn theme-btn"
-            onClick={toggleTheme}
-            title={t('Cycle theme: dark → daylight → rosé → forest')}
-            aria-label={t(
-              shown === 'dark'
-                ? 'Switch to daylight theme'
-                : shown === 'light'
-                  ? 'Switch to rosé theme'
-                  : shown === 'rose'
-                    ? 'Switch to forest theme'
-                    : 'Switch to dark theme'
-            )}
-          >
-            {shown === 'dark' ? '☀️' : shown === 'light' ? '🌸' : shown === 'rose' ? '🌲' : '🌙'}
-          </button>
-          <button
-            className="icon-btn"
-            onClick={() => setDialog('info')}
-            title={t('How to play, modes & shortcuts')}
-            aria-label={t('How to play, modes and shortcuts')}
-          >
-            ⓘ
-          </button>
-          <button
-            className="icon-btn gear"
-            onClick={() => setDialog('settings')}
-            title={t('Settings')}
-            aria-label={t('Settings')}
-          >
-            ⚙
-          </button>
-        </div>
-      </header>
-
-      <main
-        className="layout"
-        // touch has no Escape key: a tap on the empty space around the
-        // board clears the selection. A tap, not any touch: a scroll that
-        // starts beside the board (on a tablet, or in multi-select, where
-        // the board keeps its own touches) ends in a pointercancel, never
-        // here, and leaves the selection as it was
-        onPointerDown={(e) => {
-          layoutTap.current = emptySpace(e.target) ? { x: e.clientX, y: e.clientY } : null;
-        }}
-        onPointerUp={(e) => {
-          const down = layoutTap.current;
-          layoutTap.current = null;
-          if (down && emptySpace(e.target) && Math.hypot(e.clientX - down.x, e.clientY - down.y) <= SLOP_PX) select([], false);
-        }}
-      >
-        <div className="board-col">
-          <Grid />
-          <SetTracker />
-          {/* while paused, Nutella moves onto the pause card instead */}
-          {showPoodle && (!paused || won) && <Poodle />}
-        </div>
-        {/* behind the pause card the controls rest: dimmed, and inert, so
-            Tab and a screen reader reach only the notes and the menu row
-            beside it (useResting) */}
-        <aside className={`side${resting ? ' paused' : ''}`}>
-          <SetAsideNote />
-          <PastDailyNote onToday={() => void startDaily()} />
-          <div className="menu-row">
-            <button onClick={() => setDialog('new')}>
-              <span className="menu-icon">▦</span>{t('New')}
-            </button>
-            <button
-              className={info?.practiceTech ? 'active' : ''}
-              onClick={() => setDialog('progress')}
-              title={t('Your path, practice and the theory of every technique')}
-            >
-              <span className="menu-icon">🎓</span>{t('Learn')}
-            </button>
-            <button onClick={() => setDialog('io')}>
-              <span className="menu-icon">⇅</span>{t('Import')}
-            </button>
-            {/* a puzzle being typed in has no link yet: the tap says so */}
-            <button
-              aria-disabled={custom || undefined}
-              onClick={() =>
-                custom
-                  ? useGame.setState({ notice: t('A puzzle being typed in has no link yet. Press {button} first', { button: t('Check & play') }) })
-                  : setDialog('share')
-              }
-            >
-              <span className="menu-icon">🔗</span>{t('Share')}
-            </button>
-            <button onClick={() => setDialog('restart')} title={custom ? t('Clear the board') : t('Reset this puzzle and the timer')}>
-              <span className="menu-icon">↺</span>{t('Restart')}
-            </button>
-          </div>
-          <Controls
-            onShowSteps={info && !custom ? () => setDialog('steps') : undefined}
-            onScan={info && !custom ? () => setDialog('scan') : undefined}
-          />
-          {info?.practiceTech && !custom && (
-            <div className="practice-bar" inert={resting ? '' : undefined}>
-              <span className="practice-label">
-                {rich(t('Practicing {tech}'), { tech: <strong>{t.tech(info.practiceTech)}</strong> })}
-                {practiceFound && <span className="practice-found"> · {t('found||the technique being practised')} 🎯</span>}
-              </span>
-              <div className="practice-actions">
-                {!practiceFound &&
-                  !chain &&
-                  practiceTarget &&
-                  buildable(practiceTarget) && (
-                    <button
-                      className="ghost"
-                      onClick={() => startChain(practiceTarget.eliminations)}
-                      title={t("Open the chain trainer with this technique's removal as the goal")}
-                    >
-                      {t('Build it yourself')}
-                    </button>
-                  )}
-                <button onClick={() => start({ kind: 'tech', tech: info.practiceTech! })}>
-                  {t('Next puzzle (N)')}
-                </button>
-              </div>
+              ) : (
+                <>
+                  <RatingGauge level={info.level} score={info.score} puzzle={info.puzzle} />
+                  {/* the title names the level where a narrow phone shortens it */}
+                  <span className={`level-badge level-${info.level.toLowerCase()}`} title={t.level(info.level)}>
+                    {t.level(info.level)}
+                  </span>
+                  <button
+                    className="score-btn"
+                    onClick={() => openLearn({ tab: 'rating' })}
+                    title={t('How this rating is calculated')}
+                    aria-label={t('HoDoKu rating {score}. How the rating is calculated', { score: info.score })}
+                  >
+                    <span className="rating-word">{t("HoDoKu rating||the puzzle's score, before the number")}{NBSP}</span><strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
+                  </button>
+                </>
+              )}
+              {info.practiceTech && (
+                <span className="practice-badge">{t('Practice: {tech}', { tech: t.tech(info.practiceTech) })}</span>
+              )}
             </div>
           )}
-          {chain ? (
-            <ChainPanel />
-          ) : (
-            <HintPanel
-              onLearn={(tech) => openLearn({ tab: 'techniques', tech })}
-              onReport={(hint) => setReport({ kind: 'hint', hint })}
-              onShare={() => setDialog('shareHint')}
+          <div className="topbar-right">
+            {showTimer && <Timer />}
+            {/* a solved game's clock has stopped for good: nothing to pause or resume */}
+            <button
+              className="icon-btn"
+              onClick={togglePause}
+              disabled={won}
+              title={t('Pause (P)')}
+              aria-label={t(paused && !won ? 'Resume game' : 'Pause game')}
+            >
+              {paused && !won ? '⏵' : '⏸'}
+            </button>
+            <button
+              className="icon-btn theme-btn"
+              onClick={toggleTheme}
+              title={t('Cycle theme: dark → daylight → rosé → forest')}
+              aria-label={t(
+                shown === 'dark'
+                  ? 'Switch to daylight theme'
+                  : shown === 'light'
+                    ? 'Switch to rosé theme'
+                    : shown === 'rose'
+                      ? 'Switch to forest theme'
+                      : 'Switch to dark theme'
+              )}
+            >
+              {shown === 'dark' ? '☀️' : shown === 'light' ? '🌸' : shown === 'rose' ? '🌲' : '🌙'}
+            </button>
+            <button
+              className="icon-btn"
+              onClick={() => setDialog('info')}
+              title={t('How to play, modes & shortcuts')}
+              aria-label={t('How to play, modes and shortcuts')}
+            >
+              ⓘ
+            </button>
+            <button
+              className="icon-btn gear"
+              onClick={() => setDialog('settings')}
+              title={t('Settings')}
+              aria-label={t('Settings')}
+            >
+              ⚙
+            </button>
+          </div>
+        </header>
+
+        <main
+          className="layout"
+          // touch has no Escape key: a tap on the empty space around the
+          // board clears the selection. A tap, not any touch: a scroll that
+          // starts beside the board (on a tablet, or in multi-select, where
+          // the board keeps its own touches) ends in a pointercancel, never
+          // here, and leaves the selection as it was
+          onPointerDown={(e) => {
+            layoutTap.current = emptySpace(e.target) ? { x: e.clientX, y: e.clientY } : null;
+          }}
+          onPointerUp={(e) => {
+            const down = layoutTap.current;
+            layoutTap.current = null;
+            if (down && emptySpace(e.target) && Math.hypot(e.clientX - down.x, e.clientY - down.y) <= SLOP_PX) select([], false);
+          }}
+        >
+          <div className="board-col">
+            <Grid />
+            <SetTracker />
+            {/* while paused, Nutella moves onto the pause card instead */}
+            {showPoodle && (!paused || won) && <Poodle />}
+          </div>
+          {/* behind the pause card the controls rest: dimmed, and inert, so
+              Tab and a screen reader reach only the notes and the menu row
+              beside it (useResting) */}
+          <aside className={`side${resting ? ' paused' : ''}`}>
+            <SetAsideNote />
+            <PastDailyNote onToday={() => void startDaily()} />
+            <div className="menu-row">
+              <button onClick={() => setDialog('new')}>
+                <span className="menu-icon">▦</span>{t('New')}
+              </button>
+              <button
+                className={info?.practiceTech ? 'active' : ''}
+                onClick={() => setDialog('progress')}
+                title={t('Your path, practice and the theory of every technique')}
+              >
+                <span className="menu-icon">🎓</span>{t('Learn')}
+              </button>
+              <button onClick={() => setDialog('io')}>
+                <span className="menu-icon">⇅</span>{t('Import')}
+              </button>
+              {/* a puzzle being typed in has no link yet: the tap says so */}
+              <button
+                aria-disabled={custom || undefined}
+                onClick={() =>
+                  custom
+                    ? useGame.setState({ notice: t('A puzzle being typed in has no link yet. Press {button} first', { button: t('Check & play') }) })
+                    : setDialog('share')
+                }
+              >
+                <span className="menu-icon">🔗</span>{t('Share')}
+              </button>
+              <button onClick={() => setDialog('restart')} title={custom ? t('Clear the board') : t('Reset this puzzle and the timer')}>
+                <span className="menu-icon">↺</span>{t('Restart')}
+              </button>
+            </div>
+            <Controls
+              onShowSteps={info && !custom ? () => setDialog('steps') : undefined}
+              onScan={info && !custom ? () => setDialog('scan') : undefined}
             />
-          )}
-          {custom && (
-            <div className="hint-panel" inert={resting ? '' : undefined}>
-              <div className="hint-head">
-                <strong>{t('Custom puzzle')}</strong>
-              </div>
-              <div className="hint-body">
-                {scanPreview && (
-                  <div className="scan-check">
-                    <img src={scanPreview} alt={t('The scanned grid, as the scanner saw it')} />
-                    <p>
-                      {t(
-                        scanDoubts.length > 0
-                          ? "The photo, straightened. Compare it with the board; the red cells are the scanner's doubts: a digit it was unsure of, or ink it could not read."
-                          : 'The photo, straightened. Compare it with the board.'
-                      )}
-                    </p>
-                  </div>
-                )}
-                <p>
-                  {t(
-                    'Type the givens onto the board ({n} so far). When you are done, sudokUI verifies the puzzle has exactly one solution and rates it before play begins.',
-                    { n: givenCount }
-                  )}
-                </p>
-                {customError && <p className="dialog-error">{customError}</p>}
-                <div className="hint-actions">
-                  <button
-                    onClick={() => setCustomError(finishCustomEntry())}
-                  >
-                    ✓ {t('Check & play')}
-                  </button>
-                  <button
-                    className="ghost"
-                    onClick={() => {
-                      setCustomError(null);
-                      cancelCustomEntry();
-                      // the game from before the entry comes back, a reload
-                      // or not; with none (a save from before the backup was
-                      // kept), a fresh easy one
-                      if (!useGame.getState().info) start({ kind: 'level', level: 'Easy' });
-                    }}
-                  >
-                    {t('Cancel')}
+            {info?.practiceTech && !custom && (
+              <div className="practice-bar" inert={resting ? '' : undefined}>
+                <span className="practice-label">
+                  {rich(t('Practicing {tech}'), { tech: <strong>{t.tech(info.practiceTech)}</strong> })}
+                  {practiceFound && <span className="practice-found"> · {t('found||the technique being practised')} 🎯</span>}
+                </span>
+                <div className="practice-actions">
+                  {!practiceFound &&
+                    !chain &&
+                    practiceTarget &&
+                    buildable(practiceTarget) && (
+                      <button
+                        className="ghost"
+                        onClick={() => startChain(practiceTarget.eliminations)}
+                        title={t("Open the chain trainer with this technique's removal as the goal")}
+                      >
+                        {t('Build it yourself')}
+                      </button>
+                    )}
+                  <button onClick={() => start({ kind: 'tech', tech: info.practiceTech! })}>
+                    {t('Next puzzle (N)')}
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-          {errors.length > 0 && (revertIndex !== null || proofs.length > 0) && (
-            <div className="hint-panel" role="region" aria-label={t('Mistakes found')} inert={resting ? '' : undefined}>
-              <div className="hint-head">
-                <strong>{t('Mistakes found')}</strong>
-              </div>
-              <div className="hint-body">
-                {proofs.length > 0 && (
-                  <ul className="proof-list">
-                    {proofs.map((p, k) => (
-                      <li key={p.cell}>
-                        <span>{proofText(p, t)}</span>
-                        {(p.conflict !== null || p.steps.length > 0) && (
-                          <button className="ghost" onClick={() => showProof(k)}>
-                            {t('Show me')}
-                          </button>
+            )}
+            {chain ? (
+              <ChainPanel />
+            ) : (
+              <HintPanel
+                onLearn={(tech) => openLearn({ tab: 'techniques', tech })}
+                onReport={(hint) => setReport({ kind: 'hint', hint })}
+                onShare={() => setDialog('shareHint')}
+              />
+            )}
+            {custom && (
+              <div className="hint-panel" inert={resting ? '' : undefined}>
+                <div className="hint-head">
+                  <strong>{t('Custom puzzle')}</strong>
+                </div>
+                <div className="hint-body">
+                  {scanPreview && (
+                    <div className="scan-check">
+                      <img src={scanPreview} alt={t('The scanned grid, as the scanner saw it')} />
+                      <p>
+                        {t(
+                          scanDoubts.length > 0
+                            ? "The photo, straightened. Compare it with the board; the red cells are the scanner's doubts: a digit it was unsure of, or ink it could not read."
+                            : 'The photo, straightened. Compare it with the board.'
                         )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {revertIndex !== null && (
+                      </p>
+                    </div>
+                  )}
                   <p>
                     {t(
-                      'Jump back to the last position where everything was correct? Your later entries are removed. Ctrl+Z brings them back.'
+                      'Type the givens onto the board ({n} so far). When you are done, sudokUI verifies the puzzle has exactly one solution and rates it before play begins.',
+                      { n: givenCount }
                     )}
                   </p>
-                )}
-                <div className="hint-actions">
-                  {revertIndex !== null && <button onClick={revertToValid}>↩ {t('Back to correct')}</button>}
-                  <button className="ghost" onClick={dismissRevert}>
-                    {t('Keep looking')}
-                  </button>
+                  {customError && <p className="dialog-error">{customError}</p>}
+                  <div className="hint-actions">
+                    <button
+                      onClick={() => setCustomError(finishCustomEntry())}
+                    >
+                      ✓ {t('Check & play')}
+                    </button>
+                    <button
+                      className="ghost"
+                      onClick={() => {
+                        setCustomError(null);
+                        cancelCustomEntry();
+                        // the game from before the entry comes back, a reload
+                        // or not; with none (a save from before the backup was
+                        // kept), a fresh easy one
+                        if (!useGame.getState().info) start({ kind: 'level', level: 'Easy' });
+                      }}
+                    >
+                      {t('Cancel')}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          <footer className="app-footer" inert={resting ? '' : undefined}>
-            {/* the static pages exist in every language: /learn/, /nb/learn/, /es/learn/ */}
-            <nav className="footer-learn" aria-label={t('Learn sudoku')}>
-              <span>{t('Learn:')} </span>
-              <a href={`${langRoot(t.lang)}learn/`} onClick={learnLink({ tab: 'techniques' })}>
-                {t('Techniques')}
+            )}
+            {errors.length > 0 && (revertIndex !== null || proofs.length > 0) && (
+              <div className="hint-panel" role="region" aria-label={t('Mistakes found')} inert={resting ? '' : undefined}>
+                <div className="hint-head">
+                  <strong>{t('Mistakes found')}</strong>
+                </div>
+                <div className="hint-body">
+                  {proofs.length > 0 && (
+                    <ul className="proof-list">
+                      {proofs.map((p, k) => (
+                        <li key={p.cell}>
+                          <span>{proofText(p, t)}</span>
+                          {(p.conflict !== null || p.steps.length > 0) && (
+                            <button className="ghost" onClick={() => showProof(k)}>
+                              {t('Show me')}
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {revertIndex !== null && (
+                    <p>
+                      {t(
+                        'Jump back to the last position where everything was correct? Your later entries are removed. Ctrl+Z brings them back.'
+                      )}
+                    </p>
+                  )}
+                  <div className="hint-actions">
+                    {revertIndex !== null && <button onClick={revertToValid}>↩ {t('Back to correct')}</button>}
+                    <button className="ghost" onClick={dismissRevert}>
+                      {t('Keep looking')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <footer className="app-footer" inert={resting ? '' : undefined}>
+              {/* the static pages exist in every language: /learn/, /nb/learn/, /es/learn/ */}
+              <nav className="footer-learn" aria-label={t('Learn sudoku')}>
+                <span>{t('Learn:')} </span>
+                <a href={`${langRoot(t.lang)}learn/`} onClick={learnLink({ tab: 'techniques' })}>
+                  {t('Techniques')}
+                </a>
+                <span aria-hidden="true"> · </span>
+                <a href={`${langRoot(t.lang)}learn/intuition/`} onClick={learnLink({ tab: 'intuition' })}>
+                  {t('Intuition')}
+                </a>
+                <span aria-hidden="true"> · </span>
+                <a href={`${langRoot(t.lang)}learn/glossary/`} onClick={learnLink({ tab: 'glossary' })}>
+                  {t('Glossary')}
+                </a>
+                <span aria-hidden="true"> · </span>
+                <a href={`${langRoot(t.lang)}${RATING_URL.slice(1)}`} onClick={learnLink({ tab: 'rating' })}>
+                  {t('HoDoKu rating')}
+                </a>
+              </nav>
+              <a href="https://github.com/AImenes/sudokUI" target="_blank" rel="noreferrer">
+                {t('Open source on GitHub')}
               </a>
               <span aria-hidden="true"> · </span>
-              <a href={`${langRoot(t.lang)}learn/intuition/`} onClick={learnLink({ tab: 'intuition' })}>
-                {t('Intuition')}
-              </a>
+              <button className="link-button" onClick={() => setReport({ kind: 'problem' })}>
+                {t('Send feedback')}
+              </button>
               <span aria-hidden="true"> · </span>
-              <a href={`${langRoot(t.lang)}learn/glossary/`} onClick={learnLink({ tab: 'glossary' })}>
-                {t('Glossary')}
-              </a>
+              {/* what the app sends, exactly: a static page in the app's language */}
+              <a href={`${langRoot(t.lang)}${PRIVACY_URL.slice(1)}`}>{t('Privacy')}</a>
               <span aria-hidden="true"> · </span>
-              <a href={`${langRoot(t.lang)}${RATING_URL.slice(1)}`} onClick={learnLink({ tab: 'rating' })}>
-                {t('HoDoKu rating')}
+              {/* what sudokUI is for: a static page for search engines, the same words as a dialog here */}
+              <a
+                href={`${langRoot(t.lang)}${WHY_URL.slice(1)}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setDialog('why');
+                }}
+              >
+                {WHY[t.lang].name}
               </a>
-            </nav>
-            <a href="https://github.com/AImenes/sudokUI" target="_blank" rel="noreferrer">
-              {t('Open source on GitHub')}
-            </a>
-            <span aria-hidden="true"> · </span>
-            <button className="link-button" onClick={() => setReport({ kind: 'problem' })}>
-              {t('Send feedback')}
-            </button>
-            <span aria-hidden="true"> · </span>
-            {/* what the app sends, exactly: a static page in the app's language */}
-            <a href={`${langRoot(t.lang)}${PRIVACY_URL.slice(1)}`}>{t('Privacy')}</a>
-            <span aria-hidden="true"> · </span>
-            {/* what sudokUI is for: a static page for search engines, the same words as a dialog here */}
-            <a
-              href={`${langRoot(t.lang)}${WHY_URL.slice(1)}`}
-              onClick={(e) => {
-                e.preventDefault();
-                setDialog('why');
-              }}
-            >
-              {WHY[t.lang].name}
-            </a>
-            <span className="dedication">{t('for thth ♥')}</span>
-          </footer>
-        </aside>
-      </main>
+              <span className="dedication">{t('for thth ♥')}</span>
+            </footer>
+          </aside>
+        </main>
 
-      {dialog === 'new' && (
-        <NewGameDialog
-          onClose={() => setDialog('none')}
-          onStart={(level) => {
-            setDialog('none');
-            start({ kind: 'level', level });
-          }}
-          onDaily={() => {
-            setDialog('none');
-            void startDaily();
-          }}
-          onCustom={() => {
-            setDialog('none');
-            setCustomError(null);
-            startCustomEntry();
-          }}
-          onKept={
-            kept
-              ? () => {
-                  setDialog('none');
-                  backToKept();
-                }
-              : undefined
-          }
-        />
-      )}
-      {dialog === 'practice' && (
-        <PracticeDialog
-          onClose={() => setDialog('none')}
-          onStart={(tech) => {
-            setDialog('none');
-            start({ kind: 'tech', tech });
-          }}
-          onLearn={() => openLearn()}
-          onPath={() => setDialog('progress')}
-        />
-      )}
-      {dialog === 'learn' && (
-        <Suspense fallback={null}>
-          <LearnDialog
-            target={learnTarget}
+        {dialog === 'new' && (
+          <NewGameDialog
             onClose={() => setDialog('none')}
+            onStart={(level) => {
+              setDialog('none');
+              start({ kind: 'level', level });
+            }}
+            onDaily={() => {
+              setDialog('none');
+              void startDaily();
+            }}
+            onCustom={() => {
+              setDialog('none');
+              setCustomError(null);
+              startCustomEntry();
+            }}
+            onKept={
+              kept
+                ? () => {
+                    setDialog('none');
+                    backToKept();
+                  }
+                : undefined
+            }
+          />
+        )}
+        {dialog === 'practice' && (
+          <PracticeDialog
+            onClose={() => setDialog('none')}
+            onStart={(tech) => {
+              setDialog('none');
+              start({ kind: 'tech', tech });
+            }}
+            onLearn={() => openLearn()}
+            onPath={() => setDialog('progress')}
+          />
+        )}
+        {dialog === 'learn' && (
+          <Suspense fallback={null}>
+            <LearnDialog
+              target={learnTarget}
+              onClose={() => setDialog('none')}
+              onPractice={(tech) => {
+                setDialog('none');
+                start({ kind: 'tech', tech });
+              }}
+              hub={{ onPractice: () => setDialog('practice'), onPath: () => setDialog('progress') }}
+              onScan={
+                info && !custom
+                  ? (tech) => {
+                      setScanFor(tech);
+                      setDialog('scan');
+                    }
+                  : undefined
+              }
+              onExample={async (tech) => {
+                // the example's own puzzle, started as practice of its technique:
+                // with "Jump to the technique" on, that is the pictured position
+                const EXAMPLES = await import('../content/examples').then((m) => m.EXAMPLES).catch(() => null);
+                const example = EXAMPLES?.[tech];
+                const rating = example && rateImport(example.puzzle);
+                if (!example || !rating) return;
+                setDialog('none');
+                useGame.getState().startGame(example.puzzle, rating.score, rating.level, tech);
+              }}
+            />
+          </Suspense>
+        )}
+        {dialog === 'io' && <ImportDialog onClose={() => setDialog('none')} />}
+        {(dialog === 'share' || dialog === 'shareHint') && <ShareDialog onClose={() => setDialog('none')} withHint={dialog === 'shareHint'} />}
+        {dialog === 'steps' && <SolutionPathDialog onClose={() => setDialog('none')} />}
+        {dialog === 'scan' && (
+          <ScanDialog
+            lookFor={scanFor ?? undefined}
+            onClose={() => {
+              setScanFor(null);
+              setDialog('none');
+            }}
+          />
+        )}
+        {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
+        {dialog === 'info' && (
+          <InfoDialog
+            onClose={() => setDialog('none')}
+            onLearn={openLearn}
+            onFeedback={() => {
+              setDialog('none');
+              setReport({ kind: 'problem' });
+            }}
+          />
+        )}
+        {dialog === 'why' && (
+          <WhyDialog
+            onClose={() => setDialog('none')}
+            onFeedback={() => {
+              setDialog('none');
+              setReport({ kind: 'problem' });
+            }}
+          />
+        )}
+        {report && <ReportDialog kind={report.kind} hint={report.hint} onClose={() => setReport(null)} />}
+        {dialog === 'progress' && (
+          <ProgressDialog
+            onClose={() => setDialog('none')}
+            onLearn={openLearn}
+            onPracticeList={() => setDialog('practice')}
             onPractice={(tech) => {
               setDialog('none');
               start({ kind: 'tech', tech });
             }}
-            hub={{ onPractice: () => setDialog('practice'), onPath: () => setDialog('progress') }}
-            onScan={
-              info && !custom
-                ? (tech) => {
-                    setScanFor(tech);
-                    setDialog('scan');
+          />
+        )}
+        {dialog === 'restart' && (
+          <Modal title={custom ? t('Clear the board?') : t('Restart puzzle?')} onClose={() => setDialog('none')}>
+            <p className="dialog-note">
+              {custom
+                ? t('Every digit on the board is cleared.')
+                : t(
+                    info?.practiceTech
+                      ? 'The board and timer reset to the beginning of the practice position. Your progress on this puzzle is lost.'
+                      : 'The board and timer reset to the beginning. Your progress on this puzzle is lost.'
+                  )}
+            </p>
+            <div className="hint-actions">
+              <button
+                onClick={() => {
+                  setDialog('none');
+                  restart();
+                }}
+              >
+                {custom ? t('Clear||the board, while a puzzle is typed in') : t('Restart')}
+              </button>
+              <button className="ghost" onClick={() => setDialog('none')}>
+                {custom ? t('Keep typing') : t('Keep playing')}
+              </button>
+            </div>
+          </Modal>
+        )}
+        {genState && (
+          <GeneratingDialog label={genState.label} attempts={genState.attempts} onCancel={cancel} />
+        )}
+        {won && !victoryDismissed && (
+          <VictoryDialog
+            onNewGame={() => {
+              setVictoryDismissed(true);
+              setDialog('new');
+            }}
+            onAnother={
+              info?.practiceTech
+                ? () => {
+                    setVictoryDismissed(true);
+                    start({ kind: 'tech', tech: info.practiceTech! });
                   }
                 : undefined
             }
-            onExample={async (tech) => {
-              // the example's own puzzle, started as practice of its technique:
-              // with "Jump to the technique" on, that is the pictured position
-              const EXAMPLES = await import('../content/examples').then((m) => m.EXAMPLES).catch(() => null);
-              const example = EXAMPLES?.[tech];
-              const rating = example && rateImport(example.puzzle);
-              if (!example || !rating) return;
-              setDialog('none');
-              useGame.getState().startGame(example.puzzle, rating.score, rating.level, tech);
+            onClose={() => setVictoryDismissed(true)}
+            onSettings={() => {
+              setVictoryDismissed(true);
+              setDialog('settings');
+            }}
+            onProgress={() => {
+              setVictoryDismissed(true);
+              setDialog('progress');
+            }}
+            onWhy={() => {
+              setVictoryDismissed(true);
+              setDialog('why');
             }}
           />
-        </Suspense>
-      )}
-      {dialog === 'io' && <ImportDialog onClose={() => setDialog('none')} />}
-      {(dialog === 'share' || dialog === 'shareHint') && <ShareDialog onClose={() => setDialog('none')} withHint={dialog === 'shareHint'} />}
-      {dialog === 'steps' && <SolutionPathDialog onClose={() => setDialog('none')} />}
-      {dialog === 'scan' && (
-        <ScanDialog
-          lookFor={scanFor ?? undefined}
-          onClose={() => {
-            setScanFor(null);
-            setDialog('none');
-          }}
-        />
-      )}
-      {dialog === 'settings' && <SettingsDialog onClose={() => setDialog('none')} />}
-      {dialog === 'info' && (
-        <InfoDialog
-          onClose={() => setDialog('none')}
-          onLearn={openLearn}
-          onFeedback={() => {
-            setDialog('none');
-            setReport({ kind: 'problem' });
-          }}
-        />
-      )}
-      {dialog === 'why' && (
-        <WhyDialog
-          onClose={() => setDialog('none')}
-          onFeedback={() => {
-            setDialog('none');
-            setReport({ kind: 'problem' });
-          }}
-        />
-      )}
-      {report && <ReportDialog kind={report.kind} hint={report.hint} onClose={() => setReport(null)} />}
-      {dialog === 'progress' && (
-        <ProgressDialog
-          onClose={() => setDialog('none')}
-          onLearn={openLearn}
-          onPracticeList={() => setDialog('practice')}
-          onPractice={(tech) => {
-            setDialog('none');
-            start({ kind: 'tech', tech });
-          }}
-        />
-      )}
-      {dialog === 'restart' && (
-        <Modal title={custom ? t('Clear the board?') : t('Restart puzzle?')} onClose={() => setDialog('none')}>
-          <p className="dialog-note">
-            {custom
-              ? t('Every digit on the board is cleared.')
-              : t(
-                  info?.practiceTech
-                    ? 'The board and timer reset to the beginning of the practice position. Your progress on this puzzle is lost.'
-                    : 'The board and timer reset to the beginning. Your progress on this puzzle is lost.'
-                )}
-          </p>
-          <div className="hint-actions">
-            <button
-              onClick={() => {
-                setDialog('none');
-                restart();
-              }}
-            >
-              {custom ? t('Clear||the board, while a puzzle is typed in') : t('Restart')}
-            </button>
-            <button className="ghost" onClick={() => setDialog('none')}>
-              {custom ? t('Keep typing') : t('Keep playing')}
-            </button>
-          </div>
-        </Modal>
-      )}
-      {genState && (
-        <GeneratingDialog label={genState.label} attempts={genState.attempts} onCancel={cancel} />
-      )}
-      {won && !victoryDismissed && (
-        <VictoryDialog
-          onNewGame={() => {
-            setVictoryDismissed(true);
-            setDialog('new');
-          }}
-          onAnother={
-            info?.practiceTech
-              ? () => {
-                  setVictoryDismissed(true);
-                  start({ kind: 'tech', tech: info.practiceTech! });
-                }
-              : undefined
-          }
-          onClose={() => setVictoryDismissed(true)}
-          onSettings={() => {
-            setVictoryDismissed(true);
-            setDialog('settings');
-          }}
-          onProgress={() => {
-            setVictoryDismissed(true);
-            setDialog('progress');
-          }}
-          onWhy={() => {
-            setVictoryDismissed(true);
-            setDialog('why');
-          }}
-        />
-      )}
-      {/* last among the dialogs, so it paints above the one that raised it
-          (the Settings dialog's toggle asks it too); Position as text's is
-          the Share dialog's own, whose answer copies the text */}
-      {contractPrompt && contractFor !== 'text' && (
-        <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} asked={contractFor} />
-      )}
-      <UpdateBar />
-      {/* one live region, always there, so a screen reader hears each
-          notice as its words come in; empty while the page is hidden, so
-          what came then is said when it is shown */}
-      <div className={toast && !away ? 'toast' : 'toast-idle'} role="status" aria-live="polite">
-        {toast && !away && (
-          <>
-            {/* a notice and the let-go line are two sentences, each
-                ended, so a screen reader reads them as two */}
-            {notice && letGo ? ended(notice) : notice}
-            {notice && letGo ? ' ' : null}
-            {letGo && <span className={notice ? 'toast-line' : undefined}>{notice ? ended(letGo) : letGo}</span>}
-          </>
         )}
+        {/* last among the dialogs, so it paints above the one that raised it
+            (the Settings dialog's toggle asks it too); Position as text's is
+            the Share dialog's own, whose answer copies the text */}
+        {contractPrompt && contractFor !== 'text' && (
+          <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} asked={contractFor} />
+        )}
+        <UpdateBar />
+        {/* one live region, always there, so a screen reader hears each
+            notice as its words come in; empty while the page is hidden, so
+            what came then is said when it is shown */}
+        <div className={toast && !away ? 'toast' : 'toast-idle'} role="status" aria-live="polite">
+          {toast && !away && (
+            <>
+              {/* a notice and the let-go line are two sentences, each
+                  ended, so a screen reader reads them as two */}
+              {notice && letGo ? ended(notice) : notice}
+              {notice && letGo ? ' ' : null}
+              {letGo && <span className={notice ? 'toast-line' : undefined}>{notice ? ended(letGo) : letGo}</span>}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+      <PlayCover />
+    </>
   );
 }

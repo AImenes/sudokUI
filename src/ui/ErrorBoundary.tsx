@@ -7,6 +7,7 @@
 import React from 'react';
 import { translator, makeTranslator, rich } from '../content/i18n';
 import type { Translator } from '../content/i18n';
+import { play } from '../state/play';
 
 const GAME_KEY = 'sudokui-game-v1';
 const ISSUES = 'github.com/AImenes/sudokUI/issues';
@@ -87,9 +88,13 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     if (!error) return this.props.children;
     const reset = () => {
       try {
-        const left = boardCleared(localStorage.getItem(GAME_KEY), localStorage.getItem('sudokui-stats-v1'));
-        localStorage.removeItem(GAME_KEY);
-        if (left) localStorage.setItem(GAME_KEY, left);
+        // only the page that holds the play writes the save (src/state/play.ts):
+        // a view's reload takes the play first, and its error screen clears then
+        if (play.mayWrite()) {
+          const left = boardCleared(localStorage.getItem(GAME_KEY), localStorage.getItem('sudokui-stats-v1'));
+          localStorage.removeItem(GAME_KEY);
+          if (left) localStorage.setItem(GAME_KEY, left);
+        }
       } catch {
         /* storage unavailable: a reload is all that is left */
       }
