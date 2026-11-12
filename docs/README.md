@@ -65,11 +65,13 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
 
 ## The engine and the content
 
-- [architecture.md](architecture.md): how the app is put together, and
+- [architecture.md](architecture.md): how the app is put together; the
+  rule that one page of the app plays at a time (every other open tab or
+  window is a view behind a cover with Play here, writing nothing); and
   the rule that a game under way is never lost (links, Import, the daily,
-  custom entry, the set-aside slot and the error screen, and two windows
-  keeping each other's games), with what happens when the one slot must
-  let a game go: the toast says which.
+  Back and Forward, custom entry, the set-aside slot and the error
+  screen), with what happens when the one slot must let a game go: the
+  toast says which.
 - [candidates-2026-11.md](candidates-2026-11.md): auto candidates and the
   two mark layers: the owner's report and the hunt of November 2026, what
   was fixed (undo, strikes, erase, Check, the chain trainer), Gather and the

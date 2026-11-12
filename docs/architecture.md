@@ -101,11 +101,14 @@ that comes up behind the card (a reload, the app opened again) has the
 line empty for a moment first, so the words arrive as a change and are
 read out. The controls the card dims beside it rest too (`useResting`):
 they are inert, out of the Tab order and a screen reader's reach, so Tab
-reaches the card's Resume, the menu row and the notes only; their
-questions (Use Hint?, Keep your candidates?) wait until the game resumes;
-and the store's actions behind them (the mode, Hint, Check, Auto and Fill
-candidates, the chain trainer, Steps and its jumps, Back to correct)
-change nothing while paused, as input and Undo do not. Resumed from the
+reaches the top bar, the board (whose keys act on nothing, above), the
+card's Resume, the notes and the menu row; their questions (Use Hint?,
+Keep your candidates?, and how hints should read the pencil marks) wait
+until the game resumes and then come back, so a hint the player asked for
+still goes on; and the store's actions behind them (the mode, Hint, Check,
+Auto and Fill candidates, the mark question's answer, the chain trainer,
+Steps and its jumps, Back to correct) change nothing while paused, as
+input and Undo do not. Resumed from the
 keyboard, the focus goes back to the board. A win pauses the clock for
 good: nothing can resume it, and Undo or a Steps jump off the solved board
 (or Redo of the jump) starts it again from the winning time. Solved again,
@@ -124,69 +127,76 @@ keeps the verdict the solve was made with. The win screen tells a
 daily's own solve from an earlier one by the game's `dailyKept`, not by
 its time. A game put back in play and set aside keeps these with it.
 
-The game, the record (`stats.ts`) and the dailies (`dailyStats.ts`) are
-each one save shared by every tab and window of the app. A window that is
-hidden takes in what another one saves (a `storage` listener in each
-store), so shown again it plays on from there and its next save does not
-put an older board back; a window in front keeps its own. The game comes
-in only when it is the window's own game (the very game, `gameKey`: the
-same puzzle, day and practice, and the same id, `GameInfo.id`, which a
-game gets when it starts and anew on Restart, so a fresh start of the
-same puzzle in another window is another game and never takes this
-window's board and moves) or the window's own is not under way (solved,
-nothing played on it, or none; a practice or a shared position is under
-way once the player moves on it in
-that window: `takesInSaved`): a hidden window with another game under way
-keeps it, so a link or a practice opened in a new tab, or another window
-going away, takes no game from it. So does a hidden window whose game was
-won there in this page's life, its win screen still up, or opened there
-from outside (a link, Import, the Daily button, a Learn page's Practice)
-and not yet played (`ownHere`, in memory only: the win screen put away, a
-new game, a game read from storage and a reload clear it). A window that
-keeps its own game, hidden or in front, keeps the other window's as well
-(`keepOthers`): the game on that window's board, if under way, and the
-game in its slot go into this window's slot, unless one is the game on
-this window's own board, by the one-slot rule (below) and with its toast
-when one must go (told once per game in a page's life, unless it was said
-to be still open in the other window: see below). A game won on
-that window's board is the newest copy of it: the older copy kept here
-goes, note and all, with nothing to tell, as a solved game is not kept,
-so Back to it cannot bring it back unsolved and count its solve twice.
-A copy kept here behind a puzzle being typed in, on the board or in the
-slot, becomes the copy on that window's board, won there or played on
-(`behindTyped`), and is no game for the slot: Cancel, a link or the
-Daily button bring it back as it is there, a solved game solved, its
-solve recorded once. A hidden window
-that takes the other's game in keeps its own kept game beside what came
-in, by the same rule. So a friend's link opened in a new tab, played there
-and closed, is still kept when the older tab is shown again and saves,
-and moves made in the older tab on the game the newer one put aside reach
-the newer one's copy. The save is read at each `storage` event and again
-when the window is shown, before it saves (`catchUp`: a page the
-browser froze misses its events); games are told apart by puzzle, day,
-practice and id (`gameKey`). A page that goes while hidden already (a tab
-closed, or the browser closed, behind others: `pagehide` after
-`visibilitychange`) wrote when it was hidden; if another window has saved
-since without one of its games under way, that game goes into the save's
-slot by the one-slot rule, against the game kept there, which stays on a
-tie, in one write with the save's board untouched (`leaveWith`), so the
-last copy does not leave with the page and a window still open hears of
-it and keeps it, or says it is gone. A window never writes in answer to
-another's save (`quietly`): what it takes in or keeps from it stays in memory and goes
-into the save with the window's own next write (a move, being shown
-again), since the save at that moment is the other window's own and
-holds those games already. So two windows never answer each other's
-saves, and a hidden window cannot write over the save a reloading tab
-has just left for its new page. A page that boots on another window's
-save all the same (that window saved last) finds the game this tab last
-held, which each tab keeps the key of in its own session storage, in the
-slot, and brings it back before any link is opened, quietly and behind
-the pause card if it is under way, the other window's game in the slot
-in its place (`reclaimOwnGame`). The game's own tally (`stats.ts`, `game`)
-goes with the game, and a game kept from another window takes that
-window's saved tally. A game read from storage comes without the window's
-undo steps, hint, chain trainer and Check marks, which belonged to the
-board it had (`freshSession`).
+**One page plays at a time** ([play.ts](../src/state/play.ts)). The
+game, the record (`stats.ts`) and the dailies (`dailyStats.ts`) are each
+one save shared by every tab and window of the app, and one page plays
+at a time (the rule of 12 November 2026, after three review rounds of
+two windows that both wrote one save and took in each other's games).
+The page that holds the play, a Web Lock
+(`navigator.locks`, `sudokui-play`), is the only one that writes them,
+and every write goes through it: the persist storages of the three
+stores, `setAway`'s save on hide and on `pagehide`, the update bar's
+Reload and the error screen's Clear. A page that closes or crashes lets
+go of the lock by itself. The holder keeps a random name for itself in
+the browser's storage (`sudokui-play`; never sent, and the privacy page
+says so), and a page checks it before every write, so a page that was
+frozen and wakes up writes nothing before it hears that its lock was
+taken. Every other open page of the app is a view that writes nothing.
+
+- **Who takes it.** A page in view when it starts takes the play (the
+  player opened it: a new tab, a link from a chat app, a Learn page's
+  Practice link, a reload). It asks the holder over a `BroadcastChannel`
+  (`sudokui-play`); the holder writes its game with its clock first (what
+  `setAway(true)` writes for a hidden page: a game under way pauses),
+  lets go and becomes a view. A holder that does not answer within a
+  second and a half (a frozen or discarded tab) has the lock taken from it
+  (`steal`), and writes nothing from then on. A page that starts hidden
+  takes the play only when no page holds it; otherwise it is a view,
+  writes nothing, and takes the play the first time it is shown. A view
+  shown again takes the play back by itself when no page holds it, or
+  when the holder is hidden (the player switched tabs in one window): it
+  asks, and the hidden holder gives it. Beside a holder in view (two
+  windows side by side) it stays a view, with Play here. A page going
+  into the back-forward cache gives the play up as it goes.
+- **Read after taking.** The stores read the saves as the page loads;
+  the first render waits for the play (and for the language's tables),
+  and once the page holds it a save whose text changed meanwhile is read
+  again ([main.tsx](../src/main.tsx)). Only then does App's start-up read
+  the address and open a link, so a link opened in a new tab puts the
+  game under way into the slot exactly as one opened in the same tab
+  does (`openOver`, the one slot and its told drop). A page that came up
+  hidden behind the page that plays keeps the link it was opened with
+  until it is shown (the address bar follows the board only once the
+  start-up has run).
+- **Coming back.** A page that takes the play back goes on as it is when
+  every save is exactly what it last wrote or read: its win screen and
+  Send, its undo steps and its open panels stay. When any save changed
+  (another page played), it reloads, at the home address, so it starts
+  from the saves the way every page starts: the board another page left,
+  and its own game kept in the slot with Back to it. A view wrote nothing
+  of its own, so the reload loses nothing.
+- **The view.** A page that does not hold the play shows a cover over the
+  app, in the pause card's look: a line saying sudokUI is open in another
+  tab or window and the game carries on there, and Play here, which takes
+  the play as a page that starts does (then reloads if the saves
+  changed). The app behind it is inert: no key shortcut, no Tab stop, no
+  click acts on the game; its clock stands still, as a hidden page's
+  does, and it sends no daily time and no counts of its own. The cover is
+  a dialog with its name, the focus on Play here. It is never drawn on a
+  page nobody sees, nor while a page shown again is taking the play back,
+  so it does not flash up in front of the player.
+- **Limits.** Without Web Locks (an old browser) there is no cover and no
+  hand-over: every page plays as one window does, and two of them write
+  over each other's saves, the last write winning. And the browser's
+  storage reaches another page a moment after it is written, not at the
+  same instant: a page given the play reads the saves right after the
+  holder's last write, and could in that instant read the write before
+  it; what that last write carries is mostly the clock and the pause the
+  hand-over itself writes.
+
+A game read from storage comes without the page's undo steps, hint,
+chain trainer and Check marks, which belonged to the board it had
+(`freshSession`).
 
 **Settings** ([settings.ts](../src/state/settings.ts)). Persisted user
 preferences (theme, highlights, timer, auto-off materialisation behaviour).
@@ -214,7 +224,8 @@ player reloads), a lazily loaded file that cannot be fetched (Vite's
 `vite:preloadError`: a deploy took it, or a first visit, which no service
 worker controls yet, went offline), offline readiness. The update bar in
 App shows it. Its Reload (`reloadIntoLatest`) saves the game, clock
-included, then asks a waiting worker to take over and reloads once it has,
+included (from the page that plays; a view writes nothing), then asks a
+waiting worker to take over and reloads once it has,
 or reloads at once when none is waiting. The guide, the one part loaded
 with `React.lazy`, has a stand-in for a file that cannot be had
 ([lazyPart.ts](../src/ui/lazyPart.ts)): the dialog closes and the bar
@@ -243,8 +254,9 @@ none of the player's work.
 
 - **Links and Import set it aside.** A link of the app's own (a share or
   challenge link, a position link `#s=`, another day's daily), opened at
-  start-up, in a new tab of the same browser or in the same tab (a hash
-  change), a Learn page's Practice link (`#practice=`, at start-up, where
+  start-up, in a new tab of the same browser (which takes the play and
+  reads the saves first: "One page plays at a time", above) or in the same
+  tab (a hash change), a Learn page's Practice link (`#practice=`, at start-up, where
   the game under way cannot be seen), and anything Import opens, go
   through `openOver`: the game under way is put into **one saved slot**,
   `setAside` (a `GameBackup` like a custom entry's, with its solved flag,
@@ -260,12 +272,16 @@ none of the player's work.
   progress is kept" with **Back to it**, which swaps: the kept game
   returns, and the game on the board takes the slot if it is under way,
   so neither is lost, and the note then offers that one, so either game
-  is one tap away. The toast says which game is back; pressed from the
-  keyboard, the focus goes on from the board. While this note shows, the past-daily note does not (two
-  notes would push the digit keys off a small phone's screen; New still
-  has the daily). Put away (✕), the note goes but the game stays kept,
-  and **New** offers it at the top of its list ("Back to your game in
-  progress") for as long as the slot holds it.
+  is one tap away. The toast says which game is back, named as the notes
+  name it ("Back to today's daily, where you left it"; with its HoDoKu
+  rating when the game now in the slot has the same name, so two Hard
+  games are told apart); pressed from the keyboard, the focus goes on
+  from the board. While this note shows, the past-daily note does not
+  (two notes would push the digit keys off a small phone's screen; New
+  still has the daily). Put away (✕), the note goes but the game stays
+  kept (from the keyboard, the focus stays on the board), and **New**
+  offers it at the top of its list ("Back to your game in progress") for
+  as long as the slot holds it.
 - **Asking for it again brings it back.** A link to the puzzle on the board
   resumes it, as a reload does; a link to the puzzle in the slot, or Import
   of it, swaps it back where it was left (a challenger's time then goes on
@@ -275,13 +291,14 @@ none of the player's work.
   Practice is another game: Import of its puzzle plays the puzzle. But
   the address bar names a practice by its puzzle (`/p/`), so that address
   at start-up or in the tab (a reload, Back, Forward) brings back a kept
-  practice of the puzzle when no plain game of it is kept, with "Your
-  X-Wing practice, where you left it". Back and Forward to an address of
-  the app's own (`popstate`) open it as a link in the tab does, so the
-  board is again the game the address bar names. A game this window let
-  go because another window still had it open (below), asked for again
-  by a link or Import, comes over from that window (`fromOthers`): its
-  copy, the same game, not a second one.
+  practice of the puzzle when no plain game of it is kept, with "Back to
+  your X-Wing practice, where you left it". Back and Forward (`popstate`)
+  bring back only a game the page holds (on the board, in the slot, or
+  behind a puzzle being typed in: `holds`, src/ui/links.ts), as a link to
+  it does, so the board is again the game the address bar names; an
+  address that names no kept game (one let go, a friend's puzzle nobody
+  played on and replaced) opens nothing over the board, and the address
+  goes back to the board's game.
 - **One slot, the most work kept, and never silently.** When the slot
   already holds a game and another under way is replaced, the slot keeps
   whichever of the two holds more of the player's own work, `workOf`: the
@@ -296,44 +313,32 @@ none of the player's work.
   game in progress is kept at a time: your game on a shared puzzle is
   gone, today's daily is kept" (the owner's lead, 11 November 2026: one
   slot, but never silent); several gone at once, in one sentence, listed
-  the language's way. A game is named gone only when no other window of
-  the app still has it open: the windows ask each other, inside the
-  browser (a `BroadcastChannel`, answered from memory within a few
-  milliseconds; a page going away or kept in the back-forward cache
-  answers nothing), and one still open elsewhere is said to be there:
-  "Only one game in progress is kept in this tab: your game on a shared
-  puzzle is still open in your other tab, today's daily is kept here".
-  That is remembered for the page's life, and asked again when the same
-  game is dropped again (the other window's last save as it closes),
-  when a window going away says which games it held, and when this page
-  is shown again: once no window has it, this one included, it is said
-  to be gone (the line still up is reworded, not repeated). A game won
-  in the other window is no loss, and is not named. A window asked for a
-  game hands its copy over (the game on its board, under way or won, or
-  the one in its slot); windows greet each other as they open, so a
-  window alone asks for nothing and never waits. Two games of one name,
-  the game on this window's board among them, are told apart by their
-  rating (a rating that tells nothing apart, two copies of one daily, is
-  left out). It takes
-  two games under way, one in the slot and one on the board, and a third
-  opened over them by a link, Import, the Daily button or a Learn page's
-  Practice link, or three across two windows (`keepOthers`, above). The
-  line rides with the notice the opening brings (`letGo`, in memory), each
-  ended as a sentence of its own, so a screen reader reads two. The
-  toast is one live region, always in the page (`role="status"`), so a
-  screen reader hears each notice as it comes; it is empty while the page
-  is hidden and fades only once it can be seen, so a game let go in a
-  hidden window is told when it is shown. While the update bar is up the
-  toast stands above it, so neither covers the other.
+  the language's way. Two games of one name, the game on the board among
+  them, are told apart by their rating (`nameAmong`; a rating that tells
+  nothing apart, two copies of one daily, is left out). It takes two
+  games under way, one in the slot and one on the board, and a third
+  opened over them by a link (in the tab or in a new one), Import, the
+  Daily button, Check & play or a Learn page's Practice link. The line
+  rides with the notice the opening brings (`letGo`, in memory), each
+  ended as a sentence of its own, so a screen reader reads two. A game
+  that opens clears the notice and the line standing over the game
+  before; what opens it says its own after, so no toast stays over a
+  different game. The toast is one live region, always in the page
+  (`role="status"`), so a screen reader hears each notice as it comes:
+  every notice and line the store sets has a number of its own
+  (`noticeId`), which draws the toast's words anew and starts its fade
+  again, so the same words said again (Back to it pressed twice) are
+  heard again. It is empty while the page is hidden and fades only once
+  it can be seen, so a notice that came while hidden is told when the
+  page is shown. While the update bar is up the toast stands above it, so
+  neither covers the other.
 - **The daily.** New, then Daily puzzle (and the past-daily note's link,
   and the daily's own address) go on with that day's daily when it is on
   the board, solved or not, in the slot, or behind a puzzle being typed
-  in, on the board or in the slot, or open in another window of the app,
-  whose copy comes over (`fromOthers`); never a second copy of it (a
-  window that cannot answer, closed or frozen by the browser, or one not
-  yet heard from as a page comes up, is not asked: a daily started then
-  is a game of its own, and the one slot decides). A daily in
-  none of those places starts fresh: one never started, and one that has
+  in, on the board or in the slot; never a second copy of it (a second
+  tab reads the saves once it takes the play, so it finds the daily
+  where the first tab left it). A daily in none of those places starts
+  fresh: one never started, and one that has
   gone, solved and then replaced by another game (a solved game is not
   kept), or dropped by New and a level, which keeps nothing. Restart
   starts the one on the board again (`startDaily`, src/ui/links.ts).
@@ -370,12 +375,12 @@ none of the player's work.
   step is a full copy of the 81 cells, about 6 KB as saved, so even a short
   history would multiply the save written at every move; a compact form
   needs an encoding of every cell field and is left for later.
-- Two windows in front on the same game each hold it in memory, and each
-  saves over the other's board at its next move; that is not solved here.
-  A copy one window hands another (`fromOthers`) is such a game: while
-  the window that gave it stays hidden it takes the other's moves in.
-  Two windows on different games keep each other's in their slots
-  (`keepOthers`, above).
+- **Two tabs or windows** play one at a time ("One page plays at a
+  time", above): the one that does not play is a view behind its cover,
+  and nothing it holds in memory reaches the saves. A link opened in a
+  new tab takes the play and keeps the first tab's game in the slot; back
+  in the first tab, the play comes back with the saves, its own game one
+  tap away. Without Web Locks, two pages write over each other's saves.
 
 ## UI (`src/ui/`) — React components
 
