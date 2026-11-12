@@ -68,6 +68,7 @@
 }
 
 :root[data-theme='light'],
+:root[data-theme='christmas'],
 :root[data-theme='rose'] {
   --bg: #f2f4f9;
   --bg-soft: #e8ebf3;
@@ -173,6 +174,38 @@
   --peer-bg: rgba(201, 150, 61, 0.08);
 }
 
+/* Christmas: the season's look (src/content/season.ts; 1 November to
+   31 December). Daylight's white board on snow, with the winter's inks:
+   givens in pine black, the player's digits in spruce, a warm gold
+   selection, cranberry buttons, and a deep pine top bar with a string of
+   lights (the Christmas look, at the end of this file). The cells and the
+   panels are daylight's white, so candidate and hint colours read exactly
+   as there; the conflict's holly red stands far from the spruce digits
+   for every colour vision (tests/boardContrast.test.ts) */
+:root[data-theme='christmas'] {
+  --bg: #f2f5f1;
+  --bg-soft: #e4ebe5;
+  --panel: #ffffff;
+  --text: #1c2a23;
+  --muted: #4f6157;
+  --accent: #1d6a46;
+  --accent-fill: #a8233d;
+  --on-accent: #ffffff;
+  --accent-text: #1b6643;
+  --cell-bg: #ffffff;
+  --line: #2e4a3b;
+  --given: #17241d;
+  --entered: #145f6e;
+  --cand: #5c6b63;
+  --danger-text: #b8221f;
+  --sel-bg: rgba(212, 160, 40, 0.24);
+  --sel-border: #9a6c10;
+  --peer-bg: rgba(29, 106, 70, 0.06);
+  /* frost blue: the same digit told from the peers' pine at a glance, for every colour vision */
+  --same-bg: rgba(52, 103, 192, 0.15);
+  --bar-bg: #173d2e;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -203,6 +236,11 @@ body,
     'Comic Sans MS', casual, cursive;
   --font: var(--font-classic);
 
+  /* the top bar's background, which the browser's bar and an installed
+     app's status bar wear too (src/ui/theme.ts): the soft background, but
+     for Christmas's pine */
+  --bar-bg: var(--bg-soft);
+
   /* one hue per digit for the opt-in digit tints. They are mixed into the
      theme's own digit colour (see Grid), never used pure, so the same nine
      hues serve every theme */
@@ -220,6 +258,7 @@ body,
 /* on a light board the digits are dark, so their hues are darker too:
    a pale hue would wash an entered digit out */
 :root[data-theme='light'],
+:root[data-theme='christmas'],
 :root[data-theme='rose'] {
   --tint-1: #2563c9;
   --tint-2: #0f8577;
@@ -302,7 +341,7 @@ button {
   padding-top: max(10px, env(safe-area-inset-top));
   padding-left: max(18px, env(safe-area-inset-left));
   padding-right: max(18px, env(safe-area-inset-right));
-  background: var(--bg-soft);
+  background: var(--bar-bg);
   border-bottom: 1px solid rgba(128, 128, 160, 0.15);
 }
 
@@ -418,20 +457,28 @@ button {
 
 /* daylight theme needs darker badge text for contrast */
 :root[data-theme='light'] .level-beginner,
+:root[data-theme='christmas'] .level-beginner,
 :root[data-theme='rose'] .level-beginner { background: #26999926; color: #0e6360; }
 :root[data-theme='light'] .level-easy,
+:root[data-theme='christmas'] .level-easy,
 :root[data-theme='rose'] .level-easy { background: #2e7d3226; color: #1d6322; }
 :root[data-theme='light'] .level-medium,
+:root[data-theme='christmas'] .level-medium,
 :root[data-theme='rose'] .level-medium { background: #38761d26; color: #2c5e14; }
 :root[data-theme='light'] .level-hard,
+:root[data-theme='christmas'] .level-hard,
 :root[data-theme='rose'] .level-hard { background: #b8860b2e; color: #735300; }
 :root[data-theme='light'] .level-unfair,
+:root[data-theme='christmas'] .level-unfair,
 :root[data-theme='rose'] .level-unfair { background: #c054152e; color: #93400e; }
 :root[data-theme='light'] .level-extreme,
+:root[data-theme='christmas'] .level-extreme,
 :root[data-theme='rose'] .level-extreme { background: #b312302e; color: #8f0e24; }
 :root[data-theme='light'] .level-nightmare,
+:root[data-theme='christmas'] .level-nightmare,
 :root[data-theme='rose'] .level-nightmare { background: #6a1b9a2e; color: #4d1470; }
 :root[data-theme='light'] .level-hidden,
+:root[data-theme='christmas'] .level-hidden,
 :root[data-theme='rose'] .level-hidden { color: var(--text); }
 /* the dark theme's amber is unreadable on a light bar */
 :root[data-theme='light'] .practice-badge,
@@ -2844,6 +2891,10 @@ textarea {
   background: #888ba3;
 }
 
+:root[data-theme='christmas'] .switch:not(.on) {
+  background: #77897f;
+}
+
 :root[data-theme='rose'] .switch:not(.on) {
   background: #957b89;
 }
@@ -2883,6 +2934,24 @@ textarea {
 .segmented button.active {
   background: var(--accent-fill);
   color: var(--on-accent);
+}
+
+/* the theme row: six looks in the Christmas season, so at every width its
+   choices go under its words and wrap rather than run past the dialog's
+   edge (each line then filling the width) */
+.setting-row.theme-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.setting-row.theme-row .segmented.theme-choice {
+  align-self: flex-start;
+  flex-wrap: wrap;
+  flex-shrink: 1;
+  max-width: 100%;
+}
+.setting-row.theme-row .segmented.theme-choice button {
+  flex: 1 0 auto;
 }
 
 .shortcut-table {
@@ -4568,4 +4637,138 @@ html:not([lang='en']) .zone-note {
   margin: 10px 0 0;
   text-align: center;
   font-size: 13px;
+}
+
+/* ---------- the Christmas look ---------- */
+/* The season's look (src/content/season.ts) beyond its colours, which sit
+   with the other themes' at the top of this file. Quiet decorations, all
+   drawn here (CSS and inline SVG: nothing to fetch, so offline they cost
+   nothing), none over the board, a digit or a control, and none that
+   moves for long: the lights come on once, in a second and a half, and
+   under reduced motion not at all, and the win screen's snow falls as
+   its confetti does, twice, and never under reduced motion. */
+
+/* the top bar in deep pine, its own words in snow: the tokens the bar's
+   parts read, redefined for the bar alone, and the level badges and the
+   gauge in the inks a dark bar wears (the dialogs' badges keep daylight's) */
+:root[data-theme='christmas'] .topbar {
+  --text: #f4f8f4;
+  --muted: #c4d6ca;
+  --accent: #f2c75c;
+  --hint-secondary-ink: #f8b93f;
+  color: var(--text);
+  position: relative;
+  border-bottom-color: #0f2b20;
+}
+:root[data-theme='christmas'] .topbar .level-beginner { background: #26999930; color: #6fd0cd; }
+:root[data-theme='christmas'] .topbar .level-easy { background: #2e7d3230; color: #7fd486; }
+:root[data-theme='christmas'] .topbar .level-medium { background: #38761d30; color: #b5d47f; }
+:root[data-theme='christmas'] .topbar .level-hard { background: #b8860b30; color: #e6c74c; }
+:root[data-theme='christmas'] .topbar .level-unfair { background: #c0541530; color: #eea05a; }
+:root[data-theme='christmas'] .topbar .level-extreme { background: #b3123030; color: #f38a94; }
+:root[data-theme='christmas'] .topbar .level-nightmare { background: #6a1b9a30; color: #c29cf0; }
+:root[data-theme='christmas'] .topbar .level-hidden { background: rgba(196, 214, 202, 0.16); color: var(--muted); }
+
+/* the name's UI in gold to holly-berry pink, on the pine */
+:root[data-theme='christmas'] .topbar .brand-ui {
+  background-image: linear-gradient(135deg, #f2c75c, #f4b1bd);
+}
+
+/* the mark: a cranberry tile with snow on its top, in the bar and on the
+   pause card; the snow stays above the letters */
+:root[data-theme='christmas'] .brand-mark {
+  position: relative;
+  background: linear-gradient(135deg, #c8344f, #8f1c33);
+}
+:root[data-theme='christmas'] .brand-mark::after {
+  content: '';
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  top: -4px;
+  height: 31%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 12' preserveAspectRatio='none'%3E%3Cpath d='M1.5 6.2C1.5 2.4 5.6 0.6 10 1.6C14 0.2 18 0.6 21 1.4C25 0.1 31 0.5 34.2 1.7C37.4 1.6 39.2 3.8 38.6 6.4C38 8.6 35.4 8.2 34.4 6.9C33 9.7 29.4 9.8 28.4 7.1C27 8.3 24.6 8.1 24 6.7C22.2 10.6 17.8 10.7 16.6 7.3C15 8.5 12.6 8.1 12 6.7C10.4 9.1 7 9.3 6.2 7.1C4.4 8.9 1.5 8.7 1.5 6.2Z' fill='%23fbfdfb' stroke='%23173d2e' stroke-opacity='.22' stroke-width='.7'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+/* a string of lights along the bar's foot, inside its padding, under no
+   button (pointer-events: none) */
+:root[data-theme='christmas'] .topbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1px;
+  height: 8px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='9' viewBox='0 0 96 9'%3E%3Cpath d='M0 1.5Q12 6 24 1.5T48 1.5T72 1.5T96 1.5' fill='none' stroke='%23497f64' stroke-width='.8'/%3E%3Cg fill='%234f8a6c'%3E%3Crect x='11' y='3.1' width='2' height='1.6'/%3E%3Crect x='35' y='3.1' width='2' height='1.6'/%3E%3Crect x='59' y='3.1' width='2' height='1.6'/%3E%3Crect x='83' y='3.1' width='2' height='1.6'/%3E%3C/g%3E%3Ccircle cx='12' cy='6.2' r='2.6' fill='%23ef5a70'/%3E%3Ccircle cx='36' cy='6.2' r='2.6' fill='%23f6cd62'/%3E%3Ccircle cx='60' cy='6.2' r='2.6' fill='%23f7faf7'/%3E%3Ccircle cx='84' cy='6.2' r='2.6' fill='%2372d6ae'/%3E%3C/svg%3E")
+    left bottom / auto 100% repeat-x;
+  pointer-events: none;
+  animation: lights-on 1.5s ease-out 1 both;
+}
+@keyframes lights-on {
+  from {
+    opacity: 0.15;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* a phone's bar has 5 px under its buttons: the lights shrink to fit there */
+@media (max-width: 560px) {
+  :root[data-theme='christmas'] .topbar::after {
+    bottom: 0;
+    height: 5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme='christmas'] .topbar::after {
+    animation: none;
+  }
+}
+
+/* the pause card: a sprig of holly beside Paused, in the line's own height */
+:root[data-theme='christmas'] .pause-card h3::before {
+  content: '';
+  display: inline-block;
+  width: 1.3em;
+  height: 0.75em;
+  margin-right: 0.3em;
+  vertical-align: 0.05em;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 26'%3E%3Cpath d='M24 15C19 6 10 4 2 8C5 9.5 5.5 11.5 3.5 13.5C7.5 13.2 9 15.4 8 17.6C13 15.8 18.5 17.6 24 15Z' fill='%231d6a46'/%3E%3Cpath d='M24 15C29 6 38 4 46 8C43 9.5 42.5 11.5 44.5 13.5C40.5 13.2 39 15.4 40 17.6C35 15.8 29.5 17.6 24 15Z' fill='%23175a3b'/%3E%3Cpath d='M23 14.5C17 10 10 8.6 4.5 9.4M25 14.5C31 10 38 8.6 43.5 9.4' fill='none' stroke='%230f3d28' stroke-width='.8'/%3E%3Ccircle cx='20.6' cy='17' r='3.4' fill='%23c8344f'/%3E%3Ccircle cx='27.4' cy='17' r='3.4' fill='%23b42a45'/%3E%3Ccircle cx='24' cy='21.6' r='3.4' fill='%23c8344f'/%3E%3Ccircle cx='19.7' cy='16' r='.9' fill='%23fff' fill-opacity='.6'/%3E%3Ccircle cx='23.1' cy='20.6' r='.9' fill='%23fff' fill-opacity='.6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* the win screen: a cranberry ribbon across the dialog's top, and its
+   confetti falls as snow, gold and berries */
+:root[data-theme='christmas'] .victory {
+  background: linear-gradient(#a8233d, #a8233d) top / 100% 5px no-repeat, var(--panel);
+}
+:root[data-theme='christmas'] .confetti i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f7faf7;
+  box-shadow: 0 0 0 1px rgba(23, 61, 46, 0.18);
+}
+:root[data-theme='christmas'] .confetti i:nth-child(3n + 2) {
+  background: #f2c75c;
+}
+:root[data-theme='christmas'] .confetti i:nth-child(4n + 3) {
+  background: #c8344f;
+}
+
+/* on a wide screen, three faint snowflakes in the page's margins, held
+   still behind everything, where the board and its controls never are */
+@media (min-width: 1180px) and (min-height: 600px) {
+  :root[data-theme='christmas'] body {
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%23d6e2da' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath id='a' d='M32 5V59M25 11L32 17L39 11M25 53L32 47L39 53'/%3E%3Cuse href='%23a' transform='rotate(60 32 32)'/%3E%3Cuse href='%23a' transform='rotate(120 32 32)'/%3E%3C/g%3E%3C/svg%3E")
+        left 3vw top 130px / 84px 84px no-repeat fixed,
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%23d6e2da' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath id='a' d='M32 5V59M25 11L32 17L39 11M25 53L32 47L39 53'/%3E%3Cuse href='%23a' transform='rotate(60 32 32)'/%3E%3Cuse href='%23a' transform='rotate(120 32 32)'/%3E%3C/g%3E%3C/svg%3E")
+        right 3.5vw top 200px / 56px 56px no-repeat fixed,
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%23d6e2da' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath id='a' d='M32 5V59M25 11L32 17L39 11M25 53L32 47L39 53'/%3E%3Cuse href='%23a' transform='rotate(60 32 32)'/%3E%3Cuse href='%23a' transform='rotate(120 32 32)'/%3E%3C/g%3E%3C/svg%3E")
+        left 6vw bottom 70px / 44px 44px no-repeat fixed,
+      var(--bg);
+  }
 }

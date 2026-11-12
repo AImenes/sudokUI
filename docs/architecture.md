@@ -316,8 +316,61 @@ chain trainer and Check marks, which belonged to the board it had
 preferences (theme, highlights, timer, auto-off materialisation behaviour).
 Separate store so settings changes never touch game history. The theme is a
 choice of four looks or Match device, which shows Daylight or Dark as the
-device is set; [theme.ts](../src/ui/theme.ts) puts the look shown on the
-page and gives the browser's bar the top bar's colour.
+device is set, and in its season a fifth, Christmas; [theme.ts](../src/ui/theme.ts) puts the look shown on the
+page and gives the browser's bar the top bar's colour (`--bar-bg`).
+
+**The Christmas season** ([season.ts](../src/content/season.ts); the
+owner's decisions of 12 November 2026). One module says what the season
+allows on the player's local date, as a key (`lookAvailable`, `lookAuto`,
+`calendarOpen`, `doorOpen`, `doorDate`, `doorOf`, `seasonYear`), and
+everything else asks it: the look can be chosen from 1 November to
+31 December, goes on by itself from 1 December, and the advent calendar is
+there from 1 November with door n opening on n December and every door
+closed from 1 January. The settings keep four things for it
+(`ThemeState`): `themePicked`, set whenever the player chooses a theme
+(Settings, or the top bar's button: `pickedTheme`, through `set` and
+`toggleTheme`), `themeBefore`, the theme the look took the place of,
+`themeAutoYear`, the season it last went on by itself in, and
+`themeSeason`, the season the look on now belongs to. `seasonTheme`
+holds the rules: from 1 December a player who never picked a theme gets
+the look, once a season (switching it off is a pick, so it stays off;
+a player who picked any theme keeps it); outside the season, or in a
+later season than its own (a player who did not come back between
+1 January and 31 October), a player on it gets `themeBefore` back (the
+default, dark, when none was kept), and outside the season the look is
+offered nowhere (not in Settings, not after Forest on the top bar's
+button). The rules are applied once before the first render
+(src/main.tsx) and by App (`applySeason`) in a layout effect, and again
+whenever its day changes with the page open
+([useToday.ts](../src/ui/useToday.ts): a moment after midnight, and when
+the page is shown again or its window gets the focus), so a page left open
+across midnight into December or into January follows. "Never picked" is
+known from settings version 2: a stored theme other than the default can
+only have been picked, so the migration counts it as one; a stored dark
+cannot be told from the default and counts as none (that player can switch
+the look off, which is then a pick). A flag already written is kept. The
+settings are on the device only; which theme a player uses is never sent,
+and the privacy page says what these keep.
+
+**The Christmas look** ([styles.css](../src/ui/styles.css), keyed by
+`data-theme='christmas'`). Of the light family: daylight's white board and
+panels, so the hint colours read exactly as there (tests/hintPalette.test.ts
+holds it to daylight's figures), on a snow page, with givens in pine black,
+the player's digits in spruce, the conflict's holly red (apart from the
+spruce for every colour vision, tests/boardContrast.test.ts), a warm gold
+selection, pine highlights and cranberry buttons, under a deep pine top bar
+whose own words, badges and gauge take the inks a dark bar wears. Its
+decorations are CSS and inline SVG, nothing fetched: a string of lights
+inside the bar's padding (they come on once, in a second and a half; never
+under reduced motion), snow on the mark, a sprig of holly beside Paused, a
+cranberry ribbon on the win screen whose confetti falls as snow, gold and
+berries (twice, and never under reduced motion), and on a wide screen three
+faint snowflakes in the page's margins, held still. None sits over the
+board, a digit or a control, on a 320 px or a 390 px phone held either way
+or a laptop (tests/e2e/season.spec.ts measures it, and every word's
+contrast). The shared picture of the board stays light, as in every look.
+The static Learn pages never follow the app's theme (they follow the
+device's light or dark), so the look cannot break them.
 
 **Pools** ([pools.ts](../src/state/pools.ts)). localStorage-backed puzzle
 pools keyed per difficulty and per technique (written, as the saves
@@ -495,6 +548,30 @@ none of the player's work.
   cover is not made up from the date: the board stays as it was and the
   player is told; a day before the list began is still derived from its
   date.
+- **A daily whose day has not come.** A daily after the player's local
+  today opens nothing (the owner's decision of 12 November 2026: before
+  it, changing the address to `/daily/<tomorrow>` played tomorrow's
+  daily and could send its time). One check says so, `dailyLocked`
+  (src/content/dailies.ts), and the two ways a daily opens ask it first:
+  `startDaily` (the Daily button in New, the past-daily note's link)
+  and `openAppLink` (its address at start-up or on a
+  reload, a `#daily` or share link in the tab, Import), before anything
+  else, a position shared on that day's address (`/daily/<date>#s=…`)
+  included, so no game goes aside for it. The board stays as it is, and
+  the toast says when the daily opens: "Tomorrow's daily opens at
+  midnight", "That daily opens on 20 November" (Import says it in its
+  own dialog); a copy of that day already on the board (an earlier
+  build opened it, or the device's clock went back) is left as it is,
+  quietly. A new player's first game, which starts in its place, keeps
+  that line. Back and Forward bring back only a game the page holds
+  (`holds`), so they open no locked daily either; a copy an earlier
+  build opened stays where it is (never lost), on the board or in the
+  slot. `#daily` is always the player's today, and today's and earlier
+  dailies open as before. The server is left as it was: it takes a
+  result for a day up to `EARLY_DAYS` (one) ahead of UTC, since it knows
+  only UTC, and a player in UTC+14 reaches their own today a day before
+  UTC does; the lock is the player's local date, which the app knows and
+  the server does not.
 - **A door of the advent calendar** ([advent-calendar.md](advent-calendar.md))
   goes the daily's way, through `startDoor` (src/ui/links.ts): the door on
   the board, in the slot or behind a puzzle being typed in comes back

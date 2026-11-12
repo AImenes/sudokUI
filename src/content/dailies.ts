@@ -104,6 +104,27 @@ export const LATE_DAYS = 7;
 /** how early, in days: a day the player's clock has reached before UTC has */
 export const EARLY_DAYS = 1;
 
+/** the day after a key: 2026-11-13 for 2026-11-12 (the key itself when it is no date) */
+export function dayAfter(date: string): string {
+  const d = dateOfKey(date);
+  return d ? new Date(d.getTime() + DAY_MS).toISOString().slice(0, 10) : date;
+}
+
+/**
+ * A daily that has not opened yet: its day is after the player's local
+ * today. The one check of the future-daily lock (the owner's decision of
+ * 12 November 2026): whatever asks for such a daily, its address, a
+ * #daily or share link, Import, New, the past-daily note, a reload, Back
+ * or Forward, it opens nothing over the board, and the player is told
+ * when it opens (src/ui/links.ts, startDaily and openAppLink). Today's
+ * and every earlier day's daily open as before. The server keeps its one
+ * day of grace (EARLY_DAYS, worker/daily.ts): it knows only UTC, and a
+ * player in UTC+14 is a day ahead of it on their own today.
+ */
+export function dailyLocked(date: string, today = localDateKey()): boolean {
+  return !!dateOfKey(date) && date > today;
+}
+
 /** the level a day's puzzle is drawn from: DAILY_BANDS in turn */
 export const dailyBand = (no: number): Level => DAILY_BANDS[(no - 1) % DAILY_BANDS.length];
 

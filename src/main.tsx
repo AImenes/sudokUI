@@ -16,7 +16,7 @@ import { useStats } from './state/stats';
 import { useDailyStats } from './state/dailyStats';
 import { play, startPlay, acted, clearing, SAVES } from './state/play';
 import { useAppStatus, reloadIntoLatest } from './state/appStatus';
-import { useSettings } from './state/settings';
+import { useSettings, applySeason } from './state/settings';
 import { startLocales, langOfPath, langRoot } from './content/i18n';
 import { reloadMark, cameBack, entryState } from './ui/links';
 
@@ -36,6 +36,11 @@ const arrive = () => {
   if (lang && useSettings.getState().lang !== lang) useSettings.getState().set({ lang });
 };
 if (document.visibilityState !== 'hidden' || play.role === 'solo') arrive();
+
+// the season's rules for the theme, before the first paint: a page opened
+// on 1 January shows the theme from before, never one frame of the
+// Christmas look (App applies them again whenever the day changes)
+applySeason();
 
 if (import.meta.env.DEV) {
   (window as any).__game = useGame;
