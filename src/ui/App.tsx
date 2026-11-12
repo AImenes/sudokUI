@@ -63,7 +63,7 @@ import { techFromParam } from '../content/slugs';
 import { sharePath, readAppLink } from '../content/share';
 import type { AppLink } from '../content/share';
 import { localDateKey, dailyPath, pastDailyOn, dayName } from '../content/dailies';
-import { startDaily, openAppLink, backToKept, holds, backTo, traversed } from './links';
+import { startDaily, openAppLink, backToKept, holds, backTo, traversed, markStarted, markEntry, entryState } from './links';
 import { useDailyStats } from '../state/dailyStats';
 import { useTelemetry } from '../state/telemetry';
 import { RATING_URL, PRIVACY_URL } from '../content/staticRoutes';
@@ -219,7 +219,7 @@ async function openHashLink(link: AppLink) {
   await openAppLink(link, 'tab');
   if (!play.acts()) return;
   try {
-    window.history.replaceState(null, '', boardAddress() ?? window.location.pathname + window.location.search);
+    window.history.replaceState(entryState(), '', boardAddress() ?? window.location.pathname + window.location.search);
   } catch {
     /* an origin that allows no path of its own: the hash stays */
   }
@@ -359,8 +359,10 @@ function PlayCover() {
     if (shown) button.current?.focus({ preventScroll: true });
   }, [shown]);
   if (!shown) return null;
-  // taken with the saves as this page left them, it goes on as it is
-  // (otherwise it reloads into them), the focus back where it was (App)
+  // taken with nobody having played meanwhile (the game's save as this
+  // page left it, or another clock on it), it goes on as it is; when
+  // another page played on the game or opened another, it reloads into the
+  // saves (src/main.tsx, inPlace); the focus back where it was (App)
   const here = () => {
     pressedHere = true;
     return play.here();
@@ -552,16 +554,20 @@ export default function App() {
     if (!playing || !seen || !tables || (window as any).__sudokuiBooted) return;
     (window as any).__sudokuiBooted = true;
     markActed();
+    // (this entry has started: Back or Forward to it follows their rule)
+    markStarted();
     setBooted(true);
     const params = new URLSearchParams(window.location.hash.slice(1));
     const learn = params.get('learn');
     if (learn) openLearn(parseLearnParam(learn));
     // reached by Back or Forward (another page of the app in this tab left
-    // for this one, or this one came back from the back-forward cache):
-    // as in the tab (popstate, below), only a game this page holds comes
-    // back, and none is let go; an address that names no game held here
-    // opens nothing over the board, and the address goes back to the
-    // board's game. (With no game saved at all, the address opens.)
+    // for this one, or this one came back from the back-forward cache) on
+    // an entry the app had started on (traversed: a restored or reopened
+    // tab that never started there opens its link as a link does): as in
+    // the tab (popstate, below), only a game this page holds comes back,
+    // and none is let go; an address that names no game held here opens
+    // nothing over the board, and the address goes back to the board's
+    // game. (With no game saved at all, the address opens.)
     const saved = useGame.getState();
     const backForward = traversed() && !!(saved.info || saved.custom);
     const practice = techFromParam(params.get('practice') ?? '');
@@ -631,6 +637,7 @@ export default function App() {
       // address bar waits for the play (below), or for the reload that
       // takes it, which keeps the hash (src/main.tsx)
       if (!play.acts()) return void (heldLink.current = link ? hash : null);
+      markEntry();
       if (link) void openHashLink(link);
     };
     const onPop = () => {
@@ -642,7 +649,7 @@ export default function App() {
       const back = boardAddress();
       if (!back) return;
       try {
-        window.history.replaceState(null, '', back);
+        window.history.replaceState(entryState(), '', back);
       } catch {
         /* an origin that allows no path of its own: the address stays */
       }
@@ -681,11 +688,11 @@ export default function App() {
         .catch(() => {});
     if (custom) {
       try {
-        window.history.replaceState(null, '', langRoot(lang));
+        window.history.replaceState(entryState(), '', langRoot(lang));
       } catch {
         // an origin that allows no path of its own (a file:// build): at
         // least the old puzzle's hash goes, so a reload does not reopen it
-        window.history.replaceState(null, '', window.location.pathname);
+        window.history.replaceState(entryState(), '', window.location.pathname);
       }
       homeTitle();
       return;
@@ -693,11 +700,11 @@ export default function App() {
     if (!info?.puzzle) return;
     try {
       // a published daily's address is its day (src/content/dailies.ts)
-      window.history.replaceState(null, '', boardAddress()!);
+      window.history.replaceState(entryState(), '', boardAddress()!);
     } catch {
       // an origin that allows no path of its own (a file:// build): the
       // hash link still names the puzzle, and the app still reads it
-      window.history.replaceState(null, '', `#p=${info.puzzle}`);
+      window.history.replaceState(entryState(), '', `#p=${info.puzzle}`);
     }
     homeTitle();
   }, [booted, playing, custom, info?.puzzle, info?.level, info?.score, info?.dailyNo, info?.dailyKey, lang, hideRating, won]);

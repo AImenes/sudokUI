@@ -15,7 +15,7 @@
  * takes the play when shown; a frozen holder has it taken after the wait;
  * and a view writes nothing for a minute.
  */
-import { test, expect, Page, BrowserContext } from '@playwright/test';
+import { test, expect, chromium, Page, BrowserContext } from '@playwright/test';
 import { parseGrid, gridToString } from '../../src/engine/board';
 import { solve } from '../../src/engine/bruteForce';
 import { localDateKey } from '../../src/content/dailies';
@@ -239,6 +239,51 @@ test.describe('one page plays at a time', () => {
     await expect(learn).toBeVisible();
   });
 
+  test('the chain trainer open, and another tab opened and left with nothing done: back in the first, no reload, the trainer still open and its undo steps there', async ({ context }) => {
+    const a = await context.newPage();
+    await open(a, `/p/${HARD}`);
+    await enter(a, 2);
+    await a.getByRole('button', { name: /Chain/ }).first().click();
+    await a.getByRole('button', { name: 'Use Chain' }).click();
+    const trainer = a.getByRole('region', { name: 'Build a chain' });
+    await expect(trainer).toBeVisible();
+    const chainSave = (p: Page) =>
+      p.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state ?? {};
+        return { auto: !!s.autoCandidates, handover: !!s.chainHandover };
+      });
+    await expect.poll(() => chainSave(a)).toEqual({ auto: true, handover: true });
+    await mark(a);
+    await shown(a, false);
+    // the app opened in another tab and left: it reads the save as the
+    // trainer's Done would leave it, so what it writes has the trainer's
+    // auto candidates off, with nothing played
+    const b = await context.newPage();
+    await open(b, '/');
+    await expect(b.locator('.play-cover')).toHaveCount(0);
+    await expect(b.locator('.pause-card')).toBeVisible();
+    const holderB = await b.evaluate(() => localStorage.getItem('sudokui-play'));
+    await shown(b, false);
+    await expect.poll(() => chainSave(b)).toEqual({ auto: false, handover: false });
+    await shown(a, true);
+    // the first takes the play back, and its write puts its trainer's auto candidates back
+    await expect.poll(() => a.evaluate(() => localStorage.getItem('sudokui-play'))).not.toBe(holderB);
+    await expect.poll(() => chainSave(a)).toEqual({ auto: true, handover: true });
+    expect(await same(a)).toBe(true);
+    await expect(a.locator('.play-cover')).toHaveCount(0);
+    await expect(trainer).toBeVisible();
+    // and its undo steps are there: the trainer's auto candidates, then the digits
+    await a.locator('.pause-card .resume-btn').click();
+    await expect(a.locator('.pause-card')).toHaveCount(0);
+    const undo = a.locator('.action-row button', { hasText: 'Undo' });
+    await undo.click();
+    await expect(trainer).toHaveCount(0);
+    await expect.poll(() => chainSave(a)).toEqual({ auto: false, handover: false });
+    await undo.click();
+    await expect.poll(async () => (await saved(a)).entries).toBe(1);
+    expect(await same(a)).toBe(true);
+  });
+
   test('a page that has played and is a view carries the home address: reloaded (or a discarded tab brought back), it opens no old link over the game under way', async ({ context }) => {
     const today = localDateKey();
     const a = await context.newPage();
@@ -344,6 +389,84 @@ test.describe('one page plays at a time', () => {
     await expect(b.locator('.toast')).toContainText('Daily puzzle for');
     expect(await same(b)).toBe(true);
     expect(await saved(b)).toMatchObject({ aside: { puzzle: HARD, entries: 2 } });
+  });
+
+  test('a link opened in a background tab and never looked at, loaded again as Back and Forward load a page (as the browser restores a tab, or reopens a closed one): looked at, it opens its link, the game under way kept', async ({ context }) => {
+    const a = await context.newPage();
+    await open(a, `/#p=${EASY}`);
+    await enter(a, 2);
+    // the friend's link in a background tab, hidden from its first moment
+    // until looked at: a view behind the first, which keeps its link
+    const b = await context.newPage();
+    await b.addInitScript(() => {
+      if (sessionStorage.getItem('looked')) return;
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    });
+    await b.goto(`/p/${HARD}`);
+    await expect(b.locator('svg.board')).toBeAttached();
+    // loaded again from the tab's history, as a restored tab is: a load of
+    // the Back and Forward kind, its entry's history state as it was left
+    await b.goto('/privacy/');
+    await b.goBack();
+    await expect(b.locator('svg.board')).toBeAttached();
+    expect(await b.evaluate(() => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).type)).toBe('back_forward');
+    expect(decodeURI(new URL(b.url()).pathname)).toBe(`/p/${HARD}`);
+    // looked at: its link opens over the game under way, which is kept, as a link does
+    await shown(a, false);
+    await b.evaluate(() => sessionStorage.setItem('looked', '1'));
+    await shown(b, true);
+    await expect.poll(() => saved(b)).toMatchObject({ puzzle: HARD, aside: { puzzle: EASY, entries: 2 } });
+    await expect(note(b)).toBeVisible();
+    await expect.poll(() => decodeURI(new URL(b.url()).pathname)).toBe(`/p/${HARD}`);
+  });
+
+  test('the browser restores its last session, a link it opened in a background tab never looked at: the restored tab opens its link, the game under way kept', async ({ baseURL, launchOptions }, testInfo) => {
+    const dir = testInfo.outputPath('profile');
+    const launch = () =>
+      chromium.launchPersistentContext(dir, {
+        ...launchOptions,
+        args: [...(launchOptions.args ?? []), '--restore-last-session'],
+        viewport: { width: 1280, height: 800 },
+        baseURL
+      });
+    let browser = await launch();
+    await browser.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    const a = await browser.newPage();
+    await open(a, `/#p=${EASY}`);
+    await enter(a, 2);
+    // the friend's link in a background tab, never looked at: a view behind the first, which keeps its link
+    const b = await browser.newPage();
+    await b.addInitScript(() => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    });
+    await b.goto(`/p/${HARD}`);
+    await expect(b.locator('svg.board')).toBeAttached();
+    // the first tab closed, then the browser quit with the link's tab open
+    await a.close();
+    await browser.close();
+    // started again with the session restored: the tab loads as Back and Forward load a page
+    browser = await launch();
+    try {
+      const app = () => browser.pages().find((p) => p.url().startsWith(baseURL!));
+      const any = await expect
+        .poll(() => !!app(), { timeout: 5000 })
+        .toBe(true)
+        .then(
+          () => true,
+          () => false
+        );
+      // (the headless shell keeps no session to restore)
+      test.skip(!any, 'this browser restores no session');
+      const restored = app()!;
+      await expect(restored.locator('svg.board')).toBeVisible();
+      expect(await restored.evaluate(() => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).type)).toBe('back_forward');
+      await expect.poll(() => saved(restored)).toMatchObject({ puzzle: HARD, aside: { puzzle: EASY, entries: 2 } });
+      await expect(note(restored)).toBeVisible();
+    } finally {
+      await browser.close();
+    }
   });
 
   test('a solved daily with Learn open, and the other tab fetches the day’s numbers, which have grown: switched back and forth, neither reloads, Learn stays open and the win screen stays away', async ({ context }) => {

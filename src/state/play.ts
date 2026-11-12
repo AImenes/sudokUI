@@ -29,6 +29,8 @@ export const WAIT_MS = 1500;
 export const GONE_MS = 1000;
 /** how often a view in view looks whether any page still holds the play (Play.check) */
 export const CHECK_MS = 3000;
+/** how long a page shown again that a holder in view told no waits before it draws the cover: the holder's own hide (free) may be on its way, the two tabs' events coming in either order (Play.take) */
+export const SETTLE_MS = 250;
 
 /**
  * What this page is: waiting for its first claim (before the first
@@ -69,6 +71,8 @@ export interface PlayDeps {
   wait?: number;
   /** GONE_MS */
   gone?: number;
+  /** SETTLE_MS */
+  settle?: number;
 }
 
 /** what the app does as the play comes and goes (src/main.tsx) */
@@ -114,12 +118,17 @@ export class Play {
   taking = false;
   /** this page has held the play (a page shown again asks only a hidden holder for it) */
   everHeld = false;
+  /** Play here was pressed, and its attempt is under way (src/main.tsx: a reload it brings takes the play as a page that starts does) */
+  hereAsked = false;
   hooks: PlayHooks = { give: () => {}, taken: () => {}, lost: () => {} };
   /** told whenever role or taking changes (the UI's store) */
   onChange: () => void = () => {};
 
   private readonly wait: number;
   private readonly goneWait: number;
+  private readonly settleWait: number;
+  /** told no as it was shown again: the cover waits a moment (SETTLE_MS) for the holder's free */
+  private settling: ReturnType<typeof setTimeout> | null = null;
   private goneTimer: ReturnType<typeof setTimeout> | null = null;
   /** asks heard while this page was taking the play itself, answered once it holds it */
   private wants: { m: Want; at: number }[] = [];
@@ -143,6 +152,7 @@ export class Play {
     this.id = deps.id ?? randomId();
     this.wait = deps.wait ?? WAIT_MS;
     this.goneWait = deps.gone ?? GONE_MS;
+    this.settleWait = deps.settle ?? SETTLE_MS;
     this.role = deps.locks ? 'waiting' : 'solo';
   }
 
@@ -245,9 +255,11 @@ export class Play {
    * is first shown (shown). A page that reloaded itself to take the play
    * back (`again`: src/main.tsx) takes it as a page shown again does, from
    * no page or a hidden one: a reload never takes it from the window the
-   * player is in.
+   * player is in. One the player's Play here reloaded (`here`) takes it as
+   * a page that starts does, so a window beside it that took the play
+   * while it reloaded gives it back.
    */
-  async boot(again = false): Promise<void> {
+  async boot(again = false, here = false): Promise<void> {
     if (!this.deps.locks) return;
     this.listen();
     if (again) this.everHeld = true;
@@ -259,7 +271,7 @@ export class Play {
       if (!this.deps.hidden()) await this.take(this.everHeld);
       return;
     }
-    await this.take(again);
+    await this.take(again && !here);
   }
 
   /**
@@ -280,7 +292,7 @@ export class Play {
       return null;
     }
     if (this.role !== 'view') return null;
-    return this.take(this.everHeld && !this.cached);
+    return this.take(this.everHeld && !this.cached, true);
   }
 
   /**
@@ -332,8 +344,11 @@ export class Play {
 
   /** Play here, on the cover: the play comes to this page, as at start-up, also from a holder in view that just said no to it */
   here(): Promise<'held' | 'busy'> {
-    if (this.pending) return this.pending.then((how) => (how === 'held' ? how : this.take(false)));
-    return this.take(false);
+    this.hereAsked = true;
+    const done = this.pending ? this.pending.then((how) => (how === 'held' ? how : this.take(false))) : this.take(false);
+    return done.finally(() => {
+      this.hereAsked = false;
+    });
   }
 
   /**
@@ -368,10 +383,16 @@ export class Play {
    * is asked over the channel (it writes, then lets go), and one that does
    * not answer within `wait` has it taken (steal: a frozen or discarded
    * tab). With `ifHidden`, a holder in view keeps it and says so ('busy').
+   * Told no as it was shown again (`asShown`), the page stays taking a
+   * moment (SETTLE_MS), so the cover does not flash up while the holder's
+   * own hide is on its way: its free makes this page take the play, and
+   * only a page still a view after the moment draws the cover.
    */
-  private take(ifHidden: boolean): Promise<'held' | 'busy'> {
+  private take(ifHidden: boolean, asShown = false): Promise<'held' | 'busy'> {
     if (this.acts()) return Promise.resolve('held');
     if (this.pending) return this.pending;
+    if (this.settling) clearTimeout(this.settling);
+    this.settling = null;
     this.setTaking(true);
     this.pending = (async (): Promise<'held' | 'busy'> => {
       try {
@@ -403,6 +424,11 @@ export class Play {
         if (outcome === 'busy') {
           this.toldNoAt = Date.now();
           this.become('view');
+          if (asShown)
+            this.settling = setTimeout(() => {
+              this.settling = null;
+              this.setTaking(false);
+            }, this.settleWait);
           return 'busy';
         }
         // no answer: the holder is frozen, or went without letting go
@@ -411,7 +437,7 @@ export class Play {
         return 'busy';
       } finally {
         this.pending = null;
-        this.setTaking(false);
+        if (!this.settling) this.setTaking(false);
       }
     })();
     return this.pending;
@@ -533,6 +559,10 @@ export class Play {
     if ('want' in m && typeof m.want === 'string' && m.want !== this.id) {
       // asked while this page is taking the play itself: answered once it holds it
       if (this.pending && this.role !== 'player') return void this.wants.push({ m, at: Date.now() });
+      // a page in view reloading to start from the saves takes the play
+      // back as it starts (Play.boot): asked as one shown again asks, it
+      // keeps it, so a window beside it does not take it and reload too
+      if (this.role === 'leaving' && this.grant && m.ifHidden && !this.deps.hidden()) return this.post({ busy: m.want, ask: m.ask });
       if (this.role !== 'player' || !this.grant) return;
       this.answer(m);
     } else if ('busy' in m && m.busy === this.id) {
@@ -630,13 +660,14 @@ play.onChange = () => usePlay.setState({ role: play.role, taking: play.taking })
 
 /**
  * Starts the play at start-up (src/main.tsx): claims it (`again`: the page
- * reloaded itself to take it back, Play.boot), and follows the page being
+ * reloaded itself to take it back, `here`: Play here brought that reload,
+ * Play.boot), and follows the page being
  * shown (a view then asks for it) or hidden, its window getting the focus,
  * going into the back-forward cache (it gives it up) and coming back from
  * it, and closing. Without Web Locks only whether the page is seen is
  * followed.
  */
-export function startPlay(again = false): Promise<void> {
+export function startPlay(again = false, here = false): Promise<void> {
   if (typeof window !== 'undefined') {
     const onShown = () => {
       const hidden = document.visibilityState === 'hidden';
@@ -657,5 +688,5 @@ export function startPlay(again = false): Promise<void> {
       });
     }
   }
-  return play.boot(again);
+  return play.boot(again, here);
 }

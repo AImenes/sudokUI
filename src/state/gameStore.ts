@@ -2880,9 +2880,6 @@ export const useGame = create<GameStore>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.startedAt = Date.now();
-          // stopped for finished games, and for one the player paused (a
-          // save from before the pause was kept has none: it runs)
-          state.paused = state.won || !!state.paused;
           // the board says whether this game was begun, so nothing about
           // counting needs saving: a move on it was counted when made, and
           // so was a position opened with entries on it (countStart). Not
@@ -2896,25 +2893,11 @@ export const useGame = create<GameStore>()(
           // back is judged by its own saved board)
           const g = state.custom && state.customBackup ? state.customBackup : state;
           state.counted = !!g.info && !useSettings.getState().dontCount && playedOn(g);
-          // a save from before solved was kept has it when it was won, and
-          // the time it was won at
-          state.solved = !!state.solved || state.won;
-          if (state.solvedMs === null && state.won) state.solvedMs = state.elapsedBefore;
-          if (state.solvedAssisted === null && state.won) state.solvedAssisted = state.assisted;
-          if (state.solvedAuto === null && state.won) state.solvedAuto = state.autoCandidates;
-          // the chain trainer, open when the page went, does not come back:
-          // it closes as Done closes it, so the auto candidates it switched
-          // on go off with the player's marks back (after the count above,
-          // which they were part of). A save from before the handover was
-          // kept has none, and keeps auto as it was
-          if (state.chainHandover && state.autoCandidates && state.info) {
-            state.cells = handBack(state.cells, state.chainHandover, state.info.solution, state.markContract);
-            state.autoCandidates = false;
-          }
-          state.chainHandover = null;
-          // a save from before strikes went with auto candidates off may
-          // hold a struck true digit the board cannot show: it goes
-          if (state.info && !state.autoCandidates) state.cells = dropHiddenSlips(state.cells, state.info.solution);
+          // then the save as a page reading it takes it in: solved and its
+          // time for an old save, the chain trainer closed as Done closes
+          // it (after the count above, which its auto candidates were part
+          // of), no struck true digit the board cannot show (asRead)
+          Object.assign(state, readFields(state));
         }
       }
     }
@@ -3119,6 +3102,53 @@ function boardOf(back: SetAside): Partial<GameStore> {
     // a puzzle being typed in takes digits, as when it was opened
     ...(back.custom ? { mode: 'digit' as EntryMode } : {})
   };
+}
+
+/** the fields of a game's save that asRead reads */
+export type SavedGame = Pick<
+  GameStore,
+  'info' | 'cells' | 'autoCandidates' | 'chainHandover' | 'markContract' | 'won' | 'paused' | 'solved' | 'solvedMs' | 'solvedAssisted' | 'solvedAuto' | 'elapsedBefore' | 'assisted'
+>;
+
+/** what reading a save changes of it (asRead) */
+function readFields(s: SavedGame): Pick<SavedGame, 'paused' | 'solved' | 'solvedMs' | 'solvedAssisted' | 'solvedAuto' | 'cells' | 'autoCandidates' | 'chainHandover'> {
+  const won = !!s.won;
+  // the chain trainer, open when the page went, does not come back: it
+  // closes as Done closes it, so the auto candidates it switched on go off
+  // with the player's marks back. A save from before the handover was kept
+  // has none, and keeps auto as it was
+  const board = doneBoard(s);
+  return {
+    // stopped for finished games, and for one the player paused (a save
+    // from before the pause was kept has none: it runs)
+    paused: won || !!s.paused,
+    // a save from before solved was kept has it when it was won, and the
+    // time it was won at
+    solved: !!s.solved || won,
+    solvedMs: s.solvedMs == null && won ? s.elapsedBefore : s.solvedMs,
+    solvedAssisted: s.solvedAssisted == null && won ? s.assisted : s.solvedAssisted,
+    solvedAuto: s.solvedAuto == null && won ? s.autoCandidates : s.solvedAuto,
+    // a save from before strikes went with auto candidates off may hold a
+    // struck true digit the board cannot show: it goes
+    cells: s.info && !board.autoCandidates ? dropHiddenSlips(board.cells, s.info.solution) : board.cells,
+    autoCandidates: board.autoCandidates,
+    chainHandover: null
+  };
+}
+
+/**
+ * A game's save as a page that reads it takes it in (onRehydrateStorage):
+ * a won game stopped, a solve's time and help for a save from before they
+ * were kept, the chain trainer open when it was written closed as Done
+ * closes it (its auto candidates off again, the player's marks back), and
+ * no struck true digit the board cannot show. A page that takes the play
+ * back reads its own last write and the save this way (src/main.tsx,
+ * clockOnly): a page that read the save and wrote it back with nothing
+ * played changed nothing of the game, though the trainer it closed left
+ * the save's auto candidates off.
+ */
+export function asRead<T extends SavedGame>(s: T): T {
+  return { ...s, ...readFields(s) };
 }
 
 /** the board as Done (and a reload) would leave it with the chain trainer open: the auto candidates it switched on off again, the player's marks back (handBack) */

@@ -94,8 +94,15 @@ practice nobody touched among them, and a board whose only change is the
 auto candidates the chain trainer switched on, which Done and a reload
 take off again. Such a game's clock may run in another tab or window
 that shows it; a page that takes the play back with nothing else of the
-game changed takes that clock on, as it stands in the save, rather than
-reload ([main.tsx](../src/main.tsx), `clockOnly`, `inPlace`). While the pause card covers the board, keys act on
+game changed takes that clock on, its time and whether it is paused, as
+it stands in the save, rather than reload ([main.tsx](../src/main.tsx),
+`clockOnly`, `inPlace`). It compares its own last write with the save as
+a page reading them takes them in (`asRead`, the steps the save's read
+makes: the chain trainer closed as Done closes it, among them): a page
+that read the save with the trainer open closed it as it read it, so
+what it wrote back has the trainer's auto candidates off with nothing
+played, and the page that comes back keeps its trainer, its undo steps
+and its auto candidates, which its next write puts back in the save. While the pause card covers the board, keys act on
 nothing behind it (no Undo, hint, mode or Escape; only P resumes), a key
 meant for the board says why in the toast, and the board's status line,
 which a screen reader hears, says the game is paused instead of reading
@@ -183,8 +190,14 @@ taken. Every other open page of the app is a view that writes nothing.
   (`gone`): a page in view then takes the play by itself after a second
   (`GONE_MS`), unless a page took it back meanwhile (the one that went,
   reloading), so the window beside it does not keep a cover for a game
-  that carries on nowhere. A holder whose name was replaced while it was
-  frozen finds out when it is shown again, and asks as a view does.
+  that carries on nowhere. A page in view reloading to start from the
+  saves (Coming back, below) still holds the lock until it goes: asked
+  meanwhile as a page shown again asks, it keeps the play, so of two
+  views beside a holder that closed, one takes it and reloads, and the
+  other stays a view with its cover rather than take it from the
+  reloading page and reload too. A holder whose name was replaced while
+  it was frozen finds out when it is shown again, and asks as a view
+  does.
 - **Read after taking.** The stores read the saves as the page loads;
   the first render waits for the play (and for the language's tables),
   and once the page holds it a save whose text changed meanwhile is read
@@ -204,7 +217,9 @@ taken. Every other open page of the app is a view that writes nothing.
   play.
 - **Coming back.** A page that takes the play back goes on as it is when
   the game's save is exactly what it last wrote or read, or differs only
-  in the clock of a game nobody played on (above): its win screen and
+  in the clock of a game nobody played on, both read as a page reading
+  the save takes it in (above: the chain trainer open in this page, and
+  another page that only looked, among them): its win screen and
   Send, its undo steps, its open panels and questions stay, and the focus
   goes back where it was in the app (a dialog left open keeps it, so Tab
   stays inside; with that gone, the top open dialog, then the board). The
@@ -221,13 +236,16 @@ taken. Every other open page of the app is a view that writes nothing.
   the back-forward cache keeps its entry's address instead, and its start
   follows the rule of Back and Forward ("A game is never lost", below).
   The reload takes the play as a page shown again does, from no page or
-  a hidden one, so it never takes it from the window the player is in. A
+  a hidden one, so it never takes it from the window the player is in;
+  one that Play here brought takes it as a page that starts does, so a
+  window beside it that took the play while it reloaded gives it back. A
   view wrote nothing of its own, so the reload loses nothing.
 - **The view.** A page that does not hold the play shows a cover over the
   app, in the pause card's look: a line saying sudokUI is open in another
   tab or window and the game carries on there, and Play here, which takes
-  the play as a page that starts does (then reloads if the saves
-  changed). The app behind it is inert: no key shortcut, no Tab stop, no
+  the play as a page that starts does (then reloads only if another page
+  played on the game or opened another, as Coming back says). The app
+  behind it is inert: no key shortcut, no Tab stop, no
   click acts on the game; its clock stands still, as a hidden page's
   does, and it sends no daily time and no counts of its own (`countStart`
   and the telemetry store ask `play.acts()`). A page that comes up hidden
@@ -235,7 +253,11 @@ taken. Every other open page of the app is a view that writes nothing.
   (one that plays alone takes it at once).
   The cover is a dialog with its name, the focus on Play here. It is
   never drawn on a page nobody sees, nor while a page shown again is
-  taking the play back, so it does not flash up in front of the player;
+  taking the play back, so it does not flash up in front of the player
+  (told no by a holder still in view, a page shown again waits a moment,
+  `SETTLE_MS`, before it draws the cover: the two tabs' events come in
+  either order, and the hide of the tab the player left, which gives the
+  play, may come just after);
   and a cover already up stays up while its page asks (its window got
   the focus, or Play here was pressed), so it does not blink away under
   the player's click and come back when the answer is no.
@@ -277,7 +299,9 @@ device is set; [theme.ts](../src/ui/theme.ts) puts the look shown on the
 page and gives the browser's bar the top bar's colour.
 
 **Pools** ([pools.ts](../src/state/pools.ts)). localStorage-backed puzzle
-pools keyed per difficulty and per technique, plus the worker plumbing
+pools keyed per difficulty and per technique (written, as the saves
+are, only by the page that plays: it is only a cache, so what a view's
+workers find is not kept), plus the worker plumbing
 (`requestPuzzle` with progress + cancel, `justifyMove`). New games and
 practice sessions usually start instantly from a pool; the worker restocks
 in the background. A worker that dies settles every request waiting on it
@@ -378,7 +402,16 @@ none of the player's work.
   from another document of the tab (`back_forward`, or a page come back
   from the back-forward cache and reloaded into the saves: `traversed`),
   so an address no game here answers to never opens a fresh copy over
-  the game under way (with no game saved at all, it opens). A link opened in the same tab by its hash (`#s=`,
+  the game under way (with no game saved at all, it opens). It holds for
+  an entry the app has started on: App's start-up leaves a mark in the
+  entry's history state (`sudokuiStarted`, src/ui/links.ts, kept by every
+  address the app writes; it says only that, stays in the tab's history
+  and is never sent). A tab the browser restores (its last session, or
+  Reopen closed tab) loads as Back and Forward do: where the app had
+  started, it follows this rule; where it never started (a link opened in
+  a background tab and never looked at, which kept its link) it opens its
+  link as a link does once it is seen, the game under way set aside and
+  any game the one slot lets go told. A link opened in the same tab by its hash (`#s=`,
   `#p=`, `#daily`) leaves the address once it has opened, which goes to
   the board's game, so a reload, or Back then Forward, never opens it
   again over the game played on since.

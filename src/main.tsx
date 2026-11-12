@@ -10,14 +10,15 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './ui/App';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import './ui/styles.css';
-import { useGame } from './state/gameStore';
+import { useGame, asRead } from './state/gameStore';
+import type { SavedGame } from './state/gameStore';
 import { useStats } from './state/stats';
 import { useDailyStats } from './state/dailyStats';
 import { play, startPlay, acted, clearing, SAVES } from './state/play';
 import { useAppStatus, reloadIntoLatest } from './state/appStatus';
 import { useSettings } from './state/settings';
 import { startLocales, langOfPath, langRoot } from './content/i18n';
-import { reloadMark, cameBack } from './ui/links';
+import { reloadMark, cameBack, entryState } from './ui/links';
 
 // /nb/ and /es/ are the app in Norwegian and Spanish, the addresses search
 // engines show for those languages: arriving there chooses the language.
@@ -88,9 +89,11 @@ window.addEventListener('vite:preloadError', (event) => {
 // play, this page writes its game, clock included, as a hidden page does
 // (setAway pauses a game under way), then lets go and is a view. Given
 // the play, a page that has not yet acted reads again the saves another
-// page wrote meanwhile; one that has acted goes on as it is when the saves
-// are as it left them, and otherwise reloads, so it starts from them the
-// way every page starts (it wrote nothing of its own while a view)
+// page wrote meanwhile; one that has acted goes on as it is when nobody
+// played meanwhile (the game's save as it left it, or differing only in
+// the clock: inPlace), and reloads when another page played on the game
+// or opened another, so it starts from the saves the way every page
+// starts (it wrote nothing of its own while a view)
 const STORES: Record<string, { persist: { rehydrate: () => unknown } }> = {
   'sudokui-game-v1': useGame,
   'sudokui-stats-v1': useStats,
@@ -100,23 +103,29 @@ const GAME = SAVES[0];
 
 /**
  * The game's save differs from what this page last wrote or read only in
- * the clock: another page showed a game nobody played on, and its clock
- * ran there (a game under way pauses as the play goes, so its clock stands
- * still). Nobody played, so nothing needs a reload: the clock is taken on
- * from where it stands. True once it has.
+ * the clock, its time and whether it runs: another page showed a game
+ * nobody played on, and its clock ran there (a game under way pauses as
+ * the play goes, so its clock stands still), or paused or resumed it.
+ * Both are compared as a page reading them takes them in (asRead): a page
+ * that read the save with the chain trainer open closed the trainer as it
+ * read it, so its next write has the trainer's auto candidates off, with
+ * nothing played; this page keeps its trainer, and its next write puts
+ * them back. Nobody played, so nothing needs a reload: the clock is taken
+ * on from where it stands. True once it has.
  */
 function clockOnly(): boolean {
   try {
     const now = localStorage.getItem(GAME);
     const before = play.last(GAME);
     if (!now || !before) return false;
-    const a = JSON.parse(before) as { state?: Record<string, unknown>; version?: number };
-    const b = JSON.parse(now) as { state?: Record<string, unknown>; version?: number };
+    const a = JSON.parse(before) as { state?: SavedGame; version?: number };
+    const b = JSON.parse(now) as { state?: SavedGame; version?: number };
     const clock = b.state?.elapsedBefore;
     if (!a.state || !b.state || typeof clock !== 'number' || a.version !== b.version) return false;
-    if (JSON.stringify({ ...a.state, elapsedBefore: 0 }) !== JSON.stringify({ ...b.state, elapsedBefore: 0 })) return false;
+    const game = (s: SavedGame) => JSON.stringify({ ...asRead(s), elapsedBefore: 0, paused: false });
+    if (game(a.state) !== game(b.state)) return false;
     play.read(GAME, now);
-    useGame.setState({ elapsedBefore: clock, startedAt: Date.now() });
+    useGame.setState({ elapsedBefore: clock, paused: asRead(b.state).paused, startedAt: Date.now() });
     return true;
   } catch {
     return false;
@@ -170,8 +179,10 @@ play.hooks = {
     // is up), but with a link put into its address bar while it was a view
     // (the hash), which its start then opens. The reload takes the play
     // as a page shown again does, so it never takes it from the window the
-    // player is in (Play.boot)
-    const mark = { sudokuiReload: { again: true, ...(back ? { back: true } : {}) } };
+    // player is in (Play.boot); one Play here brought takes it as a page
+    // that starts does, so a window beside it that took the play while it
+    // reloaded gives it back
+    const mark = entryState({ sudokuiReload: { again: true, ...(back ? { back: true } : {}), ...(play.hereAsked ? { here: true } : {}) } });
     try {
       if (back) window.history.replaceState(mark, '');
       else window.history.replaceState(mark, '', langRoot(useSettings.getState().lang) + window.location.hash);
@@ -189,7 +200,7 @@ play.hooks = {
     // game back (src/ui/App.tsx). A page that never started keeps its link
     if (!acted() || away) return;
     try {
-      window.history.replaceState(null, '', langRoot(useSettings.getState().lang));
+      window.history.replaceState(entryState(), '', langRoot(useSettings.getState().lang));
     } catch {
       /* an origin that allows no path of its own */
     }
@@ -200,7 +211,7 @@ play.hooks = {
 // moment even offline), and for the play (a moment, or the holder's wait
 // when it does not answer); if the tables cannot be fetched the app starts
 // in English
-const claimed = Promise.race([startPlay(!!reloadMark.again), new Promise<void>((done) => setTimeout(done, 4000))])
+const claimed = Promise.race([startPlay(!!reloadMark.again, !!reloadMark.here), new Promise<void>((done) => setTimeout(done, 4000))])
   .catch(() => {})
   // (a page the browser refused a lock plays alone: its link's language now)
   .then(() => {

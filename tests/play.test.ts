@@ -129,7 +129,8 @@ class Browser {
       hidden: () => state.hidden,
       id: name,
       wait: 40,
-      gone: 30
+      gone: 30,
+      settle: 30
     });
     const save = play.storage();
     play.hooks = {
@@ -563,6 +564,66 @@ describe('one page plays at a time', () => {
     expect(c.play.role).toBe('player');
     c.state.hidden = true;
     expect(await a.play.shown()).toBe('held');
+  });
+
+  it('a page Play here reloaded takes the play as a page that starts does: from a window beside it in view that took it meanwhile too', async () => {
+    const b = new Browser();
+    const c = b.page('c');
+    await c.play.boot();
+    const a = b.page('a');
+    await a.play.boot(true, true);
+    expect(a.play.role).toBe('player');
+    expect(c.play.role).toBe('view');
+    expect(c.state.gave).toBe(1);
+  });
+
+  it('shown again and told no by a holder in view, a page draws no cover for a moment: the holder hidden within it, it takes the play, never shown as a view', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    const c = b.page('c');
+    await c.play.boot();
+    // what the cover is drawn by: a view that is not taking the play
+    const covered: boolean[] = [];
+    a.play.onChange = () => covered.push(a.play.role === 'view' && !a.play.taking);
+    // a shown before c's hide comes: told no, it waits a moment
+    expect(await a.play.shown()).toBe('busy');
+    expect(a.play.role).toBe('view');
+    expect(a.play.taking).toBe(true);
+    c.state.hidden = true;
+    c.play.hide();
+    await tick(100);
+    expect(a.play.role).toBe('player');
+    expect(covered).not.toContain(true);
+    // c shown again beside a in view, told no with nothing after it: the cover comes once the moment is over
+    c.state.hidden = false;
+    expect(await c.play.shown()).toBe('busy');
+    expect(c.play.taking).toBe(true);
+    await tick(60);
+    expect(c.play.role).toBe('view');
+    expect(c.play.taking).toBe(false);
+  });
+
+  it('a page in view reloading to start from the saves keeps the play from a window beside it that asks, which stays a view; the reloaded page takes it back', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    const c = b.page('c');
+    await c.play.boot();
+    // c, in view, reloads (it came back to a game another page played on)
+    c.play.leave();
+    // a, a view in view beside it, asks as one shown again does (its window got the focus, or the holder's gone)
+    a.play.focused();
+    await tick(100);
+    expect(a.play.role).toBe('view');
+    expect(a.state.taken).toEqual([false]);
+    // the reloaded page: the lock went with the old one
+    c.state.frozen = true;
+    b.locks.close('sudokui-play');
+    const c2 = b.page('c2');
+    await c2.play.boot(true);
+    expect(c2.play.role).toBe('player');
+    expect(a.play.role).toBe('view');
   });
 
   it('a page come back from the back-forward cache is told so as it takes the play again, and takes it as a page that starts does', async () => {
