@@ -7,9 +7,8 @@
  * again shows its win screen, says which solve stays its result, and still
  * sends and shares that one; and the clock: a paused game reloads paused, a
  * reload keeps the time since the last move, the time the page is hidden
- * does not count and a game under way comes back behind the pause card, a
- * second tab shown again does not put its older board back, and a tab with
- * a game under way keeps it while another tab opens another puzzle.
+ * does not count and a game under way comes back behind the pause card,
+ * and a second tab shown again plays on from the moves made in the other.
  */
 import { test, expect, Page } from '@playwright/test';
 import { parseGrid, gridToString } from '../../src/engine/board';

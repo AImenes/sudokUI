@@ -29,10 +29,10 @@ let posts: any[] = [];
   return new Response(JSON.stringify({ ok: true, accepted: true, stats }), { status: 200, headers: { 'content-type': 'application/json' } });
 };
 
-const { useGame, dailyResultOf, keptResultOf, solvePath, takesInSaved, takeInSavedGame, underWay, encodePosition } = await import('../src/state/gameStore');
+const { useGame, dailyResultOf, keptResultOf, solvePath, underWay, encodePosition } = await import('../src/state/gameStore');
 const { useDailyStats } = await import('../src/state/dailyStats');
 const { useSettings } = await import('../src/state/settings');
-const { useStats, takeInSavedRecord } = await import('../src/state/stats');
+const { useStats } = await import('../src/state/stats');
 const { useTelemetry } = await import('../src/state/telemetry');
 const { dailyNumber, dailyDate, localDateKey } = await import('../src/content/dailies');
 
@@ -461,8 +461,8 @@ describe('a daily solved again', () => {
   });
 });
 
-describe('a game another window saved', () => {
-  /** the save another window wrote: this game with four more digits on it */
+describe('a game read from the save again, as another page played it (src/main.tsx: the play taken back before this page acted)', () => {
+  /** the save another page wrote: this game with four more digits on it */
   const otherWindowPlayed = () => {
     const other = saved();
     for (const cell of EMPTY.slice(0, 4)) other.cells[cell].value = Number(solution()[cell]);
@@ -471,7 +471,7 @@ describe('a game another window saved', () => {
   const filled = () => useGame.getState().cells.filter((c) => c.value).length;
   const GIVENS = 81 - EMPTY.length;
 
-  it('comes in without this window’s undo steps, hint or Check marks', async () => {
+  it('comes in without this page’s undo steps, hint or Check marks', async () => {
     useGame.getState().startGame(EASY, 196, 'Easy');
     play(EMPTY[0], Number(solution()[EMPTY[0]]));
     useGame.setState({ errors: [3] });
@@ -483,16 +483,16 @@ describe('a game another window saved', () => {
     expect(g.future).toEqual([]);
     expect(g.errors).toEqual([]);
     expect(g.hint).toBeNull();
-    // Undo cannot bring back this window's older board
+    // Undo cannot bring back this page's older board
     useGame.getState().undo();
     expect(filled()).toBe(GIVENS + 4);
   });
 
-  it('is not counted again as begun: the window that played it counted it', async () => {
+  it('is not counted again as begun: the page that played it counted it', async () => {
     let started = 0;
     useSettings.setState({ dontCount: false });
     useTelemetry.setState({ track: (kind: string) => void (kind === 'started' && started++) } as never);
-    // this window opened the puzzle and never played it
+    // this page opened the puzzle and never played it
     useGame.getState().startGame(EASY, 196, 'Easy');
     otherWindowPlayed();
     await useGame.persist.rehydrate();
@@ -500,84 +500,6 @@ describe('a game another window saved', () => {
     expect(useGame.getState().counted).toBe(true);
     play(EMPTY[4], Number(solution()[EMPTY[4]]));
     expect(started).toBe(0);
-  });
-});
-
-describe('a game another window saved, of another puzzle', () => {
-  const OTHER = '8..6.2.5....89..6.67...5.......4.1.9.1.5.8.3.3.4.2.......7...92.3..89....9.2.4..6';
-  /** the save another window wrote as it went away: a game of its own (a link or a practice opened there) */
-  const otherWindowStarted = (info: Record<string, unknown> = {}) => {
-    const other = saved();
-    other.info = { ...other.info, puzzle: OTHER, dailyKey: undefined, ...info };
-    other.cells = other.cells.map((c: { given: boolean }) => ({ ...c, value: 0, given: false }));
-    other.won = false;
-    other.solved = false;
-    storage.set('sudokui-game-v1', JSON.stringify({ state: other, version: 0 }));
-    return storage.get('sudokui-game-v1')!;
-  };
-  const mine = () => useGame.getState().cells.filter((c) => !c.given && c.value).length;
-
-  it('is left alone while this window has a game under way: its board, its moves and its undo steps stay', () => {
-    useGame.getState().startGame(EASY, 196, 'Easy');
-    for (const cell of EMPTY.slice(0, 4)) play(cell, Number(solution()[cell]));
-    const json = otherWindowStarted({ practiceTech: 'X_WING' });
-    takeInSavedGame(json);
-    const g = useGame.getState();
-    expect(g.info?.puzzle).toBe(EASY);
-    expect(mine()).toBe(4);
-    expect(g.history).toHaveLength(4);
-    // a daily of another day, or the same puzzle as practice, is another game too
-    expect(takesInSaved({ ...JSON.parse(json).state, info: { ...g.info, dailyKey: '2026-11-10' } }, g)).toBe(false);
-    expect(takesInSaved({ ...JSON.parse(json).state, info: { ...g.info, practiceTech: 'X_WING' } }, g)).toBe(false);
-    // the same game, played on there, comes in
-    expect(takesInSaved({ ...JSON.parse(json).state, info: g.info }, g)).toBe(true);
-  });
-
-  it('comes in when this window’s game is solved, or not begun, or there is none: nothing of the player’s is given up', () => {
-    useGame.getState().startGame(EASY, 196, 'Easy');
-    const json = otherWindowStarted();
-    expect(takesInSaved(JSON.parse(json).state, useGame.getState())).toBe(true);
-    takeInSavedGame(json);
-    expect(useGame.getState().info?.puzzle).toBe(OTHER);
-    useGame.getState().startGame(EASY, 196, 'Easy');
-    solveAll();
-    // won here, its win screen up, it is this window's own; put away, it is not
-    expect(takesInSaved(JSON.parse(otherWindowStarted()).state, useGame.getState())).toBe(false);
-    useGame.setState({ ownHere: false });
-    expect(takesInSaved(JSON.parse(otherWindowStarted()).state, useGame.getState())).toBe(true);
-    expect(takesInSaved(JSON.parse(json).state, { ...useGame.getState(), info: null })).toBe(true);
-    // a puzzle being typed in is this window's own work
-    expect(takesInSaved(JSON.parse(json).state, { ...useGame.getState(), custom: true, info: null })).toBe(false);
-  });
-
-  it('comes in over a practice puzzle the player has not moved on here, whose moves are the app’s', () => {
-    useSettings.setState({ practiceFastForward: true });
-    useGame.getState().startGame(EASY, 196, 'Easy', 'NAKED_SINGLE' as never);
-    const other = JSON.parse(otherWindowStarted()).state;
-    expect(takesInSaved(other, useGame.getState())).toBe(true);
-    const open = useGame.getState().cells.findIndex((c) => !c.value);
-    play(open, Number(solution()[open]));
-    expect(takesInSaved(other, useGame.getState())).toBe(false);
-  });
-
-  it('leaves this window its own game’s tally while the record comes in', () => {
-    useGame.getState().startGame(EASY, 196, 'Easy');
-    for (const cell of EMPTY.slice(0, 2)) play(cell, Number(solution()[cell]));
-    useStats.setState((s) => ({ game: { ...s.game, errors: 2 } }));
-    // the other window started its own game (its tally new) and solved one on it before
-    const other = JSON.parse(storage.get('sudokui-stats-v1')!);
-    other.state.game = { unaided: {}, hinted: {}, errors: 0, beyond: 0 };
-    other.state.bands = { Hard: { solves: 1, unassisted: 1, bestMs: 300_000, totalMs: 300_000 } };
-    storage.set('sudokui-stats-v1', JSON.stringify(other));
-    otherWindowStarted();
-    takeInSavedRecord();
-    expect(useStats.getState().game.errors).toBe(2);
-    expect(useStats.getState().bands.Hard?.solves).toBe(1);
-    // the same game saved there: its tally comes in with it
-    storage.set('sudokui-game-v1', JSON.stringify({ state: { ...saved(), info: useGame.getState().info }, version: 0 }));
-    storage.set('sudokui-stats-v1', JSON.stringify(other));
-    takeInSavedRecord();
-    expect(useStats.getState().game.errors).toBe(0);
   });
 });
 

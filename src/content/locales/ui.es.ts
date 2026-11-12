@@ -95,8 +95,6 @@ const ui: Dictionary = {
   "your {level} game": "tu partida de nivel {level}",
   "Only one game in progress is kept at a time: {game} is gone, {kept} is kept": "Solo se guarda una partida en curso a la vez: se ha perdido {game} y se guarda {kept}",
   "Only one game in progress is kept at a time: {games} are gone, {kept} is kept": "Solo se guarda una partida en curso a la vez: se han perdido {games} y se guarda {kept}",
-  "Only one game in progress is kept in this tab: {game} is still open in your other tab, {kept} is kept here": "En esta pestaña solo se guarda una partida en curso: {game} sigue en tu otra pestaña y aquí se guarda {kept}",
-  "Only one game in progress is kept in this tab: {games} are still open in your other tabs, {kept} is kept here": "En esta pestaña solo se guarda una partida en curso: {games} siguen en tus otras pestañas y aquí se guarda {kept}",
   "{game} (HoDoKu rating {score})": "{game} (puntuación HoDoKu {score})",
   "You have solved this daily. Restart plays it again": "Ya has resuelto este sudoku del día. Con Reiniciar lo juegas de nuevo",
   "Today’s daily could not be loaded. Check the connection and try again": "No se ha podido cargar el sudoku de hoy. Comprueba la conexión y vuelve a intentarlo",

@@ -51,17 +51,6 @@ const emptyGame = (): GameTally => ({ unaided: {}, hinted: {}, errors: 0, beyond
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-/** whether the game another window saved is this window's own, or taken
- *  in (gameStore.ts tells, takesInSaved): the tally of that game (game)
- *  then comes in with the record */
-let tallyFollows = () => true;
-export function tallyFollowsWhen(follows: () => boolean) {
-  tallyFollows = follows;
-}
-/** this window's game tally stays through a take-in from another window
- *  (merge, and the listener at the end) */
-let keepTally = false;
-
 export const useStats = create<Stats>()(
   persist(
     (set) => ({
@@ -118,7 +107,7 @@ export const useStats = create<Stats>()(
       // bands', so a record written now still reads in an older build
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<Stats>;
-        return { ...current, ...p, bands: foldBands(p.bands ?? {}), ...(keepTally ? { game: current.game } : {}) };
+        return { ...current, ...p, bands: foldBands(p.bands ?? {}) };
       }
     }
   )
@@ -222,13 +211,4 @@ export function gameSummary(game: GameTally): string {
   if (hinted.length) sentences.push(t('From hints: {list}.', { list: hinted.join(', ') }));
   if (game.errors) sentences.push(t(game.errors === 1 ? '{n} wrong digit.' : '{n} wrong digits.', { n: game.errors }));
   return sentences.join(' ');
-}
-
-/** the record another window saved, taken in; the tally of the game goes
- *  with the game, so a window that keeps its own game keeps its own tally
- *  (the save is read at once, so the merge runs within the call) */
-export function takeInSavedRecord() {
-  keepTally = !tallyFollows();
-  void useStats.persist.rehydrate();
-  keepTally = false;
 }

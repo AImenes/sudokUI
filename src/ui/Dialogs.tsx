@@ -28,7 +28,7 @@ import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
 import { parsePencilGrid, looksLikeGrid } from '../content/textGrid';
 import { puzzleFromLink, findUrl } from '../content/importLinks';
 import { readAppLink, isAppAddress } from '../content/share';
-import { openAppLink, importFromOthers } from './links';
+import { openAppLink } from './links';
 import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
 import { dailyNumber, localDateKey, dailyClosed, standingOf } from '../content/dailies';
 import { dailyLine, standingPhrase, asLine } from '../content/dailyLine';
@@ -1006,8 +1006,6 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       setError(refusalText(link, t));
       return;
     }
-    // a game of it this window let go to another window: that copy comes here
-    if (await importFromOthers(link.puzzle)) return void onClose();
     const reason = importPuzzle(link.puzzle, link.source && t(SOURCE_NAMES[link.source]));
     if (reason) setError(reason);
     else onClose();

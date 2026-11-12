@@ -95,8 +95,6 @@ const ui: Dictionary = {
   "your {level} game": "spillet ditt på nivået {level}",
   "Only one game in progress is kept at a time: {game} is gone, {kept} is kept": "Bare ett påbegynt spill tas vare på om gangen: {game} er borte, {kept} er tatt vare på",
   "Only one game in progress is kept at a time: {games} are gone, {kept} is kept": "Bare ett påbegynt spill tas vare på om gangen: {games} er borte, {kept} er tatt vare på",
-  "Only one game in progress is kept in this tab: {game} is still open in your other tab, {kept} is kept here": "Bare ett påbegynt spill tas vare på i denne fanen: {game} er fortsatt i den andre fanen din, {kept} er tatt vare på her",
-  "Only one game in progress is kept in this tab: {games} are still open in your other tabs, {kept} is kept here": "Bare ett påbegynt spill tas vare på i denne fanen: {games} er fortsatt i de andre fanene dine, {kept} er tatt vare på her",
   "{game} (HoDoKu rating {score})": "{game} (HoDoKu-poengsum {score})",
   "You have solved this daily. Restart plays it again": "Du har løst denne dagens oppgave. Med Omstart spiller du den igjen",
   "Today’s daily could not be loaded. Check the connection and try again": "Dagens oppgave kunne ikke lastes inn. Sjekk tilkoblingen og prøv igjen",

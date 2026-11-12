@@ -100,14 +100,6 @@ async function positionLink(browser: Browser, puzzle: string, n: number): Promis
   return position;
 }
 
-/** a page behind others (hidden) or in front again, as the browser tells it */
-const setHidden = (p: Page, hidden: boolean) =>
-  p.evaluate((h) => {
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (h ? 'hidden' : 'visible') });
-    Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
-    document.dispatchEvent(new Event('visibilitychange'));
-  }, hidden);
-
 /** correct digits in n cells that are open on the board as saved (a practice opens with the app's digits in some) */
 async function enterOpen(page: Page, n: number) {
   const state = await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state as { info: { solution: string }; cells: { value: number }[] });
@@ -368,64 +360,6 @@ test.describe('links and Import, laptop', () => {
     await expect(second.locator('.toast')).toHaveCount(0);
     // tab 1 still has its daily
     expect(await first.evaluate(() => location.pathname)).toBe(`/daily/${localDateKey()}`);
-  });
-
-  test('a game the one slot lets go in a new tab, still open in the other tab, is said to be there, not gone', async ({ context }) => {
-    await context.addInitScript(welcomed);
-    // tab 1: today's daily (three digits) kept, a friend's puzzle (two digits) on the board, then behind the other tab
-    const first = await context.newPage();
-    await openDaily(first);
-    await enter(first, false, 3);
-    await first.goto(`/p/${EASY}/`);
-    await expect(note(first)).toBeVisible();
-    await enter(first, false, 2);
-    await expect.poll(async () => (await saved(first)).entries).toBe(2);
-    await first.evaluate(() => {
-      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
-      document.dispatchEvent(new Event('visibilitychange'));
-    });
-    // tab 2: another puzzle; the slot keeps the daily, and the friend's puzzle is still on tab 1's board
-    const second = await context.newPage();
-    await second.goto(`/p/${HARD}/`);
-    await expect(second.locator('.toast')).toContainText(
-      'Only one game in progress is kept in this tab: your game on a shared puzzle (HoDoKu rating 196) is still open in your other tab, today’s daily is kept here'
-    );
-    await expect(second.locator('.toast')).not.toContainText('is gone');
-    expect(await saved(second)).toMatchObject({ puzzle: HARD, aside: { dailyKey: localDateKey(), entries: 3 } });
-  });
-
-  test('the Daily button in a second tab plays on the daily the first tab holds, not a fresh copy, and the first tab keeps its moves', async ({ context }) => {
-    await context.addInitScript(welcomed);
-    const today = localDateKey();
-    // tab 1: a friend's game (four digits), then today's daily over it (three), then behind the other tab
-    const first = await context.newPage();
-    await first.goto(`/p/${EASY}/`);
-    await expect(first.locator('svg.board')).toBeVisible();
-    await expect.poll(async () => (await saved(first)).puzzle).toBe(EASY);
-    await enter(first, false, 4);
-    await openDaily(first);
-    await expect(note(first)).toBeVisible();
-    await enter(first, false, 3);
-    await expect.poll(async () => (await saved(first)).entries).toBe(3);
-    await setHidden(first, true);
-    // tab 2: a Hard link lets the daily go from this tab's slot, still open in tab 1
-    const second = await context.newPage();
-    await second.goto(`/p/${HARD}/`);
-    await expect(second.locator('.toast')).toContainText('today’s daily is still open in your other tab');
-    expect(await saved(second)).toMatchObject({ puzzle: HARD, aside: { puzzle: EASY, entries: 4 } });
-    // New, then Daily puzzle: tab 1's daily comes over, where it was left
-    await second.locator('.menu-row button', { hasText: 'New' }).click();
-    await second.getByRole('dialog', { name: 'New game' }).getByRole('button', { name: /Daily puzzle/ }).first().click();
-    await expect(second.locator('.toast')).toContainText('Today’s daily, where you left it');
-    await expect.poll(() => saved(second)).toMatchObject({ dailyKey: today, entries: 3, aside: { puzzle: EASY, entries: 4 } });
-    await enter(second, false, 1, 3);
-    await expect.poll(async () => (await saved(second)).entries).toBe(4);
-    await setHidden(second, true);
-    // tab 1 shown again: the same daily, with tab 2's digit on top of its own three
-    await setHidden(first, false);
-    await first.locator('.pause-card .resume-btn').click();
-    await expect.poll(() => saved(first)).toMatchObject({ dailyKey: today, entries: 4, aside: { puzzle: EASY, entries: 4 } });
-    await expect(first.getByText('is gone')).toHaveCount(0);
   });
 
   test('a practice set aside by a link in the same tab comes back with Back, and again after a reload', async ({ page }) => {

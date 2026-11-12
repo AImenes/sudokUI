@@ -8,7 +8,7 @@
 // Daily button that asks for the very game on the board, the one set
 // aside, or the one behind a puzzle being typed in, brings it back where
 // it was left. Only Restart starts a game under way again.
-import { useGame, validatePuzzle, fromOthers } from '../state/gameStore';
+import { useGame, validatePuzzle } from '../state/gameStore';
 import type { PositionRefusal, GameInfo } from '../state/gameStore';
 import { dailyPuzzle } from '../engine/daily';
 import { translator } from '../content/i18n';
@@ -65,11 +65,9 @@ export type DailyOpened = 'resumed' | 'started' | 'unavailable';
  * day the published list does not cover, the one derived from the date
  * (src/engine/daily.ts), which has none. The day's daily on the board, set
  * aside, or behind a puzzle being typed in, is the one that opens, where
- * it was left, solved or not: only Restart starts it again. One open in
- * another window of the app comes over from there (fromOthers), so the
- * day has one game, not two. One in none of those places (never started,
- * or gone: solved and then replaced, since a solved game is not kept, or
- * dropped by New) starts fresh. Without the published list (offline
+ * it was left, solved or not: only Restart starts it again. One in none
+ * of those places (never started, or gone: solved and then replaced,
+ * since a solved game is not kept, or dropped by New) starts fresh. Without the published list (offline
  * before the app could keep it, a network error) no other board is passed
  * off as the day's: the board stays as it is, and the player is told.
  */
@@ -81,13 +79,6 @@ export async function startDaily(date = localDateKey()): Promise<DailyOpened> {
   // board or set aside): that daily, never a second copy of it
   if (dailyOnBoard(date) || useGame.getState().resumeSetAside((info) => info.dailyKey === date)) {
     useGame.setState({ notice: useGame.getState().won ? t('You have solved this daily. Restart plays it again') : leftIt() });
-    return 'resumed';
-  }
-  // open in another window of the app: its copy comes here, the same game
-  const copy = await fromOthers({ dailyKey: date }, true);
-  if (copy?.info?.dailyKey === date && !dailyOnBoard(date)) {
-    useGame.getState().openCopy(copy);
-    useGame.setState({ notice: copy.won ? t('You have solved this daily. Restart plays it again') : leftIt() });
     return 'resumed';
   }
   const list = await loadDailies();
@@ -137,12 +128,11 @@ export interface LinkOpened {
  * Opens an address of the app's own, the same way wherever it arrives: a
  * position (#s=) as it was shared; a daily (startDaily); a puzzle, which
  * is the game on the board or the one set aside when it is that puzzle
- * (a practice of it too, but for Import), or the copy another window has
- * of a game of it this window let go (fromOthers), and otherwise opens
- * fresh, a challenger's time on it where one rides along. A game under way goes aside first. A position that cannot be
- * loaded (a chat or a copy cut the link short, most likely) leaves the
- * puzzle under it to open from the start, and the player is told why the
- * marks are not there.
+ * (a practice of it too, but for Import), and otherwise opens fresh, a
+ * challenger's time on it where one rides along. A game under way goes
+ * aside first. A position that cannot be loaded (a chat or a copy cut the
+ * link short, most likely) leaves the puzzle under it to open from the
+ * start, and the player is told why the marks are not there.
  */
 export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOpened> {
   const t = translator();
@@ -203,23 +193,17 @@ export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOp
       positionRefused();
       return { opened: true };
     }
-    // a game of this puzzle let go here while another window has it open:
-    // that window's copy comes here, the same game, not a second one
-    const copy = await fromOthers({ puzzle: cells });
-    if (copy?.info?.puzzle === cells && !(from === 'import' && copy.won) && !(game().info?.puzzle === cells && !game().custom)) {
-      game().openCopy(copy);
-      useGame.setState({ notice: whereLeft(copy.info) });
-      if (vs) challengeCurrent(vs);
-      positionRefused();
-      return { opened: true };
-    }
     const v = validatePuzzle(cells);
     if (v.ok) {
-      game().openOver(() => (game().startGame(cells, v.score, v.level), true));
       // a share address is someone's link; a bare #p= is mostly the Learn
       // pages' own (their examples and their paste box), so its game is
-      // counted as a new one
-      if (share) fromLink();
+      // counted as a new one. Marked as it opens, so a game the one slot
+      // lets go is named apart from it (gameStore.ts, letGoLine)
+      game().openOver(() => {
+        game().startGame(cells, v.score, v.level);
+        if (share) fromLink();
+        return true;
+      });
       if (vs) challenge(vs);
       else if (from === 'import')
         useGame.setState({
@@ -244,22 +228,6 @@ function whereLeft(info: GameInfo | null | undefined): string {
   return info?.practiceTech
     ? t('Your {name} practice, where you left it', { name: t.tech(info.practiceTech) })
     : t('Your game on this puzzle, where you left it');
-}
-
-/**
- * Import of a puzzle string (gameStore.ts, importPuzzle) of a game this
- * window let go while another window has it open: that window's copy comes
- * here, as a link to it would bring it (fromOthers). True if it did.
- */
-export async function importFromOthers(puzzle: string): Promise<boolean> {
-  const p = puzzle.replace(/0/g, '.');
-  const g = useGame.getState();
-  if (!g.custom && g.info?.puzzle === p) return false;
-  const copy = await fromOthers({ puzzle: p });
-  if (!copy?.info || copy.info.puzzle !== p || copy.won) return false;
-  useGame.getState().openCopy(copy);
-  useGame.setState({ notice: whereLeft(copy.info) });
-  return true;
 }
 
 /**

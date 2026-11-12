@@ -497,11 +497,6 @@ export default function App() {
   useEffect(() => {
     if (!solved) setVictoryDismissed(false);
   }, [solved, info?.puzzle]);
-  // put away, a game just won here is no longer kept against another
-  // window's (gameStore.ts, ownHere)
-  useEffect(() => {
-    if (victoryDismissed && useGame.getState().ownHere) useGame.setState({ ownHere: false });
-  }, [victoryDismissed]);
 
   // a link opened in this tab (its hash changed): opened as at start-up,
   // a game under way put aside. The path is the address bar's own, the
@@ -638,8 +633,7 @@ export default function App() {
   }, [playing]);
 
   // toasts fade a few seconds after they can be seen: one that came while
-  // the page was hidden (a game let go as another window's was kept,
-  // gameStore.ts, settleSlot) waits until it is shown
+  // the page was hidden waits until it is shown
   const toast = [notice, letGo].filter(Boolean).join(' ');
   useEffect(() => {
     if (!toast || away) return;
