@@ -126,7 +126,8 @@ async function enter(p: Page, n: number) {
 
 /** a mark on the page that a reload would take away */
 const mark = (p: Page) => p.evaluate(() => ((window as any).__same = true));
-const same = (p: Page) => p.evaluate(() => (window as any).__same === true);
+/** whether the mark is still there; unknown (null) while the page is between two documents */
+const same = (p: Page) => p.evaluate(() => (window as any).__same === true).catch(() => null);
 
 test.describe('one page plays at a time', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
