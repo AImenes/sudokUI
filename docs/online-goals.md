@@ -677,6 +677,23 @@ used before it can be read:
   action the owner takes, with the link used and the landing word
   expected, and the baseline's numbers.
 
+Christmas, November 2026 (the owner's decisions of 12 November;
+[advent-calendar.md](advent-calendar.md)):
+
+- **The dashboard** ends with a Christmas section for the advent calendar
+  in season: each door's games begun and completed (the door rides on its
+  play lines as a seventh blob), its completion rate, its unassisted
+  times and their median from D1's histogram, and the landings on the
+  doors' addresses (`advent` in the source slot) by referrer word. Before
+  1 December it says when the calendar opens and shows zeros. Its counts
+  are a second SQL query, run only from 30 November to 31 January and
+  kept to the calendar's own lines; its times one read on the primary
+  key's range of the year's 24 door numbers.
+- **Nothing counts the Christmas look**: no line says which theme a
+  player uses. The public calendar pages (`/advent/`, `/nb/julekalender/`,
+  `/es/calendario-de-adviento/`) are files and count nothing; their
+  script reads the device's date only.
+
 ### Phase 4, after four to eight weeks of data
 
 - **Daily archive pages.** One page per day at `/daily/<date>` with the

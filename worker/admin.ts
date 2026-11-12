@@ -17,14 +17,37 @@
  * The arithmetic (metricsOf) and the page (renderAdmin) are pure, so the
  * tests run them over rows of their own; only handleAdmin talks to the
  * API, through a fetch it is given.
+ *
+ * Below the daily's times sent, a Christmas section (adventSection): the
+ * advent calendar in season (docs/advent-calendar.md), each door's games
+ * begun and completed (the play lines' door, a second query, run only
+ * from 30 November to 31 January and kept to the calendar's own lines),
+ * its completion rate, its unassisted times and their median (the
+ * database's histogram, one read on the range of the year's 24 door
+ * numbers), and the landings on the doors' addresses by referrer word.
+ * Before 1 December it says when the calendar opens and shows zeros.
  */
-import { DAYS_SHOWN, DATASET, type DayRow, type Metrics, type ShareWays, type Totals } from './adminModel';
+import {
+  DAYS_SHOWN,
+  DATASET,
+  type AdventCounted,
+  type AdventDoorRow,
+  type AdventMetrics,
+  type AdventPhase,
+  type DayRow,
+  type Metrics,
+  type ShareWays,
+  type Totals
+} from './adminModel';
 import { accessKeys, cameThroughAccess, type AccessEnv, type AccessKeys } from './access';
 import type { D1Like } from './daily';
 import { PLAY_KINDS, PLAY_LANGS, SHARE_KINDS, type LandingFrom, type PlayKind, type PlayLang, type ShareKind } from './telemetry';
+import advent from '../src/content/advent.json';
+import { ADVENT_DOORS, adventNo, calendarYears, daysBetween, doorDate, findDoor, type AdventDoor } from '../src/content/advent';
+import { statsFromHistogram, type HistogramRow } from '../src/content/dailies';
 
 export { DAYS_SHOWN, DATASET };
-export type { DayRow, Metrics, Totals };
+export type { AdventMetrics, DayRow, Metrics, Totals };
 
 export const ADMIN_PATH = '/admin';
 
@@ -563,6 +586,284 @@ export function dailySentTable(rows: Row[], sent: SentDay[] | null | undefined):
 <table><thead><tr><th>Day (UTC)</th><th>Daily solves</th><th>Times sent</th><th>Of them unassisted</th><th>Sent</th></tr></thead><tbody>${body || '<tr><td colspan="5">None yet</td></tr>'}</tbody></table>`;
 }
 
+// ---- Christmas: the advent calendar (docs/advent-calendar.md) ---------------------
+
+/** a UTC day as a key, 2026-12-05 */
+const utcDay = (now: Date) => now.toISOString().slice(0, 10);
+
+/**
+ * The calendar the section shows on a day: the one in season (its
+ * November and December, and the January after, while its door games are
+ * still being finished); outside that, the next published one (October
+ * shows the coming December's), else the last one published
+ */
+export function adventYearOn(now: Date, years: number[] = calendarYears(advent as AdventDoor[])): number {
+  const y = now.getUTCFullYear();
+  const month = now.getUTCMonth() + 1;
+  const season = month >= 11 ? y : month === 1 ? y - 1 : null;
+  if (season !== null && years.includes(season)) return season;
+  return years.find((year) => year >= (season ?? y)) ?? years.at(-1) ?? season ?? y;
+}
+
+/** where the calendar stands on the dashboard's UTC day */
+export function adventPhase(year: number, now: Date): AdventPhase {
+  const today = utcDay(now);
+  return today < doorDate(year, 1) ? 'before' : today <= `${year}-12-31` ? 'open' : 'over';
+}
+
+/**
+ * The UTC days the doors' counts are read for: from 30 November, when a
+ * player a day ahead of UTC opens door 1 (the Worker's EARLY_DAYS), to 31
+ * January, a month for the door games under way on 1 January
+ */
+export const adventCountFrom = (year: number) => `${year}-11-30`;
+export const adventCountTo = (year: number) => `${year + 1}-01-31`;
+
+/**
+ * The doors' play lines and the landings on their addresses, summed per
+ * UTC day, event, kind (a landing's referrer word, blob5) and door (a
+ * play line's seventh blob, telemetry.ts pointOf), from the window's first
+ * day to now; null outside the window, when nothing is read. Bounded as
+ * the main query is: at most 63 days, and the rows of the calendar's
+ * lines only, two events of 24 doors and one of the landing words a day.
+ */
+export function adventQuery(now: Date, year: number): string | null {
+  const today = utcDay(now);
+  if (today < adventCountFrom(year) || today > adventCountTo(year)) return null;
+  // whole days back past the window's first midnight; the days before it are left out by adventOf
+  const days = daysBetween(adventCountFrom(year), today) + 1;
+  return [
+    "SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, index1 AS event, blob5 AS kind, blob7 AS door,",
+    'SUM(_sample_interval * double2) AS n',
+    `FROM ${DATASET}`,
+    `WHERE timestamp > NOW() - INTERVAL '${days}' DAY`,
+    "AND ((index1 = 'landing' AND blob2 = 'advent') OR ((index1 = 'started' OR index1 = 'completed') AND blob5 = 'advent'))",
+    'GROUP BY day, event, kind, door ORDER BY day FORMAT JSON'
+  ].join(' ');
+}
+
+/** one row of the calendar query's answer */
+export interface AdventRow {
+  day: string;
+  event: string;
+  /** a play line's kind (advent), a landing's referrer word */
+  kind: string;
+  /** a play line's door, '1' to '24'; '' for a landing */
+  door: string;
+  n: number;
+}
+
+/** the rows of the calendar query's JSON answer; anything unreadable is left out */
+export function adventRowsOf(answer: unknown): AdventRow[] {
+  const data = (answer as { data?: unknown })?.data;
+  if (!Array.isArray(data)) return [];
+  const text = (v: unknown) => (typeof v === 'string' ? v : '');
+  return data.flatMap((x): AdventRow[] => {
+    if (!x || typeof x !== 'object') return [];
+    const r = x as Record<string, unknown>;
+    if (typeof r.day !== 'string' || typeof r.event !== 'string') return [];
+    const n = Number(r.n);
+    return [{ day: r.day.slice(0, 10), event: r.event, kind: text(r.kind), door: text(r.door), n: Number.isFinite(n) ? n : 0 }];
+  });
+}
+
+/** a door's times as the database holds them: how many unassisted, and their median in seconds */
+export interface DoorTimes {
+  count: number;
+  median: number | null;
+}
+
+/**
+ * Each door's unassisted times that reached the database, and their
+ * median, from the histogram the win screen reads (daily_hist, keyed by
+ * the door's number, adventNo): one read on the primary key's range of
+ * the year's 24 numbers, at most 481 rows a door. Undefined with no
+ * database, null when it fails.
+ */
+export async function adventTimes(db: D1Like | undefined, year: number): Promise<Map<number, DoorTimes> | null | undefined> {
+  if (!db) return undefined;
+  try {
+    const out = await db
+      .prepare('SELECT puzzle_no, bucket, n, n_unassisted FROM daily_hist WHERE puzzle_no BETWEEN ?1 AND ?2')
+      .bind(adventNo(year, 1), adventNo(year, ADVENT_DOORS))
+      .all<HistogramRow & { puzzle_no: number }>();
+    const byDoor = new Map<number, HistogramRow[]>();
+    for (const r of out.results ?? []) {
+      const door = Number(r.puzzle_no) - adventNo(year, 0);
+      if (door < 1 || door > ADVENT_DOORS) continue;
+      byDoor.set(door, [...(byDoor.get(door) ?? []), { bucket: Number(r.bucket), n: Number(r.n), n_unassisted: Number(r.n_unassisted) }]);
+    }
+    const times = new Map<number, DoorTimes>();
+    for (const [door, rows] of byDoor) {
+      const stats = statsFromHistogram(adventNo(year, door), rows);
+      times.set(door, { count: stats.count, median: stats.median });
+    }
+    return times;
+  } catch {
+    return null;
+  }
+}
+
+/** the section's numbers, from the calendar query's rows (null when it was not read) and the database's times */
+export function adventOf(
+  year: number,
+  now: Date,
+  rows: AdventRow[] | null,
+  counted: AdventCounted,
+  times: Map<number, DoorTimes> | null | undefined,
+  published: AdventDoor[] = advent as AdventDoor[]
+): AdventMetrics {
+  const from = adventCountFrom(year);
+  const to = adventCountTo(year);
+  const started = new Map<number, number>();
+  const completed = new Map<number, number>();
+  const landingsFrom: Record<string, number> = {};
+  let landings = 0;
+  for (const r of rows ?? []) {
+    if (r.day < from || r.day > to) continue;
+    if (r.event === 'landing') {
+      landings += r.n;
+      add(landingsFrom, r.kind, r.n);
+      continue;
+    }
+    const door = Number(r.door);
+    if (r.kind !== 'advent' || !Number.isInteger(door) || door < 1 || door > ADVENT_DOORS) continue;
+    if (r.event === 'started') started.set(door, (started.get(door) ?? 0) + r.n);
+    else if (r.event === 'completed') completed.set(door, (completed.get(door) ?? 0) + r.n);
+  }
+  const doors: AdventDoorRow[] = Array.from({ length: ADVENT_DOORS }, (_, i) => {
+    const door = i + 1;
+    const found = findDoor(published, year, door);
+    const s = started.get(door) ?? 0;
+    const c = completed.get(door) ?? 0;
+    const t = times ? (times.get(door) ?? { count: 0, median: null }) : null;
+    return {
+      door,
+      date: doorDate(year, door),
+      level: found?.level ?? '',
+      score: found?.score ?? 0,
+      started: s,
+      completed: c,
+      completionRate: ratio(c, s),
+      times: t ? t.count : null,
+      median: t ? t.median : null
+    };
+  });
+  const sum = (f: (d: AdventDoorRow) => number) => doors.reduce((acc, d) => acc + f(d), 0);
+  return {
+    year,
+    phase: adventPhase(year, now),
+    counted,
+    ...(times === undefined ? {} : { database: times !== null }),
+    doors,
+    started: sum((d) => d.started),
+    completed: sum((d) => d.completed),
+    completionRate: ratio(sum((d) => d.completed), sum((d) => d.started)),
+    times: times ? sum((d) => d.times ?? 0) : null,
+    landings,
+    landingsFrom
+  };
+}
+
+/** a time in seconds as the win screen writes it: 4:12, 1:02:03 */
+const clock = (seconds: number | null) => {
+  if (seconds === null) return '—';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = String(Math.floor(seconds % 60)).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
+};
+
+/** a door's day, 5 Dec */
+const shortDay = (date: string) => `${Number(date.slice(8, 10))} Dec`;
+
+/** the Christmas section: where the calendar stands, its numbers, every door, and where the door landings came from */
+export function adventSection(m: AdventMetrics): string {
+  const stand =
+    m.phase === 'before'
+      ? `The ${m.year} calendar opens on 1 December, by each player's own date: until then every door shows zeros.`
+      : m.phase === 'open'
+        ? `The ${m.year} calendar is open: door n opens on n December by each player's own date, and every open door stays open until 31 December.`
+        : `The ${m.year} calendar closed on 31 December. A door game under way then can still be finished, and its completed line counts here until 31 January; no time is taken after 31 December.`;
+  const counts =
+    m.counted === 'read'
+      ? `Counted from ${adventCountFrom(m.year)} to ${adventCountTo(m.year)}, UTC days, so far.`
+      : m.counted === 'soon'
+        ? `The counts are read from ${adventCountFrom(m.year)} (UTC), when a player a day ahead of UTC opens door 1.`
+        : m.counted === 'past'
+          ? `The counts were read from ${adventCountFrom(m.year)} to ${adventCountTo(m.year)} and are not read now: Analytics Engine keeps them three months. The times stay in the database.`
+          : 'The analytics API could not be read for the calendar: the counts show as zeros.';
+  const database = m.database === undefined ? ' No database is bound: no times.' : m.database ? '' : ' The database could not be read: no times.';
+  const number = (label: string, value: string, note = '') =>
+    `      <div><dt>${esc(label)}</dt><dd>${value}</dd>${note ? `<small>${esc(note)}</small>` : ''}</div>`;
+  const numbers = [
+    number('Door games begun', num(m.started), 'every door, counted at the first move'),
+    number('Door games completed', num(m.completed)),
+    number('Completion rate', pct(m.completionRate), `${num(m.completed)} completed of ${num(m.started)} begun`),
+    number('Unassisted times sent', num(m.times), 'that reached the database, every door'),
+    number("Landings on a door's address", num(m.landings), 'opened from outside the site, by people')
+  ].join('\n');
+  const rows = m.doors
+    .map(
+      (d) =>
+        `      <tr><td>${d.door}</td><td>${esc(shortDay(d.date))}</td><td>${d.level ? `${esc(d.level)} ${d.score}` : '—'}</td><td>${num(d.started)}</td><td>${num(d.completed)}</td><td>${pct(d.completionRate)}</td><td>${num(d.times)}</td><td>${clock(d.median)}</td></tr>`
+    )
+    .join('\n');
+  const fromRows = Object.entries(m.landingsFrom)
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([from, n]) => `      <tr><td>${esc(FROM_LABELS[from] ?? from)}</td><td>${num(n)}</td><td>${pct(m.landings > 0 ? n / m.landings : null)}</td></tr>`)
+    .join('\n');
+  return `    <h2>Christmas: the advent calendar ${m.year}</h2>
+    <p class="meta">${esc(stand)} ${esc(counts)}${esc(database)}</p>
+    <dl class="numbers">
+${numbers}
+    </dl>
+    <div class="wide"><table>
+      <thead><tr><th>Door</th><th>Day</th><th>Rating</th><th>Begun</th><th>Completed</th><th>Completion</th><th>Times sent</th><th>Median time</th></tr></thead>
+      <tbody>
+${rows}
+      <tr><td>All</td><td></td><td></td><td>${num(m.started)}</td><td>${num(m.completed)}</td><td>${pct(m.completionRate)}</td><td>${num(m.times)}</td><td></td></tr>
+      </tbody>
+    </table></div>
+    <h2>Where the door landings came from</h2>
+    <div class="wide"><table>
+      <thead><tr><th>From</th><th>Landings</th><th>Of all</th></tr></thead>
+      <tbody>
+${fromRows || '      <tr><td>No landings</td><td>0</td><td>—</td></tr>'}
+      </tbody>
+    </table></div>
+    <p class="meta">Begun and Completed are the door games' play lines (kind Advent calendar), each with its door, over the calendar's days; a door begun on one day and solved on another counts on each. Times sent are the unassisted times the win screen sent for each door, on its day and up to a week late, until 31 December; the median is the one the win screen shows. A landing on a door's address is a person opening /advent/${m.year}/&lt;door&gt; (or under /nb/, /es/) from outside the site; the public calendar pages, /advent/, /nb/julekalender/ and /es/calendario-de-adviento/, are files and count nothing. Nothing counts the Christmas look: no line says which theme a player uses.</p>`;
+}
+
+/**
+ * The section for a request: the calendar in season, its counts read
+ * through the SQL API while its window is open (a second query, which
+ * failing leaves the rest of the page as it is), and its times from the
+ * database
+ */
+export async function adventFor(env: AdminEnv, now: Date, doFetch: typeof fetch): Promise<AdventMetrics> {
+  const year = adventYearOn(now);
+  const sql = adventQuery(now, year);
+  let rows: AdventRow[] | null = null;
+  let counted: AdventCounted = utcDay(now) < adventCountFrom(year) ? 'soon' : 'past';
+  if (sql) {
+    try {
+      const res = await doFetch(sqlApi(env.ADMIN_ACCOUNT_ID!), {
+        method: 'POST',
+        headers: { authorization: `Bearer ${env.ADMIN_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' },
+        body: sql
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      rows = adventRowsOf(JSON.parse(await res.text()));
+      counted = 'read';
+    } catch {
+      counted = 'failed';
+    }
+  }
+  return adventOf(year, now, rows, counted, await adventTimes(env.DB, year));
+}
+
 /** the Access keys, fetched once per isolate and kept an hour (access.ts) */
 const ISOLATE_KEYS = accessKeys();
 
@@ -602,6 +903,7 @@ export async function handleAdmin(request: Request, env: AdminEnv, options: Admi
     return page(`<!doctype html><title>sudokUI admin</title><p>The analytics API could not be read: ${esc(String(err).slice(0, 300))}</p>`, 502);
   }
   const rows = rowsOf(answer);
-  const html = renderAdmin(metricsOf(rows, now)).replace('  </body>', `${dailySentTable(rows, await dailySent(env.DB, now))}\n  </body>`);
+  const christmas = adventSection(await adventFor(env, now, doFetch));
+  const html = renderAdmin(metricsOf(rows, now)).replace('  </body>', `${dailySentTable(rows, await dailySent(env.DB, now))}\n${christmas}\n  </body>`);
   return request.method === 'HEAD' ? page('', 200) : page(html);
 }

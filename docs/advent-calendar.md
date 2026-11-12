@@ -8,7 +8,7 @@ other: the one slot keeps it, Back to it brings it back, and its
 unassisted time can go into everyone's times on its day and up to a week
 late, on the daily's own tables. This page says how it works, what it
 sends and keeps, the public pages that show the doors to search engines,
-and how to make next year's doors.
+the dashboard's Christmas section, and how to make next year's doors.
 
 ## The season, in dates
 
@@ -217,6 +217,55 @@ and the sitemap, and the dev server serves them.
   whenever they change. No other page's HTML changes with them but the
   home pages' and `/learn/`'s, in their three languages, which carry the
   quiet line.
+
+## The admin panel's Christmas section
+
+At the end of `/admin` (worker/admin.ts, `adventSection`), below the
+daily's times sent, for the calendar in season: its November, December
+and the January after; outside that, the next one published (October
+shows the coming one), else the last.
+
+- **Where it stands**, by the UTC day: before 1 December it says the
+  calendar opens on 1 December, by each player's own date, and every door
+  shows zeros; in December that it is open; after, that it closed on 31
+  December and that a door game under way can still be finished.
+- **Five numbers**: door games begun and completed, the completion rate,
+  the unassisted times sent, and the landings on a door's address.
+- **A row per door**: its day, its band and rating (from `advent.json`),
+  games begun and completed, the completion rate, the unassisted times
+  that reached the database and their median, and a row for all.
+- **Where the door landings came from**, by the referrer's word, as the
+  main table of landings has it.
+
+Where the numbers come from, each read kept bounded:
+
+- **Begun and completed** are the door games' play lines (kind `advent`),
+  summed by their door, the seventh blob (`adventQuery`): a second query
+  to the SQL API, run only for the UTC days from 30 November (a player a
+  day ahead of UTC opens door 1 then) to 31 January (a month for the door
+  games under way on 1 January), at most 63 days back, and kept to the
+  calendar's own lines (the doors' starts and solves, and the landings in
+  the `advent` slot): two events of 24 doors and the landing words, a day.
+  Before 30 November nothing is asked and the doors show zeros; after 31
+  January the counts are no longer read (Analytics Engine keeps three
+  months) and the section says so. If that query fails, the section says
+  so and the rest of the page stands.
+- **Times and the median** come from D1 (`adventTimes`), as the daily's
+  times table does: one read of `daily_hist` on the primary key's range of
+  the year's 24 door numbers (`adventNo(year, 1)` to `adventNo(year, 24)`),
+  at most 481 rows a door, and the median as the win screen reads it
+  (`statsFromHistogram`). Without a database bound, no times; one that
+  fails says so.
+- **Landings** are the `landing` points with `advent` in the source slot,
+  by the word in the fifth blob.
+- Nothing counts the Christmas look: no line says which theme a player
+  uses, and the section says that too.
+
+tests/telemetry.test.ts holds it: the year in season, the phase, the
+query and its window, the rows, each door's numbers and the totals, the
+database read, the page before 1 December (zeros), open, past and failed,
+the two queries in December and one in October, and the static page left
+to the assets.
 
 ## The doors of 2026
 
