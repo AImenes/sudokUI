@@ -40,7 +40,7 @@ const { Grid } = await import('../src/ui/Grid');
 /** the stored Multi Colors example: both clusters, so both hues, each in both shades */
 const EX = EXAMPLES.MULTI_COLORS as Example;
 
-const THEMES: Record<string, HintPalette> = { light: LIGHT, rose: LIGHT, dark: DARK, forest: DARK };
+const THEMES: Record<string, HintPalette> = { light: LIGHT, rose: LIGHT, christmas: LIGHT, dark: DARK, forest: DARK };
 /** a CSS variable's palette key */
 const KEY_OF = Object.fromEntries(Object.entries(CSS_VARS).map(([k, v]) => [v, k])) as Record<string, keyof HintPalette>;
 

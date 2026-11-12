@@ -6,8 +6,10 @@ import { SLOP_PX } from './touchIntent';
 import { useGame, rateImport, Proof, listLayer, useResting } from '../state/gameStore';
 import { play, usePlay, markActed } from '../state/play';
 import { cellName, PEERS } from '../engine/board';
-import { useSettings } from '../state/settings';
+import { useSettings, applySeason } from '../state/settings';
+import { lookAvailable } from '../content/season';
 import { useShownTheme, applyTheme } from './theme';
+import { useToday } from './useToday';
 import { useAppStatus } from '../state/appStatus';
 import { useT, translator, rich, langRoot, useTablesReady } from '../content/i18n';
 import type { Translator } from '../content/i18n';
@@ -62,7 +64,7 @@ import { PRACTICE_TECHS, Tech } from '../engine/ratings';
 import { techFromParam } from '../content/slugs';
 import { sharePath, readAppLink } from '../content/share';
 import type { AppLink } from '../content/share';
-import { localDateKey, dailyPath, pastDailyOn, dayName, dailyLocked } from '../content/dailies';
+import { dailyPath, pastDailyOn, dayName, dailyLocked } from '../content/dailies';
 import { startDaily, openAppLink, backToKept, holds, backTo, traversed, markStarted, markEntry, entryState } from './links';
 import { useDailyStats } from '../state/dailyStats';
 import { useTelemetry } from '../state/telemetry';
@@ -228,24 +230,6 @@ async function openHashLink(link: AppLink) {
 /** a line as a sentence of its own: ended with a full stop, unless it ends with one (or a question mark, an exclamation mark, an ellipsis) already */
 const ended = (line: string) => (/[.!?…]$/.test(line.trim()) ? line : `${line}.`);
 
-/** the player's local date, kept current across a midnight with the app open and on coming back to it */
-function useToday(): string {
-  const [today, setToday] = useState(() => localDateKey());
-  useEffect(() => {
-    const check = () => setToday(localDateKey());
-    const now = new Date();
-    const untilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime();
-    const id = setTimeout(check, untilMidnight + 1000);
-    document.addEventListener('visibilitychange', check);
-    window.addEventListener('focus', check);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener('visibilitychange', check);
-      window.removeEventListener('focus', check);
-    };
-  }, [today]);
-  return today;
-}
 
 /**
  * Another day's daily on the board (the last game, resumed when the app
@@ -523,6 +507,14 @@ export default function App() {
   // 2 November 2026); what it stands for is under ⓘ and after a win.
   // The day's daily (startDaily) and the app's own links (openAppLink)
   // open through src/ui/links.ts, which never loses a game under way
+
+  // the season's rules for the theme (src/state/settings.ts, applySeason):
+  // the Christmas look on by itself in December for a player who never
+  // picked a theme, and gone on 1 January; asked before the first paint,
+  // and again when the day changes with the page open
+  const today = useToday();
+  useLayoutEffect(() => applySeason(today), [today]);
+  const christmas = lookAvailable(today);
 
   // before the first paint, so the app never shows a frame in the wrong look;
   // under Match device the look follows the device while the app is open
@@ -1114,10 +1106,11 @@ export default function App() {
             >
               {paused && !won ? '⏵' : '⏸'}
             </button>
+            {/* Christmas comes after Forest while the season has it (src/content/season.ts) */}
             <button
               className="icon-btn theme-btn"
-              onClick={toggleTheme}
-              title={t('Cycle theme: dark → daylight → rosé → forest')}
+              onClick={() => toggleTheme(today)}
+              title={christmas ? t('Cycle theme: dark → daylight → rosé → forest → Christmas') : t('Cycle theme: dark → daylight → rosé → forest')}
               aria-label={t(
                 shown === 'dark'
                   ? 'Switch to daylight theme'
@@ -1125,10 +1118,12 @@ export default function App() {
                     ? 'Switch to rosé theme'
                     : shown === 'rose'
                       ? 'Switch to forest theme'
-                      : 'Switch to dark theme'
+                      : shown === 'forest' && christmas
+                        ? 'Switch to Christmas theme'
+                        : 'Switch to dark theme'
               )}
             >
-              {shown === 'dark' ? '☀️' : shown === 'light' ? '🌸' : shown === 'rose' ? '🌲' : '🌙'}
+              {shown === 'dark' ? '☀️' : shown === 'light' ? '🌸' : shown === 'rose' ? '🌲' : shown === 'forest' && christmas ? '🎄' : '🌙'}
             </button>
             <button
               className="icon-btn"

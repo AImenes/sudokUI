@@ -24,7 +24,7 @@ export function applyTheme(theme: Theme) {
   const root = document.documentElement;
   root.dataset.theme = theme;
   // the top bar's background, read from the stylesheet so the two cannot drift
-  const bar = getComputedStyle(root).getPropertyValue('--bg-soft').trim();
+  const bar = getComputedStyle(root).getPropertyValue('--bar-bg').trim();
   if (!bar) return;
   let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (!meta) {

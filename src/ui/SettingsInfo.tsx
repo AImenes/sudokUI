@@ -12,6 +12,8 @@ import { useLearnLocale } from './useLearnLocale';
 import { PRIVACY_URL } from '../content/staticRoutes';
 import { WHY } from '../content/why';
 import { PALETTE, colourName } from './Grid';
+import { useToday } from './useToday';
+import { lookAvailable } from '../content/season';
 
 // The rating summary in the chosen language. English is at hand; a
 // translation comes from the guide's own locale file (useLearnLocale.ts),
@@ -56,6 +58,8 @@ function Toggle({
 
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const s = useSettings();
+  // the Christmas look can be chosen in its season, and is shown while it is the theme
+  const christmas = lookAvailable(useToday()) || s.theme === 'christmas';
   const t = useT();
 
   return (
@@ -91,6 +95,11 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           <small>
             {t('“Match device” shows Daylight while your device is in light mode, and Dark while it is in dark mode')}
           </small>
+          {christmas && (
+            <small>
+              {t('Christmas can be chosen from 1 November to 31 December, and keeps those colours too. On 1 January the theme you had before comes back')}
+            </small>
+          )}
         </div>
         <div className="segmented theme-choice">
           {(
@@ -99,6 +108,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               ['light', t('Daylight')],
               ['rose', t('Rosé')],
               ['forest', t('Forest')],
+              // the season's look, only in its season (src/content/season.ts)
+              ...(christmas ? ([['christmas', t('Christmas')]] as const) : []),
               // the device's light or dark, followed live (src/ui/theme.ts)
               ['device', t('Match device')]
             ] as const

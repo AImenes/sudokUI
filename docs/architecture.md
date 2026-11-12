@@ -316,8 +316,57 @@ chain trainer and Check marks, which belonged to the board it had
 preferences (theme, highlights, timer, auto-off materialisation behaviour).
 Separate store so settings changes never touch game history. The theme is a
 choice of four looks or Match device, which shows Daylight or Dark as the
-device is set; [theme.ts](../src/ui/theme.ts) puts the look shown on the
-page and gives the browser's bar the top bar's colour.
+device is set, and in its season a fifth, Christmas; [theme.ts](../src/ui/theme.ts) puts the look shown on the
+page and gives the browser's bar the top bar's colour (`--bar-bg`).
+
+**The Christmas season** ([season.ts](../src/content/season.ts); the
+owner's decisions of 12 November 2026). One module says what the season
+allows on the player's local date, as a key (`lookAvailable`, `lookAuto`,
+`calendarOpen`, `doorOpen`, `doorDate`, `doorOf`, `seasonYear`), and
+everything else asks it: the look can be chosen from 1 November to
+31 December, goes on by itself from 1 December, and the advent calendar is
+there from 1 November with door n opening on n December and every door
+closed from 1 January. The settings keep three things for it
+(`ThemeState`): `themePicked`, set whenever the player chooses a theme
+(Settings, or the top bar's button: `pickedTheme`, through `set` and
+`toggleTheme`), `themeBefore`, the theme the look took the place of, and
+`themeAutoYear`, the season it last went on by itself in. `seasonTheme`
+holds the rules: from 1 December a player who never picked a theme gets
+the look, once a season (switching it off is a pick, so it stays off;
+a player who picked any theme keeps it); outside the season a player on
+it gets `themeBefore` back (the default, dark, when none was kept) and the
+look is offered nowhere (not in Settings, not after Forest on the top
+bar's button). App applies them (`applySeason`) in a layout effect before
+the first paint and again whenever its day changes with the page open
+([useToday.ts](../src/ui/useToday.ts): a moment after midnight, and when
+the page is shown again or its window gets the focus), so a page left open
+across midnight into December or into January follows. "Never picked" is
+known from settings version 2: a stored theme other than the default can
+only have been picked, so the migration counts it as one; a stored dark
+cannot be told from the default and counts as none (that player can switch
+the look off, which is then a pick). A flag already written is kept. The
+settings are on the device only; which theme a player uses is never sent,
+and the privacy page says what these keep.
+
+**The Christmas look** ([styles.css](../src/ui/styles.css), keyed by
+`data-theme='christmas'`). Of the light family: daylight's white board and
+panels, so the hint colours read exactly as there (tests/hintPalette.test.ts
+holds it to daylight's figures), on a snow page, with givens in pine black,
+the player's digits in spruce, the conflict's holly red (apart from the
+spruce for every colour vision, tests/boardContrast.test.ts), a warm gold
+selection, pine highlights and cranberry buttons, under a deep pine top bar
+whose own words, badges and gauge take the inks a dark bar wears. Its
+decorations are CSS and inline SVG, nothing fetched: a string of lights
+inside the bar's padding (they come on once, in a second and a half; never
+under reduced motion), snow on the mark, a sprig of holly beside Paused, a
+cranberry ribbon on the win screen whose confetti falls as snow, gold and
+berries (twice, and never under reduced motion), and on a wide screen three
+faint snowflakes in the page's margins, held still. None sits over the
+board, a digit or a control, on a 320 px or a 390 px phone held either way
+or a laptop (tests/e2e/season.spec.ts measures it, and every word's
+contrast). The shared picture of the board stays light, as in every look.
+The static Learn pages never follow the app's theme (they follow the
+device's light or dark), so the look cannot break them.
 
 **Pools** ([pools.ts](../src/state/pools.ts)). localStorage-backed puzzle
 pools keyed per difficulty and per technique (written, as the saves

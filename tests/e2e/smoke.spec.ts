@@ -3365,7 +3365,12 @@ test.describe('Match device', () => {
     return decodeURIComponent(src.replace(/^data:image\/svg\+xml;utf8,/, ''));
   };
 
+  // a day outside the Christmas season, which offers a look more and in
+  // December puts it on for a new player (tests/e2e/season.spec.ts)
+  const october = () => new Date('2026-10-15T12:00:00');
+
   test('follows the device into light and dark with the app open, the status bar with it, and the picture stays light', async ({ page }) => {
+    await page.clock.install({ time: october() });
     await page.emulateMedia({ colorScheme: 'light' });
     await open(page);
     const html = page.locator('html');
@@ -3433,6 +3438,7 @@ test.describe('Match device', () => {
   });
 
   test('on a phone the five choices fit the dialog in every language, wrapping rather than running past its edge', async ({ page }) => {
+    await page.clock.install({ time: october() });
     for (const [width, path, device] of [
       [360, '/', 'Match device'],
       [390, '/nb/', 'Som enheten'],
