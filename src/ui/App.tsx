@@ -267,12 +267,17 @@ function PastDailyNote({ onToday }: { onToday: () => void }) {
           <span aria-hidden="true"> →</span>
         </a>
       </p>
-      <button className="past-daily-close" onClick={hide} title={t('Hide this note')} aria-label={t('Hide this note')}>
+      <button className="past-daily-close" onClick={(e) => (hide(), toBoard(e))} title={t('Hide this note')} aria-label={t('Hide this note')}>
         ✕
       </button>
     </div>
   );
 }
+
+/** pressed from the keyboard (a click with no pointer behind it), the focus goes on from the board as a note goes, not to the page; a tap leaves it be */
+const toBoard = (e: React.MouseEvent) => {
+  if (e.detail === 0) document.querySelector<SVGElement>('svg[role="application"]')?.focus();
+};
 
 /**
  * A game under way that a link opened another over, kept (src/ui/links.ts):
@@ -289,11 +294,10 @@ function SetAsideNote() {
   if (!shown) return null;
   const back = (e: React.MouseEvent) => {
     backToKept();
-    // pressed from the keyboard (a click with no pointer behind it), the
-    // focus goes on from the board, since the note may go with the swap;
-    // the toast says which game is back. A tap leaves the focus alone, so
-    // no ring is drawn round the board
-    if (e.detail === 0) document.querySelector<SVGElement>('svg[role="application"]')?.focus();
+    // pressed from the keyboard, the focus goes on from the board, since
+    // the note may go with the swap; the toast says which game is back. A
+    // tap leaves the focus alone, so no ring is drawn round the board
+    toBoard(e);
   };
   return (
     <div className="past-daily set-aside" role="note">
@@ -303,7 +307,7 @@ function SetAsideNote() {
           {t('Back to it')}
         </button>
       </p>
-      <button className="past-daily-close" onClick={hide} title={t('Hide this note')} aria-label={t('Hide this note')}>
+      <button className="past-daily-close" onClick={(e) => (hide(), toBoard(e))} title={t('Hide this note')} aria-label={t('Hide this note')}>
         ✕
       </button>
     </div>
@@ -372,6 +376,7 @@ export default function App() {
   const erase = useGame((s) => s.erase);
   const wipe = useGame((s) => s.wipe);
   const notice = useGame((s) => s.notice);
+  const noticeId = useGame((s) => s.noticeId);
   const letGo = useGame((s) => s.letGo);
   const away = useGame((s) => s.away);
   const clearNotice = useGame((s) => s.clearNotice);
@@ -656,14 +661,15 @@ export default function App() {
   }, [playing]);
 
   // toasts fade a few seconds after they can be seen: one that came while
-  // the page was hidden waits until it is shown
+  // the page was hidden waits until it is shown. Each notice is timed from
+  // when it came (noticeId), the same words said again too
   const toast = [notice, letGo].filter(Boolean).join(' ');
   useEffect(() => {
     if (!toast || away) return;
     // long notices stay long enough to be read
     const id = setTimeout(clearNotice, Math.max(3500, toast.length * 70));
     return () => clearTimeout(id);
-  }, [toast, away, clearNotice]);
+  }, [toast, noticeId, away, clearNotice]);
 
   // hold-modifier temporary modes: Shift = corner, Ctrl/Alt = centre,
   // Shift together with Ctrl/Alt = colour; release returns to the base mode
@@ -1411,23 +1417,27 @@ export default function App() {
         )}
         {/* last among the dialogs, so it paints above the one that raised it
             (the Settings dialog's toggle asks it too); Position as text's is
-            the Share dialog's own, whose answer copies the text */}
-        {contractPrompt && contractFor !== 'text' && (
+            the Share dialog's own, whose answer copies the text. Behind the
+            pause card it waits, as the other questions do, and comes back
+            when the game resumes: the hint the player asked for still goes on */}
+        {contractPrompt && contractFor !== 'text' && !resting && (
           <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} asked={contractFor} />
         )}
         <UpdateBar />
         {/* one live region, always there, so a screen reader hears each
             notice as its words come in; empty while the page is hidden, so
-            what came then is said when it is shown */}
+            what came then is said when it is shown. Its words are drawn
+            anew with each notice (keyed by noticeId), so the same words
+            said again (Back to it pressed twice) are heard again */}
         <div className={toast && !away ? 'toast' : 'toast-idle'} role="status" aria-live="polite">
           {toast && !away && (
-            <>
+            <React.Fragment key={noticeId}>
               {/* a notice and the let-go line are two sentences, each
                   ended, so a screen reader reads them as two */}
               {notice && letGo ? ended(notice) : notice}
               {notice && letGo ? ' ' : null}
               {letGo && <span className={notice ? 'toast-line' : undefined}>{notice ? ended(letGo) : letGo}</span>}
-            </>
+            </React.Fragment>
           )}
         </div>
       </div>

@@ -8,7 +8,7 @@
 // Daily button that asks for the very game on the board, the one set
 // aside, or the one behind a puzzle being typed in, brings it back where
 // it was left. Only Restart starts a game under way again.
-import { useGame, validatePuzzle } from '../state/gameStore';
+import { useGame, validatePuzzle, nameAmong } from '../state/gameStore';
 import type { PositionRefusal, GameInfo } from '../state/gameStore';
 import { dailyPuzzle } from '../engine/daily';
 import { translator } from '../content/i18n';
@@ -188,7 +188,7 @@ export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOp
       g.resumeSetAside((info, won) => info.puzzle === cells && !info.practiceTech && (from !== 'import' || !won)) ||
       (from !== 'import' && g.resumeSetAside((info, won) => info.puzzle === cells && !!info.practiceTech && !won))
     ) {
-      useGame.setState({ notice: whereLeft(game().info) });
+      useGame.setState({ notice: whereLeft() });
       if (vs) challengeCurrent(vs);
       positionRefused();
       return { opened: true };
@@ -222,12 +222,16 @@ export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOp
   return { opened: false, ...(refusal ? { refused: refusal } : {}) };
 }
 
-/** the notice for a game back where it was left: a practice by its technique, any other game as its puzzle */
-function whereLeft(info: GameInfo | null | undefined): string {
+/**
+ * The notice for a game back where it was left (Back to it, or a link
+ * asking for a kept game): the game named as the notes name it (gameName),
+ * with its rating when the game now in the slot has the same name, so the
+ * words say which of two Hard games came back
+ */
+function whereLeft(): string {
   const t = translator();
-  return info?.practiceTech
-    ? t('Your {name} practice, where you left it', { name: t.tech(info.practiceTech) })
-    : t('Your game on this puzzle, where you left it');
+  const g = useGame.getState();
+  return t('Back to {game}, where you left it', { game: nameAmong(g, [g, ...(g.setAside ? [g.setAside] : [])]) });
 }
 
 /**
@@ -260,17 +264,6 @@ export function holds(link: AppLink): boolean {
  * way, and the player is told which game is back.
  */
 export function backToKept() {
-  const t = translator();
   useGame.getState().backToSetAside();
-  const g = useGame.getState();
-  const day = g.info?.dailyKey;
-  useGame.setState({
-    notice: g.custom
-      ? t('The puzzle you were typing in, where you left it')
-      : day === localDateKey()
-        ? t('Today’s daily, where you left it')
-        : day
-          ? t('The daily for {date}, where you left it', { date: day })
-          : whereLeft(g.info)
-  });
+  useGame.setState({ notice: whereLeft() });
 }

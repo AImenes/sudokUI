@@ -210,7 +210,7 @@ for (const [name, use] of [
       // the friend's link again: that game, and the player's own still offered
       const again = await context.newPage();
       await again.goto(`/p/${EASY}/`);
-      await expect(again.locator('.toast')).toHaveText('Your game on this puzzle, where you left it');
+      await expect(again.locator('.toast')).toHaveText('Back to your game on a shared puzzle, where you left it');
       expect(await saved(again)).toMatchObject({ puzzle: EASY, entries: 2, aside: { puzzle: own, entries: 3, hidden: false } });
       await expect(note(again)).toBeVisible();
 
@@ -220,7 +220,7 @@ for (const [name, use] of [
       await press(phone, again.locator('.menu-row button', { hasText: 'New' }));
       await press(phone, again.getByRole('dialog', { name: 'New game' }).getByRole('button', { name: /^Back to your game in progress/ }));
       await expect.poll(() => saved(again)).toMatchObject({ puzzle: own, entries: 3, aside: { puzzle: EASY, entries: 2 } });
-      await expect(again.locator('.toast')).toHaveText('Your game on this puzzle, where you left it');
+      await expect(again.locator('.toast')).toHaveText('Back to your Easy game, where you left it');
     });
 
     test('New, then Daily puzzle, with today’s daily under way goes on with it: its entries stay, from behind a puzzle being typed in too', async ({ page }) => {
@@ -516,9 +516,44 @@ test.describe('links and Import, laptop', () => {
     await friend.goto(`/p/${EASY}/`);
     await note(friend).getByRole('button', { name: 'Back to it' }).focus();
     await friend.keyboard.press('Enter');
-    await expect(friend.locator('.toast')).toHaveText('Today’s daily, where you left it');
+    await expect(friend.locator('.toast')).toHaveText('Back to today’s daily, where you left it');
     await expect(friend.locator('svg.board')).toBeFocused();
     expect(await saved(friend)).toMatchObject({ dailyKey: localDateKey(), entries: 2 });
+  });
+
+  test('Back to it pressed twice in a row is heard twice, each time naming the game back; the note put away from the keyboard leaves the focus on the board', async ({ page }) => {
+    await page.addInitScript(welcomed);
+    await page.goto(`/p/${EASY}/`);
+    await expect.poll(async () => (await saved(page)).puzzle).toBe(EASY);
+    await enter(page, false, 3);
+    await page.goto(`/p/${HARD}/`);
+    await expect(note(page)).toBeVisible();
+    await enter(page, false, 2);
+    // what the live region says: words added to it, once per change
+    await page.evaluate(() => {
+      const region = document.querySelector('.toast, .toast-idle')!;
+      const heard: string[] = ((window as any).__heard = []);
+      new MutationObserver((records) => {
+        if (records.some((r) => [...r.addedNodes].some((n) => n.textContent))) heard.push(region.textContent ?? '');
+      }).observe(region, { childList: true, subtree: true, characterData: true });
+    });
+    const back = note(page).getByRole('button', { name: 'Back to it' });
+    await back.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('svg.board')).toBeFocused();
+    await back.focus();
+    await page.keyboard.press('Enter');
+    // two friends' games: each named apart from the other by its rating
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__heard as string[]))
+      .toEqual(['Back to your game on a shared puzzle (HoDoKu rating 196), where you left it', 'Back to your game on a shared puzzle (HoDoKu rating 1348), where you left it']);
+    expect(await saved(page)).toMatchObject({ puzzle: HARD, entries: 2, aside: { puzzle: EASY, entries: 3 } });
+    // put away from the keyboard: the note goes, the focus stays on the board, the game stays kept
+    await note(page).getByRole('button', { name: 'Hide this note' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(note(page)).toHaveCount(0);
+    await expect(page.locator('svg.board')).toBeFocused();
+    expect(await saved(page)).toMatchObject({ aside: { puzzle: EASY, entries: 3, hidden: true } });
   });
 
   test('on a small phone the kept game’s note stands in for the past-daily note, and the digit keys stay on screen', async ({ browser }) => {

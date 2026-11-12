@@ -566,6 +566,36 @@ test.describe('the clock', () => {
     expect(said).toContain('Paused. Press P to resume.');
   });
 
+  test('the mark question waits behind the pause card, and back in play its hint goes on', async ({ page }) => {
+    await open(page);
+    const [a, b] = empties(EASY);
+    // a corner mark: a hint must ask how to read it
+    const c = await cellBox(page, b);
+    await page.mouse.click(c.x, c.y);
+    await page.keyboard.press('Shift+Digit7');
+    await enter(page, a, solutionOf(EASY)[a]);
+    await page.getByRole('button', { name: 'Hint', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Use Hint?' }).getByRole('button', { name: 'Use Hint', exact: true }).click();
+    const ask = page.getByRole('dialog', { name: 'How should hints read your pencil marks?' });
+    await expect(ask).toBeVisible();
+    const before = await page.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem('sudokui-game-v1')!).state;
+      return { contract: s.markContract, paused: s.paused };
+    });
+    // the page hidden and shown: the game paused, the question out of the way and unanswered
+    await shown(page, false);
+    await shown(page, true);
+    await expect(page.locator('.pause-card')).toBeVisible();
+    await expect(ask).toHaveCount(0);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.markContract)).toBe(before.contract);
+    // resumed: the question again, and its answer gives the hint asked for
+    await page.getByRole('button', { name: 'Resume game' }).click();
+    await expect(ask).toBeVisible();
+    await ask.getByRole('button', { name: /They are partial notes/ }).click();
+    await expect(ask).toHaveCount(0);
+    await expect(page.getByRole('region', { name: 'Hint' })).toBeVisible();
+  });
+
   test('behind the pause card the controls rest: Tab reaches only Resume and the menu row, and Enter on a control focused before the pause does nothing', async ({ page }) => {
     await open(page);
     const solution = solutionOf(EASY);

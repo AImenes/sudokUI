@@ -110,7 +110,7 @@ describe('a link opened over a game under way', () => {
     expect(g().setAside?.info?.dailyKey).toBe(TODAY);
     backToKept();
     expect(g().info).toMatchObject({ dailyKey: TODAY, dailyNo: dailyNumber(TODAY) });
-    expect(g().notice).toBe('Today’s daily, where you left it');
+    expect(g().notice).toBe('Back to today’s daily, where you left it');
     expect(entries()).toBe(4);
     expect(g().elapsedMs()).toBeGreaterThanOrEqual(65_000);
     // the challenge was never played: nothing to keep
@@ -146,7 +146,7 @@ describe('a link opened over a game under way', () => {
     await open(`https://sudokui.app/p/${EASY}/`);
     expect(g().info?.puzzle).toBe(EASY);
     expect(entries()).toBe(2);
-    expect(g().notice).toBe('Your game on this puzzle, where you left it');
+    expect(g().notice).toBe('Back to your game on a shared puzzle, where you left it');
     expect(g().setAside?.info?.puzzle).toBe(HARD);
     expect(entries(g().setAside!.cells)).toBe(3);
     expect(g().setAside?.hidden).toBeFalsy();
@@ -393,6 +393,29 @@ describe('the toast over a game that opens', () => {
   });
 });
 
+describe('which game came back', () => {
+  it('Back to it names the game back, with its rating beside a game of the same name, and each press is a notice of its own', async () => {
+    // two Hard games, one opened over the other
+    g().startGame(HARD, 1348, 'Hard');
+    play(3);
+    g().openOver(() => (g().startGame(EASY, 1290, 'Hard'), true));
+    play(2);
+    expect(g().setAside?.info?.puzzle).toBe(HARD);
+    const before = g().noticeId;
+    backToKept();
+    expect(g().notice).toBe('Back to your Hard game (HoDoKu rating 1348), where you left it');
+    const first = g().noticeId;
+    expect(first).toBeGreaterThan(before);
+    backToKept();
+    expect(g().notice).toBe('Back to your Hard game (HoDoKu rating 1290), where you left it');
+    expect(g().noticeId).toBeGreaterThan(first);
+    // the same words set again are a notice of their own too
+    const again = g().noticeId;
+    useGame.setState({ notice: g().notice });
+    expect(g().noticeId).toBeGreaterThan(again);
+  });
+});
+
 describe('a practice’s address', () => {
   it('brings back the practice kept in the slot at a reload, Back or Forward; Import plays the puzzle itself', async () => {
     g().startGame(HARD, 1348, 'Hard', 'X_WING');
@@ -405,7 +428,7 @@ describe('a practice’s address', () => {
     expect(g().info?.practiceTech).toBe('X_WING');
     expect(entries()).toBe(2);
     expect(g().setAside?.info?.puzzle).toBe(EASY);
-    expect(g().notice).toBe('Your X-Wing practice, where you left it');
+    expect(g().notice).toBe('Back to your X-Wing practice, where you left it');
     expect(g().letGo).toBeNull();
     // Import of that puzzle: the puzzle itself, a game of its own
     g().backToSetAside();
@@ -519,7 +542,7 @@ describe('the Daily button', () => {
     expect(g().custom).toBe(false);
     expect(g().info?.puzzle).toBe(HARD);
     expect(entries()).toBe(3);
-    expect(g().notice).toBe('Your game on this puzzle, where you left it');
+    expect(g().notice).toBe('Back to your Hard game, where you left it');
   });
 
   it('without the published list, says so and keeps the board, rather than passing another puzzle off as the day’s', async () => {
@@ -687,7 +710,7 @@ describe('the error screen', () => {
     backToKept();
     expect(g().info?.puzzle).toBe(HARD);
     expect(entries()).toBe(3);
-    expect(g().notice).toBe('Your game on this puzzle, where you left it');
+    expect(g().notice).toBe('Back to your Hard game, where you left it');
     // a solved game behind it is not kept, as nowhere else
     const save = JSON.parse(storage.get('sudokui-game-v1')!);
     const solvedBehind = { ...save, state: { ...save.state, custom: true, setAside: null, customBackup: { ...save.state.setAside, won: true } } };

@@ -709,6 +709,10 @@ interface GameStore {
   proofs: Proof[];
   /** transient toast message */
   notice: string | null;
+  /** a new number with every notice or let-go line set (noticeIds): the
+   *  toast is said, and timed, anew for each, the same words again too
+   *  (App.tsx). In memory only */
+  noticeId: number;
   /** the game the one slot let go, named (oneSlot, letGoLine): said in the
    *  toast with the notice that comes with it, so it reaches a screen
    *  reader too. In memory only */
@@ -1020,12 +1024,28 @@ function autoOn(cells: CellState[], contract: MarkContract): string | null {
   return null;
 }
 
+/**
+ * The store's set, every notice or let-go line it sets numbered anew
+ * (noticeId), so the toast is said and timed again when the same words
+ * come again (two presses of Back to it in a row)
+ */
+function noticeIds<S extends (partial: never, replace?: never) => void>(set: S, get: () => GameStore): S {
+  return ((partial: Partial<GameStore> | ((s: GameStore) => Partial<GameStore>), replace?: boolean) => {
+    const p = typeof partial === 'function' ? partial(get()) : partial;
+    (set as unknown as (p: Partial<GameStore>, r?: boolean) => void)(p && (p.notice || p.letGo) ? { ...p, noticeId: get().noticeId + 1 } : p, replace);
+  }) as unknown as S;
+}
+
 /** the game is behind the pause card: paused, and not won (a win's own pause is no pause card) */
 const resting = (s: { paused: boolean; won: boolean }) => s.paused && !s.won;
 
 export const useGame = create<GameStore>()(
   persist(
-    (set, get) => ({
+    (rawSet, get, api) => {
+      // every notice numbered anew (noticeIds), set from inside or outside
+      const set = noticeIds(rawSet, get);
+      api.setState = noticeIds(api.setState, get);
+      return {
       info: null,
       cells: Array.from({ length: 81 }, emptyCell),
       custom: false,
@@ -1061,6 +1081,7 @@ export const useGame = create<GameStore>()(
       errors: [],
       proofs: [],
       notice: null,
+      noticeId: 0,
       letGo: null,
       multiSelect: false,
       revertIndex: null as number | null,
@@ -2168,6 +2189,8 @@ export const useGame = create<GameStore>()(
       },
 
       answerContract: (contract) => {
+        // behind the pause card the question waits (App.tsx), and so does its answer
+        if (resting(get()) && get().contractFor !== 'text') return;
         const asked = get().contractFor;
         get().setMarkContract(contract);
         // raised on the way to a hint, by Check or by auto candidates
@@ -2777,7 +2800,8 @@ export const useGame = create<GameStore>()(
         const s = get();
         return s.paused || s.away ? s.elapsedBefore : s.elapsedBefore + (Date.now() - s.startedAt);
       }
-    }),
+      };
+    },
     {
       name: 'sudokui-game-v1',
       // written only by the page that holds the play (src/state/play.ts)
