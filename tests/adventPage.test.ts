@@ -6,7 +6,7 @@
  * every door written locked, with its day and rating and never its puzzle;
  * and the inline script that opens the doors whose day has come, run over
  * a small stand-in for the page with the device's date fixed, day by day
- * against the calendar's own rule (src/content/advent.ts, doorOpen). Then
+ * against the calendar's own rule (src/content/season.ts, doorOpen). Then
  * the quiet line on the home pages and /learn/, shown in November and
  * December by the same kind of script.
  */
@@ -14,7 +14,8 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import template from '../index.html?raw';
 import advent from '../src/content/advent.json';
-import { ADVENT_DOORS, adventPath, calendarOpen, calendarSoon, calendarYears, doorOpen, type AdventDoor } from '../src/content/advent';
+import { ADVENT_DOORS, adventPath, calendarYears, type AdventDoor } from '../src/content/advent';
+import { calendarOpen, doorOpen } from '../src/content/season';
 import { ADVENT_PAGE, ADVENT_URLS, adventCardPath, fillAdvent } from '../src/content/adventPage';
 import { ADVENT_LINE, LINE_ID, LINE_SCRIPT } from '../src/content/adventLine';
 import { buildLearnPages, buildSitemap, pageCalendar, SITE, LEARN_LANGS } from '../src/content/learnPages';
@@ -311,7 +312,7 @@ describe('the quiet line to the calendar', () => {
     const script = /id="advent-line" hidden>.*?<\/p>\s*<script>([^<]*)<\/script>/.exec(home.nb)![1];
     expect(script).toBe(LINE_SCRIPT.replace(/\n\s*/g, ' '));
     for (const date of [...days('2026-01-01', '2026-12-31'), '2027-01-01', '2027-11-01']) {
-      expect(runLine(script, date), date).toBe(calendarSoon(date) || calendarOpen(date));
+      expect(runLine(script, date), date).toBe(calendarOpen(date));
     }
   });
 });

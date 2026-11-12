@@ -13,7 +13,7 @@
 // (/advent/2026/5, under /nb/ and /es/ in those languages), the app being
 // where a door is really opened or refused (src/ui/links.ts, startDoor).
 // Without JavaScript every door reads as locked, with its day. The rule is
-// the calendar's own (src/content/advent.ts, doorOpen): door n from n
+// the season's own (src/content/season.ts, doorOpen): door n from n
 // December to 31 December of its year, every door closed after;
 // tests/adventPage.test.ts runs the script against doorOpen day by day.
 //

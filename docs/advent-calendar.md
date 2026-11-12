@@ -12,36 +12,51 @@ the dashboard's Christmas section, and how to make next year's doors.
 
 ## The season, in dates
 
-One module says what the calendar allows on a date,
-[src/content/advent.ts](../src/content/advent.ts), and everything else
-asks it. The dates are the player's local date (`localDateKey`), as the
-daily's are.
+One module says what the season allows on a date,
+[src/content/season.ts](../src/content/season.ts), for the Christmas look
+and the calendar alike, and everything else asks it: the app's links and
+calendar (`calendarOpen`, `doorState`, `doorOpen`), the win screen and the
+queue of times (`doorCounts`), the Worker (`calendarEnd`) and the public
+pages, whose inline script tests/adventPage.test.ts holds to `doorOpen`
+day by day. The dates are the player's local date (`localDateKey`), as the
+daily's are. src/content/advent.ts keeps what is the calendar's own and
+no date rule: the doors' numbers, their addresses and the published list.
 
 | Date (local) | What the calendar does |
 |---|---|
-| 1 to 30 November | New shows one quiet line: the calendar opens on 1 December (`calendarSoon`). No door opens. |
-| 1 to 24 December | New has Advent calendar (`calendarOpen`). Door n opens on n December (`doorOpen`); a door still to come is locked. |
+| 1 to 30 November | New has Advent calendar (`calendarOpen`), "Its doors open from 1 December": the 24 doors, every one locked, each with the day it opens. No door opens. |
+| 1 to 24 December | Door n opens on n December (`doorState` is `open`); a door still to come is `locked`. |
 | 25 to 31 December | Every door is open (an earlier door is always allowed until 31 December). |
-| From 1 January | Nothing of the calendar shows, no door opens, and nothing of it is sent. A door game in progress stays where it is, on the board or in the slot, and can be finished; asked for again (its address, a reload), it comes back, since it is the player's own game. |
-
-The season module of the Christmas look (decision 1 of the same day, built
-in another branch) has its own functions for the look; this module's date
-checks (`calendarOpen`, `calendarSoon`, `doorOpen`, `doorCounts`) are the
-calendar's, and the two can be joined into one `season.ts` when the
-branches meet.
+| From 1 January | Nothing of the calendar shows, no door opens, and nothing of it is sent, until November (`closed`). A door game in progress stays where it is, on the board or in the slot, and can be finished; asked for again (its address, a reload), it comes back, since it is the player's own game. Any other door says "The advent calendar is closed until November". |
 
 ## A locked door opens nothing
 
-A door whose day has not come is refused wherever it is asked for, by
-`startDoor` in [src/ui/links.ts](../src/ui/links.ts), which every way in
-goes through: its address at start-up (`/advent/2026/5`, `/nb/advent/2026/5`,
-`/es/advent/2026/5`), the same address in the tab (Back, Forward, a link
-put in), Import of its address, and the calendar's own doors (a locked
-door's button is disabled). The toast says when it opens ("Door 5 of the
-advent calendar opens on 5 December"), and nothing goes over the game on
-the board: no slot, no new game, and the address goes back to the board's
-game. A position link (`#s=`) on a locked door's address is refused with
-it, so the door's puzzle is not played under another name either.
+A door whose day has not come is locked by the rule that locks a daily
+whose day has not come (decision 3 of the same day): its day is after the
+player's local today, one check for both (`dayToCome`,
+src/content/dailies.ts; `dailyLocked` for a daily, `doorState` for a
+door). [src/ui/links.ts](../src/ui/links.ts) asks it before anything else
+wherever a door is asked for: its address at start-up (`/advent/2026/5`,
+`/nb/advent/2026/5`, `/es/advent/2026/5`), the same address in the tab (a
+link put in, Back, Forward), Import of its address, and the calendar's own
+doors (a locked door's button is disabled). The toast is the daily's, in
+one style (`lockedLine`): "Door 2 of the advent calendar opens at
+midnight" for tomorrow's door, as "Tomorrow's daily opens at midnight";
+"Door 5 of the advent calendar opens on 5 December" for a later one, as
+"That daily opens on 20 November"; Import says it in its own dialog.
+Nothing goes over the game on the board: no slot, no new game, and the
+address goes back to the board's game. A position link (`#s=`) on a
+locked door's address is refused with it, so the door's puzzle is not
+played under another name either. A first visit to a locked door's
+address plays a game of its own, and the toast stays over it.
+
+A copy of a locked door the player already holds (opened on its day, then
+the device's clock put back) is left where it is, never lost, as a daily's
+copy is: on the board its address changes nothing, quietly; in the slot
+its link, Back and Forward leave it there and say when it opens, and Back
+to it brings it as always. A door whose day has come but whose calendar
+has closed (January) is the other case: a door game the player holds is
+theirs and comes back where it was left, by its address too.
 
 Two limits, as with the daily's spoilers (docs/online-goals.md, phase 2):
 `advent.json` is a lazy chunk of the app, so a determined player can read
@@ -93,7 +108,7 @@ Worker still refuses a time for a door whose day has not come anywhere
   result in door 5". A door's line is counted as a `challenge` share: the
   share kinds are a closed list, and nothing new is sent for it.
 - **The calendar** (src/ui/Advent.tsx): New, then Advent calendar, from 1
-  to 31 December. The 24 doors: an open one with its day and its band and
+  November to 31 December, every door locked in November. The 24 doors: an open one with its day and its band and
   rating, marked ✓ when it was solved on this device and "in progress" when
   it is on the board or in the slot; a locked one with its day and a lock.
   Today's door wears the daily's ring.
@@ -194,11 +209,13 @@ and the sitemap, and the dev server serves them.
   `scripts/og-advent-card.ts`: the name and the year, and 24 closed doors
   in pine and gold, out of order as on a paper calendar. A new year's
   doors need their card (the test fails without it).
-- **The look.** The site's own night and day, with the season's colours
-  on the calendar alone: pine doors with gold numbers once open, dashed
-  ones while locked, a ribbon of holly and gold above them. It fits 320
-  px (tests/e2e/pages.spec.ts checks every sitemap page at 320, 360 and
-  390 px).
+- **The look.** The site's own night and day, with the Christmas look's
+  palette on the calendar alone (`ADVENT_STYLE`, src/content/learnPages.ts;
+  the app's src/ui/styles.css, data-theme christmas): open doors in its
+  top bar's deep pine with gold numbers and snow words, dashed ones while
+  locked, its string of lights on a pine ribbon above them, and today's
+  door ringed in its holly. It fits 320 px (tests/e2e/pages.spec.ts checks
+  every sitemap page at 320, 360 and 390 px).
 - **Where it is linked from.** One quiet line, "Advent calendar: a sudoku
   behind each door, from 1 to 24 December", on the home pages (in the
   block crawlers read before the app starts) and on `/learn/`, in each

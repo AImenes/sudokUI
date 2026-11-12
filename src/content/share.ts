@@ -24,7 +24,7 @@ import { TECHS, LEVELS, Tech, Level, asLevel } from '../engine/ratings';
 import type { Lang } from '../state/settings';
 import { techSlug, techFromParam } from './slugs';
 import { SITE, homePath, ogCard, fillTemplate } from './home';
-import { parseDailyUrl, dailyPath, findDaily, dailyNumber, localDateKey } from './dailies';
+import { parseDailyUrl, dailyPath, findDaily, dailyNumber, localDateKey, dayToCome } from './dailies';
 import type { Daily } from './dailies';
 import { parseAdventUrl, adventPath, findDoor, doorDate, doorDay } from './advent';
 import type { AdventDoor } from './advent';
@@ -159,7 +159,8 @@ export function shareParamsOf(
     const door = findDoor(doors, a.year, a.door);
     if (!door) return null;
     const date = doorDate(a.year, a.door);
-    const advent = { year: a.year, door: a.door, date, open: date <= latest };
+    // a door whose day has not come by `latest` is locked, by the rule that locks a daily (dailies.ts, dayToCome)
+    const advent = { year: a.year, door: a.door, date, open: !dayToCome(date, latest) };
     if (!advent.open) return { lang: a.lang, puzzle: '', advent };
     return { lang: a.lang, puzzle: door.puzzle, level: door.level, score: door.score, vs: a.vs, advent };
   }

@@ -1,8 +1,9 @@
 /**
  * The advent calendar in a real browser (docs/advent-calendar.md;
  * src/ui/Advent.tsx, src/ui/links.ts startDoor), with the device's date
- * moved by Playwright's clock: in November New says when it opens; on 1
- * December door 1 opens and door 2 is locked; a locked door asked for by
+ * moved by Playwright's clock: in November New shows the calendar with
+ * every door locked, each with its day; on 1 December door 1 opens and
+ * door 2 is locked, and its address says it opens at midnight; a locked door asked for by
  * its address is refused with a toast and puts nothing over the game under
  * way; an earlier door opens on 10 December over a game under way, which
  * is kept with Back to it; a door solved offers Send for its time on its
@@ -77,11 +78,23 @@ const keptNote = (page: Page) => page.getByRole('note').filter({ hasText: 'Your 
 test.describe('the advent calendar', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test('in November, New says quietly when it opens, and offers no door', async ({ page }) => {
+  test('in November, New shows the calendar with every door locked, each with the day it opens', async ({ page }) => {
     await open(page, '2026-11-20', `/#p=${EASY}`);
+    await opened(page, EASY);
     const dialog = await newDialog(page);
-    await expect(dialog.getByText('The advent calendar opens on 1 December: a door a day until Christmas Eve')).toBeVisible();
-    await expect(dialog.getByRole('button', { name: /Advent calendar/ })).toHaveCount(0);
+    const entry = dialog.getByRole('button', { name: /Advent calendar/ });
+    await expect(entry).toContainText('Its doors open from 1 December: a door a day until Christmas Eve');
+    await entry.click();
+    const calendar = page.getByRole('dialog', { name: 'Advent calendar' });
+    await expect(calendar).toBeVisible();
+    await expect(calendar.getByRole('button', { name: 'Door 1, opens on 1 December' })).toBeDisabled();
+    await expect(calendar.getByRole('button', { name: 'Door 24, opens on 24 December' })).toBeDisabled();
+    await expect(calendar.locator('button.advent-door:not([disabled])')).toHaveCount(0);
+    // and door 1's address opens nothing yet, over nothing
+    await calendar.getByRole('button', { name: 'Close dialog' }).click();
+    await page.goto('/advent/2026/1');
+    await expect(toast(page)).toContainText('Door 1 of the advent calendar opens on 1 December');
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, door: null, aside: null });
   });
 
   test('on 1 December door 1 is open and door 2 locked; door 1 opens on the board at its own address', async ({ page }) => {
@@ -133,6 +146,10 @@ test.describe('the advent calendar', () => {
       history.pushState(null, '', '/advent/2026/9');
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
+    await expect.poll(() => saved(page)).toEqual({ puzzle: EASY, door: null, aside: null, entries: 3 });
+    // tomorrow's door says midnight, as tomorrow's daily does
+    await page.goto('/advent/2026/2');
+    await expect(toast(page)).toContainText('Door 2 of the advent calendar opens at midnight');
     await expect.poll(() => saved(page)).toEqual({ puzzle: EASY, door: null, aside: null, entries: 3 });
   });
 
@@ -224,7 +241,7 @@ test.describe('the advent calendar', () => {
     await dialog.getByRole('button', { name: 'Close dialog' }).click();
     // another door's address opens nothing, and says why
     await page.goto('/advent/2026/2');
-    await expect(toast(page)).toContainText('The advent calendar is closed until next December');
+    await expect(toast(page)).toContainText('The advent calendar is closed until November');
     await expect.poll(() => saved(page)).toMatchObject({ door: 1, entries: 5 });
     await expect.poll(() => path(page)).toBe('/advent/2026/1');
     await page.getByRole('button', { name: 'Resume game' }).click();

@@ -1,22 +1,24 @@
 // The advent calendar in the app (docs/advent-calendar.md): New, then
-// Advent calendar, from 1 to 31 December of the player's local date. It
-// shows the 24 doors: an open one with its day and its HoDoKu rating, and
-// whether it was solved on this device (the solves kept with the dailies'
-// own, src/state/dailyStats.ts, played) or is in progress here; a locked
-// one with the day it opens. A door opens through src/ui/links.ts
-// (startDoor), which never loses a game under way. From 1 January nothing
-// of it shows (App.tsx).
+// Advent calendar, from 1 November to 31 December of the player's local
+// date (src/content/season.ts, calendarOpen). It shows the 24 doors: an
+// open one with its day and its HoDoKu rating, and whether it was solved on
+// this device (the solves kept with the dailies' own,
+// src/state/dailyStats.ts, played) or is in progress here; a locked one
+// (every door in November) with the day it opens. A door opens through
+// src/ui/links.ts (startDoor), which never loses a game under way. From
+// 1 January nothing of it shows (App.tsx).
 import React, { useEffect, useState } from 'react';
 import { Modal } from './Dialogs';
 import { useT } from '../content/i18n';
 import { useGame } from '../state/gameStore';
 import type { GameInfo } from '../state/gameStore';
 import { useDailyStats } from '../state/dailyStats';
-import { ADVENT_DOORS, adventNo, doorDate, doorDay, doorOpen, findDoor, loadAdvent } from '../content/advent';
+import { adventNo, doorDay, findDoor, loadAdvent } from '../content/advent';
+import { DOORS, doorDate, doorOpen } from '../content/season';
 import type { AdventDoor } from '../content/advent';
 
 /** the doors, 1 to 24 */
-const DOORS = Array.from({ length: ADVENT_DOORS }, (_, i) => i + 1);
+const ALL = Array.from({ length: DOORS }, (_, i) => i + 1);
 
 export function AdventDialog({ today, onClose, onDoor }: { today: string; onClose: () => void; onDoor: (year: number, door: number) => void }) {
   const t = useT();
@@ -46,7 +48,7 @@ export function AdventDialog({ today, onClose, onDoor }: { today: string; onClos
         {t('A door a day from 1 to 24 December, the same puzzle for everyone. Door 1 is gentle, and each door is a little harder than the one before.')}
       </p>
       <ul className="advent-doors">
-        {DOORS.map((door) => {
+        {ALL.map((door) => {
           const date = doorDate(year, door);
           // the long day for the name a screen reader reads, the short one on the door
           const day = doorDay(date, t.locale);

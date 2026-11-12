@@ -3,10 +3,12 @@
  * themselves are tests/adventDoors.test.ts's): a door's address, and the
  * doors as games (src/ui/links.ts, startDoor; gameStore.ts). A door opens
  * on its day by the player's local date and never before, by its address,
- * a link, Import or the calendar; an earlier door stays open until 31
- * December; a door game in progress is never lost, and comes back when its
- * door is asked for again, in January too; its solve is kept with the
- * dailies' solves, and its time goes only when the player taps Send.
+ * a link, Import, Back, Forward or the calendar, by the lock that keeps a
+ * daily whose day has not come (tests/futureDaily.test.ts) and with a
+ * toast of the same style; an earlier door stays open until 31 December;
+ * a door game in progress is never lost, and comes back when its door is
+ * asked for again, in January too; its solve is kept with the dailies'
+ * solves, and its time goes only when the player taps Send.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -28,7 +30,7 @@ const { useTelemetry } = await import('../src/state/telemetry');
 const { useSettings } = await import('../src/state/settings');
 const { useStats } = await import('../src/state/stats');
 const { useDailyStats } = await import('../src/state/dailyStats');
-const { startDoor, openAppLink, backToKept, holds, backTo, doorLocked } = await import('../src/ui/links');
+const { startDoor, openAppLink, backToKept, holds, backTo, doorLocked, lockedLine } = await import('../src/ui/links');
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
 
@@ -107,8 +109,12 @@ describe('a door as a game', () => {
     play(3);
     const before = g().cells.map((c) => c.value).join('');
     expect(await startDoor(2026, 2)).toBe('locked');
-    expect(g().notice).toBe('Door 2 of the advent calendar opens on 2 December');
-    expect(await open('https://sudokui.app/advent/2026/24')).toEqual({ opened: false, refused: 'Door 24 of the advent calendar opens on 24 December' });
+    // tomorrow's door, as tomorrow's daily: at midnight
+    expect(g().notice).toBe('Door 2 of the advent calendar opens at midnight');
+    // by its address at start-up the toast says it, as for a daily whose day has not come
+    useGame.setState({ notice: null });
+    expect(await open('https://sudokui.app/advent/2026/24')).toEqual({ opened: false });
+    expect(g().notice).toBe('Door 24 of the advent calendar opens on 24 December');
     // a position on the locked door's puzzle is not played either
     expect((await open(`https://sudokui.app/advent/2026/9#s=${'x'.repeat(10)}`, 'tab')).opened).toBe(false);
     const imported = await open('https://sudokui.app/nb/advent/2026/3', 'import');
@@ -152,7 +158,7 @@ describe('a door as a game', () => {
     play(5);
     today('2027-01-01');
     expect(await startDoor(2026, 21)).toBe('locked');
-    expect(g().notice).toBe('The advent calendar is closed until next December');
+    expect(g().notice).toBe('The advent calendar is closed until November');
     expect(g().info?.adventDoor).toBe(20);
     // asked for again (its address, a reload), it is the player's own game, and comes back
     expect(await open('https://sudokui.app/advent/2026/20')).toEqual({ opened: true });
@@ -188,6 +194,54 @@ describe('a door as a game', () => {
       today(day);
       expect(countedClosed(countedOf(g().info)!), day).toBe(!open);
     }
+  });
+
+  it('locks a door as a daily is locked, with one style of toast', () => {
+    today('2026-11-12');
+    expect(lockedLine('2026-12-01', '2026-11-30', 1)).toBe('Door 1 of the advent calendar opens at midnight');
+    expect(lockedLine('2026-12-05', '2026-11-12', 5)).toBe('Door 5 of the advent calendar opens on 5 December');
+    expect(lockedLine('2026-11-13', '2026-11-12')).toBe('Tomorrow’s daily opens at midnight');
+    expect(lockedLine('2026-11-20', '2026-11-12')).toBe('That daily opens on 20 November');
+    // a calendar still to come says its year
+    expect(doorLocked(2027, 3, '2026-12-10')).toBe('Door 3 of the advent calendar opens on 3 December 2027');
+    // another year's door, while a calendar is there; and none once it has closed
+    expect(doorLocked(2026, 3, '2027-11-20', false)).toBe('That door is from another year’s advent calendar');
+    expect(doorLocked(2026, 3, '2027-01-05', false)).toBe('The advent calendar is closed until November');
+    // a door game the player holds goes on after its calendar closes, never before its day
+    expect(doorLocked(2026, 3, '2027-01-05', true)).toBeNull();
+    expect(doorLocked(2026, 3, '2026-12-02', true)).toBe('Door 3 of the advent calendar opens at midnight');
+  });
+
+  it('leaves a door whose day has not come where it is, even one this page holds (the clock went back): on the board quietly, in the slot by its link, Back and Forward', async () => {
+    // opened on its day, then the device's clock put back a day
+    today('2026-12-06');
+    g().startGame(EASY, 196, 'Easy');
+    play(3);
+    expect(await startDoor(2026, 6)).toBe('started');
+    play(2);
+    today('2026-12-05');
+    // on the board: its address, a reload, says nothing and changes nothing
+    useGame.setState({ notice: null });
+    const was = g().info;
+    expect(await open('https://sudokui.app/advent/2026/6')).toEqual({ opened: true });
+    expect(g().info).toBe(was);
+    expect(g().notice).toBeNull();
+    // set aside for the kept game: its link does not bring it onto the board, nor does Back
+    backToKept();
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(g().setAside?.info?.adventDoor).toBe(6);
+    const link = readAppLink(new URL('https://sudokui.app/advent/2026/6'))!;
+    expect(await openAppLink(link, 'tab')).toEqual({ opened: false });
+    expect(g().notice).toBe('Door 6 of the advent calendar opens at midnight');
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(holds(link)).toBe(true);
+    expect(backTo(link)).toBe(false);
+    expect(g().info?.puzzle).toBe(EASY);
+    // never lost: it stays in the slot, and Back to it brings it
+    expect(g().setAside?.info?.adventDoor).toBe(6);
+    backToKept();
+    expect(g().info?.adventDoor).toBe(6);
+    expect(g().cells.filter((c) => !c.given && c.value)).toHaveLength(2);
   });
 
   it('keeps a door, restarted, the same door', async () => {

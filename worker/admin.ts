@@ -43,7 +43,8 @@ import { accessKeys, cameThroughAccess, type AccessEnv, type AccessKeys } from '
 import type { D1Like } from './daily';
 import { PLAY_KINDS, PLAY_LANGS, SHARE_KINDS, type LandingFrom, type PlayKind, type PlayLang, type ShareKind } from './telemetry';
 import advent from '../src/content/advent.json';
-import { ADVENT_DOORS, adventNo, calendarYears, daysBetween, doorDate, findDoor, type AdventDoor } from '../src/content/advent';
+import { ADVENT_DOORS, adventNo, calendarYears, daysBetween, findDoor, type AdventDoor } from '../src/content/advent';
+import { doorDate, calendarEnd, seasonYear } from '../src/content/season';
 import { statsFromHistogram, type HistogramRow } from '../src/content/dailies';
 
 export { DAYS_SHOWN, DATASET };
@@ -599,8 +600,8 @@ const utcDay = (now: Date) => now.toISOString().slice(0, 10);
  */
 export function adventYearOn(now: Date, years: number[] = calendarYears(advent as AdventDoor[])): number {
   const y = now.getUTCFullYear();
-  const month = now.getUTCMonth() + 1;
-  const season = month >= 11 ? y : month === 1 ? y - 1 : null;
+  // the season's own (src/content/season.ts), and the January after it
+  const season = seasonYear(utcDay(now)) ?? (now.getUTCMonth() === 0 ? y - 1 : null);
   if (season !== null && years.includes(season)) return season;
   return years.find((year) => year >= (season ?? y)) ?? years.at(-1) ?? season ?? y;
 }
@@ -608,7 +609,7 @@ export function adventYearOn(now: Date, years: number[] = calendarYears(advent a
 /** where the calendar stands on the dashboard's UTC day */
 export function adventPhase(year: number, now: Date): AdventPhase {
   const today = utcDay(now);
-  return today < doorDate(year, 1) ? 'before' : today <= `${year}-12-31` ? 'open' : 'over';
+  return today < doorDate(year, 1) ? 'before' : today <= calendarEnd(year) ? 'open' : 'over';
 }
 
 /**

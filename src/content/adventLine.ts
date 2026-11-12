@@ -3,8 +3,8 @@
 // (src/content/home.ts), and on /learn/ (src/content/learnPages.ts): one
 // line in each language, in the HTML all year and hidden, so a search
 // engine finds the link, and shown by a one-line script in November and
-// December by the visitor's own date (advent.ts: calendarSoon,
-// calendarOpen), so a reader sees it only in season.
+// December by the visitor's own date (season.ts, calendarOpen: the days
+// the calendar is there), so a reader sees it only in season.
 //
 // Kept apart from the page's copy: home.ts imports this, and the app's
 // bundle carries home.ts, so it stays a few lines.

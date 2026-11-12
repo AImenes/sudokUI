@@ -21,7 +21,8 @@ import { play } from './play';
 import type { DailyStats } from '../content/dailies';
 import type { Level } from '../engine/ratings';
 import { useSettings } from './settings';
-import { ADVENT_BASE, adventOfNo, doorCounts } from '../content/advent';
+import { ADVENT_BASE, adventOfNo } from '../content/advent';
+import { doorCounts } from '../content/season';
 import { localDateKey } from '../content/dailies';
 
 /** one player's result for a daily, as the server takes it */

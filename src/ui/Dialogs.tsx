@@ -202,7 +202,7 @@ export function NewGameDialog({
   onStart: (level: LevelPick) => void;
   onCustom: () => void;
   onDaily: () => void;
-  /** the advent calendar (src/content/advent.ts): open from 1 to 31 December, a quiet line in November that it is coming, nothing otherwise */
+  /** the advent calendar (src/content/season.ts, calendarOpen): there from 1 November to 31 December, its doors opening from 1 December ('open'; 'soon' before), nothing otherwise */
   advent?: 'open' | 'soon' | null;
   onAdvent?: () => void;
   /** a game under way kept aside (src/ui/links.ts): offered back here too, so it is reachable when its note is put away */
@@ -225,13 +225,16 @@ export function NewGameDialog({
             {t('One shared puzzle per day. Everyone in the world gets this exact board today, so compare times with your friends')}
           </span>
         </button>
-        {advent === 'open' && onAdvent && (
+        {advent && onAdvent && (
           <button className="level-btn advent" onClick={onAdvent}>
             <strong>🎄 {t('Advent calendar')}</strong>
-            <span>{t('A door a day from 1 to 24 December, each a little harder than the one before, the same puzzle for everyone')}</span>
+            <span>
+              {advent === 'open'
+                ? t('A door a day from 1 to 24 December, each a little harder than the one before, the same puzzle for everyone')
+                : t('Its doors open from 1 December: a door a day until Christmas Eve')}
+            </span>
           </button>
         )}
-        {advent === 'soon' && <p className="dialog-note advent-soon">🎄 {t('The advent calendar opens on 1 December: a door a day until Christmas Eve')}</p>}
         <button
           className="level-btn surprise"
           onClick={() => onStart(PICKS[Math.floor(Math.random() * PICKS.length)])}

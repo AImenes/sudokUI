@@ -3,18 +3,22 @@
 // puzzle rated about n x 100 on HoDoKu's scale, the same puzzle for
 // everyone. This module holds what the app, the build script
 // (scripts/build-advent.ts) and the Worker (worker/daily.ts,
-// worker/index.ts) agree on: the door's day, its number for the results,
-// its address, and the season's few date rules for the calendar. It
-// imports no data: the app loads advent.json when a door opens (loadAdvent),
-// the Worker bundles it.
+// worker/index.ts) agree on: the door's number for the results, its
+// address, its published puzzle and how its day is written. What a date
+// allows (whether a door is open, locked or closed, whether its time
+// counts) is the season module's (src/content/season.ts), which every one
+// of them asks. It imports no data: the app loads advent.json when a door
+// opens (loadAdvent), the Worker bundles it.
 //
 // Decisions (the owner, 12 November 2026):
 // - A door opens on its day, the player's local date, and an earlier door
-//   stays open until 31 December. A door whose day has not come is locked:
-//   no address, link, Import or calendar opens it (src/ui/links.ts,
-//   startDoor). From 1 January the calendar is closed until next December;
-//   a door game in progress stays where it is and can be finished, but no
-//   door opens and nothing is sent.
+//   stays open until 31 December. A door whose day has not come is locked,
+//   by the rule that locks a daily whose day has not come: no address,
+//   link, Import or calendar opens it (src/ui/links.ts, startDoor). The
+//   calendar is there from 1 November, every door locked until December;
+//   from 1 January it is closed until November: a door game in progress
+//   stays where it is and can be finished, but no door opens and nothing
+//   is sent.
 // - A door's unassisted time counts on its day and up to LATE_DAYS late,
 //   as the daily's does; the Worker takes it on the daily's own tables,
 //   under a number no daily reaches (adventNo), and refuses a door whose
@@ -25,7 +29,8 @@
 import type { Level } from '../engine/ratings';
 import type { Lang } from '../state/settings';
 import { homePath } from './home';
-import { dateOfKey, LATE_DAYS } from './dailies';
+import { dateOfKey } from './dailies';
+import { doorDate, isDoor } from './season';
 
 /** one door of a year's calendar, as advent.json publishes it */
 export interface AdventDoor {
@@ -42,8 +47,13 @@ export interface AdventDoor {
   solutionHash: string;
 }
 
-/** the doors of a calendar */
-export const ADVENT_DOORS = 24;
+/**
+ * The calendar's dates and what they allow (a door's day, whether it is
+ * open, whether its time counts, the calendar's last day) are the season
+ * module's (src/content/season.ts), which everything asks; the few a
+ * caller of this module reaches for come with it.
+ */
+export { DOORS as ADVENT_DOORS, doorDate, isDoor } from './season';
 
 /** the rating a door aims at: door 1 about 100, door 24 about 2400 */
 export const doorTarget = (door: number) => door * 100;
@@ -64,39 +74,7 @@ export function adventOfNo(no: number): { year: number; door: number } | null {
   const rest = no - ADVENT_BASE;
   const year = Math.floor(rest / 100);
   const door = rest % 100;
-  return year >= 2000 && year <= 2999 && door >= 1 && door <= ADVENT_DOORS ? { year, door } : null;
-}
-
-/** whether a door number is one of a calendar's */
-export const isDoor = (door: number) => Number.isInteger(door) && door >= 1 && door <= ADVENT_DOORS;
-
-/** the day a door opens: 2026-12-05 */
-export const doorDate = (year: number, door: number) => `${year}-12-${String(door).padStart(2, '0')}`;
-
-/** the year, month and day of a date key */
-function partsOf(key: string): { y: number; m: number; d: number } | null {
-  if (!dateOfKey(key)) return null;
-  return { y: Number(key.slice(0, 4)), m: Number(key.slice(5, 7)), d: Number(key.slice(8, 10)) };
-}
-
-/** the calendar is open: 1 to 31 December of the player's local date */
-export function calendarOpen(today: string): boolean {
-  return partsOf(today)?.m === 12;
-}
-
-/** the calendar is coming: November, when New says it opens on 1 December */
-export function calendarSoon(today: string): boolean {
-  return partsOf(today)?.m === 11;
-}
-
-/**
- * Whether a door may be played on the player's local today: its day has
- * come, in this year's December. An earlier door stays open until 31
- * December; nothing opens from 1 January.
- */
-export function doorOpen(year: number, door: number, today: string): boolean {
-  const t = partsOf(today);
-  return !!t && isDoor(door) && t.m === 12 && t.y === year && t.d >= door;
+  return year >= 2000 && year <= 2999 && isDoor(door) ? { year, door } : null;
 }
 
 /** whole days from one date key to another, later is positive */
@@ -106,19 +84,6 @@ export function daysBetween(from: string, to: string): number {
   if (!a || !b) return NaN;
   return Math.round((b.getTime() - a.getTime()) / 86_400_000);
 }
-
-/**
- * Whether a door's time can still go in on the player's local today: on
- * its day and up to LATE_DAYS late, in its own December (the server keeps
- * the same window by the UTC date, with a day of grace ahead)
- */
-export function doorCounts(year: number, door: number, today: string): boolean {
-  if (!doorOpen(year, door, today)) return false;
-  return daysBetween(doorDate(year, door), today) <= LATE_DAYS;
-}
-
-/** the last day of a calendar: nothing of it is taken after this */
-export const calendarEnd = (year: number) => `${year}-12-31`;
 
 /** a door's day as the player's language writes it, without the year: 5 December, 5. desember, 5 de diciembre; short, 5 Dec */
 export function doorDay(date: string, locale: string, month: 'long' | 'short' = 'long'): string {

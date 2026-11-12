@@ -111,18 +111,30 @@ export function dayAfter(date: string): string {
 }
 
 /**
- * A daily that has not opened yet: its day is after the player's local
- * today. The one check of the future-daily lock (the owner's decision of
- * 12 November 2026): whatever asks for such a daily, its address, a
- * #daily or share link, Import, New, the past-daily note, a reload, Back
- * or Forward, it opens nothing over the board, and the player is told
- * when it opens (src/ui/links.ts, startDaily and openAppLink). Today's
- * and every earlier day's daily open as before. The server keeps its one
- * day of grace (EARLY_DAYS, worker/daily.ts): it knows only UTC, and a
- * player in UTC+14 is a day ahead of it on their own today.
+ * A day still to come: after the player's local today. The one rule of
+ * the lock on a day (the owner's decisions of 12 November 2026), the same
+ * for a daily (dailyLocked) and for a door of the advent calendar
+ * (season.ts, doorState): whatever asks for it opens nothing over the
+ * board, and the player is told when it opens, in one style
+ * (src/ui/links.ts, lockedLine). A key that names no day is no day to come.
+ */
+export function dayToCome(date: string, today = localDateKey()): boolean {
+  return !!dateOfKey(date) && date > today;
+}
+
+/**
+ * A daily that has not opened yet: its day is still to come (dayToCome).
+ * The one check of the future-daily lock: whatever asks for such a daily,
+ * its address, a #daily or share link, Import, New, the past-daily note,
+ * a reload, Back or Forward, it opens nothing over the board, and the
+ * player is told when it opens (src/ui/links.ts, startDaily and
+ * openAppLink). Today's and every earlier day's daily open as before. The
+ * server keeps its one day of grace (EARLY_DAYS, worker/daily.ts): it
+ * knows only UTC, and a player in UTC+14 is a day ahead of it on their own
+ * today.
  */
 export function dailyLocked(date: string, today = localDateKey()): boolean {
-  return !!dateOfKey(date) && date > today;
+  return dayToCome(date, today);
 }
 
 /** the level a day's puzzle is drawn from: DAILY_BANDS in turn */

@@ -31,7 +31,8 @@
  */
 import dailies from '../src/content/dailies.json';
 import advent from '../src/content/advent.json';
-import { adventOfNo, findDoor, calendarEnd } from '../src/content/advent';
+import { adventOfNo, findDoor } from '../src/content/advent';
+import { calendarEnd } from '../src/content/season';
 import type { AdventDoor } from '../src/content/advent';
 import {
   Daily,

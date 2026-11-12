@@ -977,15 +977,21 @@ ${c.sections.map((s) => `      <h2>${esc(s.heading)}</h2>\n${s.paragraphs.map(pa
   };
 }
 
+/** the Christmas look's string of lights, as its top bar wears them (src/ui/styles.css) */
+const ADVENT_LIGHTS = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='9' viewBox='0 0 96 9'%3E%3Cpath d='M0 1.5Q12 6 24 1.5T48 1.5T72 1.5T96 1.5' fill='none' stroke='%23497f64' stroke-width='.8'/%3E%3Cg fill='%234f8a6c'%3E%3Crect x='11' y='3.1' width='2' height='1.6'/%3E%3Crect x='35' y='3.1' width='2' height='1.6'/%3E%3Crect x='59' y='3.1' width='2' height='1.6'/%3E%3Crect x='83' y='3.1' width='2' height='1.6'/%3E%3C/g%3E%3Ccircle cx='12' cy='6.2' r='2.6' fill='%23ef5a70'/%3E%3Ccircle cx='36' cy='6.2' r='2.6' fill='%23f6cd62'/%3E%3Ccircle cx='60' cy='6.2' r='2.6' fill='%23f7faf7'/%3E%3Ccircle cx='84' cy='6.2' r='2.6' fill='%2372d6ae'/%3E%3C/svg%3E")`;
+
 /**
- * The advent calendar's own look, festive and calm: pine doors with gold
- * numbers once open, a ribbon of holly and gold above them, on the site's
- * own night and day. Three doors a row on a phone, four, then six.
+ * The advent calendar's own look, festive and calm, in the Christmas
+ * look's palette (src/ui/styles.css, data-theme christmas): the open
+ * doors in its top bar's deep pine with gold numbers and snow words, a
+ * string of its lights on a pine ribbon above them, today's door ringed
+ * in its holly; on the site's own night and day. Three doors a row on a
+ * phone, four, then six.
  */
 const ADVENT_STYLE = `
-.advent{--pine:#1f5240;--on-pine:#eaf3ec;--gold:#e7c26a;--gold-on-pine:#f3d27a;--holly:#e06b78;margin:22px 0 8px}
-@media (prefers-color-scheme:light){.advent{--pine:#1d6a46;--on-pine:#ffffff;--gold:#b8860b;--gold-on-pine:#ffe08a;--holly:#a8233d}}
-.advent::before{content:"";display:block;height:4px;border-radius:2px;margin-bottom:16px;background:repeating-linear-gradient(90deg,var(--holly) 0 18px,var(--gold) 18px 24px,var(--pine) 24px 42px,var(--gold) 42px 48px)}
+.advent{--pine:#173d2e;--on-pine:#f4f8f4;--gold:#f2c75c;--holly:#ef5a70;margin:22px 0 8px}
+@media (prefers-color-scheme:light){.advent{--holly:#a8233d}}
+.advent::before{content:"";display:block;height:14px;border-radius:7px;margin-bottom:16px;background:LIGHTS left 0 bottom 2px / auto 9px repeat-x,var(--pine)}
 .advent h2{margin-top:0}
 .advent-status{font-weight:600}
 .doors{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -996,14 +1002,14 @@ const ADVENT_STYLE = `
 .door .day{font-weight:600;color:var(--text)}
 .door .state{margin-top:5px;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
 .door.open{border:1px solid var(--gold);background:var(--pine);color:var(--on-pine)}
-.door.open b{color:var(--gold-on-pine)}
+.door.open b{color:var(--gold)}
 .door.open .day{color:var(--on-pine)}
-.door.open:hover{filter:brightness(1.12)}
+.door.open:hover{filter:brightness(1.18)}
 .door.open:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .door.today{box-shadow:0 0 0 3px var(--holly)}
 .door.closed{opacity:.7}
 .vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-`.trim();
+`.trim().replace('LIGHTS', ADVENT_LIGHTS);
 
 /** the calendar the page shows: the latest year advent.json publishes, every one of its doors */
 export function pageCalendar(doors: AdventDoor[] = advent as AdventDoor[]): { year: number; doors: AdventDoor[] } {

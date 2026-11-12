@@ -15,7 +15,8 @@ import { translator } from '../content/i18n';
 import { clockOf } from '../content/share';
 import type { AppLink } from '../content/share';
 import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, dailyLocked, dayAfter, dayName } from '../content/dailies';
-import { loadAdvent, findDoor, doorOpen, doorDate, calendarOpen, isDoor } from '../content/advent';
+import { loadAdvent, findDoor } from '../content/advent';
+import { calendarOpen, doorDate, doorState, isDoor } from '../content/season';
 import { play } from '../state/play';
 
 /** the challenger's time becomes the one to beat, and the player is told */
@@ -59,15 +60,23 @@ const unavailable = (date: string) => {
 };
 
 /**
- * why a day's daily does not open: its day is after the player's local
- * today (dailies.ts, dailyLocked), and when it does open: "Tomorrow's daily
- * opens at midnight", "That daily opens on 20 November"
+ * The lock on a day still to come (the owner's decisions of 12 November
+ * 2026; dailies.ts, dayToCome): a daily whose day is after the player's
+ * local today (dailyLocked), or a door of the advent calendar whose day is
+ * (season.ts, doorState), opens nothing, whatever asks for it, and this
+ * line says when it does, in one style for both: at midnight when that day
+ * is tomorrow, else on its day. "Tomorrow's daily opens at midnight",
+ * "That daily opens on 20 November"; "Door 2 of the advent calendar opens
+ * at midnight", "Door 24 of the advent calendar opens on 24 December".
  */
-export function lockedLine(date: string, today = localDateKey()): string {
+export function lockedLine(date: string, today = localDateKey(), door?: number): string {
   const t = translator();
-  return date === dayAfter(today)
-    ? t('Tomorrow’s daily opens at midnight')
-    : t('That daily opens on {date}', { date: dayName(date, t.locale, today) });
+  const tomorrow = date === dayAfter(today);
+  if (door !== undefined)
+    return tomorrow
+      ? t('Door {door} of the advent calendar opens at midnight', { door })
+      : t('Door {door} of the advent calendar opens on {date}', { door, date: dayName(date, t.locale, today) });
+  return tomorrow ? t('Tomorrow’s daily opens at midnight') : t('That daily opens on {date}', { date: dayName(date, t.locale, today) });
 }
 
 /**
@@ -145,42 +154,65 @@ const doorOnBoard = (year: number, door: number) => {
 const isTheDoor = (year: number, door: number) => (info: GameInfo) => info.adventYear === year && info.adventDoor === door;
 
 /**
- * Why a door does not open on the player's today, or null when it may:
- * its day has not come (it says when it opens), or the calendar is not
- * open (from 1 January until next December, and before its December)
+ * The lock line of an address that names a daily or a door whose day has
+ * not come (lockedLine), or null: what its link, Import, Back and Forward
+ * all ask before anything else
  */
-export function doorLocked(year: number, door: number, today = localDateKey()): string | null {
-  if (doorOpen(year, door, today)) return null;
-  const t = translator();
-  const date = doorDate(year, door);
-  if (!isDoor(door)) return t('The advent calendar has no door {door}', { door });
-  // its own December has come and the door's day not yet, or the
-  // calendar of a year still to come
-  if (date > today) return t('Door {door} of the advent calendar opens on {date}', { door, date: dayName(date, t.locale, today) });
-  return calendarOpen(today)
-    ? t('That door is from another year’s advent calendar')
-    : t('The advent calendar is closed until next December');
+function dayLock(link: AppLink, today = localDateKey()): string | null {
+  if (link.daily) return dailyLocked(link.daily.date, today) ? lockedLine(link.daily.date, today) : null;
+  if (!link.advent) return null;
+  const { year, door } = link.advent;
+  return doorState(year, door, today) === 'locked' ? lockedLine(doorDate(year, door), today, door) : null;
 }
 
-/** what startDoor did: as startDaily, or refused a door whose day has not come (`locked`) */
+/** this door is a game the page holds: on the board, in the slot, or behind a puzzle being typed in (holds) */
+const holdsDoor = (year: number, door: number) => holds({ advent: { year, door } });
+
+/**
+ * Why a door does not open on the player's today, or null when it may (the
+ * season says where it stands, season.ts doorState). A door whose day has
+ * not come is locked as a daily whose day has not come is, whatever the
+ * page holds, and the line says when it opens (lockedLine). A door of a
+ * calendar that has closed (from 1 January until November, or another
+ * year's) opens only as a game the player already holds, which is theirs
+ * and comes back where it was left (`held`); any other says the calendar
+ * is closed.
+ */
+export function doorLocked(year: number, door: number, today = localDateKey(), held = holdsDoor(year, door)): string | null {
+  const t = translator();
+  if (!isDoor(door)) return t('The advent calendar has no door {door}', { door });
+  const state = doorState(year, door, today);
+  if (state === 'open') return null;
+  if (state === 'locked') return lockedLine(doorDate(year, door), today, door);
+  if (held) return null;
+  return calendarOpen(today) ? t('That door is from another year’s advent calendar') : t('The advent calendar is closed until November');
+}
+
+/** what startDoor did: as startDaily, `locked` for a door whose day has not come or whose calendar has closed */
 export type DoorOpened = 'resumed' | 'started' | 'locked' | 'unavailable' | 'dropped';
 
 /**
- * A door of the advent calendar (src/content/advent.ts): the door on the
- * board, set aside, or behind a puzzle being typed in comes back where it
- * was left, as the day's daily does, whatever the date (a door game in
- * progress is never lost, and can be finished after the calendar closes).
- * Any other door opens only when its day has come in this December
- * (doorOpen, the player's local date): a door still to come opens
- * nothing, by its address, a link, Import or the calendar, and the player
- * is told when it opens; nothing goes over the game on the board. An open
- * door starts fresh over a game under way set aside (openOver). Without
- * the published list (offline before the app could keep it) the board
- * stays and the player is told.
+ * A door of the advent calendar (src/content/advent.ts), as the day's
+ * daily opens (startDaily). A door whose day has not come (doorState, the
+ * player's local date) opens nothing, by its address, a link, Import or
+ * the calendar, not even a copy of it in the slot (it stays there, where
+ * Back to it brings it): the player is told when it opens, and nothing
+ * goes over the game on the board. A door whose day has come is the one
+ * on the board, set aside, or behind a puzzle being typed in, where it was
+ * left, never a second copy; and so it is from 1 January (a door game in
+ * progress is never lost, and can be finished after the calendar closes),
+ * when no other door opens. Any other open door starts fresh over a game
+ * under way set aside (openOver). Without the published list (offline
+ * before the app could keep it) the board stays and the player is told.
  */
 export async function startDoor(year: number, door: number): Promise<DoorOpened> {
   const t = translator();
   const named = isTheDoor(year, door);
+  const locked = doorLocked(year, door);
+  if (locked) {
+    useGame.setState({ notice: locked });
+    return 'locked';
+  }
   if (doorOnBoard(year, door) || useGame.getState().resumeSetAside((info) => named(info))) {
     useGame.setState({
       notice: useGame.getState().won
@@ -188,11 +220,6 @@ export async function startDoor(year: number, door: number): Promise<DoorOpened>
         : t('Door {door} of the advent calendar, where you left it', { door })
     });
     return 'resumed';
-  }
-  const locked = doorLocked(year, door);
-  if (locked) {
-    useGame.setState({ notice: locked });
-    return 'locked';
   }
   const list = await loadAdvent();
   // the play went while the list came: a view opens nothing (startDaily)
@@ -244,23 +271,22 @@ export interface LinkOpened {
 export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOpened> {
   const t = translator();
   const game = useGame.getState;
-  // a daily whose day has not come opens nothing, not even a position
-  // shared on it (/daily/<date>#s=…): before anything else, so no game
-  // goes aside for it. Its own copy already on the board (an earlier
-  // build opened it, or the device's clock went back) stays as it is,
-  // quietly; startDaily says when it opens, and Import in its dialog
-  if (link.daily && dailyLocked(link.daily.date)) {
-    if (from !== 'import' && dailyOnBoard(link.daily.date)) return { opened: true };
-    const line = lockedLine(link.daily.date);
-    if (from === 'import') return { opened: false, refused: line };
-    useGame.setState({ notice: line });
+  // a daily or a door whose day has not come opens nothing, nor does a
+  // door of a calendar that has closed which this page does not hold, not
+  // even a position shared on its address (/daily/<date>#s=…): before
+  // anything else, so no game goes aside for it. Its own copy already on
+  // the board (an earlier build opened it, the device's clock went back)
+  // stays as it is, quietly; the toast says when it opens, and Import says
+  // it in its own dialog
+  const lock = dayLock(link) ?? (link.advent ? doorLocked(link.advent.year, link.advent.door) : null);
+  if (lock) {
+    const own = link.daily ? dailyOnBoard(link.daily.date) : !!link.advent && doorOnBoard(link.advent.year, link.advent.door);
+    if (from !== 'import' && own) return { opened: true };
+    if (from === 'import') return { opened: false, refused: lock };
+    useGame.setState({ notice: lock });
     return { opened: false };
   }
-  // a door still locked opens nothing, not even a position on its puzzle
-  // (startDoor says when it opens); a door game this page holds is the
-  // player's own, and comes back
-  const lockedDoor = !!link.advent && !holds({ advent: link.advent }) && !!doorLocked(link.advent.year, link.advent.door);
-  const position = link.position && !lockedDoor ? openPosition(link.position) : null;
+  const position = link.position ? openPosition(link.position) : null;
   if (position === true) return { opened: true };
   const refusal = position === 'cut'
     ? t('This link looks cut off, so the entries and marks it shared could not be loaded')
@@ -272,14 +298,6 @@ export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOp
   };
   if (link.daily) {
     const { date, vs } = link.daily;
-    // a day that has not come opens nothing, not even over its own copy
-    // (startDaily says when it opens); Import says it in its own dialog
-    if (dailyLocked(date)) {
-      const line = lockedLine(date);
-      if (from === 'import') return { opened: false, refused: line };
-      useGame.setState({ notice: line });
-      return { opened: false };
-    }
     // the day's board already on the board: a reload lands here, quietly
     if (from !== 'import' && dailyOnBoard(date)) {
       if (vs) challengeCurrent(vs);
@@ -309,6 +327,7 @@ export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOp
     if (opened === 'dropped') return { opened: false };
     if (opened === 'locked' || opened === 'unavailable') {
       // Import says it in its own dialog; anywhere else the notice stands
+      // (locked: the day turned since the check above)
       const why = useGame.getState().notice ?? '';
       if (from === 'import') useGame.setState({ notice: null });
       return { opened: false, refused: why };
@@ -405,8 +424,10 @@ export function holds(link: AppLink): boolean {
  * never by letting a game go. The game behind a puzzle being typed in on
  * the board stays behind it (it is the board's already, under the entry,
  * and Cancel brings it), and a swap the one slot could not keep whole
- * (resumeSetAside's `keep`) is not made: the board stays as it is. True
- * when the board is now the game the address names.
+ * (resumeSetAside's `keep`) is not made: the board stays as it is. A
+ * daily or a door whose day has not come stays in the slot, as its link
+ * leaves it (dayLock). True when the board is now the game the address
+ * names.
  */
 export function backTo(link: AppLink): boolean {
   const g = useGame.getState();
@@ -419,6 +440,14 @@ export function backTo(link: AppLink): boolean {
         : !!link.puzzle && info.puzzle === link.puzzle.cells);
   if (!g.custom && named(g.info)) return true;
   if (g.custom && named(g.customBackup?.info)) return false;
+  // a daily or a door whose day has not come is not brought onto the
+  // board, as its link brings nothing: it stays where it is, in the slot,
+  // and the toast says when it opens
+  const lock = dayLock(link);
+  if (lock) {
+    useGame.setState({ notice: lock });
+    return false;
+  }
   const back = link.daily || link.advent
     ? g.resumeSetAside((info) => named(info), true)
     : // a plain game of the puzzle first, a practice of it only when none is kept (as a link to it)

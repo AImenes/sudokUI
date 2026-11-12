@@ -1,8 +1,10 @@
 /**
  * The advent calendar's doors (docs/advent-calendar.md;
- * src/content/advent.ts, scripts/build-advent.ts): the calendar's dates,
- * open from 1 to 31 December by the player's local date, door n on n
- * December, a door's time counting on its day and up to a week late; each
+ * src/content/advent.ts, scripts/build-advent.ts): the calendar's dates as
+ * the season module gives them (src/content/season.ts; tests/season.test.ts
+ * walks the season's edges), there from 1 November to 31 December by the
+ * player's local date, door n opening on n December, a door's time
+ * counting on its day and up to a week late; each
  * door's number for its results, in a range no daily reaches; and the
  * published doors, one solution each, published as its hash, rated as the
  * file says, near n x 100, rising, and made again by the seeded search
@@ -11,20 +13,8 @@
 import { describe, it, expect } from 'vitest';
 import doorsFile from '../src/content/advent.json';
 import dailiesFile from '../src/content/dailies.json';
-import {
-  ADVENT_BASE,
-  ADVENT_DOORS,
-  adventNo,
-  adventOfNo,
-  calendarOpen,
-  calendarSoon,
-  doorOpen,
-  doorCounts,
-  doorDate,
-  doorDay,
-  doorTarget,
-  daysBetween
-} from '../src/content/advent';
+import { ADVENT_BASE, ADVENT_DOORS, adventNo, adventOfNo, doorDate, doorDay, doorTarget, daysBetween } from '../src/content/advent';
+import { calendarOpen, doorOpen, doorCounts, doorState, calendarEnd, DOORS } from '../src/content/season';
 import type { AdventDoor } from '../src/content/advent';
 import { dailyNumber, LATE_DAYS } from '../src/content/dailies';
 import type { Daily } from '../src/content/dailies';
@@ -39,18 +29,34 @@ const doors = doorsFile as AdventDoor[];
 const dailies = dailiesFile as Daily[];
 
 describe('the calendar’s dates', () => {
-  it('is open from 1 to 31 December, coming in November, and gone from 1 January', () => {
-    expect(calendarOpen('2026-11-30')).toBe(false);
-    expect(calendarSoon('2026-11-01')).toBe(true);
-    expect(calendarSoon('2026-11-30')).toBe(true);
+  it('is there from 1 November to 31 December, its doors locked in November, and closed from 1 January until November', () => {
+    expect(calendarOpen('2026-10-31')).toBe(false);
+    expect(calendarOpen('2026-11-01')).toBe(true);
+    expect(calendarOpen('2026-11-30')).toBe(true);
+    expect(doorState(2026, 1, '2026-11-30')).toBe('locked');
     expect(calendarOpen('2026-12-01')).toBe(true);
-    expect(calendarSoon('2026-12-01')).toBe(false);
     expect(calendarOpen('2026-12-31')).toBe(true);
     expect(calendarOpen('2027-01-01')).toBe(false);
-    expect(calendarSoon('2027-01-01')).toBe(false);
-    expect(calendarOpen('2026-10-31')).toBe(false);
-    expect(calendarSoon('2026-10-31')).toBe(false);
+    expect(calendarOpen('2027-10-31')).toBe(false);
+    expect(calendarOpen('2027-11-01')).toBe(true);
     expect(calendarOpen('not a date')).toBe(false);
+    // the advent module's count is the season's
+    expect(ADVENT_DOORS).toBe(DOORS);
+  });
+
+  it('says where a door stands: locked until its day, as a daily is, open until 31 December, closed after', () => {
+    expect(doorState(2026, 5, '2026-11-12')).toBe('locked');
+    expect(doorState(2026, 5, '2026-12-04')).toBe('locked');
+    expect(doorState(2026, 5, '2026-12-05')).toBe('open');
+    expect(doorState(2026, 5, '2026-12-31')).toBe('open');
+    expect(doorState(2026, 5, calendarEnd(2026))).toBe('open');
+    expect(doorState(2026, 5, '2027-01-01')).toBe('closed');
+    expect(doorState(2026, 5, '2027-12-05')).toBe('closed');
+    // a calendar still to come is locked, door by door, as a daily still to come is
+    expect(doorState(2027, 1, '2026-12-31')).toBe('locked');
+    // no door outside 1 to 24, and no day out of what is not a date
+    expect(doorState(2026, 25, '2026-12-31')).toBe('closed');
+    expect(doorState(2026, 5, 'not a date')).toBe('closed');
   });
 
   it('opens door n on n December and keeps every earlier door open until 31 December', () => {

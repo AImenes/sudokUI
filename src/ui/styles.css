@@ -2485,15 +2485,11 @@ textarea {
   border: 1.5px solid var(--accent);
 }
 
-/* the advent calendar (src/ui/Advent.tsx): New's line for it in December,
-   the quiet note in November, and its 24 doors, four a row on a phone
-   and as many as the dialog holds beside them */
+/* the advent calendar (src/ui/Advent.tsx): New's line for it in November
+   and December, and its 24 doors, four a row on a phone and as many as the
+   dialog holds beside them */
 .level-btn.advent {
   border: 1.5px dashed var(--accent);
-}
-
-.advent-soon {
-  margin: 2px 4px;
 }
 
 .advent-doors {
