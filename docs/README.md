@@ -77,6 +77,13 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
   was fixed (undo, strikes, erase, Check, the chain trainer), Gather and the
   one rule for where a list of candidates goes, and what was left; and the
   armed digit that would not let go on a phone (4 November).
+- [app-hunt-2026-11.md](app-hunt-2026-11.md): the app-wide hunt of 11 and 12
+  November 2026: games kept when a link, Import, the Daily button or custom
+  entry opens another; the win screen and the clock; the keyboard and screen
+  reader; offline and after a deploy; the Learn pages; the owner's
+  auto-pause; why two windows merging their games was replaced by one page
+  playing at a time; the owner's rule for what may be left; and the edge
+  cases left.
 - [generator.md](generator.md): making and rating puzzles.
 - [technique-stats.md](technique-stats.md): the learning path from the
   player's own play.
