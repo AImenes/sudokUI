@@ -13,7 +13,7 @@ import './ui/styles.css';
 import { useGame } from './state/gameStore';
 import { useStats } from './state/stats';
 import { useDailyStats } from './state/dailyStats';
-import { play, startPlay, acted, SAVES } from './state/play';
+import { play, startPlay, acted, clearing, SAVES } from './state/play';
 import { useAppStatus, reloadIntoLatest } from './state/appStatus';
 import { useSettings } from './state/settings';
 import { startLocales, langOfPath, langRoot } from './content/i18n';
@@ -23,7 +23,10 @@ import { reloadMark, cameBack } from './ui/links';
 // engines show for those languages: arriving there chooses the language.
 // A page that comes up hidden (a link opened in a background tab) may be a
 // view behind the page that plays, which writes nothing: its language
-// waits until it holds the play (below)
+// waits until it holds the play (below). A page that plays alone (no Web
+// Locks, or the browser refused one) takes it at once, as every page did
+// before one page played at a time. App's start-up waits for the
+// language's tables either way, so the link's first words are in it
 const arrived = langOfPath(window.location.pathname);
 let arrival = arrived;
 const arrive = () => {
@@ -31,7 +34,7 @@ const arrive = () => {
   arrival = null;
   if (lang && useSettings.getState().lang !== lang) useSettings.getState().set({ lang });
 };
-if (document.visibilityState !== 'hidden') arrive();
+if (document.visibilityState !== 'hidden' || play.role === 'solo') arrive();
 
 if (import.meta.env.DEV) {
   (window as any).__game = useGame;
@@ -96,15 +99,13 @@ const STORES: Record<string, { persist: { rehydrate: () => unknown } }> = {
 const GAME = SAVES[0];
 
 /**
- * The saves differ from what this page last wrote or read only in the
- * game's clock: another page showed a game nobody played on, and its clock
+ * The game's save differs from what this page last wrote or read only in
+ * the clock: another page showed a game nobody played on, and its clock
  * ran there (a game under way pauses as the play goes, so its clock stands
  * still). Nobody played, so nothing needs a reload: the clock is taken on
- * from where it stands, and the page goes on as it is, its open panels
- * and questions with it. True once it has.
+ * from where it stands. True once it has.
  */
 function clockOnly(): boolean {
-  if (play.changedSaves().some((key) => key !== GAME)) return false;
   try {
     const now = localStorage.getItem(GAME);
     const before = play.last(GAME);
@@ -122,6 +123,23 @@ function clockOnly(): boolean {
   }
 }
 
+/**
+ * Nobody played while this page was a view: the game's save is as it left
+ * it, or differs only in the clock (clockOnly). The record and the dailies'
+ * save may still have changed, as another page showed the day's win screen
+ * and fetched the day's numbers from the server, or sent the time: they
+ * hold nothing of this page's own (its open panels, its undo steps and its
+ * questions are the game store's), so they are read again in place, and
+ * the page goes on as it is, its win screen and open panels with it. True
+ * once it has; false when another page played (a reload is due).
+ */
+function inPlace(): boolean {
+  const changed = play.changedSaves();
+  if (changed.includes(GAME) && !clockOnly()) return false;
+  for (const key of changed) if (key !== GAME) void STORES[key]?.persist.rehydrate();
+  return true;
+}
+
 play.hooks = {
   give: () => {
     useGame.getState().setAway(true);
@@ -131,15 +149,17 @@ play.hooks = {
   taken: (changed, back) => {
     // a page that came up hidden in a link's language has it from now
     arrive();
-    if (!acted()) {
+    // (and the error screen's Clear, which reloads by itself once it has
+    // cleared the board in the save: src/ui/ErrorBoundary.tsx)
+    if (!acted() || clearing()) {
       // (the storage is read at once, so each save comes in within the call)
       for (const key of play.changedSaves()) void STORES[key]?.persist.rehydrate();
       // come back by Back or Forward before it ever started: its start
       // follows the rule of Back and Forward (src/ui/App.tsx)
-      if (back) cameBack();
+      if (back && !acted()) cameBack();
       return;
     }
-    if (!changed || clockOnly()) return;
+    if (!changed || inPlace()) return;
     play.leave();
     // into the saves as they are, the way every page starts. A page come
     // back by Back or Forward (from the back-forward cache) keeps its
@@ -180,7 +200,12 @@ play.hooks = {
 // moment even offline), and for the play (a moment, or the holder's wait
 // when it does not answer); if the tables cannot be fetched the app starts
 // in English
-const claimed = Promise.race([startPlay(!!reloadMark.again), new Promise<void>((done) => setTimeout(done, 4000))]).catch(() => {});
+const claimed = Promise.race([startPlay(!!reloadMark.again), new Promise<void>((done) => setTimeout(done, 4000))])
+  .catch(() => {})
+  // (a page the browser refused a lock plays alone: its link's language now)
+  .then(() => {
+    if (play.role === 'solo') arrive();
+  });
 Promise.all([startLocales().catch(() => {}), claimed]).finally(() => {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>

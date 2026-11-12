@@ -1355,7 +1355,12 @@ export const useGame = create<GameStore>()(
           errors: [],
           autoCandidates: false,
           contractPrompt: false,
-          mode: 'digit'
+          mode: 'digit',
+          // the toast standing over the game before (a link's, the one
+          // slot's told drop) goes, as when a game opens: the entry board's
+          // own words stand alone (a scan says its own after)
+          notice: null,
+          letGo: null
         });
       },
 

@@ -93,9 +93,9 @@ when the page is shown again: a friend's position or a fast-forwarded
 practice nobody touched among them, and a board whose only change is the
 auto candidates the chain trainer switched on, which Done and a reload
 take off again. Such a game's clock may run in another tab or window
-that shows it; a page that takes the play back with nothing else changed
-takes that clock on, as it stands in the save, rather than reload
-([main.tsx](../src/main.tsx), `clockOnly`). While the pause card covers the board, keys act on
+that shows it; a page that takes the play back with nothing else of the
+game changed takes that clock on, as it stands in the save, rather than
+reload ([main.tsx](../src/main.tsx), `clockOnly`, `inPlace`). While the pause card covers the board, keys act on
 nothing behind it (no Undo, hint, mode or Escape; only P resumes), a key
 meant for the board says why in the toast, and the board's status line,
 which a screen reader hears, says the game is paused instead of reading
@@ -159,9 +159,19 @@ taken. Every other open page of the app is a view that writes nothing.
   shown again takes the play back by itself when no page holds it, or
   when the holder is hidden (the player switched tabs in one window): it
   asks, and the hidden holder gives it. Beside a holder in view (two
-  windows side by side) it stays a view, with Play here; a holder that
-  kept the play from it so tells it once it is hidden itself (`free`: the
-  two tabs' events can come in either order), and it takes the play. An
+  windows side by side) it stays a view, with Play here. A holder says so
+  each time it is hidden (`free`): a view in view then takes the play
+  after a second (`GONE_MS`), unless a page took it meanwhile (the tab
+  the player turned to in the holder's window, which takes it at once as
+  it is shown), so the window beside one that was minimised plays; one
+  the holder told no a moment before (the two tabs' events can come in
+  either order) takes it at once. A view in view whose window gets the
+  focus (the player clicked into it) asks as one shown again does, and a
+  view in view looks every three seconds whether any page holds the play
+  (`check`, `navigator.locks.query`): a holder that crashed or was
+  discarded says nothing as it goes, so once no page has held it for a
+  second the view takes it, and no cover stays up for a game that
+  carries on nowhere. An
   ask heard while a page is taking the play itself is answered once it
   holds it, so two views shown at once (the screen unlocked) end with
   one playing and the other told no, not one taking it from the other
@@ -181,17 +191,29 @@ taken. Every other open page of the app is a view that writes nothing.
   the address and open a link, so a link opened in a new tab puts the
   game under way into the slot exactly as one opened in the same tab
   does (`openOver`, the one slot and its told drop). A page that came up
-  hidden behind the page that plays keeps the link it was opened with
-  until it is shown (the address bar follows the board only once the
-  start-up has run).
+  hidden (a link opened in a background tab) runs its start-up only once
+  it is first shown, whether it is a view behind the page that plays or
+  took the play itself because no page held it (`seen`): what its link
+  does, a game the one slot lets go among it, happens in a page the
+  player sees, and the toast says it there; until then it keeps the link
+  it was opened with (the address bar follows the board only once the
+  start-up has run). The start-up also waits for the language's tables
+  (`useTablesReady`), so a /nb/ or /es/ link's first toast is in its
+  language even when the page took that language only as it took the
+  play.
 - **Coming back.** A page that takes the play back goes on as it is when
-  every save is exactly what it last wrote or read, or differs only in
-  the clock of a game nobody played on (above): its win screen and Send,
-  its undo steps, its open panels and questions stay, and the focus goes
-  back where it was in the app (a dialog left open keeps it, so Tab stays
-  inside; with that gone, the top open dialog, then the board). When a
-  save changed otherwise (another page played), it reloads, at the home
-  address, so it starts from the saves the way every page starts: the
+  the game's save is exactly what it last wrote or read, or differs only
+  in the clock of a game nobody played on (above): its win screen and
+  Send, its undo steps, its open panels and questions stay, and the focus
+  goes back where it was in the app (a dialog left open keeps it, so Tab
+  stays inside; with that gone, the top open dialog, then the board). The
+  record and the dailies' save, which hold nothing of the page's own and
+  which another page writes without playing (it shows the day's win
+  screen and fetches the day's numbers from the server, or sends the
+  time), are then read again in place (`inPlace`). When the game's save
+  changed otherwise (another page played on it, or opened another game),
+  it reloads, at the home address, so it starts from the saves the way
+  every page starts: the
   board another page left, with what that page did (a link, Import or
   the Daily button opened over this page's game keeps it in the slot,
   with Back to it; New and a level keep nothing). A page come back from
@@ -208,7 +230,8 @@ taken. Every other open page of the app is a view that writes nothing.
   click acts on the game; its clock stands still, as a hidden page's
   does, and it sends no daily time and no counts of its own (`countStart`
   and the telemetry store ask `play.acts()`). A page that comes up hidden
-  at `/nb/` or `/es/` takes that language only once it holds the play.
+  at `/nb/` or `/es/` takes that language only once it holds the play
+  (one that plays alone takes it at once).
   The cover is a dialog with its name, the focus on Play here. It is
   never drawn on a page nobody sees, nor while a page shown again is
   taking the play back, so it does not flash up in front of the player.
@@ -220,7 +243,14 @@ taken. Every other open page of the app is a view that writes nothing.
   the play, and opens once the page holds it.
 - **Limits.** Without Web Locks (an old browser) there is no cover and no
   hand-over: every page plays as one window does, and two of them write
-  over each other's saves, the last write winning. And the browser's
+  over each other's saves, the last write winning. Where the browser
+  refuses the lock (the site may keep no data: its storage cannot be
+  read either) a page plays alone in the same way, with no cover, and
+  keeps its game only while it is open. A daily time on its way as the play goes is in the
+  dailies' save as one to send later until its answer comes, so if the
+  page that sent it cannot write the answer (it is a view by then, or
+  closed), the page that plays next sends it once more with the same
+  token and records the server's answer, and Send is not offered again. And the browser's
   storage reaches another page a moment after it is written, not at the
   same instant: a page given the play reads the saves right after the
   holder's last write, and could in that instant read the write before
@@ -370,9 +400,9 @@ none of the player's work.
   Daily button, Check & play or a Learn page's Practice link. The line
   rides with the notice the opening brings (`letGo`, in memory), each
   ended as a sentence of its own, so a screen reader reads two. A game
-  that opens clears the notice and the line standing over the game
-  before; what opens it says its own after, so no toast stays over a
-  different game. The toast is one live region, always in the page
+  that opens, and a puzzle to type in (New, then Custom), clears the
+  notice and the line standing over the game before; what opens it says
+  its own after, so no toast stays over a different board. The toast is one live region, always in the page
   (`role="status"`), so a screen reader hears each notice as it comes:
   every notice and line the store sets has a number of its own
   (`noticeId`), which draws the toast's words anew and starts its fade
@@ -414,7 +444,9 @@ none of the player's work.
 - **The error screen.** Its Clear the board and reload
   (src/ui/ErrorBoundary.tsx, `boardCleared`) clears the game on the
   board, since what broke is most likely there; a page that does not
-  hold the play takes it first, as Play here does. The slot's game stays: it
+  hold the play takes it first, as Play here does, and reads what another
+  page wrote meanwhile in place of reloading into it (`clearing`), so the
+  board it clears is the one in the save. The slot's game stays: it
   is never drawn until it comes back, so it cannot be what broke, and the
   note (or New) still offers it back. With a puzzle being typed in, the
   game it was opened over is not drawn either: with the slot empty it

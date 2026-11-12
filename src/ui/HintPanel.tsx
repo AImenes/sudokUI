@@ -268,6 +268,14 @@ export function ChainPanel() {
   );
 }
 const KEY_VIEWS = 8;
+/** how many hints have shown the key on this device; 0 when the storage cannot be read */
+function keySeen(): number {
+  try {
+    return Number(localStorage.getItem(KEY_SEEN) ?? 0) || 0;
+  } catch {
+    return 0;
+  }
+}
 
 export function HintPanel({
   onLearn,
@@ -293,10 +301,15 @@ export function HintPanel({
 
   // cell names such as r2c3 are explained under the first few hints only:
   // a newcomer needs the key, a regular would find it noise
-  const [showKey] = useState(() => Number(localStorage.getItem(KEY_SEEN) ?? 0) < KEY_VIEWS);
+  // (storage that cannot be read, site data blocked, shows the key)
+  const [showKey] = useState(() => keySeen() < KEY_VIEWS);
   useEffect(() => {
     if (hint && stage === 'full' && showKey) {
-      localStorage.setItem(KEY_SEEN, String(Number(localStorage.getItem(KEY_SEEN) ?? 0) + 1));
+      try {
+        localStorage.setItem(KEY_SEEN, String(keySeen() + 1));
+      } catch {
+        // private browsing or blocked storage: the key shows again next time
+      }
     }
   }, [hint, stage, showKey]);
 

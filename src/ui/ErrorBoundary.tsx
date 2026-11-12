@@ -7,7 +7,7 @@
 import React from 'react';
 import { translator, makeTranslator, rich } from '../content/i18n';
 import type { Translator } from '../content/i18n';
-import { play } from '../state/play';
+import { play, setClearing } from '../state/play';
 
 const GAME_KEY = 'sudokui-game-v1';
 const ISSUES = 'github.com/AImenes/sudokUI/issues';
@@ -88,8 +88,13 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     if (!error) return this.props.children;
     const reset = async () => {
       // only the page that holds the play writes the save (src/state/play.ts):
-      // a view takes the play first, as Play here does, and then clears
-      if (!play.mayWrite()) await play.here().catch(() => {});
+      // a view takes the play first, as Play here does, and then clears; it
+      // reads the saves another page wrote meanwhile in place instead of
+      // reloading into them, so the board it clears is the one in the save
+      if (!play.mayWrite()) {
+        setClearing(true);
+        await play.here().catch(() => {});
+      }
       try {
         if (play.mayWrite()) {
           const left = boardCleared(localStorage.getItem(GAME_KEY), localStorage.getItem('sudokui-stats-v1'));

@@ -572,6 +572,11 @@ test.describe('links and Import, laptop', () => {
     await expect(page.locator('.toast')).toHaveText(told);
     expect(await saved(page)).toMatchObject({ puzzle: HARD, aside: { dailyKey: localDateKey(), entries: 3 } });
     await expect(note(page)).toBeVisible();
+    // a puzzle typed in, opened right away: the toast does not stand over its empty board
+    await page.locator('.menu-row button', { hasText: 'New' }).click();
+    await page.getByRole('dialog', { name: 'New game' }).getByRole('button', { name: /^Custom/ }).click();
+    await expect(page.locator('.hint-panel', { hasText: 'Custom puzzle' })).toBeVisible();
+    await expect(page.locator('.toast')).toHaveCount(0);
   });
 
   test('after a crash with a puzzle being typed in and nothing set aside, Clear the board keeps the game it was typed over', async ({ page }) => {

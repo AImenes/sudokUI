@@ -9,7 +9,7 @@ import { cellName, PEERS } from '../engine/board';
 import { useSettings } from '../state/settings';
 import { useShownTheme, applyTheme } from './theme';
 import { useAppStatus } from '../state/appStatus';
-import { useT, translator, rich, langRoot } from '../content/i18n';
+import { useT, translator, rich, langRoot, useTablesReady } from '../content/i18n';
 import type { Translator } from '../content/i18n';
 import { Grid } from './Grid';
 import { SetTracker } from './SetTracker';
@@ -345,7 +345,14 @@ let pressedHere = false;
  * is shown again, so it does not flash up in front of the player.
  */
 function PlayCover() {
-  const shown = usePlay((s) => (s.role === 'view' || s.role === 'waiting') && !s.taking && !s.hidden);
+  const view = usePlay((s) => (s.role === 'view' || s.role === 'waiting') && !s.hidden);
+  const taking = usePlay((s) => s.taking);
+  // a cover already up stays up while the page asks for the play (its
+  // window got the focus, or Play here was pressed), so it does not blink
+  // away under the player's click and come back when the answer is no
+  const up = useRef(false);
+  const shown = view && (!taking || up.current);
+  up.current = shown;
   const t = useT();
   const button = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -441,6 +448,10 @@ export default function App() {
   // this page holds the play, or plays alone (src/state/play.ts): only then
   // does it act on the game; otherwise it is a view behind the cover
   const playing = usePlay((s) => s.role === 'player' || s.role === 'solo');
+  // the page has been in view since it loaded, and the language's tables
+  // are in: the start-up (below) waits for both
+  const seen = usePlay((s) => s.seen);
+  const tables = useTablesReady();
   // the start-up has run (below): the address bar follows the board from then
   const [booted, setBooted] = useState(false);
   // the focus in the app as it was before this page became a view goes
@@ -531,10 +542,14 @@ export default function App() {
   // #learn=<topic> (open the guide there). It runs once the page holds the
   // play, with the saves read as they are then (src/main.tsx): a link opened
   // in a new tab puts the game under way aside as one opened in the same
-  // tab does; a page that came up hidden behind the page that plays waits,
-  // as a view, until it is shown. StrictMode-guarded.
+  // tab does. A page that came up hidden (a link opened in a background
+  // tab) waits until it is first shown, as a view behind the page that
+  // plays or holding the play itself (no page held it), so what its link
+  // does, a game let go by the one slot among it, is told in a toast the
+  // player sees; and it waits for the language's tables, so that toast is
+  // in the language a /nb/ or /es/ link chose. StrictMode-guarded.
   useEffect(() => {
-    if (!playing || (window as any).__sudokuiBooted) return;
+    if (!playing || !seen || !tables || (window as any).__sudokuiBooted) return;
     (window as any).__sudokuiBooted = true;
     markActed();
     setBooted(true);
@@ -577,7 +592,7 @@ export default function App() {
       fallBack();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing]);
+  }, [playing, seen, tables]);
 
   // the win screen put away stays away for that solve, an Undo and the
   // same digit again included (the same solve, recordWin); a new game, the

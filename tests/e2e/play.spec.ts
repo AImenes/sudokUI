@@ -6,8 +6,11 @@
  * first tab is a view that writes nothing, and back in it the play comes
  * back with the saves, the link's game on the board and the first game
  * kept. Switched back with nothing changed, a tab goes on as it was, its
- * win screen still up. A page that comes up hidden while another plays is
- * a view until it is shown. Two pages in view: the one that does not play
+ * win screen still up, also when the other tab only fetched the day's
+ * numbers. A page that comes up hidden while another plays is a view until
+ * it is shown; one that comes up hidden with no page playing opens its
+ * link only once it is looked at, so what the one slot lets go is told
+ * where the player sees it. Two pages in view: the one that does not play
  * has the cover, whose Play here hands over. The holder closed, the view
  * takes the play when shown; a frozen holder has it taken after the wait;
  * and a view writes nothing for a minute.
@@ -294,6 +297,102 @@ test.describe('one page plays at a time', () => {
     }
   });
 
+  test('two links opened in background tabs with two games under way: each opens only once it is looked at, and the game the one slot lets go is told there', async ({ context }) => {
+    const today = localDateKey();
+    // one tab: a game kept and another under way, then closed
+    const first = await context.newPage();
+    await open(first, `/#p=${EASY}`);
+    await enter(first, 2);
+    await first.evaluate((h) => (location.hash = '#p=' + h), HARD);
+    await expect.poll(async () => (await saved(first)).puzzle).toBe(HARD);
+    await enter(first, 2);
+    await expect.poll(() => saved(first)).toMatchObject({ puzzle: HARD, entries: 2, aside: { puzzle: EASY, entries: 2 } });
+    await first.close();
+    // two links opened in background tabs, hidden from their first moment until looked at
+    const background = async (path: string) => {
+      const p = await context.newPage();
+      await p.addInitScript(() => {
+        if (sessionStorage.getItem('looked')) return;
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      });
+      await p.goto(path);
+      await expect(p.locator('svg.board')).toBeAttached();
+      return p;
+    };
+    const look = async (p: Page) => {
+      await p.evaluate(() => sessionStorage.setItem('looked', '1'));
+      await shown(p, true);
+    };
+    // the first takes the play (no page held it), but opens nothing yet: nobody has seen it
+    const b = await background(`/daily/${today}`);
+    await b.waitForTimeout(800);
+    expect(await saved(b)).toMatchObject({ puzzle: HARD, aside: { puzzle: EASY } });
+    const c = await background('/#practice=x-wing');
+    await c.waitForTimeout(800);
+    expect(await saved(c)).toMatchObject({ puzzle: HARD, aside: { puzzle: EASY } });
+    await mark(b);
+    // the player looks at the second first: its practice opens, and its toast says which game went
+    await look(c);
+    await expect(c.locator('.practice-bar')).toBeVisible();
+    await expect(c.locator('.toast')).toContainText('Only one game in progress is kept at a time: your Easy game is gone, your Hard game is kept');
+    await expect.poll(() => saved(c)).toMatchObject({ aside: { puzzle: HARD, entries: 2 } });
+    // then at the first: it takes the play back with no reload and opens its daily, told in its own toast
+    await shown(c, false);
+    await look(b);
+    await expect.poll(async () => (await saved(b)).dailyKey).toBe(today);
+    await expect(b.locator('.toast')).toContainText('Daily puzzle for');
+    expect(await same(b)).toBe(true);
+    expect(await saved(b)).toMatchObject({ aside: { puzzle: HARD, entries: 2 } });
+  });
+
+  test('a solved daily with Learn open, and the other tab fetches the day’s numbers, which have grown: switched back and forth, neither reloads, Learn stays open and the win screen stays away', async ({ context }) => {
+    // the day's numbers as a live server gives them: the count grows as others send their times
+    let count = 3;
+    await context.route('**/api/**', (route) => {
+      const url = route.request().url();
+      const day = /\/api\/daily\/(\d+)\/stats/.exec(url);
+      if (day) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ no: Number(day[1]), count: count++, median: 200, histogram: [[13, count - 3]] }) });
+      return route.fulfill({ status: 204, body: '' });
+    });
+    const numbers = (p: Page) => p.evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('sudokui-daily-v1') ?? '{}').state?.stats ?? null));
+    const a = await context.newPage();
+    await open(a, '/#daily');
+    const left = await a.evaluate(() => (JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.cells as { value: number }[]).filter((c) => !c.value).length);
+    await enter(a, left);
+    const won = a.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(won).toBeVisible();
+    // the win screen put away, Learn open
+    await a.keyboard.press('Escape');
+    await expect(won).toHaveCount(0);
+    await a.getByRole('button', { name: /Learn/ }).first().click();
+    const learn = a.getByRole('dialog', { name: 'Learn' });
+    await expect(learn).toBeVisible();
+    await mark(a);
+    await shown(a, false);
+    // the other tab: the solved daily's win screen, which fetches the day's numbers
+    const b = await context.newPage();
+    const before = await numbers(a);
+    await open(b, '/');
+    await expect(b.getByRole('dialog', { name: 'Puzzle solved' })).toBeVisible();
+    await expect.poll(() => numbers(b)).not.toBe(before);
+    await mark(b);
+    for (let k = 0; k < 2; k++) {
+      await shown(b, false);
+      await shown(a, true);
+      await a.waitForTimeout(800);
+      expect(await same(a)).toBe(true);
+      await expect(learn).toBeVisible();
+      await expect(won).toHaveCount(0);
+      await expect(a.locator('.play-cover')).toHaveCount(0);
+      await shown(a, false);
+      await shown(b, true);
+      await b.waitForTimeout(800);
+      expect(await same(b)).toBe(true);
+      await expect(b.getByRole('dialog', { name: 'Puzzle solved' })).toBeVisible();
+    }
+  });
+
   test('a page that comes up hidden while another plays is a view and writes nothing; shown, it takes the play and opens its link, the cover never drawn', async ({ context }) => {
     const a = await context.newPage();
     await open(a, `/#p=${EASY}`);
@@ -420,8 +519,8 @@ test.describe('one page plays at a time', () => {
     const b = await context.newPage();
     await open(b, '/');
     await expect(cover(a)).toBeVisible();
-    // the page that plays goes behind the others and rests
-    await shown(b, false);
+    // two windows side by side: the page that plays stays in view and
+    // rests, and the view beside it, its clock and its cover up, waits
     const then = await settled(a);
     const before = await writesOf(a);
     await a.waitForTimeout(60_000);

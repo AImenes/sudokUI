@@ -77,6 +77,13 @@ class FakeLocks implements Locks {
     if (this.held.has(name)) return;
     this.queue.get(name)?.shift()?.();
   }
+  /** which locks are held and asked for, as navigator.locks.query() says */
+  async query(): Promise<LockManagerSnapshot> {
+    return {
+      held: [...this.held.keys()].map((name) => ({ name, mode: 'exclusive' as const })),
+      pending: [...this.queue.entries()].flatMap(([name, q]) => q.map(() => ({ name, mode: 'exclusive' as const })))
+    };
+  }
   /** the page holding the lock closed: the browser lets the lock go, and the page hears nothing more */
   close(name: string) {
     this.held.delete(name);
@@ -379,6 +386,117 @@ describe('one page plays at a time', () => {
     await tick(100);
     expect(a.play.role).toBe('player');
     expect(c.play.role).toBe('view');
+  });
+
+  it('a holder hidden says so every time: a view in view that it took the play from takes it after the moment, a hidden view does not', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    const h = b.page('h');
+    await h.play.boot();
+    h.state.hidden = true;
+    h.play.hide();
+    // two windows side by side: c took the play from a at its own start, and nobody asked it
+    const c = b.page('c');
+    await c.play.boot();
+    expect([a.play.role, h.play.role, c.play.role]).toEqual(['view', 'view', 'player']);
+    // c's window minimised: a, the only page in view, takes the play; h, hidden, does not
+    c.state.hidden = true;
+    c.play.hide();
+    await tick(100);
+    expect(a.play.role).toBe('player');
+    expect(h.play.role).toBe('view');
+    expect(c.play.role).toBe('view');
+  });
+
+  it('a holder hidden as the player turns to another tab in its window: that tab takes the play, and a window beside it in view stays a view', async () => {
+    const b = new Browser();
+    const d = b.page('d');
+    await d.play.boot();
+    const t = b.page('t');
+    await t.play.boot();
+    t.state.hidden = true;
+    t.play.hide();
+    const a = b.page('a');
+    await a.play.boot();
+    await tick(100);
+    expect([d.play.role, t.play.role, a.play.role]).toEqual(['view', 'view', 'player']);
+    // a hidden as its window shows t: t is shown at once, d (another window, in view) hears a is hidden
+    a.state.hidden = true;
+    a.play.hide();
+    t.state.hidden = false;
+    expect(await t.play.shown()).toBe('held');
+    await tick(100);
+    expect([d.play.role, t.play.role, a.play.role]).toEqual(['view', 'player', 'view']);
+  });
+
+  it('a view in view whose window gets the focus asks as one shown again does: from a hidden holder or none it takes the play, beside one in view it stays a view, and Play here then still hands over', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    const c = b.page('c');
+    await c.play.boot();
+    expect(a.play.role).toBe('view');
+    // c in view beside it: a stays a view
+    a.play.focused();
+    await tick(100);
+    expect([a.play.role, c.play.role]).toEqual(['view', 'player']);
+    // Play here pressed as the focus came: the play comes to a all the same
+    a.play.focused();
+    expect(await a.play.here()).toBe('held');
+    expect([a.play.role, c.play.role]).toEqual(['player', 'view']);
+    // a's renderer crashes in view: the browser lets its lock go, and no word comes
+    c.state.hidden = true;
+    c.state.hidden = false;
+    expect(await c.play.here()).toBe('held');
+    c.state.frozen = true;
+    b.locks.close('sudokui-play');
+    a.play.focused();
+    await tick(100);
+    expect(a.play.role).toBe('player');
+    // a page that has never played leaves the focus alone (being shown decides for it)
+    const h = b.page('h', { hidden: true });
+    await h.play.boot();
+    h.state.hidden = false;
+    h.play.focused();
+    await tick(100);
+    expect(h.play.role).toBe('view');
+  });
+
+  it('a holder that went without a word (its renderer crashed): a view in view finds no page holds the play and takes it after the moment; while one holds it, or hidden, it does nothing', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    const c = b.page('c');
+    await c.play.boot();
+    await a.play.check();
+    expect([a.play.role, c.play.role]).toEqual(['view', 'player']);
+    c.state.frozen = true;
+    b.locks.close('sudokui-play');
+    a.state.hidden = true;
+    await a.play.check();
+    expect(a.play.role).toBe('view');
+    a.state.hidden = false;
+    await a.play.check();
+    await tick(20);
+    expect(a.play.role).toBe('player');
+  });
+
+  it('a lock the browser refuses (site data blocked), thrown or rejected: the page plays alone, with no cover, and Play here has nothing to do', async () => {
+    const data = new Map<string, string>();
+    const storage: Store = { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v), removeItem: (k) => void data.delete(k) };
+    const denied = () => Object.assign(new Error('The request was denied.'), { name: 'SecurityError' });
+    const thrown = new Play({ locks: { request: () => { throw denied(); } }, channel: () => null, storage: () => storage, hidden: () => false, wait: 20 });
+    await thrown.boot();
+    expect(thrown.role).toBe('solo');
+    expect(thrown.acts()).toBe(true);
+    expect(await thrown.here()).toBe('held');
+    const rejected = new Play({ locks: { request: () => Promise.reject(denied()) }, channel: () => null, storage: () => storage, hidden: () => true, wait: 20 });
+    await rejected.boot();
+    expect(rejected.role).toBe('solo');
+    expect(rejected.acts()).toBe(true);
+    rejected.storage().setItem(GAME, 'alone');
+    expect(data.get(GAME)).toBe('alone');
   });
 
   it('two views shown at once while the holder is hidden: one takes it, the other hears no from it rather than taking it from a page in view', async () => {

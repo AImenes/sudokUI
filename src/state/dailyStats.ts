@@ -53,7 +53,7 @@ interface DailyStatsState {
   tokens: Record<string, string>;
   /** the seconds this device has submitted, by number: the panel shows the percentile from then on */
   submitted: Record<string, number>;
-  /** results that could not be sent, by number, sent on the next open */
+  /** results that could not be sent, or whose answer has not come yet, by number, sent on the next open */
   pending: Record<string, DailyResult>;
   /** the latest statistics seen, by number; a fetch never replaces a fuller answer with an emptier one */
   stats: Record<string, DailyStats>;
@@ -152,8 +152,13 @@ export const useDailyStats = create<DailyStatsState>()(
           set((s) => ({ pending: { ...s.pending, [key]: result } }));
           return 'offline';
         }
-        // on its way: the win screen says so, whether a tap or the switch sent it
-        set((s) => ({ inFlight: { ...s.inFlight, [key]: true } }));
+        // on its way: the win screen says so, whether a tap or the switch
+        // sent it. It waits as sent later until a definite answer, so if
+        // this page cannot write what came of it (another tab took the play
+        // meanwhile, src/state/play.ts, or the page closed), the page that
+        // plays next sends it again with the same token, and the record
+        // that it went comes back without asking the player
+        set((s) => ({ inFlight: { ...s.inFlight, [key]: true }, pending: { ...s.pending, [key]: result } }));
         try {
           let res: Response;
           try {
@@ -206,6 +211,8 @@ export const useDailyStats = create<DailyStatsState>()(
       flushPending: async () => {
         const auto = useSettings.getState().autoSendDaily;
         for (const result of Object.values(get().pending)) {
+          // (one on its way from this page already is not sent twice)
+          if (get().inFlight[String(result.no)]) continue;
           if (result.auto && !auto) set((s) => ({ pending: without(s.pending, String(result.no)) }));
           else await get().submit(result);
         }

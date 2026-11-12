@@ -24,7 +24,7 @@
 // renders in it (src/main.tsx); English players never download them. The
 // same file carries the engine's sentences (src/engine/text.ts) and the
 // names of techniques, bands and families.
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { create } from 'zustand';
 import { useSettings, Lang } from '../state/settings';
 import { TECHS, Tech, LevelPick, Category } from '../engine/ratings';
@@ -179,6 +179,30 @@ export function startLocales(): Promise<void> {
   useLocales.subscribe(sync);
   sync();
   return loadLocale(useSettings.getState().lang).then(sync);
+}
+
+/**
+ * Whether the chosen language's tables are in, or could not be had (the
+ * app is then in English): App's start-up waits for it, so a link's first
+ * words (its toast) are in the language a /nb/ or /es/ link chose, even
+ * when the choice came after the first render (a page that took the play
+ * once it was shown, src/main.tsx)
+ */
+export function useTablesReady(): boolean {
+  const lang = useSettings((s) => s.lang);
+  const loaded = useLocales((s) => lang === 'en' || !!s.loaded[lang]);
+  const [failed, setFailed] = useState<Lang | null>(null);
+  useEffect(() => {
+    if (loaded) return;
+    let live = true;
+    void loadLocale(lang).then(() => {
+      if (live && !useLocales.getState().loaded[lang]) setFailed(lang);
+    });
+    return () => {
+      live = false;
+    };
+  }, [lang, loaded]);
+  return loaded || failed === lang;
 }
 
 /** t('New game') in the chosen language; re-renders when the language changes */
