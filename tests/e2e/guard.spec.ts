@@ -24,8 +24,22 @@ const HARD = '...6..9.1..95....4....4985..241....5....3....9....546..7549....3..
 const welcomed = () => localStorage.setItem('sudokui-welcomed', '1');
 const note = (page: Page) => page.getByRole('note').filter({ hasText: 'Your game in progress is kept.' });
 
-/** the game as it was saved, and the one set aside */
-const saved = (page: Page) =>
+/**
+ * the game as it was saved, and the one set aside; read again when the page
+ * was between two documents (a page that takes the play may reload itself
+ * once into the saves, docs/architecture.md, "Coming back")
+ */
+const saved = async (page: Page): Promise<Awaited<ReturnType<typeof readSaved>>> => {
+  for (let i = 0; ; i++) {
+    try {
+      return await readSaved(page);
+    } catch (e) {
+      if (i >= 5 || !/context was destroyed|navigat/i.test(String(e))) throw e;
+      await page.waitForLoadState('load').catch(() => {});
+    }
+  }
+};
+const readSaved = (page: Page) =>
   page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state ?? {};
     type Cell = { given: boolean; value: number; corner: number; center: number };
@@ -381,9 +395,11 @@ test.describe('Back and Forward across pages of the app, phone', () => {
       await page.keyboard.press(key);
     }
     await expect.poll(async () => (await saved(page)).typed).toBe(2);
-    // the browser's Back (or the back gesture), to the entry that names Easy, the game behind the entry
+    // the browser's Back (or the back gesture), to the entry that names Easy, the game behind the entry:
+    // it opens nothing over the entry, and the address goes back to the board's (the entry's)
+    const entryAddress = page.url();
     await page.goBack();
-    expect(page.url()).toContain(EASY);
+    await expect.poll(() => page.url()).toBe(entryAddress);
     await page.waitForTimeout(600);
     expect(await saved(page)).toMatchObject({ custom: true, typed: 2, aside: { puzzle: HARD, entries: 2 } });
     await expect(page.locator('.toast', { hasText: 'is gone' })).toHaveCount(0);

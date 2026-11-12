@@ -510,6 +510,9 @@ test.describe('the clock', () => {
     const status = page.locator('#board-status');
     const where = (cell: number) => `Row ${Math.floor(cell / 9) + 1}, column ${(cell % 9) + 1}`;
     await expect(status).toHaveText(`${where(b)}: ${solution[b]}.`);
+    // a keyboard player's board has the focus (a mouse click does not give it in every Chromium)
+    await page.locator('svg.board').focus();
+    await expect(page.locator('svg.board')).toBeFocused();
     await shown(page, false);
     // hidden: nothing is said to a page nobody sees
     await expect(status).toHaveText('');
