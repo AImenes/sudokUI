@@ -99,7 +99,8 @@ export function pickedTheme(s: ThemeState, theme: ThemeChoice): ThemeState {
  */
 export function seasonTheme(s: ThemeState, today: string): Partial<ThemeState> | null {
   if (!lookAvailable(today)) {
-    if (s.theme === 'christmas') return { theme: s.themeBefore ?? 'dark', themeBefore: null };
+    // (a kept Christmas, which no choice writes, would only bring the look back)
+    if (s.theme === 'christmas') return { theme: s.themeBefore && s.themeBefore !== 'christmas' ? s.themeBefore : 'dark', themeBefore: null };
     return s.themeBefore !== null ? { themeBefore: null } : null;
   }
   const year = seasonYear(today);

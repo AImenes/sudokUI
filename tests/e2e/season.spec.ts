@@ -319,19 +319,24 @@ for (const [name, use] of [
       await page.goto('/');
       await expect(page.locator('svg.board')).toBeVisible();
       await expect.poll(() => theme(page).then((t) => t.shown)).toBe('christmas');
-      expect(await covered(page)).toEqual([]);
+      // the first game is on the board (a new player's starts a moment after the page)
+      await expect.poll(() => saved(page).then((s) => s.puzzle)).not.toBeNull();
+      await expect.poll(() => covered(page)).toEqual([]);
       // paused, the holly sits beside its word, inside the board
       await page.getByRole('button', { name: 'Pause game' }).click();
       const card = page.locator('.pause-card');
       await expect(card).toBeVisible();
-      const fits = await card.evaluate((el) => {
-        const board = document.querySelector('svg.board')!.getBoundingClientRect();
-        return [...el.querySelectorAll('h3, button, .pause-brand')].every((part) => {
-          const r = part.getBoundingClientRect();
-          return r.top >= board.top - 0.5 && r.bottom <= board.bottom + 0.5 && r.left >= board.left - 0.5 && r.right <= board.right + 0.5;
+      const outside = () =>
+        card.evaluate((el) => {
+          const board = document.querySelector('svg.board')!.getBoundingClientRect();
+          return [...el.querySelectorAll('h3, button, .pause-brand')]
+            .filter((part) => {
+              const r = part.getBoundingClientRect();
+              return r.top < board.top - 0.5 || r.bottom > board.bottom + 0.5 || r.left < board.left - 0.5 || r.right > board.right + 0.5;
+            })
+            .map((part) => part.className || part.tagName);
         });
-      });
-      expect(fits).toBe(true);
+      await expect.poll(outside).toEqual([]);
       expect(await page.locator('.pause-card h3').evaluate((el) => getComputedStyle(el, '::before').backgroundImage)).toContain('data:image/svg+xml');
     });
   });
@@ -389,6 +394,7 @@ test.describe('the Christmas look, its words and its motion', () => {
     await page.clock.install({ time: noon('2026-12-10') });
     await page.goto('/');
     await expect.poll(() => theme(page).then((t) => t.shown)).toBe('christmas');
+    await expect.poll(() => saved(page).then((s) => s.puzzle)).not.toBeNull();
     expect(await unreadable(page)).toEqual([]);
     await page.locator('button.gear').click();
     await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
@@ -398,6 +404,7 @@ test.describe('the Christmas look, its words and its motion', () => {
     await expect(page.getByRole('dialog', { name: 'New game' })).toBeVisible();
     expect(await unreadable(page)).toEqual([]);
     await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await page.getByRole('button', { name: 'Pause game' }).click();
     await expect(page.locator('.pause-card')).toBeVisible();
     expect(await unreadable(page)).toEqual([]);

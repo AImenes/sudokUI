@@ -228,6 +228,10 @@ describe('the Christmas season', () => {
     useSettings.setState({ theme: 'christmas', themeBefore: null, themePicked: true });
     applySeason('2027-01-01');
     expect(s().theme).toBe('dark');
+    // nor does a Christmas kept as the theme from before (which no choice writes) bring the look back
+    useSettings.setState({ theme: 'christmas', themeBefore: 'christmas', themePicked: true });
+    applySeason('2027-01-01');
+    expect(s()).toMatchObject({ theme: 'dark', themeBefore: null });
   });
 
   it('is in the top bar’s turn after Forest only in its season', () => {
