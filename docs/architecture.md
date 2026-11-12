@@ -495,6 +495,19 @@ none of the player's work.
   cover is not made up from the date: the board stays as it was and the
   player is told; a day before the list began is still derived from its
   date.
+- **A door of the advent calendar** ([advent-calendar.md](advent-calendar.md))
+  goes the daily's way, through `startDoor` (src/ui/links.ts): the door on
+  the board, in the slot or behind a puzzle being typed in comes back
+  where it was left, whatever the date (a door game in progress is never
+  lost, in January too); any other door opens only on its day or later in
+  its December, by the player's local date, over a game under way set
+  aside (`openOver`). A door still to come opens nothing, by its address,
+  a link, Import or the calendar: the toast says when it opens, and the
+  board, the slot and the address stay the game's. Its info carries
+  `adventYear` and `adventDoor` as a daily's carries `dailyKey` and
+  `dailyNo`; its address is `/advent/<year>/<door>`; its time is kept and
+  sent as the daily's, under its own number (`countedOf`,
+  src/state/gameStore.ts), and only when the player taps Send.
 - **Custom entry.** Opened again over a puzzle being typed in (New, then
   Custom, or a scan from New), the backup stays the game the first entry
   was opened over, so Cancel always brings that back. The backup keeps

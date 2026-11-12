@@ -2,7 +2,7 @@
  * How a door of the advent calendar is found (scripts/build-advent.ts,
  * docs/advent-calendar.md): its own seed, the year and the door, and a
  * fixed number of tries, so the same doors come out on any machine while
- * the generator and the rater stay as they are (tests/advent.test.ts makes
+ * the generator and the rater stay as they are (tests/adventDoors.test.ts makes
  * the first doors again and compares them with advent.json).
  *
  * Fresh minimal puzzles, rated, the nearest to the target kept; a puzzle
