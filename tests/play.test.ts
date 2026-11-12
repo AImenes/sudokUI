@@ -374,6 +374,125 @@ describe('one page plays at a time', () => {
     expect(a.state.taken).toEqual([false]);
   });
 
+  it('the holder slow to reload beside a view in view that would reload into its moves: the view waits twice as long, the reloaded page takes the play back, and the view never takes it', async () => {
+    const b = new Browser();
+    const a = b.page('a');
+    await a.play.boot();
+    const c = b.page('c');
+    await c.play.boot();
+    c.write('c moved');
+    c.play.gone();
+    c.state.frozen = true;
+    b.locks.close('sudokui-play');
+    // the same tab's new document, slower to start than GONE_MS (30 here), within twice it
+    await tick(45);
+    expect(a.play.role).toBe('view');
+    const c2 = b.page('c2');
+    await c2.play.boot();
+    await tick(100);
+    expect(c2.play.role).toBe('player');
+    expect(a.play.role).toBe('view');
+    expect(a.state.taken).toEqual([false]);
+  });
+
+  for (const how of ['hidden', 'closed'] as const)
+    it(`the holder ${how} beside two views in view: one takes the play and reloads into its moves, and the other stays a view, never granted the lock, rather than take it from the reloading page and reload too`, async () => {
+      const b = new Browser();
+      const pages = [b.page('v1'), b.page('v2')];
+      for (const v of pages) await v.play.boot();
+      const h = b.page('h');
+      await h.play.boot();
+      h.write('h moved');
+      expect(pages.map((v) => v.play.role)).toEqual(['view', 'view']);
+      for (const v of pages) v.state.taken = [];
+      // a page given the play with the saves changed reloads (src/main.tsx)
+      for (const v of pages)
+        v.play.hooks.taken = (changed) => {
+          v.state.taken.push(changed);
+          if (changed) v.play.leave();
+        };
+      h.state.hidden = true;
+      h.play.hide();
+      if (how === 'closed') {
+        h.play.gone();
+        h.state.frozen = true;
+        b.locks.close('sudokui-play');
+      }
+      // both views' waits run out together
+      await tick(150);
+      const leaving = pages.filter((v) => v.play.role === 'leaving');
+      expect(leaving).toHaveLength(1);
+      const other = pages.find((v) => v !== leaving[0])!;
+      expect(other.play.role).toBe('view');
+      // the reloading page's document goes, and the lock with it
+      leaving[0].state.frozen = true;
+      b.locks.close('sudokui-play');
+      await tick(100);
+      expect(other.play.role).toBe('view');
+      expect(other.state.taken).toEqual([]);
+      // its new document takes the play back
+      const again = b.page(`${leaving[0].play.id}-again`);
+      await again.play.boot(true);
+      expect(again.play.role).toBe('player');
+      expect(other.play.role).toBe('view');
+    });
+
+  it('the holder hidden beside two views in view, and the one that took the play stops answering as it reloads: the other, granted the lock once that page has gone, lets it go and stays a view', async () => {
+    const b = new Browser();
+    const pages = [b.page('v1'), b.page('v2')];
+    for (const v of pages) await v.play.boot();
+    const h = b.page('h');
+    await h.play.boot();
+    h.write('h moved');
+    for (const v of pages) v.state.taken = [];
+    for (const v of pages)
+      v.play.hooks.taken = (changed) => {
+        v.state.taken.push(changed);
+        if (!changed) return;
+        // its old document hears nothing more, and goes a moment later
+        v.play.leave();
+        v.state.frozen = true;
+        setTimeout(() => b.locks.close('sudokui-play'), 5);
+      };
+    h.state.hidden = true;
+    h.play.hide();
+    await tick(150);
+    const took = pages.filter((v) => v.state.taken.length);
+    expect(took).toHaveLength(1);
+    const other = pages.find((v) => v !== took[0])!;
+    expect(other.play.role).toBe('view');
+    expect(other.state.taken).toEqual([]);
+    expect(b.data.get(HOLDER_KEY)).toBe(took[0].play.id);
+  });
+
+  it('a window beside the holder told no by its focus a moment ago, then the holder hidden as the player turns to a tab in its window: that tab takes the play, not the window beside', async () => {
+    const b = new Browser();
+    const t = b.page('t');
+    await t.play.boot();
+    t.state.hidden = true;
+    t.play.hide();
+    const w = b.page('w');
+    await w.play.boot();
+    const a = b.page('a');
+    await a.play.boot();
+    await tick(100);
+    expect([t.play.role, w.play.role, a.play.role]).toEqual(['view', 'view', 'player']);
+    w.state.taken = [];
+    // the player clicks into the window beside: the holder in view says no
+    w.play.focused();
+    await tick(20);
+    expect(w.play.role).toBe('view');
+    // then turns to tab t in the holder's window: a's hide comes first
+    a.state.hidden = true;
+    a.play.hide();
+    await tick(5);
+    t.state.hidden = false;
+    await t.play.shown();
+    await tick(150);
+    expect([t.play.role, w.play.role, a.play.role]).toEqual(['player', 'view', 'view']);
+    expect(w.state.taken).toEqual([]);
+  });
+
   it('a holder in view that kept the play from a page shown again tells it once it is hidden itself, and that page takes it', async () => {
     const b = new Browser();
     const a = b.page('a');

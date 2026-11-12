@@ -174,26 +174,35 @@ taken. Every other open page of the app is a view that writes nothing.
   each time it is hidden (`free`): a view in view then takes the play
   after a second (`GONE_MS`), unless a page took it meanwhile (the tab
   the player turned to in the holder's window, which takes it at once as
-  it is shown), so the window beside one that was minimised plays; one
-  the holder told no a moment before (the two tabs' events can come in
-  either order) takes it at once. A view in view that has played, whose
+  it is shown), so the window beside one that was minimised plays; only
+  one the holder told no as it was shown again, a moment before
+  (`SETTLE_MS`: the two tabs' events can come in either order), takes it
+  at once, so a window beside told no by a click into it does not beat
+  the tab the player turns to. The lock that comes once the hidden holder
+  lets go is let go again when another page took the play from that
+  holder first (its name in storage), and the view stays one. A view in view that has played, whose
   window gets the focus (the player clicked into it), asks as one shown
   again does (never from a holder in view), and a
   view in view looks every three seconds whether any page holds the play
   (`check`, `navigator.locks.query`): a holder that crashed or was
   discarded says nothing as it goes, so once no page has held it for a
   second the view takes it, and no cover stays up for a game that
-  carries on nowhere. An
+  carries on nowhere; it takes it only if it is still free then, so it
+  never waits behind a page that took it meanwhile. An
   ask heard while a page is taking the play itself is answered once it
-  holds it, so two views shown at once (the screen unlocked) end with
+  holds it, as any ask is (by a page reloading as it took it too, below),
+  so two views shown at once (the screen unlocked) end with
   one playing and the other told no, not one taking it from the other
   after the wait. A page going into the back-forward cache gives the play
   up as it goes, and one coming back from it takes the play as a page
   that starts does (the player went Back or Forward to it). A holder that
   closes, or leaves for a page that is not the app's, says so as it goes
   (`gone`): a page in view then takes the play by itself after a second
-  (`GONE_MS`), unless a page took it back meanwhile (the one that went,
-  reloading), so the window beside it does not keep a cover for a game
+  (`GONE_MS`; two when it would reload into moves made there, so a holder
+  slow to reload takes it back first), if no page took it back meanwhile
+  (the one that went, reloading, or another view: the holder has let go,
+  so a lock that is held is another's, and the view stays one), so the
+  window beside it does not keep a cover for a game
   that carries on nowhere. A page in view reloading to start from the
   saves (Coming back, below) still holds the lock until it goes: asked
   meanwhile as a page shown again asks, it keeps the play, so of two

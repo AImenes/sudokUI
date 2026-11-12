@@ -25,7 +25,7 @@ export const HOLDER_KEY = 'sudokui-play';
 export const SAVES = ['sudokui-game-v1', 'sudokui-stats-v1', 'sudokui-daily-v1'] as const;
 /** how long the holder is given to answer before the play is taken from it */
 export const WAIT_MS = 1500;
-/** how long a page in view waits, once the holder said it closes, before it takes the play: a page reloading takes it back itself within it */
+/** how long a page in view waits, once the holder said it closes, before it takes the play: a page reloading takes it back itself within it (twice as long when the view would reload into the saves, Play.heard) */
 export const GONE_MS = 1000;
 /** how often a view in view looks whether any page still holds the play (Play.check) */
 export const CHECK_MS = 3000;
@@ -130,12 +130,12 @@ export class Play {
   /** told no as it was shown again: the cover waits a moment (SETTLE_MS) for the holder's free */
   private settling: ReturnType<typeof setTimeout> | null = null;
   private goneTimer: ReturnType<typeof setTimeout> | null = null;
+  /** the holder that said it went (gone), while goneTimer runs for it */
+  private wentFrom: string | null = null;
   /** asks heard while this page was taking the play itself, answered once it holds it */
   private wants: { m: Want; at: number }[] = [];
   /** the browser refused this page a lock (site data blocked): it plays alone, as without Web Locks */
   private denied = false;
-  /** when a holder in view last kept the play from this page (it said busy) */
-  private toldNoAt = -Infinity;
   /** this page went into the back-forward cache, and has not held the play since */
   private cached = false;
   private grant: { release: () => void } | null = null;
@@ -322,8 +322,9 @@ export class Play {
    * whether any page holds the play. A holder whose renderer crashed, or
    * that the browser discarded, says nothing as it goes; once no page has
    * held it for a moment (GONE_MS: a page reloading takes it back within
-   * it), the view takes it, so its cover does not stay up for a game that
-   * carries on nowhere
+   * it), the view takes it if it is still free, so its cover does not stay
+   * up for a game that carries on nowhere, and it never waits behind a page
+   * that took it meanwhile
    */
   async check(): Promise<void> {
     const query = this.deps.locks?.query?.bind(this.deps.locks);
@@ -339,7 +340,7 @@ export class Play {
     };
     if (!(await nobody())) return;
     await new Promise((r) => setTimeout(r, this.goneWait));
-    if (idle() && (await nobody()) && idle()) void this.take(true);
+    if (idle() && (await nobody()) && idle()) void this.take(true, false, { free: true });
   }
 
   /** Play here, on the cover: the play comes to this page, as at start-up, also from a holder in view that just said no to it */
@@ -386,9 +387,13 @@ export class Play {
    * Told no as it was shown again (`asShown`), the page stays taking a
    * moment (SETTLE_MS), so the cover does not flash up while the holder's
    * own hide is on its way: its free makes this page take the play, and
-   * only a page still a view after the moment draws the cover.
+   * only a page still a view after the moment draws the cover. With
+   * `free`, it takes the play only if no page holds it (after a holder
+   * went: one that holds it took it meanwhile); with `from`, the holder
+   * that said it is hidden, a lock that comes once another page has taken
+   * the play from it is let go, and the page stays a view.
    */
-  private take(ifHidden: boolean, asShown = false): Promise<'held' | 'busy'> {
+  private take(ifHidden: boolean, asShown = false, { free = false, from }: { free?: boolean; from?: string } = {}): Promise<'held' | 'busy'> {
     if (this.acts()) return Promise.resolve('held');
     if (this.pending) return this.pending;
     if (this.settling) clearTimeout(this.settling);
@@ -401,19 +406,32 @@ export class Play {
           this.become('solo');
           return 'held';
         }
+        // the holder went, and a page took the play meanwhile: it keeps it
+        if (free) return 'busy';
         const ask = ++this.asks;
         const abort = typeof AbortController === 'function' ? new AbortController() : null;
         // the request waiting behind the holder: once the answer is in, a
         // grant that comes too late is let go at once
         let over = false;
-        const outcome = await new Promise<'held' | 'busy' | 'late'>((settle) => {
+        const outcome = await new Promise<'held' | 'busy' | 'late' | 'taken'>((settle) => {
           const timer = setTimeout(() => settle('late'), this.wait);
-          const done = (how: 'held' | 'busy' | 'late') => {
+          const done = (how: 'held' | 'busy' | 'late' | 'taken') => {
             clearTimeout(timer);
             settle(how);
           };
           this.busy = (n) => n === ask && done('busy');
-          void this.request(abort ? { signal: abort.signal } : {}, () => !over).then((got) => got && done('held'));
+          // the lock that comes once the page it asked has let go: not once
+          // another page took the play from that one first (its name is in
+          // storage now), which keeps it
+          const wanted = () => {
+            if (over) return false;
+            if (from && this.otherHolder(from)) {
+              done('taken');
+              return false;
+            }
+            return true;
+          };
+          void this.request(abort ? { signal: abort.signal } : {}, wanted).then((got) => got && done('held'));
           this.post({ want: this.id, ask, ifHidden });
         });
         over = true;
@@ -421,8 +439,11 @@ export class Play {
         // granted as the answer came (the lock is this page's all the same)
         if (outcome === 'held' || this.grant) return this.held();
         abort?.abort();
+        if (outcome === 'taken') {
+          this.become('view');
+          return 'busy';
+        }
         if (outcome === 'busy') {
-          this.toldNoAt = Date.now();
           this.become('view');
           if (asShown)
             this.settling = setTimeout(() => {
@@ -458,14 +479,25 @@ export class Play {
     this.everHeld = true;
     this.become('player');
     this.hooks.taken(changed, back);
-    // the pages that asked meanwhile are answered now, as any ask is: so
-    // none of them waits and then takes it from a page in view
+    // the pages that asked meanwhile are answered now, as any ask is (one
+    // reloading as it took the play keeps it from a page in view): so none
+    // of them waits and then takes it from a page in view
     const wants = this.wants.splice(0);
     if (wants.length)
       queueMicrotask(() => {
-        for (const { m, at } of wants) if (Date.now() - at < this.wait && this.role === 'player' && this.grant) this.answer(m);
+        for (const { m, at } of wants) if (Date.now() - at < this.wait) this.respond(m);
       });
     return 'held';
+  }
+
+  /** another page's name is the holder's in storage, not this one's (unknown: not) */
+  private otherHolder(than: string): boolean {
+    try {
+      const holder = this.deps.storage()?.getItem(HOLDER_KEY) ?? null;
+      return holder !== null && holder !== than && holder !== this.id;
+    } catch {
+      return false;
+    }
   }
 
   /** asked for the play: the state is written, the lock let go, and this page is a view */
@@ -559,12 +591,7 @@ export class Play {
     if ('want' in m && typeof m.want === 'string' && m.want !== this.id) {
       // asked while this page is taking the play itself: answered once it holds it
       if (this.pending && this.role !== 'player') return void this.wants.push({ m, at: Date.now() });
-      // a page in view reloading to start from the saves takes the play
-      // back as it starts (Play.boot): asked as one shown again asks, it
-      // keeps it, so a window beside it does not take it and reload too
-      if (this.role === 'leaving' && this.grant && m.ifHidden && !this.deps.hidden()) return this.post({ busy: m.want, ask: m.ask });
-      if (this.role !== 'player' || !this.grant) return;
-      this.answer(m);
+      this.respond(m);
     } else if ('busy' in m && m.busy === this.id) {
       this.busy?.(m.ask);
     } else if (('free' in m && typeof m.free === 'string' && m.free !== this.id) || ('gone' in m && typeof m.gone === 'string' && m.gone !== this.id)) {
@@ -572,17 +599,40 @@ export class Play {
       // the play after a moment, unless a page took it meanwhile (the tab
       // the player turned to in the holder's window, or the holder
       // reloading), which keeps it. A holder hidden as it reloads or
-      // closes says both. A page the holder said no to a moment ago, as
-      // both were shown and hidden at once (the two tabs' events can come
-      // in either order), takes it at once
+      // closes says both, in either order: once it said gone it has let
+      // go, so the lock is taken only if free. A page the holder said no
+      // to as it was shown again, a moment ago (SETTLE_MS: the two tabs'
+      // events can come in either order), takes it at once; any other
+      // waits, so the tab the player turned to in the holder's window
+      // takes it first. A page that would reload into the saves (moves
+      // were made there) waits twice as long after gone, so a holder slow
+      // to reload takes it back before the window beside it reloads
       if (this.role !== 'view' || this.deps.hidden()) return;
-      if ('free' in m && !this.pending && Date.now() - this.toldNoAt < this.wait) return void this.take(true);
+      const holder = 'free' in m ? m.free : m.gone;
+      if ('free' in m && this.settling && !this.pending) return void this.take(true, false, { from: holder });
+      const went = 'gone' in m || (!!this.goneTimer && this.wentFrom === holder);
       if (this.goneTimer) clearTimeout(this.goneTimer);
-      this.goneTimer = setTimeout(() => {
+      this.wentFrom = went ? holder : null;
+      let first = true;
+      const after = () => {
+        // (the holder's last write is in by now)
+        if (first && went && this.everHeld && this.changed()) {
+          first = false;
+          return void (this.goneTimer = setTimeout(after, this.goneWait));
+        }
         this.goneTimer = null;
-        if (this.role === 'view' && !this.deps.hidden() && !this.pending) void this.take(true);
-      }, this.goneWait);
+        this.wentFrom = null;
+        if (this.role === 'view' && !this.deps.hidden() && !this.pending) void this.take(true, false, went ? { free: true } : { from: holder });
+      };
+      this.goneTimer = setTimeout(after, this.goneWait);
     }
+  }
+
+  /** an ask: a holder answers it; a page in view reloading to start from the saves (its taken hook), which takes the play back as it starts (Play.boot), keeps it from one shown again, so a window beside it does not take it and reload too */
+  private respond(m: Want) {
+    if (this.role === 'leaving' && this.grant && m.ifHidden && !this.deps.hidden()) return this.post({ busy: m.want, ask: m.ask });
+    if (this.role !== 'player' || !this.grant) return;
+    this.answer(m);
   }
 
   private post(m: Message) {
