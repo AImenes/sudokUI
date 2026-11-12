@@ -5,11 +5,14 @@
  * rule for text of their size (a phone's digit is about 24 px at weight
  * 500), and at 3:1 or better on the selected cell. The hunt of November
  * 2026 found Rosé's own digits, the conflict red in Daylight and Rosé and
- * Daylight's candidates below it.
+ * Daylight's candidates below it. The Christmas look (12 November 2026)
+ * is held to the same, and to the rest of what its design promised: its
+ * conflict red apart from its spruce digits for every colour vision, its
+ * selection's gold edge and its board lines at 3:1 or better.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { contrast, over, de2000, linToLab, toLinear } from './colourScience';
+import { contrast, over, de2000, linToLab, toLinear, worstDE } from './colourScience';
 
 const css = new TextDecoder().decode(readFileSync('src/ui/styles.css')).replace(/\r\n/g, '\n');
 
@@ -28,7 +31,8 @@ const THEMES: Record<string, Record<string, string>> = {
   dark,
   light,
   rose: { ...light, ...block(":root[data-theme='rose'] {", 1) },
-  forest: { ...dark, ...block(":root[data-theme='forest'] {") }
+  forest: { ...dark, ...block(":root[data-theme='forest'] {") },
+  christmas: { ...light, ...block(":root[data-theme='christmas'] {") }
 };
 
 /** rgba(r, g, b, a) as a colour and its alpha */
@@ -66,4 +70,44 @@ describe('a repeated digit stands apart from the theme’s own digits', () => {
       }
     });
   }
+});
+
+describe('the Christmas look', () => {
+  const v = THEMES.christmas;
+  const cell = v['--cell-bg'];
+  const sel = rgba(v['--sel-bg']);
+  const selected = over(sel.hex, sel.alpha * 0.9, cell);
+
+  it('keeps daylight’s white board and panel, so every hint colour reads as it does there', () => {
+    expect(cell).toBe(light['--cell-bg']);
+    expect(v['--panel']).toBe(light['--panel']);
+  });
+
+  it('parts its conflict red from its own digits for every colour vision, not only for normal vision', () => {
+    for (const token of ['--given', '--entered']) {
+      const { de, model } = worstDE(v['--danger-text'], v[token]);
+      expect(de, `${token} (${model})`).toBeGreaterThanOrEqual(15);
+    }
+  });
+
+  it('draws the selection’s edge and the board’s lines at 3:1 or better, and its digits on a same-digit cell at 4.5:1', () => {
+    expect(contrast(v['--sel-border'], selected)).toBeGreaterThanOrEqual(3);
+    expect(contrast(v['--sel-border'], cell)).toBeGreaterThanOrEqual(3);
+    expect(contrast(v['--line'], cell)).toBeGreaterThanOrEqual(3);
+    const same = rgba(v['--same-bg']);
+    const onSame = over(same.hex, same.alpha, cell);
+    for (const token of ['--given', '--entered', '--cand', '--danger-text']) expect(contrast(v[token], onSame), token).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps its words, links and buttons at 4.5:1 on the page, the soft background and the panel', () => {
+    for (const token of ['--text', '--muted', '--accent-text', '--accent'])
+      for (const bg of ['--bg', '--bg-soft', '--panel']) expect(contrast(v[token], v[bg]), `${token} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(v['--on-accent'], v['--accent-fill'])).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('writes the top bar’s words in snow on its pine, at 4.5:1 or better', () => {
+    // the bar's own tokens, redefined for it (the Christmas look, at the end of styles.css)
+    const bar = block(":root[data-theme='christmas'] .topbar {");
+    for (const token of ['--text', '--muted', '--accent', '--hint-secondary-ink']) expect(contrast(bar[token], v['--bar-bg']), token).toBeGreaterThanOrEqual(4.5);
+  });
 });

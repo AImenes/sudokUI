@@ -2,14 +2,18 @@
 // store so changing a setting never touches game state or undo history.
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { lookAvailable, lookAuto, seasonYear } from '../content/season';
+import { localDateKey } from '../content/dailies';
 
 export type MarkLayer = 'center' | 'corner';
 
 /** a look the app is shown in: what the page's data-theme says and the
- *  colours of src/ui/styles.css are keyed by */
-export type Theme = 'dark' | 'light' | 'rose' | 'forest';
+ *  colours of src/ui/styles.css are keyed by. Christmas is the season's
+ *  look, there to choose from 1 November to 31 December only
+ *  (src/content/season.ts; seasonTheme, below) */
+export type Theme = 'dark' | 'light' | 'rose' | 'forest' | 'christmas';
 
-/** what the player chooses in Settings: one of the four looks, or 'device',
+/** what the player chooses in Settings: one of the looks, or 'device',
  *  which shows Daylight while the device is set to light and Dark while it
  *  is set to dark, and changes the moment the device does (src/ui/theme.ts) */
 export type ThemeChoice = Theme | 'device';
@@ -42,10 +46,82 @@ export const shownTheme = (choice: ThemeChoice, deviceLight: boolean): Theme =>
   choice === 'device' ? (deviceLight ? 'light' : 'dark') : choice;
 
 /** the top bar's theme button: the look after the one shown, in the order
- *  dark, daylight, rosé, forest. From Match device it starts at what the
- *  device shows, so every press changes what the player sees */
-export const nextTheme = (shown: Theme): Theme =>
-  shown === 'dark' ? 'light' : shown === 'light' ? 'rose' : shown === 'rose' ? 'forest' : 'dark';
+ *  dark, daylight, rosé, forest, and Christmas while the season has it
+ *  (`christmas`: src/content/season.ts, lookAvailable). From Match device
+ *  it starts at what the device shows, so every press changes what the
+ *  player sees */
+export const nextTheme = (shown: Theme, christmas = false): Theme =>
+  shown === 'dark'
+    ? 'light'
+    : shown === 'light'
+      ? 'rose'
+      : shown === 'rose'
+        ? 'forest'
+        : shown === 'forest' && christmas
+          ? 'christmas'
+          : 'dark';
+
+/** what the settings hold of the theme: the choice, and what the season's rules read and keep */
+export interface ThemeState {
+  theme: ThemeChoice;
+  /** the player has chosen a theme: in Settings or with the top bar's button, ever (or held a theme of their own before this was kept: the migration below) */
+  themePicked: boolean;
+  /** the theme the Christmas look took the place of, which comes back when the season ends; null while the look is not on */
+  themeBefore: ThemeChoice | null;
+  /** the season (its year) in which the Christmas look last went on by itself, so it does so once a season */
+  themeAutoYear: number | null;
+  /** the season (its year) the Christmas look on now belongs to: it goes when that season is over, even for a player who next comes back in a later one; null while the look is not on */
+  themeSeason: number | null;
+}
+
+/**
+ * The player chooses a theme (Settings, or the top bar's button): it is
+ * theirs from now on, never changed by the season but for the Christmas
+ * look going at its end. Choosing Christmas keeps the theme it replaces,
+ * to give it back on 1 January; choosing any other drops that.
+ */
+export function pickedTheme(s: ThemeState, theme: ThemeChoice, today = localDateKey()): ThemeState {
+  return {
+    theme,
+    themePicked: true,
+    themeBefore: theme !== 'christmas' ? null : s.theme === 'christmas' ? s.themeBefore : s.theme,
+    themeAutoYear: s.themeAutoYear,
+    themeSeason: theme === 'christmas' ? seasonYear(today) : null
+  };
+}
+
+/**
+ * The season's rules for the theme on a day (the player's local date,
+ * src/content/season.ts), or null when they change nothing:
+ * - outside the season (1 January to 31 October), or in a later season
+ *   than the one the look went on in (a player who did not come back
+ *   between 1 January and 31 October), a player on the Christmas look gets
+ *   back the theme they had before it (the default, dark, when none was
+ *   kept), and outside the season the look cannot be chosen;
+ * - from 1 December a player who never picked a theme gets the look by
+ *   itself, once a season: anyone can switch it off, which is a pick, and
+ *   a player who picked any theme keeps it.
+ */
+export function seasonTheme(s: ThemeState, today: string): Partial<ThemeState> | null {
+  const year = seasonYear(today);
+  const inSeason = lookAvailable(today);
+  // the look's own season is over: outside the season, or a later one (an
+  // unknown season, kept by no deployed build, counts as this one). A kept
+  // Christmas, which no choice writes, would only bring the look back
+  const over = s.theme === 'christmas' && (!inSeason || (s.themeSeason != null && s.themeSeason !== year));
+  const back: Partial<ThemeState> | null = over
+    ? { theme: s.themeBefore && s.themeBefore !== 'christmas' ? s.themeBefore : 'dark', themeBefore: null, themeSeason: null }
+    : !inSeason && (s.themeBefore !== null || s.themeSeason != null)
+      ? { themeBefore: null, themeSeason: null }
+      : null;
+  if (!inSeason) return back;
+  const now = back ? { ...s, ...back } : s;
+  // December: on by itself, once a season, for a player who never picked
+  if (lookAuto(today) && !now.themePicked && now.theme !== 'christmas' && now.themeAutoYear !== year) {
+    return { ...(back ?? {}), theme: 'christmas', themeBefore: now.theme, themeAutoYear: year, themeSeason: year };
+  }
+  return back;
+}
 
 /** typefaces already on the device: nothing to download, works offline */
 export type Font = 'classic' | 'rounded' | 'serif' | 'mono' | 'hand';
@@ -62,11 +138,11 @@ export function deviceLang(): Lang {
   return 'en';
 }
 
-interface Settings {
+interface Settings extends ThemeState {
   /** the app's language */
   lang: Lang;
-  /** the theme chosen: dark, daylight, rosé, forest, or the device's light
-   *  or dark (shownTheme gives the look) */
+  /** the theme chosen: dark, daylight, rosé, forest, Christmas in its
+   *  season, or the device's light or dark (shownTheme gives the look) */
   theme: ThemeChoice;
   /** typeface of the board (digits and pencil marks); all other text
    *  keeps the face made for reading */
@@ -144,7 +220,9 @@ interface Settings {
    *  screen once a time has been sent, and here in Settings */
   autoSendDaily: boolean;
 
-  toggleTheme: () => void;
+  /** the top bar's theme button: the next look (nextTheme), Christmas among them on a day of its season */
+  toggleTheme: (today?: string) => void;
+  /** a theme in the change is the player's pick (pickedTheme) */
   set: (p: Partial<Omit<Settings, 'toggleTheme' | 'set'>>) => void;
 }
 
@@ -154,8 +232,14 @@ export const useSettings = create<Settings>()(
       lang: deviceLang(),
       // dark for a new player (the owner's choice); Match device is beside
       // it in Settings. Every theme stored before Match device came is
-      // still a choice, so a returning player keeps theirs with no migration
+      // still a choice, so a returning player keeps theirs with no migration.
+      // In December a player who never picked one gets the Christmas look
+      // (seasonTheme)
       theme: 'dark',
+      themePicked: false,
+      themeBefore: null,
+      themeAutoYear: null,
+      themeSeason: null,
       font: 'classic',
       highlightPeers: true,
       highlightSameDigit: true,
@@ -183,23 +267,47 @@ export const useSettings = create<Settings>()(
       countPlaysAsked: false,
       dontCount: false,
       autoSendDaily: false,
-      toggleTheme: () => set((s) => ({ theme: nextTheme(shownTheme(s.theme, deviceIsLight())) })),
-      set: (p) => set(p)
+      toggleTheme: (today = localDateKey()) =>
+        set((s) => pickedTheme(s, nextTheme(shownTheme(s.theme, deviceIsLight()), lookAvailable(today)))),
+      set: (p) => set((s) => (p.theme === undefined ? p : { ...p, ...pickedTheme(s, p.theme) }))
     }),
     {
       name: 'sudokui-settings-v1',
       // version 1 (2 November 2026): scrolling over the board went off by
       // default. Every player kept it on only because it was the default,
       // so it goes off once for all of them; anyone who had turned it off
-      // keeps it off, and anyone may turn it on again in Settings
-      version: 1,
+      // keeps it off, and anyone may turn it on again in Settings.
+      // Version 2 (12 November 2026): whether the player ever picked a
+      // theme is kept (themePicked), so December's Christmas look goes on
+      // by itself only for a player who never did. Before it was kept, a
+      // theme other than the default (dark) can only have been picked, so
+      // it counts as one; a stored dark cannot be told from the default,
+      // and counts as none (that player can switch the look off, a pick).
+      // A flag already there (written by this build, then by an older one)
+      // stays as it is
+      version: 2,
       migrate: (stored, version) => {
-        const state = (stored ?? {}) as Partial<Settings>;
-        return (version < 1 ? { ...state, scrollOverBoard: false } : state) as Settings;
+        let state = (stored ?? {}) as Partial<Settings>;
+        if (version < 1) state = { ...state, scrollOverBoard: false };
+        if (version < 2 && state.themePicked === undefined) state = { ...state, themePicked: !!state.theme && state.theme !== 'dark' };
+        return state as Settings;
       }
     }
   )
 );
+
+/**
+ * The season's rules applied to the stored theme on the player's local
+ * date (seasonTheme): the app asks as it starts, before its first paint,
+ * and again whenever its day changes with the page open (src/ui/App.tsx,
+ * useToday), so a page left open across midnight into December or into
+ * January follows. A page that does not hold the play writes its settings
+ * too (they are not the play's saves); every page reaches the same answer.
+ */
+export function applySeason(today = localDateKey()) {
+  const change = seasonTheme(useSettings.getState(), today);
+  if (change) useSettings.setState(change);
+}
 
 // A setting changed in another tab, or in the installed app's window, is
 // taken here too, so a switch such as leaving the device out of the counts

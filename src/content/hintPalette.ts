@@ -1,7 +1,7 @@
 // The colours of a hint (docs/hint-drawing.md, Colours and sizes), measured
-// for contrast against the board and for colour vision: LIGHT for the light
-// and rose themes and the Learn diagrams, DARK for the dark and forest
-// themes. The app reads them as CSS variables (src/ui/styles.css, the
+// for contrast against the board and for colour vision: LIGHT for the light,
+// rose and Christmas themes and the Learn diagrams, DARK for the dark and
+// forest themes. The app reads them as CSS variables (src/ui/styles.css, the
 // --hint-* tokens; tests/hintPalette.test.ts holds the two equal), the
 // Learn diagrams from here, so both draw the same marks.
 //

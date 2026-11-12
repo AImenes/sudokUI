@@ -5,7 +5,7 @@
  * anyone opening an old daily's link, is told which day's daily it is, in
  * a quiet line beside the board (never over it), with a link that opens
  * today's daily as the Daily button does. Never for today's daily; put
- * away, it stays away for that game; readable in all four themes; a
+ * away, it stays away for that game; readable in every theme; a
  * solved old daily keeps its win screen. On a laptop and on a phone.
  * And the IndexNow files the build serves (scripts/indexnow.ts).
  */
@@ -133,11 +133,11 @@ test.describe('another day’s daily, in every theme and language', () => {
       return (a + 0.05) / (b + 0.05);
     }, selector);
 
-  test('reads clearly in all four themes', async ({ page }) => {
+  test('reads clearly in every theme, the season’s Christmas among them', async ({ page }) => {
     await page.addInitScript(welcomed);
     await page.goto(`/daily/${OLD.date}`);
     await expect(note(page)).toBeVisible();
-    for (const theme of ['dark', 'light', 'rose', 'forest']) {
+    for (const theme of ['dark', 'light', 'rose', 'forest', 'christmas']) {
       await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);
       for (const part of ['.past-daily p', '.past-daily a', '.past-daily-close']) {
         expect(await contrastIn(page, part), `${part} in ${theme}`).toBeGreaterThanOrEqual(4.5);
