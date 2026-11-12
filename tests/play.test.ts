@@ -493,6 +493,28 @@ describe('one page plays at a time', () => {
     expect(w.state.taken).toEqual([]);
   });
 
+  it('the holder hidden as the player turns to a tab in its window, which takes the play and then hears nothing: the window beside, whose ask nobody answers, takes nothing from that tab', async () => {
+    const b = new Browser();
+    const t = b.page('t');
+    await t.play.boot();
+    t.state.hidden = true;
+    t.play.hide();
+    const w = b.page('w');
+    await w.play.boot();
+    const a = b.page('a');
+    await a.play.boot();
+    await tick(100);
+    expect([t.play.role, w.play.role, a.play.role]).toEqual(['view', 'view', 'player']);
+    a.state.hidden = true;
+    a.play.hide();
+    t.state.hidden = false;
+    expect(await t.play.shown()).toBe('held');
+    t.state.frozen = true;
+    await tick(200);
+    expect([t.play.role, w.play.role, a.play.role]).toEqual(['player', 'view', 'view']);
+    expect(b.data.get(HOLDER_KEY)).toBe('t');
+  });
+
   it('a holder in view that kept the play from a page shown again tells it once it is hidden itself, and that page takes it', async () => {
     const b = new Browser();
     const a = b.page('a');

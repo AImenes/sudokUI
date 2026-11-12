@@ -439,7 +439,8 @@ export class Play {
         // granted as the answer came (the lock is this page's all the same)
         if (outcome === 'held' || this.grant) return this.held();
         abort?.abort();
-        if (outcome === 'taken') {
+        // (nor taken from a page that took it from the one asked: that one answered, and the other plays)
+        if (outcome === 'taken' || (from && this.otherHolder(from))) {
           this.become('view');
           return 'busy';
         }

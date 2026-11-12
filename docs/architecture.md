@@ -180,7 +180,8 @@ taken. Every other open page of the app is a view that writes nothing.
   at once, so a window beside told no by a click into it does not beat
   the tab the player turns to. The lock that comes once the hidden holder
   lets go is let go again when another page took the play from that
-  holder first (its name in storage), and the view stays one. A view in view that has played, whose
+  holder first (its name in storage), and the view stays one; nor does
+  it take the play from that page when its ask goes unanswered. A view in view that has played, whose
   window gets the focus (the player clicked into it), asks as one shown
   again does (never from a holder in view), and a
   view in view looks every three seconds whether any page holds the play
@@ -206,7 +207,7 @@ taken. Every other open page of the app is a view that writes nothing.
   that carries on nowhere. A page in view reloading to start from the
   saves (Coming back, below) still holds the lock until it goes: asked
   meanwhile as a page shown again asks, it keeps the play, so of two
-  views beside a holder that closed, one takes it and reloads, and the
+  views beside a holder that closed or was minimised, one takes it and reloads, and the
   other stays a view with its cover rather than take it from the
   reloading page and reload too. A holder whose name was replaced while
   it was frozen finds out when it is shown again, and asks as a view
