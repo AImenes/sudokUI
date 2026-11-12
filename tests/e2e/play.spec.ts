@@ -51,9 +51,12 @@ function watch(context: BrowserContext) {
         channels.push(this);
       }
     };
+    // (kept in the tab's session storage too, across a reload)
     (window as any).__coverSeen = false;
     new MutationObserver(() => {
-      if (document.querySelector('.play-cover')) (window as any).__coverSeen = true;
+      if (!document.querySelector('.play-cover')) return;
+      (window as any).__coverSeen = true;
+      sessionStorage.setItem('cover-seen', '1');
     }).observe(document, { subtree: true, childList: true });
   });
 }
@@ -164,6 +167,8 @@ test.describe('one page plays at a time', () => {
     await a.waitForTimeout(300);
     expect(await writesOf(b)).toBe(given);
     await expect(a.locator('.play-cover')).toHaveCount(0);
+    // hidden as a view, then shown and back in play: the cover never came up in the first tab
+    expect(await a.evaluate(() => sessionStorage.getItem('cover-seen'))).toBeNull();
   });
 
   test('switched back with nothing changed in the other tab, a tab goes on as it was: no reload, its win screen still up', async ({ context }) => {
@@ -241,6 +246,13 @@ test.describe('one page plays at a time', () => {
     expect(await saves(a)).toEqual(then);
     expect(await writesOf(a)).toBe(before);
     await expect(cover(b)).toHaveCount(0);
+    // a minimised and shown again beside b, which is in view: b keeps the play, a its cover
+    await shown(a, false);
+    await shown(a, true);
+    await a.waitForTimeout(400);
+    await expect(cover(a)).toBeVisible();
+    await expect(cover(b)).toHaveCount(0);
+    expect(await writesOf(a)).toBe(before);
     // Play here: the play comes back to a, and b is the view
     await here.focus();
     await a.keyboard.press('Enter');
