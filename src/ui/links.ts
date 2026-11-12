@@ -14,7 +14,8 @@ import { dailyPuzzle } from '../engine/daily';
 import { translator } from '../content/i18n';
 import { clockOf } from '../content/share';
 import type { AppLink } from '../content/share';
-import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber } from '../content/dailies';
+import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, dayName } from '../content/dailies';
+import { loadAdvent, findDoor, doorOpen, doorDate, calendarOpen, isDoor } from '../content/advent';
 import { play } from '../state/play';
 
 /** the challenger's time becomes the one to beat, and the player is told */
@@ -113,6 +114,82 @@ export async function startDaily(date = localDateKey()): Promise<DailyOpened> {
   return 'started';
 }
 
+/** the board holds this door of the advent calendar, not a puzzle being typed in */
+const doorOnBoard = (year: number, door: number) => {
+  const g = useGame.getState();
+  return !g.custom && g.info?.adventYear === year && g.info?.adventDoor === door;
+};
+
+/** a game is this door */
+const isTheDoor = (year: number, door: number) => (info: GameInfo) => info.adventYear === year && info.adventDoor === door;
+
+/**
+ * Why a door does not open on the player's today, or null when it may:
+ * its day has not come (it says when it opens), or the calendar is not
+ * open (from 1 January until next December, and before its December)
+ */
+export function doorLocked(year: number, door: number, today = localDateKey()): string | null {
+  if (doorOpen(year, door, today)) return null;
+  const t = translator();
+  const date = doorDate(year, door);
+  if (!isDoor(door)) return t('The advent calendar has no door {door}', { door });
+  // its own December has come and the door's day not yet, or the
+  // calendar of a year still to come
+  if (date > today) return t('Door {door} of the advent calendar opens on {date}', { door, date: dayName(date, t.locale, today) });
+  return calendarOpen(today)
+    ? t('That door is from another year’s advent calendar')
+    : t('The advent calendar is closed until next December');
+}
+
+/** what startDoor did: as startDaily, or refused a door whose day has not come (`locked`) */
+export type DoorOpened = 'resumed' | 'started' | 'locked' | 'unavailable' | 'dropped';
+
+/**
+ * A door of the advent calendar (src/content/advent.ts): the door on the
+ * board, set aside, or behind a puzzle being typed in comes back where it
+ * was left, as the day's daily does, whatever the date (a door game in
+ * progress is never lost, and can be finished after the calendar closes).
+ * Any other door opens only when its day has come in this December
+ * (doorOpen, the player's local date): a door still to come opens
+ * nothing, by its address, a link, Import or the calendar, and the player
+ * is told when it opens; nothing goes over the game on the board. An open
+ * door starts fresh over a game under way set aside (openOver). Without
+ * the published list (offline before the app could keep it) the board
+ * stays and the player is told.
+ */
+export async function startDoor(year: number, door: number): Promise<DoorOpened> {
+  const t = translator();
+  const named = isTheDoor(year, door);
+  if (doorOnBoard(year, door) || useGame.getState().resumeSetAside((info) => named(info))) {
+    useGame.setState({
+      notice: useGame.getState().won
+        ? t('You have solved this door. Restart plays it again')
+        : t('Door {door} of the advent calendar, where you left it', { door })
+    });
+    return 'resumed';
+  }
+  const locked = doorLocked(year, door);
+  if (locked) {
+    useGame.setState({ notice: locked });
+    return 'locked';
+  }
+  const list = await loadAdvent();
+  // the play went while the list came: a view opens nothing (startDaily)
+  if (!play.acts()) return 'dropped';
+  const found = list && findDoor(list, year, door);
+  if (!found) {
+    useGame.setState({ notice: t('Door {door} of the advent calendar could not be loaded. Check the connection and try again', { door }) });
+    return 'unavailable';
+  }
+  useGame.getState().openOver(() => {
+    useGame.getState().startGame(found.puzzle, found.score, found.level, null);
+    useGame.setState((s) => ({ info: s.info && { ...s.info, adventYear: year, adventDoor: door } }));
+    return true;
+  });
+  useGame.setState({ notice: t('Door {door} of the advent calendar. Everyone gets this same board', { door }) });
+  return 'started';
+}
+
 /** a position link's board, over a game under way set aside: true, or why it could not be loaded */
 function openPosition(payload: string): true | PositionRefusal {
   let result: true | PositionRefusal = 'unreadable';
@@ -146,7 +223,11 @@ export interface LinkOpened {
 export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOpened> {
   const t = translator();
   const game = useGame.getState;
-  const position = link.position ? openPosition(link.position) : null;
+  // a door still locked opens nothing, not even a position on its puzzle
+  // (startDoor says when it opens); a door game this page holds is the
+  // player's own, and comes back
+  const lockedDoor = !!link.advent && !holds({ advent: link.advent }) && !!doorLocked(link.advent.year, link.advent.door);
+  const position = link.position && !lockedDoor ? openPosition(link.position) : null;
   if (position === true) return { opened: true };
   const refusal = position === 'cut'
     ? t('This link looks cut off, so the entries and marks it shared could not be loaded')
@@ -170,6 +251,26 @@ export async function openAppLink(link: AppLink, from: LinkFrom): Promise<LinkOp
       // Import says it in its own dialog
       if (from === 'import') useGame.setState({ notice: null });
       return { opened: false, refused: unavailable(date) };
+    }
+    if (vs) (opened === 'started' ? challenge : challengeCurrent)(vs);
+    positionRefused();
+    return { opened: true };
+  }
+  if (link.advent) {
+    const { year, door, vs } = link.advent;
+    // the door on the board already: a reload lands here, quietly
+    if (from !== 'import' && doorOnBoard(year, door)) {
+      if (vs) challengeCurrent(vs);
+      positionRefused();
+      return { opened: true };
+    }
+    const opened = await startDoor(year, door);
+    if (opened === 'dropped') return { opened: false };
+    if (opened === 'locked' || opened === 'unavailable') {
+      // Import says it in its own dialog; anywhere else the notice stands
+      const why = useGame.getState().notice ?? '';
+      if (from === 'import') useGame.setState({ notice: null });
+      return { opened: false, refused: why };
     }
     if (vs) (opened === 'started' ? challenge : challengeCurrent)(vs);
     positionRefused();
@@ -249,6 +350,7 @@ export function holds(link: AppLink): boolean {
     const { date } = link.daily;
     return games.some((info) => info.dailyKey === date);
   }
+  if (link.advent) return games.some(isTheDoor(link.advent.year, link.advent.door));
   if (link.puzzle) {
     const { cells } = link.puzzle;
     return games.some((info) => info.puzzle === cells);
@@ -268,10 +370,15 @@ export function holds(link: AppLink): boolean {
 export function backTo(link: AppLink): boolean {
   const g = useGame.getState();
   const named = (info: GameInfo | null | undefined) =>
-    !!info && (link.daily ? info.dailyKey === link.daily.date : !!link.puzzle && info.puzzle === link.puzzle.cells);
+    !!info &&
+    (link.daily
+      ? info.dailyKey === link.daily.date
+      : link.advent
+        ? isTheDoor(link.advent.year, link.advent.door)(info)
+        : !!link.puzzle && info.puzzle === link.puzzle.cells);
   if (!g.custom && named(g.info)) return true;
   if (g.custom && named(g.customBackup?.info)) return false;
-  const back = link.daily
+  const back = link.daily || link.advent
     ? g.resumeSetAside((info) => named(info), true)
     : // a plain game of the puzzle first, a practice of it only when none is kept (as a link to it)
       g.resumeSetAside((info) => named(info) && !info.practiceTech, true) || g.resumeSetAside((info, won) => named(info) && !!info.practiceTech && !won, true);

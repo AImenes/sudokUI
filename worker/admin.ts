@@ -298,7 +298,8 @@ const KIND_LABELS: Record<PlayKind, string> = {
   daily: 'Daily',
   new: 'New',
   shared: 'From a share link',
-  practice: 'Practice'
+  practice: 'Practice',
+  advent: 'Advent calendar'
 };
 
 /** the app's language, as a column of the page */

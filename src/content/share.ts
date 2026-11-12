@@ -26,6 +26,8 @@ import { techSlug, techFromParam } from './slugs';
 import { SITE, homePath, ogCard, fillTemplate } from './home';
 import { parseDailyUrl, dailyPath, findDaily, dailyNumber, localDateKey } from './dailies';
 import type { Daily } from './dailies';
+import { parseAdventUrl, adventPath, findDoor, doorDate, doorDay } from './advent';
+import type { AdventDoor } from './advent';
 import * as namesNb from './locales/names.nb';
 import * as namesEs from './locales/names.es';
 
@@ -42,6 +44,12 @@ export interface ShareParams {
   vs?: number;
   /** the daily this puzzle is (dailies.ts): the address is then /daily/<date>, and the page says so */
   daily?: { no: number; date: string };
+  /**
+   * The door of the advent calendar this is (advent.ts): the address is
+   * then /advent/<year>/<door>. A door whose day has not come (`open`
+   * false) has no puzzle, band or score on its page: it says when it opens
+   */
+  advent?: { year: number; door: number; date: string; open: boolean };
 }
 
 /** how many techniques a link names */
@@ -97,6 +105,8 @@ export function parseShareUrl(url: { pathname: string; search: string }): ShareP
 export interface AppLink {
   position?: string;
   daily?: { date: string; vs?: number };
+  /** a door of the advent calendar, by its address /advent/<year>/<door> (advent.ts) */
+  advent?: { year: number; door: number; vs?: number };
   puzzle?: { cells: string; share: boolean; vs?: number };
 }
 
@@ -118,23 +128,41 @@ export function readAppLink(url: { pathname: string; search: string; hash: strin
   if (position) link.position = position;
   const daily: { date: string; vs?: number } | null = parseDailyUrl(url) ?? (params.has('daily') ? { date: today } : null);
   if (daily) link.daily = daily.vs ? { date: daily.date, vs: daily.vs } : { date: daily.date };
+  const door = parseAdventUrl(url);
+  if (door) link.advent = door.vs ? { year: door.year, door: door.door, vs: door.vs } : { year: door.year, door: door.door };
   const share = parseShareUrl(url);
   // a puzzle string may write its empty cells as zeros; the app writes dots
   const cells = (share?.puzzle ?? params.get('p') ?? '').replace(/[^0-9.]/g, '').replace(/0/g, '.');
   if (cells.length === 81) link.puzzle = share?.vs ? { cells, share: true, vs: share.vs } : { cells, share: !!share };
-  return link.position || link.daily || link.puzzle ? link : null;
+  return link.position || link.daily || link.advent || link.puzzle ? link : null;
 }
 
 /**
  * The share address of whatever an address points at, or null: a puzzle
- * (/p/<puzzle> with its hints) or a published daily (/daily/<date>, whose
+ * (/p/<puzzle> with its hints), a published daily (/daily/<date>, whose
  * band and score come from the published list, not the address, and which
- * names no technique). What the Worker and the dev and preview servers
- * render from.
+ * names no technique), or a published door of the advent calendar
+ * (/advent/<year>/<door>, from its list the same way; a door whose day
+ * has not come by `latest`, the latest local date anywhere, shows no
+ * puzzle). What the Worker and the dev and preview servers render from.
  */
-export function shareParamsOf(url: { pathname: string; search: string }, dailies: Daily[]): ShareParams | null {
+export function shareParamsOf(
+  url: { pathname: string; search: string },
+  dailies: Daily[],
+  doors: AdventDoor[] = [],
+  latest = localDateKey()
+): ShareParams | null {
   const share = parseShareUrl(url);
   if (share) return share;
+  const a = parseAdventUrl(url);
+  if (a) {
+    const door = findDoor(doors, a.year, a.door);
+    if (!door) return null;
+    const date = doorDate(a.year, a.door);
+    const advent = { year: a.year, door: a.door, date, open: date <= latest };
+    if (!advent.open) return { lang: a.lang, puzzle: '', advent };
+    return { lang: a.lang, puzzle: door.puzzle, level: door.level, score: door.score, vs: a.vs, advent };
+  }
   const d = parseDailyUrl(url);
   if (!d) return null;
   const daily = findDaily(dailies, d.date);
@@ -148,8 +176,9 @@ export function shareParamsOf(url: { pathname: string; search: string }, dailies
 
 /** the path and query of a share address, relative to the site */
 export function sharePath(p: ShareParams): string {
-  // a daily's address is its day; the puzzle and its hints are published
+  // a daily's address is its day, a door's its year and door; the puzzle and its hints are published
   if (p.daily) return dailyPath(p.lang, p.daily.date, p.vs);
+  if (p.advent) return adventPath(p.lang, p.advent.year, p.advent.door, p.vs);
   const q = new URLSearchParams();
   if (p.level) q.set('b', p.level.toLowerCase());
   if (p.score) q.set('s', String(p.score));
@@ -208,6 +237,15 @@ export interface ShareCopy {
   /** a daily's headline when a challenger's {time} is set: still the daily's number */
   ogTitleDailyVs: string;
   descriptionDaily: string;
+  /** a door of the advent calendar's tab, headline and description: {door} and {date} (5 December) as well; never a technique */
+  titleAdvent: string;
+  ogTitleAdvent: string;
+  /** its headline when a challenger's {time} is set: still the door */
+  ogTitleAdventVs: string;
+  descriptionAdvent: string;
+  /** a door whose day has not come: its tab and description, which say when it opens and show no puzzle */
+  titleAdventLocked: string;
+  descriptionAdventLocked: string;
   /** "needing X-Wing and Skyscraper", glued to the sentence before the full stop */
   needing: string;
   /** a sentence put before the description when a challenger's {time} is set */
@@ -236,6 +274,14 @@ export const SHARE: Record<Lang, ShareCopy> = {
     ogTitleDailyVs: 'Daily #{no}: solved in {time}. Can you beat it?',
     descriptionDaily:
       'The daily for {date}: {a} {level} sudoku with a HoDoKu rating of {score}. One board for everyone, the same day. Play it free on sudokUI.',
+    titleAdvent: 'Door {door} of the advent calendar: {level} sudoku, HoDoKu rating {score} | sudokUI',
+    ogTitleAdvent: 'Door {door} · sudokUI advent calendar',
+    ogTitleAdventVs: 'Door {door}: solved in {time}. Can you beat it?',
+    descriptionAdvent:
+      'Door {door} of the sudokUI advent calendar, {date}: {a} {level} sudoku with a HoDoKu rating of {score}. One board for everyone. Play it free.',
+    titleAdventLocked: 'Door {door} of the advent calendar opens on {date} | sudokUI',
+    descriptionAdventLocked:
+      'Door {door} of the sudokUI advent calendar opens on {date}. A sudoku a day from 1 to 24 December, each a little harder than the one before.',
     needing: ', needing {list}',
     vs: 'Solved in {time} on sudokUI: can you beat it?',
     and: 'and',
@@ -259,6 +305,14 @@ export const SHARE: Record<Lang, ShareCopy> = {
     ogTitleDailyVs: 'Dagens sudoku #{no}: løst på {time}. Klarer du å slå det?',
     descriptionDaily:
       'Dagens sudoku for {date}: {a} sudoku på nivået {level} med HoDoKu-poengsum {score}. Det samme brettet for alle, samme dag. Spill den gratis i sudokUI.',
+    titleAdvent: 'Luke {door} i julekalenderen: sudoku på nivået {level}, HoDoKu-poengsum {score} | sudokUI',
+    ogTitleAdvent: 'Luke {door} · julekalenderen i sudokUI',
+    ogTitleAdventVs: 'Luke {door}: løst på {time}. Klarer du å slå det?',
+    descriptionAdvent:
+      'Luke {door} i julekalenderen i sudokUI, {date}: {a} sudoku på nivået {level} med HoDoKu-poengsum {score}. Det samme brettet for alle. Spill den gratis.',
+    titleAdventLocked: 'Luke {door} i julekalenderen åpner {date} | sudokUI',
+    descriptionAdventLocked:
+      'Luke {door} i julekalenderen i sudokUI åpner {date}. En sudoku hver dag fra 1. til 24. desember, hver litt vanskeligere enn den før.',
     needing: ' som krever {list}',
     vs: 'Løst på {time} i sudokUI: klarer du å slå det?',
     and: 'og',
@@ -282,6 +336,14 @@ export const SHARE: Record<Lang, ShareCopy> = {
     ogTitleDailyVs: 'Sudoku del día n.º {no}: resuelto en {time}. ¿Puedes superarlo?',
     descriptionDaily:
       'El sudoku del día {date}: {a} sudoku de nivel {level} con puntuación HoDoKu {score}. El mismo tablero para todos, el mismo día. Juégalo gratis en sudokUI.',
+    titleAdvent: 'Casilla {door} del calendario de adviento: sudoku de nivel {level}, puntuación HoDoKu {score} | sudokUI',
+    ogTitleAdvent: 'Casilla {door} · calendario de adviento de sudokUI',
+    ogTitleAdventVs: 'Casilla {door}: resuelta en {time}. ¿Puedes superarlo?',
+    descriptionAdvent:
+      'Casilla {door} del calendario de adviento de sudokUI, {date}: {a} sudoku de nivel {level} con puntuación HoDoKu {score}. El mismo tablero para todos. Juégalo gratis.',
+    titleAdventLocked: 'La casilla {door} del calendario de adviento se abre el {date} | sudokUI',
+    descriptionAdventLocked:
+      'La casilla {door} del calendario de adviento de sudokUI se abre el {date}. Un sudoku al día del 1 al 24 de diciembre, cada uno algo más difícil que el anterior.',
     needing: ' que requiere {list}',
     vs: 'Resuelto en {time} en sudokUI: ¿puedes superarlo?',
     and: 'y',
@@ -294,6 +356,8 @@ export const SHARE: Record<Lang, ShareCopy> = {
 
 const SOURCE = 'https://github.com/AImenes/sudokUI';
 const OG_LOCALE: Record<Lang, string> = { en: 'en_GB', nb: 'nb_NO', es: 'es_ES' };
+/** how each language writes a date (i18n.ts, LANGS) */
+const DATE_LOCALE: Record<Lang, string> = { en: 'en-GB', nb: 'nb-NO', es: 'es-ES' };
 
 /** the article that opens "{a} {level} sudoku": English needs "An" before Easy, Unfair and Extreme */
 const ARTICLE: Record<Lang, (levelName: string) => string> = {
@@ -325,8 +389,31 @@ export function joinNames(names: string[], and: string): string {
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/…/g, '&hellip;');
 
+/** the words of the page for a door of the advent calendar: its door and day, and its band and rating once it is open; never a technique */
+function adventCopy(p: ShareParams, advent: NonNullable<ShareParams['advent']>) {
+  const c = SHARE[p.lang];
+  const level = p.level ? levelName(p.level, p.lang) : '';
+  const vars = { a: ARTICLE[p.lang](level), level, score: p.score ?? '', door: advent.door, date: doorDay(advent.date, DATE_LOCALE[p.lang]) };
+  const open = advent.open && !!p.level;
+  const description = open ? fill(c.descriptionAdvent, vars) : fill(c.descriptionAdventLocked, vars);
+  const headline = fill(c.ogTitleAdvent, vars);
+  const time = p.vs && open ? clockOf(p.vs) : '';
+  return {
+    title: open ? fill(c.titleAdvent, vars) : fill(c.titleAdventLocked, vars),
+    description: time ? `${fill(c.vs, { time })} ${description}` : description,
+    ogTitle: time ? fill(c.ogTitleAdventVs, { ...vars, time }) : headline,
+    // the band's card for an open door; a door not yet open shows no band at all
+    ogImage: open ? ogShareCard(p.level!, p.lang) : ogCard(p.lang),
+    ogImageAlt: open ? fill(c.ogImageAlt, vars) : c.ogImageAltUnknown,
+    h1: headline,
+    loading: c.loading,
+    noscript: c.noscript
+  };
+}
+
 /** the words of the page for a share address */
 export function shareCopy(p: ShareParams) {
+  if (p.advent) return adventCopy(p, p.advent);
   const c = SHARE[p.lang];
   const level = p.level ? levelName(p.level, p.lang) : '';
   const daily = !!p.daily && !!p.level;

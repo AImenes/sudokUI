@@ -10,6 +10,7 @@ import { standingOf, dailyPath, localDateKey } from './dailies';
 import type { DailyStats, Standing } from './dailies';
 import { clockOf } from './share';
 import { SITE } from './home';
+import { adventPath } from './advent';
 
 /** the ordinal of a place among the day's times: 2nd; Norwegian 2.; Spanish 2.º, the sentence counting puestos */
 export function placeOrdinal(n: number, lang: Lang): string {
@@ -63,4 +64,32 @@ export function dailyLine(t: Translator, no: number, played: PlayedDaily, stats:
   return standing
     ? t('sudokUI Daily #{no} · {level} ({score}) · {time} · unassisted · {standing} · {link}', vars)
     : t('sudokUI Daily #{no} · {level} ({score}) · {time} · unassisted · {link}', vars);
+}
+
+/**
+ * A door of the advent calendar's share line, spoiler-free as the daily's:
+ * the door, the time, the band and the rating, unassisted or not, and
+ * where the time stands once that very time is among the door's. The link
+ * is the door's address, with the time to beat.
+ */
+export function doorLine(
+  t: Translator,
+  door: { year: number; door: number },
+  played: PlayedDaily,
+  stats: DailyStats | undefined,
+  submitted: number | undefined
+): string {
+  const standing = !played.assisted && stats && submitted === played.seconds ? standingOf(stats, submitted) : null;
+  const vars = {
+    door: door.door,
+    level: t.level(played.level),
+    score: played.score,
+    time: clockOf(played.seconds),
+    standing: standing ? standingPhrase(t, standing, played.date === localDateKey()) : '',
+    link: SITE + adventPath(t.lang, door.year, door.door, played.seconds)
+  };
+  if (played.assisted) return t('I opened door {door} of the sudokUI advent calendar in {time} · {level} ({score}) · {link}', vars);
+  return standing
+    ? t('I opened door {door} of the sudokUI advent calendar in {time} · {level} ({score}) · unassisted · {standing} · {link}', vars)
+    : t('I opened door {door} of the sudokUI advent calendar in {time} · {level} ({score}) · unassisted · {link}', vars);
 }

@@ -63,7 +63,9 @@ import { techFromParam } from '../content/slugs';
 import { sharePath, readAppLink } from '../content/share';
 import type { AppLink } from '../content/share';
 import { localDateKey, dailyPath, pastDailyOn, dayName } from '../content/dailies';
-import { startDaily, openAppLink, backToKept, holds, backTo, traversed, markStarted, markEntry, entryState } from './links';
+import { startDaily, startDoor, openAppLink, backToKept, holds, backTo, traversed, markStarted, markEntry, entryState } from './links';
+import { adventPath, calendarOpen, calendarSoon } from '../content/advent';
+import { AdventDialog } from './Advent';
 import { useDailyStats } from '../state/dailyStats';
 import { useTelemetry } from '../state/telemetry';
 import { RATING_URL, PRIVACY_URL } from '../content/staticRoutes';
@@ -203,6 +205,7 @@ function boardAddress(): string | null {
   const info = g.info;
   if (!info?.puzzle) return null;
   const rated = !(hideRating && !g.won);
+  if (info.adventYear && info.adventDoor) return adventPath(lang, info.adventYear, info.adventDoor);
   return info.dailyNo && info.dailyKey
     ? dailyPath(lang, info.dailyKey)
     : sharePath({ lang, puzzle: info.puzzle, level: rated ? info.level : undefined, score: rated ? info.score : undefined });
@@ -399,6 +402,8 @@ function Timer() {
 
 export default function App() {
   const info = useGame((s) => s.info);
+  // the player's local date, for what the season allows (the advent calendar, src/content/advent.ts)
+  const today = useToday();
   const won = useGame((s) => s.won);
   const paused = useGame((s) => s.paused);
   const resting = useResting();
@@ -497,7 +502,7 @@ export default function App() {
   }, [playing]);
 
   const [dialog, setDialog] = useState<
-    'none' | 'new' | 'practice' | 'io' | 'share' | 'shareHint' | 'settings' | 'info' | 'why' | 'restart' | 'steps' | 'scan' | 'learn' | 'progress'
+    'none' | 'new' | 'advent' | 'practice' | 'io' | 'share' | 'shareHint' | 'settings' | 'info' | 'why' | 'restart' | 'steps' | 'scan' | 'learn' | 'progress'
   >('none');
   const [learnTarget, setLearnTarget] = useState<LearnTarget>({ tab: 'techniques' });
   // a technique the guide asked Scan to look for on the board
@@ -577,10 +582,16 @@ export default function App() {
       start({ kind: 'tech', tech: practice }, { setAside: true });
       return;
     }
-    const fallBack = () => {
+    // `told`: what the link's refusal said, said again once the first game
+    // is on the board (a first visit to a door of the advent calendar still
+    // to come: the game that opens would otherwise clear the words)
+    const fallBack = (told?: string) => {
       const now = useGame.getState();
       // (a link whose day's list came once the play had gone opened nothing: a view starts nothing either)
-      if (!now.info && !now.custom && play.acts()) start({ kind: 'level', level: 'Easy' });
+      if (!now.info && !now.custom && play.acts())
+        void start({ kind: 'level', level: 'Easy' }).then((ok) => {
+          if (ok && told) useGame.setState({ notice: told });
+        });
     };
     const link = readAppLink(window.location);
     if (backForward) {
@@ -596,7 +607,7 @@ export default function App() {
         const t = translator();
         useGame.setState({ notice: t('The shared puzzle could not be opened. {reason}', { reason: refused }).trim() });
       }
-      fallBack();
+      fallBack(link.advent ? refused : undefined);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, seen, tables]);
@@ -726,7 +737,7 @@ export default function App() {
       window.history.replaceState(entryState(), '', `#p=${info.puzzle}`);
     }
     homeTitle();
-  }, [booted, playing, custom, info?.puzzle, info?.level, info?.score, info?.dailyNo, info?.dailyKey, lang, hideRating, won]);
+  }, [booted, playing, custom, info?.puzzle, info?.level, info?.score, info?.dailyNo, info?.dailyKey, info?.adventYear, info?.adventDoor, lang, hideRating, won]);
 
   // a daily result that could not be sent goes on the next open, and when
   // the connection comes back (src/state/dailyStats.ts): from the page that
@@ -1380,6 +1391,8 @@ export default function App() {
               setDialog('none');
               void startDaily();
             }}
+            advent={calendarOpen(today) ? 'open' : calendarSoon(today) ? 'soon' : null}
+            onAdvent={() => setDialog('advent')}
             onCustom={() => {
               setDialog('none');
               setCustomError(null);
@@ -1393,6 +1406,17 @@ export default function App() {
                   }
                 : undefined
             }
+          />
+        )}
+        {/* the calendar shows from 1 to 31 December only: from 1 January nothing of it does */}
+        {dialog === 'advent' && calendarOpen(today) && (
+          <AdventDialog
+            today={today}
+            onClose={() => setDialog('none')}
+            onDoor={(year, door) => {
+              setDialog('none');
+              void startDoor(year, door);
+            }}
           />
         )}
         {dialog === 'practice' && (

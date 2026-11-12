@@ -249,8 +249,10 @@ describe('the telemetry route', () => {
     ]);
     for (const kind of PLAY_KINDS)
       for (const lang of PLAY_LANGS) {
-        expect(checkEvent(good({ kind, lang }))).toMatchObject({ kind, lang });
-        expect(checkEvent(good({ event: 'started', bucket: 0, kind, lang, optin: true, offline: true, returning: true }))).toMatchObject({ kind, lang });
+        // a door of the advent calendar says which door, as its line must (tests/adventApi.test.ts)
+        const door = kind === 'advent' ? { door: 7 } : {};
+        expect(checkEvent(good({ kind, lang, ...door }))).toMatchObject({ kind, lang });
+        expect(checkEvent(good({ event: 'started', bucket: 0, kind, lang, optin: true, offline: true, returning: true, ...door }))).toMatchObject({ kind, lang });
       }
     expect(checkEvent(good())).not.toHaveProperty('kind');
   });
@@ -537,7 +539,7 @@ describe('the landing count', () => {
     await handleRequest(landing('/nb/'), env);
     expect(events.points[4].blobs).toEqual(['', 'home', version, '', 'none']);
     expect(JSON.stringify(events.points)).not.toContain('kode24');
-    expect(LANDING_SLOTS).toEqual(['p', 'daily', 'home']);
+    expect(LANDING_SLOTS).toEqual(['p', 'daily', 'home', 'advent']);
   });
 
   it('counts a landing with no referrer as ai when an AI assistant tagged its link, reading that one tag and keeping nothing of it', async () => {
@@ -881,14 +883,14 @@ describe('the dashboard', () => {
     expect(html).toContain('<dt>Starts, last 7 days</dt><dd>10</dd>');
     // the games by kind and language: columns in the lists' order, then the older builds' lines
     expect(html).toContain(
-      '<thead><tr><th>Games</th><th>Daily</th><th>New</th><th>Practice</th><th>From a share link</th><th>English</th><th>Norwegian</th><th>Spanish</th><th>Not recorded</th></tr></thead>'
+      '<thead><tr><th>Games</th><th>Daily</th><th>New</th><th>Practice</th><th>From a share link</th><th>Advent calendar</th><th>English</th><th>Norwegian</th><th>Spanish</th><th>Not recorded</th></tr></thead>'
     );
-    expect(html).toContain('<tr><td>Begun</td><td>3</td><td>2</td><td>5</td><td>1</td><td>7</td><td>3</td><td>1</td><td>4</td></tr>');
-    expect(html).toContain('<tr><td>Completed</td><td>2</td><td>0</td><td>4</td><td>0</td><td>4</td><td>2</td><td>0</td><td>0</td></tr>');
+    expect(html).toContain('<tr><td>Begun</td><td>3</td><td>2</td><td>5</td><td>1</td><td>0</td><td>7</td><td>3</td><td>1</td><td>4</td></tr>');
+    expect(html).toContain('<tr><td>Completed</td><td>2</td><td>0</td><td>4</td><td>0</td><td>0</td><td>4</td><td>2</td><td>0</td><td>0</td></tr>');
     // and per day
     expect(html).toContain('<thead><tr><th>Day</th><th>Daily</th><th>New</th>');
-    expect(html).toContain('<tr><td>2026-10-11</td><td>0</td><td>0</td><td>5</td><td>0</td><td>5</td><td>0</td><td>0</td><td>4</td></tr>');
-    expect(html).toContain('<tr><td>2026-10-12</td><td>3</td><td>2</td><td>0</td><td>1</td><td>2</td><td>3</td><td>1</td><td>0</td></tr>');
+    expect(html).toContain('<tr><td>2026-10-11</td><td>0</td><td>0</td><td>5</td><td>0</td><td>0</td><td>5</td><td>0</td><td>0</td><td>4</td></tr>');
+    expect(html).toContain('<tr><td>2026-10-12</td><td>3</td><td>2</td><td>0</td><td>1</td><td>0</td><td>2</td><td>3</td><td>1</td><td>0</td></tr>');
     // where landings came from: on a home page, on a share page, both
     expect(html).toContain("<tr><td>A search engine (and links Google's own redirect passed on)</td><td>4</td><td>0</td><td>4</td><td>50%</td></tr>");
     expect(html).toContain('<tr><td>An app directory (AlternativeTo, SaaSHub, Product Hunt and the like)</td><td>1</td><td>2</td><td>3</td><td>38%</td></tr>');

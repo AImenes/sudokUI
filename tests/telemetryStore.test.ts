@@ -400,8 +400,10 @@ describe('the kind of game and the language', () => {
     for (const lang of PLAY_LANGS) {
       useSettings.setState({ lang });
       for (const kind of PLAY_KINDS) {
-        useTelemetry.getState().track('started', 'Easy', 0, kind);
-        useTelemetry.getState().track('completed', 'Easy', 300, kind);
+        // a door of the advent calendar's line carries its door
+        const door = kind === 'advent' ? 12 : undefined;
+        useTelemetry.getState().track('started', 'Easy', 0, kind, door);
+        useTelemetry.getState().track('completed', 'Easy', 300, kind, door);
       }
       await useTelemetry.getState().flush();
     }
@@ -410,6 +412,8 @@ describe('the kind of game and the language', () => {
     expect(lines).toHaveLength(PLAY_LANGS.length * PLAY_KINDS.length * 2);
     expect(lines.map((l) => `${l.kind}/${l.lang}`)).toEqual(PLAY_LANGS.flatMap((lang) => PLAY_KINDS.flatMap((kind) => [`${kind}/${lang}`, `${kind}/${lang}`])));
     for (const line of lines) expect(checkEvent(line), JSON.stringify(line)).toMatchObject({ kind: line.kind, lang: line.lang });
+    // the door rides on a door's lines alone
+    expect(lines.filter((l) => l.door !== undefined).map((l) => [l.kind, l.door])).toEqual(PLAY_LANGS.flatMap(() => [['advent', 12], ['advent', 12]]));
     // a share says neither
     answers = [ok()];
     useTelemetry.getState().shared('puzzle', 'copy', 'Easy');

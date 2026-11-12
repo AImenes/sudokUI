@@ -34,6 +34,7 @@ import { useTelemetry, type PlayKind } from './telemetry';
 import { useDailyStats } from './dailyStats';
 import type { DailyResult, PlayedDaily } from './dailyStats';
 import { dailyClosed, localDateKey } from '../content/dailies';
+import { adventNo, doorDate, doorCounts } from '../content/advent';
 import { justifyMove } from './pools';
 import { play } from './play';
 import { translator, msg } from '../content/i18n';
@@ -454,6 +455,10 @@ export interface GameInfo {
   fromLink?: boolean;
   /** the player put away the note that this daily is another day's (src/content/dailies.ts, pastDailyOn), for this game */
   pastDailyHidden?: boolean;
+  /** the year of the advent calendar this game is a door of (src/content/advent.ts), with adventDoor */
+  adventYear?: number;
+  /** the door, 1 to 24: its time counts on the daily's tables under adventNo */
+  adventDoor?: number;
   /**
    * The board as it opened, when it opened with more than its givens on
    * it (a shared position, a practice puzzle fast-forwarded, a pasted
@@ -472,6 +477,7 @@ export interface GameInfo {
 export function kindOf(info: GameInfo): PlayKind {
   if (info.practiceTech) return 'practice';
   if (info.dailyKey) return 'daily';
+  if (info.adventDoor) return 'advent';
   return info.fromLink ? 'shared' : 'new';
 }
 
@@ -912,8 +918,34 @@ function recordWin(s: GameStore) {
   if (!s.info || s.solved) return;
   useGame.setState({ solved: true, solvedMs: s.elapsedMs(), solvedAssisted: s.assisted, solvedAuto: s.autoCandidates });
   if (!s.info.practiceTech) useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
-  useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000), kindOf(s.info));
+  useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000), kindOf(s.info), s.info.adventDoor);
   recordDaily(s);
+}
+
+/**
+ * A game whose time can go into everyone's times, a published daily or a
+ * door of the advent calendar, as its results are kept (dailyStats.ts,
+ * by number): the number, the day it is the game of (the daily's day, the
+ * door's), and for a door its year and door. Null for any other game.
+ */
+export interface Counted {
+  no: number;
+  date: string;
+  door?: { year: number; door: number };
+}
+export function countedOf(info: GameInfo | null | undefined): Counted | null {
+  if (!info) return null;
+  if (info.dailyNo && info.dailyKey) return { no: info.dailyNo, date: info.dailyKey };
+  if (info.adventYear && info.adventDoor) {
+    const door = { year: info.adventYear, door: info.adventDoor };
+    return { no: adventNo(door.year, door.door), date: doorDate(door.year, door.door), door };
+  }
+  return null;
+}
+
+/** a counted game's time can still go in on the player's today: a daily up to a week on, a door on its day and up to a week late in its December */
+export function countedClosed(c: Counted, today = localDateKey()): boolean {
+  return c.door ? !doorCounts(c.door.year, c.door.door, today) : dailyClosed(c.no, today);
 }
 
 /**
@@ -923,9 +955,11 @@ function recordWin(s: GameStore) {
  * and whether the solve was unassisted. Null for any other game.
  */
 export function dailyResultOf(s: Pick<GameStore, 'info' | 'cells' | 'assisted' | 'elapsedMs'>): DailyResult | null {
-  if (!s.info?.dailyNo || !s.info.dailyKey) return null;
+  // a door of the advent calendar sends its time the same way, under its own number
+  const counted = countedOf(s.info);
+  if (!counted) return null;
   return {
-    no: s.info.dailyNo,
+    no: counted.no,
     grid: s.cells.map((c) => c.value).join(''),
     seconds: Math.floor(s.elapsedMs() / 1000),
     // an unassisted solve took no hint (the server refuses one that says
@@ -968,13 +1002,17 @@ export function keptResultOf(no: number, kept: PlayedDaily, solution: string): D
  */
 function recordDaily(s: GameStore) {
   const result = dailyResultOf(s);
-  if (!result || !s.info?.dailyKey) return;
+  const counted = countedOf(s.info);
+  if (!result || !counted || !s.info) return;
   const daily = useDailyStats.getState();
   const kept = daily.played[result.no];
   const stands = !kept || (kept.assisted && result.unassisted);
   // the win screen says which solve stands by this (VictoryDialog)
   useGame.setState({ dailyKept: stands });
-  if (stands) daily.recordPlayed(result.no, { date: s.info.dailyKey, level: s.info.level, score: s.info.score, seconds: result.seconds, assisted: s.assisted });
+  if (stands) daily.recordPlayed(result.no, { date: counted.date, level: s.info.level, score: s.info.score, seconds: result.seconds, assisted: s.assisted });
+  // the switch is the player's word for daily times: a door's goes only
+  // when the player taps Send on its win screen
+  if (counted.door) return;
   if (!useSettings.getState().autoSendDaily || !result.unassisted || dailyClosed(result.no)) return;
   if (daily.submitted[result.no] !== undefined || daily.pending[result.no] || daily.inFlight[result.no]) return;
   const send = stands ? result : keptResultOf(result.no, kept, s.info.solution);
@@ -1232,7 +1270,7 @@ export const useGame = create<GameStore>()(
           return;
         }
         if (!s.info) return;
-        const { challenge, dailyNo, fromLink, pastDailyHidden } = s.info;
+        const { challenge, dailyNo, fromLink, pastDailyHidden, adventYear, adventDoor } = s.info;
         get().startGame(s.info.puzzle, s.info.score, s.info.level, s.info.practiceTech, s.info.dailyKey);
         const t = translator();
         // a challenger's time (a share link's ?vs=) is still the one to
@@ -1245,6 +1283,7 @@ export const useGame = create<GameStore>()(
                 ...g.info,
                 ...(challenge ? { challenge } : {}),
                 ...(dailyNo ? { dailyNo } : {}),
+                ...(adventYear && adventDoor ? { adventYear, adventDoor } : {}),
                 ...(fromLink ? { fromLink } : {}),
                 ...(pastDailyHidden ? { pastDailyHidden } : {})
               }
@@ -1447,7 +1486,7 @@ export const useGame = create<GameStore>()(
         // brings it back where it was left, as its link would
         const behind = s.customBackup;
         const kept = behind?.info && underWay({ ...behind, custom: false }) ? { ...behind, tally: useStats.getState().game } : null;
-        if (kept && kept.info!.puzzle === puzzle && !kept.info!.dailyKey && !kept.info!.practiceTech) {
+        if (kept && kept.info!.puzzle === puzzle && !kept.info!.dailyKey && !kept.info!.adventDoor && !kept.info!.practiceTech) {
           get().cancelCustomEntry();
           set({ notice: whereLeft() });
           return null;
@@ -1457,7 +1496,7 @@ export const useGame = create<GameStore>()(
         // the entry was opened over takes the slot in its place, so
         // nothing is let go (the typed givens are that game's own)
         const aside = s.setAside;
-        if (aside?.info && !aside.custom && !aside.won && aside.info.puzzle === puzzle && !aside.info.dailyKey && !aside.info.practiceTech) {
+        if (aside?.info && !aside.custom && !aside.won && aside.info.puzzle === puzzle && !aside.info.dailyKey && !aside.info.adventDoor && !aside.info.practiceTech) {
           get().cancelCustomEntry();
           get().backToSetAside();
           set({ notice: whereLeft() });
@@ -2991,6 +3030,7 @@ export function gameName(g: { info: GameInfo | null; custom?: boolean; customBac
   const info = g.info;
   if (!info) return t('the puzzle you were typing in');
   if (info.dailyKey) return info.dailyKey === localDateKey() ? t('today’s daily') : t('the daily for {date}', { date: info.dailyKey });
+  if (info.adventDoor) return t('door {door} of the advent calendar', { door: info.adventDoor });
   if (info.practiceTech) return t('your {name} practice', { name: t.tech(info.practiceTech) });
   if (info.fromLink) return t('your game on a shared puzzle');
   return t('your {level} game', { level: t.level(info.level) });
@@ -3244,7 +3284,7 @@ function countStart() {
   if (!(s.info.practiceTech ? s.history.length > 0 : playedOn(s))) return;
   if (useSettings.getState().dontCount) return;
   useGame.setState({ counted: true });
-  useTelemetry.getState().track('started', s.info.level, 0, kindOf(s.info));
+  useTelemetry.getState().track('started', s.info.level, 0, kindOf(s.info), s.info.adventDoor);
 }
 
 // the full solve path of the current puzzle, cached — rating a hard puzzle

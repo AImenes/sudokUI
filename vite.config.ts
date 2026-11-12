@@ -35,6 +35,8 @@ import { handleTelemetry, memoryEvents } from './worker/telemetry';
 import { handleFeedback, FEEDBACK_PATH } from './worker/feedback';
 import dailies from './src/content/dailies.json';
 import type { Daily } from './src/content/dailies';
+import advent from './src/content/advent.json';
+import type { AdventDoor } from './src/content/advent';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 /**
@@ -134,7 +136,9 @@ function homePages(): Plugin[] {
   const pathOf = (url: string) => url.split(/[?#]/)[0];
   const shareOf = (url: string) => {
     const [pathname, search = ''] = url.split('#')[0].split(/\?(.*)/s);
-    return shareParamsOf({ pathname, search: search ? `?${search}` : '' }, dailies as Daily[]);
+    // a door's page as the Worker renders it, by the latest local date anywhere (worker/index.ts)
+    const latest = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    return shareParamsOf({ pathname, search: search ? `?${search}` : '' }, dailies as Daily[], advent as AdventDoor[], latest);
   };
   return [
     {

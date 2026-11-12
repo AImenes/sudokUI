@@ -18,11 +18,21 @@
  * identifies the player: no IP, no cookie, no account; the rate limit per
  * address lives in this isolate's memory only.
  *
+ * The doors of the advent calendar (src/content/advent.ts) have their
+ * results on the same two tables and the same routes, each door under a
+ * number no daily reaches (adventNo, 100000 + year x 100 + door): a door's
+ * time is checked as a daily's is, against its own published solution,
+ * and taken on the door's day (with the same day of grace ahead) and up
+ * to LATE_DAYS behind, never after 31 December of its year.
+ *
  * The store is an interface: D1 in production (d1Store), memory for the
  * tests and for the dev and preview servers (memoryStore), so the whole
  * flow runs without a database at hand.
  */
 import dailies from '../src/content/dailies.json';
+import advent from '../src/content/advent.json';
+import { adventOfNo, findDoor, calendarEnd } from '../src/content/advent';
+import type { AdventDoor } from '../src/content/advent';
 import {
   Daily,
   DailyStats,
@@ -160,12 +170,16 @@ export async function sha256Hex(text: string): Promise<string> {
 
 export type Check = { ok: true; result: StoredResult } | { ok: false; reason: string };
 
+/** what a result is checked against: a published daily, or a door of the advent calendar */
+export type Published = Pick<Daily, 'date' | 'puzzle' | 'solutionHash'>;
+
 /**
  * Why a result is refused, or the result as it will be stored. `now` is
- * the server's clock; the day is judged against the UTC date, with a day
- * of grace ahead and a week behind.
+ * the server's clock; the day (the daily's, the door's) is judged against
+ * the UTC date, with a day of grace ahead and a week behind, and a door's
+ * never after the 31 December of its calendar.
  */
-export async function checkResult(body: unknown, no: number, daily: Daily, now: Date): Promise<Check> {
+export async function checkResult(body: unknown, no: number, daily: Published, now: Date): Promise<Check> {
   const refuse = (reason: string): Check => ({ ok: false, reason });
   if (!body || typeof body !== 'object' || Array.isArray(body)) return refuse('a JSON object is expected');
   const b = body as Record<string, unknown>;
@@ -180,9 +194,14 @@ export async function checkResult(body: unknown, no: number, daily: Daily, now: 
   if (!b.unassisted) return refuse('only unassisted solves are counted');
   if (b.hints > 0) return refuse('an unassisted solve used no hints');
 
-  const todayNo = dailyNumber(now.toISOString().slice(0, 10)) ?? 0;
-  if (no > todayNo + EARLY_DAYS) return refuse('that day has not come');
-  if (no < todayNo - LATE_DAYS) return refuse('that day is too long ago');
+  const utcToday = now.toISOString().slice(0, 10);
+  const todayNo = dailyNumber(utcToday) ?? 0;
+  // the day's own number: the daily's is its number, a door's the day it opens
+  const dayNo = dailyNumber(daily.date) ?? no;
+  if (dayNo > todayNo + EARLY_DAYS) return refuse('that day has not come');
+  if (dayNo < todayNo - LATE_DAYS) return refuse('that day is too long ago');
+  const door = adventOfNo(no);
+  if (door && utcToday > calendarEnd(door.year)) return refuse('the advent calendar is closed');
 
   // the grid must be this puzzle's: its givens in place, and the whole
   // thing the published solution
@@ -260,6 +279,8 @@ export interface DailyApiOptions {
   waitUntil?: (p: Promise<unknown>) => void;
   /** the published dailies, the real list unless a test says otherwise */
   dailies?: Daily[];
+  /** the published doors of the advent calendar, likewise */
+  doors?: AdventDoor[];
 }
 
 /**
@@ -275,7 +296,11 @@ export async function handleDailyApi(request: Request, store: DailyStore | null,
   const route = m[2];
   const now = options.now ? options.now() : new Date();
   const list = options.dailies ?? (dailies as Daily[]);
-  const daily = findDaily(list, dailyDate(no));
+  // a door's number names its door; any other, a day
+  const door = adventOfNo(no);
+  const daily: Published | undefined = door
+    ? findDoor(options.doors ?? (advent as AdventDoor[]), door.year, door.door)
+    : findDaily(list, dailyDate(no));
   if (!daily) return json({ error: 'no such daily' }, 404);
 
   if (route === 'stats') {

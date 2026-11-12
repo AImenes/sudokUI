@@ -121,7 +121,7 @@ export const langRoot = (lang: Lang) => (lang === 'en' ? '/' : `/${lang}/`);
  * else
  */
 export function langOfPath(path: string): Lang | null {
-  const m = /^\/(nb|es)(?:\/(?:p\/[0-9.]{81}\/?|daily\/\d{4}-\d{2}-\d{2}\/?)?)?$/.exec(path);
+  const m = /^\/(nb|es)(?:\/(?:p\/[0-9.]{81}\/?|daily\/\d{4}-\d{2}-\d{2}\/?|advent\/\d{4}\/\d{1,2}\/?)?)?$/.exec(path);
   return m ? (m[1] as Lang) : null;
 }
 

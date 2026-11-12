@@ -2438,6 +2438,79 @@ textarea {
   border: 1.5px solid var(--accent);
 }
 
+/* the advent calendar (src/ui/Advent.tsx): New's line for it in December,
+   the quiet note in November, and its 24 doors, four a row on a phone
+   and as many as the dialog holds beside them */
+.level-btn.advent {
+  border: 1.5px dashed var(--accent);
+}
+
+.advent-soon {
+  margin: 2px 4px;
+}
+
+.advent-doors {
+  list-style: none;
+  margin: 10px 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 6px;
+}
+
+.advent-door {
+  width: 100%;
+  min-height: 68px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 6px 2px;
+  border-radius: 10px;
+  border: 1px solid rgba(128, 128, 160, 0.25);
+  background: var(--bg-soft);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.advent-door strong {
+  font-size: 18px;
+}
+
+.advent-door span {
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.advent-door:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+/* today's door wears the daily's ring */
+.advent-door.today {
+  border: 1.5px solid var(--accent);
+}
+
+.advent-door.solved strong {
+  color: var(--accent-text);
+}
+
+/* a door still to come: there, with its day, and nothing to press */
+.advent-door.locked {
+  cursor: default;
+  background: transparent;
+  border-style: dashed;
+}
+
+.advent-door.locked strong {
+  color: var(--muted);
+}
+
 /* first-visit welcome: three short reasons to stay */
 .welcome-list {
   margin: 10px 0;
