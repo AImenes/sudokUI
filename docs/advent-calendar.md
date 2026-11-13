@@ -27,7 +27,7 @@ no date rule: the doors' numbers, their addresses and the published list.
 | 1 to 30 November | New has Advent calendar (`calendarOpen`), "Its doors open from 1 December": the 24 doors, every one locked, each with the day it opens. No door opens. |
 | 1 to 24 December | Door n opens on n December (`doorState` is `open`); a door still to come is `locked`. |
 | 25 to 31 December | Every door is open (an earlier door is always allowed until 31 December). |
-| From 1 January | Nothing of the calendar shows, no door opens, and nothing of it is sent, until November (`closed`). A door game in progress stays where it is, on the board or in the slot, and can be finished; asked for again (its address, a reload), it comes back, since it is the player's own game. Any other door says "The advent calendar is closed until November". |
+| From 1 January | Nothing of the calendar shows, no door opens, and no door's time is sent, until November (`closed`). A door game in progress stays where it is, on the board or in the slot, and can be finished; asked for again (its address, a reload), it comes back, since it is the player's own game. Finished then, it still counts as a play, with its door, as every play is counted (the owner's decision 4: the started and completed lines), and its line can still be shared; its win screen says "This door is closed for new times". Any other door says "The advent calendar is closed until November". |
 
 ## A locked door opens nothing
 
@@ -117,7 +117,16 @@ Worker still refuses a time for a door whose day has not come anywhere
   November to 31 December, every door locked in November. The 24 doors: an open one with its day and its band and
   rating, marked ✓ when it was solved on this device and "in progress" when
   it is on the board or in the slot; a locked one with its day and a lock.
-  Today's door wears the daily's ring.
+  Each door's level and score sit on a line each, on every door alike, and
+  every row is as tall as the tallest, so the doors line up. A locked door
+  is `aria-disabled`, not `disabled`: Tab reaches every door in its order
+  and a screen reader reads when it opens; pressing it does nothing.
+  Today's door wears the daily's ring. A December whose doors this build
+  does not have (`advent.json` holds only earlier years) says "The doors of
+  the 2027 advent calendar are not ready yet", in the calendar and as the
+  toast of a door's address, not that the connection failed; and
+  tests/adventDoors.test.ts fails from 1 October of a year whose doors are
+  not in the file, so they are built before their season.
 
 ## What is sent, and what is kept
 
@@ -166,7 +175,11 @@ every share page: "Door 5 · sudokUI advent calendar" with the door's band
 card, its day and its HoDoKu rating; a challenge keeps the door in the
 headline. A door whose day has not come anywhere on earth (the UTC date
 plus `EARLY_DAYS`) previews with the day it opens, the site's own card and
-no band, rating or puzzle. `wrangler.jsonc` sends `/advent/*` (and
+no band, rating or puzzle; and so, from November 2026, does a daily whose
+day has not come ("sudokUI Daily #75 opens on 20 December", with no
+challenge), since the app will not open it either. Titles stay within 75
+characters and descriptions within 160 without a challenge, in every
+language (tests/adventApi.test.ts measures every door). `wrangler.jsonc` sends `/advent/*` (and
 `/nb/advent/*`, `/es/advent/*`) to the Worker first; any other address
 under them, the static `/advent/` page among them, goes back to the assets
 as it is.
@@ -190,8 +203,9 @@ and the sitemap, and the dev server serves them.
   n x 100; an unassisted time can be sent on the door's day and up to a
   week late; from 1 January the calendar is closed and a door under way
   can still be finished), and the card at the end links to the app and
-  to today's daily (`/#daily`), each in the page's language. No puzzle is
-  ever on the page.
+  to today's daily (`/#daily`), each in the page's language, and says the
+  calendar is under New in the app from 1 November, its doors opening
+  from 1 December. No puzzle is ever on the page.
 - **The doors open by the visitor's date.** The page is one file for
   everyone, so every door is written locked: an `<a>` with no address,
   its day, its rating and the word Locked. A small inline script
@@ -199,10 +213,17 @@ and the sitemap, and the dev server serves them.
   device's date only) gives each door whose day has come its address in
   the app, `/advent/2026/5` (under `/nb/` and `/es/` on those pages), the
   class `open` (and `today` on its own day, with a holly ring) and the
-  word Open, and from 1 January marks every door Closed. Its rule is the
-  calendar's own, `doorOpen`; tests/adventPage.test.ts runs the script
-  over a stand-in for the page on every day from 25 November to 3 January
-  and checks it door by door against `doorOpen`. Without JavaScript every
+  word Open, and from 1 January marks every door Closed (a solid border
+  on the page's ground, its words at full strength: never dimmed). It
+  paints again, every door from as it was written, a moment after each
+  local midnight and whenever the page is shown again or gets the focus
+  (as the app's `useToday`), so a page left open follows the date: the
+  door of the day becomes a link at midnight, and on 1 January the links
+  go. Its rule is the calendar's own, `doorOpen`; tests/adventPage.test.ts
+  runs the script over a stand-in for the page on every day from 25
+  November to 3 January and checks it door by door against `doorOpen`,
+  and runs it across the midnight of 10 December and into 1 January. The
+  quiet line on the home pages and /learn/ follows the date the same way. Without JavaScript every
   door reads as locked, with its day, and the status line says what is
   true on any day ("Door 1 opens on 1 December 2026, and door 24 on 24
   December"). A door opened from here is opened, or refused, by the app

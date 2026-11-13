@@ -1007,7 +1007,8 @@ const ADVENT_STYLE = `
 .door.open:hover{filter:brightness(1.18)}
 .door.open:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .door.today{box-shadow:0 0 0 3px var(--holly)}
-.door.closed{opacity:.7}
+/* closed from 1 January: a solid border on the page's own ground, its words at full strength (4.5:1 and more, light and dark) */
+.door.closed{border-style:solid;background:transparent}
 .vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 `.trim().replace('LIGHTS', ADVENT_LIGHTS);
 

@@ -97,3 +97,45 @@ test('the quiet line on /learn/ shows in November and December, and not in Octob
   await expect(page).toHaveURL(/\/advent\/$/);
   await expect(page.locator('h1')).toHaveText('Sudoku advent calendar 2026');
 });
+
+for (const colorScheme of ['light', 'dark'] as const) {
+  test.describe(`from 1 January, in ${colorScheme}`, () => {
+    test.use({ colorScheme });
+    test('a closed door’s words read at 4.5:1 at least: its level, its rating and Closed', async ({ page }) => {
+      await on(page, '2027-01-01');
+      for (const path of ['/advent/', '/nb/julekalender/', '/es/calendario-de-adviento/']) {
+        await page.goto(path);
+        await expect.poll(async () => (await doors(page)).every((d) => d.cls === 'door closed')).toBe(true);
+        const low = await page.locator('#advent-doors a.door').evaluateAll((all) => {
+          // the colour a style names, as sRGB channels and alpha
+          const rgba = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number).concat(1).slice(0, 4);
+          const lum = ([r, g, b]: number[]) =>
+            [r, g, b].map((v) => (v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+          // the ground under an element: the first one up its tree that has one
+          const ground = (el: Element | null): number[] => {
+            for (; el; el = el.parentElement) {
+              const c = rgba(getComputedStyle(el).backgroundColor);
+              if (c[3] > 0) return c;
+            }
+            return [255, 255, 255, 1];
+          };
+          const out: string[] = [];
+          for (const door of all) {
+            // nothing dims a door as a whole
+            if (getComputedStyle(door).opacity !== '1') out.push(`door ${door.getAttribute('data-door')} at opacity ${getComputedStyle(door).opacity}`);
+            for (const word of door.querySelectorAll('span:not(.vh), b')) {
+              const fg = rgba(getComputedStyle(word).color);
+              const bg = ground(door);
+              const mix = fg.slice(0, 3).map((v, i) => v * fg[3] + bg[i] * (1 - fg[3]));
+              const [a, b] = [lum(mix), lum(bg)];
+              const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+              if (ratio < 4.5) out.push(`door ${door.getAttribute('data-door')} "${word.textContent}" at ${ratio.toFixed(2)}:1`);
+            }
+          }
+          return out;
+        });
+        expect(low, path).toEqual([]);
+      }
+    });
+  });
+}

@@ -19,6 +19,7 @@ import { Daily, dailyNumber } from '../src/content/dailies';
 import { handleDailyApi, memoryStore, checkResult, EARLY_DAYS, LATE_DAYS, BEHIND_DAYS } from '../worker/daily';
 import { doorCounts } from '../src/content/season';
 import { handleRequest, Env } from '../worker/index';
+import { shareParamsOf, shareCopy } from '../src/content/share';
 import { checkEvent, checkBatch, pointOf, fold, memoryEvents, PLAY_KINDS, LANDING_SLOTS } from '../worker/telemetry';
 import template from '../index.html?raw';
 import { parseGrid, gridToString } from '../src/engine/board';
@@ -188,12 +189,56 @@ describe('a door’s address in the Worker', () => {
     expect(nb).toContain('<html lang="nb">');
     expect(meta(nb, 'og:description')).toContain('Luke 5 i julekalenderen i sudokUI åpner 5. desember');
     const es = await (await handleRequest(visit('/es/advent/2026/5'), env, undefined, undefined, now)).text();
-    expect(meta(es, 'og:description')).toContain('La casilla 5 del calendario de adviento de sudokUI se abre el 5 de diciembre');
+    expect(meta(es, 'og:description')).toContain('La casilla 5 del calendario de adviento se abre el 5 de diciembre');
     // a landing, with no band to name
     expect(events.points[0].blobs.slice(0, 2)).toEqual(['', 'advent']);
     // one day of grace: on 4 December UTC, someone is already on the 5th
     const early = await (await handleRequest(visit('/advent/2026/5'), env, undefined, undefined, () => Date.parse('2026-12-04T12:00:00Z'))).text();
     expect(meta(early, 'og:description')).toContain(`HoDoKu rating of ${DOOR.score}`);
+  });
+
+  it('previews a daily not yet open as a door is: the day it opens, the site’s card, and nothing of the puzzle', async () => {
+    const { env } = assets();
+    // on 1 December the daily of 20 December is still to come everywhere on earth
+    const daily = (dailies as Daily[]).find((d) => d.date === '2026-12-20')!;
+    const no = dailyNumber(daily.date)!;
+    const now = () => Date.parse('2026-12-01T12:00:00Z');
+    const en = await (await handleRequest(visit('/daily/2026-12-20?vs=300'), env, undefined, undefined, now)).text();
+    expect(meta(en, 'og:title')).toBe(`sudokUI Daily #${no} opens on 20 December`);
+    expect(meta(en, 'og:description')).toBe('The sudokUI daily for 20 December opens on its day, at midnight by your own clock. One board for everyone, the same day.');
+    expect(meta(en, 'og:image')).toBe(`${SITE}/og-card.png`);
+    expect(en).toContain(`<title>Daily #${no} opens on 20 December | sudokUI</title>`);
+    expect(en).not.toContain(String(daily.score));
+    expect(en).not.toContain(daily.puzzle);
+    expect(en).not.toContain('can you solve it');
+    const nb = await (await handleRequest(visit('/nb/daily/2026-12-20'), env, undefined, undefined, now)).text();
+    expect(meta(nb, 'og:description')).toContain('Dagens sudoku i sudokUI for 20. desember åpner på dagen sin');
+    const es = await (await handleRequest(visit('/es/daily/2026-12-20'), env, undefined, undefined, now)).text();
+    expect(meta(es, 'og:description')).toContain('El sudoku del día de sudokUI para el 20 de diciembre se abre ese día');
+    // its day, a day early in UTC for someone already on it: the daily, with its band and rating
+    const day = await (await handleRequest(visit('/daily/2026-12-20'), env, undefined, undefined, () => Date.parse('2026-12-19T12:00:00Z'))).text();
+    expect(meta(day, 'og:description')).toContain(`HoDoKu rating of ${daily.score}`);
+  });
+
+  it('keeps a door’s preview short enough for a search result and a chat: titles at most 75 characters, descriptions 160 without a challenge', () => {
+    for (const lang of ['', '/nb', '/es']) {
+      for (const door of DOORS.map((d) => d.door)) {
+        for (const [latest, vs] of [['2026-12-25', ''], ['2026-12-25', '?vs=754'], ['2026-11-20', '']] as const) {
+          const p = shareParamsOf(new URL(`${SITE}${lang}/advent/2026/${door}${vs}`), dailies as Daily[], DOORS, latest)!;
+          const c = shareCopy(p);
+          const where = `${lang || '/en'} door ${door} ${latest}${vs}`;
+          expect(c.title.length, `${where}: ${c.title}`).toBeLessThanOrEqual(75);
+          expect(c.description.length, `${where}: ${c.description}`).toBeLessThanOrEqual(vs ? 300 : 160);
+          expect(c.description, where).not.toContain('{');
+        }
+      }
+      // and a daily not yet open
+      const p = shareParamsOf(new URL(`${SITE}${lang}/daily/2026-12-20`), dailies as Daily[], DOORS, '2026-12-01')!;
+      expect(p).toEqual({ lang: lang ? lang.slice(1) : 'en', puzzle: '', daily: { no: dailyNumber('2026-12-20'), date: '2026-12-20', open: false } });
+      const c = shareCopy(p);
+      expect(c.title.length, c.title).toBeLessThanOrEqual(75);
+      expect(c.description.length, c.description).toBeLessThanOrEqual(160);
+    }
   });
 
   it('hands a door no calendar publishes to the assets', async () => {

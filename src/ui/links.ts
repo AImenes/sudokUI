@@ -15,7 +15,7 @@ import { translator } from '../content/i18n';
 import { clockOf } from '../content/share';
 import type { AppLink } from '../content/share';
 import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, dailyLocked, dayAfter, dayName } from '../content/dailies';
-import { loadAdvent, findDoor } from '../content/advent';
+import { loadAdvent, findDoor, calendarYears } from '../content/advent';
 import { calendarOpen, doorDate, doorState, isDoor } from '../content/season';
 import { play } from '../state/play';
 
@@ -224,6 +224,12 @@ export async function startDoor(year: number, door: number): Promise<DoorOpened>
   const list = await loadAdvent();
   // the play went while the list came: a view opens nothing (startDaily)
   if (!play.acts()) return 'dropped';
+  // a December whose doors this build does not have (its file is from an
+  // earlier year): said plainly, not as a lost connection
+  if (list && !calendarYears(list).includes(year)) {
+    useGame.setState({ notice: t('The doors of the {year} advent calendar are not ready yet', { year }) });
+    return 'unavailable';
+  }
   const found = list && findDoor(list, year, door);
   if (!found) {
     useGame.setState({ notice: t('Door {door} of the advent calendar could not be loaded. Check the connection and try again', { door }) });

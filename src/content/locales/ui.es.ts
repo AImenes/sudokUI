@@ -899,6 +899,7 @@ const ui: Dictionary = {
   "{level} {score}||a door’s band and HoDoKu rating": "{level} {score}",
   "Door {door}, {date}": "Casilla {door}, {date}",
   "The doors’ ratings could not be loaded. Check the connection and try again": "No se han podido cargar las puntuaciones de las casillas. Comprueba la conexión y vuelve a intentarlo",
+  "The doors of the {year} advent calendar are not ready yet": "Las casillas del calendario de adviento de {year} aún no están listas",
   "A time without help counts in everyone’s times on its door’s day and up to a week late, until 31 December, if you send it from the win screen.": "Un tiempo sin ayuda cuenta entre los tiempos de todos el día de su casilla y hasta una semana después, hasta el 31 de diciembre, si lo envías desde la pantalla de victoria.",
   "A door a day from 1 to 24 December, each a little harder than the one before, the same puzzle for everyone": "Una casilla al día del 1 al 24 de diciembre, cada una algo más difícil que la anterior, el mismo sudoku para todos",
   "Its doors open from 1 December: a door a day until Christmas Eve": "Sus casillas se abren desde el 1 de diciembre: una casilla al día hasta Nochebuena",

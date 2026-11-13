@@ -367,11 +367,12 @@ decorations are CSS and inline SVG, nothing fetched: a string of lights
 inside the bar's padding (they come on once, in a second and a half; never
 under reduced motion), snow on the mark, a sprig of holly beside Paused, a
 cranberry ribbon on the win screen whose confetti falls as snow, gold and
-berries (twice, and never under reduced motion), and on a wide screen three
-faint snowflakes in the page's margins, held still. None sits over the
-board, a digit or a control, on a 320 px or a 390 px phone held either way
-or a laptop (tests/e2e/season.spec.ts measures it, and every word's
-contrast). The shared picture of the board stays light, as in every look.
+berries (twice, and never under reduced motion), and on a screen 1240 px
+wide or more three faint snowflakes in the page's margins, held still.
+None sits over the board, a digit or a control, on a 320 px or a 390 px
+phone held either way, an iPad on its side (1180 px, no snowflakes), a
+1200 px screen, at 1240 px or on a laptop (tests/e2e/season.spec.ts
+measures it, and every word's contrast). The shared picture of the board stays light, as in every look.
 The static Learn pages never follow the app's theme (they follow the
 device's light or dark), so the look cannot break them.
 

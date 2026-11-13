@@ -16,7 +16,7 @@ import dailiesFile from '../src/content/dailies.json';
 import { ADVENT_BASE, ADVENT_DOORS, adventNo, adventOfNo, doorDate, doorDay, doorTarget, daysBetween } from '../src/content/advent';
 import { calendarOpen, doorOpen, doorCounts, doorState, calendarEnd, DOORS } from '../src/content/season';
 import type { AdventDoor } from '../src/content/advent';
-import { dailyNumber, LATE_DAYS } from '../src/content/dailies';
+import { dailyNumber, localDateKey, LATE_DAYS } from '../src/content/dailies';
 import type { Daily } from '../src/content/dailies';
 import { parseGrid, gridToString } from '../src/engine/board';
 import { solve, countSolutions } from '../src/engine/bruteForce';
@@ -130,6 +130,15 @@ const YEARS = [...new Set(doors.map((d) => Number(d.date.slice(0, 4))))];
 describe('the published doors', () => {
   it('begin with 2026', () => {
     expect(YEARS[0]).toBe(2026);
+  });
+
+  it('are published before their season: from 1 October the coming calendar is in the file', () => {
+    // the app opens the calendar from 1 November and a door from 1
+    // December by the date alone; a year missing from the file says only
+    // that its doors are not ready (src/ui/Advent.tsx, src/ui/links.ts)
+    const today = localDateKey();
+    const year = Number(today.slice(0, 4));
+    if (today.slice(5) >= '10-01') expect(YEARS, `run npx vite-node scripts/build-advent.ts ${year}`).toContain(year);
   });
 
   for (const y of YEARS) {

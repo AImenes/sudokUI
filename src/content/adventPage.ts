@@ -86,7 +86,7 @@ export const ADVENT_PAGE: Record<Lang, AdventPageCopy> = {
     ],
     play: 'Open sudokUI',
     daily: 'Play today’s daily',
-    inApp: 'From 1 December the calendar is in sudokUI itself too, under New.',
+    inApp: 'From 1 November the calendar is in sudokUI itself too, under New. Its doors open from 1 December.',
     imageAlt: 'The sudokUI advent calendar {year}: 24 doors, from Easy to Extreme.',
     item: 'Door {door}, {date}: {level}, HoDoKu rating {score}'
   },
@@ -118,7 +118,7 @@ export const ADVENT_PAGE: Record<Lang, AdventPageCopy> = {
     ],
     play: 'Åpne sudokUI',
     daily: 'Spill dagens sudoku',
-    inApp: 'Fra 1. desember finner du kalenderen også i selve sudokUI, under Ny.',
+    inApp: 'Fra 1. november finner du kalenderen også i selve sudokUI, under Ny. Lukene åpner fra 1. desember.',
     imageAlt: 'Julekalenderen {year} i sudokUI: 24 luker, fra lett til ekstrem.',
     item: 'Luke {door}, {date}: {level}, HoDoKu-poengsum {score}'
   },
@@ -150,7 +150,7 @@ export const ADVENT_PAGE: Record<Lang, AdventPageCopy> = {
     ],
     play: 'Abre sudokUI',
     daily: 'Juega al sudoku del día',
-    inApp: 'A partir del 1 de diciembre, el calendario también está en sudokUI, en Nuevo.',
+    inApp: 'A partir del 1 de noviembre, el calendario también está en sudokUI, en Nuevo. Sus casillas se abren a partir del 1 de diciembre.',
     imageAlt: 'El calendario de adviento {year} de sudokUI: 24 casillas, de fácil a extremo.',
     item: 'Casilla {door}, {date}: {level}, puntuación HoDoKu {score}'
   }
@@ -176,6 +176,7 @@ export const STATUS_ID = 'advent-status';
 
 /** what the door script writes, in the page's language */
 export interface DoorWords {
+  locked: string;
   open: string;
   today: string;
   closed: string;
@@ -188,6 +189,7 @@ export interface DoorWords {
 
 /** the words the script writes on a page, out of its copy */
 export const doorWords = (c: AdventPageCopy, year: number): DoorWords => ({
+  locked: c.state.locked,
   open: c.state.open,
   today: c.state.today,
   closed: c.state.closed,
@@ -205,8 +207,13 @@ export const doorWords = (c: AdventPageCopy, year: number): DoorWords => ({
  * .state word. Door n of year Y is open from Y-12-n to Y-12-31 (advent.ts,
  * doorOpen): it gets its address, the class open (and today on its own
  * day) and its word; after 31 December every door is closed. The status
- * line (STATUS_ID) says where the calendar stands. Plain ES5, no file to
- * fetch, nothing stored and nothing sent: it reads the device's date only.
+ * line (STATUS_ID) says where the calendar stands. It paints again, every
+ * door from as it was written, a moment after each local midnight and
+ * whenever the page is shown again or gets the focus (as the app's
+ * src/ui/useToday.ts), so a page left open follows the date: the door
+ * that opens at midnight becomes a link, and on 1 January the links go.
+ * Plain ES5, no file to fetch, nothing stored and nothing sent: it reads
+ * the device's date only.
  */
 export function doorScript(words: DoorWords): string {
   // "<" in a string must not close the script element
@@ -215,27 +222,52 @@ export function doorScript(words: DoorWords): string {
   var list = document.getElementById('${DOORS_ID}');
   if (!list) return;
   var words = ${json};
-  var now = new Date();
-  var today = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
-  var december = Number(list.getAttribute('data-year')) * 10000 + 1200;
-  var doors = list.getElementsByTagName('a');
-  for (var i = 0; i < doors.length; i++) {
-    var door = doors[i];
-    var n = Number(door.getAttribute('data-door'));
-    var state = door.querySelector('.state');
-    if (today > december + 31) {
-      door.className = 'door closed';
-      state.textContent = words.closed;
-    } else if (today >= december + n) {
-      door.setAttribute('href', list.getAttribute('data-app') + n);
-      door.className = today === december + n ? 'door open today' : 'door open';
-      state.textContent = today === december + n ? words.today : words.open;
+  var timer = 0;
+  function paint() {
+    var now = new Date();
+    var today = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+    var december = Number(list.getAttribute('data-year')) * 10000 + 1200;
+    var doors = list.getElementsByTagName('a');
+    for (var i = 0; i < doors.length; i++) {
+      var door = doors[i];
+      var n = Number(door.getAttribute('data-door'));
+      var state = door.querySelector('.state');
+      door.removeAttribute('href');
+      if (today > december + 31) {
+        door.className = 'door closed';
+        state.textContent = words.closed;
+      } else if (today >= december + n) {
+        door.setAttribute('href', list.getAttribute('data-app') + n);
+        door.className = today === december + n ? 'door open today' : 'door open';
+        state.textContent = today === december + n ? words.today : words.open;
+      } else {
+        door.className = 'door';
+        state.textContent = words.locked;
+      }
+    }
+    var status = document.getElementById('${STATUS_ID}');
+    if (status) {
+      status.textContent =
+        today <= december ? words.before : today <= december + 24 ? words.day.replace('{door}', String(today - december)) : today <= december + 31 ? words.all : words.over;
     }
   }
-  var status = document.getElementById('${STATUS_ID}');
-  if (status) {
-    status.textContent =
-      today <= december ? words.before : today <= december + 24 ? words.day.replace('{door}', String(today - december)) : today <= december + 31 ? words.all : words.over;
+  function arm() {
+    var now = new Date();
+    var midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      paint();
+      arm();
+    }, midnight.getTime() - now.getTime() + 1000);
   }
+  function again() {
+    if (document.visibilityState === 'hidden') return;
+    paint();
+    arm();
+  }
+  paint();
+  arm();
+  if (document.addEventListener) document.addEventListener('visibilitychange', again);
+  if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('focus', again);
 })();`;
 }

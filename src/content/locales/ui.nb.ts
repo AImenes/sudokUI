@@ -899,6 +899,7 @@ const ui: Dictionary = {
   "{level} {score}||a door’s band and HoDoKu rating": "{level} {score}",
   "Door {door}, {date}": "Luke {door}, {date}",
   "The doors’ ratings could not be loaded. Check the connection and try again": "Poengsummene til lukene kunne ikke lastes inn. Sjekk tilkoblingen og prøv igjen",
+  "The doors of the {year} advent calendar are not ready yet": "Lukene i julekalenderen for {year} er ikke klare ennå",
   "A time without help counts in everyone’s times on its door’s day and up to a week late, until 31 December, if you send it from the win screen.": "En tid uten hjelp teller blant alles tider på lukens dag og opptil en uke etter, til 31. desember, hvis du sender den inn fra seiersskjermen.",
   "A door a day from 1 to 24 December, each a little harder than the one before, the same puzzle for everyone": "Én luke hver dag fra 1. til 24. desember, hver litt vanskeligere enn den før, den samme oppgaven for alle",
   "Its doors open from 1 December: a door a day until Christmas Eve": "Lukene åpner fra 1. desember: én luke hver dag til julaften",

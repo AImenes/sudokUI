@@ -21,11 +21,40 @@ export const ADVENT_LINE: Record<Lang, string> = {
 /** the id of the line */
 export const LINE_ID = 'advent-line';
 
-/** the script that shows the line in November and December by the visitor's own date; the rest of the year it stays hidden */
+/**
+ * The script that shows the line in November and December by the
+ * visitor's own date; the rest of the year it stays hidden. It looks
+ * again a moment after each local midnight and whenever the page is shown
+ * again or gets the focus, so a page left open over 1 November or
+ * 1 January follows (as the calendar's page does, adventPage.ts). One
+ * line when written into a page: no comment inside it.
+ */
 export const LINE_SCRIPT = `(function () {
-  var month = new Date().getMonth() + 1;
   var line = document.getElementById('${LINE_ID}');
-  if (line && (month === 11 || month === 12)) line.hidden = false;
+  if (!line) return;
+  var timer = 0;
+  function paint() {
+    var month = new Date().getMonth() + 1;
+    line.hidden = !(month === 11 || month === 12);
+  }
+  function arm() {
+    var now = new Date();
+    var midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      paint();
+      arm();
+    }, midnight.getTime() - now.getTime() + 1000);
+  }
+  function again() {
+    if (document.visibilityState === 'hidden') return;
+    paint();
+    arm();
+  }
+  paint();
+  arm();
+  if (document.addEventListener) document.addEventListener('visibilitychange', again);
+  if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('focus', again);
 })();`;
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

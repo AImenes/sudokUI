@@ -89,7 +89,19 @@ test.describe('the advent calendar', () => {
     await expect(calendar).toBeVisible();
     await expect(calendar.getByRole('button', { name: 'Door 1, opens on 1 December' })).toBeDisabled();
     await expect(calendar.getByRole('button', { name: 'Door 24, opens on 24 December' })).toBeDisabled();
-    await expect(calendar.locator('button.advent-door:not([disabled])')).toHaveCount(0);
+    await expect(calendar.locator('button.advent-door:not([aria-disabled="true"])')).toHaveCount(0);
+    // every door is reached by Tab, in its order, and says when it opens
+    const first = calendar.getByRole('button', { name: 'Door 1, opens on 1 December' });
+    await first.focus();
+    await expect(first).toBeFocused();
+    for (const n of [2, 3]) {
+      await page.keyboard.press('Tab');
+      await expect(calendar.getByRole('button', { name: `Door ${n}, opens on ${n} December` })).toBeFocused();
+    }
+    // and pressing one opens nothing
+    await page.keyboard.press('Enter');
+    await expect(calendar).toBeVisible();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, door: null });
     // and door 1's address opens nothing yet, over nothing
     await calendar.getByRole('button', { name: 'Close dialog' }).click();
     await page.goto('/advent/2026/1');
@@ -251,6 +263,28 @@ test.describe('the advent calendar', () => {
     await send.click();
     await expect.poll(() => posted.length).toBe(1);
     expect(posted[0]).toMatchObject({ no: 302605, unassisted: true, hints: 0 });
+  });
+
+  test('a December whose doors this build does not have says so plainly, not as a lost connection', async ({ page }) => {
+    // the file holds 2026 only
+    expect([...new Set(doors.map((d) => d.date.slice(0, 4)))]).toEqual(['2026']);
+    await open(page, '2027-12-05', `/#p=${EASY}`);
+    await opened(page, EASY);
+    const dialog = await newDialog(page);
+    await dialog.getByRole('button', { name: /Advent calendar/ }).click();
+    const calendar = page.getByRole('dialog', { name: 'Advent calendar' });
+    await expect(calendar.getByText('The doors of the 2027 advent calendar are not ready yet')).toBeVisible();
+    await expect(calendar.locator('button.advent-door:not([aria-disabled="true"])')).toHaveCount(0);
+    // (Playwright clicks no button marked disabled, aria-disabled too: the keyboard presses it)
+    await calendar.getByRole('button', { name: 'Door 1, 1 December' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(calendar).toBeVisible();
+    await calendar.getByRole('button', { name: 'Close dialog' }).click();
+    // and by its address: nothing over the game, and the same words
+    await page.goto('/advent/2027/1');
+    await expect(toast(page)).toContainText('The doors of the 2027 advent calendar are not ready yet');
+    await expect(toast(page)).not.toContainText('connection');
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, door: null, aside: null });
   });
 
   test('from 1 January nothing of the calendar shows, and a door game in progress stays and can be finished', async ({ page }) => {

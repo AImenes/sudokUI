@@ -13,7 +13,7 @@ import { useT } from '../content/i18n';
 import { useGame } from '../state/gameStore';
 import type { GameInfo } from '../state/gameStore';
 import { useDailyStats } from '../state/dailyStats';
-import { adventNo, doorDay, findDoor, loadAdvent } from '../content/advent';
+import { adventNo, calendarYears, doorDay, findDoor, loadAdvent } from '../content/advent';
 import { DOORS, doorDate, doorOpen } from '../content/season';
 import type { AdventDoor } from '../content/advent';
 
@@ -41,6 +41,9 @@ export function AdventDialog({ today, onClose, onDoor }: { today: string; onClos
       .join(',')
   );
   const inProgress = new Set(held.split(',').filter(Boolean).map(Number));
+  // this December's doors not in the published file (a build from an
+  // earlier year): nothing to open, said plainly, not as a lost connection
+  const unpublished = !!doors && !calendarYears(doors).includes(year);
 
   return (
     <Modal title={t('Advent calendar')} onClose={onClose}>
@@ -53,10 +56,14 @@ export function AdventDialog({ today, onClose, onDoor }: { today: string; onClos
           // the long day for the name a screen reader reads, the short one on the door
           const day = doorDay(date, t.locale);
           const short = doorDay(date, t.locale, 'short');
-          if (!doorOpen(year, door, today)) {
+          // a door still to come is there to reach and read, in its
+          // order, by Tab and by a screen reader: it says when it opens,
+          // and pressing it does nothing
+          if (!doorOpen(year, door, today) || unpublished) {
+            const label = unpublished && doorOpen(year, door, today) ? t('Door {door}, {date}', { door, date: day }) : t('Door {door}, opens on {date}', { door, date: day });
             return (
               <li key={door}>
-                <button className="advent-door locked" disabled aria-label={t('Door {door}, opens on {date}', { door, date: day })}>
+                <button className="advent-door locked" aria-disabled="true" aria-label={label}>
                   <strong>{door}</strong>
                   <span>{short}</span>
                   <span aria-hidden="true">🔒</span>
@@ -68,6 +75,8 @@ export function AdventDialog({ today, onClose, onDoor }: { today: string; onClos
           const solved = !!played[adventNo(year, door)];
           const state = solved ? t('solved||a door of the advent calendar') : inProgress.has(door) ? t('in progress||a door of the advent calendar') : '';
           const rating = found ? t('{level} {score}||a door’s band and HoDoKu rating', { level: t.level(found.level), score: found.score }) : '';
+          // on the door, the level and the score on a line each, on every
+          // door alike, so no row is taller for a longer level's name
           return (
             <li key={door}>
               <button
@@ -80,7 +89,12 @@ export function AdventDialog({ today, onClose, onDoor }: { today: string; onClos
                   {solved ? ' ✓' : ''}
                 </strong>
                 <span>{short}</span>
-                {rating && <span className="advent-rating">{rating}</span>}
+                {found && (
+                  <span className="advent-rating">
+                    <span>{t.level(found.level)}</span>
+                    <span>{found.score}</span>
+                  </span>
+                )}
                 {!solved && state && <span className="advent-state">{state}</span>}
               </button>
             </li>
@@ -88,6 +102,7 @@ export function AdventDialog({ today, onClose, onDoor }: { today: string; onClos
         })}
       </ul>
       {doors === null && <p className="dialog-note">{t('The doors’ ratings could not be loaded. Check the connection and try again')}</p>}
+      {unpublished && <p className="dialog-note">{t('The doors of the {year} advent calendar are not ready yet', { year })}</p>}
       <p className="dialog-note">
         {t('A time without help counts in everyone’s times on its door’s day and up to a week late, until 31 December, if you send it from the win screen.')}
       </p>

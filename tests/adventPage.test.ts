@@ -41,13 +41,56 @@ const days = (from: string, to: string) => {
   for (let d = from; d <= to; d = next(d)) out.push(d);
   return out;
 };
-/** the device's clock at noon, local time, on a day: what `new Date()` gives the page's script */
-const clockAt = (date: string) =>
-  class extends Date {
-    constructor() {
-      super(`${date}T12:00:00`);
+/** the device's clock at noon, local time, on a day: what `new Date()` gives the page's script (a date asked for by its parts is that date) */
+const clockAt = (date: string) => clockFrom(`${date}T12:00:00`).Date;
+/**
+ * A clock that can be moved (`set`), the timers a script arms on it, and
+ * the listeners it adds to the page and the window: what a page left open
+ * across a midnight goes through. `fire` runs the timers due by the clock.
+ */
+function clockFrom(start: string) {
+  let now = new Date(start).getTime();
+  const timers = new Map<number, { at: number; fn: () => void }>();
+  let ids = 0;
+  const listeners: Record<string, (() => void)[]> = {};
+  const listen = (type: string, fn: () => void) => void (listeners[type] ??= []).push(fn);
+  class FakeDate extends Date {
+    constructor(...args: unknown[]) {
+      if (args.length) super(...(args as [number, number, number]));
+      else super(now);
     }
+  }
+  return {
+    Date: FakeDate,
+    set: (iso: string) => void (now = new Date(iso).getTime()),
+    setTimeout: (fn: () => void, ms: number) => (timers.set(++ids, { at: now + ms, fn }), ids),
+    clearTimeout: (id: number) => void timers.delete(id),
+    /** the timers due by now run */
+    fire: () => {
+      for (const [id, t] of [...timers]) {
+        if (t.at > now) continue;
+        timers.delete(id);
+        t.fn();
+      }
+    },
+    /** how many timers wait */
+    waiting: () => timers.size,
+    window: { addEventListener: listen },
+    listen,
+    /** the page shown again, or the window focused */
+    emit: (type: string) => (listeners[type] ?? []).forEach((fn) => fn())
   };
+}
+type Clock = ReturnType<typeof clockFrom>;
+/** a script run over a stand-in page, with the clock's Date, timers and window */
+const run = (script: string, document: Record<string, unknown>, clock: Clock) =>
+  new Function('document', 'Date', 'window', 'setTimeout', 'clearTimeout', script)(
+    { ...document, visibilityState: 'visible', addEventListener: clock.listen },
+    clock.Date,
+    clock.window,
+    clock.setTimeout,
+    clock.clearTimeout
+  );
 
 interface FakeDoor {
   attrs: Record<string, string>;
@@ -55,6 +98,7 @@ interface FakeDoor {
   state: { textContent: string };
   getAttribute(k: string): string | null;
   setAttribute(k: string, v: string): void;
+  removeAttribute(k: string): void;
   querySelector(sel: string): { textContent: string } | null;
 }
 
@@ -63,7 +107,7 @@ interface FakeDoor {
  * page built from its HTML: the list, its doors as written, the status
  * line. What the script left on them is returned.
  */
-function runDoors(html: string, date: string) {
+function runDoors(html: string, date: string, clock: Clock = clockFrom(`${date}T12:00:00`)) {
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
   expect(scripts, 'one inline script').toHaveLength(1);
   const [, listYear, base] = /<ol class="doors" id="advent-doors" data-year="(\d+)" data-app="([^"]+)">/.exec(html)!;
@@ -77,6 +121,9 @@ function runDoors(html: string, date: string) {
     setAttribute(k, v) {
       this.attrs[k] = v;
     },
+    removeAttribute(k) {
+      delete this.attrs[k];
+    },
     querySelector(sel) {
       return sel === '.state' ? this.state : null;
     }
@@ -85,16 +132,24 @@ function runDoors(html: string, date: string) {
   const attrs: Record<string, string> = { 'data-year': listYear, 'data-app': base };
   const list = { getAttribute: (k: string) => attrs[k] ?? null, getElementsByTagName: (t: string) => (t === 'a' ? doors : []) };
   const document = { getElementById: (id: string) => (id === 'advent-doors' ? list : id === 'advent-status' ? status : null) };
-  new Function('document', 'Date', scripts[0])(document, clockAt(date));
-  return { doors, status: status.textContent };
+  run(scripts[0], document, clock);
+  return {
+    doors,
+    get status() {
+      return status.textContent;
+    }
+  };
 }
 
-/** runs the quiet line's script on a day over a stand-in line; whether the line is shown */
-function runLine(script: string, date: string): boolean {
-  const line = { hidden: true };
-  new Function('document', 'Date', script)({ getElementById: (id: string) => (id === LINE_ID ? line : null) }, clockAt(date));
-  return !line.hidden;
+/** runs the quiet line's script on a day over a stand-in line; whether the line is shown (and, for a clock, the line) */
+function runLine(script: string, date: string, clock: Clock = clockFrom(`${date}T12:00:00`)): boolean {
+  return !lineOn(script, clock).hidden;
 }
+const lineOn = (script: string, clock: Clock) => {
+  const line = { hidden: true };
+  run(script, { getElementById: (id: string) => (id === LINE_ID ? line : null) }, clock);
+  return line;
+};
 
 describe('the advent calendar’s pages', () => {
   it('show the latest published calendar, every one of its 24 doors', () => {
@@ -264,6 +319,54 @@ describe('the advent calendar’s pages', () => {
     }
   });
 
+  it('follow the date while the page is open: the door of the day opens at midnight, and on 1 January every link goes', () => {
+    for (const lang of LEARN_LANGS) {
+      const { html } = PAGE[lang];
+      const c = ADVENT_PAGE[lang];
+      // open a moment before midnight on 9 December
+      const clock = clockFrom(`${year}-12-09T23:59:30`);
+      const page = runDoors(html, `${year}-12-09`, clock);
+      const door = (n: number) => page.doors.find((d) => Number(d.attrs['data-door']) === n)!;
+      expect(door(10).attrs.href, lang).toBeUndefined();
+      expect(door(9).className).toBe('door open today');
+      expect(page.status).toBe(fillAdvent(c.status.day, { door: 9 }));
+      // the timer a moment after midnight
+      clock.set(`${year}-12-10T00:00:01`);
+      clock.fire();
+      expect(door(10).attrs.href, lang).toBe(adventPath(lang, year, 10));
+      expect(door(10).className).toBe('door open today');
+      expect(door(10).state.textContent).toBe(c.state.today);
+      expect(door(9).className).toBe('door open');
+      expect(door(9).state.textContent).toBe(c.state.open);
+      expect(door(11).attrs.href).toBeUndefined();
+      expect(page.status).toBe(fillAdvent(c.status.day, { door: 10 }));
+      // armed again for the next midnight
+      expect(clock.waiting()).toBe(1);
+      // a phone woken on 1 January (its timer late or lost): shown again, every door is closed, none a link
+      clock.set(`${year + 1}-01-01T08:00:00`);
+      clock.emit('visibilitychange');
+      for (const d of page.doors) {
+        expect(d.attrs.href, `${lang} door ${d.attrs['data-door']}`).toBeUndefined();
+        expect(d.className).toBe('door closed');
+        expect(d.state.textContent).toBe(c.state.closed);
+      }
+      expect(page.status).toBe(fillAdvent(c.status.over, { year }));
+      // and a clock put back to December paints the doors again from as they were written
+      clock.set(`${year}-12-03T12:00:00`);
+      clock.emit('focus');
+      expect(page.doors.filter((d) => d.attrs.href).map((d) => Number(d.attrs['data-door']))).toEqual([1, 2, 3]);
+      expect(door(4).className).toBe('door');
+      expect(door(4).state.textContent).toBe(c.state.locked);
+    }
+  });
+
+  it('mark a closed door with its words at full strength: no door is dimmed', () => {
+    const css = PAGE.en.html;
+    expect(css).toMatch(/\.door\.closed\{[^}]*\}/);
+    expect(/\.door\.closed\{([^}]*)\}/.exec(css)![1]).not.toMatch(/opacity|filter/);
+    expect(css).not.toMatch(/\.door[^{]*\{[^}]*opacity/);
+  });
+
   it('say the same in Norwegian and Spanish as in English, with the same numbers, in the house style', () => {
     const texts = (c: typeof ADVENT_PAGE.en) =>
       Object.entries(c).flatMap(([field, v]) =>
@@ -314,5 +417,19 @@ describe('the quiet line to the calendar', () => {
     for (const date of [...days('2026-01-01', '2026-12-31'), '2027-01-01', '2027-11-01']) {
       expect(runLine(script, date), date).toBe(calendarOpen(date));
     }
+  });
+
+  it('follows the date while the page is open: it goes at the midnight of 1 January, and comes on 1 November', () => {
+    const script = LINE_SCRIPT.replace(/\n\s*/g, ' ');
+    const clock = clockFrom('2026-12-31T23:59:30');
+    const line = lineOn(script, clock);
+    expect(line.hidden).toBe(false);
+    clock.set('2027-01-01T00:00:01');
+    clock.fire();
+    expect(line.hidden).toBe(true);
+    // a page shown again on 1 November
+    clock.set('2027-11-01T09:00:00');
+    clock.emit('visibilitychange');
+    expect(line.hidden).toBe(false);
   });
 });

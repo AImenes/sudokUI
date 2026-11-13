@@ -42,8 +42,13 @@ export interface ShareParams {
   techs?: Tech[];
   /** a challenger's time, in whole seconds */
   vs?: number;
-  /** the daily this puzzle is (dailies.ts): the address is then /daily/<date>, and the page says so */
-  daily?: { no: number; date: string };
+  /**
+   * The daily this puzzle is (dailies.ts): the address is then
+   * /daily/<date>, and the page says so. A daily whose day has not come
+   * (`open` false) has no puzzle, band or score on its page: it says when
+   * it opens, as a door not yet open does
+   */
+  daily?: { no: number; date: string; open?: boolean };
   /**
    * The door of the advent calendar this is (advent.ts): the address is
    * then /advent/<year>/<door>. A door whose day has not come (`open`
@@ -169,6 +174,9 @@ export function shareParamsOf(
   const daily = findDaily(dailies, d.date);
   const no = dailyNumber(d.date);
   if (!daily || !no) return null;
+  // a daily whose day has not come by `latest` is locked, as a door is: its
+  // preview says when it opens, and shows nothing of the puzzle
+  if (dayToCome(d.date, latest)) return { lang: d.lang, puzzle: '', daily: { no, date: d.date, open: false } };
   // never the techniques: the daily's preview is the first thing a crowd
   // sees, and naming them tells everyone what to look for (spoiler-free
   // links, 14 October 2026). The published list keeps them for an archive
@@ -238,6 +246,10 @@ export interface ShareCopy {
   /** a daily's headline when a challenger's {time} is set: still the daily's number */
   ogTitleDailyVs: string;
   descriptionDaily: string;
+  /** a daily whose day has not come: its tab, headline and description, which say when it opens and show no puzzle */
+  titleDailyLocked: string;
+  ogTitleDailyLocked: string;
+  descriptionDailyLocked: string;
   /** a door of the advent calendar's tab, headline and description: {door} and {date} (5 December) as well; never a technique */
   titleAdvent: string;
   ogTitleAdvent: string;
@@ -275,7 +287,10 @@ export const SHARE: Record<Lang, ShareCopy> = {
     ogTitleDailyVs: 'Daily #{no}: solved in {time}. Can you beat it?',
     descriptionDaily:
       'The daily for {date}: {a} {level} sudoku with a HoDoKu rating of {score}. One board for everyone, the same day. Play it free on sudokUI.',
-    titleAdvent: 'Door {door} of the advent calendar: {level} sudoku, HoDoKu rating {score} | sudokUI',
+    titleDailyLocked: 'Daily #{no} opens on {date} | sudokUI',
+    ogTitleDailyLocked: 'sudokUI Daily #{no} opens on {date}',
+    descriptionDailyLocked: 'The sudokUI daily for {date} opens on its day, at midnight by your own clock. One board for everyone, the same day.',
+    titleAdvent: 'Door {door} · {level} {score} · sudokUI advent calendar',
     ogTitleAdvent: 'Door {door} · sudokUI advent calendar',
     ogTitleAdventVs: 'Door {door}: solved in {time}. Can you beat it?',
     descriptionAdvent:
@@ -306,7 +321,10 @@ export const SHARE: Record<Lang, ShareCopy> = {
     ogTitleDailyVs: 'Dagens sudoku #{no}: løst på {time}. Klarer du å slå det?',
     descriptionDaily:
       'Dagens sudoku for {date}: {a} sudoku på nivået {level} med HoDoKu-poengsum {score}. Det samme brettet for alle, samme dag. Spill den gratis i sudokUI.',
-    titleAdvent: 'Luke {door} i julekalenderen: sudoku på nivået {level}, HoDoKu-poengsum {score} | sudokUI',
+    titleDailyLocked: 'Dagens sudoku #{no} åpner {date} | sudokUI',
+    ogTitleDailyLocked: 'Dagens sudoku #{no} i sudokUI åpner {date}',
+    descriptionDailyLocked: 'Dagens sudoku i sudokUI for {date} åpner på dagen sin, ved midnatt etter din egen klokke. Det samme brettet for alle, samme dag.',
+    titleAdvent: 'Luke {door} · {level} {score} · julekalenderen i sudokUI',
     ogTitleAdvent: 'Luke {door} · julekalenderen i sudokUI',
     ogTitleAdventVs: 'Luke {door}: løst på {time}. Klarer du å slå det?',
     descriptionAdvent:
@@ -337,14 +355,17 @@ export const SHARE: Record<Lang, ShareCopy> = {
     ogTitleDailyVs: 'Sudoku del día n.º {no}: resuelto en {time}. ¿Puedes superarlo?',
     descriptionDaily:
       'El sudoku del día {date}: {a} sudoku de nivel {level} con puntuación HoDoKu {score}. El mismo tablero para todos, el mismo día. Juégalo gratis en sudokUI.',
-    titleAdvent: 'Casilla {door} del calendario de adviento: sudoku de nivel {level}, puntuación HoDoKu {score} | sudokUI',
+    titleDailyLocked: 'El sudoku del día n.º {no} se abre el {date} | sudokUI',
+    ogTitleDailyLocked: 'El sudoku del día n.º {no} de sudokUI se abre el {date}',
+    descriptionDailyLocked: 'El sudoku del día de sudokUI para el {date} se abre ese día, a medianoche según tu reloj. El mismo tablero para todos, el mismo día.',
+    titleAdvent: 'Casilla {door} · {level} {score} · calendario de adviento de sudokUI',
     ogTitleAdvent: 'Casilla {door} · calendario de adviento de sudokUI',
     ogTitleAdventVs: 'Casilla {door}: resuelta en {time}. ¿Puedes superarlo?',
     descriptionAdvent:
-      'Casilla {door} del calendario de adviento de sudokUI, {date}: {a} sudoku de nivel {level} con puntuación HoDoKu {score}. El mismo tablero para todos. Juégalo gratis.',
-    titleAdventLocked: 'La casilla {door} del calendario de adviento se abre el {date} | sudokUI',
+      'Casilla {door}, {date}: {a} sudoku de nivel {level} con puntuación HoDoKu {score}. El mismo tablero para todos. Juégalo gratis en sudokUI.',
+    titleAdventLocked: 'Calendario de adviento, casilla {door}: se abre el {date} | sudokUI',
     descriptionAdventLocked:
-      'La casilla {door} del calendario de adviento de sudokUI se abre el {date}. Un sudoku al día del 1 al 24 de diciembre, cada uno algo más difícil que el anterior.',
+      'La casilla {door} del calendario de adviento se abre el {date}. Un sudoku al día del 1 al 24 de diciembre, cada uno algo más difícil que el anterior.',
     needing: ' que requiere {list}',
     vs: 'Resuelto en {time} en sudokUI: ¿puedes superarlo?',
     and: 'y',
@@ -412,9 +433,27 @@ function adventCopy(p: ShareParams, advent: NonNullable<ShareParams['advent']>) 
   };
 }
 
+/** the words of the page for a daily whose day has not come: its number and the day it opens, the site's card; no puzzle, band or rating, and no challenge */
+function lockedDailyCopy(p: ShareParams, daily: NonNullable<ShareParams['daily']>) {
+  const c = SHARE[p.lang];
+  const vars = { no: daily.no, date: doorDay(daily.date, DATE_LOCALE[p.lang]) };
+  const headline = fill(c.ogTitleDailyLocked, vars);
+  return {
+    title: fill(c.titleDailyLocked, vars),
+    description: fill(c.descriptionDailyLocked, vars),
+    ogTitle: headline,
+    ogImage: ogCard(p.lang),
+    ogImageAlt: c.ogImageAltUnknown,
+    h1: headline,
+    loading: c.loading,
+    noscript: c.noscript
+  };
+}
+
 /** the words of the page for a share address */
 export function shareCopy(p: ShareParams) {
   if (p.advent) return adventCopy(p, p.advent);
+  if (p.daily?.open === false) return lockedDailyCopy(p, p.daily);
   const c = SHARE[p.lang];
   const level = p.level ? levelName(p.level, p.lang) : '';
   const daily = !!p.daily && !!p.level;
