@@ -39,7 +39,8 @@ door). [src/ui/links.ts](../src/ui/links.ts) asks it before anything else
 wherever a door is asked for: its address at start-up (`/advent/2026/5`,
 `/nb/advent/2026/5`, `/es/advent/2026/5`), the same address in the tab (a
 link put in, Back, Forward), Import of its address, and the calendar's own
-doors (a locked door's button is disabled). The toast is the daily's, in
+doors (a locked door's button is `aria-disabled`: Tab reaches it, and pressing it
+does nothing). The toast is the daily's, in
 one style (`lockedLine`): "Door 2 of the advent calendar opens at
 midnight" for tomorrow's door, as "Tomorrow's daily opens at midnight";
 "Door 5 of the advent calendar opens on 5 December" for a later one, as
@@ -378,3 +379,42 @@ needs off its rating. Every door has one solution, is solved by the
 catalogue without guessing, and from Medium up meets its hardest technique
 on a board with room in it (`fitForLevel`), as a puzzle served for its
 band must.
+
+## Edge cases left
+
+By the owner's rule of 12 November 2026, a finding that loses no game,
+moves or time does not hold back a merge; these are written down instead.
+Each was reproduced by an independent checker.
+
+- **A door's puzzle can be played early as a plain puzzle.** advent.json
+  is a file of the app, loaded on demand, so a door's puzzle can be read
+  before its day and pasted into Import (or put in a `/p/` link), where it
+  plays as an ordinary puzzle. Nothing of the door goes with it: no door
+  time can be sent and it is not the door in the calendar.
+- **A device clock set forward** opens the door (and the daily) for that
+  date on that device. The Worker still refuses a time for a day more than
+  a day ahead of UTC.
+- **The game clock follows the device clock forward.** A device clock put
+  forward while a game runs in view adds that time to the game. A clock put
+  back no longer takes time away: the timer stands still until the clock
+  passes it again, and never goes below zero (src/state/gameStore.ts,
+  elapsedMs; tests/clockBack.test.ts). A clock that cannot be moved by the
+  device (a monotonic one) is the fuller answer.
+- **A copy of a day still to come opened by an earlier build** stays where
+  it is, never lost; it no longer sends its time before its day (by the
+  button or the auto-send switch), and with the auto-send switch on it does
+  not send by itself once its day comes either: Send on its win screen
+  does.
+- **The Worker judges a day by whole UTC days**, with a day of grace each
+  side for time zones: a time can arrive up to eight days late, on
+  1 January, or before a door has opened somewhere, by a few hours. The app
+  itself offers Send only from the door's or the daily's own local day to
+  seven days after it, never after 31 December for a door.
+- **Share previews** (the Worker) show tomorrow's daily or a door as open
+  up to ten hours before a time zone reaches its day, for the same reason;
+  the app still opens it only on its day.
+- **The admin panel's calendar query** has never run against the real
+  Analytics Engine (only against the test double): if the API refuses it,
+  that section says so and the rest of the page is unaffected. Look at
+  /admin once in December.
+

@@ -2889,9 +2889,14 @@ export const useGame = create<GameStore>()(
         }
       },
 
+      // never below zero, and never running backwards: a device clock put
+      // back while a game runs in view leaves the timer where it was until
+      // the clock passes it again (a clock put forward is a documented limit,
+      // docs/advent-calendar.md, "Edge cases left")
       elapsedMs: () => {
         const s = get();
-        return s.paused || s.away ? s.elapsedBefore : s.elapsedBefore + (Date.now() - s.startedAt);
+        const before = Math.max(0, s.elapsedBefore);
+        return s.paused || s.away ? before : before + Math.max(0, Date.now() - s.startedAt);
       }
       };
     },

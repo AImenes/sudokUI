@@ -380,6 +380,10 @@ test.describe('a solved game', () => {
     const copied = () => page.evaluate(() => (window as unknown as { copied: string[] }).copied);
     await page.clock.install();
     await open(page, `/daily/${today}`);
+    // the daily is on the board before the first digit goes in (a new player's start board comes first)
+    await expect
+      .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state?.info?.dailyKey ?? null))
+      .toBe(today);
     await solveBoard(page, daily.puzzle);
     const first = winScreen(page);
     await expect(first.getByRole('button', { name: /Send my time and compare/ })).toBeVisible();
