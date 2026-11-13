@@ -570,12 +570,21 @@ export function matchesTarget(target: Step, before: Grid, move: Move): boolean {
 }
 
 /** Credit the player's own moves with the easiest technique that justifies
- *  each, worked out in the worker (docs/technique-stats.md). */
+ *  each, worked out in the worker (docs/technique-stats.md). A credit can
+ *  come back long after its move (the worker busy with a rating on a slow
+ *  device), after the win too: the tally counts each as one still to come
+ *  until it is in (stats.ts, pending), so the win screen says what the
+ *  player did once it is the solve's whole tally, and a credit whose game
+ *  has left the board meanwhile never lands in another game's */
 function credit(before: Grid, moves: Move[]) {
   // a player who does not use uniqueness is never credited with it
   const noUniqueness = !useSettings.getState().useUniqueness;
   for (const move of moves) {
-    justifyMove(before, move, undefined, noUniqueness).then((j) => j && useStats.getState().recordUnaided(j.tech));
+    const ticket = useStats.getState().creditAsked();
+    justifyMove(before, move, undefined, noUniqueness).then(
+      (j) => useStats.getState().creditCame(ticket, j ? j.tech : undefined),
+      () => useStats.getState().creditCame(ticket, undefined)
+    );
   }
 }
 
@@ -1314,7 +1323,7 @@ export const useGame = create<GameStore>()(
         // the game on the board goes aside in its place, and the note
         // offers it back: either game is one tap away
         const kept = underWay(s) ? asideOf(s) : null;
-        useStats.setState({ game: back.tally ?? emptyTally() });
+        useStats.getState().setGame(back.tally ?? emptyTally());
         set({ ...boardOf(back), setAside: kept });
       },
 
@@ -1345,7 +1354,7 @@ export const useGame = create<GameStore>()(
           const kept = underWay(s) ? asideOf(s) : null;
           const entry = back.cells.some((c) => c.value) ? { ...back, customBackup: null } : null;
           if (keep && kept && entry) return false;
-          useStats.setState({ game: back.tally ?? emptyTally() });
+          useStats.getState().setGame(back.tally ?? emptyTally());
           const { slot, dropped } = oneSlot(kept, entry);
           set({ ...boardOf(aside), setAside: slot });
           if (dropped) tellLetGo([dropped], slot!);

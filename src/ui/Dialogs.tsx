@@ -1438,6 +1438,8 @@ export function VictoryDialog({
   const solvedAuto = useGame((s) => s.solvedAuto);
   const practiceFound = useGame((s) => s.practiceFound);
   const game = useStats((s) => s.game);
+  // moves of the solve still being credited in the worker (stats.ts)
+  const creditsDue = useStats((s) => s.pending > 0);
   const bands = useStats((s) => s.bands);
   const dailyDays = useStats((s) => s.dailyDays);
   const [copied, setCopied] = useState(false);
@@ -1499,8 +1501,10 @@ export function VictoryDialog({
   // Beginner and Nightmare puzzles are timed against their own (solveTimes.ts)
   const timedAs = timeBand(info.level, info.score);
   const verdict = partWay ? null : timeVerdict(timedAs, secs, mode);
-  // what the player did, technique by technique (docs/technique-stats.md)
-  const summary = gameSummary(game);
+  // what the player did, technique by technique (docs/technique-stats.md),
+  // once every move of the solve is credited: the line is then the
+  // solve's whole tally, the same on every win screen of that solve
+  const summary = creditsDue ? '' : gameSummary(game);
   const band = info.practiceTech ? null : bands[info.level];
   const newBest = !!band && band.solves > 1 && band.bestMs === elapsedMs();
   const streak = info.dailyKey ? dailyStreak(dailyDays) : 0;

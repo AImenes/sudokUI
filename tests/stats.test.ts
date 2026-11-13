@@ -37,6 +37,36 @@ describe('stats', () => {
     expect(JSON.parse(store.get('sudokui-stats-v1')!).state.techs.X_WING.unaided).toBe(1);
   });
 
+  it('credits that come back late: counted as due until in, never in another game\'s tally, and kept in memory only', () => {
+    const s = useStats.getState();
+    const a = s.creditAsked();
+    const b = s.creditAsked();
+    const c = s.creditAsked();
+    expect(useStats.getState().pending).toBe(3);
+    s.creditCame(a, 'FULL_HOUSE');
+    s.creditCame(b, null);
+    // no worker to ask: nothing to credit, and nothing due
+    s.creditCame(c, undefined);
+    expect(useStats.getState().pending).toBe(0);
+    expect(useStats.getState().game).toMatchObject({ unaided: { FULL_HOUSE: 1 }, beyond: 1 });
+    // a move made, then a new game before its credit is in
+    const late = useStats.getState().creditAsked();
+    const fullHouses = useStats.getState().techs.FULL_HOUSE!.unaided;
+    useStats.getState().newGame();
+    expect(useStats.getState().pending).toBe(0);
+    useStats.getState().creditCame(late, 'FULL_HOUSE');
+    expect(useStats.getState().game).toEqual({ unaided: {}, hinted: {}, errors: 0, beyond: 0 });
+    expect(useStats.getState().pending).toBe(0);
+    // the move was the player's own all the same
+    expect(useStats.getState().techs.FULL_HOUSE!.unaided).toBe(fullHouses + 1);
+    // a kept game's tally back on the board: the one before it has no credit in it either
+    const other = useStats.getState().creditAsked();
+    useStats.getState().setGame({ unaided: { NAKED_SINGLE: 4 }, hinted: {}, errors: 0, beyond: 0 });
+    useStats.getState().creditCame(other, 'HIDDEN_SINGLE');
+    expect(useStats.getState().game.unaided).toEqual({ NAKED_SINGLE: 4 });
+    expect(JSON.parse(store.get('sudokui-stats-v1')!).state.pending).toBeUndefined();
+  });
+
   it('keeps band records and the daily days', () => {
     const s = useStats.getState();
     s.recordSolve('Hard', 600_000, false);

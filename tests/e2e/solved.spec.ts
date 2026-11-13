@@ -81,6 +81,54 @@ const settled = async (line: import('@playwright/test').Locator) => {
     .toBe(true);
   return last;
 };
+/**
+ * The worker's verdicts on the player's moves held back until the test lets
+ * them through, as a busy worker on a slow machine holds them (a rating of
+ * a hard puzzle in the background can take seconds): `release(n)` lets the
+ * first n through, `release()` all, and every later one comes at once.
+ */
+async function holdCredits(page: Page) {
+  await page.addInitScript(() => {
+    const held: (() => void)[] = [];
+    let open = false;
+    (window as unknown as { credits: unknown }).credits = {
+      held: () => held.length,
+      release: (n?: number) => {
+        if (n === undefined) open = true;
+        for (const go of held.splice(0, n ?? held.length)) go();
+      }
+    };
+    // every message listener of a worker behind one, which holds the verdicts
+    const hubs = new WeakMap<Worker, Set<EventListener>>();
+    const add = Worker.prototype.addEventListener;
+    const remove = Worker.prototype.removeEventListener;
+    Worker.prototype.addEventListener = function (this: Worker, type: string, fn: EventListenerOrEventListenerObject, opts?: boolean | AddEventListenerOptions) {
+      if (type !== 'message' || typeof fn !== 'function') return add.call(this, type, fn, opts);
+      let hub = hubs.get(this);
+      if (!hub) {
+        const listeners = new Set<EventListener>();
+        hub = listeners;
+        hubs.set(this, listeners);
+        add.call(this, 'message', (e) => {
+          const go = () => {
+            for (const f of [...listeners]) f(e);
+          };
+          if (!open && (e as MessageEvent).data?.type === 'justified') held.push(go);
+          else go();
+        });
+      }
+      hub.add(fn);
+    } as typeof Worker.prototype.addEventListener;
+    Worker.prototype.removeEventListener = function (this: Worker, type: string, fn: EventListenerOrEventListenerObject, opts?: boolean | EventListenerOptions) {
+      if (type === 'message' && typeof fn === 'function') hubs.get(this)?.delete(fn);
+      else remove.call(this, type, fn, opts);
+    } as typeof Worker.prototype.removeEventListener;
+  });
+}
+const credits = {
+  held: (page: Page) => page.evaluate(() => (window as unknown as { credits: { held: () => number } }).credits.held()),
+  release: (page: Page, n?: number) => page.evaluate((k) => (window as unknown as { credits: { release: (n?: number) => void } }).credits.release(k ?? undefined), n ?? null)
+};
 const secondsOn = async (page: Page) => {
   const [m, s] = (await page.locator('.timer').innerText()).split(':').map(Number);
   return m * 60 + s;
@@ -194,9 +242,10 @@ test.describe('a solved game', () => {
     await expect(dialog.getByRole('button', { name: /Send my time and compare/ })).toBeVisible();
     await expect(dialog).toContainText('with your own marks');
     const result = await dialog.locator('p').first().innerText();
-    // the moves of the player's own, once every one has been credited
+    // the moves of the player's own, once every one has been credited:
+    // each digit typed is one
     const moves = await settled(dialog.locator('.solve-summary'));
-    expect(moves).toMatch(/^\d+ moves of your own/);
+    expect(moves).toMatch(new RegExp(`^${empties(daily.puzzle).length} moves of your own`));
     await dialog.getByRole('button', { name: 'Admire the grid' }).click();
     await page.getByRole('button', { name: 'Steps', exact: true }).click();
     const path = page.getByRole('dialog', { name: 'Solution path' });
@@ -225,6 +274,45 @@ test.describe('a solved game', () => {
     await expect(again).toContainText('with your own marks');
     await expect(again).not.toContainText('with automatic candidates');
     await expect(again.locator('.solve-summary')).toHaveText(moves);
+  });
+
+  test('credits that come back late: the win screen says what the player did once every move is credited, and a Steps jump played on to the end says the same', async ({ page }) => {
+    test.setTimeout(90_000);
+    await holdCredits(page);
+    await open(page);
+    await solveBoard(page, EASY);
+    const dialog = winScreen(page);
+    await expect(dialog).toBeVisible();
+    const line = dialog.locator('.solve-summary');
+    const moves = empties(EASY).length;
+    await expect.poll(() => credits.held(page)).toBe(moves);
+    // the worker has not answered yet: no line, rather than part of one
+    await expect(line).toHaveCount(0);
+    await credits.release(page, moves - 2);
+    await expect.poll(() => credits.held(page)).toBe(2);
+    await expect(line).toHaveCount(0);
+    // the last two come in after the win: the line counts every move
+    await credits.release(page, 2);
+    await expect(line).toHaveText(new RegExp(`^${moves} moves of your own`));
+    const whole = await line.innerText();
+    // the board back in play by a Steps jump and solved again: its moves are no new work
+    await dialog.getByRole('button', { name: 'Admire the grid' }).click();
+    await page.getByRole('button', { name: 'Steps', exact: true }).click();
+    const path = page.getByRole('dialog', { name: 'Solution path' });
+    // (an easy puzzle's path is one group of singles: its jump goes to the start)
+    const row = path.locator('.path-list > .path-row').first();
+    if (await row.evaluate((el) => el.classList.contains('path-group'))) await row.locator('.path-jump').click();
+    else await row.click();
+    await expect(path).toHaveCount(0);
+    const solution = solutionOf(EASY);
+    const left1 = await page.evaluate(() =>
+      (JSON.parse(localStorage.getItem('sudokui-game-v1')!).state.cells as { value: number }[]).map((c, i) => (c.value ? -1 : i)).filter((i) => i >= 0)
+    );
+    for (const cell of left1) await enter(page, cell, solution[cell]);
+    await expect(page.getByRole('button', { name: 'Pause game' })).toBeDisabled();
+    expect(await credits.held(page)).toBe(0);
+    await page.reload();
+    await expect(winScreen(page).locator('.solve-summary')).toHaveText(whole);
   });
 
   test('a daily solved, undone and solved again with a hint is still its unassisted solve: Send sends it with no hint, and it is accepted', async ({ page }) => {

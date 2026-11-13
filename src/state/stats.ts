@@ -40,7 +40,19 @@ export interface Stats {
   bands: Partial<Record<Level, BandStat>>;
   /** days the daily puzzle was solved, as date keys, in order */
   dailyDays: string[];
+  /** the game's own moves still being credited in the worker (gameStore,
+   *  credit): its tally is whole once none is. Kept in memory only */
+  pending: number;
   newGame: () => void;
+  /** the tally of the game now on the board: a kept game's, come back */
+  setGame: (game: GameTally) => void;
+  /** a move of the player's own sent to the worker to be credited: the ticket its credit comes back with */
+  creditAsked: () => number;
+  /** a move's credit come back: its technique (null beyond the catalogue),
+   *  or undefined when there was no worker to ask. It counts in the
+   *  game's tally only while that is still the tally of the game it was
+   *  made in; the techniques' record takes it either way */
+  creditCame: (ticket: number, tech: Tech | null | undefined) => void;
   recordUnaided: (tech: Tech | null) => void;
   recordHinted: (tech: Tech) => void;
   recordError: () => void;
@@ -51,6 +63,21 @@ const emptyGame = (): GameTally => ({ unaided: {}, hinted: {}, errors: 0, beyond
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+/** an unaided move into the record and, if `game`, into the game's tally */
+function unaided(s: Stats, tech: Tech | null, game: boolean): Partial<Stats> {
+  if (!tech) return game ? { game: { ...s.game, beyond: s.game.beyond + 1 } } : {};
+  const t = s.techs[tech] ?? { unaided: 0, hinted: 0, lastUsed: '' };
+  return {
+    techs: { ...s.techs, [tech]: { ...t, unaided: t.unaided + 1, lastUsed: today() } },
+    ...(game ? { game: { ...s.game, unaided: { ...s.game.unaided, [tech]: (s.game.unaided[tech] ?? 0) + 1 } } } : {})
+  };
+}
+
+/** which game's tally is counting: a new one with every tally set, so a
+ *  credit that comes back after its game left the board (a new game, a
+ *  kept one back in its place) never lands in another game's tally */
+let tallyNo = 0;
+
 export const useStats = create<Stats>()(
   persist(
     (set) => ({
@@ -58,18 +85,31 @@ export const useStats = create<Stats>()(
       game: emptyGame(),
       bands: {},
       dailyDays: [],
+      pending: 0,
 
-      newGame: () => set({ game: emptyGame() }),
+      newGame: () => {
+        tallyNo++;
+        set({ game: emptyGame(), pending: 0 });
+      },
 
-      recordUnaided: (tech) =>
+      setGame: (game) => {
+        tallyNo++;
+        set({ game, pending: 0 });
+      },
+
+      creditAsked: () => {
+        set((s) => ({ pending: s.pending + 1 }));
+        return tallyNo;
+      },
+
+      creditCame: (ticket, tech) =>
         set((s) => {
-          if (!tech) return { game: { ...s.game, beyond: s.game.beyond + 1 } };
-          const t = s.techs[tech] ?? { unaided: 0, hinted: 0, lastUsed: '' };
-          return {
-            techs: { ...s.techs, [tech]: { ...t, unaided: t.unaided + 1, lastUsed: today() } },
-            game: { ...s.game, unaided: { ...s.game.unaided, [tech]: (s.game.unaided[tech] ?? 0) + 1 } }
-          };
+          const mine = ticket === tallyNo;
+          const counted = tech === undefined ? {} : unaided(s, tech, mine);
+          return mine ? { ...counted, pending: Math.max(0, s.pending - 1) } : counted;
         }),
+
+      recordUnaided: (tech) => set((s) => unaided(s, tech, true)),
 
       recordHinted: (tech) =>
         set((s) => {
@@ -102,12 +142,14 @@ export const useStats = create<Stats>()(
       name: 'sudokui-stats-v1',
       // written only by the page that holds the play (src/state/play.ts)
       storage: createJSONStorage(() => play.storage()),
+      // the credits on their way are this page's own, in its memory
+      partialize: (s) => ({ techs: s.techs, game: s.game, bands: s.bands, dailyDays: s.dailyDays }),
       // records kept under the band names from before HoDoKu's five levels
       // are read as their level's (foldBands); the five names are also old
       // bands', so a record written now still reads in an older build
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<Stats>;
-        return { ...current, ...p, bands: foldBands(p.bands ?? {}) };
+        return { ...current, ...p, bands: foldBands(p.bands ?? {}), pending: current.pending };
       }
     }
   )
