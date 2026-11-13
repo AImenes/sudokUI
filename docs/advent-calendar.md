@@ -92,7 +92,13 @@ Worker still refuses a time for a door whose day has not come anywhere
   opens, and "Send my time and compare" for an unassisted solve while the
   door's time can still count (`doorCounts`: its day and up to
   `LATE_DAYS`, 7, late, within its December), "This door is closed for new
-  times" after that. A door solved before keeps its first solve as its
+  times" after that. A copy of a door whose day has not come (a clock
+  that went back after it opened) offers no Send and says when it can go
+  ("Door 5 of the advent calendar opens at midnight. Its time can be sent
+  then."), and so does a copy of a daily still to come (`countedWhen`,
+  `soon`): the switch sends nothing for it, and a time of such a day
+  waiting in the queue stays there until its day (`flushPending`). The
+  screen follows the date while open (`useToday`). A door solved before keeps its first solve as its
   result, with the daily's rule (`dailyKept`, `keptResultOf`). The switch
   "Send my daily times automatically" is the player's word for daily times
   and is neither offered nor used for a door: a door's time goes only when

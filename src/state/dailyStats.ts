@@ -22,8 +22,8 @@ import type { DailyStats } from '../content/dailies';
 import type { Level } from '../engine/ratings';
 import { useSettings } from './settings';
 import { ADVENT_BASE, adventOfNo } from '../content/advent';
-import { doorCounts } from '../content/season';
-import { localDateKey } from '../content/dailies';
+import { doorCounts, doorDate } from '../content/season';
+import { localDateKey, dailyDate, dayToCome } from '../content/dailies';
 
 /** one player's result for a daily, as the server takes it */
 export interface DailyResult {
@@ -218,14 +218,18 @@ export const useDailyStats = create<DailyStatsState>()(
       // still on; turned off, it is dropped (the privacy page: off again, a
       // time goes only when you tap the button)
       // A door's time that waited past the days its time counts (from 1
-      // January, nothing of the calendar is sent) is dropped unsent
+      // January, nothing of the calendar is sent) is dropped unsent. One
+      // whose day is still to come (a copy of tomorrow's daily the page
+      // held, a clock gone back) waits for its day, kept
       flushPending: async () => {
         const auto = useSettings.getState().autoSendDaily;
+        const today = localDateKey();
         for (const result of Object.values(get().pending)) {
           // (one on its way from this page already is not sent twice)
           if (get().inFlight[String(result.no)]) continue;
           const door = adventOfNo(result.no);
-          const late = !!door && !doorCounts(door.year, door.door, localDateKey());
+          if (dayToCome(door ? doorDate(door.year, door.door) : dailyDate(result.no), today)) continue;
+          const late = !!door && !doorCounts(door.year, door.door, today);
           if ((result.auto && !auto) || late) set((s) => ({ pending: without(s.pending, String(result.no)) }));
           else await get().submit(result);
         }

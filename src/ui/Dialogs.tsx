@@ -9,7 +9,7 @@ import {
   dailyResultOf,
   keptResultOf,
   countedOf,
-  countedClosed,
+  countedWhen,
   contractGrid,
   hasManualMarks,
   markSlip,
@@ -30,7 +30,8 @@ import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
 import { parsePencilGrid, looksLikeGrid } from '../content/textGrid';
 import { puzzleFromLink, findUrl } from '../content/importLinks';
 import { readAppLink, isAppAddress } from '../content/share';
-import { openAppLink } from './links';
+import { openAppLink, lockedLine } from './links';
+import { useToday } from './useToday';
 import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
 import { dailyNumber, localDateKey, dailyClosed, standingOf } from '../content/dailies';
 import { dailyLine, doorLine, standingPhrase, asLine } from '../content/dailyLine';
@@ -1444,6 +1445,8 @@ export function VictoryDialog({
   const dailyDays = useStats((s) => s.dailyDays);
   const [copied, setCopied] = useState(false);
   const t = useT();
+  // the player's local date, kept current: a day still to come opens Send at its midnight
+  const today = useToday();
   // a published daily's global statistics (src/state/dailyStats.ts):
   // fetched when the screen opens; the player's own time goes in only
   // when the player asks, and only from an unassisted solve. A door of the
@@ -1539,8 +1542,12 @@ export function VictoryDialog({
       : asLine(standingPhrase(t, standing, counted?.date === localDateKey()));
   // the server takes a time for a day up to a week on; after that the day
   // is closed and the win screen does not offer what would be refused (a
-  // door: on its day and up to a week late, until 31 December)
-  const closed = !!counted && countedClosed(counted);
+  // door: on its day and up to a week late, until 31 December). A copy of
+  // a day still to come (tomorrow's daily kept from before the lock, a
+  // clock gone back) offers nothing either, and says when it can go; the
+  // screen follows the date while open (useToday)
+  const when = counted ? countedWhen(counted, today) : 'open';
+  const closed = when !== 'open';
   // a daily solved before on this device: that solve stays the day's
   // result, so this one is not offered for everyone's times; the first
   // one's is, if it was unassisted and never went in (keptResultOf). This
@@ -1744,10 +1751,12 @@ export function VictoryDialog({
                   ? t('You solved this door before, in {time}. That solve stays your result.', { time: clockOf(before.seconds) })
                   : t('You solved this daily before, in {time}. That solve stays your result.', { time: clockOf(before.seconds) })}
               </p>
-            ) : closed ? (
+            ) : when === 'closed' ? (
               <p className="solve-assisted">{door ? t('This door is closed for new times') : t('This daily is closed for new times')}</p>
             ) : assisted ? (
               <p className="solve-assisted">{t('Only unassisted solves are counted in everyone’s times')}</p>
+            ) : when === 'soon' && counted ? (
+              <p className="solve-assisted">{t('{opens}. Its time can be sent then.', { opens: lockedLine(counted.date, today, door?.door) })}</p>
             ) : (
               <button className="daily-send" onClick={sendDaily}>
                 🌍 {t('Send my time and compare')}

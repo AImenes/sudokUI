@@ -33,9 +33,9 @@ import type { GameTally } from './stats';
 import { useTelemetry, type PlayKind } from './telemetry';
 import { useDailyStats } from './dailyStats';
 import type { DailyResult, PlayedDaily } from './dailyStats';
-import { dailyClosed, localDateKey } from '../content/dailies';
+import { dailyClosed, dailyLocked, localDateKey } from '../content/dailies';
 import { adventNo } from '../content/advent';
-import { doorDate, doorCounts } from '../content/season';
+import { doorDate, doorCounts, doorState } from '../content/season';
 import { justifyMove } from './pools';
 import { play } from './play';
 import { translator, msg } from '../content/i18n';
@@ -953,9 +953,27 @@ export function countedOf(info: GameInfo | null | undefined): Counted | null {
   return null;
 }
 
-/** a counted game's time can still go in on the player's today: a daily up to a week on, a door on its day and up to a week late in its December */
+/**
+ * Where a counted game's time stands on the player's today: `open`, it
+ * can go in (a daily on its day and up to a week on, a door on its day and
+ * up to a week late in its December); `soon`, its day is still to come
+ * (a copy of tomorrow's daily, or of a door not yet open, the page already
+ * held: from a build before the lock, or a clock that went back), so
+ * nothing is sent until its day, by the button or the switch; `closed`,
+ * too late for good.
+ */
+export function countedWhen(c: Counted, today = localDateKey()): 'open' | 'soon' | 'closed' {
+  if (c.door) {
+    if (doorState(c.door.year, c.door.door, today) === 'locked') return 'soon';
+    return doorCounts(c.door.year, c.door.door, today) ? 'open' : 'closed';
+  }
+  if (dailyLocked(c.date, today)) return 'soon';
+  return dailyClosed(c.no, today) ? 'closed' : 'open';
+}
+
+/** a counted game's time cannot go in on the player's today: too late, or its day still to come (countedWhen) */
 export function countedClosed(c: Counted, today = localDateKey()): boolean {
-  return c.door ? !doorCounts(c.door.year, c.door.door, today) : dailyClosed(c.no, today);
+  return countedWhen(c, today) !== 'open';
 }
 
 /**
@@ -997,6 +1015,7 @@ export function keptResultOf(no: number, kept: PlayedDaily, solution: string): D
  * (Settings, offered on the win screen after a first send), its time goes
  * in by itself: the same request the button makes, once per solve, and
  * only for an unassisted solve of a day the server still takes times for,
+ * whose day has come (a copy of a day still to come waits: countedWhen),
  * whose time has not gone in before. With the switch off, nothing is sent
  * until the player taps the button.
  *
@@ -1023,7 +1042,8 @@ function recordDaily(s: GameStore) {
   // the switch is the player's word for daily times: a door's goes only
   // when the player taps Send on its win screen
   if (counted.door) return;
-  if (!useSettings.getState().autoSendDaily || !result.unassisted || dailyClosed(result.no)) return;
+  // (nor a day still to come: its time waits for its day, countedWhen)
+  if (!useSettings.getState().autoSendDaily || !result.unassisted || countedClosed(counted)) return;
   if (daily.submitted[result.no] !== undefined || daily.pending[result.no] || daily.inFlight[result.no]) return;
   const send = stands ? result : keptResultOf(result.no, kept, s.info.solution);
   if (send) void daily.submit({ ...send, auto: true });

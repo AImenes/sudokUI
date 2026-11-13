@@ -208,6 +208,48 @@ describe('a daily after today', () => {
     expect(g().info).toBe(before);
   });
 
+  it('a copy of it the page holds, solved before its day: nothing is sent, by the switch or from the queue, until its day', async () => {
+    // as an earlier build left it (it opened /daily/<tomorrow>), or a clock that went back: the published daily, with its number
+    const { useDailyStats } = await import('../src/state/dailyStats');
+    const { countedOf, countedWhen, countedClosed } = await import('../src/state/gameStore');
+    const { dailyNumber } = await import('../src/content/dailies');
+    const list = (await loadDailies())!;
+    const tomorrow = findDaily(list, '2026-11-13')!;
+    const no = dailyNumber('2026-11-13')!;
+    g().startGame(tomorrow.puzzle, tomorrow.score, tomorrow.level, null, '2026-11-13');
+    useGame.setState((s) => ({ info: s.info && { ...s.info, dailyNo: no } }));
+    useSettings.setState({ autoSendDaily: true });
+    const submit = vi.fn(async () => 'accepted' as const);
+    useDailyStats.setState({ played: {}, pending: {}, submitted: {}, tokens: {}, inFlight: {}, stats: {}, submit } as never);
+    const { puzzle, solution } = g().info!;
+    for (const [i, ch] of [...puzzle].entries()) {
+      if (ch !== '.') continue;
+      g().select([i], false);
+      g().input(Number(solution[i]));
+    }
+    expect(g().won).toBe(true);
+    const counted = countedOf(g().info)!;
+    // the win screen offers no Send and says when it can go (VictoryDialog), and the switch sent nothing
+    expect(countedWhen(counted, '2026-11-12')).toBe('soon');
+    expect(countedClosed(counted, '2026-11-12')).toBe(true);
+    expect(submit).not.toHaveBeenCalled();
+    // its solve is still the day's result on this device
+    expect(useDailyStats.getState().played[no]).toMatchObject({ date: '2026-11-13', assisted: false });
+    // on its day it can go, and a week later no more
+    expect(countedWhen(counted, '2026-11-13')).toBe('open');
+    expect(countedWhen(counted, '2026-11-20')).toBe('open');
+    expect(countedWhen(counted, '2026-11-21')).toBe('closed');
+    // a time of that day already waiting in the queue (an older build's Send) waits for its day, kept
+    const result = { no, grid: solution, seconds: 300, hints: 0, unassisted: true };
+    useDailyStats.setState({ pending: { [no]: result } } as never);
+    await useDailyStats.getState().flushPending();
+    expect(submit).not.toHaveBeenCalled();
+    expect(useDailyStats.getState().pending[no]).toEqual(result);
+    at('2026-11-13');
+    await useDailyStats.getState().flushPending();
+    expect(submit).toHaveBeenCalledWith(result);
+  });
+
   it('opens once its day comes', async () => {
     underWay();
     expect(await startDaily('2026-11-13')).toBe('locked');

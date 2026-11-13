@@ -906,6 +906,7 @@ const ui: Dictionary = {
   "You solved this door before, in {time}. That time is the one that goes in.": "Du har løst denne luken før, på {time}. Det er den tiden som sendes inn.",
   "You solved this door before, in {time}. That solve stays your result.": "Du har løst denne luken før, på {time}. Den løsningen blir stående som resultatet ditt.",
   "This door is closed for new times": "Denne luken tar ikke imot flere tider",
+  "{opens}. Its time can be sent then.": "{opens}. Tiden kan sendes inn da.",
   "sudokui.app · Advent door {door} · {level} {score}": "sudokui.app · Julekalenderen, luke {door} · {level} {score}",
   "Your result in door {door}": "Resultatet ditt: luke {door}",
   "I opened door {door} of the sudokUI advent calendar in {time} · {level} ({score}) · {link}": "Jeg åpnet luke {door} i julekalenderen i sudokUI på {time} · {level} ({score}) · {link}",

@@ -574,11 +574,15 @@ none of the player's work.
   as always. A new player's first game, which starts in the place of a
   refused link, keeps the line that says why. `#daily` is always the
   player's today, and today's and earlier dailies open as before. The
-  server is left as it was: it takes a result for a day up to
+  server keeps its day of grace: it takes a result for a day up to
   `EARLY_DAYS` (one) ahead of UTC, a door's as a daily's, since it knows
   only UTC, and a player in UTC+14 reaches their own today a day before
   UTC does; the lock is the player's local date, which the app knows and
-  the server does not.
+  the server does not. So the app itself never sends the time of a day
+  still to come (`countedWhen` holds it as `soon`, src/state/gameStore.ts),
+  nor a time the server would refuse as too late: the server keeps a day
+  of grace behind as well (`BEHIND_DAYS`), and the app stops offering
+  Send by the player's own date.
 - **A door of the advent calendar** ([advent-calendar.md](advent-calendar.md))
   goes the daily's way, through `startDoor` (src/ui/links.ts): a door
   whose day has come opens over a game under way set aside (`openOver`),

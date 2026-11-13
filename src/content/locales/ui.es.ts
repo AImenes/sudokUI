@@ -906,6 +906,7 @@ const ui: Dictionary = {
   "You solved this door before, in {time}. That time is the one that goes in.": "Ya habías resuelto esta casilla, en {time}. Ese es el tiempo que se envía.",
   "You solved this door before, in {time}. That solve stays your result.": "Ya habías resuelto esta casilla, en {time}. Esa partida sigue siendo tu resultado.",
   "This door is closed for new times": "Esta casilla ya no admite más tiempos",
+  "{opens}. Its time can be sent then.": "{opens}. Su tiempo podrá enviarse entonces.",
   "sudokui.app · Advent door {door} · {level} {score}": "sudokui.app · Calendario de adviento, casilla {door} · {level} {score}",
   "Your result in door {door}": "Tu resultado en la casilla {door}",
   "I opened door {door} of the sudokUI advent calendar in {time} · {level} ({score}) · {link}": "Abrí la casilla {door} del calendario de adviento de sudokUI en {time} · {level} ({score}) · {link}",

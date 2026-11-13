@@ -223,6 +223,36 @@ test.describe('the advent calendar', () => {
     });
   }
 
+  test('a door solved on a clock gone back before its day offers no Send and says when its time can go, and offers it on its day', async ({ page }) => {
+    const posted: unknown[] = [];
+    await page.route('**/api/daily/302605/result', async (route) => {
+      posted.push(route.request().postDataJSON());
+      await route.fulfill({ json: { ok: true, accepted: true, stats: { no: 302605, count: 1, median: 7, histogram: [[0, 1]] } } });
+    });
+    await open(page, '2026-12-05', '/advent/2026/5');
+    await opened(page, door(5).puzzle);
+    await fill(page, door(5).puzzle, 3);
+    await expect.poll(() => saved(page)).toMatchObject({ door: 5, entries: 3 });
+    // the device's clock put back a day: the game stays where it was, never lost
+    await on(page, '2026-12-04');
+    await page.reload();
+    await expect.poll(() => saved(page)).toMatchObject({ door: 5, entries: 3 });
+    await page.getByRole('button', { name: 'Resume game' }).click();
+    await fill(page, door(5).puzzle, Infinity, 3);
+    const win = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(win).toBeVisible();
+    await expect(win.getByText('Door 5 of the advent calendar opens at midnight. Its time can be sent then.')).toBeVisible();
+    const send = win.getByRole('button', { name: /Send my time and compare/ });
+    await expect(send).toHaveCount(0);
+    // its day comes with the screen open: Send is offered, and sends
+    await on(page, '2026-12-05');
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(send).toBeVisible();
+    await send.click();
+    await expect.poll(() => posted.length).toBe(1);
+    expect(posted[0]).toMatchObject({ no: 302605, unassisted: true, hints: 0 });
+  });
+
   test('from 1 January nothing of the calendar shows, and a door game in progress stays and can be finished', async ({ page }) => {
     await open(page, '2026-12-31', '/advent/2026/1');
     await opened(page, door(1).puzzle);
