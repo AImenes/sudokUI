@@ -23,7 +23,8 @@
  * number no daily reaches (adventNo, 100000 + year x 100 + door): a door's
  * time is checked as a daily's is, against its own published solution,
  * and taken on the door's day (with the same day of grace ahead) and up
- * to LATE_DAYS behind, never after 31 December of its year.
+ * to LATE_DAYS behind, never after 31 December of its year (each with the
+ * day of grace behind, BEHIND_DAYS, for a player west of UTC).
  *
  * The store is an interface: D1 in production (d1Store), memory for the
  * tests and for the dev and preview servers (memoryStore), so the whole
@@ -40,6 +41,7 @@ import {
   HistogramRow,
   EARLY_DAYS,
   LATE_DAYS,
+  BEHIND_DAYS,
   BUCKET_SECONDS,
   bucketOf,
   dailyDate,
@@ -49,7 +51,7 @@ import {
   statsFromHistogram
 } from '../src/content/dailies';
 
-export { EARLY_DAYS, LATE_DAYS };
+export { EARLY_DAYS, LATE_DAYS, BEHIND_DAYS };
 
 // ---- the store ----------------------------------------------------------------
 
@@ -178,7 +180,12 @@ export type Published = Pick<Daily, 'date' | 'puzzle' | 'solutionHash'>;
  * Why a result is refused, or the result as it will be stored. `now` is
  * the server's clock; the day (the daily's, the door's) is judged against
  * the UTC date, with a day of grace ahead and a week behind, and a door's
- * never after the 31 December of its calendar.
+ * never after the 31 December of its calendar. The player's own date is
+ * at most a day off UTC's either way (UTC+14 to UTC-12), so each limit has
+ * its day of grace: EARLY_DAYS ahead, BEHIND_DAYS behind, which the client
+ * leaves unused by stopping Send on its own date (dailies.ts dailyClosed,
+ * season.ts doorCounts). A time the client still offers on the evening of
+ * its last day, west of UTC, is taken.
  */
 export async function checkResult(body: unknown, no: number, daily: Published, now: Date): Promise<Check> {
   const refuse = (reason: string): Check => ({ ok: false, reason });
@@ -200,9 +207,10 @@ export async function checkResult(body: unknown, no: number, daily: Published, n
   // the day's own number: the daily's is its number, a door's the day it opens
   const dayNo = dailyNumber(daily.date) ?? no;
   if (dayNo > todayNo + EARLY_DAYS) return refuse('that day has not come');
-  if (dayNo < todayNo - LATE_DAYS) return refuse('that day is too long ago');
+  if (dayNo < todayNo - LATE_DAYS - BEHIND_DAYS) return refuse('that day is too long ago');
   const door = adventOfNo(no);
-  if (door && utcToday > calendarEnd(door.year)) return refuse('the advent calendar is closed');
+  // (1 January in UTC is still 31 December west of it)
+  if (door && todayNo - (dailyNumber(calendarEnd(door.year)) ?? 0) > BEHIND_DAYS) return refuse('the advent calendar is closed');
 
   // the grid must be this puzzle's: its givens in place, and the whole
   // thing the published solution

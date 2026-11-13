@@ -43,7 +43,7 @@ import { accessKeys, cameThroughAccess, type AccessEnv, type AccessKeys } from '
 import type { D1Like } from './daily';
 import { PLAY_KINDS, PLAY_LANGS, SHARE_KINDS, type LandingFrom, type PlayKind, type PlayLang, type ShareKind } from './telemetry';
 import advent from '../src/content/advent.json';
-import { ADVENT_DOORS, adventNo, calendarYears, daysBetween, findDoor, type AdventDoor } from '../src/content/advent';
+import { ADVENT_BASE, ADVENT_DOORS, adventNo, calendarYears, daysBetween, findDoor, type AdventDoor } from '../src/content/advent';
 import { doorDate, calendarEnd, seasonYear } from '../src/content/season';
 import { statsFromHistogram, type HistogramRow } from '../src/content/dailies';
 
@@ -544,14 +544,22 @@ export interface SentDay {
   unassisted: number;
 }
 
-/** the daily times sent per UTC day, the last DAYS_SHOWN days; undefined with no database, null when it fails */
+/**
+ * The daily times sent per UTC day, the last DAYS_SHOWN days; undefined
+ * with no database, null when it fails. The dailies' only: the doors of the
+ * advent calendar keep their times on the same table under numbers from
+ * ADVENT_BASE up (worker/daily.ts), and the Christmas section counts those
+ * (adventTimes), so a door's time never reads as a daily's here
+ */
 export async function dailySent(db: D1Like | undefined, now: Date): Promise<SentDay[] | null | undefined> {
   if (!db) return undefined;
   const since = Math.floor(now.getTime() / 86400000) * 86400 - (DAYS_SHOWN - 1) * 86400;
   try {
     const out = await db
-      .prepare('SELECT created_at AS day, COUNT(*) AS n, SUM(unassisted) AS unassisted FROM daily_result WHERE created_at >= ?1 GROUP BY created_at ORDER BY created_at')
-      .bind(since)
+      .prepare(
+        'SELECT created_at AS day, COUNT(*) AS n, SUM(unassisted) AS unassisted FROM daily_result WHERE created_at >= ?1 AND puzzle_no < ?2 GROUP BY created_at ORDER BY created_at'
+      )
+      .bind(since, ADVENT_BASE)
       .all<SentDay>();
     return out.results ?? [];
   } catch {

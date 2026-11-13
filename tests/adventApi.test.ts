@@ -2,7 +2,8 @@
  * The advent calendar in the Worker (worker/daily.ts, worker/index.ts,
  * worker/telemetry.ts): a door's time on the daily's own tables, under the
  * door's number, taken on its day (with the daily's day of grace ahead)
- * and up to LATE_DAYS behind, never after 31 December, and refused when
+ * and up to LATE_DAYS behind, never after 31 December (each with the day
+ * of grace behind for a player west of UTC), and refused when
  * the door's day has not come, when it is too late, when the grid is not
  * its solution or when the solve had help; a door's address answered with
  * the app and a preview that names the door and its rating, or, for a
@@ -15,7 +16,8 @@ import advent from '../src/content/advent.json';
 import dailies from '../src/content/dailies.json';
 import { AdventDoor, adventNo, doorDate } from '../src/content/advent';
 import { Daily, dailyNumber } from '../src/content/dailies';
-import { handleDailyApi, memoryStore, checkResult, EARLY_DAYS, LATE_DAYS } from '../worker/daily';
+import { handleDailyApi, memoryStore, checkResult, EARLY_DAYS, LATE_DAYS, BEHIND_DAYS } from '../worker/daily';
+import { doorCounts } from '../src/content/season';
 import { handleRequest, Env } from '../worker/index';
 import { checkEvent, checkBatch, pointOf, fold, memoryEvents, PLAY_KINDS, LANDING_SLOTS } from '../worker/telemetry';
 import template from '../index.html?raw';
@@ -59,14 +61,15 @@ describe('a door’s time', () => {
     if ((dailies as Daily[]).some((d) => d.date === DOOR.date)) expect((await (await handleDailyApi(get(day), store, { now: at(DOOR.date) }))!.json()).count).toBe(0);
   });
 
-  it('is taken a day early (a clock ahead of UTC) and up to LATE_DAYS late, and refused outside that', async () => {
-    expect([EARLY_DAYS, LATE_DAYS]).toEqual([1, 7]);
+  it('is taken a day early (a clock ahead of UTC) and up to LATE_DAYS late, with a day of grace behind (a clock behind UTC), and refused outside that', async () => {
+    expect([EARLY_DAYS, LATE_DAYS, BEHIND_DAYS]).toEqual([1, 7, 1]);
     for (const [days, status, error] of [
       [-2, 400, 'that day has not come'],
       [-1, 200, null],
       [0, 200, null],
       [LATE_DAYS, 200, null],
-      [LATE_DAYS + 1, 400, 'that day is too long ago']
+      [LATE_DAYS + BEHIND_DAYS, 200, null],
+      [LATE_DAYS + BEHIND_DAYS + 1, 400, 'that day is too long ago']
     ] as const) {
       const store = memoryStore();
       const res = (await handleDailyApi(post(NO, good({ token: `token-for-day-${days}-xxxxxxxx` })), store, { now: at(from(days)) }))!;
@@ -81,15 +84,38 @@ describe('a door’s time', () => {
     expect((await res.json()).error).toBe('that day has not come');
   });
 
-  it('is never taken after 31 December of its calendar', async () => {
-    // door 24 a week late is 31 December, the last day; on 1 January it is closed both ways
+  it('is never taken after 31 December of its calendar where the player is: by UTC, never after 1 January', async () => {
+    // door 24 a week late is 31 December, the last day; 1 January in UTC
+    // is still 31 December west of it; on 2 January it is closed both ways
     const last = DOORS[23];
     const grid = gridToString(solve(parseGrid(last.puzzle)!)!);
     expect((await checkResult(good({ grid }), adventNo(2026, 24), last, at('2026-12-31')())).ok).toBe(true);
-    expect(await checkResult(good({ grid }), adventNo(2026, 24), last, at('2027-01-01')())).toEqual({ ok: false, reason: 'that day is too long ago' });
+    expect((await checkResult(good({ grid }), adventNo(2026, 24), last, at('2027-01-01')())).ok).toBe(true);
+    expect(await checkResult(good({ grid }), adventNo(2026, 24), last, at('2027-01-02')())).toEqual({ ok: false, reason: 'that day is too long ago' });
     // and by the calendar's own end, whatever the day of the door
     const late = { ...last, date: '2026-12-30' };
-    expect(await checkResult(good({ grid }), adventNo(2026, 24), late, at('2027-01-01')())).toEqual({ ok: false, reason: 'the advent calendar is closed' });
+    expect((await checkResult(good({ grid }), adventNo(2026, 24), late, at('2027-01-01')())).ok).toBe(true);
+    expect(await checkResult(good({ grid }), adventNo(2026, 24), late, at('2027-01-02')())).toEqual({ ok: false, reason: 'the advent calendar is closed' });
+  });
+
+  it('is taken whenever the app offers to send it: in the evening of its last day, west of UTC', async () => {
+    // 18:00 in UTC-8 is already the next day in UTC
+    for (const [door, local] of [
+      [5, '2026-12-12'],
+      [17, '2026-12-24'],
+      [24, '2026-12-31']
+    ] as const) {
+      const d = DOORS[door - 1];
+      expect(doorCounts(2026, door, local), `door ${door} on ${local}`).toBe(true);
+      const grid = gridToString(solve(parseGrid(d.puzzle)!)!);
+      const res = (await handleDailyApi(post(adventNo(2026, door), good({ grid, token: `token-for-door-${door}-xxxxxxxx` })), memoryStore(), {
+        now: () => new Date(`${local}T18:00:00-08:00`)
+      }))!;
+      expect(res.status, `door ${door} on ${local} at 18:00 in UTC-8`).toBe(200);
+      // the next day there, the app offers it no more
+      const next = new Date(Date.parse(`${local}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+      expect(doorCounts(2026, door, next), `door ${door} on ${next}`).toBe(false);
+    }
   });
 
   it('refuses a grid that is not the door’s solution, and a solve with help', async () => {

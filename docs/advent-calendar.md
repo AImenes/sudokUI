@@ -125,9 +125,16 @@ Worker still refuses a time for a door whose day has not come anywhere
 - **The Worker's window** (worker/daily.ts, `checkResult`): the door's day
   by the UTC date, with the daily's `EARLY_DAYS` (1) of grace ahead for a
   player a day ahead of UTC, and up to `LATE_DAYS` (7) behind; never after
-  31 December of its calendar. A future door, one more than a week behind,
-  a grid that is not the door's solution, and an assisted solve are all
-  refused (tests/adventApi.test.ts).
+  31 December of its calendar. Behind, it keeps one day of grace too
+  (`BEHIND_DAYS`, src/content/dailies.ts): a player west of UTC is still
+  on the day UTC has left, so the evening of a door's seventh late day,
+  and the evening of 31 December, are already the next day in UTC there;
+  the server takes a time up to `LATE_DAYS` + 1 behind by its date, and
+  through 1 January UTC, while the app stops offering Send by the
+  player's own date (`doorCounts`), so a time it offers is never refused
+  for the hour. A future door, one more than that behind, one from
+  2 January UTC, a grid that is not the door's solution, and an assisted
+  solve are all refused (tests/adventApi.test.ts).
 - **The counts.** `PLAY_KINDS` has `advent`; a door's started and
   completed lines carry its door, 1 to 24, as a seventh blob after the six
   an older line has, so no older line moves (worker/telemetry.ts checks
@@ -272,7 +279,9 @@ Where the numbers come from, each read kept bounded:
   the year's 24 door numbers (`adventNo(year, 1)` to `adventNo(year, 24)`),
   at most 481 rows a door, and the median as the win screen reads it
   (`statsFromHistogram`). Without a database bound, no times; one that
-  fails says so.
+  fails says so. The daily's own table of times sent (`dailySent`) leaves
+  the doors' numbers out (`puzzle_no < ADVENT_BASE`): a door's time is
+  counted here only, so the daily's Sent share never counts a door's.
 - **Landings** are the `landing` points with `advent` in the source slot,
   by the word in the fifth blob.
 - Nothing counts the Christmas look: no line says which theme a player

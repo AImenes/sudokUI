@@ -103,6 +103,15 @@ export function dailyDate(no: number): string {
 export const LATE_DAYS = 7;
 /** how early, in days: a day the player's clock has reached before UTC has */
 export const EARLY_DAYS = 1;
+/**
+ * The same day of grace behind (worker/daily.ts): a player west of UTC is
+ * still on the day UTC has left (UTC-12 at the most), so the server takes
+ * a time one day past LATE_DAYS by its own date, and a door's one day past
+ * 31 December, while the player's own date says it is still in time. The
+ * client stops offering Send by that own date (dailyClosed, season.ts
+ * doorCounts), so nothing it offers is refused for the hour of the day.
+ */
+export const BEHIND_DAYS = 1;
 
 /** the day after a key: 2026-11-13 for 2026-11-12 (the key itself when it is no date) */
 export function dayAfter(date: string): string {

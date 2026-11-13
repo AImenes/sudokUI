@@ -304,7 +304,10 @@ Built, October 2026, with these decisions:
   line who both see "2026-10-08" share one puzzle and one set of
   statistics. The server accepts a result for a day from a week back to a
   day ahead of the UTC date, so an offline retry and a clock ahead of UTC
-  both get through. The streak counts local days too; the keys recorded
+  both get through, with one more day behind (`BEHIND_DAYS`, November
+  2026) for a clock behind UTC: the evening of the seventh late day west
+  of UTC is the next day in UTC, and the app, which stops offering Send
+  by the player's own date (`dailyClosed`), still offers it then. The streak counts local days too; the keys recorded
   before this were UTC dates, so one seam of a day is possible.
 - **A long list, committed.** 451 days are published in
   `src/content/dailies.json` (125 KB), a lazy chunk in the app that the

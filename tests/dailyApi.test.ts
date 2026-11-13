@@ -6,8 +6,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import dailies from '../src/content/dailies.json';
-import { Daily, dailyNumber, dailyDate, minSeconds, bucketOf } from '../src/content/dailies';
-import { handleDailyApi, memoryStore, checkResult, sha256Hex, d1Store, RATE_LIMIT, LATE_DAYS, EARLY_DAYS, BODY_MAX, D1Like, D1StatementLike } from '../worker/daily';
+import { Daily, dailyNumber, dailyDate, minSeconds, bucketOf, dailyClosed } from '../src/content/dailies';
+import { handleDailyApi, memoryStore, checkResult, sha256Hex, d1Store, RATE_LIMIT, LATE_DAYS, EARLY_DAYS, BEHIND_DAYS, BODY_MAX, D1Like, D1StatementLike } from '../worker/daily';
 import { handleRequest, Env } from '../worker/index';
 import template from '../index.html?raw';
 import { parseGrid, gridToString } from '../src/engine/board';
@@ -137,18 +137,33 @@ describe('the daily API', () => {
     await refused(good({ unassisted: false }), /only unassisted/);
     await refused(good({ unassisted: false, hints: 2 }), /only unassisted/);
     await refused(good({ source: 'bot' }), /source/);
-    // the day must be recent: a week back at most, a day ahead at most
-    await refused(good(), /too long ago/, NO, () => new Date(`${dailyDate(NO + LATE_DAYS + 1)}T12:00:00Z`));
+    // the day must be recent: a week back at most (and the day of grace
+    // for a clock behind UTC), a day ahead at most
+    await refused(good(), /too long ago/, NO, () => new Date(`${dailyDate(NO + LATE_DAYS + BEHIND_DAYS + 1)}T12:00:00Z`));
     await refused(good(), /not come/, NO, () => new Date(`${dailyDate(NO - EARLY_DAYS - 1)}T12:00:00Z`));
     expect(store.results).toHaveLength(0);
     // and at the edges of the window it is taken
-    for (const day of [dailyDate(NO + LATE_DAYS), dailyDate(NO - EARLY_DAYS)]) {
+    for (const day of [dailyDate(NO + LATE_DAYS), dailyDate(NO + LATE_DAYS + BEHIND_DAYS), dailyDate(NO - EARLY_DAYS)]) {
       const res = (await handleDailyApi(post(NO, good({ token: `token-for-${day}-${'x'.repeat(8)}` })), store, { now: () => new Date(`${day}T12:00:00Z`) }))!;
       expect(res.status, day).toBe(200);
     }
     // the slowest honest time is taken
     const floor = (await handleDailyApi(post(NO, good({ token: 'token-at-the-floor-xxxxxx', seconds: minSeconds(DAILY.puzzle) })), store, { now: NOW }))!;
     expect(floor.status).toBe(200);
+  });
+
+  it('takes a time whenever the app offers to send it: in the evening of its seventh late day, west of UTC', async () => {
+    // the daily of 5 December, solved on 12 December at 18:00 in UTC-8 (02:00 on 13 December in UTC)
+    const daily = LIST.find((d) => d.date === '2026-12-05')!;
+    const no = dailyNumber(daily.date)!;
+    expect(dailyClosed(no, '2026-12-12')).toBe(false);
+    const grid = gridToString(solve(parseGrid(daily.puzzle)!)!);
+    const res = (await handleDailyApi(post(no, good({ grid })), memoryStore(), { now: () => new Date('2026-12-12T18:00:00-08:00') }))!;
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, accepted: true });
+    // on 13 December there the app offers it no more; a day later in UTC the server takes it no more
+    expect(dailyClosed(no, '2026-12-13')).toBe(true);
+    expect(await checkResult(good({ grid }), no, daily, new Date('2026-12-14T12:00:00Z'))).toEqual({ ok: false, reason: 'that day is too long ago' });
   });
 
   it('leaves an assisted time already kept out of the statistics', async () => {

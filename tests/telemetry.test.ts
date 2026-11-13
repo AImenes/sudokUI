@@ -8,6 +8,7 @@
  * and the privacy page in three languages (src/content/privacy.ts).
  */
 import { describe, it, expect, beforeAll } from 'vitest';
+import { createRequire } from 'node:module';
 import {
   handleTelemetry,
   checkEvent,
@@ -1321,6 +1322,27 @@ describe("the admin page's daily times sent", () => {
     expect(calls[0].sql).toContain('FROM daily_result');
     expect(calls[0].args[0]).toBeLessThan(Date.UTC(2026, 9, 13) / 1000);
     expect(await dailySent(undefined, new Date())).toBeUndefined();
+  });
+  it('counts the dailies’ times only: a door’s time, on the same table, is the Christmas section’s', async () => {
+    // the real schema in SQLite, with D1's calls over it
+    const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
+    const sqlite = new DatabaseSync(':memory:');
+    for (const file of ['migrations/0001_daily.sql', 'migrations/0002_daily_steps.sql']) sqlite.exec(new TextDecoder().decode(readFileSync(file)));
+    const statement = (sql: string, args: unknown[] = []) => ({
+      bind: (...a: unknown[]) => statement(sql, a),
+      all: async () => ({ results: sqlite.prepare(sql).all(...args) }),
+      run: async () => ({ meta: { changes: Number(sqlite.prepare(sql).run(...args).changes) } })
+    });
+    const db = { prepare: (sql: string) => statement(sql), batch: async (list: { run: () => Promise<unknown> }[]) => Promise.all(list.map((st) => st.run())) };
+    const day = Date.UTC(2026, 11, 5) / 1000;
+    const insert = sqlite.prepare('INSERT INTO daily_result (puzzle_no, token, seconds, unassisted, hints, created_at) VALUES (?, ?, 300, 1, 0, ?)');
+    // two daily times and five doors' on 5 December
+    for (const [no, token] of [[60, 'a'], [60, 'b']] as const) insert.run(no, token, day);
+    for (const door of [1, 2, 3, 4, 5]) insert.run(adventNo(2026, door), `door-${door}`, day);
+    const sent = await dailySent(db as never, new Date('2026-12-05T12:00:00Z'));
+    expect(sent).toEqual([{ day, n: 2, unassisted: 2 }]);
+    const html = dailySentTable([row('2026-12-05', 'completed', 'daily', 2)], sent);
+    expect(html).toContain('<tr><td>2026-12-05</td><td>2</td><td>2</td><td>2</td><td>100%</td></tr>');
   });
 });
 
