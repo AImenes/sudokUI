@@ -226,7 +226,9 @@ describe('Undo or a Steps jump off a solved board', () => {
 });
 
 describe('a daily solved again', () => {
-  const no = dailyNumber(localDateKey())!;
+  // the day the clock is set to (beforeEach), not the day the tests run:
+  // a daily of a later day is still to come, and sends nothing (countedWhen)
+  const no = dailyNumber('2026-11-11')!;
   const startDaily = () => {
     useGame.getState().startGame(EASY, 196, 'Easy', null, dailyDate(no));
     useGame.setState((s) => ({ info: s.info && { ...s.info, dailyNo: no } }));
