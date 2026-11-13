@@ -8,6 +8,7 @@
  * and the privacy page in three languages (src/content/privacy.ts).
  */
 import { describe, it, expect, beforeAll } from 'vitest';
+import { createRequire } from 'node:module';
 import {
   handleTelemetry,
   checkEvent,
@@ -32,13 +33,35 @@ import {
   RATE_LIMIT,
   TelemetryEvent
 } from '../worker/telemetry';
-import { handleAdmin, adminQuery, rowsOf, metricsOf, renderAdmin, sqlApi, DATASET, Row, ADMIN_PATH, dailySent, dailySentTable } from '../worker/admin';
+import {
+  handleAdmin,
+  adminQuery,
+  rowsOf,
+  metricsOf,
+  renderAdmin,
+  sqlApi,
+  DATASET,
+  Row,
+  ADMIN_PATH,
+  dailySent,
+  dailySentTable,
+  adventYearOn,
+  adventPhase,
+  adventQuery,
+  adventRowsOf,
+  adventOf,
+  adventTimes,
+  adventSection,
+  adventFor,
+  type AdventRow
+} from '../worker/admin';
+import { adventNo } from '../src/content/advent';
 import { handleRequest, Env, SHARE_TEMPLATE, HOME_PATHS } from '../worker/index';
 import { ACCESS_HEADER, type AccessKeys } from '../worker/access';
 import { ACCESS_SECRETS, certsEndpoint, claimsAt, keysOver, signer, type Signer } from './accessToken';
 import template from '../index.html?raw';
 import { LEVELS } from '../src/engine/ratings';
-import { BUCKET_MAX } from '../src/content/dailies';
+import { BUCKET_MAX, statsFromHistogram } from '../src/content/dailies';
 import dailies from '../src/content/dailies.json';
 import type { Daily } from '../src/content/dailies';
 import { PRIVACY, PRIVACY_URL } from '../src/content/privacy';
@@ -249,8 +272,10 @@ describe('the telemetry route', () => {
     ]);
     for (const kind of PLAY_KINDS)
       for (const lang of PLAY_LANGS) {
-        expect(checkEvent(good({ kind, lang }))).toMatchObject({ kind, lang });
-        expect(checkEvent(good({ event: 'started', bucket: 0, kind, lang, optin: true, offline: true, returning: true }))).toMatchObject({ kind, lang });
+        // a door of the advent calendar says which door, as its line must (tests/adventApi.test.ts)
+        const door = kind === 'advent' ? { door: 7 } : {};
+        expect(checkEvent(good({ kind, lang, ...door }))).toMatchObject({ kind, lang });
+        expect(checkEvent(good({ event: 'started', bucket: 0, kind, lang, optin: true, offline: true, returning: true, ...door }))).toMatchObject({ kind, lang });
       }
     expect(checkEvent(good())).not.toHaveProperty('kind');
   });
@@ -537,7 +562,7 @@ describe('the landing count', () => {
     await handleRequest(landing('/nb/'), env);
     expect(events.points[4].blobs).toEqual(['', 'home', version, '', 'none']);
     expect(JSON.stringify(events.points)).not.toContain('kode24');
-    expect(LANDING_SLOTS).toEqual(['p', 'daily', 'home']);
+    expect(LANDING_SLOTS).toEqual(['p', 'daily', 'home', 'advent']);
   });
 
   it('counts a landing with no referrer as ai when an AI assistant tagged its link, reading that one tag and keeping nothing of it', async () => {
@@ -881,14 +906,14 @@ describe('the dashboard', () => {
     expect(html).toContain('<dt>Starts, last 7 days</dt><dd>10</dd>');
     // the games by kind and language: columns in the lists' order, then the older builds' lines
     expect(html).toContain(
-      '<thead><tr><th>Games</th><th>Daily</th><th>New</th><th>Practice</th><th>From a share link</th><th>English</th><th>Norwegian</th><th>Spanish</th><th>Not recorded</th></tr></thead>'
+      '<thead><tr><th>Games</th><th>Daily</th><th>New</th><th>Practice</th><th>From a share link</th><th>Advent calendar</th><th>English</th><th>Norwegian</th><th>Spanish</th><th>Not recorded</th></tr></thead>'
     );
-    expect(html).toContain('<tr><td>Begun</td><td>3</td><td>2</td><td>5</td><td>1</td><td>7</td><td>3</td><td>1</td><td>4</td></tr>');
-    expect(html).toContain('<tr><td>Completed</td><td>2</td><td>0</td><td>4</td><td>0</td><td>4</td><td>2</td><td>0</td><td>0</td></tr>');
+    expect(html).toContain('<tr><td>Begun</td><td>3</td><td>2</td><td>5</td><td>1</td><td>0</td><td>7</td><td>3</td><td>1</td><td>4</td></tr>');
+    expect(html).toContain('<tr><td>Completed</td><td>2</td><td>0</td><td>4</td><td>0</td><td>0</td><td>4</td><td>2</td><td>0</td><td>0</td></tr>');
     // and per day
     expect(html).toContain('<thead><tr><th>Day</th><th>Daily</th><th>New</th>');
-    expect(html).toContain('<tr><td>2026-10-11</td><td>0</td><td>0</td><td>5</td><td>0</td><td>5</td><td>0</td><td>0</td><td>4</td></tr>');
-    expect(html).toContain('<tr><td>2026-10-12</td><td>3</td><td>2</td><td>0</td><td>1</td><td>2</td><td>3</td><td>1</td><td>0</td></tr>');
+    expect(html).toContain('<tr><td>2026-10-11</td><td>0</td><td>0</td><td>5</td><td>0</td><td>0</td><td>5</td><td>0</td><td>0</td><td>4</td></tr>');
+    expect(html).toContain('<tr><td>2026-10-12</td><td>3</td><td>2</td><td>0</td><td>1</td><td>0</td><td>2</td><td>3</td><td>1</td><td>0</td></tr>');
     // where landings came from: on a home page, on a share page, both
     expect(html).toContain("<tr><td>A search engine (and links Google's own redirect passed on)</td><td>4</td><td>0</td><td>4</td><td>50%</td></tr>");
     expect(html).toContain('<tr><td>An app directory (AlternativeTo, SaaSHub, Product Hunt and the like)</td><td>1</td><td>2</td><td>3</td><td>38%</td></tr>');
@@ -968,6 +993,50 @@ describe('the dashboard', () => {
     expect(await head.text()).toBe('');
     const wrong = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { method: 'POST', headers: access }), secrets, { fetch, now: NOW, accessKeys }))!;
     expect(wrong.status).toBe(405);
+  });
+
+  it('ends with the Christmas section: in October, the calendar to come, at zero, with no second query', async () => {
+    const { calls, fetch } = api(() => json({ meta: [], data: ROWS, rows: ROWS.length }));
+    const html = await (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: access }), secrets, { fetch, now: NOW, accessKeys }))!.text();
+    expect(calls).toHaveLength(1);
+    expect(html).toContain('<h2>Christmas: the advent calendar 2026</h2>');
+    expect(html).toContain('The 2026 calendar opens on 1 December');
+    expect(html).toContain('<tr><td>24</td><td>24 Dec</td><td>Extreme 2418</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td></tr>');
+    expect(html.indexOf('<h2>Christmas')).toBeGreaterThan(html.indexOf('<h2>Every day</h2>'));
+    expect(html.indexOf('<h2>Christmas')).toBeLessThan(html.indexOf('</body>'));
+  });
+
+  it('reads the doors’ counts in December with a second query, and keeps the page when that one fails', async () => {
+    const DEC = () => new Date('2026-12-06T12:00:00Z');
+    const token = { [ACCESS_HEADER]: await team.sign(claimsAt(DEC())) };
+    const doorRows = [
+      { day: '2026-12-05 00:00:00', event: 'started', kind: 'advent', door: '5', n: 4 },
+      { day: '2026-12-05 00:00:00', event: 'completed', kind: 'advent', door: '5', n: 1 },
+      { day: '2026-12-05 00:00:00', event: 'landing', kind: 'search', door: '', n: 2 }
+    ];
+    const answers = [json({ data: ROWS }), json({ data: doorRows })];
+    const { calls, fetch } = api(() => answers.shift()!);
+    const res = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: token }), secrets, { fetch, now: DEC, accessKeys }))!;
+    expect(res.status).toBe(200);
+    expect(calls).toHaveLength(2);
+    expect(calls[0].init?.body).toBe(adminQuery());
+    expect(calls[1].url).toBe(sqlApi(secrets.ADMIN_ACCOUNT_ID));
+    expect(calls[1].init?.body).toBe(adventQuery(DEC(), 2026));
+    expect((calls[1].init?.headers as Record<string, string>).authorization).toBe(`Bearer ${secrets.ADMIN_TOKEN}`);
+    const html = await res.text();
+    expect(html).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 498</td><td>4</td><td>1</td><td>25%</td><td>—</td><td>—</td></tr>');
+    expect(html).toContain("<dt>Landings on a door's address</dt><dd>2</dd>");
+    expect(html).toContain("<tr><td>A search engine (and links Google's own redirect passed on)</td><td>2</td><td>100%</td></tr>");
+    expect(html).not.toContain(secrets.ADMIN_TOKEN);
+    // a calendar query that fails says so, and the rest of the page stands
+    const failing = [json({ data: ROWS }), json({ errors: [{ message: 'busy' }] }, 500)];
+    const second = api(() => failing.shift()!);
+    const kept = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: token }), secrets, { fetch: second.fetch, now: DEC, accessKeys }))!;
+    expect(kept.status).toBe(200);
+    const page = await kept.text();
+    expect(page).toContain('The analytics API could not be read for the calendar');
+    expect(page).toContain('<dt>Completed, total estimate</dt>');
+    expect(page).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 498</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td></tr>');
   });
 
   it('says what the API said when it fails, without the secrets', async () => {
@@ -1253,5 +1322,216 @@ describe("the admin page's daily times sent", () => {
     expect(calls[0].sql).toContain('FROM daily_result');
     expect(calls[0].args[0]).toBeLessThan(Date.UTC(2026, 9, 13) / 1000);
     expect(await dailySent(undefined, new Date())).toBeUndefined();
+  });
+  it('counts the dailies’ times only: a door’s time, on the same table, is the Christmas section’s', async () => {
+    // the real schema in SQLite, with D1's calls over it
+    const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite');
+    const sqlite = new DatabaseSync(':memory:');
+    for (const file of ['migrations/0001_daily.sql', 'migrations/0002_daily_steps.sql']) sqlite.exec(new TextDecoder().decode(readFileSync(file)));
+    const statement = (sql: string, args: unknown[] = []) => ({
+      bind: (...a: unknown[]) => statement(sql, a),
+      all: async () => ({ results: sqlite.prepare(sql).all(...args) }),
+      run: async () => ({ meta: { changes: Number(sqlite.prepare(sql).run(...args).changes) } })
+    });
+    const db = { prepare: (sql: string) => statement(sql), batch: async (list: { run: () => Promise<unknown> }[]) => Promise.all(list.map((st) => st.run())) };
+    const day = Date.UTC(2026, 11, 5) / 1000;
+    const insert = sqlite.prepare('INSERT INTO daily_result (puzzle_no, token, seconds, unassisted, hints, created_at) VALUES (?, ?, 300, 1, 0, ?)');
+    // two daily times and five doors' on 5 December
+    for (const [no, token] of [[60, 'a'], [60, 'b']] as const) insert.run(no, token, day);
+    for (const door of [1, 2, 3, 4, 5]) insert.run(adventNo(2026, door), `door-${door}`, day);
+    const sent = await dailySent(db as never, new Date('2026-12-05T12:00:00Z'));
+    expect(sent).toEqual([{ day, n: 2, unassisted: 2 }]);
+    const html = dailySentTable([row('2026-12-05', 'completed', 'daily', 2)], sent);
+    expect(html).toContain('<tr><td>2026-12-05</td><td>2</td><td>2</td><td>2</td><td>100%</td></tr>');
+  });
+});
+
+describe("the admin page's Christmas section", () => {
+  const at = (iso: string) => new Date(iso);
+  const arow = (day: string, event: string, kind: string, door: string, n: number): AdventRow => ({ day, event, kind, door, n });
+  const ROWS: AdventRow[] = [
+    arow('2026-12-05', 'started', 'advent', '5', 8),
+    arow('2026-12-06', 'started', 'advent', '5', 2),
+    arow('2026-12-05', 'completed', 'advent', '5', 4),
+    arow('2026-12-01', 'started', 'advent', '1', 3),
+    arow('2026-12-02', 'completed', 'advent', '1', 3),
+    arow('2026-12-05', 'landing', 'search', '', 6),
+    arow('2026-12-06', 'landing', 'chat', '', 2),
+    arow('2026-12-06', 'landing', 'search', '', 1),
+    // a day before the window, a door off the calendar, a line without a door, a line of another kind: left out
+    arow('2026-11-29', 'started', 'advent', '5', 100),
+    arow('2026-12-05', 'started', 'advent', '25', 100),
+    arow('2026-12-05', 'completed', 'advent', '', 100),
+    arow('2026-12-05', 'started', 'daily', '5', 100)
+  ];
+  const TIMES = new Map([
+    [5, { count: 3, median: 278 }],
+    [1, { count: 2, median: 98 }]
+  ]);
+
+  it('shows the calendar in season, else the next one published, else the last', () => {
+    const years = [2026];
+    expect(adventYearOn(at('2026-10-13T12:00:00Z'), years)).toBe(2026);
+    expect(adventYearOn(at('2026-11-12T12:00:00Z'), years)).toBe(2026);
+    expect(adventYearOn(at('2026-12-31T23:00:00Z'), years)).toBe(2026);
+    expect(adventYearOn(at('2027-01-20T12:00:00Z'), years)).toBe(2026);
+    expect(adventYearOn(at('2027-06-01T12:00:00Z'), years)).toBe(2026);
+    // next year's doors not published yet: the last calendar stays
+    expect(adventYearOn(at('2027-11-02T12:00:00Z'), years)).toBe(2026);
+    expect(adventYearOn(at('2027-10-02T12:00:00Z'), [2026, 2027])).toBe(2027);
+    expect(adventYearOn(at('2028-01-05T12:00:00Z'), [2026, 2027])).toBe(2027);
+    // the published file
+    expect(adventYearOn(at('2026-11-12T12:00:00Z'))).toBe(2026);
+  });
+
+  it('knows where the calendar stands by the UTC day', () => {
+    expect(adventPhase(2026, at('2026-11-30T23:59:00Z'))).toBe('before');
+    expect(adventPhase(2026, at('2026-12-01T00:00:00Z'))).toBe('open');
+    expect(adventPhase(2026, at('2026-12-31T23:59:00Z'))).toBe('open');
+    expect(adventPhase(2026, at('2027-01-01T00:00:00Z'))).toBe('over');
+  });
+
+  it('asks for the doors’ lines and their landings only, from 30 November to 31 January, and nothing outside', () => {
+    expect(adventQuery(at('2026-11-12T12:00:00Z'), 2026)).toBeNull();
+    expect(adventQuery(at('2026-11-29T23:59:00Z'), 2026)).toBeNull();
+    expect(adventQuery(at('2027-02-01T00:00:00Z'), 2026)).toBeNull();
+    const sql = adventQuery(at('2026-12-10T12:00:00Z'), 2026)!;
+    expect(sql).toContain(`FROM ${DATASET}`);
+    expect(sql).toContain("toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, index1 AS event, blob5 AS kind, blob7 AS door");
+    expect(sql).toContain('SUM(_sample_interval * double2) AS n');
+    // whole days back past 30 November's midnight
+    expect(sql).toContain("WHERE timestamp > NOW() - INTERVAL '11' DAY");
+    expect(sql).toContain("AND ((index1 = 'landing' AND blob2 = 'advent') OR ((index1 = 'started' OR index1 = 'completed') AND blob5 = 'advent'))");
+    expect(sql).toContain('GROUP BY day, event, kind, door ORDER BY day FORMAT JSON');
+    expect(adventQuery(at('2026-11-30T00:00:00Z'), 2026)).toContain("NOW() - INTERVAL '1' DAY");
+    // at most the window's 63 days, on its last
+    expect(adventQuery(at('2027-01-31T23:00:00Z'), 2026)).toContain("NOW() - INTERVAL '63' DAY");
+  });
+
+  it('reads the rows the API gives, and nothing it does not', () => {
+    expect(adventRowsOf({ data: [{ day: '2026-12-05 00:00:00', event: 'started', kind: 'advent', door: '5', n: '3' }] })).toEqual([arow('2026-12-05', 'started', 'advent', '5', 3)]);
+    expect(adventRowsOf({ data: [null, { event: 'x' }, { day: 3 }, { day: '2026-12-05', event: 'landing', kind: 7, door: null, n: 'many' }] })).toEqual([
+      arow('2026-12-05', 'landing', '', '', 0)
+    ]);
+    expect(adventRowsOf('garbage')).toEqual([]);
+  });
+
+  it('counts each door’s games begun and completed, its rate, its times and their median, and the landings by word', () => {
+    const m = adventOf(2026, at('2026-12-06T12:00:00Z'), ROWS, 'read', TIMES);
+    expect(m).toMatchObject({ year: 2026, phase: 'open', counted: 'read', database: true });
+    expect(m.doors).toHaveLength(24);
+    expect(m.doors[4]).toEqual({ door: 5, date: '2026-12-05', level: 'Easy', score: 498, started: 10, completed: 4, completionRate: 0.4, times: 3, median: 278 });
+    expect(m.doors[0]).toMatchObject({ door: 1, started: 3, completed: 3, completionRate: 1, times: 2, median: 98 });
+    expect(m.doors[1]).toMatchObject({ door: 2, level: 'Easy', score: 196, started: 0, completed: 0, completionRate: null, times: 0, median: null });
+    expect(m.doors[23]).toMatchObject({ door: 24, date: '2026-12-24', level: 'Extreme', score: 2418 });
+    expect(m.started).toBe(13);
+    expect(m.completed).toBe(7);
+    expect(m.completionRate).toBeCloseTo(7 / 13);
+    expect(m.times).toBe(5);
+    expect(m.landings).toBe(9);
+    expect(m.landingsFrom).toEqual({ search: 7, chat: 2 });
+    // without a database, no times at all; with one that failed, it says so
+    const none = adventOf(2026, at('2026-12-06T12:00:00Z'), ROWS, 'read', undefined);
+    expect(none.database).toBeUndefined();
+    expect(none.times).toBeNull();
+    expect(none.doors[4]).toMatchObject({ times: null, median: null, started: 10 });
+    expect(adventOf(2026, at('2026-12-06T12:00:00Z'), ROWS, 'read', null).database).toBe(false);
+    // a calendar the file does not publish still has its 24 days
+    expect(adventOf(2031, at('2031-12-06T12:00:00Z'), [], 'read', undefined).doors[0]).toMatchObject({ date: '2031-12-01', level: '', score: 0 });
+  });
+
+  it('reads the times from the histogram the win screen reads, on the range of the year’s 24 door numbers', async () => {
+    const calls: { sql: string; args: unknown[] }[] = [];
+    const hist = [
+      { puzzle_no: adventNo(2026, 5), bucket: 10, n: 2, n_unassisted: 2 },
+      { puzzle_no: adventNo(2026, 5), bucket: 20, n: 1, n_unassisted: 1 },
+      { puzzle_no: adventNo(2026, 1), bucket: 4, n: 1, n_unassisted: 1 },
+      // a row the range would never give: left out
+      { puzzle_no: 330, bucket: 4, n: 1, n_unassisted: 1 }
+    ];
+    const db = {
+      prepare: (sql: string) => {
+        const st = { bind: (...args: unknown[]) => (calls.push({ sql, args }), st), all: async () => ({ results: hist }) };
+        return st;
+      },
+      batch: async () => []
+    };
+    const times = (await adventTimes(db as never, 2026))!;
+    expect(calls).toHaveLength(1);
+    expect(calls[0].sql).toBe('SELECT puzzle_no, bucket, n, n_unassisted FROM daily_hist WHERE puzzle_no BETWEEN ?1 AND ?2');
+    expect(calls[0].args).toEqual([adventNo(2026, 1), adventNo(2026, 24)]);
+    const five = statsFromHistogram(adventNo(2026, 5), hist.slice(0, 2));
+    expect(times.get(5)).toEqual({ count: 3, median: five.median });
+    expect(times.get(1)).toEqual({ count: 1, median: statsFromHistogram(1, hist.slice(2, 3)).median });
+    expect([...times.keys()].sort()).toEqual([1, 5]);
+    expect(await adventTimes(undefined, 2026)).toBeUndefined();
+    const broken = {
+      prepare: () => {
+        throw new Error('no such table');
+      },
+      batch: async () => []
+    };
+    expect(await adventTimes(broken as never, 2026)).toBeNull();
+  });
+
+  it('says before 1 December that the calendar opens then, and shows every door at zero', () => {
+    const html = adventSection(adventOf(2026, at('2026-11-12T12:00:00Z'), null, 'soon', undefined));
+    expect(html).toContain('<h2>Christmas: the advent calendar 2026</h2>');
+    expect(html).toContain("The 2026 calendar opens on 1 December, by each player's own date: until then every door shows zeros.");
+    expect(html).toContain('The counts are read from 2026-11-30 (UTC)');
+    expect(html).toContain('No database is bound: no times.');
+    expect(html).toContain('<tr><td>1</td><td>1 Dec</td><td>Easy 104</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td></tr>');
+    expect(html.match(/<tr><td>\d+<\/td><td>\d+ Dec<\/td><td>\w+ \d+<\/td><td>0<\/td><td>0<\/td><td>—<\/td><td>—<\/td><td>—<\/td><\/tr>/g)).toHaveLength(24);
+    expect(html).toContain('<tr><td>No landings</td><td>0</td><td>—</td></tr>');
+    expect(html).toContain('Nothing counts the Christmas look');
+    expect(html).not.toContain('<script');
+  });
+
+  it('shows each door’s numbers once open, and says when the counts are past or could not be read', () => {
+    const html = adventSection(adventOf(2026, at('2026-12-06T12:00:00Z'), ROWS, 'read', TIMES));
+    expect(html).toContain('The 2026 calendar is open');
+    expect(html).toContain('Counted from 2026-11-30 to 2027-01-31, UTC days, so far.');
+    expect(html).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 498</td><td>10</td><td>4</td><td>40%</td><td>3</td><td>4:38</td></tr>');
+    expect(html).toContain('<tr><td>1</td><td>1 Dec</td><td>Easy 104</td><td>3</td><td>3</td><td>100%</td><td>2</td><td>1:38</td></tr>');
+    expect(html).toContain('<tr><td>All</td><td></td><td></td><td>13</td><td>7</td><td>54%</td><td>5</td><td></td></tr>');
+    expect(html).toContain('<dt>Door games begun</dt><dd>13</dd>');
+    expect(html).toContain('<dt>Unassisted times sent</dt><dd>5</dd>');
+    expect(html).toContain('<tr><td>A chat app or site</td><td>2</td><td>22%</td></tr>');
+    expect(html.indexOf('A search engine')).toBeLessThan(html.indexOf('A chat app'));
+    expect(adventSection(adventOf(2026, at('2026-12-06T12:00:00Z'), null, 'failed', null))).toContain('could not be read for the calendar');
+    expect(adventSection(adventOf(2026, at('2026-12-06T12:00:00Z'), null, 'failed', null))).toContain('The database could not be read: no times.');
+    const past = adventSection(adventOf(2026, at('2027-03-01T12:00:00Z'), null, 'past', new Map()));
+    expect(past).toContain('The 2026 calendar closed on 31 December');
+    expect(past).toContain('are not read now');
+    expect(past).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 498</td><td>0</td><td>0</td><td>—</td><td>0</td><td>—</td></tr>');
+  });
+
+  it('knows outside the window that nothing is to be read, and asks the database anyway', async () => {
+    const asked: string[] = [];
+    const db = {
+      prepare: (sql: string) => {
+        const st = { bind: () => st, all: async () => (asked.push(sql), { results: [] }) };
+        return st;
+      },
+      batch: async () => []
+    };
+    const never = (async () => {
+      throw new Error('the analytics were asked');
+    }) as typeof fetch;
+    const env = { ADMIN_ACCOUNT_ID: 'a', ADMIN_TOKEN: 't', DB: db as never };
+    expect(await adventFor(env, at('2026-11-12T12:00:00Z'), never)).toMatchObject({ year: 2026, phase: 'before', counted: 'soon', times: 0 });
+    expect(await adventFor(env, at('2027-04-12T12:00:00Z'), never)).toMatchObject({ year: 2026, phase: 'over', counted: 'past' });
+    expect(asked).toHaveLength(2);
+  });
+
+  it('hands the calendar’s static page to the assets as it is, counting no landing there, while a door’s address counts one', async () => {
+    const events = memoryEvents();
+    for (const path of ['/advent/', '/advent']) {
+      const res = await handleRequest(landing(path), assets({ EVENTS: events }));
+      expect(res.headers.get('x-answered-by'), path).toBe('assets');
+    }
+    expect(events.points).toHaveLength(0);
+    await handleRequest(landing('/advent/2026/1'), assets({ EVENTS: events }), undefined, undefined, () => Date.parse('2026-12-06T12:00:00Z'));
+    expect(events.points.map((p) => p.blobs[1])).toEqual(['advent']);
   });
 });

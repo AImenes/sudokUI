@@ -103,6 +103,15 @@ export function dailyDate(no: number): string {
 export const LATE_DAYS = 7;
 /** how early, in days: a day the player's clock has reached before UTC has */
 export const EARLY_DAYS = 1;
+/**
+ * The same day of grace behind (worker/daily.ts): a player west of UTC is
+ * still on the day UTC has left (UTC-12 at the most), so the server takes
+ * a time one day past LATE_DAYS by its own date, and a door's one day past
+ * 31 December, while the player's own date says it is still in time. The
+ * client stops offering Send by that own date (dailyClosed, season.ts
+ * doorCounts), so nothing it offers is refused for the hour of the day.
+ */
+export const BEHIND_DAYS = 1;
 
 /** the day after a key: 2026-11-13 for 2026-11-12 (the key itself when it is no date) */
 export function dayAfter(date: string): string {
@@ -111,18 +120,30 @@ export function dayAfter(date: string): string {
 }
 
 /**
- * A daily that has not opened yet: its day is after the player's local
- * today. The one check of the future-daily lock (the owner's decision of
- * 12 November 2026): whatever asks for such a daily, its address, a
- * #daily or share link, Import, New, the past-daily note, a reload, Back
- * or Forward, it opens nothing over the board, and the player is told
- * when it opens (src/ui/links.ts, startDaily and openAppLink). Today's
- * and every earlier day's daily open as before. The server keeps its one
- * day of grace (EARLY_DAYS, worker/daily.ts): it knows only UTC, and a
- * player in UTC+14 is a day ahead of it on their own today.
+ * A day still to come: after the player's local today. The one rule of
+ * the lock on a day (the owner's decisions of 12 November 2026), the same
+ * for a daily (dailyLocked) and for a door of the advent calendar
+ * (season.ts, doorState): whatever asks for it opens nothing over the
+ * board, and the player is told when it opens, in one style
+ * (src/ui/links.ts, lockedLine). A key that names no day is no day to come.
+ */
+export function dayToCome(date: string, today = localDateKey()): boolean {
+  return !!dateOfKey(date) && date > today;
+}
+
+/**
+ * A daily that has not opened yet: its day is still to come (dayToCome).
+ * The one check of the future-daily lock: whatever asks for such a daily,
+ * its address, a #daily or share link, Import, New, the past-daily note,
+ * a reload, Back or Forward, it opens nothing over the board, and the
+ * player is told when it opens (src/ui/links.ts, startDaily and
+ * openAppLink). Today's and every earlier day's daily open as before. The
+ * server keeps its one day of grace (EARLY_DAYS, worker/daily.ts): it
+ * knows only UTC, and a player in UTC+14 is a day ahead of it on their own
+ * today.
  */
 export function dailyLocked(date: string, today = localDateKey()): boolean {
-  return !!dateOfKey(date) && date > today;
+  return dayToCome(date, today);
 }
 
 /** the level a day's puzzle is drawn from: DAILY_BANDS in turn */

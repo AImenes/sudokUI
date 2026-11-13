@@ -106,3 +106,52 @@ export interface Metrics {
   /** 2026-10-13 09:30 UTC */
   generatedAt: string;
 }
+
+// ---- Christmas: the advent calendar (docs/advent-calendar.md) ----------------
+
+/** where the calendar stands on the dashboard's UTC day: before its 1 December, from 1 to 31 December, or after */
+export type AdventPhase = 'before' | 'open' | 'over';
+
+/**
+ * Whether the doors' counts were read from the dataset: they are read for
+ * the UTC days from 30 November (a player a day ahead of UTC opens door 1
+ * then) to 31 January (a door under way on 1 January can still be
+ * finished), not before ('soon') nor after ('past'), and 'failed' when
+ * the SQL API did not answer
+ */
+export type AdventCounted = 'read' | 'soon' | 'past' | 'failed';
+
+/** one door's numbers */
+export interface AdventDoorRow {
+  door: number;
+  /** its day, 2026-12-05 */
+  date: string;
+  /** its band and HoDoKu rating, as advent.json publishes them; '' and 0 for a door not published */
+  level: string;
+  score: number;
+  /** door games begun and solved, from the play lines' door (telemetry.ts, blob7) */
+  started: number;
+  completed: number;
+  completionRate: number | null;
+  /** unassisted times that reached the database and their median in seconds (daily_hist, as the win screen reads it); null without a database or when it failed */
+  times: number | null;
+  median: number | null;
+}
+
+/** the Christmas section: one calendar's doors, their landings, and where the calendar stands */
+export interface AdventMetrics {
+  year: number;
+  phase: AdventPhase;
+  counted: AdventCounted;
+  /** whether the database was there and answered: undefined without one, false when it failed */
+  database?: boolean;
+  doors: AdventDoorRow[];
+  started: number;
+  completed: number;
+  completionRate: number | null;
+  /** every door's unassisted times together; null without a database or when it failed */
+  times: number | null;
+  /** landings on a door's address (the slot advent), and by the word their referrer gave (telemetry.ts, landingWord) */
+  landings: number;
+  landingsFrom: Record<string, number>;
+}

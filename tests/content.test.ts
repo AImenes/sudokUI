@@ -16,7 +16,7 @@ import { LANDING_PAGES, COUNTS } from '../src/content/landing';
 import { STATIC_ROUTES } from '../src/content/staticRoutes';
 import { techSlug, techFromParam, slugify } from '../src/content/slugs';
 import { linkGlossary } from '../src/content/glossaryLinks';
-import { buildLearnPages, buildSitemap, SITE, LEARN_LANGS, HOME_URLS } from '../src/content/learnPages';
+import { buildLearnPages, buildSitemap, versionsOf, SITE, LEARN_LANGS, HOME_URLS } from '../src/content/learnPages';
 
 const words = (s: string) => s.trim().split(/\s+/).length;
 /** an attribute's text without the escapes the pages write (esc in learnPages.ts) */
@@ -267,8 +267,8 @@ describe('static pages', () => {
   it('builds one page per technique plus the hubs and landing pages, in every language', () => {
     // hubs: the technique index, the Intuition guide, the glossary and the rating page;
     // in English, Norwegian and Spanish: every technique, the four hubs, the
-    // privacy page, Why sudokUI? and every landing page
-    expect(pages).toHaveLength(3 * (ALL_TECHS.length + 6 + LANDING_PAGES.length));
+    // privacy page, Why sudokUI?, the advent calendar and every landing page
+    expect(pages).toHaveLength(3 * (ALL_TECHS.length + 7 + LANDING_PAGES.length));
     for (const lang of ['nb', 'es']) {
       for (const tech of ALL_TECHS) expect(urls.has(`/${lang}/learn/${techSlug(tech)}/`), `${lang} ${tech}`).toBe(true);
       for (const p of LANDING_PAGES) expect(urls.has(`/${lang}${p.url}`), `${lang} ${p.url}`).toBe(true);
@@ -296,6 +296,7 @@ describe('static pages', () => {
         "/learn/glossary/",
         "/privacy/",
         "/why/",
+        "/advent/",
         "/nb/daily-sudoku/",
         "/nb/sudoku-solver/",
         "/nb/hodoku/",
@@ -306,6 +307,7 @@ describe('static pages', () => {
         "/nb/learn/glossary/",
         "/nb/privacy/",
         "/nb/why/",
+        "/nb/julekalender/",
         "/es/daily-sudoku/",
         "/es/sudoku-solver/",
         "/es/hodoku/",
@@ -316,6 +318,7 @@ describe('static pages', () => {
         "/es/learn/glossary/",
         "/es/privacy/",
         "/es/why/",
+        "/es/calendario-de-adviento/",
       ]
     `);
   });
@@ -333,7 +336,11 @@ describe('static pages', () => {
       const english = page.alternateOf!;
       expect(english, `${page.url}: has language versions`).toBeDefined();
       const hreflang = [...page.html.matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)" \/>/g)].map((m) => [m[1], m[2]]);
-      const versions = LEARN_LANGS.map((l) => [l, `${SITE}${l === 'en' ? '' : `/${l}`}${english}`]);
+      // the English address under each language's prefix, or the page's own name in each (the advent calendar's)
+      const own = versionsOf(page)!;
+      if (!page.alternates) for (const l of LEARN_LANGS) expect(own[l]).toBe(`${l === 'en' ? '' : `/${l}`}${english}`);
+      expect(own.en, page.url).toBe(english);
+      const versions = LEARN_LANGS.map((l) => [l, `${SITE}${own[l]}`]);
       expect(hreflang, page.url).toEqual([...versions, ['x-default', `${SITE}${english}`]]);
       // this page is the version in its own language, and every version exists and agrees
       expect(versions.find(([l]) => l === page.lang)![1]).toBe(`${SITE}${page.url}`);
@@ -469,13 +476,16 @@ describe('static pages', () => {
     const xml = buildSitemap(pages);
     expect(xml).not.toMatch(/<priority>|<changefreq>|<lastmod>/);
     expect(xml.match(/<url>/g)).toHaveLength(pages.length + HOME_URLS.length);
-    const versions = (english: string) =>
-      [...LEARN_LANGS.map((l) => [l, `${SITE}${l === 'en' ? '' : `/${l}`}${english}`]), ['x-default', `${SITE}${english}`]]
+    const versions = (own: Record<string, string>) =>
+      [...LEARN_LANGS.map((l) => [l, `${SITE}${own[l]}`]), ['x-default', `${SITE}${own.en}`]]
         .map(([l, href]) => `<xhtml:link rel="alternate" hreflang="${l}" href="${href}"/>`)
         .join('');
     // the home pages are the app itself in English, Norwegian and Spanish
-    for (const url of HOME_URLS) expect(xml).toContain(`<url><loc>${SITE}${url}</loc>${versions('/')}</url>`);
-    for (const p of pages) expect(xml).toContain(`<url><loc>${SITE}${p.url}</loc>${versions(p.alternateOf!)}</url>`);
+    for (const url of HOME_URLS) expect(xml).toContain(`<url><loc>${SITE}${url}</loc>${versions({ en: '/', nb: '/nb/', es: '/es/' })}</url>`);
+    for (const p of pages) expect(xml).toContain(`<url><loc>${SITE}${p.url}</loc>${versions(versionsOf(p)!)}</url>`);
+    // the advent calendar's three pages, each under its own name, name each other
+    const advent = { en: '/advent/', nb: '/nb/julekalender/', es: '/es/calendario-de-adviento/' };
+    for (const url of Object.values(advent)) expect(xml).toContain(`<url><loc>${SITE}${url}</loc>${versions(advent)}</url>`);
   });
 });
 

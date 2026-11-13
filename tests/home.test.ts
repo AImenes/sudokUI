@@ -21,7 +21,7 @@ import {
   SITE as HOME_SITE
 } from '../src/content/home';
 import { LANGS, langOfPath, langRoot } from '../src/content/i18n';
-import { STATIC_ROUTES } from '../src/content/staticRoutes';
+import { STATIC_ROUTES, ADVENT_URLS } from '../src/content/staticRoutes';
 import { COUNTS } from '../src/content/landing';
 import { buildLearnPages, SITE } from '../src/content/learnPages';
 import type { Lang } from '../src/state/settings';
@@ -176,7 +176,8 @@ describe('the home page', () => {
     for (const lang of HOME_LANGS) {
       const boot = one(PAGE[lang], /<div class="boot">([\s\S]*?)<\/div>/);
       const local = [...boot.matchAll(/href="(\/[^"]*)"/g)].map((m) => m[1]);
-      expect(local).toEqual(BOOT_LINKS.map((path) => (lang === 'en' ? path : `/${lang}${path}`)));
+      // and, last, the advent calendar's page, a quiet line shown in November and December (adventPage.ts)
+      expect(local).toEqual([...BOOT_LINKS.map((path) => (lang === 'en' ? path : `/${lang}${path}`)), ADVENT_URLS[lang]]);
       for (const href of local) expect(PAGES.has(href), href).toBe(true);
       expect(boot).toContain('<a href="https://github.com/AImenes/sudokUI">github.com/AImenes/sudokUI</a>');
       expect(boot).toContain(`<h1>${HOME[lang].h1}</h1>`);

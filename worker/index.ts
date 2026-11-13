@@ -6,8 +6,11 @@
  * pages, and it knows these:
  *
  * - the share address of a puzzle, /p/<81 cells> under any language root
- *   (src/content/share.ts), and the address of a published daily,
- *   /daily/<date> (src/content/dailies.ts): answered with the app's own
+ *   (src/content/share.ts), the address of a published daily,
+ *   /daily/<date> (src/content/dailies.ts), and of a door of the advent
+ *   calendar, /advent/<year>/<door> (src/content/advent.ts; a door whose
+ *   day has not come anywhere on earth previews with the day it opens and
+ *   no puzzle): answered with the app's own
  *   shell, whose head describes the puzzle so a chat app or a crawler
  *   unfurls a proper preview; the app then boots from the path as it does
  *   from the home page;
@@ -45,6 +48,9 @@
 import { shareParamsOf, renderSharePage } from '../src/content/share';
 import dailies from '../src/content/dailies.json';
 import type { Daily } from '../src/content/dailies';
+import { EARLY_DAYS } from '../src/content/dailies';
+import advent from '../src/content/advent.json';
+import type { AdventDoor } from '../src/content/advent';
 import { handleDailyApi, d1Store, D1Like } from './daily';
 import { handleTelemetry, countLanding, AnalyticsEngineLike } from './telemetry';
 import { handleAdmin, ADMIN_PATH, AdminOptions } from './admin';
@@ -96,8 +102,8 @@ function edgeCache(): Cache | null {
   return c && c.default ? c.default : null;
 }
 
-/** `admin` stands in for the dashboard's API and Access keys under test */
-export async function handleRequest(request: Request, env: Env, ctx?: Context, admin?: AdminOptions): Promise<Response> {
+/** `admin` stands in for the dashboard's API and Access keys under test, `now` for the clock */
+export async function handleRequest(request: Request, env: Env, ctx?: Context, admin?: AdminOptions, now?: () => number): Promise<Response> {
   const api = await handleDailyApi(request, env.DB ? d1Store(env.DB) : null, {
     cache: edgeCache(),
     waitUntil: ctx ? (p) => ctx.waitUntil(p) : undefined
@@ -123,7 +129,9 @@ export async function handleRequest(request: Request, env: Env, ctx?: Context, a
     countLanding(env.EVENTS, request, 'home');
     return env.ASSETS.fetch(request);
   }
-  const share = request.method === 'GET' || request.method === 'HEAD' ? shareParamsOf(url, dailies as Daily[]) : null;
+  // the latest local date anywhere: a player a day ahead of UTC (EARLY_DAYS) sees a door open that UTC has not reached
+  const latest = new Date((now ? now() : Date.now()) + EARLY_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const share = request.method === 'GET' || request.method === 'HEAD' ? shareParamsOf(url, dailies as Daily[], advent as AdventDoor[], latest) : null;
   if (!share) return env.ASSETS.fetch(request);
 
   const template = await env.ASSETS.fetch(new Request(new URL(SHARE_TEMPLATE, url).toString(), { method: 'GET' }));
@@ -132,7 +140,7 @@ export async function handleRequest(request: Request, env: Env, ctx?: Context, a
   if (!template.ok) return env.ASSETS.fetch(request);
 
   // a person arriving from outside the site is a landing, counted once
-  countLanding(env.EVENTS, request, share.daily ? 'daily' : 'p', share.level);
+  countLanding(env.EVENTS, request, share.daily ? 'daily' : share.advent ? 'advent' : 'p', share.level);
   const html = renderSharePage(await template.text(), share);
   return new Response(request.method === 'HEAD' ? null : html, {
     status: 200,

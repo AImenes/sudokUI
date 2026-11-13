@@ -23,7 +23,7 @@ const { useSettings } = await import('../src/state/settings');
 const { useStats } = await import('../src/state/stats');
 const { readAppLink } = await import('../src/content/share');
 const { dailyLocked, dayAfter, findDaily, loadDailies, EARLY_DAYS } = await import('../src/content/dailies');
-const { startDaily, openAppLink, lockedLine, holds } = await import('../src/ui/links');
+const { startDaily, openAppLink, lockedLine, holds, backTo, backToKept } = await import('../src/ui/links');
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
 /** the player's local noon on a day, so no time zone moves the date */
@@ -155,6 +155,37 @@ describe('a daily after today', () => {
     expect(holds(link('https://sudokui.app/daily/2026-11-13'))).toBe(true);
   });
 
+  it('leaves a copy of it in the slot where it is: its link and Back and Forward bring it nothing, and Back to it still does', async () => {
+    const list = (await loadDailies())!;
+    const tomorrow = findDaily(list, '2026-11-13')!;
+    // a copy opened by an earlier build, played on, then set aside for a game of the player's
+    g().startGame(tomorrow.puzzle, tomorrow.score, tomorrow.level, null, '2026-11-13');
+    const { solution } = g().info!;
+    const cell = tomorrow.puzzle.indexOf('.');
+    g().select([cell], false);
+    g().input(Number(solution[cell]));
+    g().openOver(() => {
+      g().startGame(EASY, 100, 'Easy');
+      return true;
+    });
+    expect(g().setAside?.info?.dailyKey).toBe('2026-11-13');
+    const address = link('https://sudokui.app/daily/2026-11-13');
+    useGame.setState({ notice: null });
+    expect(await openAppLink(address, 'tab')).toEqual({ opened: false });
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(g().notice).toBe('Tomorrow’s daily opens at midnight');
+    // Back or Forward to its address: the board stays, and the toast says when it opens
+    useGame.setState({ notice: null });
+    expect(holds(address)).toBe(true);
+    expect(backTo(address)).toBe(false);
+    expect(g().info?.puzzle).toBe(EASY);
+    expect(g().notice).toBe('Tomorrow’s daily opens at midnight');
+    // never lost: Back to it brings it, where it was left
+    backToKept();
+    expect(g().info?.dailyKey).toBe('2026-11-13');
+    expect(g().cells[cell].value).toBe(Number(solution[cell]));
+  });
+
   it('opens nothing for a position shared on its address, and lets no game go', async () => {
     underWay();
     const before = g().info;
@@ -175,6 +206,48 @@ describe('a daily after today', () => {
     expect(g().notice).toBe('Tomorrow’s daily opens at midnight');
     expect(await openAppLink(pos, 'import')).toEqual({ opened: false, refused: 'Tomorrow’s daily opens at midnight' });
     expect(g().info).toBe(before);
+  });
+
+  it('a copy of it the page holds, solved before its day: nothing is sent, by the switch or from the queue, until its day', async () => {
+    // as an earlier build left it (it opened /daily/<tomorrow>), or a clock that went back: the published daily, with its number
+    const { useDailyStats } = await import('../src/state/dailyStats');
+    const { countedOf, countedWhen, countedClosed } = await import('../src/state/gameStore');
+    const { dailyNumber } = await import('../src/content/dailies');
+    const list = (await loadDailies())!;
+    const tomorrow = findDaily(list, '2026-11-13')!;
+    const no = dailyNumber('2026-11-13')!;
+    g().startGame(tomorrow.puzzle, tomorrow.score, tomorrow.level, null, '2026-11-13');
+    useGame.setState((s) => ({ info: s.info && { ...s.info, dailyNo: no } }));
+    useSettings.setState({ autoSendDaily: true });
+    const submit = vi.fn(async () => 'accepted' as const);
+    useDailyStats.setState({ played: {}, pending: {}, submitted: {}, tokens: {}, inFlight: {}, stats: {}, submit } as never);
+    const { puzzle, solution } = g().info!;
+    for (const [i, ch] of [...puzzle].entries()) {
+      if (ch !== '.') continue;
+      g().select([i], false);
+      g().input(Number(solution[i]));
+    }
+    expect(g().won).toBe(true);
+    const counted = countedOf(g().info)!;
+    // the win screen offers no Send and says when it can go (VictoryDialog), and the switch sent nothing
+    expect(countedWhen(counted, '2026-11-12')).toBe('soon');
+    expect(countedClosed(counted, '2026-11-12')).toBe(true);
+    expect(submit).not.toHaveBeenCalled();
+    // its solve is still the day's result on this device
+    expect(useDailyStats.getState().played[no]).toMatchObject({ date: '2026-11-13', assisted: false });
+    // on its day it can go, and a week later no more
+    expect(countedWhen(counted, '2026-11-13')).toBe('open');
+    expect(countedWhen(counted, '2026-11-20')).toBe('open');
+    expect(countedWhen(counted, '2026-11-21')).toBe('closed');
+    // a time of that day already waiting in the queue (an older build's Send) waits for its day, kept
+    const result = { no, grid: solution, seconds: 300, hints: 0, unassisted: true };
+    useDailyStats.setState({ pending: { [no]: result } } as never);
+    await useDailyStats.getState().flushPending();
+    expect(submit).not.toHaveBeenCalled();
+    expect(useDailyStats.getState().pending[no]).toEqual(result);
+    at('2026-11-13');
+    await useDailyStats.getState().flushPending();
+    expect(submit).toHaveBeenCalledWith(result);
   });
 
   it('opens once its day comes', async () => {

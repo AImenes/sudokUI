@@ -14,7 +14,8 @@
  * and the three flags. A `started` or `completed` line from an app of
  * November 2026 or later adds two blobs: what kind of game it was and the
  * app's language (PLAY_KINDS, PLAY_LANGS); an older app's line keeps its
- * four. A `shared` line, sent when a player shares a link or a picture of
+ * four. A door of the advent calendar's line (kind `advent`) adds a
+ * seventh, after those, so no older line moves: its door, 1 to 24. A `shared` line, sent when a player shares a link or a picture of
  * the board, adds two blobs: what was shared and whether the share sheet
  * took it, it was copied or the picture was saved (SHARE_KINDS, SHARE_VIAS). Identical events fold into one point with a count,
  * because WAE takes at most POINTS_MAX writes per invocation: the app
@@ -33,7 +34,8 @@
  * where the browser sends them), and not a crawler or a chat app's preview
  * fetcher. That is the research's "share-link landings" number. The home
  * pages, /, /nb/ and /es/, count one the same way (worker/index.ts), with
- * `home` where a share page says `p` or `daily` (LANDING_SLOTS). Its fifth
+ * `home` where a share page says `p` or `daily` (LANDING_SLOTS), and so
+ * does a door's address, /advent/<year>/<door>, with `advent`. Its fifth
  * blob says where the link was opened from, as one word of a closed list
  * (landingWord): the referrer the browser sends is read for that word and
  * never written; with no referrer, the one tag an AI assistant puts on
@@ -78,11 +80,15 @@ export type ShareVia = (typeof SHARE_VIAS)[number];
  * What kind of game a `started` or `completed` line is about
  * (src/state/gameStore.ts, kindOf): the daily puzzle; a new puzzle (one
  * by band, an import, a grid typed, pasted or scanned, or a Learn page's
- * example); a practice puzzle; or one opened from a link someone shared,
- * a puzzle's share address or a position link
+ * example); a practice puzzle; one opened from a link someone shared,
+ * a puzzle's share address or a position link; or a door of the advent
+ * calendar (src/content/advent.ts), whose line also says which door
  */
-export const PLAY_KINDS = ['daily', 'new', 'practice', 'shared'] as const;
+export const PLAY_KINDS = ['daily', 'new', 'practice', 'shared', 'advent'] as const;
 export type PlayKind = (typeof PLAY_KINDS)[number];
+
+/** the doors of the advent calendar a door's line may name (src/content/advent.ts, ADVENT_DOORS) */
+export const DOOR_MAX = 24;
 
 /** the language the app was set to when the line was made (src/state/settings.ts, Lang) */
 export const PLAY_LANGS = ['en', 'nb', 'es'] as const;
@@ -122,9 +128,11 @@ export interface TelemetryEvent {
   /** a play line's kind of game and the app's language; both or neither (an app from before them sends neither), never on a share */
   kind?: PlayKind;
   lang?: PlayLang;
+  /** a door's line (kind advent) only, and always there: 1 to DOOR_MAX */
+  door?: number;
 }
 
-/** what goes to WAE: one index, four blobs (six for a share or a play line with its kind and language, five for a landing), six doubles (see the header) */
+/** what goes to WAE: one index, four blobs (six for a share or a play line with its kind and language, seven for a door's, five for a landing), six doubles (see the header) */
 export interface DataPoint {
   indexes: string[];
   blobs: string[];
@@ -163,6 +171,9 @@ export function checkEvent(x: unknown): TelemetryEvent | null {
     if (typeof e.kind !== 'string' || !(PLAY_KINDS as readonly string[]).includes(e.kind)) return null;
     if (typeof e.lang !== 'string' || !(PLAY_LANGS as readonly string[]).includes(e.lang)) return null;
   }
+  // a door's line says which door, from 1 to 24, and no other line does
+  const door = kinded && e.kind === 'advent';
+  if (door && (typeof e.door !== 'number' || !Number.isInteger(e.door) || e.door < 1 || e.door > DOOR_MAX)) return null;
   if (shared) {
     // a share says what and how, and nothing a play line says besides:
     // no time, and never kept, so none of the opt-in's flags
@@ -172,7 +183,7 @@ export function checkEvent(x: unknown): TelemetryEvent | null {
   }
   // nothing else rides along: a field this list does not know is refused,
   // so the closed list stays closed
-  const fields = ['event', 'band', 'bucket', 'standalone', 'version', 'source', 'offline', 'optin', 'returning', ...(shared ? ['what', 'via'] : kinded ? ['kind', 'lang'] : [])];
+  const fields = ['event', 'band', 'bucket', 'standalone', 'version', 'source', 'offline', 'optin', 'returning', ...(shared ? ['what', 'via'] : kinded ? ['kind', 'lang'] : []), ...(door ? ['door'] : [])];
   for (const key of Object.keys(e)) {
     if (!fields.includes(key)) return null;
   }
@@ -187,7 +198,8 @@ export function checkEvent(x: unknown): TelemetryEvent | null {
     optin: e.optin === true,
     returning: e.returning === true,
     ...(shared ? { what: e.what as ShareKind, via: e.via as ShareVia } : {}),
-    ...(kinded ? { kind: e.kind as PlayKind, lang: e.lang as PlayLang } : {})
+    ...(kinded ? { kind: e.kind as PlayKind, lang: e.lang as PlayLang } : {}),
+    ...(door ? { door: e.door as number } : {})
   };
 }
 
@@ -214,6 +226,8 @@ export function pointOf(e: TelemetryEvent, country: string, count = 1): DataPoin
   // the same two slots; an older app's play line keeps its four blobs
   if (e.event === 'shared') blobs.push(e.what ?? '', e.via ?? '');
   else if (e.kind) blobs.push(e.kind, e.lang ?? '');
+  // a door's number after them, so every older line keeps its places
+  if (e.door) blobs.push(String(e.door));
   return {
     indexes: [e.event],
     blobs,
@@ -225,7 +239,7 @@ export function pointOf(e: TelemetryEvent, country: string, count = 1): DataPoin
 export function fold(events: TelemetryEvent[], country: string): DataPoint[] {
   const points = new Map<string, DataPoint>();
   for (const e of events) {
-    const key = [e.event, e.band, e.bucket, e.standalone, e.version, e.source, e.offline, e.optin, e.returning, e.what ?? '', e.via ?? '', e.kind ?? '', e.lang ?? ''].join('|');
+    const key = [e.event, e.band, e.bucket, e.standalone, e.version, e.source, e.offline, e.optin, e.returning, e.what ?? '', e.via ?? '', e.kind ?? '', e.lang ?? '', e.door ?? ''].join('|');
     const p = points.get(key);
     if (p) p.doubles[1]++;
     else points.set(key, pointOf(e, country));
@@ -527,9 +541,10 @@ export function landingWord(request: Request): LandingFrom {
 
 /**
  * Which page a landing was on, in the point's source slot: a puzzle's
- * share address, a daily's, or one of the app's three home pages
+ * share address, a daily's, one of the app's three home pages, or a door
+ * of the advent calendar's address (/advent/<year>/<door>)
  */
-export const LANDING_SLOTS = ['p', 'daily', 'home'] as const;
+export const LANDING_SLOTS = ['p', 'daily', 'home', 'advent'] as const;
 export type LandingSlot = (typeof LANDING_SLOTS)[number];
 
 /**

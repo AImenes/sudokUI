@@ -85,6 +85,14 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
   playing at a time; the owner's rule for what may be left; and the edge
   cases left.
 - [generator.md](generator.md): making and rating puzzles.
+- [advent-calendar.md](advent-calendar.md): the advent calendar of
+  December 2026 (the owner's decisions of 12 November): 24 doors, door n
+  opening on n December and rated about n x 100, locked until its day
+  wherever it is asked for, a door's time on the daily's tables under a
+  number of its own, the counts with the door, what is kept, the public
+  calendar pages (/advent/, /nb/julekalender/,
+  /es/calendario-de-adviento/), the dashboard's Christmas section, and
+  how to make next year's doors.
 - [technique-stats.md](technique-stats.md): the learning path from the
   player's own play.
 - [concepts_description.md](concepts_description.md) and

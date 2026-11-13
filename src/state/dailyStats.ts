@@ -11,13 +11,19 @@
 // each later unassisted daily solve sends the same result by itself
 // (gameStore.ts, recordWin). The day's own solve is kept here too, on the
 // device only, so its share line can be built again after the win screen
-// has closed.
+// has closed. A door of the advent calendar (src/content/advent.ts) is kept
+// the same way under its own number (adventNo), its time sent only when
+// the player taps Send, and its solve kept so the calendar can mark the
+// doors solved on this device.
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { play } from './play';
 import type { DailyStats } from '../content/dailies';
 import type { Level } from '../engine/ratings';
 import { useSettings } from './settings';
+import { ADVENT_BASE, adventOfNo } from '../content/advent';
+import { doorCounts, doorDate } from '../content/season';
+import { localDateKey, dailyDate, dayToCome } from '../content/dailies';
 
 /** one player's result for a daily, as the server takes it */
 export interface DailyResult {
@@ -47,6 +53,8 @@ export interface PlayedDaily {
 
 /** how many days of solves the device keeps for their share line */
 const PLAYED_KEPT = 31;
+/** and how many doors of the advent calendar: two calendars' */
+const DOORS_KEPT = 48;
 
 interface DailyStatsState {
   /** the random value that stands for this device in a day's results, by number */
@@ -121,15 +129,16 @@ export const useDailyStats = create<DailyStatsState>()(
       inFlight: {},
 
       // the PLAYED_KEPT dailies with the highest numbers, whatever order
-      // they were solved in: never more than that many days of solves
+      // they were solved in: never more than that many days of solves; and
+      // the DOORS_KEPT doors with the highest (a door's number is above
+      // every daily's, so the doors are kept apart and never push a day out)
       recordPlayed: (no, played) =>
-        set((s) => ({
-          played: Object.fromEntries(
-            [...Object.entries(s.played).filter(([k]) => Number(k) !== no), [String(no), played] as const]
-              .sort((a, b) => Number(b[0]) - Number(a[0]))
-              .slice(0, PLAYED_KEPT)
-          )
-        })),
+        set((s) => {
+          const all = [...Object.entries(s.played).filter(([k]) => Number(k) !== no), [String(no), played] as const].sort((a, b) => Number(b[0]) - Number(a[0]));
+          const doors = all.filter(([k]) => Number(k) > ADVENT_BASE).slice(0, DOORS_KEPT);
+          const days = all.filter(([k]) => Number(k) <= ADVENT_BASE).slice(0, PLAYED_KEPT);
+          return { played: Object.fromEntries([...doors, ...days]) };
+        }),
 
       fetchStats: async (no) => {
         try {
@@ -208,12 +217,20 @@ export const useDailyStats = create<DailyStatsState>()(
       // a time the switch queued while offline goes only while the switch is
       // still on; turned off, it is dropped (the privacy page: off again, a
       // time goes only when you tap the button)
+      // A door's time that waited past the days its time counts (from 1
+      // January, nothing of the calendar is sent) is dropped unsent. One
+      // whose day is still to come (a copy of tomorrow's daily the page
+      // held, a clock gone back) waits for its day, kept
       flushPending: async () => {
         const auto = useSettings.getState().autoSendDaily;
+        const today = localDateKey();
         for (const result of Object.values(get().pending)) {
           // (one on its way from this page already is not sent twice)
           if (get().inFlight[String(result.no)]) continue;
-          if (result.auto && !auto) set((s) => ({ pending: without(s.pending, String(result.no)) }));
+          const door = adventOfNo(result.no);
+          if (dayToCome(door ? doorDate(door.year, door.door) : dailyDate(result.no), today)) continue;
+          const late = !!door && !doorCounts(door.year, door.door, today);
+          if ((result.auto && !auto) || late) set((s) => ({ pending: without(s.pending, String(result.no)) }));
           else await get().submit(result);
         }
       }

@@ -44,6 +44,21 @@ a technique. The work happens in the background worker
 (`justifyMove` in `src/state/pools.ts`), so a placement never waits for
 the solver.
 
+A credit can come back long after its move: the worker also rates the
+puzzles it tops the pools up with, and one rating of a hard puzzle can
+take seconds on a slow device, so the last moves of a solve are often
+credited after the win. Until every credit asked for is in, the tally
+counts them as due (`pending`, kept in memory only), and the win screen
+leaves its summary out rather than show part of it: once shown, the line
+is the solve's whole tally, the same on every win screen of that solve
+(a Steps jump or an Undo off the solved board, played on to the end, adds
+nothing to it). Each credit carries the tally it was asked for (a ticket):
+one that comes back after its game left the board (a new game, a kept
+game back in its place) still counts in the technique's record, but never
+in the tally of the game now on the board. A credit still on its way when
+the page goes (a reload, the tab closed) is not kept: the tally counts
+what came in.
+
 What is a move: a digit placed; a candidate struck out with auto
 candidates on; a mark taken away under the exhaustive contract (when the
 marks are declared to be the candidates). Marks that are notes (the open

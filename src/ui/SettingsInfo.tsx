@@ -61,6 +61,20 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   // the Christmas look can be chosen in its season, and is shown while it is the theme
   const christmas = lookAvailable(useToday()) || s.theme === 'christmas';
   const t = useT();
+  // the Christmas choice gone with the focus on it (midnight on 31
+  // December, the dialog open): the focus goes to the theme now chosen,
+  // inside the dialog, not to the page behind it
+  const choices = React.useRef<HTMLDivElement>(null);
+  const hadChristmas = React.useRef(christmas);
+  React.useLayoutEffect(() => {
+    const lost = hadChristmas.current && !christmas;
+    hadChristmas.current = christmas;
+    const row = choices.current;
+    if (!lost || !row) return;
+    const now = document.activeElement;
+    if (now && now !== document.body) return;
+    (row.querySelector<HTMLButtonElement>('button[aria-pressed="true"]') ?? row.querySelector<HTMLButtonElement>('button'))?.focus();
+  }, [christmas]);
 
   return (
     <Modal title={t('Settings')} onClose={onClose}>
@@ -101,7 +115,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             </small>
           )}
         </div>
-        <div className="segmented theme-choice">
+        <div className="segmented theme-choice" ref={choices}>
           {(
             [
               ['dark', t('Dark')],

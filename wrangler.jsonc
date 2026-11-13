@@ -41,7 +41,10 @@
     // The home pages, '/', '/nb/' and '/es/' exactly, go too, so a visit
     // from outside the site is counted as a landing (worker/index.ts,
     // HOME_PATHS); the Worker answers them with the file itself
-    "run_worker_first": ["/p/*", "/nb/p/*", "/es/p/*", "/daily/*", "/nb/daily/*", "/es/daily/*", "/api/*", "/admin", "/", "/nb/", "/es/"]
+    // A door of the advent calendar, /advent/<year>/<door>, is a share
+    // address too (worker/index.ts); /advent/ itself is a static page,
+    // which the Worker hands back to the assets as it is
+    "run_worker_first": ["/p/*", "/nb/p/*", "/es/p/*", "/daily/*", "/nb/daily/*", "/es/daily/*", "/advent/*", "/nb/advent/*", "/es/advent/*", "/api/*", "/admin", "/", "/nb/", "/es/"]
   },
   // The shared daily's results (docs/online-goals.md, phase 2): two small
   // tables, created by `npx wrangler d1 migrations apply sudokui-db

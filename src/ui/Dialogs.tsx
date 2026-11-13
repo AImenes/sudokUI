@@ -8,6 +8,8 @@ import {
   encodePosition,
   dailyResultOf,
   keptResultOf,
+  countedOf,
+  countedWhen,
   contractGrid,
   hasManualMarks,
   markSlip,
@@ -28,10 +30,12 @@ import { shareUrl, techsWorthNaming, clockOf } from '../content/share';
 import { parsePencilGrid, looksLikeGrid } from '../content/textGrid';
 import { puzzleFromLink, findUrl } from '../content/importLinks';
 import { readAppLink, isAppAddress } from '../content/share';
-import { openAppLink } from './links';
+import { openAppLink, lockedLine } from './links';
+import { useToday } from './useToday';
 import type { LinkRefusal, LinkSource, VariantMark } from '../content/importLinks';
 import { dailyNumber, localDateKey, dailyClosed, standingOf } from '../content/dailies';
-import { dailyLine, standingPhrase, asLine } from '../content/dailyLine';
+import { dailyLine, doorLine, standingPhrase, asLine } from '../content/dailyLine';
+import { adventNo } from '../content/advent';
 import { useDailyStats, SubmitOutcome } from '../state/dailyStats';
 import { play } from '../state/play';
 import { sendText, copyText } from './send';
@@ -191,12 +195,17 @@ export function NewGameDialog({
   onStart,
   onCustom,
   onDaily,
+  advent = null,
+  onAdvent,
   onKept
 }: {
   onClose: () => void;
   onStart: (level: LevelPick) => void;
   onCustom: () => void;
   onDaily: () => void;
+  /** the advent calendar (src/content/season.ts, calendarOpen): there from 1 November to 31 December, its doors opening from 1 December ('open'; 'soon' before), nothing otherwise */
+  advent?: 'open' | 'soon' | null;
+  onAdvent?: () => void;
   /** a game under way kept aside (src/ui/links.ts): offered back here too, so it is reachable when its note is put away */
   onKept?: () => void;
 }) {
@@ -217,6 +226,16 @@ export function NewGameDialog({
             {t('One shared puzzle per day. Everyone in the world gets this exact board today, so compare times with your friends')}
           </span>
         </button>
+        {advent && onAdvent && (
+          <button className="level-btn advent" onClick={onAdvent}>
+            <strong>🎄 {t('Advent calendar')}</strong>
+            <span>
+              {advent === 'open'
+                ? t('A door a day from 1 to 24 December, each a little harder than the one before, the same puzzle for everyone')
+                : t('Its doors open from 1 December: a door a day until Christmas Eve')}
+            </span>
+          </button>
+        )}
         <button
           className="level-btn surprise"
           onClick={() => onStart(PICKS[Math.floor(Math.random() * PICKS.length)])}
@@ -1122,6 +1141,10 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
   // what its preview says is published with it, so a daily's link carries
   // no hints and names no techniques whatever the box says
   const daily = known?.dailyNo && known.dailyKey ? { no: known.dailyNo, date: known.dailyKey } : undefined;
+  // a door of the advent calendar's address is its year and door, the same way
+  const counted = countedOf(known);
+  const door = counted?.door;
+  const advent = door && counted ? { ...door, date: counted.date, open: true } : undefined;
 
   // the share address of this puzzle (src/content/share.ts): the path
   // carries the puzzle, so the link previews when pasted into a chat, and
@@ -1138,7 +1161,8 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
         level: known?.level,
         score: known?.score,
         techs: known && nameTechs ? shareTechs() : undefined,
-        daily
+        daily,
+        advent
       },
       window.location.origin
     );
@@ -1169,7 +1193,9 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
     ? 'sudokui.app'
     : daily
       ? t('sudokui.app · Daily #{no} · {level}\u00a0{score}', { no: daily.no, level: t.level(known.level), score: known.score })
-      : t('sudokui.app · {level}\u00a0{score}', { level: t.level(known.level), score: known.score });
+      : door
+        ? t('sudokui.app · Advent door {door} · {level}\u00a0{score}', { door: door.door, level: t.level(known.level), score: known.score })
+        : t('sudokui.app · {level}\u00a0{score}', { level: t.level(known.level), score: known.score });
   const picture = (
     <ShareImage
       cells={pictureCells}
@@ -1186,7 +1212,10 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
   // screen has closed: the one on the board, else today's, from the solve
   // as kept (src/state/dailyStats.ts)
   const todayNo = dailyNumber(localDateKey());
-  const resultNo = known?.dailyNo && played[known.dailyNo] ? known.dailyNo : todayNo && played[todayNo] ? todayNo : null;
+  // the door on the board, solved on this device, offers its own line in the daily's place
+  const doorNo = door ? adventNo(door.year, door.door) : null;
+  const resultNo = doorNo && played[doorNo] ? doorNo : known?.dailyNo && played[known.dailyNo] ? known.dailyNo : todayNo && played[todayNo] ? todayNo : null;
+  const resultDoor = resultNo !== null && resultNo === doorNo ? door : undefined;
   // where the time stands changes as others play: the line says it only
   // from the day's numbers asked for now, as the win screen asks for them
   // (nothing about the player in that request), and not from older ones
@@ -1202,8 +1231,10 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
     if (!resultNo) return;
     const result = played[resultNo];
     const stats = freshNo === resultNo ? dailyStats[resultNo] : undefined;
-    void sendText(dailyLine(t, resultNo, result, stats, submitted[resultNo])).then((outcome) => {
-      countShare(outcome, 'daily', result.level);
+    const line = resultDoor ? doorLine(t, resultDoor, result, stats, submitted[resultNo]) : dailyLine(t, resultNo, result, stats, submitted[resultNo]);
+    void sendText(line).then((outcome) => {
+      // (a door's line counts as a challenge: the share kinds are a closed list)
+      countShare(outcome, resultDoor ? 'challenge' : 'daily', result.level);
       if (outcome !== 'copied') return;
       setCopied('result');
       setTimeout(() => setCopied(''), 2000);
@@ -1281,7 +1312,7 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
                 puzzle: <strong>{t('Puzzle||the Puzzle link button')}</strong>
               })}
         </p>
-        {known && !daily && (
+        {known && !daily && !door && (
           <label className="tick-row">
             <input type="checkbox" checked={nameTechs} onChange={(e) => setNameTechs(e.target.checked)} />
             <span className="setting-text">
@@ -1293,7 +1324,11 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
         <div className="hint-actions">
           {resultNo && (
             <button onClick={shareDailyResult}>
-              {copied === 'result' ? `✓ ${t('Copied')}` : `🏁 ${t('Your result in Daily #{no}', { no: resultNo })}`}
+              {copied === 'result'
+                ? `✓ ${t('Copied')}`
+                : resultDoor
+                  ? `🏁 ${t('Your result in door {door}', { door: resultDoor.door })}`
+                  : `🏁 ${t('Your result in Daily #{no}', { no: resultNo })}`}
             </button>
           )}
           <button onClick={() => copy('link')}>
@@ -1404,14 +1439,21 @@ export function VictoryDialog({
   const solvedAuto = useGame((s) => s.solvedAuto);
   const practiceFound = useGame((s) => s.practiceFound);
   const game = useStats((s) => s.game);
+  // moves of the solve still being credited in the worker (stats.ts)
+  const creditsDue = useStats((s) => s.pending > 0);
   const bands = useStats((s) => s.bands);
   const dailyDays = useStats((s) => s.dailyDays);
   const [copied, setCopied] = useState(false);
   const t = useT();
+  // the player's local date, kept current: a day still to come opens Send at its midnight
+  const today = useToday();
   // a published daily's global statistics (src/state/dailyStats.ts):
   // fetched when the screen opens; the player's own time goes in only
-  // when the player asks, and only from an unassisted solve
-  const dailyNo = info?.dailyNo;
+  // when the player asks, and only from an unassisted solve. A door of the
+  // advent calendar has its own, the same way, under its own number
+  const counted = countedOf(info);
+  const door = counted?.door;
+  const dailyNo = counted?.no;
   const stats = useDailyStats((s) => (dailyNo ? s.stats[dailyNo] : undefined));
   const submittedSecs = useDailyStats((s) => (dailyNo ? s.submitted[dailyNo] : undefined));
   // on its way, or waiting for the connection, whether the button or the
@@ -1462,8 +1504,10 @@ export function VictoryDialog({
   // Beginner and Nightmare puzzles are timed against their own (solveTimes.ts)
   const timedAs = timeBand(info.level, info.score);
   const verdict = partWay ? null : timeVerdict(timedAs, secs, mode);
-  // what the player did, technique by technique (docs/technique-stats.md)
-  const summary = gameSummary(game);
+  // what the player did, technique by technique (docs/technique-stats.md),
+  // once every move of the solve is credited: the line is then the
+  // solve's whole tally, the same on every win screen of that solve
+  const summary = creditsDue ? '' : gameSummary(game);
   const band = info.practiceTech ? null : bands[info.level];
   const newBest = !!band && band.solves > 1 && band.bestMs === elapsedMs();
   const streak = info.dailyKey ? dailyStreak(dailyDays) : 0;
@@ -1495,17 +1539,22 @@ export function VictoryDialog({
     ? null
     : standing.kind === 'percentile'
       ? t('You were faster than {pct}% of them', { pct: standing.pct })
-      : asLine(standingPhrase(t, standing, info.dailyKey === localDateKey()));
+      : asLine(standingPhrase(t, standing, counted?.date === localDateKey()));
   // the server takes a time for a day up to a week on; after that the day
-  // is closed and the win screen does not offer what would be refused
-  const closed = !!info.dailyNo && dailyClosed(info.dailyNo);
+  // is closed and the win screen does not offer what would be refused (a
+  // door: on its day and up to a week late, until 31 December). A copy of
+  // a day still to come (tomorrow's daily kept from before the lock, a
+  // clock gone back) offers nothing either, and says when it can go; the
+  // screen follows the date while open (useToday)
+  const when = counted ? countedWhen(counted, today) : 'open';
+  const closed = when !== 'open';
   // a daily solved before on this device: that solve stays the day's
   // result, so this one is not offered for everyone's times; the first
   // one's is, if it was unassisted and never went in (keptResultOf). This
   // solve undone and solved again is still the day's own; a save from
   // before the game said so tells it by its time
   const before = kept && !(dailyKept ?? (kept.seconds === secs && kept.assisted === assisted)) ? kept : null;
-  const keptResult = before && info.dailyNo && !closed && submittedSecs === undefined ? keptResultOf(info.dailyNo, before, info.solution) : null;
+  const keptResult = before && counted && !closed && submittedSecs === undefined ? keptResultOf(counted.no, before, info.solution) : null;
 
   // the player's time for the daily, sent when asked (src/state/dailyStats.ts):
   // the same result the switch sends by itself (gameStore.ts, dailyResultOf),
@@ -1531,6 +1580,7 @@ export function VictoryDialog({
       level: info.level,
       score: info.score,
       daily: info.dailyNo && info.dailyKey ? { no: info.dailyNo, date: info.dailyKey } : undefined,
+      advent: door && counted ? { ...door, date: counted.date, open: true } : undefined,
       // a game that started part-way through sets no time to beat for
       // anyone solving from the start
       vs: partWay ? undefined : secs
@@ -1543,7 +1593,10 @@ export function VictoryDialog({
       link
     };
     const text =
-      info.dailyNo && info.dailyKey
+      door && counted
+        ? // the door's result as the device keeps it, as for the daily
+          doorLine(t, door, kept ?? { date: counted.date, level: info.level, score: info.score, seconds: secs, assisted }, stats, submittedSecs)
+        : info.dailyNo && info.dailyKey
         ? // the day's result as the device keeps it, as the Share dialog
           // shares it: for a daily solved again, the first solve
           dailyLine(t, info.dailyNo, kept ?? { date: info.dailyKey, level: info.level, score: info.score, seconds: secs, assisted }, stats, submittedSecs)
@@ -1559,6 +1612,7 @@ export function VictoryDialog({
         : t('I solved a {level} sudoku (HoDoKu rating {score}) in {time}, no assists, every mark my own on sudokUI. Can you beat that? {link}', vars);
     // to a friend: a phone's share sheet, else the clipboard (src/ui/send.ts)
     void sendText(text).then((outcome) => {
+      // (a door's line counts as a challenge: the share kinds are a closed list)
       countShare(outcome, info.dailyNo ? 'daily' : 'challenge', info.level);
       if (outcome !== 'copied') return;
       setCopied(true);
@@ -1631,13 +1685,15 @@ export function VictoryDialog({
           </p>
         )}
         {streak > 1 && <p className="solve-record">🔥 {t('Daily streak: {n} days', { n: streak })}</p>}
-        {info.dailyNo && (
+        {counted && (
           <div className="daily-stats">
             <p className="solve-record">
               {stats
                 ? stats.count > 0
                   ? t('Solved unassisted by {count} so far, median {median}', { count: t.num(stats.count), median: clockOf(stats.median ?? 0) })
-                  : t('Nobody has sent in a time for this daily yet')
+                  : door
+                    ? t('Nobody has sent in a time for this door yet')
+                    : t('Nobody has sent in a time for this daily yet')
                 : statsFailed
                   ? t('Global times are unavailable right now')
                   : t('Fetching everyone’s times…')}
@@ -1653,7 +1709,9 @@ export function VictoryDialog({
                   <p className="dialog-note">{t('Times are kept in 15-second steps, so times in the same step count as a tie')}</p>
                 )}
                 {/* one tap of consent, then automatic: off until the player
-                    turns it on, here or in Settings (src/state/settings.ts) */}
+                    turns it on, here or in Settings (src/state/settings.ts);
+                    the dailies' alone: a door's time goes only by Send */}
+                {!door && (
                 <label className="setting-row daily-auto">
                   <span className="setting-text">
                     <span>{t('Send my daily times automatically')}</span>
@@ -1668,6 +1726,7 @@ export function VictoryDialog({
                     <span className="knob" />
                   </button>
                 </label>
+                )}
               </>
             ) : sent === 'sending' || inFlight ? (
               <p className="solve-assisted">{t('Sending your time…')}</p>
@@ -1677,17 +1736,27 @@ export function VictoryDialog({
               <p className="solve-assisted">{t('Your time was not accepted')}</p>
             ) : keptResult && before ? (
               <>
-                <p className="solve-assisted">{t('You solved this daily before, in {time}. That time is the one that goes in.', { time: clockOf(before.seconds) })}</p>
+                <p className="solve-assisted">
+                  {door
+                    ? t('You solved this door before, in {time}. That time is the one that goes in.', { time: clockOf(before.seconds) })
+                    : t('You solved this daily before, in {time}. That time is the one that goes in.', { time: clockOf(before.seconds) })}
+                </p>
                 <button className="daily-send" onClick={sendDaily}>
                   🌍 {t('Send my time and compare')}
                 </button>
               </>
             ) : before ? (
-              <p className="solve-assisted">{t('You solved this daily before, in {time}. That solve stays your result.', { time: clockOf(before.seconds) })}</p>
-            ) : closed ? (
-              <p className="solve-assisted">{t('This daily is closed for new times')}</p>
+              <p className="solve-assisted">
+                {door
+                  ? t('You solved this door before, in {time}. That solve stays your result.', { time: clockOf(before.seconds) })
+                  : t('You solved this daily before, in {time}. That solve stays your result.', { time: clockOf(before.seconds) })}
+              </p>
+            ) : when === 'closed' ? (
+              <p className="solve-assisted">{door ? t('This door is closed for new times') : t('This daily is closed for new times')}</p>
             ) : assisted ? (
               <p className="solve-assisted">{t('Only unassisted solves are counted in everyone’s times')}</p>
+            ) : when === 'soon' && counted ? (
+              <p className="solve-assisted">{t('{opens}. Its time can be sent then.', { opens: lockedLine(counted.date, today, door?.door) })}</p>
             ) : (
               <button className="daily-send" onClick={sendDaily}>
                 🌍 {t('Send my time and compare')}

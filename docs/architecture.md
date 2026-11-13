@@ -322,11 +322,14 @@ page and gives the browser's bar the top bar's colour (`--bar-bg`).
 **The Christmas season** ([season.ts](../src/content/season.ts); the
 owner's decisions of 12 November 2026). One module says what the season
 allows on the player's local date, as a key (`lookAvailable`, `lookAuto`,
-`calendarOpen`, `doorOpen`, `doorDate`, `doorOf`, `seasonYear`), and
-everything else asks it: the look can be chosen from 1 November to
-31 December, goes on by itself from 1 December, and the advent calendar is
-there from 1 November with door n opening on n December and every door
-closed from 1 January. The settings keep four things for it
+`calendarOpen`, `doorState`, `doorOpen`, `doorCounts`, `doorDate`,
+`calendarEnd`, `doorOf`, `seasonYear`), and everything else asks it, the
+advent calendar's module (src/content/advent.ts), its pages and the Worker
+among them: the look can be chosen from 1 November to 31 December, goes on
+by itself from 1 December, and the advent calendar is there from
+1 November with door n opening on n December, its time counting up to a
+week late, and every door closed from 1 January. A door whose day has not
+come is locked by the daily's own rule (`dayToCome`, below). The settings keep four things for it
 (`ThemeState`): `themePicked`, set whenever the player chooses a theme
 (Settings, or the top bar's button: `pickedTheme`, through `set` and
 `toggleTheme`), `themeBefore`, the theme the look took the place of,
@@ -364,11 +367,12 @@ decorations are CSS and inline SVG, nothing fetched: a string of lights
 inside the bar's padding (they come on once, in a second and a half; never
 under reduced motion), snow on the mark, a sprig of holly beside Paused, a
 cranberry ribbon on the win screen whose confetti falls as snow, gold and
-berries (twice, and never under reduced motion), and on a wide screen three
-faint snowflakes in the page's margins, held still. None sits over the
-board, a digit or a control, on a 320 px or a 390 px phone held either way
-or a laptop (tests/e2e/season.spec.ts measures it, and every word's
-contrast). The shared picture of the board stays light, as in every look.
+berries (twice, and never under reduced motion), and on a screen 1240 px
+wide or more three faint snowflakes in the page's margins, held still.
+None sits over the board, a digit or a control, on a 320 px or a 390 px
+phone held either way, an iPad on its side (1180 px, no snowflakes), a
+1200 px screen, at 1240 px or on a laptop (tests/e2e/season.spec.ts
+measures it, and every word's contrast). The shared picture of the board stays light, as in every look.
 The static Learn pages never follow the app's theme (they follow the
 device's light or dark), so the look cannot break them.
 
@@ -548,30 +552,52 @@ none of the player's work.
   cover is not made up from the date: the board stays as it was and the
   player is told; a day before the list began is still derived from its
   date.
-- **A daily whose day has not come.** A daily after the player's local
-  today opens nothing (the owner's decision of 12 November 2026: before
-  it, changing the address to `/daily/<tomorrow>` played tomorrow's
-  daily and could send its time). One check says so, `dailyLocked`
-  (src/content/dailies.ts), and the two ways a daily opens ask it first:
-  `startDaily` (the Daily button in New, the past-daily note's link)
-  and `openAppLink` (its address at start-up or on a
-  reload, a `#daily` or share link in the tab, Import), before anything
-  else, a position shared on that day's address (`/daily/<date>#s=…`)
-  included, so no game goes aside for it. The board stays as it is, and
-  the toast says when the daily opens: "Tomorrow's daily opens at
-  midnight", "That daily opens on 20 November" (Import says it in its
-  own dialog); a copy of that day already on the board (an earlier
-  build opened it, or the device's clock went back) is left as it is,
-  quietly. A new player's first game, which starts in its place, keeps
-  that line. Back and Forward bring back only a game the page holds
-  (`holds`), so they open no locked daily either; a copy an earlier
-  build opened stays where it is (never lost), on the board or in the
-  slot. `#daily` is always the player's today, and today's and earlier
-  dailies open as before. The server is left as it was: it takes a
-  result for a day up to `EARLY_DAYS` (one) ahead of UTC, since it knows
+- **A day that has not come.** A daily after the player's local today,
+  or a door of the advent calendar whose day is, opens nothing (the
+  owner's decisions of 12 November 2026: before them, changing the address
+  to `/daily/<tomorrow>` played tomorrow's daily and could send its time).
+  One rule says so for both, `dayToCome` (src/content/dailies.ts; a
+  daily's `dailyLocked`, a door's `doorState` in src/content/season.ts),
+  and every way in asks it first: `startDaily` (the Daily button in New,
+  the past-daily note's link), `startDoor` (the calendar), `openAppLink`
+  (an address at start-up or on a reload, a `#daily` or share link in the
+  tab, Import), before anything else, a position shared on that day's
+  address (`/daily/<date>#s=…`) included, so no game goes aside for it,
+  and `backTo` (Back and Forward). The board stays as it is, and the toast
+  says when it opens, in one style (`lockedLine`): "Tomorrow's daily opens
+  at midnight", "That daily opens on 20 November", "Door 2 of the advent
+  calendar opens at midnight", "Door 5 of the advent calendar opens on
+  5 December" (Import says it in its own dialog). A copy of that day the
+  page already holds (an earlier build opened it, or the device's clock
+  went back) is never lost and stays where it is: on the board its
+  address changes nothing, quietly; in the slot its link, Back and
+  Forward leave it there and say when it opens, and Back to it brings it
+  as always. A new player's first game, which starts in the place of a
+  refused link, keeps the line that says why. `#daily` is always the
+  player's today, and today's and earlier dailies open as before. The
+  server keeps its day of grace: it takes a result for a day up to
+  `EARLY_DAYS` (one) ahead of UTC, a door's as a daily's, since it knows
   only UTC, and a player in UTC+14 reaches their own today a day before
   UTC does; the lock is the player's local date, which the app knows and
-  the server does not.
+  the server does not. So the app itself never sends the time of a day
+  still to come (`countedWhen` holds it as `soon`, src/state/gameStore.ts),
+  nor a time the server would refuse as too late: the server keeps a day
+  of grace behind as well (`BEHIND_DAYS`), and the app stops offering
+  Send by the player's own date.
+- **A door of the advent calendar** ([advent-calendar.md](advent-calendar.md))
+  goes the daily's way, through `startDoor` (src/ui/links.ts): a door
+  whose day has come opens over a game under way set aside (`openOver`),
+  and the door on the board, in the slot or behind a puzzle being typed in
+  comes back where it was left, never a second copy. From 1 January the
+  calendar is closed until November (src/content/season.ts, `doorState`
+  `closed`): a door game the player holds is still theirs and comes back
+  where it was left, by its address too, and can be finished; any other
+  door opens nothing, and the toast says the calendar is closed. Its info
+  carries `adventYear` and `adventDoor` as a daily's carries `dailyKey`
+  and `dailyNo`; its address is `/advent/<year>/<door>`; its time is kept
+  and sent as the daily's, under its own number (`countedOf`,
+  src/state/gameStore.ts), and only when the player taps Send, on its day
+  and up to a week late (`doorCounts`), never from 1 January.
 - **Custom entry.** Opened again over a puzzle being typed in (New, then
   Custom, or a scan from New), the backup stays the game the first entry
   was opened over, so Cancel always brings that back. The backup keeps

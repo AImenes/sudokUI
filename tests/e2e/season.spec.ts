@@ -231,6 +231,24 @@ test.describe('the Christmas look', () => {
     expect(await theme(page)).toEqual({ shown: 'light', stored: 'light' });
   });
 
+  test('Settings open across midnight on 31 December with the focus on Christmas: the focus goes to the theme come back, inside the dialog', async ({ page }) => {
+    await page.addInitScript(welcomed);
+    await page.addInitScript(() => {
+      if (!localStorage.getItem('sudokui-settings-v1'))
+        localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { theme: 'christmas', themePicked: true, themeBefore: 'light', themeSeason: 2026 }, version: 2 }));
+    });
+    await page.clock.install({ time: new Date('2026-12-31T23:59:30') });
+    await page.goto('/');
+    await expect(page.locator('svg.board')).toBeVisible();
+    const themes = await openSettings(page);
+    await themes.getByRole('button', { name: 'Christmas' }).focus();
+    await expect(themes.getByRole('button', { name: 'Christmas' })).toBeFocused();
+    await page.clock.fastForward(60_000);
+    await expect.poll(() => theme(page)).toEqual({ shown: 'light', stored: 'light' });
+    await expect(themes.getByRole('button', { name: 'Christmas' })).toHaveCount(0);
+    await expect(themes.getByRole('button', { name: 'Daylight' })).toBeFocused();
+  });
+
   test('a new player’s look on 1 January is the default, dark, after a December of Christmas', async ({ page }) => {
     await page.addInitScript(welcomed);
     await page.clock.install({ time: noon('2026-12-20') });
@@ -307,6 +325,9 @@ for (const [name, use] of [
   ['a 320 px phone', { viewport: { width: 320, height: 640 }, hasTouch: true, isMobile: true }],
   ['a 390 px phone', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }],
   ['a phone on its side', { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true }],
+  ['an iPad on its side', { viewport: { width: 1180, height: 820 }, hasTouch: true }],
+  ['a 1200 px screen', { viewport: { width: 1200, height: 900 } }],
+  ['the narrowest screen with snowflakes', { viewport: { width: 1240, height: 800 } }],
   ['a laptop', { viewport: { width: 1280, height: 800 } }],
   ['a wide screen', { viewport: { width: 1920, height: 1080 } }]
 ] as const) {

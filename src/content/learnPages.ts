@@ -8,7 +8,9 @@
 // /nb/learn/x-wing/, /es/learn/x-wing/, and likewise the hubs and the
 // landing pages (/daily-sudoku/, /nb/daily-sudoku/...). Each names the
 // other two with hreflang links and a language line, so search engines
-// serve the right one and readers can switch.
+// serve the right one and readers can switch. The advent calendar's page
+// has a name of its own in each language, /advent/, /nb/julekalender/,
+// /es/calendario-de-adviento/ (adventPage.ts; Page.alternates).
 //
 // The pages carry the same content as the in-app Learn dialog and deep-link
 // back into the app, in the page's language (/ in English, /nb/ and /es/):
@@ -32,6 +34,11 @@ import { FREQUENCY, byWorth } from './frequency';
 import { solveTimeTables } from './solveTimes';
 import { ogCard } from './home';
 import { INTUITION, INTUITION_URL } from './intuition';
+import advent from './advent.json';
+import { ADVENT_DOORS, adventPath, calendarYears, doorDay, findDoor, doorDate, doorTarget } from './advent';
+import type { AdventDoor } from './advent';
+import { ADVENT_PAGE, ADVENT_URLS, ADVENT_LOCALE, DOORS_ID, STATUS_ID, adventCardPath, doorScript, doorWords, fillAdvent } from './adventPage';
+import { seasonLine } from './adventLine';
 import { intuitionDiagram, intuitionDiagramUrl, DIAGRAM_IDS } from './intuitionDiagrams';
 import { learnText, LearnText, LandingText, langPrefix, exampleStep, METHOD_URL } from './learnLocale';
 import type { LearnString } from './learnStrings';
@@ -58,6 +65,19 @@ export interface Page {
   lang: Lang;
   /** the English page's URL: the page exists in every Learn language */
   alternateOf?: string;
+  /**
+   * the page's URL in each language, for a page whose name is its own in
+   * each (the advent calendar's: /advent/, /nb/julekalender/); without it
+   * the versions are the English URL under each language's prefix
+   */
+  alternates?: Record<Lang, string>;
+}
+
+/** a page's URL in every Learn language: its own names, or the English URL under each prefix; null for a page in one language */
+export function versionsOf(page: { alternateOf?: string; alternates?: Record<Lang, string> }): Record<Lang, string> | null {
+  if (page.alternates) return page.alternates;
+  const english = page.alternateOf;
+  return english ? (Object.fromEntries(LEARN_LANGS.map((l) => [l, at(l, english)])) as Record<Lang, string>) : null;
 }
 
 /**
@@ -243,9 +263,18 @@ function layout(opts: {
   body: string;
   /** the English URL of a page that exists in every Learn language */
   alternateOf?: string;
+  /** the page's URL in each language, when each has its own name (Page.alternates) */
+  alternates?: Record<Lang, string>;
+  /** the page's social card and its description, when it has its own; the site's card otherwise */
+  image?: { url: string; alt: string; width: number; height: number };
+  /** what Open Graph calls the page: an article, unless it says otherwise */
+  ogType?: 'article' | 'website';
+  /** the page's own rules, after the site's */
+  style?: string;
 }): string {
   const lt = TEXT[opts.lang];
   const canonical = SITE + opts.url;
+  const versions = versionsOf(opts);
   const breadcrumb = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -265,18 +294,26 @@ function layout(opts: {
       i === opts.crumbs.length - 1 ? esc(c.name) : `<a href="${c.url}">${esc(c.name)}</a>`
     )
     .join(' › ');
-  const alternates = opts.alternateOf
+  const alternates = versions
     ? [
-        ...LEARN_LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${SITE}${at(l, opts.alternateOf!)}" />`),
-        `<link rel="alternate" hreflang="x-default" href="${SITE}${opts.alternateOf}" />`
+        ...LEARN_LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${SITE}${versions[l]}" />`),
+        `<link rel="alternate" hreflang="x-default" href="${SITE}${versions.en}" />`
       ].join('\n    ')
     : '';
   // the same page in the other languages, or their technique index
   const languages = LEARN_LANGS.map((l) =>
     l === opts.lang
       ? `<span aria-current="true">${LANG_NAME[l]}</span>`
-      : `<a href="${opts.alternateOf ? at(l, opts.alternateOf) : at(l, '/learn/')}" hreflang="${l}" lang="${l}">${LANG_NAME[l]}</a>`
+      : `<a href="${versions ? versions[l] : at(l, '/learn/')}" hreflang="${l}" lang="${l}">${LANG_NAME[l]}</a>`
   ).join(' · ');
+  const image = opts.image
+    ? [
+        `<meta property="og:image" content="${opts.image.url}" />`,
+        `<meta property="og:image:width" content="${opts.image.width}" />`,
+        `<meta property="og:image:height" content="${opts.image.height}" />`,
+        `<meta property="og:image:alt" content="${esc(opts.image.alt)}" />`
+      ].join('\n    ')
+    : `<meta property="og:image" content="${ogCard(opts.lang)}" />`;
   const landing = LANDING_PAGES.filter((p) => p.url !== METHOD_URL);
   const method = lt.loc.method;
   const home = app(opts.lang);
@@ -294,15 +331,15 @@ function layout(opts: {
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#e8ebf3" />
     <meta name="theme-color" content="#1c1f2b" />
     <meta property="og:site_name" content="sudokUI" />
-    <meta property="og:type" content="article" />
+    <meta property="og:type" content="${opts.ogType ?? 'article'}" />
     <meta property="og:locale" content="${OG_LOCALE[opts.lang]}" />
     <meta property="og:title" content="${esc(opts.title)}" />
     <meta property="og:description" content="${esc(opts.description)}" />
     <meta property="og:url" content="${canonical}" />
-    <meta property="og:image" content="${ogCard(opts.lang)}" />
+    ${image}
     <meta name="twitter:card" content="summary_large_image" />
     ${ld}
-    <style>${STYLE}</style>
+    <style>${STYLE}${opts.style ? `\n${opts.style}` : ''}</style>
   </head>
   <body>
     <header class="site">
@@ -514,6 +551,7 @@ ${techs
   const body = `      <h1>${esc(lt.s('Sudoku solving techniques'))}</h1>
       <p class="lead">${esc(lt.s("All {n} solving techniques in sudokUI's catalogue, grouped by the idea behind them. Each one says what the pattern is, why it works and how to spot it.", { n }))}</p>
       <p><a class="cta" href="${app(lang)}">${esc(lt.s('Play sudokUI'))}</a><a class="cta ghost" href="${at(lang, INTUITION_URL)}">${esc(lt.s('How they fit together'))}</a><a class="cta ghost" href="${glossaryUrl(lang)}">${esc(lt.s('Glossary'))}</a><a class="cta ghost" href="${at(lang, RATING_URL)}">${esc(lt.s('How the HoDoKu rating works'))}</a></p>
+${seasonLine(lang, 'meta season').map((line) => `      ${line}`).join('\n')}
       <h2 id="worth-learning">${esc(lt.s('Worth learning first'))}</h2>
       <p>${esc(lt.s('How often a technique is needed, weighted by its rating cost, over the {sample} puzzles sudokUI has generated and rated. Difficulty and frequency are different things: a hard technique that turns up often repays the effort of learning it.', { sample: lt.num(FREQUENCY.sample) }))}</p>
       <ol class="techs">
@@ -939,6 +977,145 @@ ${c.sections.map((s) => `      <h2>${esc(s.heading)}</h2>\n${s.paragraphs.map(pa
   };
 }
 
+/** the Christmas look's string of lights, as its top bar wears them (src/ui/styles.css) */
+const ADVENT_LIGHTS = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='9' viewBox='0 0 96 9'%3E%3Cpath d='M0 1.5Q12 6 24 1.5T48 1.5T72 1.5T96 1.5' fill='none' stroke='%23497f64' stroke-width='.8'/%3E%3Cg fill='%234f8a6c'%3E%3Crect x='11' y='3.1' width='2' height='1.6'/%3E%3Crect x='35' y='3.1' width='2' height='1.6'/%3E%3Crect x='59' y='3.1' width='2' height='1.6'/%3E%3Crect x='83' y='3.1' width='2' height='1.6'/%3E%3C/g%3E%3Ccircle cx='12' cy='6.2' r='2.6' fill='%23ef5a70'/%3E%3Ccircle cx='36' cy='6.2' r='2.6' fill='%23f6cd62'/%3E%3Ccircle cx='60' cy='6.2' r='2.6' fill='%23f7faf7'/%3E%3Ccircle cx='84' cy='6.2' r='2.6' fill='%2372d6ae'/%3E%3C/svg%3E")`;
+
+/**
+ * The advent calendar's own look, festive and calm, in the Christmas
+ * look's palette (src/ui/styles.css, data-theme christmas): the open
+ * doors in its top bar's deep pine with gold numbers and snow words, a
+ * string of its lights on a pine ribbon above them, today's door ringed
+ * in its holly; on the site's own night and day. Three doors a row on a
+ * phone, four, then six.
+ */
+const ADVENT_STYLE = `
+.advent{--pine:#173d2e;--on-pine:#f4f8f4;--gold:#f2c75c;--holly:#ef5a70;margin:22px 0 8px}
+@media (prefers-color-scheme:light){.advent{--holly:#a8233d}}
+.advent::before{content:"";display:block;height:14px;border-radius:7px;margin-bottom:16px;background:LIGHTS left 0 bottom 2px / auto 9px repeat-x,var(--pine)}
+.advent h2{margin-top:0}
+.advent-status{font-weight:600}
+.doors{list-style:none;margin:14px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (min-width:560px){.doors{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (min-width:720px){.doors{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.door{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;height:100%;min-height:118px;padding:10px 3px;border-radius:12px;border:1px dashed var(--line);background:var(--soft);color:var(--muted);text-align:center;text-decoration:none;font-size:13px;line-height:1.3;overflow-wrap:anywhere}
+.door b{font-size:28px;line-height:1.15;color:var(--text);font-variant-numeric:tabular-nums}
+.door .day{font-weight:600;color:var(--text)}
+.door .state{margin-top:5px;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.door.open{border:1px solid var(--gold);background:var(--pine);color:var(--on-pine)}
+.door.open b{color:var(--gold)}
+.door.open .day{color:var(--on-pine)}
+.door.open:hover{filter:brightness(1.18)}
+.door.open:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.door.today{box-shadow:0 0 0 3px var(--holly)}
+/* closed from 1 January: a solid border on the page's own ground, its words at full strength (4.5:1 and more, light and dark) */
+.door.closed{border-style:solid;background:transparent}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+`.trim().replace('LIGHTS', ADVENT_LIGHTS);
+
+/** the calendar the page shows: the latest year advent.json publishes, every one of its doors */
+export function pageCalendar(doors: AdventDoor[] = advent as AdventDoor[]): { year: number; doors: AdventDoor[] } {
+  const year = calendarYears(doors).at(-1);
+  if (!year) throw new Error('advent.json publishes no calendar');
+  const list = Array.from({ length: ADVENT_DOORS }, (_, i) => {
+    const door = findDoor(doors, year, i + 1);
+    if (!door) throw new Error(`advent.json: the ${year} calendar has no door ${i + 1}`);
+    return door;
+  });
+  return { year, doors: list };
+}
+
+/**
+ * The advent calendar's page in a language (src/content/adventPage.ts):
+ * the latest calendar's 24 doors, each with its day, level and HoDoKu
+ * rating and written locked; the inline script opens the ones whose day
+ * has come by the visitor's own clock, each a link to its address in the
+ * app. The puzzles themselves are never on the page. Its address is its
+ * own in each language (ADVENT_URLS), and so are its language versions.
+ */
+function adventCalendarPage(lang: Lang): Page {
+  const lt = TEXT[lang];
+  const c = ADVENT_PAGE[lang];
+  const { year, doors } = pageCalendar();
+  const url = ADVENT_URLS[lang];
+  const locale = ADVENT_LOCALE[lang];
+  const h1 = fillAdvent(c.h1, { year });
+  const description = fillAdvent(c.description, { year });
+  const card = SITE + adventCardPath(lang, year);
+  // the address a door's number goes after: /advent/2026/, /nb/advent/2026/
+  const doorBase = adventPath(lang, year, 1).slice(0, -1);
+  const items = doors
+    .map(
+      (d) =>
+        `          <li><a class="door" data-door="${d.door}"><span class="vh">${esc(c.door)} </span><b>${d.door}</b><span class="day">${esc(doorDay(d.date, locale, 'short'))}</span><span class="lv">${esc(lt.level(d.level))}</span><span class="sc">${d.score}</span><span class="state">${esc(c.state.locked)}</span></a></li>`
+    )
+    .join('\n');
+  const body = `      <h1>${esc(h1)}</h1>
+      <p class="lead">${esc(c.lead)}</p>
+      <section class="advent" aria-labelledby="doors">
+        <h2 id="doors">${esc(c.doorsHeading)}</h2>
+        <p class="advent-status" id="${STATUS_ID}">${esc(fillAdvent(c.statusStatic, { year }))}</p>
+        <p class="meta">${esc(c.doorsNote)}</p>
+        <ol class="doors" id="${DOORS_ID}" data-year="${year}" data-app="${doorBase}">
+${items}
+        </ol>
+      </section>
+      <script>
+${doorScript(doorWords(c, year))}
+      </script>
+      <h2>${esc(c.howHeading)}</h2>
+${c.how.map((p) => `      <p>${esc(fillAdvent(p, { top: lt.num(doorTarget(ADVENT_DOORS)) }))}</p>`).join('\n')}
+      <div class="card">
+        <p><a class="cta" href="${app(lang)}">${esc(c.play)}</a><a class="cta ghost" href="${app(lang, '#daily')}">${esc(c.daily)}</a></p>
+        <p class="meta">${esc(c.inApp)}</p>
+      </div>`;
+  return {
+    path: `${url.slice(1)}index.html`,
+    url,
+    lang,
+    alternateOf: ADVENT_URLS.en,
+    alternates: { ...ADVENT_URLS },
+    html: layout({
+      lang,
+      url,
+      title: fitTitle(fillAdvent(c.title, { year }), h1),
+      description,
+      alternateOf: ADVENT_URLS.en,
+      alternates: { ...ADVENT_URLS },
+      image: { url: card, alt: fillAdvent(c.imageAlt, { year }), width: 1200, height: 630 },
+      ogType: 'website',
+      style: ADVENT_STYLE,
+      crumbs: [
+        { name: 'sudokUI', url: app(lang) },
+        { name: c.name, url }
+      ],
+      jsonLd: [
+        {
+          '@context': 'https://schema.org',
+          '@type': 'CollectionPage',
+          name: h1,
+          description,
+          inLanguage: lang,
+          url: SITE + url,
+          image: card,
+          isPartOf: website,
+          mainEntity: {
+            '@type': 'ItemList',
+            name: h1,
+            numberOfItems: doors.length,
+            itemListOrder: 'https://schema.org/ItemListOrderAscending',
+            itemListElement: doors.map((d) => ({
+              '@type': 'ListItem',
+              position: d.door,
+              name: fillAdvent(c.item, { door: d.door, date: doorDay(doorDate(year, d.door), locale), level: lt.level(d.level), score: d.score })
+            }))
+          }
+        }
+      ],
+      body
+    })
+  };
+}
+
 export function buildLearnPages(): Page[] {
   return LEARN_LANGS.flatMap((lang) => [
     ...LANDING_PAGES.map((p) => landingPage(p, lang)),
@@ -948,6 +1125,7 @@ export function buildLearnPages(): Page[] {
     glossaryPage(lang),
     privacyPage(lang),
     whyPage(lang),
+    adventCalendarPage(lang),
     ...ALL_TECHS.map((tech, i) => techniquePage(lang, tech, ALL_TECHS[i - 1], ALL_TECHS[i + 1]))
   ]);
 }
@@ -963,16 +1141,18 @@ export const HOME_URLS = LEARN_LANGS.map((lang) => app(lang));
  * date on every deploy teaches them to ignore that too.
  */
 export function buildSitemap(pages: Page[]): string {
-  const alt = (english: string) =>
-    [
-      ...LEARN_LANGS.map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${SITE}${at(l, english)}"/>`),
-      `<xhtml:link rel="alternate" hreflang="x-default" href="${SITE}${english}"/>`
-    ].join('');
+  const alt = (versions: Record<Lang, string> | null) =>
+    versions
+      ? [
+          ...LEARN_LANGS.map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${SITE}${versions[l]}"/>`),
+          `<xhtml:link rel="alternate" hreflang="x-default" href="${SITE}${versions.en}"/>`
+        ].join('')
+      : '';
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${[
-  ...HOME_URLS.map((url) => `  <url><loc>${SITE}${url}</loc>${alt('/')}</url>`),
-  ...pages.map((p) => `  <url><loc>${SITE}${p.url}</loc>${p.alternateOf ? alt(p.alternateOf) : ''}</url>`)
+  ...HOME_URLS.map((url) => `  <url><loc>${SITE}${url}</loc>${alt(versionsOf({ alternateOf: '/' }))}</url>`),
+  ...pages.map((p) => `  <url><loc>${SITE}${p.url}</loc>${alt(versionsOf(p))}</url>`)
 ].join('\n')}
 </urlset>
 `;

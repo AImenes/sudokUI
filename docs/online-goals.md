@@ -304,7 +304,10 @@ Built, October 2026, with these decisions:
   line who both see "2026-10-08" share one puzzle and one set of
   statistics. The server accepts a result for a day from a week back to a
   day ahead of the UTC date, so an offline retry and a clock ahead of UTC
-  both get through. The streak counts local days too; the keys recorded
+  both get through, with one more day behind (`BEHIND_DAYS`, November
+  2026) for a clock behind UTC: the evening of the seventh late day west
+  of UTC is the next day in UTC, and the app, which stops offering Send
+  by the player's own date (`dailyClosed`), still offers it then. The streak counts local days too; the keys recorded
   before this were UTC dates, so one seam of a day is possible.
 - **A long list, committed.** 451 days are published in
   `src/content/dailies.json` (125 KB), a lazy chunk in the app that the
@@ -676,6 +679,23 @@ used before it can be read:
 - **The launch log**, [launch-log.md](launch-log.md): one dated line per
   action the owner takes, with the link used and the landing word
   expected, and the baseline's numbers.
+
+Christmas, November 2026 (the owner's decisions of 12 November;
+[advent-calendar.md](advent-calendar.md)):
+
+- **The dashboard** ends with a Christmas section for the advent calendar
+  in season: each door's games begun and completed (the door rides on its
+  play lines as a seventh blob), its completion rate, its unassisted
+  times and their median from D1's histogram, and the landings on the
+  doors' addresses (`advent` in the source slot) by referrer word. Before
+  1 December it says when the calendar opens and shows zeros. Its counts
+  are a second SQL query, run only from 30 November to 31 January and
+  kept to the calendar's own lines; its times one read on the primary
+  key's range of the year's 24 door numbers.
+- **Nothing counts the Christmas look**: no line says which theme a
+  player uses. The public calendar pages (`/advent/`, `/nb/julekalender/`,
+  `/es/calendario-de-adviento/`) are files and count nothing; their
+  script reads the device's date only.
 
 ### Phase 4, after four to eight weeks of data
 
