@@ -45,7 +45,11 @@ export interface AdventPageCopy {
   /** the word on a door: locked (and how every door is written), open, today's, and closed after 31 December */
   state: { locked: string; open: string; today: string; closed: string };
   howHeading: string;
-  /** {top}: door 24's rating target, 2400, in the language's numbers */
+  /**
+   * {top}: door 24's rating target, 1000, in the language's numbers;
+   * {easy}: the last door that is Easy, and {medium}: the first that is
+   * Medium, as the calendar's own doors have them
+   */
   how: string[];
   play: string;
   daily: string;
@@ -60,12 +64,12 @@ export interface AdventPageCopy {
 export const ADVENT_PAGE: Record<Lang, AdventPageCopy> = {
   en: {
     name: 'Advent calendar',
-    title: 'Sudoku advent calendar {year}: 24 puzzles, easy to extreme',
+    title: 'Sudoku advent calendar {year}: a little harder each day',
     description:
-      'A sudoku behind each of 24 doors, one opening each day from 1 to 24 December, from Easy to Extreme. The same puzzle for everyone. Free, no account.',
+      'A sudoku behind each of 24 doors, one opening each day from 1 to 24 December. Very easy at first, a little harder each day, up to Medium. Free, no account.',
     h1: 'Sudoku advent calendar {year}',
     lead:
-      '24 doors, one for each day from 1 to 24 December, and a sudoku behind each. Door 1 is easy, and each door is a little harder than the one before, up to Extreme behind door 24. Everyone gets the same puzzle behind the same door.',
+      '24 doors, one for each day from 1 to 24 December, and a sudoku behind each. Door 1 is very easy, and each door is a little harder than the one before; the last ones are a good Medium. Everyone gets the same puzzle behind the same door.',
     statusStatic: 'Door 1 opens on 1 December {year}, and door 24 on 24 December.',
     status: {
       before: 'The calendar opens on 1 December {year}. Until then every door is locked.',
@@ -80,24 +84,24 @@ export const ADVENT_PAGE: Record<Lang, AdventPageCopy> = {
     howHeading: 'How it works',
     how: [
       'A door opens on its day, at midnight by your own clock, and stays open until 31 December, so a day you missed can be caught up. A door whose day has not come is locked: no link or address opens it early.',
-      'Behind door 1 is a puzzle rated about 100 on HoDoKu’s scale, behind door 24 one rated about {top}: each door adds about 100. Every door shows its level and rating, so you know what is coming.',
+      'Behind door 1 is a puzzle rated about 100 on HoDoKu’s scale, behind door 24 one rated about {top}, and every door is rated higher than the one before. Doors 1 to {easy} are Easy: singles only. Doors {medium} to 24 are Medium: they also take locked candidates, pairs or triples. Every door shows its level and rating, so you know what is coming.',
       'Solve a door without anything from the Assist box, such as hints, checks or automatic candidates, and you can send your time from the win screen and see where it stands among everyone’s, on the door’s day and up to a week late.',
       'From 1 January the calendar is closed. A door you have started stays in the app, and you can finish it.'
     ],
     play: 'Open sudokUI',
     daily: 'Play today’s daily',
     inApp: 'From 1 November the calendar is in sudokUI itself too, under New. Its doors open from 1 December.',
-    imageAlt: 'The sudokUI advent calendar {year}: 24 doors, from Easy to Extreme.',
+    imageAlt: 'The sudokUI advent calendar {year}: 24 doors, a little harder each day.',
     item: 'Door {door}, {date}: {level}, HoDoKu rating {score}'
   },
   nb: {
     name: 'Julekalender',
-    title: 'Sudoku-julekalender {year}: 24 luker, fra lett til ekstrem',
+    title: 'Sudoku-julekalender {year}: litt vanskeligere hver dag',
     description:
-      'En sudoku bak hver av 24 luker, én åpner hver dag fra 1. til 24. desember, fra lett til ekstrem. Den samme oppgaven for alle. Gratis, uten konto.',
+      'En sudoku bak hver av 24 luker, én åpner hver dag fra 1. til 24. desember. Veldig lett først, litt vanskeligere hver dag, opp til Middels. Gratis, uten konto.',
     h1: 'Sudoku-julekalender {year}',
     lead:
-      '24 luker, én for hver dag fra 1. til 24. desember, og en sudoku bak hver. Luke 1 er lett, og hver luke er litt vanskeligere enn den før, helt opp til Ekstrem bak luke 24. Alle får den samme oppgaven bak den samme luken.',
+      '24 luker, én for hver dag fra 1. til 24. desember, og en sudoku bak hver. Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den før; de siste er på nivået Middels. Alle får den samme oppgaven bak den samme luken.',
     statusStatic: 'Luke 1 åpner 1. desember {year}, og luke 24 den 24. desember.',
     status: {
       before: 'Kalenderen åpner 1. desember {year}. Til da er alle lukene låst.',
@@ -112,24 +116,24 @@ export const ADVENT_PAGE: Record<Lang, AdventPageCopy> = {
     howHeading: 'Slik virker den',
     how: [
       'En luke åpner på dagen sin, ved midnatt etter din egen klokke, og står åpen til 31. desember, så en dag du gikk glipp av, kan tas igjen. En luke som ikke har fått dagen sin ennå, er låst: ingen lenke eller adresse åpner den før tiden.',
-      'Bak luke 1 er en oppgave med HoDoKu-poengsum rundt 100, bak luke 24 en med rundt {top}: hver luke legger til omtrent 100. Hver luke viser nivået og poengsummen sin, så du vet hva som kommer.',
+      'Bak luke 1 er en oppgave med HoDoKu-poengsum rundt 100, bak luke 24 en med rundt {top}, og hver luke har høyere poengsum enn den før. Luke 1 til {easy} er Lett: bare singler. Luke {medium} til 24 er Middels: der trengs også låste kandidater, par eller tripler. Hver luke viser nivået og poengsummen sin, så du vet hva som kommer.',
       'Løser du en luke uten noe fra Hjelp-boksen, som hint, sjekk eller autokandidater, kan du sende inn tiden din fra seiersskjermen og se hvor den står blant alles, på lukens dag og opptil en uke etter.',
       'Fra 1. januar er kalenderen stengt. En luke du har begynt på, blir værende i appen, og du kan fullføre den.'
     ],
     play: 'Åpne sudokUI',
     daily: 'Spill dagens sudoku',
     inApp: 'Fra 1. november finner du kalenderen også i selve sudokUI, under Ny. Lukene åpner fra 1. desember.',
-    imageAlt: 'Julekalenderen {year} i sudokUI: 24 luker, fra lett til ekstrem.',
+    imageAlt: 'Julekalenderen {year} i sudokUI: 24 luker, litt vanskeligere hver dag.',
     item: 'Luke {door}, {date}: {level}, HoDoKu-poengsum {score}'
   },
   es: {
     name: 'Calendario de adviento',
-    title: 'Calendario de adviento de sudoku {year}: de fácil a extremo',
+    title: 'Calendario de adviento de sudoku {year}: de menos a más',
     description:
-      'Un sudoku en cada una de las 24 casillas: se abre una cada día del 1 al 24 de diciembre, de fácil a extremo. El mismo sudoku para todos. Gratis, sin cuenta.',
+      '24 casillas con un sudoku en cada una, del 1 al 24 de diciembre. Muy fácil al principio, algo más difícil cada día, hasta el nivel Medio. Gratis, sin cuenta.',
     h1: 'Calendario de adviento de sudoku {year}',
     lead:
-      '24 casillas, una para cada día del 1 al 24 de diciembre, con un sudoku en cada una. La casilla 1 es fácil, y cada casilla es algo más difícil que la anterior, hasta Extremo en la casilla 24. Todo el mundo recibe el mismo sudoku en la misma casilla.',
+      '24 casillas, una para cada día del 1 al 24 de diciembre, con un sudoku en cada una. La casilla 1 es muy fácil, y cada casilla es algo más difícil que la anterior; las últimas son de nivel Medio. Todo el mundo recibe el mismo sudoku en la misma casilla.',
     statusStatic: 'La casilla 1 se abre el 1 de diciembre de {year}, y la casilla 24 el 24 de diciembre.',
     status: {
       before: 'El calendario se abre el 1 de diciembre de {year}. Hasta entonces todas las casillas están bloqueadas.',
@@ -144,14 +148,14 @@ export const ADVENT_PAGE: Record<Lang, AdventPageCopy> = {
     howHeading: 'Cómo funciona',
     how: [
       'Una casilla se abre en su día, a medianoche según tu propio reloj, y sigue abierta hasta el 31 de diciembre, así que puedes recuperar un día que te hayas saltado. Una casilla cuyo día no ha llegado está bloqueada: ningún enlace ni dirección la abre antes de tiempo.',
-      'En la casilla 1 hay un sudoku con una puntuación HoDoKu de unos 100, y en la casilla 24 uno de unos {top}: cada casilla suma unos 100. Cada casilla muestra su nivel y su puntuación, así que sabes lo que viene.',
+      'En la casilla 1 hay un sudoku con una puntuación HoDoKu de unos 100, y en la casilla 24 uno de unos {top}; cada casilla tiene una puntuación más alta que la anterior. Las casillas 1 a {easy} son de nivel Fácil: solo únicos. Las casillas {medium} a 24 son de nivel Medio: piden además candidatos bloqueados, parejas o ternas. Cada casilla muestra su nivel y su puntuación, así que sabes lo que viene.',
       'Si resuelves una casilla sin usar nada del cuadro Ayuda, como las pistas, las revisiones o los candidatos automáticos, puedes enviar tu tiempo desde la pantalla de victoria y ver qué lugar ocupa entre los de todos, el día de su casilla y hasta una semana después.',
       'A partir del 1 de enero el calendario está cerrado. Una casilla que hayas empezado se queda en la app, y puedes terminarla.'
     ],
     play: 'Abre sudokUI',
     daily: 'Juega al sudoku del día',
     inApp: 'A partir del 1 de noviembre, el calendario también está en sudokUI, en Nuevo. Sus casillas se abren a partir del 1 de diciembre.',
-    imageAlt: 'El calendario de adviento {year} de sudokUI: 24 casillas, de fácil a extremo.',
+    imageAlt: 'El calendario de adviento {year} de sudokUI: 24 casillas, algo más difícil cada día.',
     item: 'Casilla {door}, {date}: {level}, puntuación HoDoKu {score}'
   }
 };

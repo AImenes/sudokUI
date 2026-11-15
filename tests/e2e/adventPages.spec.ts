@@ -9,6 +9,11 @@
  * on /learn/ shows in November and December and not in October.
  */
 import { test, expect, Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import type { AdventDoor } from '../../src/content/advent';
+
+/** the published doors, read as a file: Playwright's loader takes no JSON import without an attribute */
+const published: AdventDoor[] = JSON.parse(new TextDecoder().decode(readFileSync('src/content/advent.json')));
 
 test.use({ viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true, serviceWorkers: 'block' });
 
@@ -36,6 +41,28 @@ test('in November every door is locked, with its day, and the page says when the
   await expect(page.locator('#advent-doors a.door').first()).toContainText('1. des.');
   // nothing to scroll sideways on a phone
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+});
+
+test('the page shows the gentle climb: every door with its level and rating, Easy to door 18 and Medium from door 19, and says so', async ({ page }) => {
+  await on(page, '2026-11-20');
+  await page.goto('/advent/');
+  await expect(page).toHaveTitle('Sudoku advent calendar 2026: a little harder each day');
+  await expect(page.locator('p.lead')).toContainText('Door 1 is very easy, and each door is a little harder than the one before; the last ones are a good Medium.');
+  await expect(page.getByText('Doors 1 to 18 are Easy: singles only. Doors 19 to 24 are Medium: they also take locked candidates, pairs or triples.')).toBeVisible();
+  const shown = await page.locator('#advent-doors a.door').evaluateAll((all) =>
+    all.map((a) => ({ door: Number(a.getAttribute('data-door')), level: a.querySelector('.lv')?.textContent ?? '', score: Number(a.querySelector('.sc')?.textContent) }))
+  );
+  expect(shown).toEqual(published.filter((d) => d.date.startsWith('2026-')).map((d) => ({ door: d.door, level: d.level, score: d.score })));
+  expect(shown.map((d) => d.level)).toEqual([...Array(18).fill('Easy'), ...Array(6).fill('Medium')]);
+  for (let i = 1; i < shown.length; i++) expect(shown[i].score, `door ${i + 1}`).toBeGreaterThan(shown[i - 1].score);
+  expect(shown[23].score).toBeLessThanOrEqual(1000);
+  // and in Norwegian and Spanish, in their own words
+  await page.goto('/nb/julekalender/');
+  await expect(page).toHaveTitle('Sudoku-julekalender 2026: litt vanskeligere hver dag');
+  await expect(page.locator('#advent-doors a.door .lv')).toHaveText([...Array(18).fill('Lett'), ...Array(6).fill('Middels')]);
+  await page.goto('/es/calendario-de-adviento/');
+  await expect(page).toHaveTitle('Calendario de adviento de sudoku 2026: de menos a más');
+  await expect(page.locator('#advent-doors a.door .lv')).toHaveText([...Array(18).fill('Fácil'), ...Array(6).fill('Medio')]);
 });
 
 test('on 5 December doors 1 to 5 open into the app, door 5 is today’s, and a door opens its game', async ({ page }) => {
