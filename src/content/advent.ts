@@ -1,7 +1,8 @@
 // The advent calendar (docs/advent-calendar.md): 24 doors, 1 to 24
 // December, door n opening on n December in the player's local date, its
-// puzzle rated about n x 100 on HoDoKu's scale, the same puzzle for
-// everyone. This module holds what the app, the build script
+// puzzle a little harder than the one before, from about 100 on HoDoKu's
+// scale behind door 1 to about 1000 behind door 24 (doorTarget), the same
+// puzzle for everyone. This module holds what the app, the build script
 // (scripts/build-advent.ts) and the Worker (worker/daily.ts,
 // worker/index.ts) agree on: the door's number for the results, its
 // address, its published puzzle and how its day is written. What a date
@@ -25,7 +26,11 @@
 //   day has not come (with the daily's EARLY_DAYS of grace) or one more
 //   than LATE_DAYS behind, never after 31 December.
 // - Like the dailies, the file carries the SHA-256 of each solution, never
-//   the solution, and a published door is never regenerated.
+//   the solution, and a published door is never regenerated once its
+//   calendar's first door has opened anywhere (scripts/build-advent.ts).
+// And of 15 November 2026: the calendar is there to bring people to
+// sudokUI, so most players must be able to open every door: the doors
+// climb to about 1000, not 2400, and none needs a technique above Medium.
 import type { Level } from '../engine/ratings';
 import type { Lang } from '../state/settings';
 import { homePath } from './home';
@@ -41,7 +46,7 @@ export interface AdventDoor {
   /** 81 cells, digits and dots */
   puzzle: string;
   level: Level;
-  /** the HoDoKu rating, about door x 100 */
+  /** the HoDoKu rating, near the door's target (doorTarget) */
   score: number;
   /** SHA-256 of the 81-digit solution, lower-case hex */
   solutionHash: string;
@@ -55,8 +60,13 @@ export interface AdventDoor {
  */
 export { DOORS as ADVENT_DOORS, doorDate, isDoor } from './season';
 
-/** the rating a door aims at: door 1 about 100, door 24 about 2400 */
-export const doorTarget = (door: number) => door * 100;
+/**
+ * The rating a door aims at (the owner's decision of 15 November 2026): a
+ * gentle climb, door 1 about 100 and door 24 about 1000, some 39 more
+ * each day, so that most players can open every door: 100, 139, 178 ...
+ * 961, 1000. Up to 800 a door is Easy, singles alone; above, Medium.
+ */
+export const doorTarget = (door: number) => Math.round(100 + ((door - 1) * 900) / 23);
 
 /**
  * Where the doors' numbers start: a door's results live on the daily's

@@ -7,8 +7,16 @@
  * counting on its day and up to a week late; each
  * door's number for its results, in a range no daily reaches; and the
  * published doors, one solution each, published as its hash, rated as the
- * file says, near n x 100, rising, and made again by the seeded search
- * exactly as published.
+ * file says, and made again by the seeded search exactly as published.
+ *
+ * The doors are held to the owner's decision of 15 November 2026: a
+ * gentle climb from about 100 to about 1000 (doorTarget), each door rated
+ * higher than the one before, doors 1 to 18 Easy and solved by singles
+ * alone, doors 19 to 24 Medium with no technique above Medium, each near
+ * its target, or, for the last Easy doors, whose targets singles alone do
+ * not reach, near its share of the stretch below what they do reach
+ * (doorAim). And a year is made again only while its first door has not
+ * opened anywhere (yearPlan).
  */
 import { describe, it, expect } from 'vitest';
 import doorsFile from '../src/content/advent.json';
@@ -20,9 +28,11 @@ import { dailyNumber, localDateKey, LATE_DAYS } from '../src/content/dailies';
 import type { Daily } from '../src/content/dailies';
 import { parseGrid, gridToString } from '../src/engine/board';
 import { solve, countSolutions } from '../src/engine/bruteForce';
-import { ratePuzzle } from '../src/engine/humanSolver';
-import { LEVELS } from '../src/engine/ratings';
-import { makeDoor, tolerance } from '../scripts/adventDoors';
+import { ratePuzzle, findNextStep, applyStep } from '../src/engine/humanSolver';
+import { fitForLevel } from '../src/engine/generator';
+import { LEVELS, LEVEL_MAX_SCORE, TECHS } from '../src/engine/ratings';
+import type { Tech } from '../src/engine/ratings';
+import { SINGLES_REACH, doorAim, doorLevel, makeDoor, tolerance, yearPlan } from '../scripts/adventDoors';
 import { API_PATH, sha256Hex } from '../worker/daily';
 
 const doors = doorsFile as AdventDoor[];
@@ -162,23 +172,83 @@ describe('the published doors', () => {
       }
     });
 
-    it(`of ${y} rise from about 100 to about 2400, each door near n x 100, in bands that never fall`, () => {
-      for (const d of year) expect(Math.abs(d.score - doorTarget(d.door)), `door ${d.door}: ${d.score}`).toBeLessThanOrEqual(tolerance(doorTarget(d.door)));
+    it(`of ${y} climb gently, as decided: each near its target or its share of what singles reach, each rated higher than the one before`, () => {
+      for (const d of year) {
+        const target = doorTarget(d.door);
+        const aim = doorAim(d.door);
+        const where = `door ${d.door}: ${d.score}`;
+        // within the generator's tolerance of what its search aimed at
+        expect(Math.abs(d.score - aim), where).toBeLessThanOrEqual(tolerance(aim));
+        // which is the target itself wherever a puzzle of the door's level reaches it
+        if (aim === target) expect(Math.abs(d.score - target), where).toBeLessThanOrEqual(tolerance(target));
+        else {
+          // the nearest singles alone come: below the target, in the last stretch under their reach
+          expect(d.level, where).toBe('Easy');
+          expect(target, where).toBeGreaterThan(SINGLES_REACH);
+          expect(d.score, where).toBeLessThan(target);
+          expect(d.score, where).toBeGreaterThan(SINGLES_REACH - 40);
+        }
+      }
       for (let i = 1; i < year.length; i++) {
         expect(year[i].score, `door ${i + 1}`).toBeGreaterThan(year[i - 1].score);
         expect(LEVELS.indexOf(year[i].level), `door ${i + 1}`).toBeGreaterThanOrEqual(LEVELS.indexOf(year[i - 1].level));
       }
-      expect(year[0].level).toBe('Easy');
-      expect(year[23].level).toBe('Extreme');
+      // from about 100 to about 1000, and never past Medium's own limit
+      expect(Math.abs(year[0].score - 100)).toBeLessThanOrEqual(5);
+      expect(year[23].score).toBeGreaterThanOrEqual(990);
+      expect(year[23].score).toBeLessThanOrEqual(LEVEL_MAX_SCORE.Medium);
       // door 1 is a puzzle of singles with few empty cells
       expect(year[0].puzzle.replace(/[^.]/g, '').length).toBeLessThan(35);
+    });
+
+    it(`of ${y} are Easy behind doors 1 to 18, solved by singles alone, and Medium behind doors 19 to 24, with no technique above Medium`, () => {
+      const SINGLES: Tech[] = ['FULL_HOUSE', 'NAKED_SINGLE', 'HIDDEN_SINGLE'];
+      expect(year.filter((d) => d.level === 'Easy').map((d) => d.door)).toEqual(Array.from({ length: 18 }, (_, i) => i + 1));
+      expect(year.filter((d) => d.level === 'Medium').map((d) => d.door)).toEqual([19, 20, 21, 22, 23, 24]);
+      for (const d of year) {
+        const where = `door ${d.door}`;
+        expect(d.level, where).toBe(doorLevel(d.door));
+        // the full catalogue's own path, as the app's hints walk it
+        const r = ratePuzzle(d.puzzle)!;
+        const used = Object.keys(r.techniques) as Tech[];
+        if (d.level === 'Easy') {
+          expect(used.filter((t) => !SINGLES.includes(t)), where).toEqual([]);
+          expect(d.score, where).toBeLessThanOrEqual(LEVEL_MAX_SCORE.Easy);
+          // and the singles by themselves solve it, at the same rating
+          const alone = ratePuzzle(d.puzzle, SINGLES)!;
+          expect({ solvable: alone.solvable, score: alone.score }, where).toEqual({ solvable: true, score: d.score });
+        } else {
+          expect(used.filter((t) => LEVELS.indexOf(TECHS[t].level) > LEVELS.indexOf('Medium')), where).toEqual([]);
+          // Medium by a technique, not by its score alone: a pair, a triple or locked candidates is needed
+          expect(used.some((t) => TECHS[t].level === 'Medium'), where).toBe(true);
+          expect(d.score, where).toBeLessThanOrEqual(LEVEL_MAX_SCORE.Medium);
+          // and its hardest step comes on a board with room in it, as a served Medium puzzle's does
+          expect(fitForLevel(d.puzzle, r), where).toBe(true);
+        }
+      }
+    });
+
+    it(`of ${y} each have exactly one solution, by brute force and by the engine's own solver, and it is the one whose hash is published`, async () => {
+      for (const d of year) {
+        const where = `door ${d.door}`;
+        const grid = parseGrid(d.puzzle)!;
+        // brute force: a second solution would be found
+        expect(countSolutions(grid, 2), where).toBe(1);
+        const solution = gridToString(solve(grid)!);
+        // the engine's own solver, step by step and never guessing, ends on the same grid
+        const g = parseGrid(d.puzzle)!;
+        for (let step = findNextStep(g); step; step = findNextStep(g)) applyStep(g, step);
+        expect(gridToString(g), where).toBe(solution);
+        expect(solution, where).toMatch(/^[1-9]{81}$/);
+        expect(await sha256Hex(solution), where).toBe(d.solutionHash);
+      }
     });
   }
 
   it('of 2026 are made again by the seeded search exactly as published', async () => {
     const year = doors.filter((d) => d.date.startsWith('2026-'));
     for (const door of [1, 2, 3]) {
-      const before = door === 1 ? 'Easy' : year[door - 2].level;
+      const before = door === 1 ? 0 : year[door - 2].score;
       const made = makeDoor(2026, door, before);
       const { solutionHash, ...published } = year[door - 1];
       expect(made.door).toEqual(published);
@@ -187,3 +257,49 @@ describe('the published doors', () => {
   });
 });
 
+describe('the climb, as decided on 15 November 2026', () => {
+  const ALL = Array.from({ length: ADVENT_DOORS }, (_, i) => i + 1);
+
+  it('aims door 1 at 100 and door 24 at 1000, some 39 more each day', () => {
+    expect(ALL.map(doorTarget)).toEqual([100, 139, 178, 217, 257, 296, 335, 374, 413, 452, 491, 530, 570, 609, 648, 687, 726, 765, 804, 843, 883, 922, 961, 1000]);
+  });
+
+  it('makes a door of the level its target names: Easy for doors 1 to 18, Medium for doors 19 to 24, none above', () => {
+    expect(ALL.map(doorLevel)).toEqual([...Array(18).fill('Easy'), ...Array(6).fill('Medium')]);
+  });
+
+  it('aims a door at its target, and the last Easy doors, past what singles alone reach, at an even climb up to that reach', () => {
+    expect(SINGLES_REACH).toBe(640);
+    for (const door of ALL) {
+      if (door < 15 || door > 18) expect(doorAim(door), `door ${door}`).toBe(doorTarget(door));
+    }
+    expect([15, 16, 17, 18].map(doorAim)).toEqual([617, 625, 632, 640]);
+    // every aim is above the one before, so the doors can rise
+    for (const door of ALL.slice(1)) expect(doorAim(door), `door ${door}`).toBeGreaterThan(doorAim(door - 1));
+    // and no aim is past its target
+    for (const door of ALL) expect(doorAim(door), `door ${door}`).toBeLessThanOrEqual(doorTarget(door));
+  });
+});
+
+describe('making a year again', () => {
+  const at = (iso: string) => new Date(iso);
+
+  it('adds a year the file does not have, and leaves a published one alone unless the run asks', () => {
+    expect(yearPlan(doors, 2027, false, at('2026-11-15T12:00:00Z'))).toBe('add');
+    expect(yearPlan(doors, 2027, true, at('2027-12-10T12:00:00Z'))).toBe('add');
+    expect(yearPlan([], 2026, false, at('2026-12-10T12:00:00Z'))).toBe('add');
+    for (const now of ['2026-10-01T00:00:00Z', '2026-11-15T12:00:00Z', '2026-12-01T00:00:00Z', '2027-03-01T00:00:00Z'])
+      expect(yearPlan(doors, 2026, false, at(now)), now).toBe('published');
+  });
+
+  it('replaces a year only while its first door has not opened anywhere: until 29 November UTC, a day before a player ahead of UTC reaches 1 December', () => {
+    for (const now of ['2026-01-01T00:00:00Z', '2026-11-15T12:00:00Z', '2026-11-28T12:00:00Z', '2026-11-29T23:59:59Z'])
+      expect(yearPlan(doors, 2026, true, at(now)), now).toBe('replace');
+    // from 30 November UTC it is 1 December somewhere within the day: a door somebody may have played never changes
+    for (const now of ['2026-11-30T00:00:00Z', '2026-11-30T10:00:00Z', '2026-12-01T00:00:00Z', '2026-12-24T12:00:00Z', '2026-12-31T23:59:59Z', '2027-01-01T00:00:00Z', '2027-11-15T12:00:00Z', '2031-06-01T00:00:00Z'])
+      expect(yearPlan(doors, 2026, true, at(now)), now).toBe('opened');
+    // the season's own rule: on the day the plan first refuses, door 1 is still locked by UTC's date and open a day ahead
+    expect(doorState(2026, 1, '2026-11-30')).toBe('locked');
+    expect(doorState(2026, 1, '2026-12-01')).toBe('open');
+  });
+});
