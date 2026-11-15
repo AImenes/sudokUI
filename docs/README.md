@@ -86,8 +86,10 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
   cases left.
 - [generator.md](generator.md): making and rating puzzles.
 - [advent-calendar.md](advent-calendar.md): the advent calendar of
-  December 2026 (the owner's decisions of 12 November): 24 doors, door n
-  opening on n December and rated about n x 100, locked until its day
+  December 2026 (the owner's decisions of 12 and 15 November): 24 doors,
+  door n opening on n December, a gentle climb from about 100 to about
+  1000 on HoDoKu's scale so most players can open every door (doors 1 to
+  18 Easy, singles only; doors 19 to 24 Medium), locked until its day
   wherever it is asked for, a door's time on the daily's tables under a
   number of its own, the counts with the door, what is kept, the public
   calendar pages (/advent/, /nb/julekalender/,

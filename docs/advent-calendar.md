@@ -1,14 +1,62 @@
 # The advent calendar
 
 The owner's decisions of 12 November 2026, as built: 24 doors from 1 to
-24 December, door n opening on n December by the player's own date, its
-puzzle rated about n x 100 on HoDoKu's scale (door 1 about 100, door 24
-about 2400), the same puzzle for everyone. A door is a game like any
-other: the one slot keeps it, Back to it brings it back, and its
-unassisted time can go into everyone's times on its day and up to a week
-late, on the daily's own tables. This page says how it works, what it
-sends and keeps, the public pages that show the doors to search engines,
-the dashboard's Christmas section, and how to make next year's doors.
+24 December, door n opening on n December by the player's own date, each
+a little harder than the one before, the same puzzle for everyone. A door
+is a game like any other: the one slot keeps it, Back to it brings it
+back, and its unassisted time can go into everyone's times on its day and
+up to a week late, on the daily's own tables. This page says how it
+works, what it sends and keeps, the public pages that show the doors to
+search engines, the dashboard's Christmas section, and how to make next
+year's doors.
+
+## A gentle climb (the decision of 15 November 2026)
+
+The calendar is there to bring people to sudokUI, so most players must be
+able to open all 24 doors, and a friend who taps a shared door must be
+able to play it. The doors of 12 November climbed from 100 to 2400 on
+HoDoKu's scale, about 100 a day: Hard from 9 December and chains from 19
+December, beyond most players. The owner changed that on 15 November,
+before any door had opened (every door is locked until 1 December, so
+nobody had played one and nothing had been sent for one):
+
+- **The targets.** Door 1 aims at about 100 and door 24 at about 1000,
+  some 39 more each day: `doorTarget(door)` is
+  `Math.round(100 + (door - 1) * 900 / 23)` (src/content/advent.ts): 100,
+  139, 178, 217, 257, 296, 335, 374, 413, 452, 491, 530, 570, 609, 648,
+  687, 726, 765, 804, 843, 883, 922, 961, 1000.
+- **The levels.** A door is of the level its target's score names
+  (`doorLevel`, scripts/adventDoors.ts): doors 1 to 18 are Easy (up to
+  800), solved with singles alone, Full House, Naked Single and Hidden
+  Single; doors 19 to 24 are Medium (up to 1000), with at most the Medium
+  techniques, pairs, triples and locked candidates. No door needs a Hard
+  technique.
+- **Every door** has one solution, is rated higher than the door before,
+  and its level never goes down.
+- **What singles alone reach.** HoDoKu's limit for Easy is 800, but a
+  puzzle of singles does not come near it. A Hidden Single counts 14 and
+  a Full House or a Naked Single 4, and the solver takes the 4 whenever
+  one is on the board, which it always is for the last 20 cells or so.
+  With 21 clues, about the fewest a puzzle of singles has, that leaves
+  some 40 Hidden Singles: 640. Measured: of 3000 fresh minimal puzzles
+  the highest Easy one was 550; directed climbs of 50,000 steps ended at
+  620 to 640, and of 400,000 steps at 630 to 654. So the targets of doors
+  15 to 18 (648, 687, 726, 765) cannot be met by Easy puzzles, and the
+  decision's levels come first: those four doors stay Easy and share the
+  stretch below what singles reach (`SINGLES_REACH`, 640), an even climb
+  from door 14's target, 609 (`doorAim`: 617, 625, 632, 640), each still
+  rated higher than the one before. Door 19, the first Medium one, is at
+  its own target, 804: the step from door 18 to door 19 is the step from
+  singles to the first pairs and locked candidates. The other way to
+  read the decision, Medium doors from door 15 at 648 to 765, would keep
+  the ratings on the line and ask for pairs and locked candidates four
+  days earlier, from 15 December; it is a small change (`doorLevel`, and
+  the tests and the page's words follow the doors' own levels where they
+  do not name doors 18 and 19), and the doors can be made again until
+  29 November UTC.
+- **The words** everywhere say this climb and no other: "Door 1 is very
+  easy, and each door is a little harder than the one before; the last
+  ones are a good Medium".
 
 ## The season, in dates
 
@@ -106,12 +154,12 @@ Worker still refuses a time for a door whose day has not come anywhere
   the player taps Send (the owner may change this; it is one line in
   `recordDaily`).
 - **Its share line.** "I opened door 5 of the sudokUI advent calendar in
-  4:12 · Easy (498) · unassisted · {link}" (`doorLine`,
+  4:12 · Easy (258) · unassisted · {link}" (`doorLine`,
   src/content/dailyLine.ts), with where the time stands once it is in, and
   the door's address with the time to beat. The win screen's Challenge a
   friend shares it; the Share dialog gives the door's address as the
   puzzle link, a picture whose line names the door ("sudokui.app · Advent
-  door 5 · Easy 498"), and, once the door is solved on the device, "Your
+  door 5 · Easy 258"), and, once the door is solved on the device, "Your
   result in door 5". A door's line is counted as a `challenge` share: the
   share kinds are a closed list, and nothing new is sent for it.
 - **The calendar** (src/ui/Advent.tsx): New, then Advent calendar, from 1
@@ -200,10 +248,13 @@ and the sitemap, and the dev server serves them.
   then six, each with its day, its level and its HoDoKu rating, and a word
   for where it stands. A status line says where the calendar stands, a
   section says how it works (a door opens on its day by the player's
-  clock and stays open until 31 December; door n is rated about
-  n x 100; an unassisted time can be sent on the door's day and up to a
-  week late; from 1 January the calendar is closed and a door under way
-  can still be finished), and the card at the end links to the app and
+  clock and stays open until 31 December; door 1 is rated about 100 and
+  door 24 about 1000, every door higher than the one before, doors 1 to
+  18 Easy, singles only, and doors 19 to 24 Medium, the two door numbers
+  read from the doors themselves; an unassisted time can be sent on the
+  door's day and up to a week late; from 1 January the calendar is closed
+  and a door under way can still be finished), and the card at the end
+  links to the app and
   to today's daily (`/#daily`), each in the page's language, and says the
   calendar is under New in the app from 1 November, its doors opening
   from 1 December. No puzzle is ever on the page.
@@ -230,10 +281,15 @@ and the sitemap, and the dev server serves them.
   December"). A door opened from here is opened, or refused, by the app
   (`startDoor`): the page is a way in, not the lock.
 - **For search.** Title and description in each language, within 60 and
-  160 characters, with the year ("Sudoku advent calendar 2026: 24
-  puzzles, easy to extreme", "Sudoku-julekalender 2026: 24 luker, fra
-  lett til ekstrem", "Calendario de adviento de sudoku 2026: de fácil a
-  extremo"); canonical; hreflang among the three and x-default to
+  160 characters, with the year ("Sudoku advent calendar 2026: a little
+  harder each day", "Sudoku-julekalender 2026: litt vanskeligere hver
+  dag", "Calendario de adviento de sudoku 2026: de menos a más"; "24
+  doors, a little harder each day" is three characters too long for a
+  title beside the name and the year, so the 24 doors open the
+  description instead: "A sudoku behind each of 24 doors, one opening
+  each day from 1 to 24 December. Very easy at first, a little harder
+  each day, up to Medium. Free, no account."); canonical; hreflang among
+  the three and x-default to
   `/advent/` (`Page.alternates`, since the names differ); the sitemap, with
   the same three; structured data that is true: a `CollectionPage` whose
   `ItemList` names the 24 doors with their days and ratings, and no
@@ -241,9 +297,10 @@ and the sitemap, and the dev server serves them.
   title.
 - **Its card.** `og:type` website and a card of its own per language,
   `public/og-advent-2026.png` (`.nb.png`, `.es.png`), made by
-  `scripts/og-advent-card.ts`: the name and the year, and 24 closed doors
-  in pine and gold, out of order as on a paper calendar. A new year's
-  doors need their card (the test fails without it).
+  `scripts/og-advent-card.ts`: the name and the year, "A door a day, 1
+  to 24 December, a little harder each day. Free." in the language, and
+  24 closed doors in pine and gold, out of order as on a paper calendar.
+  A new year's doors need their card (the test fails without it).
 - **The look.** The site's own night and day, with the Christmas look's
   palette on the calendar alone (`ADVENT_STYLE`, src/content/learnPages.ts;
   the app's src/ui/styles.css, data-theme christmas): open doors in its
@@ -323,62 +380,96 @@ to the assets.
 
 ## The doors of 2026
 
-Made by `scripts/build-advent.ts 2026` (69 seconds on the development
-machine), each within 1% of its target (5 points for the first doors),
-rising door by door, in bands that never fall:
+Made by `scripts/build-advent.ts 2026 --replace` on 15 November 2026 (262
+seconds on the development machine), in place of the doors of 12
+November, which no one had opened. Each is within the search's tolerance
+of what it aimed at (1% of the rating, 5 points for the first doors),
+rising door by door:
 
-| Door | Rating | Band | Door | Rating | Band |
-|---|---|---|---|---|---|
-| 1 | 104 | Easy | 13 | 1302 | Hard |
-| 2 | 196 | Easy | 14 | 1408 | Hard |
-| 3 | 302 | Easy | 15 | 1504 | Hard |
-| 4 | 396 | Easy | 16 | 1588 | Hard |
-| 5 | 498 | Easy | 17 | 1698 | Unfair |
-| 6 | 602 | Medium | 18 | 1788 | Unfair |
-| 7 | 700 | Medium | 19 | 1912 | Extreme |
-| 8 | 806 | Medium | 20 | 1988 | Extreme |
-| 9 | 900 | Hard | 21 | 2118 | Extreme |
-| 10 | 1004 | Hard | 22 | 2216 | Extreme |
-| 11 | 1102 | Hard | 23 | 2316 | Extreme |
-| 12 | 1212 | Hard | 24 | 2418 | Extreme |
+| Door | Target | Rating | Level | Clues | Door | Target | Rating | Level | Clues |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 100 | 104 | Easy | 55 | 13 | 570 | 568 | Easy | 24 |
+| 2 | 139 | 144 | Easy | 45 | 14 | 609 | 606 | Easy | 22 |
+| 3 | 178 | 176 | Easy | 37 | 15 | 648 | 620 | Easy | 21 |
+| 4 | 217 | 212 | Easy | 33 | 16 | 687 | 626 | Easy | 22 |
+| 5 | 257 | 258 | Easy | 34 | 17 | 726 | 630 | Easy | 21 |
+| 6 | 296 | 296 | Easy | 32 | 18 | 765 | 636 | Easy | 22 |
+| 7 | 335 | 330 | Easy | 31 | 19 | 804 | 812 | Medium | 33 |
+| 8 | 374 | 370 | Easy | 36 | 20 | 843 | 836 | Medium | 27 |
+| 9 | 413 | 408 | Easy | 29 | 21 | 883 | 882 | Medium | 28 |
+| 10 | 452 | 454 | Easy | 25 | 22 | 922 | 926 | Medium | 27 |
+| 11 | 491 | 494 | Easy | 25 | 23 | 961 | 956 | Medium | 27 |
+| 12 | 530 | 530 | Easy | 26 | 24 | 1000 | 998 | Medium | 24 |
 
-Door 1 is a puzzle of singles with 26 empty cells; no minimal puzzle
-scores so little, so it is a minimal one with clues of its own solution
-given back. A puzzle of singles alone rarely adds up to 600, so a door may
-be in the band its target names or the one above (door 6 is Medium at
-602, door 9 Hard at 900), and never below the door before.
+Doors 1 to 18 are solved by Full House, Naked Single and Hidden Single
+alone: door 1 has 26 empty cells and no Hidden Single at all, door 18 has
+40 Hidden Singles among its 59 steps. Doors 15 to 18 are the four whose
+targets singles do not reach (above): they aimed at 617, 625, 632 and
+640. Doors 19 to 24 take 8 to 12 Medium steps each, Locked Candidates,
+Naked and Hidden Pairs, Naked Triples and one Locked Pair, each puzzle
+meeting its hardest step with 37 cells or more still empty. Door 1 is a
+puzzle of singles with few empty cells; no minimal puzzle scores so
+little, so it is a minimal one with clues of its own solution given back,
+as most of the doors are (doors 10, 14, 15, 17 and 18 are minimal: no
+clue of theirs can go).
 
 ## Next year's doors
 
 1. In October or November, run `npx vite-node scripts/build-advent.ts 2027`
-   (about a minute). It adds the year's 24 doors to
+   (four to five minutes). It adds the year's 24 doors to
    `src/content/advent.json` and never touches a year already there: a
    published door is a promise, as a published daily is.
-2. Read what it prints: each door's rating, band and distance from its
-   target. A door that could not come within its tolerance in its fixed
-   number of tries is the nearest found, and says so by its distance.
+2. Read what it prints: each door's rating, level, clues and distance from
+   what it aimed at. A door that could not come within its tolerance in
+   its fixed number of tries is the nearest found, and says so by its
+   distance. The run fails, and writes nothing, if a door is not of its
+   level or not rated higher than the door before.
 3. Make the public page's card for the year: `npx vite-node
    scripts/og-advent-card.ts` (OG_BROWSER or PW_CHROMIUM may name a
    Chromium), which writes `public/og-advent-<year>.png` and its `.nb` and
    `.es` versions.
 4. Run the tests (tests/adventDoors.test.ts checks every published year's
-   doors: one solution, the hash, the rating, rising;
+   doors: one solution by brute force and by the engine's solver, the
+   hash, the rating, the climb as decided, doors 1 to 18 Easy by singles
+   alone and doors 19 to 24 Medium with nothing above Medium;
    tests/adventPage.test.ts that the page shows the new year with its
-   card), update the table above, and commit the files. Nothing else
-   changes: the app, the Worker and the calendar take the year from the
-   date, the public page and the dashboard the year from the file.
+   card and says the climb as the doors have it), update the table above,
+   and commit the files. Nothing else changes: the app, the Worker and
+   the calendar take the year from the date, the public page and the
+   dashboard the year from the file.
+
+**Making a year again.** A year in the file can be replaced only by
+asking, `npx vite-node scripts/build-advent.ts 2026 --replace`, and only
+while its first door has not opened anywhere: until 29 November UTC of
+its year. From 30 November UTC a player a day ahead of UTC reaches
+1 December (the Worker's `EARLY_DAYS`), so the run refuses and leaves the
+file as it is: a door somebody may have played never changes
+(`yearPlan`, scripts/adventDoors.ts; tests/adventDoors.test.ts walks the
+dates, and tests/adventBuild.test.ts runs the script itself in a folder
+of its own on each side of that day). The other years in the file stay
+as they are. That is how the doors of 2026 were changed on 15 November.
 
 How a door is found (scripts/adventDoors.ts): its own seed, the year and
 the door, and a fixed number of tries, so a run on any machine makes the
 same doors while the generator and the rater stay as they are
 (tests/adventDoors.test.ts makes the first three doors of 2026 again and
-compares them with the file). Fresh minimal puzzles are rated and the
-nearest kept; one rated above its target may have clues of its own
-solution given back, one at a time, which takes the singles it no longer
-needs off its rating. Every door has one solution, is solved by the
-catalogue without guessing, and from Medium up meets its hardest technique
-on a board with room in it (`fitForLevel`), as a puzzle served for its
-band must.
+compares them with the file). First, up to 400 fresh minimal puzzles are
+rated and the nearest of the door's level kept; one rated above the aim
+may have clues of its own solution given back, one at a time, which takes
+the singles it no longer needs off its rating. Doors 1 to 11 come this
+way, and so did door 19 in 2026. A door those tries do not bring within
+its tolerance is climbed to (`climb`): a full grid is dug down, a clue at
+a time, while the level's techniques still solve it (the singles for an
+Easy door, with pairs, triples and locked candidates for a Medium one),
+and then walked, a clue taken away, given back or moved at a time,
+towards the aim; a step is kept when the puzzle is still solved by those
+techniques and is no further from the aim, or further by a slack that
+falls to nothing over 40,000 steps, after which another grid is tried, up
+to 480,000 steps in all. In 2026 the climbs took 500 to 110,000 steps.
+Every door has one solution, is solved by the catalogue without guessing,
+is of its level and rated higher than the door before, and a Medium one
+meets its hardest technique on a board with room in it (`fitForLevel`),
+as a puzzle served for its level must.
 
 ## Edge cases left
 
