@@ -111,7 +111,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           </small>
           {christmas && (
             <small>
-              {t('Christmas can be chosen from 1 November to 31 December, and keeps Daylight’s hint colours. On 1 January the theme you had before comes back')}
+              {t('Christmas can be chosen from 1 November to 31 December, and keeps Dark’s hint colours. On 1 January the theme you had before comes back')}
             </small>
           )}
         </div>

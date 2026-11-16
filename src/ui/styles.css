@@ -206,7 +206,8 @@
   --entered: #f5cb50;
   --cand: #a7b9b0;
   --danger-text: #ff7285;
-  --error-bg: #9c2233;
+  /* a wrong entry after Check, at the board's 0.5: the gold stays 7:1 on it, over a peer and a same digit too */
+  --error-bg: #8c1f30;
   --sel-bg: rgba(63, 127, 224, 0.3);
   --sel-border: #cfeaf5;
   --peer-bg: rgba(63, 167, 160, 0.13);

@@ -523,7 +523,7 @@ const ui: Dictionary = {
   "Rosé": "Rosé",
   "Forest": "Skog",
   "Christmas": "Jul",
-  "Christmas can be chosen from 1 November to 31 December, and keeps Daylight’s hint colours. On 1 January the theme you had before comes back": "Jul kan velges fra 1. november til 31. desember, og beholder hintfargene fra Dagslys. 1. januar kommer temaet du hadde før, tilbake",
+  "Christmas can be chosen from 1 November to 31 December, and keeps Dark’s hint colours. On 1 January the theme you had before comes back": "Jul kan velges fra 1. november til 31. desember, og beholder hintfargene fra Mørk. 1. januar kommer temaet du hadde før, tilbake",
   "Match device": "Som enheten",
   "“Match device” shows Daylight while your device is in light mode, and Dark while it is in dark mode": "«Som enheten» viser Dagslys mens enheten din er i lys modus, og Mørk mens den er i mørk modus",
   "Board typeface": "Skrifttype på brettet",
