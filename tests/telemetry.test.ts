@@ -1001,7 +1001,7 @@ describe('the dashboard', () => {
     expect(calls).toHaveLength(1);
     expect(html).toContain('<h2>Christmas: the advent calendar 2026</h2>');
     expect(html).toContain('The 2026 calendar opens on 1 December');
-    expect(html).toContain('<tr><td>24</td><td>24 Dec</td><td>Extreme 2418</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td></tr>');
+    expect(html).toContain('<tr><td>24</td><td>24 Dec</td><td>Medium 998</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td></tr>');
     expect(html.indexOf('<h2>Christmas')).toBeGreaterThan(html.indexOf('<h2>Every day</h2>'));
     expect(html.indexOf('<h2>Christmas')).toBeLessThan(html.indexOf('</body>'));
   });
@@ -1024,7 +1024,7 @@ describe('the dashboard', () => {
     expect(calls[1].init?.body).toBe(adventQuery(DEC(), 2026));
     expect((calls[1].init?.headers as Record<string, string>).authorization).toBe(`Bearer ${secrets.ADMIN_TOKEN}`);
     const html = await res.text();
-    expect(html).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 498</td><td>4</td><td>1</td><td>25%</td><td>—</td><td>—</td></tr>');
+    expect(html).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>4</td><td>1</td><td>25%</td><td>—</td><td>—</td></tr>');
     expect(html).toContain("<dt>Landings on a door's address</dt><dd>2</dd>");
     expect(html).toContain("<tr><td>A search engine (and links Google's own redirect passed on)</td><td>2</td><td>100%</td></tr>");
     expect(html).not.toContain(secrets.ADMIN_TOKEN);
@@ -1036,7 +1036,7 @@ describe('the dashboard', () => {
     const page = await kept.text();
     expect(page).toContain('The analytics API could not be read for the calendar');
     expect(page).toContain('<dt>Completed, total estimate</dt>');
-    expect(page).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 498</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td></tr>');
+    expect(page).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td></tr>');
   });
 
   it('says what the API said when it fails, without the secrets', async () => {
@@ -1420,10 +1420,10 @@ describe("the admin page's Christmas section", () => {
     const m = adventOf(2026, at('2026-12-06T12:00:00Z'), ROWS, 'read', TIMES);
     expect(m).toMatchObject({ year: 2026, phase: 'open', counted: 'read', database: true });
     expect(m.doors).toHaveLength(24);
-    expect(m.doors[4]).toEqual({ door: 5, date: '2026-12-05', level: 'Easy', score: 498, started: 10, completed: 4, completionRate: 0.4, times: 3, median: 278 });
+    expect(m.doors[4]).toEqual({ door: 5, date: '2026-12-05', level: 'Easy', score: 258, started: 10, completed: 4, completionRate: 0.4, times: 3, median: 278 });
     expect(m.doors[0]).toMatchObject({ door: 1, started: 3, completed: 3, completionRate: 1, times: 2, median: 98 });
-    expect(m.doors[1]).toMatchObject({ door: 2, level: 'Easy', score: 196, started: 0, completed: 0, completionRate: null, times: 0, median: null });
-    expect(m.doors[23]).toMatchObject({ door: 24, date: '2026-12-24', level: 'Extreme', score: 2418 });
+    expect(m.doors[1]).toMatchObject({ door: 2, level: 'Easy', score: 144, started: 0, completed: 0, completionRate: null, times: 0, median: null });
+    expect(m.doors[23]).toMatchObject({ door: 24, date: '2026-12-24', level: 'Medium', score: 998 });
     expect(m.started).toBe(13);
     expect(m.completed).toBe(7);
     expect(m.completionRate).toBeCloseTo(7 / 13);
@@ -1491,7 +1491,7 @@ describe("the admin page's Christmas section", () => {
     const html = adventSection(adventOf(2026, at('2026-12-06T12:00:00Z'), ROWS, 'read', TIMES));
     expect(html).toContain('The 2026 calendar is open');
     expect(html).toContain('Counted from 2026-11-30 to 2027-01-31, UTC days, so far.');
-    expect(html).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 498</td><td>10</td><td>4</td><td>40%</td><td>3</td><td>4:38</td></tr>');
+    expect(html).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>10</td><td>4</td><td>40%</td><td>3</td><td>4:38</td></tr>');
     expect(html).toContain('<tr><td>1</td><td>1 Dec</td><td>Easy 104</td><td>3</td><td>3</td><td>100%</td><td>2</td><td>1:38</td></tr>');
     expect(html).toContain('<tr><td>All</td><td></td><td></td><td>13</td><td>7</td><td>54%</td><td>5</td><td></td></tr>');
     expect(html).toContain('<dt>Door games begun</dt><dd>13</dd>');
@@ -1503,7 +1503,7 @@ describe("the admin page's Christmas section", () => {
     const past = adventSection(adventOf(2026, at('2027-03-01T12:00:00Z'), null, 'past', new Map()));
     expect(past).toContain('The 2026 calendar closed on 31 December');
     expect(past).toContain('are not read now');
-    expect(past).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 498</td><td>0</td><td>0</td><td>—</td><td>0</td><td>—</td></tr>');
+    expect(past).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>0</td><td>0</td><td>—</td><td>0</td><td>—</td></tr>');
   });
 
   it('knows outside the window that nothing is to be read, and asks the database anyway', async () => {

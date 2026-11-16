@@ -2,7 +2,10 @@
 // to write the fixtures of tests/drawingSnapshot.test.ts and
 // tests/pathDigest.test.ts), node:process for the variables that make
 // that request, and node:module for node:sqlite, which runs the D1
-// schema (tests/telemetry.test.ts). The app's tsconfig has no Node types
+// schema (tests/telemetry.test.ts); and, for the one test that runs a
+// script as the command line does, in a folder of its own
+// (tests/adventBuild.test.ts): the folder's making and removal, its
+// path, and the process's arguments and working folder. The app's tsconfig has no Node types
 // on purpose (the engine and the content run in browsers, and
 // scripts/i18n-source.ts reads the source through Vite for the same
 // reason), so the few functions a test needs are declared here, no wider
@@ -13,6 +16,15 @@ declare module 'node:fs' {
   export function readdirSync(path: string): string[];
   export function existsSync(path: string): boolean;
   export function writeFileSync(path: string, data: string): void;
+  export function mkdtempSync(prefix: string): string;
+  export function mkdirSync(path: string, options: { recursive: boolean }): void;
+  export function rmSync(path: string, options: { recursive: boolean; force: boolean }): void;
+}
+declare module 'node:os' {
+  export function tmpdir(): string;
+}
+declare module 'node:path' {
+  export function join(...parts: string[]): string;
 }
 declare module 'node:module' {
   /** a require for a built-in module, node:sqlite (the schema of migrations/ in tests/telemetry.test.ts) */
@@ -20,4 +32,7 @@ declare module 'node:module' {
 }
 declare module 'node:process' {
   export const env: Record<string, string | undefined>;
+  /** the process itself, the same object a script reads as the global `process` */
+  const process: { argv: string[]; cwd(): string; env: Record<string, string | undefined> };
+  export default process;
 }
