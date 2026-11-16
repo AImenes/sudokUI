@@ -48,7 +48,7 @@ export function AdventDialog({ today, onClose, onDoor }: { today: string; onClos
   return (
     <Modal title={t('Advent calendar')} onClose={onClose}>
       <p className="dialog-note">
-        {t('A door a day from 1 to 24 December, the same puzzle for everyone. Door 1 is gentle, and each door is a little harder than the one before.')}
+        {t('A door a day from 1 to 24 December, the same puzzle for everyone. Door 1 is very easy, and each door is a little harder than the one before; the last ones are a good Medium.')}
       </p>
       <ul className="advent-doors">
         {ALL.map((door) => {

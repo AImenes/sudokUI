@@ -1043,6 +1043,13 @@ function adventCalendarPage(lang: Lang): Page {
   const card = SITE + adventCardPath(lang, year);
   // the address a door's number goes after: /advent/2026/, /nb/advent/2026/
   const doorBase = adventPath(lang, year, 1).slice(0, -1);
+  // the climb as the page says it, from the doors themselves: the rating
+  // door 24 aims at, the last Easy door and the first Medium one
+  const climb = {
+    top: lt.num(doorTarget(ADVENT_DOORS)),
+    easy: doors.filter((d) => d.level === 'Easy').length,
+    medium: doors.findIndex((d) => d.level === 'Medium') + 1
+  };
   const items = doors
     .map(
       (d) =>
@@ -1063,7 +1070,7 @@ ${items}
 ${doorScript(doorWords(c, year))}
       </script>
       <h2>${esc(c.howHeading)}</h2>
-${c.how.map((p) => `      <p>${esc(fillAdvent(p, { top: lt.num(doorTarget(ADVENT_DOORS)) }))}</p>`).join('\n')}
+${c.how.map((p) => `      <p>${esc(fillAdvent(p, climb))}</p>`).join('\n')}
       <div class="card">
         <p><a class="cta" href="${app(lang)}">${esc(c.play)}</a><a class="cta ghost" href="${app(lang, '#daily')}">${esc(c.daily)}</a></p>
         <p class="meta">${esc(c.inApp)}</p>

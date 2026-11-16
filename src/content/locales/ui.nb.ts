@@ -892,7 +892,7 @@ const ui: Dictionary = {
   "Door {door} of the advent calendar could not be loaded. Check the connection and try again": "Luke {door} i julekalenderen kunne ikke lastes inn. Sjekk tilkoblingen og prøv igjen",
   "Door {door} of the advent calendar. Everyone gets this same board": "Luke {door} i julekalenderen. Alle får det samme brettet",
   "Advent calendar": "Julekalender",
-  "A door a day from 1 to 24 December, the same puzzle for everyone. Door 1 is gentle, and each door is a little harder than the one before.": "Én luke hver dag fra 1. til 24. desember, den samme oppgaven for alle. Luke 1 er lett, og hver luke er litt vanskeligere enn den før.",
+  "A door a day from 1 to 24 December, the same puzzle for everyone. Door 1 is very easy, and each door is a little harder than the one before; the last ones are a good Medium.": "Én luke hver dag fra 1. til 24. desember, den samme oppgaven for alle. Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den før; de siste er på nivået Middels.",
   "Door {door}, opens on {date}": "Luke {door}, åpner {date}",
   "solved||a door of the advent calendar": "løst",
   "in progress||a door of the advent calendar": "påbegynt",

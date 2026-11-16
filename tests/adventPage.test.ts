@@ -367,6 +367,32 @@ describe('the advent calendar’s pages', () => {
     expect(css).not.toMatch(/\.door[^{]*\{[^}]*opacity/);
   });
 
+  it('say the climb as the doors have it: about 100 to about 1000, a little harder each day, Easy to door 18 and Medium from door 19', () => {
+    // the doors the words are about
+    expect(doors.filter((d) => d.level === 'Easy').map((d) => d.door)).toEqual(Array.from({ length: 18 }, (_, i) => i + 1));
+    expect(doors.filter((d) => d.level === 'Medium').map((d) => d.door)).toEqual([19, 20, 21, 22, 23, 24]);
+    expect(Math.abs(doors[0].score - 100)).toBeLessThanOrEqual(10);
+    expect(Math.abs(doors[23].score - 1000)).toBeLessThanOrEqual(10);
+    for (let i = 1; i < doors.length; i++) expect(doors[i].score, `door ${i + 1}`).toBeGreaterThan(doors[i - 1].score);
+    const climb: Record<Lang, RegExp[]> = {
+      en: [/rated about 100 on HoDoKu’s scale, behind door 24 one rated about 1,000, and every door is rated higher than the one before/, /Doors 1 to 18 are Easy: singles only\. Doors 19 to 24 are Medium/],
+      nb: [/rundt 100, bak luke 24 en med rundt 1\s000, og hver luke har høyere poengsum enn den før/, /Luke 1 til 18 er Lett: bare singler\. Luke 19 til 24 er Middels/],
+      es: [/de unos 100, y en la casilla 24 uno de unos 1000; cada casilla tiene una puntuación más alta que la anterior/, /Las casillas 1 a 18 son de nivel Fácil: solo únicos\. Las casillas 19 a 24 son de nivel Medio/]
+    };
+    for (const lang of LEARN_LANGS) {
+      const { html } = PAGE[lang];
+      // (the page without its scripts: the door script keeps {door} to fill by the date)
+      const text = unescapeHtml(html.replace(/<script[\s\S]*?<\/script>/g, ''));
+      for (const re of climb[lang]) expect(text, `${lang} ${re}`).toMatch(re);
+      // every placeholder is filled
+      expect(text).not.toMatch(/\{\w+\}/);
+      // each door shows the rating the file gives it
+      for (const d of doors) expect(html).toContain(`<span class="sc">${d.score}</span>`);
+      // and nothing of the page, its title, its description or its card's words, speaks of a level above Medium
+      expect(text, lang).not.toMatch(/Extreme|Ekstrem|Extremo|extreme|ekstrem|extremo|Unfair|Urettferdig|Injusto|\bHard\b|Vanskelig\b|Difícil\b|2[.,\s]?400/);
+    }
+  });
+
   it('say the same in Norwegian and Spanish as in English, with the same numbers, in the house style', () => {
     const texts = (c: typeof ADVENT_PAGE.en) =>
       Object.entries(c).flatMap(([field, v]) =>
@@ -380,8 +406,7 @@ describe('the advent calendar’s pages', () => {
       expect(other.map(([f]) => f)).toEqual(en.map(([f]) => f));
       for (const [i, [field, text]] of other.entries()) {
         expect(placeholders(text), `${lang} ${field}`).toBe(placeholders(en[i][1]));
-        // (the Spanish title has no room for the 24 doors beside its long name)
-        if (!(lang === 'es' && field === 'title')) expect(numbers(text), `${lang} ${field}`).toBe(numbers(en[i][1]));
+        expect(numbers(text), `${lang} ${field}`).toBe(numbers(en[i][1]));
         expect(text, `${lang} ${field}`).not.toBe(en[i][1]);
       }
     }

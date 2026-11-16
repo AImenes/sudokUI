@@ -29,9 +29,9 @@ import type { Lang } from '../src/state/settings';
 
 /** the card's words per language: the calendar's name on one or two lines, and two lines under the year */
 const WORDS: Record<Lang, { title: string[]; lines: [string, string] }> = {
-  en: { title: ['Sudoku advent', 'calendar'], lines: ['A door a day, 1 to 24 December,', 'from Easy to Extreme. Free.'] },
-  nb: { title: ['Sudoku-', 'julekalender'], lines: ['Én luke hver dag, 1. til 24. desember,', 'fra lett til ekstrem. Gratis.'] },
-  es: { title: ['Calendario de', 'adviento de sudoku'], lines: ['Una casilla al día, del 1 al 24 de diciembre,', 'de fácil a extremo. Gratis.'] }
+  en: { title: ['Sudoku advent', 'calendar'], lines: ['A door a day, 1 to 24 December,', 'a little harder each day. Free.'] },
+  nb: { title: ['Sudoku-', 'julekalender'], lines: ['Én luke hver dag, 1. til 24. desember,', 'litt vanskeligere for hver dag. Gratis.'] },
+  es: { title: ['Calendario de', 'adviento de sudoku'], lines: ['Una casilla al día, del 1 al 24 de diciembre,', 'un poco más difícil cada día. Gratis.'] }
 };
 
 /** the doors' places on the card, out of order as on a paper calendar: six a row, four rows */

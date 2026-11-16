@@ -892,7 +892,7 @@ const ui: Dictionary = {
   "Door {door} of the advent calendar could not be loaded. Check the connection and try again": "No se ha podido cargar la casilla {door} del calendario de adviento. Comprueba la conexión y vuelve a intentarlo",
   "Door {door} of the advent calendar. Everyone gets this same board": "Casilla {door} del calendario de adviento. Todo el mundo recibe este mismo tablero",
   "Advent calendar": "Calendario de adviento",
-  "A door a day from 1 to 24 December, the same puzzle for everyone. Door 1 is gentle, and each door is a little harder than the one before.": "Una casilla al día del 1 al 24 de diciembre, el mismo sudoku para todos. La casilla 1 es suave, y cada casilla es algo más difícil que la anterior.",
+  "A door a day from 1 to 24 December, the same puzzle for everyone. Door 1 is very easy, and each door is a little harder than the one before; the last ones are a good Medium.": "Una casilla al día del 1 al 24 de diciembre, el mismo sudoku para todos. La casilla 1 es muy fácil, y cada casilla es algo más difícil que la anterior; las últimas son de nivel Medio.",
   "Door {door}, opens on {date}": "Casilla {door}, se abre el {date}",
   "solved||a door of the advent calendar": "resuelta",
   "in progress||a door of the advent calendar": "empezada",

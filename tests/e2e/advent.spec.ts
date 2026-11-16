@@ -109,6 +109,29 @@ test.describe('the advent calendar', () => {
     await expect.poll(() => saved(page)).toMatchObject({ puzzle: EASY, door: null, aside: null });
   });
 
+  test('on 24 December every door is open, Easy to door 18 and Medium from door 19, as the calendar says, and the last door opens', async ({ page }) => {
+    await open(page, '2026-12-24', `/#p=${EASY}`);
+    await opened(page, EASY);
+    const dialog = await newDialog(page);
+    await dialog.getByRole('button', { name: /Advent calendar/ }).click();
+    const calendar = page.getByRole('dialog', { name: 'Advent calendar' });
+    await expect(calendar).toBeVisible();
+    // the climb in the calendar's own words (the owner's decision of 15 November 2026)
+    await expect(calendar.getByText('Door 1 is very easy, and each door is a little harder than the one before; the last ones are a good Medium.')).toBeVisible();
+    // every door with its level and rating, once the doors' list has loaded
+    await expect.poll(() => calendar.locator('button.advent-door .advent-rating span:first-child').allTextContents()).toEqual([...Array(18).fill('Easy'), ...Array(6).fill('Medium')]);
+    const ratings = (await calendar.locator('button.advent-door .advent-rating span:last-child').allTextContents()).map(Number);
+    expect(ratings).toEqual(doors.map((d) => d.score));
+    for (let i = 1; i < ratings.length; i++) expect(ratings[i], `door ${i + 1}`).toBeGreaterThan(ratings[i - 1]);
+    expect(ratings[23]).toBeLessThanOrEqual(1000);
+    for (const n of [1, 18, 19, 24]) await expect(calendar.getByRole('button', { name: `Door ${n}, ${n} December, ${door(n).level} ${door(n).score}` })).toBeEnabled();
+    // and the last door opens on the board
+    await calendar.getByRole('button', { name: `Door 24, 24 December, ${door(24).level} ${door(24).score}` }).click();
+    await expect(calendar).toHaveCount(0);
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: door(24).puzzle, door: 24 });
+    await expect.poll(() => path(page)).toBe('/advent/2026/24');
+  });
+
   test('on 1 December door 1 is open and door 2 locked; door 1 opens on the board at its own address', async ({ page }) => {
     await open(page, '2026-12-01', `/#p=${EASY}`);
     const dialog = await newDialog(page);
