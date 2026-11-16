@@ -4812,7 +4812,7 @@ html:not([lang='en']) .zone-note {
    still behind everything, where the board and its controls never are:
    from 1240 px wide, the first width where the margin beside the board
    holds the largest one (an iPad on its side, 1180 px, has none). On the
-   night they are barely there: 1.3:1 on the page */
+   night they are barely there: 1.4:1 on the page */
 @media (min-width: 1240px) and (min-height: 600px) {
   :root[data-theme='christmas'] body {
     background:
