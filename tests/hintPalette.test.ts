@@ -2,7 +2,8 @@
  * The colours of a hint (src/content/hintPalette.ts; docs/hint-drawing.md,
  * Colours and sizes): the app's CSS tokens (src/ui/styles.css) are the
  * palette's values, light for the light and rose themes and dark for the
- * dark and forest ones, and the contrasts the spec was measured on still
+ * dark and forest ones and for the Christmas look (a winter night since
+ * 15 November 2026), and the contrasts the spec was measured on still
  * hold: a digit on any filled mark at about 5.5:1 or more, a digit in a ring at
  * 4.5:1 or more, every mark's edge and the arrows at 3:1 or more against
  * the board, the arrows far above that.
@@ -14,7 +15,9 @@
  * here first on Sharma et al.'s published test pairs).
  *
  * Phase 4's sets (docs/hint-drawing-sets.md, Colours) are held to the
- * figures the design gives, in all four themes: the "one of these" square,
+ * figures the design gives, in all four themes, and on the Christmas
+ * look's pine-black cell and panel to figures measured there, each one at
+ * or above the lower of Dark's and Forest's: the "one of these" square,
  * the three set tints as tiles over each cell and over the player's own
  * cell colours, their inks and tab letters, the group bars, the dark
  * violet ink, the legend's swatches, and the small-board widths and
@@ -45,10 +48,11 @@ function block(selectorStart: string, nth = 0): Record<string, string> {
 const BOARDS = {
   light: { palette: LIGHT, cell: '#ffffff', panel: '#ffffff' },
   rose: { palette: LIGHT, cell: '#fffbfd', panel: '#fff7fa' },
-  // the Christmas look keeps daylight's white board and panel (src/ui/styles.css)
-  christmas: { palette: LIGHT, cell: '#ffffff', panel: '#ffffff' },
   dark: { palette: DARK, cell: '#1c202e', panel: '#222636' },
-  forest: { palette: DARK, cell: '#16241a', panel: '#1b2d21' }
+  forest: { palette: DARK, cell: '#16241a', panel: '#1b2d21' },
+  // the Christmas look is of the dark family (src/ui/styles.css): Dark's
+  // hint colours on a pine-black cell and panel, darker than Dark's own
+  christmas: { palette: DARK, cell: '#121c18', panel: '#182822' }
 };
 
 /** a colouring's four shades, as fillOf names them, with the palette's keys */
@@ -68,14 +72,18 @@ describe('the hint palette', () => {
       expect(String(light[v]), `light ${v}`).toBe(String(LIGHT[name]));
     }
     // rose, forest and Christmas change the board, never the hint colours
-    // (the first rose rule is the one it shares with light and Christmas)
+    // (the first rose rule is the one it shares with light)
     for (const v of Object.values(CSS_VARS)) {
       expect(block(":root[data-theme='rose'] {", 1)[v], `rose ${v}`).toBeUndefined();
       expect(block(":root[data-theme='forest'] {")[v], `forest ${v}`).toBeUndefined();
       expect(block(":root[data-theme='christmas'] {")[v], `christmas ${v}`).toBeUndefined();
     }
-    // and Christmas is of the light family: the rule light and rose share is its own too
-    expect(css).toMatch(/\n:root\[data-theme='light'\],\n:root\[data-theme='christmas'\],\n:root\[data-theme='rose'\] \{\n  --bg: /);
+    // and Christmas is of the dark family: the rule light and rose share is theirs alone,
+    // so what it does not set (every hint colour) is the root's, which is Dark's
+    expect(css).toMatch(/\n:root\[data-theme='light'\],\n:root\[data-theme='rose'\] \{\n  --bg: /);
+    expect(css).toMatch(/^:root,\n:root\[data-theme='dark'\] \{\n  --bg: /);
+    expect(css).not.toMatch(/data-theme='(light|rose)'\][^{}]*,\s*:root\[data-theme='christmas'\]/);
+    expect(css).not.toMatch(/data-theme='christmas'\][^{}]*,\s*:root\[data-theme='(light|rose)'\]/);
   });
 
   it("is measured on the app's own cells and panels", () => {
@@ -85,9 +93,9 @@ describe('the hint palette', () => {
     const tokens = {
       light,
       rose: { ...light, ...block(":root[data-theme='rose'] {", 1) },
-      christmas: { ...light, ...block(":root[data-theme='christmas'] {") },
       dark,
-      forest: { ...dark, ...block(":root[data-theme='forest'] {") }
+      forest: { ...dark, ...block(":root[data-theme='forest'] {") },
+      christmas: { ...dark, ...block(":root[data-theme='christmas'] {") }
     };
     for (const [theme, { cell, panel }] of Object.entries(BOARDS) as [keyof typeof BOARDS, (typeof BOARDS)['light']][]) {
       expect(tokens[theme]['--cell-bg'], `${theme} cell`).toBe(cell);
@@ -310,10 +318,11 @@ const playerOn = (theme: Theme) => PALETTE.map((c) => over(c, PLAYER_ALPHA, BOAR
 const SET_FIGURES: Record<Theme, { tiles: string[]; apart: number[]; fromBoard: number[]; hintInk?: number[]; overPlayer: number; inks: number[] }> = {
   light: { tiles: ['#fdf59b', '#dfaac0', '#c6abff'], apart: [15.6, 16.1, 15.3], fromBoard: [9.4, 15.3, 15.8], hintInk: [14.14, 8.05, 8.06], overPlayer: 5.25, inks: [6.04, 6.13, 6.12] },
   rose: { tiles: ['#fdf39a', '#dfa8bf', '#c6a9fe'], apart: [15.5, 16.0, 15.3], fromBoard: [8.3, 15.0, 15.7], hintInk: [13.95, 7.93, 7.94], overPlayer: 5.25, inks: [6.04, 6.13, 6.12] },
-  // daylight's board, so daylight's figures
-  christmas: { tiles: ['#fdf59b', '#dfaac0', '#c6abff'], apart: [15.6, 16.1, 15.3], fromBoard: [9.4, 15.3, 15.8], hintInk: [14.14, 8.05, 8.06], overPlayer: 5.25, inks: [6.04, 6.13, 6.12] },
   dark: { tiles: ['#323418', '#683a55', '#171e6c'], apart: [16.4, 16.8, 14.0], fromBoard: [9.3, 11.0, 9.4], hintInk: [11.32, 7.99, 12.91], overPlayer: 4.01, inks: [9.6, 7.27, 6.03] },
-  forest: { tiles: ['#2f360e', '#653c4b', '#142062'], apart: [16.5, 14.0, 17.9], fromBoard: [8.1, 14.2, 8.5], overPlayer: 4.01, inks: [9.6, 7.27, 6.03] }
+  forest: { tiles: ['#2f360e', '#653c4b', '#142062'], apart: [16.5, 14.0, 17.9], fromBoard: [8.1, 14.2, 8.5], overPlayer: 4.01, inks: [9.6, 7.27, 6.03] },
+  // measured on the winter night's cell and panel (15 November 2026): every
+  // contrast above Dark's, every distance at or above the lower of Dark's and Forest's
+  christmas: { tiles: ['#2d320d', '#63384a', '#121c61'], apart: [17.2, 14.9, 16.8], fromBoard: [9.0, 14.4, 9.4], hintInk: [11.8, 8.46, 13.61], overPlayer: 4.1, inks: [10.15, 7.69, 6.38] }
 };
 
 describe('a "one of these" square (docs/hint-drawing-sets.md, decision 1)', () => {
@@ -343,9 +352,9 @@ describe('a "one of these" square (docs/hint-drawing-sets.md, decision 1)', () =
     const FIGURES: Record<Theme, { trueDisc: number; falseInside: number; pattern: number; board: number; tiles: number[]; player: number }> = {
       light: { trueDisc: 11.6, falseInside: 10.6, pattern: 20.8, board: 13.5, tiles: [12.1, 12.1, 12.1], player: 2.4 },
       rose: { trueDisc: 11.6, falseInside: 10.6, pattern: 20.8, board: 13.4, tiles: [12.1, 12.1, 12.1], player: 2.4 },
-      christmas: { trueDisc: 11.6, falseInside: 10.6, pattern: 20.8, board: 13.5, tiles: [12.1, 12.1, 12.1], player: 2.4 },
       dark: { trueDisc: 22.9, falseInside: 11.3, pattern: 22.8, board: 19.8, tiles: [12.2, 12.2, 14.5], player: 1.9 },
-      forest: { trueDisc: 22.9, falseInside: 11.3, pattern: 22.8, board: 17.7, tiles: [12.2, 8.4, 15.1], player: 2.8 }
+      forest: { trueDisc: 22.9, falseInside: 11.3, pattern: 22.8, board: 17.7, tiles: [12.2, 8.4, 15.1], player: 2.8 },
+      christmas: { trueDisc: 22.9, falseInside: 13.2, pattern: 22.8, board: 20.6, tiles: [14.1, 9.9, 15.8], player: 2.0 }
     };
     for (const theme of THEMES) {
       const { palette: p, cell } = BOARDS[theme];
@@ -442,7 +451,7 @@ describe("an almost locked set's tints (docs/hint-drawing-sets.md, decisions 5, 
     // shades are nearer, but sets and colourings never share a step
     const beside = [DARK.primary, DARK.secondary, DARK.fin, DARK.elim, DARK.place, DARK.false, DARK.arrow, DARK.oneOf, DARK.set1Ink, DARK.set2Ink, DARK.inRing];
     for (const c of beside) atLeast(worstDE(violet, c).de, 8.7, 1, `from ${c}`);
-    for (const theme of ['dark', 'forest'] as const) {
+    for (const theme of ['dark', 'forest', 'christmas'] as const) {
       const { cell, panel } = BOARDS[theme];
       atLeast(Math.min(contrast(violet, cell), contrast(violet, panel)), 6.03, 2, `${theme}: on the board and the panel`);
       atLeast(contrast(violet, tileOn(theme, 2)), 6.05, 2, `${theme}: on its own tile`);
@@ -459,7 +468,7 @@ describe("an almost locked set's tints (docs/hint-drawing-sets.md, decisions 5, 
   it('leave to shape and edge only the pairs the design names, none nearer than it measured them', () => {
     // the gold disc on the light rose tile (only Death Blossom draws gold
     // on a tile): its keyline and its edge carry it
-    for (const theme of ['light', 'rose', 'christmas'] as const) {
+    for (const theme of ['light', 'rose'] as const) {
       atLeast(worstDE(LIGHT.secondary, tileOn(theme, 1)).de, 6.8, 1, `${theme}: the gold disc on the rose tile`);
       for (let t = 0; t < 3; t++) atLeast(contrast(LIGHT.secondaryInk, tileOn(theme, t)), 3.26, 2, `${theme}: the gold disc's edge on the ${TINTS[t].name} tile`);
     }

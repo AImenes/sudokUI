@@ -356,25 +356,69 @@ settings are on the device only; which theme a player uses is never sent,
 and the privacy page says what these keep.
 
 **The Christmas look** ([styles.css](../src/ui/styles.css), keyed by
-`data-theme='christmas'`). Of the light family: daylight's white board and
-panels, so the hint colours read exactly as there (tests/hintPalette.test.ts
-holds it to daylight's figures), on a snow page, with givens in pine black,
-the player's digits in spruce, the conflict's holly red (apart from the
-spruce for every colour vision, tests/boardContrast.test.ts), a warm gold
-selection, pine highlights and cranberry buttons, under a deep pine top bar
-whose own words, badges and gauge take the inks a dark bar wears. Its
-decorations are CSS and inline SVG, nothing fetched: a string of lights
-inside the bar's padding (they come on once, in a second and a half; never
-under reduced motion), snow on the mark, a sprig of holly beside Paused, a
-cranberry ribbon on the win screen whose confetti falls as snow, gold and
-berries (twice, and never under reduced motion), and on a screen 1240 px
-wide or more three faint snowflakes in the page's margins, held still.
-None sits over the board, a digit or a control, on a 320 px or a 390 px
-phone held either way, an iPad on its side (1180 px, no snowflakes), a
-1200 px screen, at 1240 px or on a laptop (tests/e2e/season.spec.ts
-measures it, and every word's contrast). The shared picture of the board stays light, as in every look.
-The static Learn pages never follow the app's theme (they follow the
-device's light or dark), so the look cannot break them.
+`data-theme='christmas'`). A winter night since 15 November 2026. It went
+live on 12 November as a light look (a white board on snow); three days
+later the owner asked: "make a more readable layout for christmas mode. I
+would like it darker." So it is one look still, under the same name and
+the same season rules (a player already on it simply gets the darker one),
+of the dark family, and reading the board comes before decoration:
+
+- **The board.** A pine-black cell (#121c18) on a darker page (#0c1512),
+  darker than Dark's and neither grey nor black. Givens in snow white
+  (#f4f8f5, weight 700), the player's own digits in candle gold (#f5cb50,
+  weight 500): 27.7 apart in CIEDE2000 (22.3 for the colour vision that
+  parts them least), 14 apart in lightness, and 7.9:1 or better on every
+  ground a cell can show. Pencil marks (#a7b9b0) are 5.9:1 or better on
+  every ground, a highlighted one is the gold, bold, in its frame. A
+  repeated digit is holly-berry red (#ff7285) with its underline bar: 17
+  or more from both digits' colours for every colour vision, 4.6:1 or
+  better. The selection is a frost-blue cell in an ice ring (so it never
+  fights the gold digits), the same digits a low candle glow, the
+  selection's row, column and box a lift of spruce: each ground 6 or more
+  from the next, the selection the strongest. A wrong entry after Check
+  sits on a deep red on which the gold stays 7:1 and the red 4.5:1. Box
+  lines are 3.5:1, and the lines inside a box (`--line-thin`, which only
+  this look sets; src/ui/Grid.tsx) as visible as Dark's and quieter than
+  the box's.
+- **Hints.** Dark's hint colours (the DARK palette of
+  src/content/hintPalette.ts: the look sets none of the `--hint-*` tokens,
+  so they are the root's), on its own cell and panel, where every contrast
+  is above Dark's and every distance at or above the lower of Dark's and
+  Forest's (tests/hintPalette.test.ts). Settings says "keeps Dark's hint
+  colours".
+- **Words and controls.** Every word is 4.5:1 or better on every screen,
+  and every control wears an edge of 3:1 or better (`--edge`, which only
+  this look sets: the other looks keep their faint borders), with
+  cranberry for the filled buttons and the active mode, and gold for links
+  and the accent. Chips and marked rows wear a wash of spruce
+  (`--tint-bg`) where the other looks wear the selection's tint. The two
+  words every look dims by their own opacity, the stopped clock and a
+  technique's "not yet", are dimmed less here and stay 4.5:1; what is left
+  dimmed is what every look dims: a button that cannot be used, and the
+  controls behind the pause card.
+- **Decorations**, all CSS and inline SVG, nothing fetched, each dim
+  enough for the night: the deep pine top bar (#173d2e, which the
+  browser's bar wears too) with its own words, badges and gauge, and a
+  string of lights inside its padding (they come on once, in a second and
+  a half; never under reduced motion), snow on the mark, a sprig of holly
+  beside Paused, a cranberry ribbon on the win screen whose confetti falls
+  as snow, gold and berries (twice, and never under reduced motion), and
+  on a screen 1240 px wide or more three snowflakes in the page's margins,
+  held still, at 1.4:1 on the page. None sits over the board, a digit or
+  a control, on a 320 px or a 390 px phone held either way, an iPad on its
+  side (1180 px, no snowflakes), a 1200 px screen, at 1240 px or on a
+  laptop.
+
+What "readable" means is measured, and held by tests: from the
+stylesheet's tokens as the board layers them (tests/boardContrast.test.ts)
+and from the colours the built app computes on a phone and a laptop
+(tests/e2e/season.spec.ts: the board under way, the hint tokens, and every
+word and control edge on the game, a hint, Settings, New, the advent
+calendar with its open, solved, today's and locked doors, Learn, Import,
+Share, Restart?, the pause card and the win screen). The shared picture of
+the board stays light, as in every look. The static Learn pages and the
+advent calendar's public page never follow the app's theme (they follow
+the device's light or dark), so the look cannot break them.
 
 **Pools** ([pools.ts](../src/state/pools.ts)). localStorage-backed puzzle
 pools keyed per difficulty and per technique (written, as the saves
