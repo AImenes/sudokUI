@@ -233,6 +233,20 @@ language (tests/adventApi.test.ts measures every door). `wrangler.jsonc` sends `
 under them, the static `/advent/` page among them, goes back to the assets
 as it is.
 
+**A picture for every door (the decision of 15 November 2026, being
+built).** As a paper calendar has a picture behind every door, a shared
+door is to show its own: 24 pictures in Nordic knitting, the same every
+year, `public/og/advent/door-01.png` ... `door-24.png`. The generator is
+in: [scripts/og-advent-doors.ts](../scripts/og-advent-doors.ts) draws the
+frame (a knitted ground in pine or cranberry, the door's number on a
+sewn-on patch, the brand and the address) and each door's motif is one
+file under scripts/advent-doors/, a felt cut-out in snow and gold;
+[scripts/advent-doors/README.md](../scripts/advent-doors/README.md) says
+how to draw one, and tests/adventDoorPictures.test.ts holds the rules a
+motif file can break unseen. Doors 1, 12 and 24 are drawn. Until the 24
+pictures are in public/ and `adventCopy` names them, a door previews with
+its band card as above.
+
 ## The public pages
 
 Decision 5: a page for search engines and for anyone a link brings, live
