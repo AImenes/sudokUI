@@ -1640,7 +1640,8 @@ export function Grid() {
             />
           ))}
 
-        {/* grid lines */}
+        {/* grid lines: the boxes' own, and the thin ones inside a box, which
+            a look may draw quieter (--line-thin, the Christmas look's) */}
         {Array.from({ length: 10 }, (_, k) => (
           <React.Fragment key={k}>
             <line
@@ -1648,7 +1649,7 @@ export function Grid() {
               y1={M}
               x2={M + k * SIZE}
               y2={M + 9 * SIZE}
-              stroke="var(--line)"
+              stroke={k % 3 === 0 ? 'var(--line)' : 'var(--line-thin, var(--line))'}
               strokeWidth={k % 3 === 0 ? 6 : 1.5}
               strokeLinecap="round"
             />
@@ -1657,7 +1658,7 @@ export function Grid() {
               y1={M + k * SIZE}
               x2={M + 9 * SIZE}
               y2={M + k * SIZE}
-              stroke="var(--line)"
+              stroke={k % 3 === 0 ? 'var(--line)' : 'var(--line-thin, var(--line))'}
               strokeWidth={k % 3 === 0 ? 6 : 1.5}
               strokeLinecap="round"
             />
