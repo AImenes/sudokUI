@@ -573,7 +573,8 @@ describe('the band cards', () => {
     // and nothing else lies there but the cards of the three bands from
     // before the five, kept for the previews chat apps may still hold
     const legacy = ['beginner', 'tricky', 'nightmare'].flatMap((b) => [`${b}.png`, `${b}.nb.png`, `${b}.es.png`]);
-    expect(CARDS.filter((c) => !legacy.includes(c))).toHaveLength(LEVELS.length * HOME_LANGS.length);
+    // (and one folder, advent/: the pictures of the advent calendar's doors, tests/adventDoorPictures.test.ts)
+    expect(CARDS.filter((c) => !legacy.includes(c) && c !== 'advent')).toHaveLength(LEVELS.length * HOME_LANGS.length);
     for (const c of legacy) expect(CARDS, c).toContain(c);
   });
 

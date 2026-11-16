@@ -91,10 +91,12 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
   1000 on HoDoKu's scale so most players can open every door (doors 1 to
   18 Easy, singles only; doors 19 to 24 Medium), locked until its day
   wherever it is asked for, a door's time on the daily's tables under a
-  number of its own, the counts with the door, what is kept, the public
+  number of its own, the counts with the door, what is kept, the picture
+  a shared door shows (24 in Nordic knitting, one behind each door, the
+  same every year: the decision of 15 November), the public
   calendar pages (/advent/, /nb/julekalender/,
   /es/calendario-de-adviento/), the dashboard's Christmas section, and
-  how to make next year's doors.
+  how to make next year's doors or redraw a door's picture.
 - [technique-stats.md](technique-stats.md): the learning path from the
   player's own play.
 - [concepts_description.md](concepts_description.md) and
