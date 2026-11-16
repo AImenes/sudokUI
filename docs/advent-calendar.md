@@ -523,3 +523,32 @@ Each was reproduced by an independent checker.
   that section says so and the rest of the page is unaffected. Look at
   /admin once in December.
 
+
+## The door pictures (parked on 16 November 2026, not live)
+
+The owner's decision of 15 November 2026: a shared door link shows its
+own picture, one per door, in the Nordic knit style the owner chose.
+This work is on the branch `claude/adoring-curie-nlizdj` only, not on
+main, and was parked part-way to save the owner's usage.
+
+Done:
+- The generator, `scripts/og-advent-doors.ts`, with one file per motif
+  under `scripts/advent-doors/` and a README for whoever draws the rest.
+  `npx vite-node scripts/og-advent-doors.ts 1 2 3 --out <dir>
+  --sheet-small <file.png>` renders doors and a sheet of them at chat
+  size.
+- 17 of 24 motifs: doors 1 to 16 and 24.
+
+Left:
+- Doors 17 to 23: sleigh, wreath, bauble, cabin with chimney smoke, snow
+  crystal, paper star in the window, bowl of Christmas porridge.
+- A look at all 24 together, and redrawing any weak one.
+- Writing the 24 PNGs (1200 x 630, under 300 KB) to `public/og/advent/`.
+- `src/content/share.ts`, `adventCopy`: an open door shows its picture,
+  with an alt text in en, nb and es; a locked door shows the calendar's
+  own card. Until this is done a shared door shows the level's generic
+  card, as before.
+- Keeping the pictures out of the service worker's precache
+  (`vite.config.ts`, `globIgnores`), tests for the preview and the
+  files, and "The preview" section above.
+- The first door opens on 1 December 2026.
