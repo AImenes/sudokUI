@@ -46,13 +46,13 @@ export default function wreath(k: Felt): string {
     `M${-6 * s},${KY - 2}C${-34 * s},${KY - 60} ${-118 * s},${KY - 80} ${-126 * s},${KY - 34}C${-132 * s},${KY + 14} ${-50 * s},${KY + 22} ${-6 * s},${KY + 2}Z` +
     `M${-46 * s},${KY - 10}C${-64 * s},${KY - 5} ${-100 * s},${KY - 5} ${-99 * s},${KY - 29}C${-98 * s},${KY - 48} ${-60 * s},${KY - 37} ${-46 * s},${KY - 10}Z`;
   // berries: three small bunches, each a hole cut through the felt so that the knit shows
-  const berries = around(0, CY, 108, [-128, -38, 12])
+  const berries = around(0, CY, 104, [-128, -38, 12])
     .map(([x, y]) => `<circle cx="${n1(x - 10)}" cy="${n1(y + 6)}" r="11"/><circle cx="${n1(x + 10)}" cy="${n1(y + 6)}" r="11"/><circle cx="${x}" cy="${n1(y - 11)}" r="11"/>`)
     .join('');
   return `<g transform="translate(0,-5)">
-    ${piece(ring([124, 156], 14, [90, 68], 9, 13), k.shade)}
-    ${piece(ring([122, 154], 14, [92, 70], 9, 0), k.snow)}
-    ${seam(`M-108,${CY}A108,108 0 1 1 108,${CY}A108,108 0 1 1 -108,${CY}`, k.thread)}
+    ${piece(ring([124, 156], 14, [82, 60], 9, 13), k.shade)}
+    ${piece(ring([122, 154], 14, [84, 62], 9, 0), k.snow)}
+    ${seam(`M-104,${CY}A104,104 0 1 1 104,${CY}A104,104 0 1 1 -104,${CY}`, k.thread)}
     <g fill="${k.ground}">${berries}</g>
     ${piece(tail(-8, KY + 2, -80, KY + 74, 14, 22, 20), k.goldDeep)}
     ${piece(tail(8, KY + 2, 80, KY + 74, 14, 22, 20), k.goldDeep)}
