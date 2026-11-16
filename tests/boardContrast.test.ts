@@ -89,7 +89,7 @@ describe('the Christmas look, a winter night', () => {
   // row, column and box, the selected digit's other cells, the selected
   // cell (its rect at 0.9), a cell that is both a peer and a same digit
   // (where a conflict with the selected cell sits), and a wrong entry
-  // after Check (--error-bg at 0.5), alone and over each tint
+  // after Check (--error-bg at 0.5), alone, over each tint and selected
   const peer = tint('--peer-bg', cell);
   const same = tint('--same-bg', cell);
   const selected = tint('--sel-bg', cell, 0.9);
@@ -102,7 +102,8 @@ describe('the Christmas look, a winter night', () => {
     'peer and same digit': both,
     wrong: over(v['--error-bg'], 0.5, cell),
     'wrong on a peer': over(v['--error-bg'], 0.5, peer),
-    'wrong on a same digit': over(v['--error-bg'], 0.5, both)
+    'wrong on a same digit': over(v['--error-bg'], 0.5, both),
+    'wrong and selected': over(v['--error-bg'], 0.5, selected)
   };
   const deNormal = (a: string, b: string) => de2000(seen(a, 'normal'), seen(b, 'normal'));
   const rgb = (hex: string) => [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
@@ -151,9 +152,8 @@ describe('the Christmas look, a winter night', () => {
       const { de, model } = worstDE(v['--danger-text'], v[token]);
       expect(de, `${token} (${model})`).toBeGreaterThanOrEqual(15);
     }
-    // a repeated digit sits on a plain cell, a peer, a same digit, the selected cell, or a peer that is a same digit
-    for (const name of ['plain', 'peer', 'same digit', 'selected', 'peer and same digit'])
-      expect(contrast(v['--danger-text'], GROUNDS[name]), `on the ${name} ground ${GROUNDS[name]}`).toBeGreaterThanOrEqual(4.5);
+    // a repeated digit sits on any ground, a wrong entry's among them (Dark's own red is 3.0:1 there)
+    for (const [name, ground] of Object.entries(GROUNDS)) expect(contrast(v['--danger-text'], ground), `on the ${name} ground ${ground}`).toBeGreaterThanOrEqual(4.5);
     const grid = new TextDecoder().decode(readFileSync('src/ui/Grid.tsx'));
     expect(grid).toMatch(/\{conflict && \(\s*<rect className="conflict-mark"[^>]*height=\{4\}[^>]*fill="var\(--danger-text\)"/);
   });

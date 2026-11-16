@@ -416,6 +416,17 @@ DARK is dark and forest. Measured with tests/colourScience.ts (worst model
 over normal vision and the Machado, Brettel and Viénot protan, deutan and
 tritan simulations), each tint composited at 0.5 over each theme's cell.
 
+The Christmas look is of the dark family since 15 November 2026 (DARK on
+its pine-black cell #121c18 and panel #182822) and is not in the tables
+below, which are the design's four themes. Measured the same way, its
+tiles are #2d320d, #63384a and #121c61: 17.2, 14.9 and 16.8 apart, 9.0,
+14.4 and 9.4 from the board; the hint's ink on them 11.80, 8.46 and
+13.61:1, and 4.10:1 at the least over the player's colours; the sets' inks
+10.15, 7.69 and 6.38:1 on the board and the panel; the "one of these"
+square 20.6 from the board and 14.1, 9.9 and 15.8 from the tiles. Every
+contrast is above Dark's and every distance at or above the lower of
+Dark's and Forest's (tests/hintPalette.test.ts holds them).
+
 | Token | LIGHT | DARK | Shape |
 | --- | --- | --- | --- |
 | `--hint-one-of` (opaque) | #abe1ba (the true #57c274 at 0.5 over white), edge #006c2f | #296243 (#35a458 at 0.5 over #1c202e), edge #35a458 | rounded square 26 × 26, rx 7, edge 2 inside, keyline 1.5 (2 on a small board), digit `--hint-in-ring` |

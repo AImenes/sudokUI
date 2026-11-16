@@ -201,13 +201,15 @@
   --cell-bg: #121c18;
   --line: #5d766a;
   /* the lines inside a box: there, and quieter than the box's own */
-  --line-thin: #2e4138;
+  --line-thin: #3b5247;
   --given: #f4f8f5;
   --entered: #f5cb50;
   --cand: #a7b9b0;
   --danger-text: #ff7285;
-  /* a wrong entry after Check, at the board's 0.5: the gold stays 7:1 on it, over a peer and a same digit too */
-  --error-bg: #8c1f30;
+  /* a wrong entry after Check, at the board's 0.5: on it the gold stays 7:1
+     and a repeated digit's red 4.5:1, over a peer, a same digit and the
+     selected cell too */
+  --error-bg: #7c1b2b;
   --sel-bg: rgba(63, 127, 224, 0.3);
   --sel-border: #cfeaf5;
   --peer-bg: rgba(63, 167, 160, 0.13);
@@ -4529,15 +4531,9 @@ html:not([lang='en']) .zone-note {
   opacity: 0.7;
 }
 
-/* a quiet button of the dialog's own, not the browser's grey one */
 .path-practice {
   padding: 4px 10px;
   font-size: 12.5px;
-  border-radius: 8px;
-  border: 1px solid var(--edge, rgba(128, 128, 160, 0.3));
-  background: none;
-  color: var(--text);
-  cursor: pointer;
 }
 
 .path-record {
@@ -4764,6 +4760,16 @@ html:not([lang='en']) .zone-note {
 :root[data-theme='christmas'] ::placeholder {
   color: var(--muted);
   opacity: 1;
+}
+
+/* the Learn path's Practice: a quiet button of the dialog's own (the other
+   looks keep the browser's grey one, a light slab on this night) */
+:root[data-theme='christmas'] .path-practice {
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
 }
 
 /* the solution path's range chip is a button: its edge the controls' own,
