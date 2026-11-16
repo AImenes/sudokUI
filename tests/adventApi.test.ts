@@ -6,8 +6,9 @@
  * of grace behind for a player west of UTC), and refused when
  * the door's day has not come, when it is too late, when the grid is not
  * its solution or when the solve had help; a door's address answered with
- * the app and a preview that names the door and its rating, or, for a
- * door not yet open, the day it opens and no puzzle; a landing on it
+ * the app and a preview that names the door and its rating and shows
+ * the picture behind it (public/og/advent/), or, for a door not yet
+ * open, the day it opens, the calendar's own card and no puzzle; a landing on it
  * counted as `advent`; and a door's play line, with its door, checked
  * against the closed lists.
  */
@@ -171,7 +172,9 @@ describe('a door’s address in the Worker', () => {
     expect(meta(html, 'og:description')).toContain(`HoDoKu rating of ${DOOR.score}`);
     expect(meta(html, 'og:description')).toContain('5 December');
     expect(meta(html, 'og:url')).toBe(`${SITE}/advent/2026/5`);
-    expect(meta(html, 'og:image')).toBe(`${SITE}/og/${DOOR.level.toLowerCase()}.png`);
+    // the picture behind the door, not the band's card
+    expect(meta(html, 'og:image')).toBe(`${SITE}/og/advent/door-05.png`);
+    expect(meta(html, 'og:image:alt')).toBe('The picture behind door 5 of the sudokUI advent calendar');
     expect(events.points).toEqual([expect.objectContaining({ indexes: ['landing'], blobs: [DOOR.level, 'advent', expect.any(String), '', 'none'] })]);
     expect(LANDING_SLOTS).toContain('advent');
   });
@@ -182,7 +185,10 @@ describe('a door’s address in the Worker', () => {
     const en = await (await handleRequest(visit('/advent/2026/5'), env, undefined, undefined, now)).text();
     expect(meta(en, 'og:title')).toBe('Door 5 · sudokUI advent calendar');
     expect(meta(en, 'og:description')).toBe('Door 5 of the sudokUI advent calendar opens on 5 December. A sudoku a day from 1 to 24 December, each a little harder than the one before.');
-    expect(meta(en, 'og:image')).toBe(`${SITE}/og-card.png`);
+    // the calendar's own card, not the site's and not the door's picture
+    expect(meta(en, 'og:image')).toBe(`${SITE}/og-advent-2026.png`);
+    expect(meta(en, 'og:image:alt')).toBe('The sudokUI advent calendar 2026: 24 doors, a little harder each day.');
+    expect(en).not.toContain('/og/advent/');
     expect(en).not.toContain(String(DOOR.score));
     expect(en).not.toContain(DOOR.puzzle);
     const nb = await (await handleRequest(visit('/nb/advent/2026/5'), env, undefined, undefined, now)).text();
@@ -195,6 +201,94 @@ describe('a door’s address in the Worker', () => {
     // one day of grace: on 4 December UTC, someone is already on the 5th
     const early = await (await handleRequest(visit('/advent/2026/5'), env, undefined, undefined, () => Date.parse('2026-12-04T12:00:00Z'))).text();
     expect(meta(early, 'og:description')).toContain(`HoDoKu rating of ${DOOR.score}`);
+  });
+
+  /** every tag of a page by its property or name, in the order they stand */
+  const tags = (html: string, key: string) => [...html.matchAll(new RegExp(`<meta\\s+(?:property|name)="${key}"\\s+content="([^"]*)"`, 'g'))].map((m) => m[1]);
+  const PICTURE_ALT = {
+    '': 'The picture behind door 12 of the sudokUI advent calendar',
+    '/nb': 'Bildet bak luke 12 i julekalenderen i sudokUI',
+    '/es': 'La imagen tras la casilla 12 del calendario de adviento de sudokUI'
+  } as const;
+  const CARD = {
+    '': ['/og-advent-2026.png', 'The sudokUI advent calendar 2026: 24 doors, a little harder each day.'],
+    '/nb': ['/og-advent-2026.nb.png', 'Julekalenderen 2026 i sudokUI: 24 luker, litt vanskeligere hver dag.'],
+    '/es': ['/og-advent-2026.es.png', 'El calendario de adviento 2026 de sudokUI: 24 casillas, algo más difícil cada día.']
+  } as const;
+
+  it('shows an open door’s own picture, the same in each language, with its alt in the link’s language, 1200 x 630, as a large card', async () => {
+    const { env } = assets();
+    const now = () => Date.parse('2026-12-12T12:00:00Z');
+    for (const lang of ['', '/nb', '/es'] as const) {
+      const html = await (await handleRequest(visit(`${lang}/advent/2026/12`), env, undefined, undefined, now)).text();
+      // one picture, absolute, for Open Graph and for Twitter alike
+      expect(tags(html, 'og:image'), lang).toEqual([`${SITE}/og/advent/door-12.png`]);
+      expect(tags(html, 'twitter:image'), lang).toEqual([`${SITE}/og/advent/door-12.png`]);
+      expect(tags(html, 'og:image:alt'), lang).toEqual([PICTURE_ALT[lang]]);
+      expect(tags(html, 'og:image:width'), lang).toEqual(['1200']);
+      expect(tags(html, 'og:image:height'), lang).toEqual(['630']);
+      expect(tags(html, 'twitter:card'), lang).toEqual(['summary_large_image']);
+      // the band's card and the site's are nowhere on the page
+      expect(html, lang).not.toMatch(/\/og\/(?!advent\/)[a-z]+(\.[a-z]+)?\.png/);
+      expect(html, lang).not.toContain('og-card');
+      expect(html, lang).not.toContain('og-advent-');
+    }
+  });
+
+  it('shows the calendar’s own card, in the link’s language, for a door not yet open: not the door’s picture, not the site’s card', async () => {
+    const { env } = assets();
+    const now = () => Date.parse('2026-12-01T12:00:00Z');
+    const door = DOORS[11];
+    for (const lang of ['', '/nb', '/es'] as const) {
+      const html = await (await handleRequest(visit(`${lang}/advent/2026/12?vs=300`), env, undefined, undefined, now)).text();
+      const [card, alt] = CARD[lang];
+      expect(tags(html, 'og:image'), lang).toEqual([SITE + card]);
+      expect(tags(html, 'twitter:image'), lang).toEqual([SITE + card]);
+      expect(tags(html, 'og:image:alt'), lang).toEqual([alt]);
+      expect(tags(html, 'og:image:width'), lang).toEqual(['1200']);
+      expect(tags(html, 'og:image:height'), lang).toEqual(['630']);
+      expect(tags(html, 'twitter:card'), lang).toEqual(['summary_large_image']);
+      // nothing of the door: no picture, no puzzle, no band, no rating, no challenge
+      expect(html, lang).not.toContain('/og/');
+      expect(html, lang).not.toContain('og-card');
+      expect(html, lang).not.toContain(door.puzzle);
+      expect(html, lang).not.toContain(String(door.score));
+      expect(html, lang).not.toContain('5:00');
+    }
+  });
+
+  it('keeps a challenger’s time in the words of a door’s challenge link, and shows the door’s picture too', async () => {
+    const { env } = assets();
+    const now = () => Date.parse('2026-12-12T12:00:00Z');
+    const plain = await (await handleRequest(visit('/advent/2026/12'), env, undefined, undefined, now)).text();
+    const en = await (await handleRequest(visit('/advent/2026/12?vs=754'), env, undefined, undefined, now)).text();
+    expect(meta(en, 'og:title')).toBe('Door 12: solved in 12:34. Can you beat it?');
+    expect(meta(en, 'og:description')).toContain('12:34');
+    expect(meta(en, 'og:url')).toBe(`${SITE}/advent/2026/12?vs=754`);
+    expect(tags(en, 'og:image')).toEqual(tags(plain, 'og:image'));
+    expect(tags(en, 'og:image')).toEqual([`${SITE}/og/advent/door-12.png`]);
+    expect(tags(en, 'og:image:alt')).toEqual([PICTURE_ALT['']]);
+    const nb = await (await handleRequest(visit('/nb/advent/2026/12?vs=754'), env, undefined, undefined, now)).text();
+    expect(meta(nb, 'og:title')).toContain('12:34');
+    expect(tags(nb, 'og:image')).toEqual([`${SITE}/og/advent/door-12.png`]);
+    const es = await (await handleRequest(visit('/es/advent/2026/12?vs=754'), env, undefined, undefined, now)).text();
+    expect(meta(es, 'og:title')).toContain('12:34');
+    expect(tags(es, 'og:image')).toEqual([`${SITE}/og/advent/door-12.png`]);
+  });
+
+  it('gives every door of the calendar its own picture, and the calendar’s card until its day', () => {
+    for (const lang of ['', '/nb', '/es'] as const) {
+      const pictures = new Set<string>();
+      for (const door of DOORS.map((d) => d.door)) {
+        const open = shareCopy(shareParamsOf(new URL(`${SITE}${lang}/advent/2026/${door}`), dailies as Daily[], DOORS, '2026-12-25')!);
+        expect(open.ogImage, `${lang} door ${door}`).toBe(`${SITE}/og/advent/door-${String(door).padStart(2, '0')}.png`);
+        expect(open.ogImageAlt, `${lang} door ${door}`).toBe(PICTURE_ALT[lang].replace('12', String(door)));
+        pictures.add(open.ogImage);
+        const locked = shareCopy(shareParamsOf(new URL(`${SITE}${lang}/advent/2026/${door}`), dailies as Daily[], DOORS, '2026-11-20')!);
+        expect([locked.ogImage, locked.ogImageAlt], `${lang} door ${door}`).toEqual([SITE + CARD[lang][0], CARD[lang][1]]);
+      }
+      expect(pictures.size).toBe(DOORS.length);
+    }
   });
 
   it('previews a daily not yet open as a door is: the day it opens, the site’s card, and nothing of the puzzle', async () => {

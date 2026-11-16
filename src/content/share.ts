@@ -28,6 +28,7 @@ import { parseDailyUrl, dailyPath, findDaily, dailyNumber, localDateKey, dayToCo
 import type { Daily } from './dailies';
 import { parseAdventUrl, adventPath, findDoor, doorDate, doorDay } from './advent';
 import type { AdventDoor } from './advent';
+import { ADVENT_PAGE, adventCardPath, fillAdvent } from './adventPage';
 import * as namesNb from './locales/names.nb';
 import * as namesEs from './locales/names.es';
 
@@ -224,6 +225,14 @@ export function techsWorthNaming(techs: Iterable<Tech>): Tech[] {
 export const ogShareCard = (level: Level, lang: Lang) =>
   `${SITE}/og/${level.toLowerCase()}${lang === 'en' ? '' : `.${lang}`}.png`;
 
+/**
+ * The picture behind a door of the advent calendar (public/og/advent/,
+ * made by scripts/og-advent-doors.ts): one for each day from 1 to 24
+ * December, the same every year and in every language, as it carries no
+ * words but the door's number
+ */
+export const ogDoorPicture = (door: number) => `${SITE}/og/advent/door-${String(door).padStart(2, '0')}.png`;
+
 export interface ShareCopy {
   /** the tab: {level} and {score} known */
   title: string;
@@ -259,6 +268,8 @@ export interface ShareCopy {
   /** a door whose day has not come: its tab and description, which say when it opens and show no puzzle */
   titleAdventLocked: string;
   descriptionAdventLocked: string;
+  /** what an open door's picture is, for someone who cannot see it: {door} */
+  ogImageAltAdvent: string;
   /** "needing X-Wing and Skyscraper", glued to the sentence before the full stop */
   needing: string;
   /** a sentence put before the description when a challenger's {time} is set */
@@ -301,6 +312,7 @@ export const SHARE: Record<Lang, ShareCopy> = {
     needing: ', needing {list}',
     vs: 'Solved in {time} on sudokUI: can you beat it?',
     and: 'and',
+    ogImageAltAdvent: 'The picture behind door {door} of the sudokUI advent calendar',
     ogImageAlt: '{a} {level} sudoku on sudokUI',
     ogImageAltUnknown: 'A sudoku on sudokUI',
     loading: 'Loading the puzzle…',
@@ -335,6 +347,7 @@ export const SHARE: Record<Lang, ShareCopy> = {
     needing: ' som krever {list}',
     vs: 'Løst på {time} i sudokUI: klarer du å slå det?',
     and: 'og',
+    ogImageAltAdvent: 'Bildet bak luke {door} i julekalenderen i sudokUI',
     ogImageAlt: '{a} sudoku på nivået {level} i sudokUI',
     ogImageAltUnknown: 'En sudoku i sudokUI',
     loading: 'Laster inn oppgaven…',
@@ -369,6 +382,7 @@ export const SHARE: Record<Lang, ShareCopy> = {
     needing: ' que requiere {list}',
     vs: 'Resuelto en {time} en sudokUI: ¿puedes superarlo?',
     and: 'y',
+    ogImageAltAdvent: 'La imagen tras la casilla {door} del calendario de adviento de sudokUI',
     ogImageAlt: '{a} sudoku de nivel {level} en sudokUI',
     ogImageAltUnknown: 'Un sudoku en sudokUI',
     loading: 'Cargando el sudoku…',
@@ -424,9 +438,12 @@ function adventCopy(p: ShareParams, advent: NonNullable<ShareParams['advent']>) 
     title: open ? fill(c.titleAdvent, vars) : fill(c.titleAdventLocked, vars),
     description: time ? `${fill(c.vs, { time })} ${description}` : description,
     ogTitle: time ? fill(c.ogTitleAdventVs, { ...vars, time }) : headline,
-    // the band's card for an open door; a door not yet open shows no band at all
-    ogImage: open ? ogShareCard(p.level!, p.lang) : ogCard(p.lang),
-    ogImageAlt: open ? fill(c.ogImageAlt, vars) : c.ogImageAltUnknown,
+    // an open door shows the picture behind it, as a paper calendar does (the
+    // owner's decision of 15 November 2026), with or without a challenger's
+    // time; a door not yet open shows the calendar's own card in the link's
+    // language, and nothing of its puzzle or its band
+    ogImage: open ? ogDoorPicture(advent.door) : SITE + adventCardPath(p.lang, advent.year),
+    ogImageAlt: open ? fill(c.ogImageAltAdvent, vars) : fillAdvent(ADVENT_PAGE[p.lang].imageAlt, { year: advent.year }),
     h1: headline,
     loading: c.loading,
     noscript: c.noscript

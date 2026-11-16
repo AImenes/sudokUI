@@ -233,8 +233,13 @@ export default defineConfig({
         navigateFallbackDenylist: [STATIC_ROUTES],
         // and they stay out of the precache: they are generated after this
         // step anyway, but a player should never download 80 articles. So
-        // do the 404 pages, in every language.
-        globIgnores: ['learn/**', '**/404.html'],
+        // do the 404 pages, in every language. And the pictures a chat app
+        // shows for a shared link (public/og/: the bands' cards and the 24
+        // pictures of the advent calendar's doors, about 2 MB of them) are
+        // for the chat app, which fetches them from the site: the app never
+        // shows one, so no player downloads them. The build still copies
+        // them to dist/og/, where the links point.
+        globIgnores: ['learn/**', '**/404.html', 'og/**'],
         // all but the privacy page, which the footer opens in place: it
         // reads offline too (src/content/staticRoutes.ts, OFFLINE_PAGES).
         // scripts/build-learn.ts writes it after this step, so it is named
