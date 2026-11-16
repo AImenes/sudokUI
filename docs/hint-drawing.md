@@ -660,8 +660,12 @@ data changes later.
 
 Measured (WCAG contrast; CIEDE2000 under Machado 2009 protan, deutan and
 tritan, with Viénot and Brettel as cross-checks). LIGHT applies to the
-light and rose themes and the Learn diagrams; DARK to dark and forest. A
-cell is 100 units (the Learn diagrams scale everything by 0.6).
+light and rose themes and the Learn diagrams; DARK to dark and forest, and
+to the Christmas look, a dark look since 15 November 2026 (its cell
+#121c18 and panel #182822: every contrast in the table is higher there
+than on Dark's cell, the pattern's ink 5.17:1, the true ink 5.48:1, the
+arrows 15.84:1). A cell is 100 units (the Learn diagrams scale everything
+by 0.6).
 
 **Principles.** Shape carries truth, hue carries meaning: a filled disc
 is true or a role, a ring is false, a barred ring is removed, a disc with
