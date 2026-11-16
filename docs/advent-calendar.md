@@ -605,3 +605,27 @@ Each was reproduced by an independent checker.
   Analytics Engine (only against the test double): if the API refuses it,
   that section says so and the rest of the page is unaffected. Look at
   /admin once in December.
+
+### The door pictures (16 November 2026)
+
+An independent check of the 24 pictures and of the link preview found
+every picture recognisable at chat size and nothing wrong in the preview.
+What it would still polish, none of it touching a game, and left as it is
+by the owner's rule of 12 November:
+
+- Door 24, meant to be the finest, is one of the lighter pictures at chat
+  size: the tree's tiers could be about 15 % wider and its star larger.
+- Door 9, the kicksled, is the only motif in three-quarter view; a
+  stranger outside the Nordic countries may say "a chair on a sled".
+- Doors 17 and 22 sit close to the number's patch at chat size, and the
+  sleigh's seat back ends in a hard edge.
+- The alt text names the door, not what the picture shows ("door 12",
+  not "a reindeer"): naming it would take 24 names in three languages.
+- Nothing ties a committed PNG to its motif file except rendering it
+  again, and a redrawn door keeps its address, so a chat app that has
+  already fetched the old picture keeps showing it for a while.
+- The motifs of doors 1, 12 and 24 rise a few pixels above the motif box
+  that scripts/advent-doors/README.md describes.
+- A chat app that fetched a door's link before its day keeps the
+  calendar's card until it fetches again (as "share previews up to ten
+  hours early" above, the other way round).
