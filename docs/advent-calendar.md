@@ -220,32 +220,91 @@ Worker still refuses a time for a door whose day has not come anywhere
 
 The Worker answers a door's address with the app and a share preview
 (`shareParamsOf`, `renderSharePage` in src/content/share.ts), `noindex` as
-every share page: "Door 5 · sudokUI advent calendar" with the door's band
-card, its day and its HoDoKu rating; a challenge keeps the door in the
-headline. A door whose day has not come anywhere on earth (the UTC date
-plus `EARLY_DAYS`) previews with the day it opens, the site's own card and
-no band, rating or puzzle; and so, from November 2026, does a daily whose
-day has not come ("sudokUI Daily #75 opens on 20 December", with no
-challenge), since the app will not open it either. Titles stay within 75
-characters and descriptions within 160 without a challenge, in every
-language (tests/adventApi.test.ts measures every door). `wrangler.jsonc` sends `/advent/*` (and
-`/nb/advent/*`, `/es/advent/*`) to the Worker first; any other address
-under them, the static `/advent/` page among them, goes back to the assets
-as it is.
+every share page: "Door 5 · sudokUI advent calendar" with its day and its
+HoDoKu rating; a challenge keeps the door in the headline. A door whose
+day has not come anywhere on earth (the UTC date plus `EARLY_DAYS`)
+previews with the day it opens and no band, rating or puzzle; and so,
+from November 2026, does a daily whose day has not come ("sudokUI Daily
+#75 opens on 20 December", with the site's card and no challenge), since
+the app will not open it either. Titles stay within 75 characters and
+descriptions within 160 without a challenge, in every language
+(tests/adventApi.test.ts measures every door). `wrangler.jsonc` sends
+`/advent/*` (and `/nb/advent/*`, `/es/advent/*`) to the Worker first; any
+other address under them, the static `/advent/` page among them, goes
+back to the assets as it is.
 
-**A picture for every door (the decision of 15 November 2026, being
-built).** As a paper calendar has a picture behind every door, a shared
-door is to show its own: 24 pictures in Nordic knitting, the same every
-year, `public/og/advent/door-01.png` ... `door-24.png`. The generator is
-in: [scripts/og-advent-doors.ts](../scripts/og-advent-doors.ts) draws the
-frame (a knitted ground in pine or cranberry, the door's number on a
-sewn-on patch, the brand and the address) and each door's motif is one
-file under scripts/advent-doors/, a felt cut-out in snow and gold;
+**A picture behind every door (the owner's decision of 15 November
+2026).** A paper advent calendar has a picture behind every door, and a
+link in a chat is judged by its picture before anyone reads a word: so a
+shared door shows a picture of its own, not the dark card of its puzzle's
+level that every Easy puzzle shares. What a link shows (`adventCopy`):
+
+| the link | its picture | its alt text |
+| --- | --- | --- |
+| an open door, `/advent/2026/12` | `https://sudokui.app/og/advent/door-12.png` | "The picture behind door 12 of the sudokUI advent calendar" (nb: "Bildet bak luke 12 i julekalenderen i sudokUI"; es: "La imagen tras la casilla 12 del calendario de adviento de sudokUI") |
+| its challenge link, `?vs=754` | the same picture; the time stays in the headline and the description | the same |
+| a door not yet open | the calendar's own card in the link's language, `/og-advent-2026.png`, `.nb.png`, `.es.png` (`adventCardPath`): not the site's card, and nothing of the door | the card's own, from the public page ("The sudokUI advent calendar 2026: 24 doors, a little harder each day.") |
+
+The page gives the picture as `og:image` and `twitter:image`, an absolute
+address, with 1200 by 630 and `summary_large_image` from the template, as
+every other card. A door not yet open shows no picture of its own for the
+reason it shows no puzzle: a door is opened on its day.
+
+The 24 pictures are `public/og/advent/door-01.png` ... `door-24.png`,
+1200 x 630, 63 to 94 KB each (a chat app drops a heavy preview: the limit
+here is 300 KB). They carry no words but the door's number, the brand and
+"sudokui.app", so one set serves English, Norwegian and Spanish links, and
+no year, so the same 24 serve every December. No puzzle is on them. The
+look is Nordic knitting, the style the owner chose: a ground of stocking
+stitch in the site's pine or cranberry (pine on the odd days and on the
+24th), a band of small pattern and a gold row along the top and the
+bottom, a Selbu rose knitted on each side, the door's motif in the middle
+as a felt cut-out in snow and gold with a hard shadow and a running
+stitch, and the door's number in gold on a sewn-on patch in the other
+colour of the two. The motif and the number sit inside the middle 630
+pixels, the square some chats crop a preview to.
+
+| door | motif | door | motif | door | motif |
+| --- | --- | --- | --- | --- | --- |
+| 1 | candle in its holder | 9 | kicksled | 17 | sleigh |
+| 2 | pair of Selbu mittens | 10 | bell with a bow | 18 | wreath |
+| 3 | bullfinch on a rowan twig | 11 | cup of cocoa | 19 | bauble |
+| 4 | sheaf of oats for the birds | 12 | reindeer | 20 | cabin in the snow |
+| 5 | skis and poles | 13 | Lucia crown | 21 | snow crystal |
+| 6 | lantern | 14 | woven paper heart | 22 | paper star in the window |
+| 7 | gingerbread house | 15 | snow globe | 23 | bowl of Christmas porridge |
+| 8 | snowman | 16 | parcel with a bow | 24 | Christmas tree with its star |
+
+They are drawn by code:
+[scripts/og-advent-doors.ts](../scripts/og-advent-doors.ts) draws the
+frame and rasterises with Playwright's Chromium,
+[scripts/advent-doors/doors.ts](../scripts/advent-doors/doors.ts) is the
+table of the 24 doors, each door's motif is one file,
+`scripts/advent-doors/door-<nn>.ts`, and
 [scripts/advent-doors/README.md](../scripts/advent-doors/README.md) says
-how to draw one, and tests/adventDoorPictures.test.ts holds the rules a
-motif file can break unseen. Doors 1, 12 and 24 are drawn. Until the 24
-pictures are in public/ and `adventCopy` names them, a door previews with
-its band card as above.
+how to draw one ("Next year's doors" below has the commands).
+
+**Not part of the offline app.** The pictures are for the chat app, which
+fetches them from the site; the app itself never shows one. The service
+worker's precache takes only the app's code and pages (workbox's default
+patterns, `js`, `css` and `html`, plus the icons and the poodle named in
+`includeAssets`), and `globIgnores` in vite.config.ts names `og/**` so
+that it stays so if the patterns ever widen: no player downloads 2 MB of
+pictures. The build copies them to `dist/og/advent/` with the rest of
+public/, and the asset hosting serves them as files, without the Worker.
+
+**Nothing new is sent, stored or read.** The preview is words and one
+address in the page's head, built from the link itself; the picture is a
+static file. A landing on a door's link is counted as before, no more.
+The privacy page (src/content/privacy.ts) needed no change.
+
+Tests: tests/adventApi.test.ts asks the Worker for a door open and not
+yet open, in the three languages, and for a challenge link (the picture's
+address, the alt, the dimensions, the card's kind, and nothing of the
+puzzle on a locked door); tests/adventDoorPictures.test.ts holds the rules
+a motif file can break unseen, that the table has 24 doors with a motif
+file each, that `public/og/advent/` holds exactly the 24 pictures, each a
+1200 x 630 PNG under 300 KB, and that the precache leaves `og/` alone.
 
 ## The public pages
 
@@ -452,6 +511,30 @@ clue of theirs can go).
    the calendar take the year from the date, the public page and the
    dashboard the year from the file.
 
+**The doors' pictures stay.** The 24 pictures a shared door shows ("The
+preview" above) are the same every year: their names carry no year, and a
+new year's doors need nothing made. To redraw one, or to change the frame:
+
+```sh
+# draw: edit scripts/advent-doors/door-09.ts (README.md beside it has the box,
+# the palette and the rules), then look at it beside its neighbours
+npx vite-node scripts/og-advent-doors.ts 8 9 10 --out .vite/advent-doors --sheet .vite/advent-doors/sheet.png
+# all 24 at the size a chat shows them, four across
+npx vite-node scripts/og-advent-doors.ts --out .vite/advent-doors --sheet-small .vite/advent-doors/all-24.png
+# when it belongs with the others: write the site's own (all 24, or the doors named)
+npx vite-node scripts/og-advent-doors.ts 9
+npx vitest run tests/adventDoorPictures.test.ts tests/adventApi.test.ts
+```
+
+`--sheet` gives a row for each door named: the picture at 600 wide, at 300
+wide (a chat preview) and its centred square crop; `--guides` draws the
+motif's box and the crop over the picture, and refuses to write to
+public/. Everything rendered while drawing goes under `.vite/`, which git
+ignores. Judge a picture on a sheet, beside the others, never alone: at
+300 wide a stranger should name the motif at a glance. A chat app keeps a
+preview it has fetched for days or weeks, so a picture changed after its
+door has been shared shows up slowly; the address stays the same.
+
 **Making a year again.** A year in the file can be replaced only by
 asking, `npx vite-node scripts/build-advent.ts 2026 --replace`, and only
 while its first door has not opened anywhere: until 29 November UTC of
@@ -522,33 +605,3 @@ Each was reproduced by an independent checker.
   Analytics Engine (only against the test double): if the API refuses it,
   that section says so and the rest of the page is unaffected. Look at
   /admin once in December.
-
-
-## The door pictures (parked on 16 November 2026, not live)
-
-The owner's decision of 15 November 2026: a shared door link shows its
-own picture, one per door, in the Nordic knit style the owner chose.
-This work is on the branch `claude/adoring-curie-nlizdj` only, not on
-main, and was parked part-way to save the owner's usage.
-
-Done:
-- The generator, `scripts/og-advent-doors.ts`, with one file per motif
-  under `scripts/advent-doors/` and a README for whoever draws the rest.
-  `npx vite-node scripts/og-advent-doors.ts 1 2 3 --out <dir>
-  --sheet-small <file.png>` renders doors and a sheet of them at chat
-  size.
-- 17 of 24 motifs: doors 1 to 16 and 24.
-
-Left:
-- Doors 17 to 23: sleigh, wreath, bauble, cabin with chimney smoke, snow
-  crystal, paper star in the window, bowl of Christmas porridge.
-- A look at all 24 together, and redrawing any weak one.
-- Writing the 24 PNGs (1200 x 630, under 300 KB) to `public/og/advent/`.
-- `src/content/share.ts`, `adventCopy`: an open door shows its picture,
-  with an alt text in en, nb and es; a locked door shows the calendar's
-  own card. Until this is done a shared door shows the level's generic
-  card, as before.
-- Keeping the pictures out of the service worker's precache
-  (`vite.config.ts`, `globIgnores`), tests for the preview and the
-  files, and "The preview" section above.
-- The first door opens on 1 December 2026.

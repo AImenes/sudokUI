@@ -5,16 +5,19 @@ chat shows a picture of its own, as a paper calendar has one behind every
 door. There are 24, the same every year:
 `public/og/advent/door-01.png` ... `door-24.png`, 1200 x 630, under 300 KB.
 
-The look is Nordic knitting. `scripts/og-advent-doors.ts` draws the frame,
+The look is Nordic knitting. `scripts/og-advent-doors.ts` draws the frame
+(the table of the 24 doors is `doors.ts`, beside this file),
 the same on every door: a knitted ground in pine or cranberry, a band of
 small pattern and a gold row along the top and the bottom, a Selbu rose on
 each side, the door's number in gold on a sewn-on patch in the other colour
 of the two, the brand and the address. **You draw only the motif**: a felt
 cut-out in snow and gold, sewn on in the middle. One file a door,
-`scripts/advent-doors/door-<nn>.ts`. Doors 1 (the candle), 12 (the
-reindeer) and 24 (the tree) are drawn: read them first, and look at them
+`scripts/advent-doors/door-<nn>.ts`. All 24 are drawn, and the owner has
+seen them and is glad of them. Before you redraw one, read doors 1 (the
+candle), 12 (the reindeer) and 24 (the tree), which set the hand, and look
+at them
 (`npx vite-node scripts/og-advent-doors.ts 1 12 24 --out .vite/advent-doors --sheet .vite/advent-doors/sheet.png`).
-Every picture must belong with those three.
+Every picture must belong with the other 23.
 
 ## The file
 
@@ -83,7 +86,7 @@ comes from layers (a piece in `k.shade` peeping out 9 px below a piece in
 `k.snow`, as the tree's tiers) and from the frame's one hard shadow, which
 you never draw yourself.
 
-Your door's ground is in `DOORS` of `scripts/og-advent-doors.ts`: pine on
+Your door's ground is in `DOORS` of `scripts/advent-doors/doors.ts`: pine on
 odd days and on the 24th, cranberry on even days. The bullfinch's breast
 and the rowan berries of door 3 are `k.accent`, cranberry there.
 
@@ -157,8 +160,8 @@ only the finished 24 belong there, and `--guides` refuses to write there.
 Look at the **sheet**, not at one picture: the motif has to work at 600
 wide, at 300 wide and in the square, beside doors 1, 12 and 24. A sheet
 holds eight doors; three or four at a time are seen at their true size.
-The run stops if a picture is over 300 KB (the three drawn are about
-80 KB; a motif of a few dozen pieces adds little).
+The run stops if a picture is over 300 KB (the 24 are 63 to 94 KB; a
+motif of a few dozen pieces adds little).
 
 Before you call a door done:
 
