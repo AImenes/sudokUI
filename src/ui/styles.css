@@ -4748,6 +4748,17 @@ html:not([lang='en']) .zone-note {
   background: #2f9e6a;
 }
 
+/* the two words every look dims by their own opacity stay words here: the
+   stopped clock beside the pause button (0.4 elsewhere, 2.6:1 on the pine)
+   and a technique's "not yet" on the Learn path (0.7 elsewhere, 4.2:1) are
+   dimmer than their neighbours and still 4.5:1 */
+:root[data-theme='christmas'] .timer.paused {
+  opacity: 0.7;
+}
+:root[data-theme='christmas'] .path-ahead .path-play {
+  opacity: 0.8;
+}
+
 /* a field's hint, in the muted ink (the browser's own grey is 3.8:1 here) */
 :root[data-theme='christmas'] ::placeholder {
   color: var(--muted);
