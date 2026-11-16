@@ -626,6 +626,6 @@ by the owner's rule of 12 November:
   already fetched the old picture keeps showing it for a while.
 - The motifs of doors 1, 12 and 24 rise a few pixels above the motif box
   that scripts/advent-doors/README.md describes.
-- A chat app that fetched a door's link before its day keeps the
-  calendar's card until it fetches again (as "share previews up to ten
-  hours early" above, the other way round).
+- Not from the check, but to be expected of chat apps, which keep a
+  link's preview for a while: one that fetched a door's link before its
+  day may go on showing the calendar's card after the door has opened.
