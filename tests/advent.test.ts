@@ -187,7 +187,8 @@ describe('a door as a game', () => {
     expect(dailyResultOf(g())).toMatchObject({ no, unassisted: true, hints: 0, grid: g().info!.solution });
     expect(tracked).toEqual([
       ['started', doors[4].level, 0, 'advent', 5],
-      ['completed', doors[4].level, expect.any(Number), 'advent', 5]
+      // a solve also says whether help was used: here none
+      ['completed', doors[4].level, expect.any(Number), 'advent', 5, false]
     ]);
     // its time counts on its day and up to a week late, not later
     for (const [day, open] of [['2026-12-05', true], ['2026-12-12', true], ['2026-12-13', false]] as const) {
