@@ -45,6 +45,8 @@ const ui: Dictionary = {
   "Solved with assistance. Restart the puzzle for an unassisted run": "Løst med hjelp. Start oppgaven på nytt for en runde uten hjelp",
   "Language": "Språk",
   "Show timer": "Vis klokke",
+  "Celebrate a solved puzzle": "Feir en løst oppgave",
+  "Fireworks and confetti on the win screen. Off, it opens quietly.": "Fyrverkeri og konfetti på seiersskjermen. Slått av åpner den stille.",
   "Learn": "Lær",
   "Theory": "Teori",
   "Your path": "Din vei",

@@ -403,7 +403,8 @@ describe('the kind of game and the language', () => {
         // a door of the advent calendar's line carries its door
         const door = kind === 'advent' ? 12 : undefined;
         useTelemetry.getState().track('started', 'Easy', 0, kind, door);
-        useTelemetry.getState().track('completed', 'Easy', 300, kind, door);
+        // and a solve's says whether help was used: here the practice ones did
+        useTelemetry.getState().track('completed', 'Easy', 300, kind, door, kind === 'practice');
       }
       await useTelemetry.getState().flush();
     }
@@ -414,6 +415,9 @@ describe('the kind of game and the language', () => {
     for (const line of lines) expect(checkEvent(line), JSON.stringify(line)).toMatchObject({ kind: line.kind, lang: line.lang });
     // the door rides on a door's lines alone
     expect(lines.filter((l) => l.door !== undefined).map((l) => [l.kind, l.door])).toEqual(PLAY_LANGS.flatMap(() => [['advent', 12], ['advent', 12]]));
+    // whether help was used rides on a solve's lines alone, as yes or no
+    expect(lines.filter((l) => l.event === 'started').every((l) => l.assisted === undefined)).toBe(true);
+    expect(lines.filter((l) => l.event === 'completed').map((l) => l.assisted)).toEqual(PLAY_LANGS.flatMap(() => PLAY_KINDS.map((kind) => kind === 'practice')));
     // a share says neither
     answers = [ok()];
     useTelemetry.getState().shared('puzzle', 'copy', 'Easy');

@@ -2861,9 +2861,12 @@ test.describe('counting plays', () => {
       version: expect.stringMatching(/^\d+\.\d+\.\d+/),
       source: 'tab',
       kind: 'shared',
-      lang: 'en'
+      lang: 'en',
+      // a solve says whether help was used, yes or no: here every digit was typed
+      assisted: false
     });
     expect(batches.flat().find((e) => e.event === 'started')).toMatchObject({ kind: 'shared', lang: 'en' });
+    expect(batches.flat().find((e) => e.event === 'started')).not.toHaveProperty('assisted');
     // one beacon for the solve, and nothing on the device for it
     expect(batches.filter((b) => b.some((e) => e.event === 'completed'))).toHaveLength(1);
     expect(await page.evaluate(() => localStorage.getItem('sudokui-telemetry-v1'))).toBeNull();

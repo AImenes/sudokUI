@@ -45,6 +45,8 @@ const ui: Dictionary = {
   "Solved with assistance. Restart the puzzle for an unassisted run": "Resuelto con ayuda. Reinicia el sudoku para intentarlo sin ayuda",
   "Language": "Idioma",
   "Show timer": "Mostrar el cronómetro",
+  "Celebrate a solved puzzle": "Celebrar un sudoku resuelto",
+  "Fireworks and confetti on the win screen. Off, it opens quietly.": "Fuegos artificiales y confeti en la pantalla de victoria. Desactivado, se abre en silencio.",
   "Learn": "Aprender",
   "Theory": "Teoría",
   "Your path": "Tu camino",

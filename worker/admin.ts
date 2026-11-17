@@ -50,6 +50,8 @@ import { statsFromHistogram, type HistogramRow } from '../src/content/dailies';
 export { DAYS_SHOWN, DATASET };
 export type { AdventMetrics, DayRow, Metrics, Totals };
 
+import { moreFor, moreSection } from './adminMore';
+
 export const ADMIN_PATH = '/admin';
 
 /** the SQL API of an account */
@@ -913,6 +915,8 @@ export async function handleAdmin(request: Request, env: AdminEnv, options: Admi
   }
   const rows = rowsOf(answer);
   const christmas = adventSection(await adventFor(env, now, doFetch));
-  const html = renderAdmin(metricsOf(rows, now)).replace('  </body>', `${dailySentTable(rows, await dailySent(env.DB, now))}\n${christmas}\n  </body>`);
+  // help used, levels, practice, countries, versions and hours (adminMore.ts): five small queries of their own
+  const more = moreSection(await moreFor(env, now, doFetch, sqlApi(env.ADMIN_ACCOUNT_ID)));
+  const html = renderAdmin(metricsOf(rows, now)).replace('  </body>', `${dailySentTable(rows, await dailySent(env.DB, now))}\n${more}\n${christmas}\n  </body>`);
   return request.method === 'HEAD' ? page('', 200) : page(html);
 }

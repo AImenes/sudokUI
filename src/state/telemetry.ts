@@ -11,6 +11,8 @@
 // it was (the daily, a new puzzle, practice, or one opened from a shared
 // link, or a door of the advent calendar; gameStore.ts, kindOf) and the
 // app's language, and for a door of the calendar its number, 1 to 24.
+// A solve's line also says whether any help was used in the game: yes or
+// no, never which help or how much (gameStore.ts, assisted).
 // Nothing is stored
 // on the device for it, and offline nothing is sent and nothing is kept.
 //
@@ -93,6 +95,8 @@ export interface PlayEvent {
   lang?: Lang;
   /** a door of the advent calendar's start or solve: its door, 1 to 24; on no other line (worker/telemetry.ts, checkEvent) */
   door?: number;
+  /** a solve's line only: whether any help was used in the game, yes or no; a line kept by an older version does not say */
+  assisted?: boolean;
 }
 
 /** what the opt-in keeps on the device */
@@ -105,8 +109,8 @@ interface Kept {
 interface TelemetryState extends Kept {
   /** live events waiting for the next send, a second at most */
   pending: PlayEvent[];
-  /** a game of a kind began or was solved (a door of the advent calendar with its door): sent now while online, kept with the opt-in while offline, dropped otherwise */
-  track(event: 'started' | 'completed', band: Level, seconds: number, kind: PlayKind, door?: number): void;
+  /** a game of a kind began or was solved (a door of the advent calendar with its door; a solve with whether help was used): sent now while online, kept with the opt-in while offline, dropped otherwise */
+  track(event: 'started' | 'completed', band: Level, seconds: number, kind: PlayKind, door?: number, assisted?: boolean): void;
   /** a link or a picture went to someone, through the share sheet, a copy or a saved file: sent now while online, else dropped; never kept on the device */
   shared(what: ShareKind, via: ShareVia, band: Level): void;
   /** sends what waits: the live batch at once, then the kept queue while online and opted in */
@@ -213,7 +217,7 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
   ...(optedIn() ? kept() : nothing()),
   pending: [],
 
-  track: (event, band, seconds, kind, door) => {
+  track: (event, band, seconds, kind, door, assisted) => {
     // a device left out of the counts sends nothing and keeps nothing; a
     // view sends nothing of its own (the page that plays counts the game)
     if (leftOut() || !play.acts()) return;
@@ -221,6 +225,8 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
     const e: PlayEvent = { event, band, bucket: bucketOf(seconds), standalone: source === 'pwa', version: APP_VERSION, source, kind, lang: useSettings.getState().lang };
     // the door, on a door's line only, and nothing else about it
     if (kind === 'advent' && door) e.door = door;
+    // whether help was used, on a solve's line only: yes or no
+    if (event === 'completed' && assisted !== undefined) e.assisted = assisted;
     const optin = optedIn();
     if (optin) {
       set(keptNow(get()));

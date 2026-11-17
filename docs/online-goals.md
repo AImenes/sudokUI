@@ -856,3 +856,37 @@ through ChatGPT and values playing, looking up techniques and asking for hints
 at his own pace, with no structured course ([launch-log.md](launch-log.md),
 "Notes"): that confirms the positioning, a trainer you use at your own pace
 and never a course.
+
+## The dashboard's further tables (17 November 2026)
+
+The owner asked for more on the private dashboard, "like in practice, how
+many games assisted". One thing is new from the app, chosen by the owner
+from four on offer: **a solve's line says whether any help was used, yes
+or no** (`assisted` on a `completed` line; the Worker writes `helped` or
+`alone` in the line's eighth blob, the door's place left empty for a game
+that is no door). Not which help, not how much, and not on a start or a
+share. The privacy page says so in English, Norwegian and Spanish. Which
+help, how many hints and which techniques were offered and left out.
+
+The tables (`worker/adminMore.ts`), each from a small query of its own,
+between "Daily times sent" and the Christmas section:
+
+- **Help used in solved games**, by kind of game (practice among them),
+  over the 7 and the 30 whole UTC days before today. Only solves from
+  builds that say are counted, so the first days hold few.
+- **By level**, 30 days: begun, solved, completion, the share with help,
+  and the median time of all solves and of those without help (the middle
+  solve, in 15-second steps).
+- **Practice by level**, 30 days. Which technique was practised is not
+  sent, only the puzzle's level.
+- **Countries**, 30 days: the fifteen with the most games begun and
+  landings.
+- **App versions**, 7 days, by installed app or browser tab: how fast an
+  update reaches the devices that play.
+- **When games begin**, 14 days: by hour of the day and by weekday, UTC.
+
+A query that fails leaves its tables saying so and the rest of the page
+stands. Left as it is: these five queries are tested against made-up
+answers and have not been run against the real Analytics Engine from
+here, as the calendar's query has not; a table that says it could not be
+read after a deploy is the sign.

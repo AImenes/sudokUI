@@ -14,6 +14,9 @@ import {
   checkEvent,
   checkBatch,
   fold,
+  pointOf,
+  HELPED,
+  ALONE,
   memoryEvents,
   countLanding,
   isLanding,
@@ -33,6 +36,7 @@ import {
   RATE_LIMIT,
   TelemetryEvent
 } from '../worker/telemetry';
+import { levelsQuery, timesQuery, countriesQuery, versionsQuery, hoursQuery } from '../worker/adminMore';
 import {
   handleAdmin,
   adminQuery,
@@ -104,6 +108,38 @@ const post = (body: unknown, headers: Record<string, string> = {}) =>
     headers: { 'content-type': 'application/json', 'user-agent': ROUTE_BROWSER, ...headers },
     body: typeof body === 'string' ? body : JSON.stringify(body)
   });
+
+/** the dashboard's five further queries, in the order it asks them (worker/adminMore.ts) */
+const MORE_QUERIES = () => [levelsQuery(), timesQuery(), countriesQuery(), versionsQuery(), hoursQuery()];
+
+describe('a solve says whether help was used', () => {
+  const solve = (over: Record<string, unknown> = {}) => good({ kind: 'practice', lang: 'en', ...over });
+
+  it('is taken as yes or no on a solve with its kind, and on nothing else', () => {
+    expect(checkEvent(solve({ assisted: true }))).toMatchObject({ event: 'completed', kind: 'practice', assisted: true });
+    expect(checkEvent(solve({ assisted: false }))).toMatchObject({ assisted: false });
+    // a solve that does not say is still taken, and says nothing
+    expect(checkEvent(solve())).not.toHaveProperty('assisted');
+    // anything but yes or no, a start, a share, and a line with no kind are refused
+    for (const assisted of ['yes', 1, null, 'hint']) expect(checkEvent(solve({ assisted })), String(assisted)).toBeNull();
+    expect(checkEvent(solve({ event: 'started', bucket: 0, assisted: false }))).toBeNull();
+    expect(checkEvent(shared({ assisted: false }))).toBeNull();
+    expect(checkEvent(good({ assisted: true }))).toBeNull();
+  });
+
+  it('goes to the eighth blob, the door\u2019s place left empty for a game that is no door', () => {
+    const point = (over: Record<string, unknown>) => pointOf(checkEvent(solve(over))!, 'NO');
+    expect(point({ assisted: true }).blobs).toEqual(['Hard', 'tab', '1.0.0', 'NO', 'practice', 'en', '', HELPED]);
+    expect(point({ assisted: false }).blobs).toEqual(['Hard', 'tab', '1.0.0', 'NO', 'practice', 'en', '', ALONE]);
+    expect(point({ kind: 'advent', door: 5, assisted: false }).blobs).toEqual(['Hard', 'tab', '1.0.0', 'NO', 'advent', 'en', '5', ALONE]);
+    // a solve that does not say keeps its six blobs, and a door's its seven
+    expect(point({}).blobs).toHaveLength(6);
+    expect(point({ kind: 'advent', door: 5 }).blobs).toHaveLength(7);
+    // a helped solve and an unhelped one are two points, two of a kind one
+    const events = [solve({ assisted: true }), solve({ assisted: false }), solve({ assisted: false })].map((e) => checkEvent(e)!);
+    expect(fold(events, 'NO').map((p) => [p.blobs[7], p.doubles[1]])).toEqual([[HELPED, 1], [ALONE, 2]]);
+  });
+});
 
 describe('the telemetry route', () => {
   it('answers nothing for other addresses', async () => {
@@ -966,7 +1002,8 @@ describe('the dashboard', () => {
     const res = await handleRequest(get(access), assets(secrets), undefined, admin);
     expect(res.status).toBe(200);
     expect(res.headers.get('x-answered-by')).toBeNull();
-    expect(sql.calls).toHaveLength(1);
+    // the main query and the five further ones (worker/adminMore.ts)
+    expect(sql.calls).toHaveLength(6);
   });
 
   it('reads the dataset through the SQL API with the token, which never reaches the page', async () => {
@@ -976,7 +1013,8 @@ describe('the dashboard', () => {
     expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
     expect(res.headers.get('cache-control')).toBe('private, no-store');
     expect(res.headers.get('x-robots-tag')).toBe('noindex');
-    expect(calls).toHaveLength(1);
+    expect(calls.map((c) => c.init?.body)).toEqual([adminQuery(), ...MORE_QUERIES()]);
+    for (const c of calls) expect((c.init?.headers as Record<string, string>).authorization).toBe(`Bearer ${secrets.ADMIN_TOKEN}`);
     expect(calls[0].url).toBe(sqlApi(secrets.ADMIN_ACCOUNT_ID));
     expect(calls[0].init?.method).toBe('POST');
     expect((calls[0].init?.headers as Record<string, string>).authorization).toBe(`Bearer ${secrets.ADMIN_TOKEN}`);
@@ -995,11 +1033,14 @@ describe('the dashboard', () => {
     expect(wrong.status).toBe(405);
   });
 
-  it('ends with the Christmas section: in October, the calendar to come, at zero, with no second query', async () => {
+  it('ends with the Christmas section: in October, the calendar to come, at zero, with no query of its own', async () => {
     const { calls, fetch } = api(() => json({ meta: [], data: ROWS, rows: ROWS.length }));
     const html = await (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: access }), secrets, { fetch, now: NOW, accessKeys }))!.text();
-    expect(calls).toHaveLength(1);
+    expect(calls.map((c) => c.init?.body)).toEqual([adminQuery(), ...MORE_QUERIES()]);
     expect(html).toContain('<h2>Christmas: the advent calendar 2026</h2>');
+    // the further tables stand between the daily times and the calendar
+    expect(html.indexOf('<h2>Help used in solved games</h2>')).toBeGreaterThan(html.indexOf('<h2>Daily times sent</h2>'));
+    expect(html.indexOf('<h2>When games begin')).toBeLessThan(html.indexOf('<h2>Christmas'));
     expect(html).toContain('The 2026 calendar opens on 1 December');
     expect(html).toContain('<tr><td>24</td><td>24 Dec</td><td>Medium 998</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td></tr>');
     expect(html.indexOf('<h2>Christmas')).toBeGreaterThan(html.indexOf('<h2>Every day</h2>'));
@@ -1018,7 +1059,8 @@ describe('the dashboard', () => {
     const { calls, fetch } = api(() => answers.shift()!);
     const res = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: token }), secrets, { fetch, now: DEC, accessKeys }))!;
     expect(res.status).toBe(200);
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(7);
+    expect(calls.slice(2).map((c) => c.init?.body)).toEqual(MORE_QUERIES());
     expect(calls[0].init?.body).toBe(adminQuery());
     expect(calls[1].url).toBe(sqlApi(secrets.ADMIN_ACCOUNT_ID));
     expect(calls[1].init?.body).toBe(adventQuery(DEC(), 2026));
