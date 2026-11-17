@@ -928,7 +928,7 @@ function recordWin(s: GameStore) {
   if (!s.info || s.solved) return;
   useGame.setState({ solved: true, solvedMs: s.elapsedMs(), solvedAssisted: s.assisted, solvedAuto: s.autoCandidates });
   if (!s.info.practiceTech) useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
-  useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000), kindOf(s.info), s.info.adventDoor);
+  useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000), kindOf(s.info), s.info.adventDoor, s.assisted);
   recordDaily(s);
 }
 
