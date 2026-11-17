@@ -55,6 +55,7 @@ import { BAND_LEADS, BAND_NOTES, rangeOf } from '../content/rating';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { KIN } from '../content/kin';
 import { useSettings } from '../state/settings';
+import { Fireworks } from './Fireworks';
 import type { Lang } from '../state/settings';
 
 /** what is being generated: a puzzle of a level or a narrower pick, or a technique's practice puzzle */
@@ -1435,6 +1436,8 @@ export function VictoryDialog({
   const assisted = useGame((s) => s.assisted);
   const elapsedMs = useGame((s) => s.elapsedMs);
   const autoCandidates = useGame((s) => s.autoCandidates);
+  // fireworks and confetti, unless Settings switched them off (settings.ts, celebrate)
+  const celebrate = useSettings((s) => s.celebrate);
   // the solve's own: a Steps jump since switched them on (gameStore.ts, recordWin)
   const solvedAuto = useGame((s) => s.solvedAuto);
   const practiceFound = useGame((s) => s.practiceFound);
@@ -1622,15 +1625,17 @@ export function VictoryDialog({
 
   return (
     <div className="modal-backdrop">
-      <div className="confetti" aria-hidden="true">
-        {Array.from({ length: 24 }, (_, i) => (
-          <i key={i} style={{ '--n': i } as React.CSSProperties} />
-        ))}
-      </div>
+      {celebrate && (
+        <div className="confetti" aria-hidden="true">
+          {Array.from({ length: 24 }, (_, i) => (
+            <i key={i} style={{ '--n': i } as React.CSSProperties} />
+          ))}
+        </div>
+      )}
       <div
         ref={ref}
         tabIndex={-1}
-        className="modal victory"
+        className={celebrate ? 'modal victory party' : 'modal victory'}
         role="dialog"
         aria-modal="true"
         aria-label={t('Puzzle solved')}
@@ -1805,6 +1810,8 @@ export function VictoryDialog({
           </p>
         )}
       </div>
+      {/* over the dialog, taking no click: the buttons under it work while the pieces fly */}
+      {celebrate && <Fireworks />}
     </div>
   );
 }

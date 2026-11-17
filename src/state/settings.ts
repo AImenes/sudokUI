@@ -155,6 +155,8 @@ interface Settings extends ThemeState {
    *  or box: a rule check, not a solution lookup, so it never counts as help */
   showConflicts: boolean;
   showTimer: boolean;
+  /** fireworks and confetti on the win screen (src/ui/Fireworks.tsx); off, the win screen opens still and plain */
+  celebrate: boolean;
   /** when auto candidates are switched off, write the current candidate
    *  state into pencil marks so play continues seamlessly */
   autoOffMaterialize: boolean;
@@ -245,6 +247,7 @@ export const useSettings = create<Settings>()(
       highlightSameDigit: true,
       showConflicts: true,
       showTimer: true,
+      celebrate: true,
       autoOffMaterialize: true,
       materializeLayer: 'center',
       practiceFastForward: true,

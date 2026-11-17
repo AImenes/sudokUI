@@ -725,6 +725,23 @@ none of the player's work.
   victory; plus the `useNewGame` hook that ties pools + worker + store
   together.
 - [SettingsInfo.tsx](../src/ui/SettingsInfo.tsx): settings and help dialogs.
+- [celebrate.ts](../src/ui/celebrate.ts) and
+  [Fireworks.tsx](../src/ui/Fireworks.tsx): the win screen's show, at the
+  owner's asking of 17 November 2026 ("make the celebration more crazy",
+  with a setting to switch it off). One canvas over the victory dialog,
+  drawn by hand with no library: confetti shot from both lower corners in
+  three volleys, confetti raining from the top, and nine rockets that rise
+  and burst, in the look's colours (snow, gold, berries and spruce at
+  Christmas). The dialog springs in and its heading rocks; a phone that
+  can buzz gives three short buzzes. It ends by itself after about six
+  seconds and clears the canvas. The canvas takes no click, so every
+  button under it works while the pieces fly. Settings' "Celebrate a
+  solved puzzle" (`celebrate` in settings.ts, on by default) takes all of
+  it away, the older falling squares included, and so does
+  `prefers-reduced-motion`. Nothing is fetched, stored or sent for it.
+  Left as it is: the show plays each time the win screen opens, so also
+  when a solved game is opened again; and for its first seconds pieces
+  cross the dialog's words.
 
 ## Tests (`tests/`)
 

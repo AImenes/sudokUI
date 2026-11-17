@@ -279,6 +279,12 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         onChange={(v) => s.set({ showTimer: v })}
       />
       <Toggle
+        label={t('Celebrate a solved puzzle')}
+        hint={t('Fireworks and confetti on the win screen. Off, it opens quietly.')}
+        value={s.celebrate}
+        onChange={(v) => s.set({ celebrate: v })}
+      />
+      <Toggle
         label={t('Hide difficulty while playing')}
         hint={t(
           "No badge and no HoDoKu rating until you solve the puzzle. Pairs well with '{surprise}' in {newGame}",
