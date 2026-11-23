@@ -22,6 +22,7 @@ import { MARK } from '../content/hintPalette';
 import { frameMarks, isShade } from '../content/hintMarks';
 import type { BarStyle } from '../content/hintMarks';
 import { useT, msg, translator } from '../content/i18n';
+import { nextTip } from './tips';
 import type { Translator } from '../content/i18n';
 import { touchIntent, cellsBetween, INTENT_MS, SLOP_PX } from './touchIntent';
 import type { TouchIntent, ScrollRoom } from './touchIntent';
@@ -177,21 +178,6 @@ function bandRect(unit: number, within?: number): { x: number; y: number; w: num
   const [x, y] = [Math.max(r.x, b.x), Math.max(r.y, b.y)];
   return { x, y, w: Math.min(r.x + r.w, b.x + b.w) - x, h: Math.min(r.y + r.h, b.y + b.h) - y };
 }
-
-/** One shows on each pause — the only place a tip never interrupts play.
- *  Translated where it is shown. */
-const TIPS = [
-  msg('Hold Shift to type corner marks from digit mode'),
-  msg('Hold Ctrl or Alt to type centre marks anywhere'),
-  msg('Space cycles input modes · S swaps corner ↔ centre'),
-  msg('Double-click a digit to select all of its cells'),
-  msg('The address bar link always carries this exact puzzle'),
-  msg('Practice can start from the very beginning (see Settings)'),
-  msg('Finish without anything from the Assist box for an unassisted solve'),
-  msg('Hold a placed digit and its pencil marks light up too'),
-  msg('Ctrl+A selects the board, and Fill rebuilds every mark'),
-  msg('Hint reads your centre marks, so your eliminations carry over')
-];
 
 /** Text colour for a candidate a hint marks: near-black on every filled
  *  mark, whatever the theme; the theme's ink inside a removal's ring, unless
@@ -652,10 +638,8 @@ export function Grid() {
   const frames = walking && hint ? walkFrames(hint) : [];
   const frame = frames.length ? frames[Math.min(walkIndex, frames.length - 1)] : null;
   // a fresh tip each time the game pauses
-  const pauseTip = React.useMemo(
-    () => TIPS[Math.floor(Math.random() * TIPS.length)],
-    [paused]
-  );
+  // a fresh tip each time the game pauses, one that fits this device (tips.ts)
+  const pauseTip = React.useMemo(() => (paused ? nextTip() : ''), [paused]);
   const canonical = React.useMemo(
     () => (autoCandidates ? engineGrid(cells) : null),
     [cells, autoCandidates]
@@ -1740,7 +1724,7 @@ export function Grid() {
       {paused && !won && (
         <div className="pause-card">
           <h3>{t('Paused')}</h3>
-          <p className="pause-tip">{t('Did you know? {tip}', { tip: t(pauseTip) })}</p>
+          {pauseTip && <p className="pause-tip">{t('Did you know? {tip}', { tip: t(pauseTip) })}</p>}
           <button
             className="resume-btn"
             onClick={(e) => {
