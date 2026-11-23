@@ -571,6 +571,7 @@ const ui: Dictionary = {
   "Forest": "Bosque",
   "Christmas": "Navidad",
   "Christmas can be chosen from 1 November to 31 December, and keeps Dark’s hint colours. On 1 January the theme you had before comes back": "Navidad se puede elegir del 1 de noviembre al 31 de diciembre, y conserva los colores de las pistas de Oscuro. El 1 de enero vuelve el tema que tenías antes",
+  "A door of the advent calendar is always played in the Christmas look": "Una casilla del calendario de adviento siempre se juega con el aspecto de Navidad",
   "Match device": "Automático",
   "“Match device” shows Daylight while your device is in light mode, and Dark while it is in dark mode": "«Automático» muestra Claro mientras tu dispositivo está en modo claro, y Oscuro mientras está en modo oscuro",
   "Board typeface": "Tipografía del tablero",

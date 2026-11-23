@@ -338,4 +338,35 @@ test.describe('the advent calendar', () => {
     await expect(win).toBeVisible();
     await expect(win.getByText('This door is closed for new times')).toBeVisible();
   });
+
+  test('a door is always played in the Christmas look, whatever theme is chosen, and the choice comes back with the next game', async ({ page }) => {
+    // the player chose Dark, and it stays their choice
+    await page.addInitScript(() => {
+      if (!localStorage.getItem('sudokui-settings-v1')) localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { theme: 'dark', themePicked: true }, version: 2 }));
+    });
+    const look = () =>
+      page.evaluate(() => ({
+        shown: document.documentElement.dataset.theme,
+        chosen: JSON.parse(localStorage.getItem('sudokui-settings-v1')!).state.theme,
+        bar: document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.content
+      }));
+    await open(page, '2026-12-10', '/advent/2026/5');
+    await opened(page, doors[4].puzzle);
+    await expect.poll(() => look().then((l) => l.shown)).toBe('christmas');
+    const door = await look();
+    expect(door.chosen).toBe('dark');
+    // the browser's bar wears the Christmas bar's pine with it
+    expect(door.bar).toBe(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bar-bg').trim()));
+    // Settings says why, and still shows Dark as the choice
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    await expect(settings.getByText('A door of the advent calendar is always played in the Christmas look')).toBeVisible();
+    await expect(settings.getByRole('radio', { name: 'Dark', exact: true }).or(settings.getByRole('button', { name: 'Dark', exact: true })).first()).toBeVisible();
+    await page.keyboard.press('Escape');
+    // a game that is no door: the chosen look again
+    await page.goto(`/#p=${EASY}`);
+    await opened(page, EASY);
+    await expect.poll(() => look().then((l) => l.shown)).toBe('dark');
+    expect((await look()).bar).not.toBe(door.bar);
+  });
 });
