@@ -909,6 +909,17 @@ button {
   line-height: 1.5;
 }
 
+/* a narrow board (a phone): the tip a size down and nearly the card's
+   width, so the longest of the bank (src/ui/tips.ts) takes three lines at
+   most and the card stays inside the board, Nutella shown or not */
+@media (max-width: 430px) {
+  .pause-tip {
+    max-width: 94%;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+}
+
 .resume-btn {
   margin-top: 8px;
   padding: 14px 34px;
