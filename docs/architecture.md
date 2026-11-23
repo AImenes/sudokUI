@@ -725,6 +725,19 @@ none of the player's work.
   victory; plus the `useNewGame` hook that ties pools + worker + store
   together.
 - [SettingsInfo.tsx](../src/ui/SettingsInfo.tsx): settings and help dialogs.
+- [tips.ts](../src/ui/tips.ts): the pause card's "Did you know?" tips, a
+  bank of 55 at the owner's asking of 23 November 2026: what makes the
+  app special, the tools (Hint, Scan, Steps, Share and the rest),
+  installing, the shortcuts and the touch gestures. A tip shows only
+  where it fits: a shortcut where there is a keyboard, a gesture where
+  there is a touch screen, installing where the app is not installed, the
+  advent calendar in its season. The first pause after the app opens
+  shows one about what makes the app special; then every fitting tip
+  comes round once, in a fresh order, before any comes again. The order
+  lives in memory: nothing is stored or sent for it. Every tip is at most
+  100 characters in en, nb and es, which fits the card inside the board
+  on a 320 x 568 phone. A phone on its side with a short board still
+  leaves the tip out, as before.
 - [celebrate.ts](../src/ui/celebrate.ts) and
   [Fireworks.tsx](../src/ui/Fireworks.tsx): the win screen's show, at the
   owner's asking of 17 November 2026 ("make the celebration more crazy",
