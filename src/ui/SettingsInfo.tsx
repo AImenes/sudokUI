@@ -114,6 +114,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               {t('Christmas can be chosen from 1 November to 31 December, and keeps Dark’s hint colours. On 1 January the theme you had before comes back')}
             </small>
           )}
+          {christmas && <small>{t('A door of the advent calendar is always played in the Christmas look')}</small>}
         </div>
         <div className="segmented theme-choice" ref={choices}>
           {(

@@ -10,12 +10,20 @@
  */
 import { useSyncExternalStore } from 'react';
 import { useSettings, deviceIsLight, onDeviceScheme, shownTheme, type Theme } from '../state/settings';
+import { useGame } from '../state/gameStore';
 
-/** the look shown now: the chosen theme, or the device's light or dark */
+/**
+ * The look shown now: the chosen theme, or the device's light or dark.
+ * A door of the advent calendar is always played in the Christmas look,
+ * whatever is chosen and whatever the day (the owner's asking of 23
+ * November 2026): the choice itself is left as it is, and comes back with
+ * the next game that is no door.
+ */
 export function useShownTheme(): Theme {
   const choice = useSettings((s) => s.theme);
   const light = useSyncExternalStore(onDeviceScheme, deviceIsLight, () => false);
-  return shownTheme(choice, light);
+  const door = useGame((s) => !!s.info?.adventDoor);
+  return door ? 'christmas' : shownTheme(choice, light);
 }
 
 /** put a look on the page: its colours (src/ui/styles.css, keyed by

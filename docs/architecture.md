@@ -355,6 +355,24 @@ the look off, which is then a pick). A flag already written is kept. The
 settings are on the device only; which theme a player uses is never sent,
 and the privacy page says what these keep.
 
+**A door wears the Christmas look, and the look is knitted** (the owner's
+asking of 23 November 2026). A game that is a door of the advent calendar
+is always shown in the Christmas look, whatever theme is chosen and
+whatever the day ([theme.ts](../src/ui/theme.ts), `useShownTheme`): the
+choice is left as it is and comes back with the next game that is no
+door, and Settings says so in the look's season. The look itself took on
+the doors' pictures' knitting: the bar's pine and the page's night are
+stocking stitch (a few hundredths of the ground, under no measured
+contrast), a pattern band runs along the bar's foot where the lights
+hung (in the same place and coming on the same way), across the win
+screen under its ribbon and, on a board with room, at the pause card's
+top and foot; the wide margins hold knitted eight-petalled roses where
+the snowflakes were, as faint and in the same places; and the pause
+card's button and the number keys are patches with a running stitch
+inside their edge, as the doors' numbers are. Nothing lies on the board.
+Left as it is: a player who needs a light look gets the dark Christmas
+one while a door is open, with no way round it but to leave the door.
+
 **The Christmas look** ([styles.css](../src/ui/styles.css), keyed by
 `data-theme='christmas'`). A winter night since 15 November 2026. It went
 live on 12 November as a light look (a white board on snow); three days
