@@ -339,7 +339,7 @@ test.describe('the advent calendar', () => {
     await expect(win.getByText('This door is closed for new times')).toBeVisible();
   });
 
-  test('a door is always played in the Christmas look, whatever theme is chosen, and the choice comes back with the next game', async ({ page }) => {
+  test('a door is played in the Christmas look by default, whatever theme is chosen, and the choice comes back with the next game', async ({ page }) => {
     // the player chose Dark, and it stays their choice
     await page.addInitScript(() => {
       if (!localStorage.getItem('sudokui-settings-v1')) localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { theme: 'dark', themePicked: true }, version: 2 }));
@@ -360,7 +360,8 @@ test.describe('the advent calendar', () => {
     // Settings says why, and still shows Dark as the choice
     await page.getByRole('button', { name: 'Settings' }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });
-    await expect(settings.getByText('A door of the advent calendar is always played in the Christmas look')).toBeVisible();
+    await expect(settings.getByText('A door of the advent calendar is played in the Christmas look, whatever theme you chose. Off, a door shows your own theme')).toBeVisible();
+    await expect(settings.getByRole('switch', { name: 'Doors wear the Christmas look' })).toHaveAttribute('aria-checked', 'true');
     await expect(settings.getByRole('radio', { name: 'Dark', exact: true }).or(settings.getByRole('button', { name: 'Dark', exact: true })).first()).toBeVisible();
     await page.keyboard.press('Escape');
     // a game that is no door: the chosen look again
@@ -368,5 +369,46 @@ test.describe('the advent calendar', () => {
     await opened(page, EASY);
     await expect.poll(() => look().then((l) => l.shown)).toBe('dark');
     expect((await look()).bar).not.toBe(door.bar);
+  });
+  test('with "Doors wear the Christmas look" off, a door shows the chosen look, and on again it wears the Christmas one', async ({ page }) => {
+    // the player chose Daylight: a light look
+    await page.addInitScript(() => {
+      if (!localStorage.getItem('sudokui-settings-v1')) localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { theme: 'light', themePicked: true }, version: 2 }));
+    });
+    const shown = () => page.evaluate(() => document.documentElement.dataset.theme);
+    await open(page, '2026-12-10', '/advent/2026/5');
+    await opened(page, doors[4].puzzle);
+    await expect.poll(shown).toBe('christmas');
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    const doorLook = settings.getByRole('switch', { name: 'Doors wear the Christmas look' });
+    await expect(doorLook).toHaveAttribute('aria-checked', 'true');
+    await doorLook.click();
+    await expect(doorLook).toHaveAttribute('aria-checked', 'false');
+    // off: the door on the board shows Daylight at once, and the bar with it
+    await expect.poll(shown).toBe('light');
+    await page.keyboard.press('Escape');
+    expect(await page.evaluate(() => document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.content)).toBe(
+      await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bar-bg').trim())
+    );
+    // kept on the device: a reload of the door keeps the player's look
+    await page.reload();
+    await opened(page, doors[4].puzzle);
+    await expect.poll(shown).toBe('light');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-settings-v1')!).state)).toMatchObject({ theme: 'light', doorChristmas: false });
+    // on again: the door wears the Christmas look
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await doorLook.click();
+    await expect(doorLook).toHaveAttribute('aria-checked', 'true');
+    await expect.poll(shown).toBe('christmas');
+  });
+
+  test('the switch for a door\'s look is not in Settings outside the season while no door is on the board', async ({ page }) => {
+    await open(page, '2026-10-10', `/#p=${EASY}`);
+    await opened(page, EASY);
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    await expect(settings.getByText('Board typeface')).toBeVisible();
+    await expect(settings.getByText('Doors wear the Christmas look')).toHaveCount(0);
   });
 });

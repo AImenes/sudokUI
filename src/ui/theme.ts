@@ -14,16 +14,19 @@ import { useGame } from '../state/gameStore';
 
 /**
  * The look shown now: the chosen theme, or the device's light or dark.
- * A door of the advent calendar is always played in the Christmas look,
- * whatever is chosen and whatever the day (the owner's asking of 23
- * November 2026): the choice itself is left as it is, and comes back with
- * the next game that is no door.
+ * A door of the advent calendar is played in the Christmas look, whatever
+ * is chosen and whatever the day (the owner's asking of 23 November 2026),
+ * while Settings' "Doors wear the Christmas look" is on, as it is by
+ * default; off, a door shows the chosen look, for a player who needs a
+ * light one. The choice itself is left as it is either way, and comes
+ * back with the next game that is no door.
  */
 export function useShownTheme(): Theme {
   const choice = useSettings((s) => s.theme);
+  const doorLook = useSettings((s) => s.doorChristmas);
   const light = useSyncExternalStore(onDeviceScheme, deviceIsLight, () => false);
   const door = useGame((s) => !!s.info?.adventDoor);
-  return door ? 'christmas' : shownTheme(choice, light);
+  return door && doorLook ? 'christmas' : shownTheme(choice, light);
 }
 
 /** put a look on the page: its colours (src/ui/styles.css, keyed by
