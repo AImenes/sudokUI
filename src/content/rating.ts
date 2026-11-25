@@ -16,6 +16,10 @@ export const RATING_POINTS: { title: string; text: string }[] = [
     text: 'Scores and search order are HoDoKu’s defaults for every technique the two share; HoDoKu is the reference sudoku analyser. A Naked Single costs 4, an X-Wing 140, a Forcing Net 700. sudokUI’s solver also knows techniques HoDoKu does not, such as WXYZ-Wing, Chute Remote Pair and 3D Medusa, scored next to their closest relatives; it uses Death Blossom, which HoDoKu leaves off by default, and lacks HoDoKu’s Finned Franken fish. So the HoDoKu rating follows HoDoKu’s scale and rules, but on many puzzles it is not the number HoDoKu itself gives, and sometimes not the level.'
   },
   {
+    title: 'Why the number can differ from HoDoKu’s',
+    text: 'The rating adds up the steps of the one path the solver takes. Where several steps are worth the same points, the solver may take one that does more, such as a loop that places a digit rather than one that only removes candidates, and a step that does more can make the path shorter. So the same puzzle can rate lower here than in HoDoKu itself.'
+  },
+  {
     title: 'HoDoKu’s five levels',
     text: 'The level is set the way HoDoKu sets it. It starts at the level of the hardest technique on the solve path, then rises one level at a time while the total is above the level’s limit: 800 for Easy, 1000 for Medium, 1600 for Hard and 1800 for Unfair. Extreme has no limit. A solve path with an X-Wing makes a puzzle at least Hard, and a total over 1800 makes it Extreme.'
   },
