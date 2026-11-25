@@ -138,7 +138,11 @@ Worker still refuses a time for a door whose day has not come anywhere
   address from the network instead of answering it offline
   (tests/advent.test.ts and tests/adventPage.test.ts check it).
 - **Its win screen.** As the daily's: the door's numbers fetched when it
-  opens, and "Send my time and compare" for an unassisted solve while the
+  opens ("Solved unassisted by 3 so far, median 4:07", or "Nobody has
+  sent in a time for this door yet"), its place among them once its time
+  is in ("Fastest of 4 today"), the same place in its share line
+  (checked on 25 November 2026: it was already so; tests/e2e/advent.spec.ts
+  and tests/dailyTimes.test.ts now hold it), and "Send my time and compare" for an unassisted solve while the
   door's time can still count (`doorCounts`: its day and up to
   `LATE_DAYS`, 7, late, within its December), "This door is closed for new
   times" after that. A copy of a door whose day has not come (a clock

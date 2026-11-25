@@ -258,6 +258,39 @@ test.describe('the advent calendar', () => {
     });
   }
 
+  test('a door’s win screen says how many have solved the door so far and its median, and once its time is in, its place, in the share line too', async ({ page }) => {
+    await open(page, '2026-12-05', '/advent/2026/5');
+    await opened(page, door(5).puzzle);
+    // the door's own numbers, under its own number (adventNo), as the Worker gives them
+    const asked: string[] = [];
+    await page.route('**/api/daily/302605/stats', async (route) => {
+      asked.push(route.request().method());
+      await route.fulfill({ json: { no: 302605, count: 3, median: 247, histogram: [[16, 1], [100, 2]] } });
+    });
+    await page.route('**/api/daily/302605/result', (route) =>
+      route.fulfill({ json: { ok: true, accepted: true, stats: { no: 302605, count: 4, median: 1508, histogram: [[0, 1], [16, 1], [100, 2]] } } })
+    );
+    await fill(page, door(5).puzzle);
+    const win = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(win).toBeVisible();
+    await expect(win.getByText('Solved unassisted by 3 so far, median 4:07')).toBeVisible();
+    expect(asked).toEqual(['GET']);
+    await win.getByRole('button', { name: /Send my time and compare/ }).click();
+    // in among them: the count grows, and the place is said
+    await expect(win.getByText('Solved unassisted by 4 so far, median 25:08')).toBeVisible();
+    await expect(win.getByText('Fastest of 4 today')).toBeVisible();
+    // the share line carries the place, as the daily's does
+    await page.evaluate(() => {
+      (window as any).__shared = [];
+      Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+      navigator.clipboard.writeText = async (text: string) => void (window as any).__shared.push(text);
+    });
+    await win.getByRole('button', { name: /Challenge a friend/ }).click();
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__shared[0] as string | undefined))
+      .toMatch(/^I opened door 5 of the sudokUI advent calendar in \d+:\d\d · Easy \(\d+\) · unassisted · fastest of 4 today · .*\/advent\/2026\/5(\?vs=\d+)?$/);
+  });
+
   test('a door solved on a clock gone back before its day offers no Send and says when its time can go, and offers it on its day', async ({ page }) => {
     const posted: unknown[] = [];
     await page.route('**/api/daily/302605/result', async (route) => {
