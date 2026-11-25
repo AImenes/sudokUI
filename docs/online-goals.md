@@ -598,7 +598,10 @@ before the launch:
   way (`sheet`, `copy`), the band, where it ran and the version. A picture
   of the board (the Share dialog's image, or 'Share this hint' in the hint
   panel; November 2026) is the kind `image`, and saving it as a file is
-  the way `save`; the picture is made on the device and never sent. Never
+  the way `save`; the picture is made on the device and never sent. A
+  door of the advent calendar's line is the kind `door` (25 November
+  2026; before, it was a `challenge`), and a share of a door game says
+  which door, `1` to `24`, in the seventh blob. Never
   the link, the text, the picture or where it went; a closed sheet, a failed copy, and
   copying the puzzle string or the pencil-mark grid count nothing. Live
   only: never kept on the device, not even with the opt-in, so it

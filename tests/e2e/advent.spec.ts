@@ -259,6 +259,12 @@ test.describe('the advent calendar', () => {
   }
 
   test('a door’s win screen says how many have solved the door so far and its median, and once its time is in, its place, in the share line too', async ({ page }) => {
+    // the counted lines, as the Worker would take them: a door's share says it is a door's, and which
+    const lines: Record<string, unknown>[] = [];
+    await page.route('**/api/t', async (route) => {
+      lines.push(...JSON.parse(route.request().postData() ?? '[]'));
+      await route.fulfill({ status: 204 });
+    });
     await open(page, '2026-12-05', '/advent/2026/5');
     await opened(page, door(5).puzzle);
     // the door's own numbers, under its own number (adventNo), as the Worker gives them
@@ -289,6 +295,27 @@ test.describe('the advent calendar', () => {
     await expect
       .poll(() => page.evaluate(() => (window as any).__shared[0] as string | undefined))
       .toMatch(/^I opened door 5 of the sudokUI advent calendar in \d+:\d\d · Easy \(\d+\) · unassisted · fastest of 4 today · .*\/advent\/2026\/5(\?vs=\d+)?$/);
+    await expect.poll(() => lines.filter((l) => l.event === 'shared')).toEqual([expect.objectContaining({ event: 'shared', what: 'door', door: 5, via: 'copy', band: 'Easy', bucket: 0 })]);
+  });
+
+  test('a door’s puzzle link from the Share dialog is counted with its door', async ({ page }) => {
+    const lines: Record<string, unknown>[] = [];
+    await page.route('**/api/t', async (route) => {
+      lines.push(...JSON.parse(route.request().postData() ?? '[]'));
+      await route.fulfill({ status: 204 });
+    });
+    await open(page, '2026-12-05', '/advent/2026/5');
+    await opened(page, door(5).puzzle);
+    await page.evaluate(() => {
+      (window as any).__shared = [];
+      Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+      navigator.clipboard.writeText = async (text: string) => void (window as any).__shared.push(text);
+    });
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
+    await dialog.getByRole('button', { name: 'Puzzle link' }).click();
+    await expect.poll(() => page.evaluate(() => (window as any).__shared[0] as string | undefined)).toMatch(/\/advent\/2026\/5$/);
+    await expect.poll(() => lines.filter((l) => l.event === 'shared')).toEqual([expect.objectContaining({ what: 'puzzle', door: 5, via: 'copy' })]);
   });
 
   test('a door solved on a clock gone back before its day offers no Send and says when its time can go, and offers it on its day', async ({ page }) => {

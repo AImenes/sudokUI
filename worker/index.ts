@@ -153,8 +153,8 @@ export async function handleRequest(request: Request, env: Env, ctx?: Context, a
   // (a 404) is still honest, and the app's hash links keep working
   if (!template.ok) return env.ASSETS.fetch(request);
 
-  // a person arriving from outside the site is a landing, counted once
-  countLanding(env.EVENTS, request, share.daily ? 'daily' : share.advent ? 'advent' : 'p', share.level);
+  // a person arriving from outside the site is a landing, counted once; a door's with its door
+  countLanding(env.EVENTS, request, share.daily ? 'daily' : share.advent ? 'advent' : 'p', share.level, share.advent?.door);
   const html = renderSharePage(await template.text(), share);
   return new Response(request.method === 'HEAD' ? null : html, {
     status: 200,

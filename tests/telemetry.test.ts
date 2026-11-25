@@ -255,7 +255,11 @@ describe('the telemetry route', () => {
     for (const band of LEVELS) expect(checkEvent(good({ band }))?.band).toBe(band);
     expect(checkEvent(good({ event: 'landing', bucket: 0 }))).toBeNull();
     for (const what of SHARE_KINDS)
-      for (const via of SHARE_VIAS) expect(checkEvent(shared({ what, via }))).toEqual({ ...shared({ what, via }), offline: false, optin: false, returning: false });
+      for (const via of SHARE_VIAS) {
+        // a door's line always says its door
+        const door = what === 'door' ? { door: 5 } : {};
+        expect(checkEvent(shared({ what, via, ...door }))).toEqual({ ...shared({ what, via, ...door }), offline: false, optin: false, returning: false });
+      }
     // false flags are what a share line has anyway
     expect(checkEvent(shared({ optin: false, offline: false, returning: false }))).not.toBeNull();
     expect(checkEvent(null)).toBeNull();
@@ -289,6 +293,50 @@ describe('the telemetry route', () => {
       // a play line keeps its four blobs
       { indexes: ['completed'], blobs: ['Hard', 'tab', '1.0.0', 'NO'], doubles: [36, 1, 0, 0, 0, 0] }
     ]);
+  });
+
+  it('takes a door’s share with its door, a link or a picture of a door game with its door, and writes the door in the seventh place', async () => {
+    expect(SHARE_KINDS).toEqual(['puzzle', 'position', 'challenge', 'daily', 'image', 'door']);
+    const events = memoryEvents();
+    const batch = [
+      shared({ what: 'door', via: 'sheet', band: 'Easy', door: 5 }),
+      shared({ what: 'door', via: 'sheet', band: 'Easy', door: 5 }),
+      shared({ what: 'door', via: 'copy', band: 'Easy', door: 6 }),
+      shared({ what: 'puzzle', via: 'copy', band: 'Easy', door: 5 }),
+      shared({ what: 'position', via: 'copy', band: 'Easy', door: 24 }),
+      shared({ what: 'image', via: 'save', band: 'Easy', door: 1 }),
+      // an older app's door line: a challenge with no door, still taken
+      shared({ what: 'challenge', band: 'Easy' }),
+      shared({ what: 'puzzle', band: 'Easy' })
+    ];
+    expect((await handleTelemetry(post(batch), events, { country: 'NO' }))!.status).toBe(204);
+    expect(events.points).toEqual([
+      { indexes: ['shared'], blobs: ['Easy', 'tab', '1.0.0', 'NO', 'door', 'sheet', '5'], doubles: [0, 2, 0, 0, 0, 0] },
+      { indexes: ['shared'], blobs: ['Easy', 'tab', '1.0.0', 'NO', 'door', 'copy', '6'], doubles: [0, 1, 0, 0, 0, 0] },
+      { indexes: ['shared'], blobs: ['Easy', 'tab', '1.0.0', 'NO', 'puzzle', 'copy', '5'], doubles: [0, 1, 0, 0, 0, 0] },
+      { indexes: ['shared'], blobs: ['Easy', 'tab', '1.0.0', 'NO', 'position', 'copy', '24'], doubles: [0, 1, 0, 0, 0, 0] },
+      { indexes: ['shared'], blobs: ['Easy', 'tab', '1.0.0', 'NO', 'image', 'save', '1'], doubles: [0, 1, 0, 0, 0, 0] },
+      { indexes: ['shared'], blobs: ['Easy', 'tab', '1.0.0', 'NO', 'challenge', 'copy'], doubles: [0, 1, 0, 0, 0, 0] },
+      { indexes: ['shared'], blobs: ['Easy', 'tab', '1.0.0', 'NO', 'puzzle', 'copy'], doubles: [0, 1, 0, 0, 0, 0] }
+    ]);
+    // refused: a door's line without its door or with one off the calendar, a door on a challenge or a daily's line, a door on a play line that is no door's
+    const refusedEvents = memoryEvents();
+    for (const body of [
+      shared({ what: 'door' }),
+      shared({ what: 'door', door: 0 }),
+      shared({ what: 'door', door: 25 }),
+      shared({ what: 'door', door: 2.5 }),
+      shared({ what: 'door', door: '5' }),
+      shared({ what: 'image', door: 25 }),
+      shared({ what: 'challenge', door: 5 }),
+      shared({ what: 'daily', door: 5 }),
+      good({ kind: 'new', lang: 'en', door: 5 }),
+      good({ door: 5 })
+    ]) {
+      expect(checkEvent(body), JSON.stringify(body)).toBeNull();
+      expect((await handleTelemetry(post([body]), refusedEvents))!.status, JSON.stringify(body)).toBe(400);
+    }
+    expect(refusedEvents.points).toHaveLength(0);
   });
 
   it('takes a start or a solve with its kind of game and language, from the lists, and writes both', async () => {
@@ -1051,7 +1099,7 @@ describe('the dashboard', () => {
     expect(html.indexOf('<h2>Help used in solved games</h2>')).toBeGreaterThan(html.indexOf('<h2>Daily times sent</h2>'));
     expect(html.indexOf('<h2>When games begin')).toBeLessThan(html.indexOf('<h2>Christmas'));
     expect(html).toContain('The 2026 calendar opens on 1 December');
-    expect(html).toContain('<tr><td>24</td><td>24 Dec</td><td>Medium 998</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td></tr>');
+    expect(html).toContain('<tr><td>24</td><td>24 Dec</td><td>Medium 998</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td><td>0</td><td>0</td></tr>');
     expect(html.indexOf('<h2>Christmas')).toBeGreaterThan(html.indexOf('<h2>Every day</h2>'));
     expect(html.indexOf('<h2>Christmas')).toBeLessThan(html.indexOf('</body>'));
   });
@@ -1062,7 +1110,9 @@ describe('the dashboard', () => {
     const doorRows = [
       { day: '2026-12-05 00:00:00', event: 'started', kind: 'advent', door: '5', n: 4 },
       { day: '2026-12-05 00:00:00', event: 'completed', kind: 'advent', door: '5', n: 1 },
-      { day: '2026-12-05 00:00:00', event: 'landing', slot: 'advent', kind: 'search', door: '', n: 2 },
+      { day: '2026-12-05 00:00:00', event: 'landing', slot: 'advent', kind: 'search', door: '5', n: 2 },
+      { day: '2026-12-05 00:00:00', event: 'shared', slot: 'tab', kind: 'door', door: '5', n: 2 },
+      { day: '2026-12-05 00:00:00', event: 'shared', slot: 'pwa', kind: 'image', door: '5', n: 1 },
       { day: '2026-12-05 00:00:00', event: 'landing', slot: 'calendar', kind: 'facebook', door: '', n: 6 }
     ];
     const answers = [json({ data: ROWS }), json({ data: doorRows })];
@@ -1076,9 +1126,10 @@ describe('the dashboard', () => {
     expect(calls[1].init?.body).toBe(adventQuery(DEC(), 2026));
     expect((calls[1].init?.headers as Record<string, string>).authorization).toBe(`Bearer ${secrets.ADMIN_TOKEN}`);
     const html = await res.text();
-    expect(html).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>4</td><td>1</td><td>25%</td><td>—</td><td>—</td></tr>');
+    expect(html).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>4</td><td>1</td><td>25%</td><td>—</td><td>—</td><td>2</td><td>3</td></tr>');
     expect(html).toContain("<dt>Landings on a door's address</dt><dd>2</dd>");
     expect(html).toContain("<dt>Landings on the calendar's page</dt><dd>6</dd>");
+    expect(html).toContain("<dt>Shares of a door game</dt><dd>3</dd><small>2 of them a door's line; from the app of 25 November 2026 on</small>");
     expect(html).toContain("<tr><td>A search engine (and links Google's own redirect passed on)</td><td>0</td><td>2</td><td>2</td><td>25%</td></tr>");
     expect(html).toContain('<tr><td>Facebook</td><td>6</td><td>0</td><td>6</td><td>75%</td></tr>');
     expect(html).not.toContain(secrets.ADMIN_TOKEN);
@@ -1090,7 +1141,7 @@ describe('the dashboard', () => {
     const page = await kept.text();
     expect(page).toContain('The analytics API could not be read for the calendar');
     expect(page).toContain('<dt>Completed, total estimate</dt>');
-    expect(page).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td></tr>');
+    expect(page).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td><td>0</td><td>0</td></tr>');
   });
 
   it('says what the API said when it fails, without the secrets', async () => {
@@ -1263,6 +1314,21 @@ describe('the privacy page', () => {
     }
     // the pages it names are the ones the Worker counts
     expect(CALENDAR_PATHS).toEqual([ADVENT_URLS.en, ADVENT_URLS.nb, ADVENT_URLS.es]);
+  });
+
+  it('says that a door’s share and a door’s landing say which door, and that a door’s line is a kind of its own, in every language', () => {
+    expect(SHARE_KINDS).toContain('door');
+    const DOOR = {
+      en: ['the daily puzzle’s line, a door of the advent calendar’s line, or a picture of the board', 'for something shared from a door of the advent calendar which door it is, 1 to 24', 'with which door it is and the door’s level once it is open', 'counts as a door’s line, with which door; a puzzle link, a position link or a picture shared from a door says which door too', 'for a door of the advent calendar which door'],
+      nb: ['linjen til dagens sudoku, linjen til en luke i julekalenderen eller et bilde av brettet', 'for noe som deles fra en luke i julekalenderen hvilken luke det er, 1 til 24', 'med hvilken luke det er og lukens vanskelighetsgrad når den er åpen', 'teller som linjen til en luke, med hvilken luke; en oppgavelenke, en stillingslenke eller et bilde som deles fra en luke, sier også hvilken luke', 'for en luke i julekalenderen hvilken luke'],
+      es: ['la línea del sudoku del día, la línea de una casilla del calendario de adviento o una imagen del tablero', 'para algo compartido desde una casilla del calendario de adviento qué casilla es, del 1 al 24', 'con qué casilla es y el nivel de la casilla una vez abierta', 'cuenta como la línea de una casilla, con cuál; un enlace al sudoku, un enlace a la posición o una imagen compartidos desde una casilla también dicen cuál', 'para una casilla del calendario de adviento cuál']
+    };
+    for (const lang of HOME_LANGS) {
+      const text = PRIVACY[lang].sections.flatMap((s) => s.paragraphs).join(' ');
+      for (const words of DOOR[lang]) expect(text, `${lang} ${words}`).toContain(words);
+    }
+    // the old words, that a door's line counts as a challenge, are gone
+    expect(PRIVACY.en.sections.flatMap((s) => s.paragraphs).join(' ')).not.toContain('counts as a challenge after a solve');
   });
 
   it('says what Scan does with the camera and a picture, in every language', () => {
@@ -1445,9 +1511,18 @@ describe("the admin page's Christmas section", () => {
     arow('2026-12-05', 'completed', 'advent', '5', 4),
     arow('2026-12-01', 'started', 'advent', '1', 3),
     arow('2026-12-02', 'completed', 'advent', '1', 3),
-    arow('2026-12-05', 'landing', 'search', '', 6, 'advent'),
-    arow('2026-12-06', 'landing', 'chat', '', 2, 'advent'),
+    arow('2026-12-05', 'landing', 'search', '5', 6, 'advent'),
+    arow('2026-12-06', 'landing', 'chat', '1', 2, 'advent'),
+    // a door's landing from before they named their door: in the number, in no row
     arow('2026-12-06', 'landing', 'search', '', 1, 'advent'),
+    // a door game's shares: its line, and a link and a picture of it
+    arow('2026-12-05', 'shared', 'door', '5', 3, 'tab'),
+    arow('2026-12-06', 'shared', 'door', '5', 1, 'pwa'),
+    arow('2026-12-05', 'shared', 'puzzle', '5', 2, 'tab'),
+    arow('2026-12-02', 'shared', 'image', '1', 1, 'tab'),
+    // a share with no door, or one off the calendar: in no row
+    arow('2026-12-05', 'shared', 'challenge', '', 50, 'tab'),
+    arow('2026-12-05', 'shared', 'door', '30', 50, 'tab'),
     // the calendar's public page, apart from the doors'
     arow('2026-12-04', 'landing', 'facebook', '', 5, 'calendar'),
     arow('2026-12-06', 'landing', 'search', '', 2, 'calendar'),
@@ -1496,7 +1571,7 @@ describe("the admin page's Christmas section", () => {
     // whole days back past 30 November's midnight
     expect(sql).toContain("WHERE timestamp > NOW() - INTERVAL '11' DAY");
     // the landings on a door's address and on the calendar's public page
-    expect(sql).toContain("AND ((index1 = 'landing' AND (blob2 = 'advent' OR blob2 = 'calendar')) OR ((index1 = 'started' OR index1 = 'completed') AND blob5 = 'advent'))");
+    expect(sql).toContain("AND ((index1 = 'landing' AND (blob2 = 'advent' OR blob2 = 'calendar')) OR ((index1 = 'started' OR index1 = 'completed') AND blob5 = 'advent') OR (index1 = 'shared' AND blob7 != ''))");
     expect(sql).toContain('GROUP BY day, event, slot, kind, door ORDER BY day FORMAT JSON');
     expect(adventQuery(at('2026-11-30T00:00:00Z'), 2026)).toContain("NOW() - INTERVAL '1' DAY");
     // at most the window's 63 days, on its last
@@ -1516,8 +1591,10 @@ describe("the admin page's Christmas section", () => {
     const m = adventOf(2026, at('2026-12-06T12:00:00Z'), ROWS, 'read', TIMES);
     expect(m).toMatchObject({ year: 2026, phase: 'open', counted: 'read', database: true });
     expect(m.doors).toHaveLength(24);
-    expect(m.doors[4]).toEqual({ door: 5, date: '2026-12-05', level: 'Easy', score: 258, started: 10, completed: 4, completionRate: 0.4, times: 3, median: 278 });
-    expect(m.doors[0]).toMatchObject({ door: 1, started: 3, completed: 3, completionRate: 1, times: 2, median: 98 });
+    expect(m.doors[4]).toEqual({ door: 5, date: '2026-12-05', level: 'Easy', score: 258, started: 10, completed: 4, completionRate: 0.4, times: 3, median: 278, landings: 6, shares: 6, sharesLine: 4 });
+    expect(m.doors[0]).toMatchObject({ door: 1, started: 3, completed: 3, completionRate: 1, times: 2, median: 98, landings: 2, shares: 1, sharesLine: 0 });
+    expect(m.shares).toBe(7);
+    expect(m.sharesLine).toBe(4);
     expect(m.doors[1]).toMatchObject({ door: 2, level: 'Easy', score: 144, started: 0, completed: 0, completionRate: null, times: 0, median: null });
     expect(m.doors[23]).toMatchObject({ door: 24, date: '2026-12-24', level: 'Medium', score: 998 });
     expect(m.started).toBe(13);
@@ -1579,8 +1656,8 @@ describe("the admin page's Christmas section", () => {
     expect(html).toContain("The 2026 calendar opens on 1 December, by each player's own date: until then every door shows zeros.");
     expect(html).toContain('The counts are read from 2026-11-30 (UTC)');
     expect(html).toContain('No database is bound: no times.');
-    expect(html).toContain('<tr><td>1</td><td>1 Dec</td><td>Easy 104</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td></tr>');
-    expect(html.match(/<tr><td>\d+<\/td><td>\d+ Dec<\/td><td>\w+ \d+<\/td><td>0<\/td><td>0<\/td><td>—<\/td><td>—<\/td><td>—<\/td><\/tr>/g)).toHaveLength(24);
+    expect(html).toContain('<tr><td>1</td><td>1 Dec</td><td>Easy 104</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td><td>0</td><td>0</td></tr>');
+    expect(html.match(/<tr><td>\d+<\/td><td>\d+ Dec<\/td><td>\w+ \d+<\/td><td>0<\/td><td>0<\/td><td>—<\/td><td>—<\/td><td>—<\/td><td>0<\/td><td>0<\/td><\/tr>/g)).toHaveLength(24);
     expect(html).toContain('<tr><td>No landings</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>');
     expect(html).toContain("<dt>Landings on the calendar's page</dt><dd>0</dd>");
     expect(html).toContain('Nothing counts the Christmas look');
@@ -1591,9 +1668,13 @@ describe("the admin page's Christmas section", () => {
     const html = adventSection(adventOf(2026, at('2026-12-06T12:00:00Z'), ROWS, 'read', TIMES));
     expect(html).toContain('The 2026 calendar is open');
     expect(html).toContain('Counted from 2026-11-30 to 2027-01-31, UTC days, so far.');
-    expect(html).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>10</td><td>4</td><td>40%</td><td>3</td><td>4:38</td></tr>');
-    expect(html).toContain('<tr><td>1</td><td>1 Dec</td><td>Easy 104</td><td>3</td><td>3</td><td>100%</td><td>2</td><td>1:38</td></tr>');
-    expect(html).toContain('<tr><td>All</td><td></td><td></td><td>13</td><td>7</td><td>54%</td><td>5</td><td></td></tr>');
+    // each door's landings and shares beside its games and times
+    expect(html).toContain('<th>Median time</th><th>Landings</th><th>Shares</th>');
+    expect(html).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>10</td><td>4</td><td>40%</td><td>3</td><td>4:38</td><td>6</td><td>6</td></tr>');
+    expect(html).toContain('<tr><td>1</td><td>1 Dec</td><td>Easy 104</td><td>3</td><td>3</td><td>100%</td><td>2</td><td>1:38</td><td>2</td><td>1</td></tr>');
+    expect(html).toContain('<tr><td>All</td><td></td><td></td><td>13</td><td>7</td><td>54%</td><td>5</td><td></td><td>8</td><td>7</td></tr>');
+    expect(html).toContain("<dt>Shares of a door game</dt><dd>7</dd>");
+    expect(html).toContain("an older app's door line counts as a challenge, with no door, and is in no row");
     expect(html).toContain('<dt>Door games begun</dt><dd>13</dd>');
     expect(html).toContain('<dt>Unassisted times sent</dt><dd>5</dd>');
     // where they came from, the calendar's page and the doors' side by side, of the 16 in all
@@ -1610,7 +1691,7 @@ describe("the admin page's Christmas section", () => {
     const past = adventSection(adventOf(2026, at('2027-03-01T12:00:00Z'), null, 'past', new Map()));
     expect(past).toContain('The 2026 calendar closed on 31 December');
     expect(past).toContain('are not read now');
-    expect(past).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>0</td><td>0</td><td>—</td><td>0</td><td>—</td></tr>');
+    expect(past).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>0</td><td>0</td><td>—</td><td>0</td><td>—</td><td>0</td><td>0</td></tr>');
   });
 
   it('knows outside the window that nothing is to be read, and asks the database anyway', async () => {
@@ -1664,5 +1745,13 @@ describe("the admin page's Christmas section", () => {
     // a door's address counts its own, in the advent slot
     await handleRequest(landing('/advent/2026/1'), assets({ EVENTS: events }), undefined, undefined, () => Date.parse('2026-12-06T12:00:00Z'));
     expect(events.points.map((p) => p.blobs[1])).toEqual(['calendar', 'calendar', 'calendar', 'calendar', 'advent']);
+    // the calendar's page names no door; a door's address names its own, in the seventh place, as its play line does
+    expect(events.points[0].blobs).toHaveLength(5);
+    expect(events.points[4].blobs).toEqual([events.points[4].blobs[0], 'advent', version, '', 'none', '', '1']);
+    // countLanding names a door only on a door's address, and only one on the calendar
+    const direct = memoryEvents();
+    countLanding(direct, landing('/advent/2026/5'), 'advent', undefined, 25);
+    countLanding(direct, landing('/'), 'home', undefined, 5);
+    expect(direct.points.map((p) => p.blobs.length)).toEqual([5, 5]);
   });
 });

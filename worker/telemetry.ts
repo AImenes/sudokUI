@@ -15,9 +15,15 @@
  * November 2026 or later adds two blobs: what kind of game it was and the
  * app's language (PLAY_KINDS, PLAY_LANGS); an older app's line keeps its
  * four. A door of the advent calendar's line (kind `advent`) adds a
- * seventh, after those, so no older line moves: its door, 1 to 24. A `shared` line, sent when a player shares a link or a picture of
- * the board, adds two blobs: what was shared and whether the share sheet
- * took it, it was copied or the picture was saved (SHARE_KINDS, SHARE_VIAS). Identical events fold into one point with a count,
+ * seventh, after those, so no older line moves: its door, 1 to 24. A
+ * `shared` line, sent when a player shares a link or a picture of the
+ * board, adds two blobs: what was shared and whether the share sheet took
+ * it, it was copied or the picture was saved (SHARE_KINDS, SHARE_VIAS).
+ * A share from a door game (an app of 25 November 2026 on) says which
+ * door in the same seventh place: a door's line is kind `door` and always
+ * names it, and a puzzle link, a position link or a picture of a door
+ * game names it too; an older app's door line is a `challenge` with no
+ * door, and is still taken. Identical events fold into one point with a count,
  * because WAE takes at most POINTS_MAX writes per invocation: the app
  * never sends more than that many events at once (src/state/telemetry.ts),
  * and a batch from anywhere else is kept to its first POINTS_MAX points.
@@ -35,7 +41,9 @@
  * fetcher. That is the research's "share-link landings" number. The home
  * pages, /, /nb/ and /es/, count one the same way (worker/index.ts), with
  * `home` where a share page says `p` or `daily` (LANDING_SLOTS), and so
- * does a door's address, /advent/<year>/<door>, with `advent`, and the
+ * does a door's address, /advent/<year>/<door>, with `advent` (and, from
+ * 25 November 2026, the door in the seventh blob, as a door's play line
+ * has it, the sixth left empty), and the
  * advent calendar's public page, /advent/, /nb/julekalender/ and
  * /es/calendario-de-adviento/, with `calendar` (the owner's asking of 25
  * November 2026, to see which post or picture brought people to it): the
@@ -71,10 +79,15 @@ export type Source = (typeof SOURCES)[number];
 /**
  * What a `shared` line says was shared: the Share dialog's link to the
  * puzzle (a daily's own address for a daily) or to the position, the win
- * screen's challenge, the daily's line, or a picture of the board, with a
- * hint drawn or without (src/ui/Dialogs.tsx); never the picture itself
+ * screen's challenge, the daily's line, a picture of the board, with a
+ * hint drawn or without, or a door of the advent calendar's line, from
+ * its win screen or the Share dialog (src/ui/Dialogs.tsx); never the
+ * picture itself
  */
-export const SHARE_KINDS = ['puzzle', 'position', 'challenge', 'daily', 'image'] as const;
+export const SHARE_KINDS = ['puzzle', 'position', 'challenge', 'daily', 'image', 'door'] as const;
+
+/** the shares that may say which door they came from, when the game shared was a door; a door's line always does */
+export const DOOR_SHARES: readonly ShareKind[] = ['puzzle', 'position', 'image', 'door'];
 export type ShareKind = (typeof SHARE_KINDS)[number];
 
 /** how it went: the device's share sheet took it, it was copied, or the picture was saved as a file (src/ui/send.ts) */
@@ -137,13 +150,13 @@ export interface TelemetryEvent {
   /** a play line's kind of game and the app's language; both or neither (an app from before them sends neither), never on a share */
   kind?: PlayKind;
   lang?: PlayLang;
-  /** a door's line (kind advent) only, and always there: 1 to DOOR_MAX */
+  /** a door's play line (kind advent) and a door's share line (what door) always, a puzzle, position or picture shared from a door game where the app says: 1 to DOOR_MAX */
   door?: number;
   /** a solve's line with its kind only: whether any help was used in the game; an older app does not say */
   assisted?: boolean;
 }
 
-/** what goes to WAE: one index, four blobs (six for a share or a play line with its kind and language, seven for a door's, eight for a solve that says whether help was used, five for a landing), six doubles (see the header) */
+/** what goes to WAE: one index, four blobs (six for a share or a play line with its kind and language, seven for a door's play line or share, eight for a solve that says whether help was used, five for a landing, seven for a door's landing), six doubles (see the header) */
 export interface DataPoint {
   indexes: string[];
   blobs: string[];
@@ -182,8 +195,11 @@ export function checkEvent(x: unknown): TelemetryEvent | null {
     if (typeof e.kind !== 'string' || !(PLAY_KINDS as readonly string[]).includes(e.kind)) return null;
     if (typeof e.lang !== 'string' || !(PLAY_LANGS as readonly string[]).includes(e.lang)) return null;
   }
-  // a door's line says which door, from 1 to 24, and no other line does
-  const door = kinded && e.kind === 'advent';
+  // a door's line says which door, from 1 to 24, and no other play line
+  // does; a share says it for a door's line always, and for a link or a
+  // picture of a door game when it is there (an older app never says)
+  const doorShare = shared && (e.what === 'door' || (e.door !== undefined && (DOOR_SHARES as readonly unknown[]).includes(e.what)));
+  const door = (kinded && e.kind === 'advent') || doorShare;
   if (door && (typeof e.door !== 'number' || !Number.isInteger(e.door) || e.door < 1 || e.door > DOOR_MAX)) return null;
   // a solve's line with its kind may say whether help was used, yes or
   // no; no start, no share and no older line says it
@@ -575,15 +591,19 @@ export type LandingSlot = (typeof LANDING_SLOTS)[number];
  * Counts a landing on a share page or a home page when the request is one
  * (isLanding): a `landing` point with the band the page knows (a home
  * page knows none), which page it was (LANDING_SLOTS) in the source slot,
- * the Worker's version, the country and where it came from (landingWord).
+ * the Worker's version, the country and where it came from (landingWord),
+ * and for a door's address which door, in the seventh blob.
  * True when a point was written.
  */
-export function countLanding(dataset: AnalyticsEngineLike | null | undefined, request: Request, slot: LandingSlot, level?: Level): boolean {
+export function countLanding(dataset: AnalyticsEngineLike | null | undefined, request: Request, slot: LandingSlot, level?: Level, door?: number): boolean {
   if (!dataset || !isLanding(request)) return false;
   try {
+    const blobs = [level ?? '', slot, WORKER_VERSION, countryOf(request), landingWord(request)];
+    // a door's address says which door, in the seventh place, as a door's play line does
+    if (slot === 'advent' && door && Number.isInteger(door) && door >= 1 && door <= DOOR_MAX) blobs.push('', String(door));
     dataset.writeDataPoint({
       indexes: ['landing'],
-      blobs: [level ?? '', slot, WORKER_VERSION, countryOf(request), landingWord(request)],
+      blobs,
       doubles: [0, 1, 0, 0, 0, 0]
     });
     return true;

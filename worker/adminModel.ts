@@ -136,6 +136,11 @@ export interface AdventDoorRow {
   /** unassisted times that reached the database and their median in seconds (daily_hist, as the win screen reads it); null without a database or when it failed */
   times: number | null;
   median: number | null;
+  /** landings on the door's address that say their door (telemetry.ts, countLanding: from 25 November 2026) */
+  landings: number;
+  /** shares of the door game that say their door (from the app of 25 November 2026 on), and of them the door's line */
+  shares: number;
+  sharesLine: number;
 }
 
 /** the Christmas section: one calendar's doors, their landings, and where the calendar stands */
@@ -151,6 +156,9 @@ export interface AdventMetrics {
   completionRate: number | null;
   /** every door's unassisted times together; null without a database or when it failed */
   times: number | null;
+  /** every door's shares that say their door, and of them the doors' lines */
+  shares: number;
+  sharesLine: number;
   /** landings on a door's address (the slot advent), and by the word their referrer gave (telemetry.ts, landingWord) */
   landings: number;
   landingsFrom: Record<string, number>;

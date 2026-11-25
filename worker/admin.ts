@@ -321,7 +321,8 @@ const SHARE_LABELS: Record<ShareKind, string> & Record<string, string | undefine
   position: 'Position link (Share)',
   challenge: 'Challenge (win screen)',
   daily: 'Daily line (win screen)',
-  image: 'Picture of the board (Share, or a hint)'
+  image: 'Picture of the board (Share, or a hint)',
+  door: "Advent door's line (win screen, Share)"
 };
 
 /** what kind of game, as a column of the page */
@@ -525,7 +526,7 @@ ${playRows}
     </table></div>
     <p class="meta">Kind and language are what a start or a solve says about itself, from the builds of November 2026 on: Daily is the daily puzzle, From a share link a puzzle or position opened from a link someone shared, Practice a practice puzzle, and New any other (a new one by band, an import, a grid typed, pasted or scanned, a Learn page's example); the language is the one the app was set to. Lines from older builds say neither and are Not recorded. Practice puzzles are counted from November 2026, at the player's own first move since they open part-way through, and are left out of Starts, Completed, Offline, In installed app, New and Returning and the numbers above, so those read as they did before.</p>
     <p class="meta">A home landing is a visit to /, /nb/ or /es/ from outside the site that the browser did not answer from the app it already holds: mostly a first visit. Landings per share counts the share pages' landings only. The landings on the advent calendar's public page are in the Christmas section, not here.</p>
-    <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge or the daily's line that the share sheet took or that was copied, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most apps send none (on Android some name themselves), so No referrer is mostly links opened from apps. With no referrer, a link an AI assistant tagged (utm_source=chatgpt.com and the like) counts as An AI assistant. The sixth metric of the plan, search clicks, is in Search Console.</p>
+    <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge, the daily's line or an advent door's line, or a picture of the board, that the share sheet took, that was copied or, a picture, saved, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most apps send none (on Android some name themselves), so No referrer is mostly links opened from apps. With no referrer, a link an AI assistant tagged (utm_source=chatgpt.com and the like) counts as An AI assistant. The sixth metric of the plan, search clicks, is in Search Console.</p>
   </body>
 </html>
 `;
@@ -636,14 +637,18 @@ export const adventCountFrom = (year: number) => `${year}-11-30`;
 export const adventCountTo = (year: number) => `${year + 1}-01-31`;
 
 /**
- * The doors' play lines and the landings on their addresses and on the
- * calendar's public page, summed per UTC day, event, slot (a landing's
- * page, blob2: `advent` for a door's address, `calendar` for the public
- * page), kind (a landing's referrer word, blob5) and door (a play line's
- * seventh blob, telemetry.ts pointOf), from the window's first day to
- * now; null outside the window, when nothing is read. Bounded as the main
- * query is: at most 63 days, and the rows of the calendar's lines only,
- * two events of 24 doors and two slots of the landing words a day.
+ * The doors' play lines, the shares of a door game, and the landings on
+ * the doors' addresses and on the calendar's public page, summed per UTC
+ * day, event, slot (blob2: a landing's page, `advent` for a door's
+ * address, `calendar` for the public page; a play line's or a share's
+ * source, which is not read), kind (a play line's kind, a share's what, a
+ * landing's referrer word: blob5) and door (the seventh blob of a door's
+ * play line, share or landing, telemetry.ts pointOf and countLanding),
+ * from the window's first day to now; null outside the window, when
+ * nothing is read. Bounded as the main query is: at most 63 days, and the
+ * rows of the calendar's lines only: a day's are at most two events, two
+ * sources and the share kinds by 24 doors, and two slots of the landing
+ * words by 24 doors.
  */
 export function adventQuery(now: Date, year: number): string | null {
   const today = utcDay(now);
@@ -655,7 +660,7 @@ export function adventQuery(now: Date, year: number): string | null {
     'SUM(_sample_interval * double2) AS n',
     `FROM ${DATASET}`,
     `WHERE timestamp > NOW() - INTERVAL '${days}' DAY`,
-    "AND ((index1 = 'landing' AND (blob2 = 'advent' OR blob2 = 'calendar')) OR ((index1 = 'started' OR index1 = 'completed') AND blob5 = 'advent'))",
+    "AND ((index1 = 'landing' AND (blob2 = 'advent' OR blob2 = 'calendar')) OR ((index1 = 'started' OR index1 = 'completed') AND blob5 = 'advent') OR (index1 = 'shared' AND blob7 != ''))",
     'GROUP BY day, event, slot, kind, door ORDER BY day FORMAT JSON'
   ].join(' ');
 }
@@ -668,7 +673,7 @@ export interface AdventRow {
   slot?: string;
   /** a play line's kind (advent), a landing's referrer word */
   kind: string;
-  /** a play line's door, '1' to '24'; '' for a landing */
+  /** a door's play line, share or landing: its door, '1' to '24'; '' for the calendar page's landing, and for a door's landing or share from before they said */
   door: string;
   n: number;
 }
@@ -737,6 +742,14 @@ export function adventOf(
   const to = adventCountTo(year);
   const started = new Map<number, number>();
   const completed = new Map<number, number>();
+  const landed = new Map<number, number>();
+  const shared = new Map<number, number>();
+  const lines = new Map<number, number>();
+  /** a row's door, or 0 when it names none on the calendar */
+  const doorOf = (r: AdventRow) => {
+    const n = Number(r.door);
+    return r.door !== '' && Number.isInteger(n) && n >= 1 && n <= ADVENT_DOORS ? n : 0;
+  };
   const landingsFrom: Record<string, number> = {};
   const calendarFrom: Record<string, number> = {};
   let landings = 0;
@@ -751,10 +764,19 @@ export function adventOf(
     if (r.event === 'landing') {
       landings += r.n;
       add(landingsFrom, r.kind, r.n);
+      const door = doorOf(r);
+      if (door) landed.set(door, (landed.get(door) ?? 0) + r.n);
       continue;
     }
-    const door = Number(r.door);
-    if (r.kind !== 'advent' || !Number.isInteger(door) || door < 1 || door > ADVENT_DOORS) continue;
+    if (r.event === 'shared') {
+      const door = doorOf(r);
+      if (!door) continue;
+      shared.set(door, (shared.get(door) ?? 0) + r.n);
+      if (r.kind === 'door') lines.set(door, (lines.get(door) ?? 0) + r.n);
+      continue;
+    }
+    const door = doorOf(r);
+    if (r.kind !== 'advent' || !door) continue;
     if (r.event === 'started') started.set(door, (started.get(door) ?? 0) + r.n);
     else if (r.event === 'completed') completed.set(door, (completed.get(door) ?? 0) + r.n);
   }
@@ -773,7 +795,10 @@ export function adventOf(
       completed: c,
       completionRate: ratio(c, s),
       times: t ? t.count : null,
-      median: t ? t.median : null
+      median: t ? t.median : null,
+      landings: landed.get(door) ?? 0,
+      shares: shared.get(door) ?? 0,
+      sharesLine: lines.get(door) ?? 0
     };
   });
   const sum = (f: (d: AdventDoorRow) => number) => doors.reduce((acc, d) => acc + f(d), 0);
@@ -787,12 +812,17 @@ export function adventOf(
     completed: sum((d) => d.completed),
     completionRate: ratio(sum((d) => d.completed), sum((d) => d.started)),
     times: times ? sum((d) => d.times ?? 0) : null,
+    shares: sum((d) => d.shares),
+    sharesLine: sum((d) => d.sharesLine),
     landings,
     landingsFrom,
     calendarLandings,
     calendarFrom
   };
 }
+
+/** a sum over the doors */
+const sumOf = (doors: AdventDoorRow[], f: (d: AdventDoorRow) => number) => doors.reduce((acc, d) => acc + f(d), 0);
 
 /** a time in seconds as the win screen writes it: 4:12, 1:02:03 */
 const clock = (seconds: number | null) => {
@@ -831,12 +861,13 @@ export function adventSection(m: AdventMetrics): string {
     number('Completion rate', pct(m.completionRate), `${num(m.completed)} completed of ${num(m.started)} begun`),
     number('Unassisted times sent', num(m.times), 'that reached the database, every door'),
     number("Landings on a door's address", num(m.landings), 'opened from outside the site, by people'),
+    number('Shares of a door game', num(m.shares), `${num(m.sharesLine)} of them a door's line; from the app of 25 November 2026 on`),
     number("Landings on the calendar's page", num(m.calendarLandings), '/advent/, /nb/julekalender/, /es/calendario-de-adviento/, from outside the site')
   ].join('\n');
   const rows = m.doors
     .map(
       (d) =>
-        `      <tr><td>${d.door}</td><td>${esc(shortDay(d.date))}</td><td>${d.level ? `${esc(d.level)} ${d.score}` : '—'}</td><td>${num(d.started)}</td><td>${num(d.completed)}</td><td>${pct(d.completionRate)}</td><td>${num(d.times)}</td><td>${clock(d.median)}</td></tr>`
+        `      <tr><td>${d.door}</td><td>${esc(shortDay(d.date))}</td><td>${d.level ? `${esc(d.level)} ${d.score}` : '—'}</td><td>${num(d.started)}</td><td>${num(d.completed)}</td><td>${pct(d.completionRate)}</td><td>${num(d.times)}</td><td>${clock(d.median)}</td><td>${num(d.landings)}</td><td>${num(d.shares)}</td></tr>`
     )
     .join('\n');
   // where the calendar's landings came from, the most first: on its page
@@ -858,10 +889,10 @@ export function adventSection(m: AdventMetrics): string {
 ${numbers}
     </dl>
     <div class="wide"><table>
-      <thead><tr><th>Door</th><th>Day</th><th>Rating</th><th>Begun</th><th>Completed</th><th>Completion</th><th>Times sent</th><th>Median time</th></tr></thead>
+      <thead><tr><th>Door</th><th>Day</th><th>Rating</th><th>Begun</th><th>Completed</th><th>Completion</th><th>Times sent</th><th>Median time</th><th>Landings</th><th>Shares</th></tr></thead>
       <tbody>
 ${rows}
-      <tr><td>All</td><td></td><td></td><td>${num(m.started)}</td><td>${num(m.completed)}</td><td>${pct(m.completionRate)}</td><td>${num(m.times)}</td><td></td></tr>
+      <tr><td>All</td><td></td><td></td><td>${num(m.started)}</td><td>${num(m.completed)}</td><td>${pct(m.completionRate)}</td><td>${num(m.times)}</td><td></td><td>${num(sumOf(m.doors, (d) => d.landings))}</td><td>${num(m.shares)}</td></tr>
       </tbody>
     </table></div>
     <h2>Where the calendar's landings came from</h2>
@@ -871,7 +902,7 @@ ${rows}
 ${fromRows || '      <tr><td>No landings</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>'}
       </tbody>
     </table></div>
-    <p class="meta">Begun and Completed are the door games' play lines (kind Advent calendar), each with its door, over the calendar's days; a door begun on one day and solved on another counts on each. Times sent are the unassisted times the win screen sent for each door, on its day and up to a week late, until 31 December; the median is the one the win screen shows. A landing on a door's address is a person opening /advent/${m.year}/&lt;door&gt; (or under /nb/, /es/) from outside the site. A landing on the calendar's page is a person opening /advent/, /nb/julekalender/ or /es/calendario-de-adviento/ from outside the site, counted as the home pages are (since 25 November 2026); the app never answers that page, so a returning player's visit from a post counts too, which a home page's does not. These landings are counted here only, not among the landings at the top of the page. Nothing counts the Christmas look: no line says which theme a player uses.</p>`;
+    <p class="meta">Begun and Completed are the door games' play lines (kind Advent calendar), each with its door, over the calendar's days; a door begun on one day and solved on another counts on each. Times sent are the unassisted times the win screen sent for each door, on its day and up to a week late, until 31 December; the median is the one the win screen shows. A landing on a door's address is a person opening /advent/${m.year}/&lt;door&gt; (or under /nb/, /es/) from outside the site; the door row's Landings are those that say their door (from 25 November 2026), so the number above, every door's landing, may hold more. Shares are a door game's shares that say their door, from the app of 25 November 2026 on: its line from the win screen or the Share dialog, and a puzzle link, a position link or a picture of it; an older app's door line counts as a challenge, with no door, and is in no row. A landing on the calendar's page is a person opening /advent/, /nb/julekalender/ or /es/calendario-de-adviento/ from outside the site, counted as the home pages are (since 25 November 2026); the app never answers that page, so a returning player's visit from a post counts too, which a home page's does not. These landings are counted here only, not among the landings at the top of the page. Nothing counts the Christmas look: no line says which theme a player uses.</p>`;
 }
 
 /**
