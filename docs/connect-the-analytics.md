@@ -240,6 +240,12 @@ number reads "—" until some player has turned the opt-in on and finished
 a game online, because the estimate is the ratio of that cohort's offline
 to online solves applied to everyone else.
 
+Once after each change to the dashboard's queries, open
+<https://sudokui.app/admin?check>: it runs every query the page uses on
+the real data and says, for each, whether the API accepted it and how
+many rows came back, with the error if one was refused
+([online-goals.md](online-goals.md), "The query check").
+
 The same numbers from the terminal, if you ever want them raw. In
 PowerShell, put the token and the account id in two variables first
 (they last until the window is closed):

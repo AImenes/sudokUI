@@ -27,6 +27,14 @@
  * numbers), and the landings on the doors' addresses and on the
  * calendar's public page, by referrer word.
  * Before 1 December it says when the calendar opens and shows zeros.
+ *
+ * At the top, "Toward 100 a day" (adminGoal.ts): the games begun a day
+ * against the owner's goal, and the launch log's reading to copy, from
+ * the rows the page already has. After the week's landings by word, the
+ * same over 28 days, from a small query of its own (adminMore.ts). And
+ * /admin?check (adminCheck.ts, dashboardChecks) runs every query the page
+ * uses against the real SQL API and shows what each answered
+ * (docs/online-goals.md, "Toward 100 a day").
  */
 import {
   DAYS_SHOWN,
@@ -51,7 +59,22 @@ import { statsFromHistogram, type HistogramRow } from '../src/content/dailies';
 export { DAYS_SHOWN, DATASET };
 export type { AdventMetrics, DayRow, Metrics, Totals };
 
-import { moreFor, moreSection } from './adminMore';
+import {
+  moreFor,
+  moreSection,
+  levelsQuery,
+  timesQuery,
+  countriesQuery,
+  versionsQuery,
+  hoursQuery,
+  landingDaysQuery,
+  landingDaysFor,
+  landingDaysSection,
+  moreRowsOf,
+  LANDING_DAY_COLUMNS
+} from './adminMore';
+import { readingOf, towardOf, towardSection } from './adminGoal';
+import { renderCheck, runChecks, runDatabaseChecks, type DatabaseCheck, type QueryCheck } from './adminCheck';
 
 export const ADMIN_PATH = '/admin';
 
@@ -396,6 +419,9 @@ tr.today td{color:#9aa0b3;font-style:italic}
 svg{display:block;max-width:100%;height:auto;margin:8px 0}
 .wide{overflow-x:auto}
 a{color:#8ab6f7}
+.reading{background:#1a1d29;border:1px solid #2a2e3f;border-radius:10px;padding:10px 14px;margin:12px 0 8px}
+button{font:inherit;color:#e8eaf2;background:#2a2e3f;border:1px solid #3a3f55;border-radius:8px;padding:6px 12px;cursor:pointer}
+pre{white-space:pre-wrap;word-break:break-word;font-size:12px}
 `.trim();
 
 /** a row's cells by kind of game, then by language, then the lines an older app sent, which say neither */
@@ -403,8 +429,14 @@ const playCells = (by: Record<string, number>, byLang: Record<string, number>) =
   [...PLAY_KINDS.map((k) => by[k] ?? 0), ...PLAY_LANGS.map((l) => byLang[l] ?? 0), by[''] ?? 0].map((n) => `<td>${num(n)}</td>`).join('');
 const PLAY_HEADS = [...PLAY_KINDS.map((k) => KIND_LABELS[k]), ...PLAY_LANGS.map((l) => LANG_LABELS[l]), 'Not recorded'].map((h) => `<th>${esc(h)}</th>`).join('');
 
+/** sections made elsewhere that the page puts in their places: at the top (adminGoal.ts), and after the week's landings by word (adminMore.ts) */
+export interface AdminExtras {
+  top?: string;
+  afterLandings?: string;
+}
+
 /** the page: the fourteen numbers, the sparkline of the month, what was shared, the games by kind and language, and where landings came from that week, and every day of the month */
-export function renderAdmin(m: Metrics): string {
+export function renderAdmin(m: Metrics, extras: AdminExtras = {}): string {
   const w = m.week;
   const d = m.yesterday;
   const number = (label: string, value: string, note = '') =>
@@ -481,8 +513,8 @@ export function renderAdmin(m: Metrics): string {
   </head>
   <body>
     <h1>sudokUI: plays, shares, landings, players</h1>
-    <p class="meta">Workers Analytics Engine, ${esc(DATASET)}, UTC days. Generated ${esc(m.generatedAt)}. Nothing here names a player.</p>
-    <dl class="numbers">
+    <p class="meta">Workers Analytics Engine, ${esc(DATASET)}, UTC days. Generated ${esc(m.generatedAt)}. Nothing here names a player. <a href="/admin?check">Check every query against the real data</a>.</p>
+${extras.top ? `${extras.top}\n    <h2>The plan's numbers, last 7 days</h2>\n` : ''}    <dl class="numbers">
 ${numbers}
     </dl>
     <h2>Completed per day, last ${DAYS_SHOWN} days</h2>
@@ -510,7 +542,7 @@ ${shareRows}
 ${fromRows || '      <tr><td>No landings</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>'}
       </tbody>
     </table></div>
-    <h2>Every day</h2>
+${extras.afterLandings ? `${extras.afterLandings}\n` : ''}    <h2>Every day</h2>
     <div class="wide"><table>
       <thead><tr><th>Day</th><th>Starts</th><th>Completed</th><th>Offline</th><th>In installed app</th><th>Shares</th><th>Landings</th><th>On a home page</th><th>New</th><th>Returning</th></tr></thead>
       <tbody>
@@ -654,7 +686,11 @@ export function adventQuery(now: Date, year: number): string | null {
   const today = utcDay(now);
   if (today < adventCountFrom(year) || today > adventCountTo(year)) return null;
   // whole days back past the window's first midnight; the days before it are left out by adventOf
-  const days = daysBetween(adventCountFrom(year), today) + 1;
+  return adventSql(daysBetween(adventCountFrom(year), today) + 1);
+}
+
+/** the calendar query over the last `days` days: adventQuery's, and the query check's (/admin?check) before the window opens */
+export function adventSql(days: number): string {
   return [
     "SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, index1 AS event, blob2 AS slot, blob5 AS kind, blob7 AS door,",
     'SUM(_sample_interval * double2) AS n',
@@ -958,6 +994,7 @@ export async function handleAdmin(request: Request, env: AdminEnv, options: Admi
   if (!(await cameThroughAccess(request, env, options.accessKeys ?? ISOLATE_KEYS, now))) return null;
   if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405, headers: { allow: 'GET, HEAD' } });
   const doFetch = options.fetch ?? fetch;
+  if (url.searchParams.has('check')) return handleCheck(request, env, now, doFetch);
   let answer: unknown;
   try {
     const res = await doFetch(sqlApi(env.ADMIN_ACCOUNT_ID), {
@@ -975,6 +1012,72 @@ export async function handleAdmin(request: Request, env: AdminEnv, options: Admi
   const christmas = adventSection(await adventFor(env, now, doFetch));
   // help used, levels, practice, countries, versions and hours (adminMore.ts): five small queries of their own
   const more = moreSection(await moreFor(env, now, doFetch, sqlApi(env.ADMIN_ACCOUNT_ID)));
-  const html = renderAdmin(metricsOf(rows, now)).replace('  </body>', `${dailySentTable(rows, await dailySent(env.DB, now))}\n${more}\n${christmas}\n  </body>`);
+  // landings per day by word, 28 days (adminMore.ts): one more
+  const landingDays = landingDaysSection(await landingDaysFor(env, now, doFetch, sqlApi(env.ADMIN_ACCOUNT_ID)));
+  const sent = await dailySent(env.DB, now);
+  const metrics = metricsOf(rows, now);
+  // toward 100 a day and the launch log's reading (adminGoal.ts): from the rows above, nothing more asked
+  const today = utcDay(now);
+  const top = towardSection(towardOf(metrics.days, today), readingOf(metrics.days, today, sent));
+  const html = renderAdmin(metrics, { top, afterLandings: landingDays }).replace('  </body>', `${dailySentTable(rows, sent)}\n${more}\n${christmas}\n  </body>`);
   return request.method === 'HEAD' ? page('', 200) : page(html);
+}
+
+/**
+ * Every query the dashboard asks, in the page's order, as the check runs
+ * them (adminCheck.ts): the main one, the calendar's (over its window in
+ * season, and before 30 November over the last DAYS_SHOWN days, so it
+ * meets data before it is needed), the five further tables' and the
+ * landings by word
+ */
+export function dashboardChecks(now: Date): QueryCheck[] {
+  const year = adventYearOn(now);
+  const inSeason = adventQuery(now, year);
+  const more = (name: string, sql: string, columns: string[]): QueryCheck => ({ name, sql, kept: (a) => moreRowsOf(a, columns).length });
+  return [
+    { name: 'The main query: plays, shares, landings', sql: adminQuery(), kept: (a) => rowsOf(a).length },
+    {
+      name: 'Christmas: the advent calendar',
+      sql: inSeason ?? adventSql(DAYS_SHOWN),
+      kept: (a) => adventRowsOf(a).length,
+      note: inSeason
+        ? `Over the calendar's window, from ${adventCountFrom(year)}, as the page runs it.`
+        : `The page runs it from ${adventCountFrom(year)}; here it runs over the last ${DAYS_SHOWN} days, so it meets real data first: the calendar's page's landings and the doors' shares from 25 November 2026, and any door played early.`
+    },
+    more('Help used and levels', levelsQuery(), ['day', 'event', 'band', 'kind', 'help']),
+    more('Median times', timesQuery(), ['band', 'help', 'bucket']),
+    more('Countries', countriesQuery(), ['country', 'event']),
+    more('App versions', versionsQuery(), ['version', 'source']),
+    more('When games begin', hoursQuery(), ['hour']),
+    more('Landings per day by word', landingDaysQuery(), LANDING_DAY_COLUMNS)
+  ];
+}
+
+/** /admin?check: every query run against the real dataset, and the database's two reads, with what each answered */
+async function handleCheck(request: Request, env: AdminEnv, now: Date, doFetch: typeof fetch): Promise<Response> {
+  if (request.method === 'HEAD') return page('', 200);
+  const secrets = [env.ADMIN_TOKEN, env.ADMIN_ACCOUNT_ID, env.ACCESS_AUD];
+  const results = await runChecks(dashboardChecks(now), doFetch, sqlApi(env.ADMIN_ACCOUNT_ID!), env.ADMIN_TOKEN!, secrets);
+  const db = env.DB;
+  const year = adventYearOn(now);
+  const database: DatabaseCheck[] | null = db
+    ? [
+        {
+          name: 'Daily times sent, the last 30 days',
+          run: async () => {
+            const sent = await dailySent(db, now);
+            return sent ? { ok: true, rows: sent.length } : { ok: false, error: 'The read failed.' };
+          }
+        },
+        {
+          name: `The doors' times, ${year}`,
+          run: async () => {
+            const times = await adventTimes(db, year);
+            return times ? { ok: true, rows: times.size } : { ok: false, error: 'The read failed.' };
+          }
+        }
+      ]
+    : null;
+  const dbResults = database ? await runDatabaseChecks(database) : null;
+  return page(renderCheck(results, dbResults, now.toISOString().slice(0, 16).replace('T', ' ') + ' UTC', STYLE));
 }

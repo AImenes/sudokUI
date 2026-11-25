@@ -20,7 +20,8 @@ channel").
   `/nb/`, `/es/`) is counted as `home`. The Learn pages are counted only in
   Search Console.
 - **Judge it 14 days later**, on two things: (a) the landings with its word
-  in the first 7 days (`/admin`, "Where landings came from"); (b) the 7-day
+  in the first 7 days (`/admin`, "Landings per day by word", which keeps
+  28 days); (b) the 7-day
   averages of completions and of daily participants at day 14, against the
   baseline. At about 5 completions a day, a rise of 3 a day or more, held
   for a week, is real; anything smaller counts as no effect. A spike in
@@ -84,9 +85,14 @@ numbers above can be read against them.
 ## Readings
 
 Read as 7-day averages per day: the baseline when it ends, then on each
-action's day 14. Everything but daily participants is on `/admin`. Daily
-participants are the times sent for each day's daily puzzle, which live in
-D1, not in the analytics:
+action's day 14. Since 25 November 2026 the top of `/admin` ("Toward 100
+a day") shows the whole reading as one line, daily participants
+included (the daily times that reached D1), and its button copies it as
+a row of this table: paste it below and write what it is read for. The
+landings per word for each of the last 28 days, the first 7 days after
+an action among them, are in `/admin`'s "Landings per day by word". To
+count daily participants by the daily's number instead of the day a time
+arrived, ask D1:
 
 ```sh
 npx wrangler d1 execute sudokui-db --remote --command "SELECT puzzle_no, COUNT(*) AS sent FROM daily_result GROUP BY puzzle_no ORDER BY puzzle_no DESC LIMIT 14"

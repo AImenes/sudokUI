@@ -379,3 +379,116 @@ export async function moreFor(env: MoreEnv, now: Date, doFetch: typeof fetch, ap
   ]);
   return moreOf(now, levels, times, countries, versions, hours);
 }
+
+// ---- landings per day by word (25 November 2026) ----------------------------------
+
+/**
+ * How many whole UTC days the landings-by-word table goes back: four
+ * weeks, so a launch judged at day 14 (docs/launch-log.md) is still on the
+ * page with the two weeks before it, where the 7-day table above has
+ * rolled it off
+ */
+export const LANDING_DAYS = 28;
+
+/** landings per UTC day, page (blob2: home, p, daily, advent, calendar) and the word their referrer gave (blob5) */
+export const landingDaysQuery = () =>
+  [
+    `SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, blob2 AS slot, blob5 AS word, ${N}`,
+    `FROM ${DATASET}`,
+    `WHERE timestamp > NOW() - INTERVAL '${LANDING_DAYS + 1}' DAY AND index1 = 'landing'`,
+    'GROUP BY day, slot, word ORDER BY day FORMAT JSON'
+  ].join(' ');
+
+/** the columns the table reads of the query's answer */
+export const LANDING_DAY_COLUMNS = ['day', 'slot', 'word'];
+
+/** one day's landings: by word, and by where they landed */
+export interface LandingDay {
+  day: string;
+  byWord: Record<string, number>;
+  home: number;
+  /** a share page: /p/, a daily's address */
+  shared: number;
+  /** the calendar's page and a door's address */
+  advent: number;
+  all: number;
+}
+
+export interface LandingDays {
+  /** today and the LANDING_DAYS whole days before it, newest first */
+  days: LandingDay[];
+  /** the words that had a landing, the most first over the LANDING_DAYS days */
+  words: string[];
+  /** the last 7 whole days and the LANDING_DAYS whole days, by word, and in all */
+  week: Record<string, number>;
+  month: Record<string, number>;
+}
+
+const plus = (counts: Record<string, number>, key: string, n: number) => {
+  counts[key] = (counts[key] ?? 0) + n;
+};
+
+/** the table's numbers from the answer's rows; null when the query failed */
+export function landingDaysOf(now: Date, rows: MoreRow[] | null): LandingDays | null {
+  if (!rows) return null;
+  const keys = Array.from({ length: LANDING_DAYS + 1 }, (_, i) => dayBefore(now, i));
+  const by = new Map(keys.map((day): [string, LandingDay] => [day, { day, byWord: {}, home: 0, shared: 0, advent: 0, all: 0 }]));
+  for (const r of rows) {
+    const d = by.get(r.day.slice(0, 10));
+    if (!d) continue;
+    plus(d.byWord, r.word, r.n);
+    d.all += r.n;
+    if (r.slot === 'home') d.home += r.n;
+    else if (r.slot === 'advent' || r.slot === 'calendar') d.advent += r.n;
+    else d.shared += r.n;
+  }
+  const days = keys.map((k) => by.get(k)!);
+  const week: Record<string, number> = {};
+  const month: Record<string, number> = {};
+  days.slice(1).forEach((d, i) => {
+    for (const [w, n] of Object.entries(d.byWord)) {
+      plus(month, w, n);
+      if (i < 7) plus(week, w, n);
+    }
+  });
+  const today = days[0];
+  const words = [...new Set([...Object.keys(month), ...Object.keys(today.byWord)])]
+    .filter((w) => (month[w] ?? 0) + (today.byWord[w] ?? 0) > 0)
+    .sort((a, b) => (month[b] ?? 0) - (month[a] ?? 0) || a.localeCompare(b));
+  return { days, words, week, month };
+}
+
+/** the table, as HTML */
+export function landingDaysSection(l: LandingDays | null): string {
+  const head = `    <h2>Landings per day by word, last ${LANDING_DAYS} days</h2>`;
+  if (!l) return `${head}\n${failed}`;
+  const label = (w: string) => w || 'unrecorded';
+  const sumOf = (counts: Record<string, number>) => Object.values(counts).reduce((a, b) => a + b, 0);
+  const total = (days: LandingDay[], f: (d: LandingDay) => number) => days.reduce((a, d) => a + f(d), 0);
+  const whole = l.days.slice(1);
+  const rows = l.days.map((d, i) =>
+    tr([d.day, ...l.words.map((w) => d.byWord[w] ?? 0), d.home, d.shared, d.advent, d.all]).replace('<tr>', i === 0 ? '<tr class="today">' : '<tr>')
+  );
+  rows.push(tr(['Last 7 days', ...l.words.map((w) => l.week[w] ?? 0), total(whole.slice(0, 7), (d) => d.home), total(whole.slice(0, 7), (d) => d.shared), total(whole.slice(0, 7), (d) => d.advent), sumOf(l.week)]));
+  rows.push(tr([`${LANDING_DAYS} days`, ...l.words.map((w) => l.month[w] ?? 0), total(whole, (d) => d.home), total(whole, (d) => d.shared), total(whole, (d) => d.advent), sumOf(l.month)]));
+  return [
+    head,
+    table(['Day', ...l.words.map(label), 'On a home page', 'On a share page', 'Advent', 'All'], rows),
+    `    <p class="meta">Every landing, by the word its referrer gave (the words of the launch log, docs/launch-log.md) and by where it landed: a home page, a share page (a /p/ link or a daily's address), or the advent calendar (its page or a door's address), which the 7-day table above leaves to the Christmas section. Newest first; today's row is the day so far, and the two totals leave it out. A launch's word is still here at day 14 with the two weeks before it. Unrecorded is a landing counted before the word was kept.</p>`
+  ].join('\n');
+}
+
+/** runs the table's query; a query that fails leaves the table saying so */
+export async function landingDaysFor(env: MoreEnv, now: Date, doFetch: typeof fetch, api: string): Promise<LandingDays | null> {
+  try {
+    const res = await doFetch(api, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${env.ADMIN_TOKEN}`, 'content-type': 'text/plain; charset=utf-8' },
+      body: landingDaysQuery()
+    });
+    if (!res.ok) return null;
+    return landingDaysOf(now, moreRowsOf(JSON.parse(await res.text()), LANDING_DAY_COLUMNS));
+  } catch {
+    return null;
+  }
+}

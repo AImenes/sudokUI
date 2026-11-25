@@ -36,9 +36,11 @@ import {
   RATE_LIMIT,
   TelemetryEvent
 } from '../worker/telemetry';
-import { levelsQuery, timesQuery, countriesQuery, versionsQuery, hoursQuery } from '../worker/adminMore';
+import { levelsQuery, timesQuery, countriesQuery, versionsQuery, hoursQuery, landingDaysQuery } from '../worker/adminMore';
 import {
   handleAdmin,
+  dashboardChecks,
+  adventSql,
   adminQuery,
   rowsOf,
   metricsOf,
@@ -112,7 +114,8 @@ const post = (body: unknown, headers: Record<string, string> = {}) =>
   });
 
 /** the dashboard's five further queries, in the order it asks them (worker/adminMore.ts) */
-const MORE_QUERIES = () => [levelsQuery(), timesQuery(), countriesQuery(), versionsQuery(), hoursQuery()];
+/** the five further tables' queries (worker/adminMore.ts), then the landings by word's */
+const MORE_QUERIES = () => [levelsQuery(), timesQuery(), countriesQuery(), versionsQuery(), hoursQuery(), landingDaysQuery()];
 
 describe('a solve says whether help was used', () => {
   const solve = (over: Record<string, unknown> = {}) => good({ kind: 'practice', lang: 'en', ...over });
@@ -1059,8 +1062,8 @@ describe('the dashboard', () => {
     const res = await handleRequest(get(access), assets(secrets), undefined, admin);
     expect(res.status).toBe(200);
     expect(res.headers.get('x-answered-by')).toBeNull();
-    // the main query and the five further ones (worker/adminMore.ts)
-    expect(sql.calls).toHaveLength(6);
+    // the main query, the five further ones and the landings by word (worker/adminMore.ts)
+    expect(sql.calls).toHaveLength(7);
   });
 
   it('reads the dataset through the SQL API with the token, which never reaches the page', async () => {
@@ -1088,6 +1091,87 @@ describe('the dashboard', () => {
     expect(await head.text()).toBe('');
     const wrong = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { method: 'POST', headers: access }), secrets, { fetch, now: NOW, accessKeys }))!;
     expect(wrong.status).toBe(405);
+  });
+
+  it('opens with "Toward 100 a day" and the reading to copy, from the rows already fetched, and keeps 28 days of landings by word', async () => {
+    const { calls, fetch } = api(() => json({ meta: [], data: ROWS, rows: ROWS.length }));
+    const html = await (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: access }), secrets, { fetch, now: NOW, accessKeys }))!.text();
+    // nothing more asked for the top: the main query, the five further tables and the landings by word
+    expect(calls.map((c) => c.init?.body)).toEqual([adminQuery(), ...MORE_QUERIES()]);
+    expect(html.indexOf('<h2>Toward 100 a day</h2>')).toBeGreaterThan(html.indexOf('<h1>'));
+    expect(html.indexOf('<h2>Toward 100 a day</h2>')).toBeLessThan(html.indexOf('<dt>Completed, last 7 days</dt>'));
+    // the week to 12 October: 10 begun on the 12th, none on the six days before
+    expect(html).toContain('<dt>Games begun a day, last 7 days</dt><dd>1.4</dd>');
+    // the reading: 6 completed on the 12th, over 7 days
+    expect(html).toContain('id="copy-reading" data-row="| 2026-10-13 |  | 0.9 |');
+    expect(html).toContain('href="/admin?check"');
+    // the landings by word stand after the week's, before every day
+    const words = html.indexOf('<h2>Landings per day by word, last 28 days</h2>');
+    expect(words).toBeGreaterThan(html.indexOf('<h2>Where landings came from, last 7 days</h2>'));
+    expect(words).toBeLessThan(html.indexOf('<h2>Every day</h2>'));
+    expect(html).not.toContain(secrets.ADMIN_TOKEN);
+  });
+
+  it('runs every query against the API at /admin?check, behind Access, and shows what each answered without a secret', async () => {
+    const answers = new Map<string, () => Response>([
+      [adminQuery(), () => json({ meta: [{ name: 'day', type: 'DateTime' }], data: [{ day: '2026-10-12 00:00:00', event: 'started', n: 3 }] })],
+      [levelsQuery(), () => new Response(`unknown column blob8 (account ${secrets.ADMIN_ACCOUNT_ID})`, { status: 422 })],
+      [hoursQuery(), () => json({ errors: [{ message: `token ${secrets.ADMIN_TOKEN} lacks the permission` }] }, 403)]
+    ]);
+    const { calls, fetch } = api(() => json({ data: [] }));
+    const routed = (async (url: string | URL | Request, init?: RequestInit) => {
+      await fetch(url, init);
+      return (answers.get(String(init?.body)) ?? (() => json({ meta: [], data: [] })))();
+    }) as typeof fetch;
+    const req = (h: Record<string, string>, method = 'GET') => new Request(`${SITE}${ADMIN_PATH}?check`, { headers: h, method });
+    // no Access token: the unknown path, and nothing asked
+    expect(await handleAdmin(req({}), secrets, { fetch: routed, now: NOW, accessKeys })).toBeNull();
+    expect(calls).toHaveLength(0);
+    const res = (await handleAdmin(req(access), secrets, { fetch: routed, now: NOW, accessKeys }))!;
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+    // eight queries: the calendar's over the last 30 days, its window not yet open in October
+    expect(calls.map((c) => c.init?.body)).toEqual(dashboardChecks(NOW()).map((c) => c.sql));
+    expect(calls).toHaveLength(8);
+    expect(calls[1].init?.body).toBe(adventSql(30));
+    for (const c of calls) expect(c.url).toBe(sqlApi(secrets.ADMIN_ACCOUNT_ID));
+    const html = await res.text();
+    expect(html).toContain('<h1>sudokUI admin: query check</h1>');
+    expect(html).toContain('<p>6 of 8 accepted.</p>');
+    expect(html).toContain('<tr><td>The main query: plays, shares, landings</td><td>Accepted</td><td>200</td><td>1</td><td>1</td>');
+    expect(html).toContain('<tr><td>Help used and levels</td><td>Refused</td><td>422</td>');
+    expect(html).toContain('unknown column blob8 (account [secret])');
+    expect(html).toContain('token [secret] lacks the permission');
+    expect(html).toContain('No database is bound');
+    expect(html).not.toContain(secrets.ADMIN_TOKEN);
+    expect(html).not.toContain(secrets.ADMIN_ACCOUNT_ID);
+    expect(html).not.toContain(access[ACCESS_HEADER].split('.')[2]);
+    // in December the calendar's query is the page's own, over its window
+    expect(dashboardChecks(new Date('2026-12-06T12:00:00Z'))[1].sql).toBe(adventQuery(new Date('2026-12-06T12:00:00Z'), 2026));
+    // a HEAD asks nothing
+    const before = calls.length;
+    const head = (await handleAdmin(req(access, 'HEAD'), secrets, { fetch: routed, now: NOW, accessKeys }))!;
+    expect([head.status, await head.text(), calls.length]).toEqual([200, '', before]);
+  });
+
+  it("checks the database's two reads too, when one is bound", async () => {
+    const db = {
+      prepare: (sql: string) => {
+        const st = {
+          bind: () => st,
+          all: async () => {
+            if (sql.includes('daily_hist')) throw new Error('no such table: daily_hist');
+            return { results: [{ day: 1, n: 3, unassisted: 2 }] };
+          }
+        };
+        return st;
+      },
+      batch: async () => []
+    };
+    const { fetch } = api(() => json({ data: [] }));
+    const html = await (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}/?check`, { headers: access }), { ...secrets, DB: db as never }, { fetch, now: NOW, accessKeys }))!.text();
+    expect(html).toContain('<tr><td>Daily times sent, the last 30 days</td><td>Read</td><td>1</td><td></td></tr>');
+    expect(html).toContain("<tr><td>The doors' times, 2026</td><td>Failed</td><td>—</td><td>The read failed.</td></tr>");
   });
 
   it('ends with the Christmas section: in October, the calendar to come, at zero, with no query of its own', async () => {
@@ -1119,7 +1203,7 @@ describe('the dashboard', () => {
     const { calls, fetch } = api(() => answers.shift()!);
     const res = (await handleAdmin(new Request(`${SITE}${ADMIN_PATH}`, { headers: token }), secrets, { fetch, now: DEC, accessKeys }))!;
     expect(res.status).toBe(200);
-    expect(calls).toHaveLength(7);
+    expect(calls).toHaveLength(8);
     expect(calls.slice(2).map((c) => c.init?.body)).toEqual(MORE_QUERIES());
     expect(calls[0].init?.body).toBe(adminQuery());
     expect(calls[1].url).toBe(sqlApi(secrets.ADMIN_ACCOUNT_ID));
