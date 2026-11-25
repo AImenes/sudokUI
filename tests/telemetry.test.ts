@@ -69,6 +69,8 @@ import { BUCKET_MAX, statsFromHistogram } from '../src/content/dailies';
 import dailies from '../src/content/dailies.json';
 import type { Daily } from '../src/content/dailies';
 import { PRIVACY, PRIVACY_URL } from '../src/content/privacy';
+import NB from '../src/content/locales/ui.nb';
+import ES from '../src/content/locales/ui.es';
 import { buildLearnPages, buildSitemap, SITE as PAGES_SITE } from '../src/content/learnPages';
 import { STATIC_ROUTES } from '../src/content/staticRoutes';
 import { HOME_LANGS } from '../src/content/home';
@@ -1237,6 +1239,28 @@ describe('the privacy page', () => {
       for (const words of WORDS[lang]) expect(text, lang).toContain(words);
       expect(c.sections.map((s) => s.heading), lang).toContain(HEADINGS[lang]);
     }
+  });
+
+  it('says what Scan does with the camera and a picture, in every language', () => {
+    /** the heading, the two ways in, where it is read, that it is neither sent nor kept, and when the camera turns off */
+    const SCAN = {
+      en: ['Scan: the camera and a picture you choose', '“Photo or file”', '“Use the camera”', '“Snap”', 'The picture is read on your device by the app’s own code and is never sent', 'it is not kept', 'in memory while you check', 'The camera turns off once the digits read are on the board, when you press Cancel and when the dialog closes', 'Scanning sends no line of its own'],
+      nb: ['Skann: kameraet og et bilde du velger', '«Bilde eller fil»', '«Bruk kameraet»', '«Ta bilde»', 'Bildet leses på enheten din av appens egen kode og sendes aldri', 'det beholdes ikke', 'i minnet mens du sjekker', 'Kameraet slås av så snart sifrene som ble lest, står på brettet, når du trykker Avbryt og når vinduet lukkes', 'Skanning sender ingen egen linje'],
+      es: ['Escanear: la cámara y una imagen que eliges', '«Foto o archivo»', '«Usar la cámara»', '«Hacer foto»', 'La imagen se lee en tu dispositivo con el propio código de la app y nunca se envía', 'tampoco se guarda', 'en memoria mientras revisas', 'La cámara se apaga en cuanto las cifras leídas están en el tablero, al pulsar Cancelar y al cerrarse el cuadro', 'Escanear no envía ninguna línea propia']
+    };
+    for (const lang of HOME_LANGS) {
+      const section = PRIVACY[lang].sections.find((s) => s.heading === SCAN[lang][0]);
+      expect(section, lang).toBeDefined();
+      expect(section!.paragraphs, lang).toHaveLength(1);
+      for (const words of SCAN[lang]) expect(section!.heading + ' ' + section!.paragraphs[0], `${lang} ${words}`).toContain(words);
+    }
+    // the buttons it names are the dialog's own, in each language
+    expect(NB['Photo or file']).toBe('Bilde eller fil');
+    expect(NB['Use the camera']).toBe('Bruk kameraet');
+    expect(NB.Snap).toBe('Ta bilde');
+    expect(ES['Photo or file']).toBe('Foto o archivo');
+    expect(ES['Use the camera']).toBe('Usar la cámara');
+    expect(ES.Snap).toBe('Hacer foto');
   });
 
   it('leaves no English in the Norwegian and Spanish copy', () => {
