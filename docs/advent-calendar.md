@@ -210,6 +210,16 @@ Worker still refuses a time for a door whose day has not come anywhere
   address opened from outside the site counts a landing with `advent` in
   `LANDING_SLOTS`, and the door's band once it is open. Nothing else is
   sent: no count of who opens the calendar, and none of the Christmas look.
+  (That is the app: opening the calendar's dialog sends nothing.) The
+  calendar's public page, `/advent/`, `/nb/julekalender/` and
+  `/es/calendario-de-adviento/`, opened from outside the site, counts a
+  landing exactly as the home pages do (`countLanding`, `isLanding`: a
+  person's browser, a navigation, no referrer from the site, with the
+  referrer's word), with `calendar` in `LANDING_SLOTS`, at the owner's
+  asking of 25 November 2026, to see which post or picture brought
+  people. One difference from a home page: the app's service worker
+  never answers this page (`STATIC_ROUTES`), so a player who holds the
+  app and opens the page from a post counts too.
 - **On the device**, with the dailies' own record
   (src/state/dailyStats.ts): each door solved, its time and whether it had
   help, at most 48 (two calendars), kept apart from the 31 days of daily
@@ -395,9 +405,13 @@ and the sitemap, and the dev server serves them.
   date, so a search engine finds the link and a reader sees it only in
   season. llms.txt lists the page too.
 - **Not the app's.** `STATIC_ROUTES` matches the three pages, so the
-  service worker never answers them with the app; `/advent/` is under
-  `/advent/*` in wrangler.jsonc's `run_worker_first`, and the Worker hands
-  it back to the assets as it is, counting nothing (tests/telemetry.test.ts).
+  service worker never answers them with the app. `/advent/` is under
+  `/advent/*` in wrangler.jsonc's `run_worker_first`, and
+  `/nb/julekalender/` and `/es/calendario-de-adviento/` are listed there
+  exactly (since 25 November 2026); the Worker counts a visit from
+  outside the site as a landing with `calendar` (`CALENDAR_PATHS`,
+  worker/index.ts) and hands the page back to the assets as it is
+  (tests/telemetry.test.ts). The page's own script sends nothing.
 - **IndexNow** reads the sitemap (scripts/build-indexnow.ts), so the
   three pages go to IndexNow on the first deploy with them, and again
   whenever they change. No other page's HTML changes with them but the
@@ -415,13 +429,15 @@ shows the coming one), else the last.
   calendar opens on 1 December, by each player's own date, and every door
   shows zeros; in December that it is open; after, that it closed on 31
   December and that a door game under way can still be finished.
-- **Five numbers**: door games begun and completed, the completion rate,
-  the unassisted times sent, and the landings on a door's address.
+- **Six numbers**: door games begun and completed, the completion rate,
+  the unassisted times sent, the landings on a door's address, and the
+  landings on the calendar's public page.
 - **A row per door**: its day, its band and rating (from `advent.json`),
   games begun and completed, the completion rate, the unassisted times
   that reached the database and their median, and a row for all.
-- **Where the door landings came from**, by the referrer's word, as the
-  main table of landings has it.
+- **Where the calendar's landings came from**, by the referrer's word,
+  as the main table of landings has it: on the calendar's page and on a
+  door's address, side by side.
 
 Where the numbers come from, each read kept bounded:
 
@@ -431,7 +447,8 @@ Where the numbers come from, each read kept bounded:
   day ahead of UTC opens door 1 then) to 31 January (a month for the door
   games under way on 1 January), at most 63 days back, and kept to the
   calendar's own lines (the doors' starts and solves, and the landings in
-  the `advent` slot): two events of 24 doors and the landing words, a day.
+  the `advent` and `calendar` slots): two events of 24 doors and two
+  slots of the landing words, a day.
   Before 30 November nothing is asked and the doors show zeros; after 31
   January the counts are no longer read (Analytics Engine keeps three
   months) and the section says so. If that query fails, the section says
@@ -444,8 +461,11 @@ Where the numbers come from, each read kept bounded:
   fails says so. The daily's own table of times sent (`dailySent`) leaves
   the doors' numbers out (`puzzle_no < ADVENT_BASE`): a door's time is
   counted here only, so the daily's Sent share never counts a door's.
-- **Landings** are the `landing` points with `advent` in the source slot,
-  by the word in the fifth blob.
+- **Landings** are the `landing` points with `advent` in the source slot
+  (a door's address) or `calendar` (the public page), by the word in the
+  fifth blob. The calendar page's landings are counted in this section
+  only, not among the landings at the top of the page, whose share-page
+  ratio they would skew.
 - Nothing counts the Christmas look: no line says which theme a player
   uses, and the section says that too.
 

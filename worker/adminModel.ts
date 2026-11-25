@@ -154,4 +154,7 @@ export interface AdventMetrics {
   /** landings on a door's address (the slot advent), and by the word their referrer gave (telemetry.ts, landingWord) */
   landings: number;
   landingsFrom: Record<string, number>;
+  /** landings on the calendar's public page (the slot calendar), and by the word their referrer gave */
+  calendarLandings: number;
+  calendarFrom: Record<string, number>;
 }

@@ -58,9 +58,13 @@ push.
   the site (`worker/index.ts`, `HOME_PATHS`):
   `curl -I -H 'Sec-Fetch-Mode: navigate' https://sudokui.app/nb/` must
   answer 200 with the page as before (a HEAD request counts nothing).
+  So does the advent calendar's public page, `/advent/` (under
+  `/advent/*`), `/nb/julekalender/` and `/es/calendario-de-adviento/`
+  (`CALENDAR_PATHS`): `curl -I -H 'Sec-Fetch-Mode: navigate'
+  https://sudokui.app/nb/julekalender/` must answer 200 with the page.
 
 The free plan allows 100,000 Worker requests a day; static files are not
-counted. Only share landings, the three home pages and unknown paths
+counted. Only share landings, the three home pages, the calendar's three pages and unknown paths
 reach the Worker, so the budget in [online-goals.md](online-goals.md)
 holds.
 

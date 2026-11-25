@@ -24,7 +24,8 @@
  * from 30 November to 31 January and kept to the calendar's own lines),
  * its completion rate, its unassisted times and their median (the
  * database's histogram, one read on the range of the year's 24 door
- * numbers), and the landings on the doors' addresses by referrer word.
+ * numbers), and the landings on the doors' addresses and on the
+ * calendar's public page, by referrer word.
  * Before 1 December it says when the calendar opens and shows zeros.
  */
 import {
@@ -187,6 +188,10 @@ export function daysOf(rows: Row[], now: Date): DayRow[] {
       d.completedOptinOffline += r.optin_offline;
       d.completedStandalone += r.standalone;
     } else if (r.event === 'landing') {
+      // a landing on the advent calendar's public page is the Christmas
+      // section's (adventOf): the landings here are the home pages' and
+      // the share pages', which the per-share ratio reads
+      if (r.source === 'calendar') continue;
       d.landings += r.n;
       if (r.source === 'daily') d.landingsDaily += r.n;
       add(d.landingsFrom, r.kind, r.n);
@@ -519,7 +524,7 @@ ${playRows}
       </tbody>
     </table></div>
     <p class="meta">Kind and language are what a start or a solve says about itself, from the builds of November 2026 on: Daily is the daily puzzle, From a share link a puzzle or position opened from a link someone shared, Practice a practice puzzle, and New any other (a new one by band, an import, a grid typed, pasted or scanned, a Learn page's example); the language is the one the app was set to. Lines from older builds say neither and are Not recorded. Practice puzzles are counted from November 2026, at the player's own first move since they open part-way through, and are left out of Starts, Completed, Offline, In installed app, New and Returning and the numbers above, so those read as they did before.</p>
-    <p class="meta">A home landing is a visit to /, /nb/ or /es/ from outside the site that the browser did not answer from the app it already holds: mostly a first visit. Landings per share counts the share pages' landings only.</p>
+    <p class="meta">A home landing is a visit to /, /nb/ or /es/ from outside the site that the browser did not answer from the app it already holds: mostly a first visit. Landings per share counts the share pages' landings only. The landings on the advent calendar's public page are in the Christmas section, not here.</p>
     <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge or the daily's line that the share sheet took or that was copied, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most apps send none (on Android some name themselves), so No referrer is mostly links opened from apps. With no referrer, a link an AI assistant tagged (utm_source=chatgpt.com and the like) counts as An AI assistant. The sixth metric of the plan, search clicks, is in Search Console.</p>
   </body>
 </html>
@@ -631,12 +636,14 @@ export const adventCountFrom = (year: number) => `${year}-11-30`;
 export const adventCountTo = (year: number) => `${year + 1}-01-31`;
 
 /**
- * The doors' play lines and the landings on their addresses, summed per
- * UTC day, event, kind (a landing's referrer word, blob5) and door (a
- * play line's seventh blob, telemetry.ts pointOf), from the window's first
- * day to now; null outside the window, when nothing is read. Bounded as
- * the main query is: at most 63 days, and the rows of the calendar's
- * lines only, two events of 24 doors and one of the landing words a day.
+ * The doors' play lines and the landings on their addresses and on the
+ * calendar's public page, summed per UTC day, event, slot (a landing's
+ * page, blob2: `advent` for a door's address, `calendar` for the public
+ * page), kind (a landing's referrer word, blob5) and door (a play line's
+ * seventh blob, telemetry.ts pointOf), from the window's first day to
+ * now; null outside the window, when nothing is read. Bounded as the main
+ * query is: at most 63 days, and the rows of the calendar's lines only,
+ * two events of 24 doors and two slots of the landing words a day.
  */
 export function adventQuery(now: Date, year: number): string | null {
   const today = utcDay(now);
@@ -644,12 +651,12 @@ export function adventQuery(now: Date, year: number): string | null {
   // whole days back past the window's first midnight; the days before it are left out by adventOf
   const days = daysBetween(adventCountFrom(year), today) + 1;
   return [
-    "SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, index1 AS event, blob5 AS kind, blob7 AS door,",
+    "SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, index1 AS event, blob2 AS slot, blob5 AS kind, blob7 AS door,",
     'SUM(_sample_interval * double2) AS n',
     `FROM ${DATASET}`,
     `WHERE timestamp > NOW() - INTERVAL '${days}' DAY`,
-    "AND ((index1 = 'landing' AND blob2 = 'advent') OR ((index1 = 'started' OR index1 = 'completed') AND blob5 = 'advent'))",
-    'GROUP BY day, event, kind, door ORDER BY day FORMAT JSON'
+    "AND ((index1 = 'landing' AND (blob2 = 'advent' OR blob2 = 'calendar')) OR ((index1 = 'started' OR index1 = 'completed') AND blob5 = 'advent'))",
+    'GROUP BY day, event, slot, kind, door ORDER BY day FORMAT JSON'
   ].join(' ');
 }
 
@@ -657,6 +664,8 @@ export function adventQuery(now: Date, year: number): string | null {
 export interface AdventRow {
   day: string;
   event: string;
+  /** a landing's page: `advent` for a door's address, `calendar` for the public page; a play line's source (pwa, tab), which is not read */
+  slot?: string;
   /** a play line's kind (advent), a landing's referrer word */
   kind: string;
   /** a play line's door, '1' to '24'; '' for a landing */
@@ -674,7 +683,7 @@ export function adventRowsOf(answer: unknown): AdventRow[] {
     const r = x as Record<string, unknown>;
     if (typeof r.day !== 'string' || typeof r.event !== 'string') return [];
     const n = Number(r.n);
-    return [{ day: r.day.slice(0, 10), event: r.event, kind: text(r.kind), door: text(r.door), n: Number.isFinite(n) ? n : 0 }];
+    return [{ day: r.day.slice(0, 10), event: r.event, slot: text(r.slot), kind: text(r.kind), door: text(r.door), n: Number.isFinite(n) ? n : 0 }];
   });
 }
 
@@ -729,9 +738,16 @@ export function adventOf(
   const started = new Map<number, number>();
   const completed = new Map<number, number>();
   const landingsFrom: Record<string, number> = {};
+  const calendarFrom: Record<string, number> = {};
   let landings = 0;
+  let calendarLandings = 0;
   for (const r of rows ?? []) {
     if (r.day < from || r.day > to) continue;
+    if (r.event === 'landing' && r.slot === 'calendar') {
+      calendarLandings += r.n;
+      add(calendarFrom, r.kind, r.n);
+      continue;
+    }
     if (r.event === 'landing') {
       landings += r.n;
       add(landingsFrom, r.kind, r.n);
@@ -772,7 +788,9 @@ export function adventOf(
     completionRate: ratio(sum((d) => d.completed), sum((d) => d.started)),
     times: times ? sum((d) => d.times ?? 0) : null,
     landings,
-    landingsFrom
+    landingsFrom,
+    calendarLandings,
+    calendarFrom
   };
 }
 
@@ -812,7 +830,8 @@ export function adventSection(m: AdventMetrics): string {
     number('Door games completed', num(m.completed)),
     number('Completion rate', pct(m.completionRate), `${num(m.completed)} completed of ${num(m.started)} begun`),
     number('Unassisted times sent', num(m.times), 'that reached the database, every door'),
-    number("Landings on a door's address", num(m.landings), 'opened from outside the site, by people')
+    number("Landings on a door's address", num(m.landings), 'opened from outside the site, by people'),
+    number("Landings on the calendar's page", num(m.calendarLandings), '/advent/, /nb/julekalender/, /es/calendario-de-adviento/, from outside the site')
   ].join('\n');
   const rows = m.doors
     .map(
@@ -820,10 +839,18 @@ export function adventSection(m: AdventMetrics): string {
         `      <tr><td>${d.door}</td><td>${esc(shortDay(d.date))}</td><td>${d.level ? `${esc(d.level)} ${d.score}` : '—'}</td><td>${num(d.started)}</td><td>${num(d.completed)}</td><td>${pct(d.completionRate)}</td><td>${num(d.times)}</td><td>${clock(d.median)}</td></tr>`
     )
     .join('\n');
-  const fromRows = Object.entries(m.landingsFrom)
-    .filter(([, n]) => n > 0)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([from, n]) => `      <tr><td>${esc(FROM_LABELS[from] ?? from)}</td><td>${num(n)}</td><td>${pct(m.landings > 0 ? n / m.landings : null)}</td></tr>`)
+  // where the calendar's landings came from, the most first: on its page
+  // and on a door's address, side by side
+  const all = m.landings + m.calendarLandings;
+  const words = new Set([...Object.keys(m.landingsFrom), ...Object.keys(m.calendarFrom)]);
+  const fromRows = [...words]
+    .map((from): [string, number, number] => [from, m.calendarFrom[from] ?? 0, m.landingsFrom[from] ?? 0])
+    .filter(([, page, doors]) => page + doors > 0)
+    .sort((a, b) => b[1] + b[2] - (a[1] + a[2]) || a[0].localeCompare(b[0]))
+    .map(
+      ([from, page, doors]) =>
+        `      <tr><td>${esc(FROM_LABELS[from] ?? from)}</td><td>${num(page)}</td><td>${num(doors)}</td><td>${num(page + doors)}</td><td>${pct(all > 0 ? (page + doors) / all : null)}</td></tr>`
+    )
     .join('\n');
   return `    <h2>Christmas: the advent calendar ${m.year}</h2>
     <p class="meta">${esc(stand)} ${esc(counts)}${esc(database)}</p>
@@ -837,14 +864,14 @@ ${rows}
       <tr><td>All</td><td></td><td></td><td>${num(m.started)}</td><td>${num(m.completed)}</td><td>${pct(m.completionRate)}</td><td>${num(m.times)}</td><td></td></tr>
       </tbody>
     </table></div>
-    <h2>Where the door landings came from</h2>
+    <h2>Where the calendar's landings came from</h2>
     <div class="wide"><table>
-      <thead><tr><th>From</th><th>Landings</th><th>Of all</th></tr></thead>
+      <thead><tr><th>From</th><th>Calendar page</th><th>A door's address</th><th>All</th><th>Of all</th></tr></thead>
       <tbody>
-${fromRows || '      <tr><td>No landings</td><td>0</td><td>—</td></tr>'}
+${fromRows || '      <tr><td>No landings</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>'}
       </tbody>
     </table></div>
-    <p class="meta">Begun and Completed are the door games' play lines (kind Advent calendar), each with its door, over the calendar's days; a door begun on one day and solved on another counts on each. Times sent are the unassisted times the win screen sent for each door, on its day and up to a week late, until 31 December; the median is the one the win screen shows. A landing on a door's address is a person opening /advent/${m.year}/&lt;door&gt; (or under /nb/, /es/) from outside the site; the public calendar pages, /advent/, /nb/julekalender/ and /es/calendario-de-adviento/, are files and count nothing. Nothing counts the Christmas look: no line says which theme a player uses.</p>`;
+    <p class="meta">Begun and Completed are the door games' play lines (kind Advent calendar), each with its door, over the calendar's days; a door begun on one day and solved on another counts on each. Times sent are the unassisted times the win screen sent for each door, on its day and up to a week late, until 31 December; the median is the one the win screen shows. A landing on a door's address is a person opening /advent/${m.year}/&lt;door&gt; (or under /nb/, /es/) from outside the site. A landing on the calendar's page is a person opening /advent/, /nb/julekalender/ or /es/calendario-de-adviento/ from outside the site, counted as the home pages are (since 25 November 2026); the app never answers that page, so a returning player's visit from a post counts too, which a home page's does not. These landings are counted here only, not among the landings at the top of the page. Nothing counts the Christmas look: no line says which theme a player uses.</p>`;
 }
 
 /**

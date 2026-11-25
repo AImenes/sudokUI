@@ -32,7 +32,12 @@
  *   landing, as on a share address, and the page is the assets' own,
  *   unchanged. A browser that already holds the app answers these from
  *   its service worker and never asks, so this counts mostly first
- *   visits.
+ *   visits;
+ * - the advent calendar's public page, /advent/, /nb/julekalender/ and
+ *   /es/calendario-de-adviento/ (CALENDAR_PATHS), a static file the
+ *   service worker never answers: a person arriving from outside the site
+ *   counts a landing as on a home page, with `calendar`, and the page is
+ *   the assets' own, unchanged.
  *
  * Everything else goes back to the assets, which answer with the 404
  * page of the nearest language.
@@ -55,6 +60,7 @@ import { handleDailyApi, d1Store, D1Like } from './daily';
 import { handleTelemetry, countLanding, AnalyticsEngineLike } from './telemetry';
 import { handleAdmin, ADMIN_PATH, AdminOptions } from './admin';
 import { handleFeedback, SendEmailLike } from './feedback';
+import { ADVENT_URLS } from '../src/content/staticRoutes';
 import { EmailMessage } from 'cloudflare:email';
 
 /**
@@ -88,6 +94,9 @@ export const SHARE_TEMPLATE = '/share.tpl';
 
 /** the app's home page in each language, which wrangler.jsonc's run_worker_first sends here (src/content/home.ts) */
 export const HOME_PATHS = ['/', '/nb/', '/es/'];
+
+/** the advent calendar's public page in each language (src/content/adventPage.ts), which run_worker_first sends here too */
+export const CALENDAR_PATHS: string[] = Object.values(ADVENT_URLS);
 
 /**
  * A share page names the current build's hashed scripts, which a deploy
@@ -127,6 +136,11 @@ export async function handleRequest(request: Request, env: Env, ctx?: Context, a
     // a person arriving from outside the site is a landing, counted once;
     // the page itself is the file, as if the Worker were not here
     countLanding(env.EVENTS, request, 'home');
+    return env.ASSETS.fetch(request);
+  }
+  if (CALENDAR_PATHS.includes(url.pathname)) {
+    // the same for the calendar's page: counted once, answered with the file
+    countLanding(env.EVENTS, request, 'calendar');
     return env.ASSETS.fetch(request);
   }
   // the latest local date anywhere: a player a day ahead of UTC (EARLY_DAYS) sees a door open that UTC has not reached

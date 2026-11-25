@@ -42,9 +42,11 @@
     // from outside the site is counted as a landing (worker/index.ts,
     // HOME_PATHS); the Worker answers them with the file itself
     // A door of the advent calendar, /advent/<year>/<door>, is a share
-    // address too (worker/index.ts); /advent/ itself is a static page,
-    // which the Worker hands back to the assets as it is
-    "run_worker_first": ["/p/*", "/nb/p/*", "/es/p/*", "/daily/*", "/nb/daily/*", "/es/daily/*", "/advent/*", "/nb/advent/*", "/es/advent/*", "/api/*", "/admin", "/", "/nb/", "/es/"]
+    // address too (worker/index.ts); the calendar's public page, /advent/
+    // (under /advent/*), '/nb/julekalender/' and '/es/calendario-de-adviento/',
+    // is a static page, which the Worker counts a visit from outside the
+    // site on, as on a home page, and hands back to the assets as it is
+    "run_worker_first": ["/p/*", "/nb/p/*", "/es/p/*", "/daily/*", "/nb/daily/*", "/es/daily/*", "/advent/*", "/nb/advent/*", "/es/advent/*", "/api/*", "/admin", "/", "/nb/", "/es/", "/nb/julekalender/", "/es/calendario-de-adviento/"]
   },
   // The shared daily's results (docs/online-goals.md, phase 2): two small
   // tables, created by `npx wrangler d1 migrations apply sudokui-db

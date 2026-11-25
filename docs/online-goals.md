@@ -687,15 +687,18 @@ Christmas, November 2026 (the owner's decisions of 12 November;
   in season: each door's games begun and completed (the door rides on its
   play lines as a seventh blob), its completion rate, its unassisted
   times and their median from D1's histogram, and the landings on the
-  doors' addresses (`advent` in the source slot) by referrer word. Before
+  doors' addresses (`advent` in the source slot) and on the calendar's
+  public page (`calendar`), by referrer word. Before
   1 December it says when the calendar opens and shows zeros. Its counts
   are a second SQL query, run only from 30 November to 31 January and
   kept to the calendar's own lines; its times one read on the primary
   key's range of the year's 24 door numbers.
 - **Nothing counts the Christmas look**: no line says which theme a
   player uses. The public calendar pages (`/advent/`, `/nb/julekalender/`,
-  `/es/calendario-de-adviento/`) are files and count nothing; their
-  script reads the device's date only.
+  `/es/calendario-de-adviento/`) are files whose script reads the
+  device's date only and sends nothing; since 25 November 2026 the Worker
+  counts a visit to them from outside the site as a landing, as on a home
+  page, with `calendar` in the source slot (docs/advent-calendar.md).
 
 ### Phase 4, after four to eight weeks of data
 

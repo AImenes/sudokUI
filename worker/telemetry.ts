@@ -35,7 +35,12 @@
  * fetcher. That is the research's "share-link landings" number. The home
  * pages, /, /nb/ and /es/, count one the same way (worker/index.ts), with
  * `home` where a share page says `p` or `daily` (LANDING_SLOTS), and so
- * does a door's address, /advent/<year>/<door>, with `advent`. Its fifth
+ * does a door's address, /advent/<year>/<door>, with `advent`, and the
+ * advent calendar's public page, /advent/, /nb/julekalender/ and
+ * /es/calendario-de-adviento/, with `calendar` (the owner's asking of 25
+ * November 2026, to see which post or picture brought people to it): the
+ * app's service worker never answers that page, so a visit from outside
+ * the site counts there even when the browser holds the app. Its fifth
  * blob says where the link was opened from, as one word of a closed list
  * (landingWord): the referrer the browser sends is read for that word and
  * never written; with no referrer, the one tag an AI assistant puts on
@@ -558,10 +563,12 @@ export function landingWord(request: Request): LandingFrom {
 
 /**
  * Which page a landing was on, in the point's source slot: a puzzle's
- * share address, a daily's, one of the app's three home pages, or a door
- * of the advent calendar's address (/advent/<year>/<door>)
+ * share address, a daily's, one of the app's three home pages, a door of
+ * the advent calendar's address (/advent/<year>/<door>), or the advent
+ * calendar's public page in one of its three languages (worker/index.ts,
+ * CALENDAR_PATHS)
  */
-export const LANDING_SLOTS = ['p', 'daily', 'home', 'advent'] as const;
+export const LANDING_SLOTS = ['p', 'daily', 'home', 'advent', 'calendar'] as const;
 export type LandingSlot = (typeof LANDING_SLOTS)[number];
 
 /**
