@@ -502,8 +502,11 @@ without them. Now what that player sees is true for them:
   name it by the level and score shown too; the game set aside has its
   figure worked out as the one on the board does, and until it is known
   the published one stands in.
-- **Off the main thread.** Rating without uniqueness is slower on hard
-  puzzles (1.2 s for the Washington Post's), so it is never done on the
+- **Off the main thread.** Rating without uniqueness can be slow on hard
+  puzzles (the slowest of the 48 Nightmare seeds, `.......1.34.5...6...86.4....6..4..59.........7...63..2.853......1...28..9.....2..`,
+  about 5 s on the development machine, the median 0.4 s; the
+  Washington Post's took 1.2 s before the AIC was filed with the Nice
+  Loops, 0.07 s since: docs/rating-chains.md), so it is never done on the
   main thread: src/state/playerRating.ts asks the background worker
   (`ratePuzzleOff` in src/state/pools.ts, the worker's `rate` request)
   whenever a game opens or the setting is switched off, and keeps the

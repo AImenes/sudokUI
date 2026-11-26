@@ -88,10 +88,12 @@ puzzle rated in full with HoDoKu's order (uniqueness on) unless said.
   path from the first chain step on. Their published ratings
   (dailies.json, advent.json) stay true.
 - **The Washington Post puzzle without uniqueness: 6508 becomes 2226.**
-  Before, at the step where an AIC removes a candidate, the solver had to
-  pass it by and take a Finned Swordfish, six ALS-XZs, an ALS-XY-Wing,
-  two ALS-XY-Chains, two 3D Medusas and four Nice Loops on the way. Now it
-  takes the AIC (280) and the rest is Hard-class. With uniqueness it stays
+  Before, at the step where an AIC removes a candidate (right after a
+  Finned Swordfish, on both paths), the solver had to pass it by and take
+  six ALS-XZs, an ALS-XY-Wing, two ALS-XY-Chains, two 3D Medusas and four
+  Nice Loops on the way. Now it takes the AIC (280), and the rest needs
+  nothing above Unfair-class fish (a Sashimi Swordfish at the end; the
+  other steps are Hard and below). With uniqueness it stays
   1322: its path has no AIC.
 - **200 generated Unfair and Extreme puzzles** (rated Unfair or Extreme
   before; 70 Unfair, 130 Extreme):

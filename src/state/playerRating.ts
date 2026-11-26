@@ -3,8 +3,8 @@
 // uniqueness (settings.useUniqueness off) gets hints that never use it, so
 // the figure the game shows is worked out without it too (shownRating in
 // gameStore.ts). Worked out by the background worker, never on the main
-// thread: a hard puzzle takes a second to rate without uniqueness (the
-// Washington Post's of November 2026, 1.2 s), and the board must not wait.
+// thread: a hard puzzle can take seconds to rate without uniqueness (the
+// slowest Nightmare seed about 5 s), and the board must not wait.
 import { useGame, followsPlain, shownRating } from './gameStore';
 import type { GameInfo, ShownRating } from './gameStore';
 import { useSettings } from './settings';
