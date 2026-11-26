@@ -45,7 +45,7 @@ import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium, type Page } from '@playwright/test';
 import { BOX, GOLD, GROUNDS, SNOW, type GroundName, type Motif, feltOf, hardShadow, mix, n1 } from './advent-doors/felt';
-import { DOORS, H, MAX_BYTES, W, doorName, type BandName } from './advent-doors/doors';
+import { BANDS, DOORS, H, MAX_BYTES, W, doorName, type BandName } from './advent-doors/doors';
 
 export { DOORS, H, MAX_BYTES, W, doorName };
 
@@ -85,17 +85,6 @@ function stitches(cells: Cell[], fill: string): string {
   if (!cells.length) return '';
   return `<path d="${cells.map(([c, r]) => stitch(c, r)).join('')}" fill="${fill}"/>`;
 }
-
-/** the patterns of the bands, five rows each, repeated along the band */
-const BANDS: Record<BandName, string[]> = {
-  zigzag: ['S...S...', '...S.S..', '..S...S.', '.S.....S', 'S...S...'],
-  diamonds: ['..S...', '.S.S..', 'S.S.S.', '.S.S..', '..S...'],
-  hearts: ['.S.S...', 'SSSSS..', 'SSSSS..', '.SSS...', '..S....'],
-  stars: ['S.S.S..', '.SSS...', 'SS.SS..', '.SSS...', 'S.S.S..'],
-  // nine dots, three by three, a bar between one box and the next
-  ninedot: ['S.S.S...', '......S.', 'S.S.S.S.', '......S.', 'S.S.S...'],
-  trees: ['..S....', '.SSS...', '..S....', '.SSS...', 'SSSSS..']
-};
 
 /** the cells of both bands: the pattern's, and the gold row's */
 function bandCells(name: BandName): [Cell[], Cell[]] {

@@ -9,8 +9,11 @@ dist-ssr/
 # local editor/agent config (contains machine-specific paths)
 .claude/
 
-# rendered marketing screenshots
-promo/
+# rendered marketing pictures (scripts/promo-cards.ts, scripts/promo.sh);
+# the advent calendar's print set, promo/print/, is kept: it is printed as
+# it is (scripts/print-poster.ts, tests/printPoster.test.ts)
+promo/*
+!promo/print/
 test-results/
 playwright-report/
 

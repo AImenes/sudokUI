@@ -14,6 +14,21 @@ export const MAX_BYTES = 300 * 1024;
 
 export type BandName = 'zigzag' | 'diamonds' | 'hearts' | 'stars' | 'ninedot' | 'trees';
 
+/**
+ * The patterns of the bands, five rows each, repeated along the band (S a
+ * stitch in snow): the doors' pictures (scripts/og-advent-doors.ts) and
+ * the calendar's posters and flyers (scripts/print-poster.ts) knit them
+ */
+export const BANDS: Record<BandName, string[]> = {
+  zigzag: ['S...S...', '...S.S..', '..S...S.', '.S.....S', 'S...S...'],
+  diamonds: ['..S...', '.S.S..', 'S.S.S.', '.S.S..', '..S...'],
+  hearts: ['.S.S...', 'SSSSS..', 'SSSSS..', '.SSS...', '..S....'],
+  stars: ['S.S.S..', '.SSS...', 'SS.SS..', '.SSS...', 'S.S.S..'],
+  // nine dots, three by three, a bar between one box and the next
+  ninedot: ['S.S.S...', '......S.', 'S.S.S.S.', '......S.', 'S.S.S...'],
+  trees: ['..S....', '.SSS...', '..S....', '.SSS...', 'SSSSS..']
+};
+
 export interface Door {
   /** what the door shows: for messages and for whoever draws it; never on the picture */
   motif: string;

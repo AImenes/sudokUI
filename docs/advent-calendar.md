@@ -427,6 +427,13 @@ and the sitemap, and the dev server serves them.
   whenever they change. No other page's HTML changes with them but the
   home pages' and `/learn/`'s, in their three languages, which carry the
   quiet line.
+- **On paper** (26 November 2026): an A4 poster, an A5 flyer and an A4
+  sheet of two flyers, in Norwegian and English, for noticeboards
+  ([promo/print/](../promo/print/README.md), made by
+  scripts/print-poster.ts). Their QR code opens this page in its
+  language with `?utm_source=poster`, so a scan counts as `poster`;
+  the plain address is written under it. Not part of the site: nothing
+  under public/, nothing in the precache.
 
 ## The admin panel's Christmas section
 
