@@ -33,6 +33,13 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
   owner takes, the link used and the landing word expected, dated notes on
   how players arrive and why they stay, and the numbers read before and
   after.
+- [launch-posts-2026-12.md](launch-posts-2026-12.md): the advent
+  calendar's launch posts, ready to paste in Norwegian and English
+  (Facebook, a family chat, a church newsletter, a workplace channel, a
+  note for a noticeboard), each with the link that counts it and the word
+  it shows as on /admin; when to post, which picture goes with which
+  post, and what to read after a week. The posters and flyers are in
+  [promo/print/](../promo/print/README.md).
 - [play-store-plan.md](play-store-plan.md): sudokUI on Google Play as a
   Trusted Web Activity (November 2026): Google's rules, the asset links
   file, the Data safety answers, the listing in three languages, the

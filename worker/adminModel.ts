@@ -42,6 +42,13 @@ export interface DayRow {
   landingsFrom: Record<string, number>;
   /** the same for the home pages' landings only */
   landingsFromHome: Record<string, number>;
+  /**
+   * the landings on the advent calendar's public page (the slot calendar),
+   * which are in none of the counts above (the Christmas section's), and
+   * by word: for the launch log's reading, which names them apart
+   */
+  landingsCalendar: number;
+  landingsFromCalendar: Record<string, number>;
   /** every start and every solve, practice included, by kind of game (telemetry.ts, PLAY_KINDS) and by the app's language (PLAY_LANGS); '' for an older app's lines, which say neither */
   startsBy: Record<string, number>;
   completedBy: Record<string, number>;

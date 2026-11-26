@@ -280,6 +280,14 @@ Do not promise never to link it.
 
 **Risk.** A defensive or repeated message can bring a modmail mute of 3 to 28 days. Send it once and do not follow up. If it is refused, say nothing in public.
 
+### 9. The advent calendar's launch, 1 December 2026: posters, flyers and posts (added 26 November 2026)
+
+The calendar opens on Tuesday 1 December. Posters and flyers for noticeboards, in Norwegian and English, are in [promo/print/](../promo/print/README.md): their QR code carries the tag `utm_source=poster`, so a scan counts as `poster` on /admin, where it would otherwise be `none` (or, on an Android phone that names the scanning app, `search` or `other`). The posts to paste, for Facebook, a family chat, a church newsletter, a workplace channel and a note to a librarian or a senior centre, are in [launch-posts-2026-12.md](launch-posts-2026-12.md), each with its link and the word it shows as (a chat's link carries `utm_source=chat`), with when to post (posters by 30 November, the wall on 1 December, work on 2 December, the Facebook group on door 3's link and the family chat on 3 December, reminders at door 8 and door 15) and what to read after a week. The code alone, for a newsletter's own layout, is in promo/print/ too.
+
+**Effort.** An hour to print and hang, and a few minutes per post.
+
+**Measure.** The Christmas section's "Where the calendar's landings came from" and "Landings per day by word"; judged on day 14 like any other action.
+
 ## AI assistants
 
 _Added on 4 November 2026_, after the first fan who does not know the owner (Matt, a player from the feedback e-mails) found sudokUI by asking ChatGPT for apps to get better at sudoku ([launch-log.md](launch-log.md), "Notes"). People ask an assistant the question a search box used to get, and the assistant answers from what it can read about the app. Nothing here asks anyone to mention sudokUI, and nothing pays for a place in an answer: the app is described truthfully where an assistant reads, and the arrivals are counted.

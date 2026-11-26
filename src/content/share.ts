@@ -343,7 +343,7 @@ export const SHARE: Record<Lang, ShareCopy> = {
       'Luke {door} i julekalenderen i sudokUI, {date}: {a} sudoku på nivået {level} med HoDoKu-poengsum {score}. Det samme brettet for alle. Spill den gratis.',
     titleAdventLocked: 'Luke {door} i julekalenderen åpner {date} | sudokUI',
     descriptionAdventLocked:
-      'Luke {door} i julekalenderen i sudokUI åpner {date}. En sudoku hver dag fra 1. til 24. desember, hver litt vanskeligere enn den før.',
+      'Luke {door} i julekalenderen i sudokUI åpner {date}. En sudoku hver dag fra 1. til 24. desember, hver litt vanskeligere enn den forrige.',
     needing: ' som krever {list}',
     vs: 'Løst på {time} i sudokUI: klarer du å slå det?',
     and: 'og',

@@ -222,8 +222,9 @@ describe('toward 100 a day (worker/adminGoal.ts)', () => {
       line(day(back), 'landing', 'home', 'none', '', 80),
       line(day(back), 'landing', 'home', 'search', '', 10),
       line(day(back), 'landing', 'p', 'search', '', 1),
-      // the calendar's page: the Christmas section's, not the reading's
-      line(day(back), 'landing', 'calendar', 'facebook', '', 50)
+      // the calendar's page: the Christmas section's, and the reading's apart, its poster word among them
+      line(day(back), 'landing', 'calendar', 'facebook', '', 50),
+      line(day(back), 'landing', 'calendar', 'poster', '', 3)
     );
   }
   for (let back = 8; back <= 14; back++) rows.push(line(day(back), 'started', 'tab', 'new', 'en', 30));
@@ -298,10 +299,14 @@ describe('toward 100 a day (worker/adminGoal.ts)', () => {
       begunByKind: 'new 40.0, practice 10.0',
       begunByLang: 'nb 5.0',
       participants: '1.0',
-      landings: 'home 90.0 (none 80.0, search 10.0); share pages search 1.0',
+      landings: 'home 90.0 (none 80.0, search 10.0); share pages search 1.0; calendar page 53.0 (facebook 50.0, poster 3.0)',
       shares: 'daily 0.1'
     });
-    expect(readingRow(r)).toBe('| 2026-11-25 |  | 7.0 | new 40.0, practice 10.0 | nb 5.0 | 1.0 | home 90.0 (none 80.0, search 10.0); share pages search 1.0 | daily 0.1 |');
+    expect(readingRow(r)).toBe('| 2026-11-25 |  | 7.0 | new 40.0, practice 10.0 | nb 5.0 | 1.0 | home 90.0 (none 80.0, search 10.0); share pages search 1.0; calendar page 53.0 (facebook 50.0, poster 3.0) | daily 0.1 |');
+    // the calendar's page is in none of the other landings, and a week with none on it says nothing of it
+    expect(days.at(-2)!.landings).toBe(91);
+    expect(days.at(-2)!.landingsFromCalendar).toEqual({ facebook: 50, poster: 3 });
+    expect(readingOf(metricsOf([], TODAY).days, '2026-11-25', []).landings).toBe('home 0.0 (0); share pages 0');
     // as many cells as the launch log's Readings table has columns
     expect(readingRow(r).split('|').length - 2).toBe(8);
     expect(readingLine(r)).toContain('daily participants 1.0');
@@ -354,6 +359,16 @@ describe('landings per day by word, 28 days (worker/adminMore.ts)', () => {
     expect(html).toContain('<tr><td>28 days</td><td>6</td><td>6</td><td>4</td><td>2</td><td>2</td><td>8</td><td>8</td><td>4</td><td>20</td></tr>');
     expect(landingDaysOf(NOW_, null)).toBeNull();
     expect(landingDaysSection(null)).toContain('could not be read for this table');
+  });
+
+  it('shows the poster word as a column like any other, its landings on the calendar under Advent', () => {
+    const l = landingDaysOf(NOW_, [landing('2026-11-24', 'calendar', 'poster', 3), landing('2026-11-24', 'home', 'none', 1), landing('2026-11-23', 'calendar', 'chat', 2)])!;
+    expect(l.words).toEqual(['poster', 'chat', 'none']);
+    const html = landingDaysSection(l);
+    expect(html).toContain('<th>Day</th><th>poster</th><th>chat</th><th>none</th><th>On a home page</th><th>On a share page</th><th>Advent</th><th>All</th>');
+    expect(html).toContain('<tr><td>2026-11-24</td><td>3</td><td>0</td><td>1</td><td>1</td><td>0</td><td>3</td><td>4</td></tr>');
+    expect(html).toContain('<tr><td>Last 7 days</td><td>3</td><td>2</td><td>1</td><td>1</td><td>0</td><td>5</td><td>6</td></tr>');
+    expect(html).toContain('poster for the QR code on a poster or a flyer');
   });
 
   it('runs its query with the token and says so when it fails', async () => {

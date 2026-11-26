@@ -14,7 +14,10 @@ channel").
   outreach. Then write the baseline's numbers in "Readings" below.
 - **One channel per week.** Add the line on the day you act, not later:
   the date, what you did, the exact link you used, and the landing word
-  you expect it to show as.
+  you expect it to show as. (The advent calendar's launch, 30 November
+  to 3 December 2026, sets this aside and is judged as one launch on day
+  14: [launch-posts-2026-12.md](launch-posts-2026-12.md), "When to
+  post".)
 - **Use a link that can be counted.** A `/p/` link or a `/daily/<date>`
   link is counted on its own page; a home page link (`https://sudokui.app/`,
   `/nb/`, `/es/`) is counted as `home`. The Learn pages are counted only in
@@ -38,7 +41,15 @@ in `worker/telemetry.ts` (FROM_HOSTS); a site not named there reads as
 landing with no referrer whose link carries `utm_source` naming an AI
 assistant by its address (ChatGPT tags its links `utm_source=chatgpt.com`)
 reads as `ai`; nothing else in the link is read, and nothing of it kept
-(`landingWord`, and the privacy page).
+(`landingWord`, and the privacy page). Since 26 November 2026 our own
+links can carry a tag in the same place, for channels that send no
+referrer: `utm_source=poster` on the QR code of a poster or a flyer reads
+as `poster`, and `utm_source=chat` on a link posted in a chat reads as
+`chat`. The tag also wins over a referrer that names only the Android
+app that opened the link (Google Lens, a phone's camera). A site's
+address as the referrer still decides. The advent
+calendar's launch posts say which link each one uses and the word it
+shows as ([launch-posts-2026-12.md](launch-posts-2026-12.md)).
 
 | Where the link is | Landing word |
 |---|---|
@@ -53,6 +64,11 @@ reads as `ai`; nothing else in the link is read, and nothing of it kept
 | YouTube, X, Bluesky, LinkedIn, Instagram and a few more social sites | `social` |
 | GitHub | `github` |
 | ChatGPT, Perplexity, Claude, Gemini, Copilot, as the referrer or, with none, as the link's `utm_source` | `ai` |
+| A poster's or a flyer's QR code (`?utm_source=poster`, promo/print/) | `poster` |
+| Facebook, as the site or its Android app | `facebook` |
+| A chat: WhatsApp, Messenger, Telegram, Slack, Teams and the like, as the site or the Android app, or, with none, a link with `?utm_source=chat` | `chat` |
+| Webmail (Gmail, Outlook and the like) or the Gmail and Outlook apps on Android | `mail` |
+| A link typed or bookmarked, or opened from an app that says nothing (most mail apps, most chat apps on an iPhone) | `none` |
 | Any site not named | `other` |
 
 ## Actions
@@ -98,6 +114,6 @@ arrived, ask D1:
 npx wrangler d1 execute sudokui-db --remote --command "SELECT puzzle_no, COUNT(*) AS sent FROM daily_result GROUP BY puzzle_no ORDER BY puzzle_no DESC LIMIT 14"
 ```
 
-| Date | Read for | Completed per day | Begun per day, by kind (daily, new, practice, shared) | Begun per day in Norwegian and Spanish | Daily participants per day | Landings per day, by word (home landings apart) | Shares per day, by kind |
+| Date | Read for | Completed per day | Begun per day, by kind (daily, new, practice, shared) | Begun per day in Norwegian and Spanish | Daily participants per day | Landings per day, by word (home landings apart, then the calendar's page) | Shares per day, by kind |
 |---|---|---|---|---|---|---|---|
 | | | | | | | | |

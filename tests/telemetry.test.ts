@@ -24,6 +24,8 @@ import {
   landingFrom,
   landingWord,
   assistantTagged,
+  linkTag,
+  LINK_TAGS,
   LANDING_FROM,
   LANDING_SLOTS,
   PLAY_KINDS,
@@ -701,6 +703,74 @@ describe('the landing count', () => {
     expect(events.points).toHaveLength(2);
   });
 
+  it('counts a landing with no referrer, or only an Android app’s name, by our own tag, poster or chat, read from utm_source alone; a web referrer still decides, and anything else is ignored', () => {
+    expect(LINK_TAGS).toEqual(['poster', 'chat']);
+    // each tag is a word of the closed list, and poster is one only a tag gives
+    for (const tag of LINK_TAGS) expect(LANDING_FROM as readonly string[]).toContain(tag);
+    // the tag with no referrer: its word
+    expect(landingWord(landing('/advent/?utm_source=poster'))).toBe('poster');
+    expect(landingWord(landing('/nb/julekalender/?utm_source=poster'))).toBe('poster');
+    expect(landingWord(landing('/?utm_source=chat'))).toBe('chat');
+    expect(landingWord(landing('/?utm_source=chat', { referer: '' }))).toBe('chat');
+    // a referrer that names only the Android app that opened the link: the tag decides. Google Lens
+    // opens a scan in the Google app's Custom Tab, which alone reads as search; Lens's own app and a
+    // phone maker's camera are apps the list does not know, which alone read as other
+    for (const app of ['com.google.android.googlequicksearchbox', 'com.google.ar.lens', 'com.sec.android.app.camera', 'com.example.qrscanner']) {
+      expect(landingWord(landing('/nb/julekalender/?utm_source=poster', { referer: `android-app://${app}/` })), app).toBe('poster');
+      expect(landingWord(landing('/advent/?utm_source=poster', { referer: `android-app://${app}` })), app).toBe('poster');
+    }
+    expect(landingWord(landing('/advent/', { referer: 'android-app://com.google.android.googlequicksearchbox/' }))).toBe('search');
+    expect(landingWord(landing('/advent/', { referer: 'android-app://com.sec.android.app.camera/' }))).toBe('other');
+    // an app's name with our chat tag, or an assistant's: the tag; with no tag, or another value, the app's word
+    expect(landingWord(landing('/?utm_source=chat', { referer: 'android-app://com.google.android.gm/' }))).toBe('chat');
+    expect(landingWord(landing('/?utm_source=chatgpt.com', { referer: 'android-app://com.openai.chatgpt/' }))).toBe('ai');
+    expect(landingWord(landing('/?utm_source=newsletter', { referer: 'android-app://com.google.android.gm/' }))).toBe('mail');
+    expect(landingWord(landing('/?utm_source=chat', { referer: 'android-app://com.facebook.orca/' }))).toBe('chat');
+    // a referrer the server cannot read decides as none, tag or not: the tag is read only when the
+    // browser reports nothing or an app's name, as the privacy page says
+    expect(landingWord(landing('/advent/?utm_source=poster', { referer: 'not an address' }))).toBe('none');
+    expect(landingWord(landing('/?utm_source=chatgpt.com', { referer: 'not an address' }))).toBe('none');
+    // the tag with a web referrer: the referrer's word, whatever the tag says
+    expect(landingWord(landing('/advent/?utm_source=poster', { referer: 'https://l.facebook.com/' }))).toBe('facebook');
+    expect(landingWord(landing('/advent/?utm_source=poster', { referer: 'https://www.facebook.com/' }))).toBe('facebook');
+    expect(landingWord(landing('/nb/julekalender/?utm_source=chat', { referer: 'https://l.facebook.com/' }))).toBe('facebook');
+    expect(landingWord(landing('/advent/?utm_source=poster', { referer: 'https://mail.google.com/' }))).toBe('mail');
+    expect(landingWord(landing('/?utm_source=chat', { referer: 'https://www.google.no/' }))).toBe('search');
+    expect(landingWord(landing('/?utm_source=chat', { referer: 'https://unknown.example/' }))).toBe('other');
+    // in odd case or with spaces around it, still the tag
+    for (const tag of ['POSTER', 'Poster', ' poster', 'poster ', '  PoStEr  ', '+poster+', '%20poster%09'])
+      expect(linkTag(`${SITE}/advent/?utm_source=${tag}`), tag).toBe('poster');
+    expect(linkTag(`${SITE}/?utm_source=%20Chat%20`)).toBe('chat');
+    expect(landingWord(landing('/advent/?utm_source=%20POSTER%20'))).toBe('poster');
+    // an unknown tag, a near miss, another parameter, the fragment: ignored, and the word stays none
+    for (const address of [
+      `${SITE}/advent/`,
+      `${SITE}/advent/?utm_source=`,
+      `${SITE}/advent/?utm_source=posters`,
+      `${SITE}/advent/?utm_source=post%20er`,
+      `${SITE}/advent/?utm_source=poster.`,
+      `${SITE}/advent/?utm_source=flyer`,
+      `${SITE}/advent/?utm_source=newsletter`,
+      `${SITE}/advent/?utm_source=facebook`,
+      `${SITE}/advent/?utm_source=none`,
+      `${SITE}/advent/?utm_source=Anders`,
+      `${SITE}/advent/?via=poster`,
+      `${SITE}/advent/?utm_medium=poster`,
+      `${SITE}/advent/?utm_campaign=poster`,
+      `${SITE}/advent/#utm_source=poster`,
+      'not an address'
+    ]) {
+      expect(linkTag(address), address).toBeNull();
+      if (address.startsWith(SITE)) expect(landingWord(landing(address.slice(SITE.length))), address).toBe('none');
+    }
+    // the first utm_source is the one read, as the assistants' tag is
+    expect(linkTag(`${SITE}/advent/?utm_source=poster&utm_source=chat`)).toBe('poster');
+    // an assistant's tag is still ai, and neither tag is an assistant
+    expect(landingWord(landing('/?utm_source=chatgpt.com'))).toBe('ai');
+    expect(assistantTagged(`${SITE}/?utm_source=poster`)).toBe(false);
+    expect(assistantTagged(`${SITE}/?utm_source=chat`)).toBe(false);
+  });
+
   it('counts no home landing from the site itself, from a robot or a preview, for a fetch that is no visit, or on another page', async () => {
     const events = memoryEvents();
     const env = withHomes({ EVENTS: events });
@@ -1296,6 +1366,7 @@ describe('the privacy page', () => {
         directory: 'an app directory',
         fediverse: 'Lemmy or Mastodon',
         press: 'a news site',
+        poster: 'a poster or flyer',
         other: 'or another site or app'
       },
       nb: {
@@ -1315,6 +1386,7 @@ describe('the privacy page', () => {
         directory: 'en appkatalog',
         fediverse: 'Lemmy eller Mastodon',
         press: 'et nyhetsnettsted',
+        poster: 'en plakat eller løpeseddel',
         other: 'eller et annet nettsted eller en annen app'
       },
       es: {
@@ -1334,6 +1406,7 @@ describe('the privacy page', () => {
         directory: 'un directorio de apps',
         fediverse: 'Lemmy o Mastodon',
         press: 'un sitio de noticias',
+        poster: 'un cartel o folleto',
         other: 'u otro sitio u otra app'
       }
     };
@@ -1350,9 +1423,9 @@ describe('the privacy page', () => {
     }
     // the one tag read from a link with no referrer, what it is read for, and that nothing else is read or kept
     const TAG = {
-      en: ['When the browser reports nothing, the server reads one tag in the link itself, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini or Copilot, the word is “an AI assistant”', 'Nothing else in the link is read for this word, and the tag is not kept'],
-      nb: ['Når nettleseren ikke oppgir noe, leser tjeneren én merkelapp i selve lenken, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini eller Copilot, blir ordet «en KI-assistent»', 'Ingenting annet i lenken leses for dette ordet, og merkelappen beholdes ikke'],
-      es: ['Si el navegador no indica nada, el servidor lee una sola etiqueta del propio enlace, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini o Copilot, la palabra es «un asistente de IA»', 'No se lee nada más del enlace para esta palabra, y la etiqueta no se guarda']
+      en: ['When the browser reports nothing, or names only the Android app that opened the link, the server reads one tag in the link itself, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini or Copilot, the word is “an AI assistant”', 'Nothing else in the link is read for this word, and the tag is not kept', 'from a closed list of two: utm_source=poster on the QR code of its posters and flyers, which a phone opens with nothing reported or with only the name of the app that scanned it', 'utm_source=chat on a link posted in a chat', 'the word is then “a poster or flyer” or “a chat app or site”', 'Such a tag says what kind of place the link was shared in, never who shared it; any other value is ignored'],
+      nb: ['Når nettleseren ikke oppgir noe, eller bare oppgir navnet på Android-appen som åpnet lenken, leser tjeneren én merkelapp i selve lenken, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini eller Copilot, blir ordet «en KI-assistent»', 'Ingenting annet i lenken leses for dette ordet, og merkelappen beholdes ikke', 'og det finnes bare to slike: utm_source=poster på QR-koden på plakatene og løpesedlene, som en mobil åpner uten å oppgi noe eller bare med navnet på appen som skannet den', 'utm_source=chat på en lenke som deles i en chat', 'da blir ordet «en plakat eller løpeseddel» eller «en chatapp eller et chatnettsted»', 'aldri hvem som delte den; alle andre verdier ignoreres'],
+      es: ['Si el navegador no indica nada, o solo indica la app de Android que abrió el enlace, el servidor lee una sola etiqueta del propio enlace, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini o Copilot, la palabra es «un asistente de IA»', 'No se lee nada más del enlace para esta palabra, y la etiqueta no se guarda', 'de una lista cerrada de dos: utm_source=poster en el código QR de sus carteles y folletos, que un móvil abre sin indicar nada o indicando solo la app que lo escaneó', 'utm_source=chat en un enlace compartido en un chat', 'la palabra es entonces «un cartel o folleto» o «una app o web de chat»', 'nunca quién lo compartió; cualquier otro valor se ignora']
     };
     for (const lang of HOME_LANGS) {
       const text = PRIVACY[lang].sections.flatMap((s) => s.paragraphs).join(' ');
@@ -1792,7 +1865,7 @@ describe("the admin page's Christmas section", () => {
     // where they came from, the calendar's page and the doors' side by side, of the 16 in all
     expect(html).toContain("<h2>Where the calendar's landings came from</h2>");
     expect(html).toContain("<dt>Landings on the calendar's page</dt><dd>7</dd>");
-    expect(html).toContain('<tr><td>A chat app or site</td><td>0</td><td>2</td><td>2</td><td>13%</td></tr>');
+    expect(html).toContain('<tr><td>A chat app or site (its address or app as the referrer, or with none the chat tag on the link)</td><td>0</td><td>2</td><td>2</td><td>13%</td></tr>');
     expect(html).toContain('<tr><td>Facebook</td><td>5</td><td>0</td><td>5</td><td>31%</td></tr>');
     expect(html).toContain("<tr><td>A search engine (and links Google's own redirect passed on)</td><td>2</td><td>7</td><td>9</td><td>56%</td></tr>");
     expect(html.indexOf('A search engine')).toBeLessThan(html.indexOf('Facebook'));
@@ -1804,6 +1877,33 @@ describe("the admin page's Christmas section", () => {
     expect(past).toContain('The 2026 calendar closed on 31 December');
     expect(past).toContain('are not read now');
     expect(past).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>0</td><td>0</td><td>—</td><td>0</td><td>—</td><td>0</td><td>0</td></tr>');
+  });
+
+  it('shows the posters’ landings as a row of their own, Paper, on the calendar’s page and on the main table', () => {
+    const html = adventSection(
+      adventOf(
+        2026,
+        at('2026-12-06T12:00:00Z'),
+        [arow('2026-12-05', 'landing', 'poster', '', 3, 'calendar'), arow('2026-12-05', 'landing', 'chat', '', 1, 'calendar'), arow('2026-12-06', 'landing', 'poster', '2', 1, 'advent')],
+        'read',
+        undefined
+      )
+    );
+    expect(html).toContain("<tr><td>Paper: a poster's or a flyer's QR code (the poster tag on the link)</td><td>3</td><td>1</td><td>4</td><td>80%</td></tr>");
+    expect(html).toContain('<tr><td>A chat app or site (its address or app as the referrer, or with none the chat tag on the link)</td><td>1</td><td>0</td><td>1</td><td>20%</td></tr>');
+    expect(html).toContain('opens the calendar\'s page with the poster tag, so their landings show here as Paper');
+    // a home page's landing with the tag, on the 7-day table, by the same label
+    const main = renderAdmin(
+      metricsOf(
+        [
+          { day: '2026-10-12 00:00:00', event: 'landing', source: 'home', kind: 'poster', via: '', n: 2, standalone: 0, offline: 0, optin: 0, optin_offline: 0, optin_returning: 0 },
+          { day: '2026-10-12 00:00:00', event: 'landing', source: 'calendar', kind: 'poster', via: '', n: 9, standalone: 0, offline: 0, optin: 0, optin_offline: 0, optin_returning: 0 }
+        ],
+        new Date('2026-10-13T09:30:00Z')
+      )
+    );
+    expect(main).toContain("<tr><td>Paper: a poster's or a flyer's QR code (the poster tag on the link)</td><td>2</td><td>0</td><td>2</td><td>100%</td></tr>");
+    expect(main).toContain('utm_source=poster, on the QR code of a poster or a flyer, as Paper');
   });
 
   it('knows outside the window that nothing is to be read, and asks the database anyway', async () => {
@@ -1865,5 +1965,86 @@ describe("the admin page's Christmas section", () => {
     countLanding(direct, landing('/advent/2026/5'), 'advent', undefined, 25);
     countLanding(direct, landing('/'), 'home', undefined, 5);
     expect(direct.points.map((p) => p.blobs.length)).toEqual([5, 5]);
+  });
+
+  it('writes a landing on the calendar’s page from a poster’s QR code with the word poster, on every page that counts one, and keeps nothing of the address', async () => {
+    const events = memoryEvents();
+    // a phone's camera opens the QR code's address with no referrer: the tag decides
+    const res = await handleRequest(landing('/nb/julekalender/?utm_source=poster'), assets({ EVENTS: events }));
+    expect(res.headers.get('x-answered-by')).toBe('assets');
+    expect(events.points).toEqual([{ indexes: ['landing'], blobs: ['', 'calendar', version, '', 'poster'], doubles: [0, 1, 0, 0, 0, 0] }]);
+    await handleRequest(landing('/advent/?utm_source=Poster&utm_campaign=jul-2026&utm_medium=print'), assets({ EVENTS: events }));
+    await handleRequest(landing('/es/calendario-de-adviento/?utm_source=chat'), assets({ EVENTS: events }));
+    // the same link reposted where a referrer comes with it counts as that place
+    await handleRequest(landing('/advent/?utm_source=poster', { referer: 'https://m.facebook.com/' }), assets({ EVENTS: events }));
+    expect(events.points.map((p) => [p.blobs[1], p.blobs[4]])).toEqual([
+      ['calendar', 'poster'],
+      ['calendar', 'poster'],
+      ['calendar', 'chat'],
+      ['calendar', 'facebook']
+    ]);
+    // a home page, a share address, a daily's and a door's count it the same way
+    const pages = memoryEvents();
+    const homes = {
+      ASSETS: { fetch: async (request: Request) => new Response(`home ${new URL(request.url).pathname}`, { status: 200, headers: { 'x-answered-by': 'assets' } }) },
+      EVENTS: pages
+    };
+    await handleRequest(landing('/nb/?utm_source=poster'), homes);
+    await handleRequest(landing(`/p/${EASY}?utm_source=chat`), assets({ EVENTS: pages }));
+    await handleRequest(landing(`/daily/${DAILY.date}?utm_source=poster`), assets({ EVENTS: pages }));
+    await handleRequest(landing('/nb/advent/2026/1?utm_source=poster'), assets({ EVENTS: pages }), undefined, undefined, () => Date.parse('2026-12-06T12:00:00Z'));
+    expect(pages.points.map((p) => [p.blobs[1], p.blobs[4]])).toEqual([
+      ['home', 'poster'],
+      ['p', 'chat'],
+      ['daily', 'poster'],
+      ['advent', 'poster']
+    ]);
+    expect(pages.points[3].blobs.at(-1)).toBe('1');
+    // nothing of the address is written: not the parameter, not its other values
+    const written = JSON.stringify([...events.points, ...pages.points]);
+    for (const part of ['utm', 'Poster', 'jul-2026', 'print', 'julekalender']) expect(written).not.toContain(part);
+    // from inside the site, a robot or a preview: no landing, tag or not
+    for (const request of [
+      landing('/advent/?utm_source=poster', { referer: `${SITE}/` }),
+      landing('/advent/?utm_source=poster', { 'user-agent': 'facebookexternalhit/1.1' }),
+      landing('/advent/?utm_source=poster', {}, 'HEAD')
+    ])
+      await handleRequest(request, assets({ EVENTS: events }));
+    expect(events.points).toHaveLength(4);
+  });
+
+  it('writes a poster’s landing as poster when an Android phone scans the code with Google Lens or its own camera, which name the scanning app', async () => {
+    const android = 'Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36';
+    const scan = (path: string, app: string) => landing(path, { 'user-agent': android, referer: `android-app://${app}/` });
+    const apps = ['com.google.android.googlequicksearchbox', 'com.google.ar.lens', 'com.sec.android.app.camera'];
+    const events = memoryEvents();
+    for (const path of ['/advent/?utm_source=poster', '/nb/julekalender/?utm_source=poster', '/es/calendario-de-adviento/?utm_source=poster'])
+      for (const app of apps) await handleRequest(scan(path, app), assets({ EVENTS: events }));
+    expect(events.points).toHaveLength(9);
+    for (const p of events.points) expect(p.blobs).toEqual(['', 'calendar', version, '', 'poster']);
+    // a home page, a share address, a daily's and a door's the same way
+    const pages = memoryEvents();
+    const homes = {
+      ASSETS: { fetch: async (request: Request) => new Response(`home ${new URL(request.url).pathname}`, { status: 200, headers: { 'x-answered-by': 'assets' } }) },
+      EVENTS: pages
+    };
+    await handleRequest(scan('/nb/?utm_source=poster', apps[0]), homes);
+    await handleRequest(scan(`/p/${EASY}?utm_source=poster`, apps[1]), assets({ EVENTS: pages }));
+    await handleRequest(scan(`/daily/${DAILY.date}?utm_source=poster`, apps[2]), assets({ EVENTS: pages }));
+    await handleRequest(scan('/nb/advent/2026/1?utm_source=poster', apps[0]), assets({ EVENTS: pages }), undefined, undefined, () => Date.parse('2026-12-06T12:00:00Z'));
+    expect(pages.points.map((p) => [p.blobs[1], p.blobs[4]])).toEqual([
+      ['home', 'poster'],
+      ['p', 'poster'],
+      ['daily', 'poster'],
+      ['advent', 'poster']
+    ]);
+    // the same link reposted on a site still counts as that site, from an Android phone too
+    const web = memoryEvents();
+    await handleRequest(landing('/nb/julekalender/?utm_source=poster', { 'user-agent': android, referer: 'https://m.facebook.com/' }), assets({ EVENTS: web }));
+    await handleRequest(landing('/nb/julekalender/?utm_source=poster', { 'user-agent': android, referer: 'https://www.facebook.com/' }), assets({ EVENTS: web }));
+    expect(web.points.map((p) => p.blobs[4])).toEqual(['facebook', 'facebook']);
+    // nothing of the address or the app is written
+    const written = JSON.stringify([...events.points, ...pages.points, ...web.points]);
+    for (const part of ['utm', 'android', 'lens', 'googlequicksearchbox', 'camera', 'julekalender']) expect(written).not.toContain(part);
   });
 });
