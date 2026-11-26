@@ -3628,6 +3628,8 @@ test.describe('a puzzle being typed in', () => {
 
   test('survives a reload, at the home address, and Cancel then brings back the game from before', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    // a first visit's easy puzzle: on a day with no door of the advent calendar (tests/e2e/advent.spec.ts)
+    await page.clock.install({ time: new Date('2026-10-15T12:00:00') });
     await page.goto('/');
     await expect(page.locator('svg.board')).toBeVisible();
     await expect.poll(() => savedLevel(page)).toBe('Easy');

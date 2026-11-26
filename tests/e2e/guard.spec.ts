@@ -205,6 +205,9 @@ for (const [name, use] of [
 
     test('Back to it offers the other game in turn, and a game with no link of its own stays one tap away, from New once its note is put away', async ({ context, page }) => {
       // a first visit's own game: it has no link a friend could send back
+      // (on a day with no door of the advent calendar, which a first visit
+      // opens from 1 to 24 December: tests/e2e/advent.spec.ts)
+      await context.clock.install({ time: new Date('2026-10-15T12:00:00') });
       await page.goto('/');
       await expect.poll(async () => (await saved(page)).puzzle).not.toBeNull();
       const own = (await saved(page)).puzzle;
