@@ -3349,6 +3349,32 @@ test.describe('a first visit', () => {
     await expect(won.getByRole('button', { name: 'Today’s daily' })).toHaveCount(0);
   });
 
+  test('"ready to play offline" waits while a dialog is open, and shows once it is closed', async ({ page }) => {
+    // on a 320 px phone the bar covered the win screen's buttons
+    await page.setViewportSize({ width: 320, height: 640 });
+    // whether the bar was ever on the page while a dialog was
+    await page.addInitScript(() => {
+      (window as any).__barOverDialog = false;
+      new MutationObserver(() => {
+        if (document.querySelector('.update-bar') && document.querySelector('[role=dialog]')) (window as any).__barOverDialog = true;
+      }).observe(document, { subtree: true, childList: true });
+    });
+    await page.clock.install({ time: new Date('2026-10-15T12:00:00') });
+    await page.goto('/');
+    await expect(page.locator('svg.board')).toBeVisible();
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    await expect(settings).toBeVisible();
+    // the service worker is in: the app is ready offline, and says nothing over the dialog
+    await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
+    await page.waitForTimeout(1500);
+    expect(await page.locator('.update-bar').count()).toBe(0);
+    await page.keyboard.press('Escape');
+    await expect(settings).toHaveCount(0);
+    await expect(page.locator('.update-bar')).toContainText('sudokUI is ready to play offline.');
+    expect(await page.evaluate(() => (window as any).__barOverDialog)).toBe(false);
+  });
+
   test('a returning player, with scrolling over the board on only because it was the default, gets it off once', async ({ page }) => {
     await page.addInitScript(() => {
       if (sessionStorage.getItem('seeded')) return;

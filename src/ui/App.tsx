@@ -134,8 +134,10 @@ function proofText(p: Proof, t: Translator): string {
  *  the game is saved either way. The first visit's "ready to play
  *  offline" waits while a toast is up (`toastUp`): the two stacked at the
  *  foot of a laptop's screen put the toast over the board's last row, and
- *  a first visit in December opens with the door's toast */
-function UpdateBar({ toastUp = false }: { toastUp?: boolean }) {
+ *  a first visit in December opens with the door's toast. It waits too
+ *  while a dialog is open (`dialogUp`): on a 320 px phone it covered the
+ *  win screen's buttons */
+function UpdateBar({ toastUp = false, dialogUp = false }: { toastUp?: boolean; dialogUp?: boolean }) {
   const updateReady = useAppStatus((s) => s.updateReady);
   const reason = useAppStatus((s) => s.reason);
   const offlineReady = useAppStatus((s) => s.offlineReady);
@@ -146,7 +148,7 @@ function UpdateBar({ toastUp = false }: { toastUp?: boolean }) {
   // up, the toast stands above it (styles.css, --update-bar-h), so a line
   // saying which game went is never under it
   const bar = useRef<HTMLDivElement>(null);
-  const held = offlineReady && !updateReady && toastUp;
+  const held = offlineReady && !updateReady && (toastUp || dialogUp);
   const shown = updateReady || (offlineReady && !held);
   useLayoutEffect(() => {
     const el = bar.current;
@@ -1586,7 +1588,10 @@ export default function App() {
         {contractPrompt && contractFor !== 'text' && !resting && (
           <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} asked={contractFor} />
         )}
-        <UpdateBar toastUp={!!toast && !away} />
+        <UpdateBar
+          toastUp={!!toast && !away}
+          dialogUp={(dialog !== 'none' && (dialog !== 'advent' || calendarOpen(today))) || !!genState || (won && !victoryDismissed) || (!!contractPrompt && !resting)}
+        />
         {/* one live region, always there, so a screen reader hears each
             notice as its words come in; empty while the page is hidden, so
             what came then is said when it is shown. Its words are drawn
