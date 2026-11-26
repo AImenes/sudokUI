@@ -45,6 +45,13 @@ code opens `https://sudokui.app/advent/?utm_source=poster` and says
   phone's camera. It should open the calendar's page. If it does not,
   the printer scaled the sheet or smudged the code: print again at
   100 %.
+- **Before you print many, test the count once.** After the Worker with
+  the poster tag is deployed, scan one test print with an iPhone's
+  camera, with Google Lens on an Android phone (the Google app's camera
+  or the Lens button) and, if you can borrow one, with a Samsung phone's
+  camera. Then open `/admin` and look at today's row in "Landings per
+  day by word, last 28 days": the scans should be under `poster`, not
+  `none`, `search` or `other`. Write the result in `docs/launch-log.md`.
 
 ## Where to hang it, and asking first
 
@@ -72,11 +79,14 @@ permission. Take them down in January: the calendar closes on
 
 ## How the visits show on the dashboard
 
-The code's address carries the tag `utm_source=poster`. A phone's camera
-opens a link without saying where it came from, so without the tag a
-scan would count as `none`, the same as a typed address. With it, the
-landing gets the word `poster` (worker/telemetry.ts, `LINK_TAGS`). On
-`/admin`:
+The code's address carries the tag `utm_source=poster`. An iPhone's
+camera opens a link without saying where it came from, so without the
+tag a scan would count as `none`, the same as a typed address. An
+Android phone may say nothing too, or name only the app that scanned
+the code: Google Lens opens it in the Google app, which alone would
+count as `search`, and a Samsung camera or a scanner app as `other`.
+With the tag, the landing gets the word `poster` in each of these cases
+(worker/telemetry.ts, `LINK_TAGS`, `landingWord`). On `/admin`:
 
 - **Christmas: the advent calendar**, "Where the calendar's landings
   came from": the row **Paper: a poster's or a flyer's QR code**.

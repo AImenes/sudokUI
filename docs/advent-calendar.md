@@ -227,9 +227,11 @@ Worker still refuses a time for a door whose day has not come anywhere
   never answers this page (`STATIC_ROUTES`), so a player who holds the
   app and opens the page from a post counts too. The calendar's posters
   and flyers (promo/print/, 26 November 2026) carry a QR code to this
-  page with `?utm_source=poster`: a phone's camera sends no referrer, so
-  the tag gives the landing the word `poster` (worker/telemetry.ts,
-  `LINK_TAGS`), and the dashboard shows it as Paper.
+  page with `?utm_source=poster`: an iPhone's camera sends no referrer,
+  and an Android phone none or only the scanning app's name (Google
+  Lens's, a camera's), so the tag gives the landing the word `poster`
+  (worker/telemetry.ts, `LINK_TAGS`, `landingWord`), and the dashboard
+  shows it as Paper.
 - **On the device**, with the dailies' own record
   (src/state/dailyStats.ts): each door solved, its time and whether it had
   help, at most 48 (two calendars), kept apart from the 31 days of daily
@@ -457,8 +459,8 @@ shows the coming one), else the last.
   door game), and a row for all; and a number for every door's shares,
   with how many were a door's line.
 - **Where the calendar's landings came from**, by the referrer's word
-  (or, with no referrer, the link's own tag: Paper for a poster's QR
-  code), as the main table of landings has it: on the calendar's page and
+  (or, with no referrer or only an Android app's name, the link's own
+  tag: Paper for a poster's QR code), as the main table of landings has it: on the calendar's page and
   on a door's address, side by side.
 
 Where the numbers come from, each read kept bounded:

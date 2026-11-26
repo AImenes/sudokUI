@@ -631,14 +631,21 @@ before the launch:
   a closed list of two (`LINK_TAGS`, `linkTag`), for the links we hand
   out where the channel sends no referrer: `utm_source=poster` on the QR
   code of the advent calendar's posters and flyers (promo/print/), which
-  a phone's camera opens with no referrer, so a poster's visits would
+  an iPhone's camera opens with no referrer, so a poster's visits would
   otherwise be `none`; and `utm_source=chat` on a link posted in a chat
   (a family chat, a workplace channel), which Messenger on an iPhone,
   WhatsApp, Teams or Slack mostly open with none. With no referrer, the
   tag is the word: `poster` is a new word, which only the tag gives, and
-  `chat` adds to the referrer's `chat`. A referrer, when there is one,
-  still decides, as for `ai`; any other value, a different case or spaces
-  around it aside, is ignored; nothing of the address is written. Why
+  `chat` adds to the referrer's `chat`. The same when the referrer names
+  only the Android app that opened the link (`android-app://<package>`):
+  an Android phone that scans the code with Google Lens can open it in
+  the Google app's Custom Tab, which names the Google app and alone reads
+  as `search`, and a phone maker's camera or a scanner app reads as
+  `other`; the tag outranks the app's name, as it does for `ai` (from 26
+  November 2026). A site's address as the referrer still decides, and so
+  does a referrer the server cannot read (`none`); any other value, a
+  different case or spaces around it aside, is ignored; nothing of the
+  address is written. Why
   `utm_source` and not a short `?via=`: the Worker already reads that one
   parameter, so it still reads one and nothing else, and the privacy page
   names one; it is also the name every link tool and newsletter tool

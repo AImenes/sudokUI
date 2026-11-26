@@ -13,8 +13,10 @@ export type PrintLang = (typeof PRINT_LANGS)[number];
 
 /**
  * The tag on every printed QR code: the Worker's word for a landing that
- * came from paper (worker/telemetry.ts, LINK_TAGS). A phone's camera sends
- * no referrer, so without it a poster's visits would read as `none`.
+ * came from paper (worker/telemetry.ts, LINK_TAGS). An iPhone's camera
+ * sends no referrer, and an Android phone none or only the scanning app's
+ * name, so without it a poster's visits would read as `none`, `search`
+ * (Google Lens in the Google app) or `other`.
  */
 export const POSTER_TAG = 'poster';
 

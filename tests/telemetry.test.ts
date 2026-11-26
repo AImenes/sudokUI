@@ -703,7 +703,7 @@ describe('the landing count', () => {
     expect(events.points).toHaveLength(2);
   });
 
-  it('counts a landing with no referrer by our own tag, poster or chat, read from utm_source alone; a referrer still decides, and anything else is ignored', () => {
+  it('counts a landing with no referrer, or only an Android app’s name, by our own tag, poster or chat, read from utm_source alone; a web referrer still decides, and anything else is ignored', () => {
     expect(LINK_TAGS).toEqual(['poster', 'chat']);
     // each tag is a word of the closed list, and poster is one only a tag gives
     for (const tag of LINK_TAGS) expect(LANDING_FROM as readonly string[]).toContain(tag);
@@ -712,11 +712,29 @@ describe('the landing count', () => {
     expect(landingWord(landing('/nb/julekalender/?utm_source=poster'))).toBe('poster');
     expect(landingWord(landing('/?utm_source=chat'))).toBe('chat');
     expect(landingWord(landing('/?utm_source=chat', { referer: '' }))).toBe('chat');
-    // an unreadable referrer is no referrer, so the tag decides
-    expect(landingWord(landing('/advent/?utm_source=poster', { referer: 'not an address' }))).toBe('poster');
-    // the tag with a referrer: the referrer's word, whatever the tag says
+    // a referrer that names only the Android app that opened the link: the tag decides. Google Lens
+    // opens a scan in the Google app's Custom Tab, which alone reads as search; Lens's own app and a
+    // phone maker's camera are apps the list does not know, which alone read as other
+    for (const app of ['com.google.android.googlequicksearchbox', 'com.google.ar.lens', 'com.sec.android.app.camera', 'com.example.qrscanner']) {
+      expect(landingWord(landing('/nb/julekalender/?utm_source=poster', { referer: `android-app://${app}/` })), app).toBe('poster');
+      expect(landingWord(landing('/advent/?utm_source=poster', { referer: `android-app://${app}` })), app).toBe('poster');
+    }
+    expect(landingWord(landing('/advent/', { referer: 'android-app://com.google.android.googlequicksearchbox/' }))).toBe('search');
+    expect(landingWord(landing('/advent/', { referer: 'android-app://com.sec.android.app.camera/' }))).toBe('other');
+    // an app's name with our chat tag, or an assistant's: the tag; with no tag, or another value, the app's word
+    expect(landingWord(landing('/?utm_source=chat', { referer: 'android-app://com.google.android.gm/' }))).toBe('chat');
+    expect(landingWord(landing('/?utm_source=chatgpt.com', { referer: 'android-app://com.openai.chatgpt/' }))).toBe('ai');
+    expect(landingWord(landing('/?utm_source=newsletter', { referer: 'android-app://com.google.android.gm/' }))).toBe('mail');
+    expect(landingWord(landing('/?utm_source=chat', { referer: 'android-app://com.facebook.orca/' }))).toBe('chat');
+    // a referrer the server cannot read decides as none, tag or not: the tag is read only when the
+    // browser reports nothing or an app's name, as the privacy page says
+    expect(landingWord(landing('/advent/?utm_source=poster', { referer: 'not an address' }))).toBe('none');
+    expect(landingWord(landing('/?utm_source=chatgpt.com', { referer: 'not an address' }))).toBe('none');
+    // the tag with a web referrer: the referrer's word, whatever the tag says
     expect(landingWord(landing('/advent/?utm_source=poster', { referer: 'https://l.facebook.com/' }))).toBe('facebook');
-    expect(landingWord(landing('/advent/?utm_source=poster', { referer: 'android-app://com.google.android.gm' }))).toBe('mail');
+    expect(landingWord(landing('/advent/?utm_source=poster', { referer: 'https://www.facebook.com/' }))).toBe('facebook');
+    expect(landingWord(landing('/nb/julekalender/?utm_source=chat', { referer: 'https://l.facebook.com/' }))).toBe('facebook');
+    expect(landingWord(landing('/advent/?utm_source=poster', { referer: 'https://mail.google.com/' }))).toBe('mail');
     expect(landingWord(landing('/?utm_source=chat', { referer: 'https://www.google.no/' }))).toBe('search');
     expect(landingWord(landing('/?utm_source=chat', { referer: 'https://unknown.example/' }))).toBe('other');
     // in odd case or with spaces around it, still the tag
@@ -1405,9 +1423,9 @@ describe('the privacy page', () => {
     }
     // the one tag read from a link with no referrer, what it is read for, and that nothing else is read or kept
     const TAG = {
-      en: ['When the browser reports nothing, the server reads one tag in the link itself, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini or Copilot, the word is “an AI assistant”', 'Nothing else in the link is read for this word, and the tag is not kept', 'from a closed list of two: utm_source=poster on the QR code of its posters and flyers', 'utm_source=chat on a link posted in a chat', 'the word is then “a poster or flyer” or “a chat app or site”', 'Such a tag says what kind of place the link was shared in, never who shared it; any other value is ignored'],
-      nb: ['Når nettleseren ikke oppgir noe, leser tjeneren én merkelapp i selve lenken, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini eller Copilot, blir ordet «en KI-assistent»', 'Ingenting annet i lenken leses for dette ordet, og merkelappen beholdes ikke', 'fra en lukket liste med to: utm_source=poster på QR-koden på plakatene og løpesedlene', 'utm_source=chat på en lenke som deles i en chat', 'da blir ordet «en plakat eller løpeseddel» eller «en chatapp eller et chatnettsted»', 'aldri hvem som delte den; alle andre verdier overses'],
-      es: ['Si el navegador no indica nada, el servidor lee una sola etiqueta del propio enlace, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini o Copilot, la palabra es «un asistente de IA»', 'No se lee nada más del enlace para esta palabra, y la etiqueta no se guarda', 'de una lista cerrada de dos: utm_source=poster en el código QR de sus carteles y folletos', 'utm_source=chat en un enlace compartido en un chat', 'la palabra es entonces «un cartel o folleto» o «una app o web de chat»', 'nunca quién lo compartió; cualquier otro valor se ignora']
+      en: ['When the browser reports nothing, or names only the Android app that opened the link, the server reads one tag in the link itself, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini or Copilot, the word is “an AI assistant”', 'Nothing else in the link is read for this word, and the tag is not kept', 'from a closed list of two: utm_source=poster on the QR code of its posters and flyers, which a phone opens with nothing reported or with only the name of the app that scanned it', 'utm_source=chat on a link posted in a chat', 'the word is then “a poster or flyer” or “a chat app or site”', 'Such a tag says what kind of place the link was shared in, never who shared it; any other value is ignored'],
+      nb: ['Når nettleseren ikke oppgir noe, eller bare oppgir navnet på Android-appen som åpnet lenken, leser tjeneren én merkelapp i selve lenken, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini eller Copilot, blir ordet «en KI-assistent»', 'Ingenting annet i lenken leses for dette ordet, og merkelappen beholdes ikke', 'og det finnes bare to slike: utm_source=poster på QR-koden på plakatene og løpesedlene, som en mobil åpner uten å oppgi noe eller bare med navnet på appen som skannet den', 'utm_source=chat på en lenke som deles i en chat', 'da blir ordet «en plakat eller løpeseddel» eller «en chatapp eller et chatnettsted»', 'aldri hvem som delte den; alle andre verdier ignoreres'],
+      es: ['Si el navegador no indica nada, o solo indica la app de Android que abrió el enlace, el servidor lee una sola etiqueta del propio enlace, utm_source', 'utm_source=chatgpt.com', 'ChatGPT, Perplexity, Claude, Gemini o Copilot, la palabra es «un asistente de IA»', 'No se lee nada más del enlace para esta palabra, y la etiqueta no se guarda', 'de una lista cerrada de dos: utm_source=poster en el código QR de sus carteles y folletos, que un móvil abre sin indicar nada o indicando solo la app que lo escaneó', 'utm_source=chat en un enlace compartido en un chat', 'la palabra es entonces «un cartel o folleto» o «una app o web de chat»', 'nunca quién lo compartió; cualquier otro valor se ignora']
     };
     for (const lang of HOME_LANGS) {
       const text = PRIVACY[lang].sections.flatMap((s) => s.paragraphs).join(' ');
@@ -1993,5 +2011,40 @@ describe("the admin page's Christmas section", () => {
     ])
       await handleRequest(request, assets({ EVENTS: events }));
     expect(events.points).toHaveLength(4);
+  });
+
+  it('writes a poster’s landing as poster when an Android phone scans the code with Google Lens or its own camera, which name the scanning app', async () => {
+    const android = 'Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36';
+    const scan = (path: string, app: string) => landing(path, { 'user-agent': android, referer: `android-app://${app}/` });
+    const apps = ['com.google.android.googlequicksearchbox', 'com.google.ar.lens', 'com.sec.android.app.camera'];
+    const events = memoryEvents();
+    for (const path of ['/advent/?utm_source=poster', '/nb/julekalender/?utm_source=poster', '/es/calendario-de-adviento/?utm_source=poster'])
+      for (const app of apps) await handleRequest(scan(path, app), assets({ EVENTS: events }));
+    expect(events.points).toHaveLength(9);
+    for (const p of events.points) expect(p.blobs).toEqual(['', 'calendar', version, '', 'poster']);
+    // a home page, a share address, a daily's and a door's the same way
+    const pages = memoryEvents();
+    const homes = {
+      ASSETS: { fetch: async (request: Request) => new Response(`home ${new URL(request.url).pathname}`, { status: 200, headers: { 'x-answered-by': 'assets' } }) },
+      EVENTS: pages
+    };
+    await handleRequest(scan('/nb/?utm_source=poster', apps[0]), homes);
+    await handleRequest(scan(`/p/${EASY}?utm_source=poster`, apps[1]), assets({ EVENTS: pages }));
+    await handleRequest(scan(`/daily/${DAILY.date}?utm_source=poster`, apps[2]), assets({ EVENTS: pages }));
+    await handleRequest(scan('/nb/advent/2026/1?utm_source=poster', apps[0]), assets({ EVENTS: pages }), undefined, undefined, () => Date.parse('2026-12-06T12:00:00Z'));
+    expect(pages.points.map((p) => [p.blobs[1], p.blobs[4]])).toEqual([
+      ['home', 'poster'],
+      ['p', 'poster'],
+      ['daily', 'poster'],
+      ['advent', 'poster']
+    ]);
+    // the same link reposted on a site still counts as that site, from an Android phone too
+    const web = memoryEvents();
+    await handleRequest(landing('/nb/julekalender/?utm_source=poster', { 'user-agent': android, referer: 'https://m.facebook.com/' }), assets({ EVENTS: web }));
+    await handleRequest(landing('/nb/julekalender/?utm_source=poster', { 'user-agent': android, referer: 'https://www.facebook.com/' }), assets({ EVENTS: web }));
+    expect(web.points.map((p) => p.blobs[4])).toEqual(['facebook', 'facebook']);
+    // nothing of the address or the app is written
+    const written = JSON.stringify([...events.points, ...pages.points, ...web.points]);
+    for (const part of ['utm', 'android', 'lens', 'googlequicksearchbox', 'camera', 'julekalender']) expect(written).not.toContain(part);
   });
 });

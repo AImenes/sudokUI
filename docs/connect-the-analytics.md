@@ -24,8 +24,9 @@ as before. It is the companion of
   puzzle, practice, or one from a share link) and the app's language.
   The share pages and the three home pages (`/`, `/nb/`, `/es/`) count a
   landing there too when a person arrives from outside the site, with
-  one word for where the link was opened from (or, with no referrer, from
-  the link's own tag: `poster` on the QR code of a poster or a flyer).
+  one word for where the link was opened from (or, with no referrer or
+  only an Android app's name, from the link's own tag: `poster` on the QR
+  code of a poster or a flyer).
 - **The dataset** is called `sudokui_events`. It needs no creating: the
   deployed code is bound to it (`wrangler.jsonc`, `analytics_engine_datasets`)
   and it appears the moment the first line is written. WAE keeps three
@@ -320,8 +321,9 @@ country; `blob5` for a share what was shared (`puzzle`, `position`,
 `facebook`, `discord`, `social`, `chat`, `mail`, `github`, `sudoku`,
 `directory`, `fediverse`, `press`, `poster`,
 `other`; empty for landings counted before the word was kept; with no
-referrer, `ai`, `poster` and `chat` can come from the link's
-`utm_source` tag, worker/telemetry.ts `landingWord`), for a
+referrer, or one that names only an Android app, `ai`, `poster` and
+`chat` can come from the link's `utm_source` tag, worker/telemetry.ts
+`landingWord`), for a
 play line the kind of game (`daily`, `new`, `practice`, `shared`,
 `advent`; empty from builds before November 2026); `blob6` for a share
 the way it went (`sheet`, `copy`, `save`), for a play line the app's

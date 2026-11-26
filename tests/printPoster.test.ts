@@ -19,13 +19,23 @@ import { STATIC_ROUTES } from '../src/content/staticRoutes';
 import viteConfig from '../vite.config.ts?raw';
 
 const file = (name: string) => `${OUT_DIR}/${name}`;
-/** a phone's camera opening the code: a person's browser, a navigation, no referrer */
+/** an iPhone's camera opening the code: a person's browser, a navigation, no referrer */
 const scanned = (address: string) =>
   new Request(address, {
     headers: {
       'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Mobile/15E148 Safari/604.1',
       'sec-fetch-mode': 'navigate',
       'sec-fetch-dest': 'document'
+    }
+  });
+/** an Android phone opening the code from the app that scanned it, which a Custom Tab names as the referrer */
+const scannedIn = (address: string, app: string) =>
+  new Request(address, {
+    headers: {
+      'user-agent': 'Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
+      'sec-fetch-mode': 'navigate',
+      'sec-fetch-dest': 'document',
+      referer: `android-app://${app}/`
     }
   });
 
@@ -43,6 +53,9 @@ describe('the posters and flyers of the advent calendar', () => {
       expect(CALENDAR_PATHS).toContain(pathname);
       expect(STATIC_ROUTES.test(pathname + search)).toBe(true);
       expect(landingWord(scanned(qrAddress(lang)))).toBe('poster');
+      // Google Lens in the Google app, Lens's own app and a Samsung camera: still poster
+      for (const app of ['com.google.android.googlequicksearchbox', 'com.google.ar.lens', 'com.sec.android.app.camera'])
+        expect(landingWord(scannedIn(qrAddress(lang), app)), app).toBe('poster');
       // the address written out for typing has no tag: a typed address counts as none, as it should
       expect(landingWord(scanned(`https://${typedAddress(lang)}/`))).toBe('none');
     }

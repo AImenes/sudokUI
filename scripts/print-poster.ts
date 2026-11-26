@@ -4,7 +4,8 @@
  * each with a QR code that opens the calendar's page in its language with
  * the poster tag (?utm_source=poster), so that its visits show on /admin
  * as `poster` (worker/telemetry.ts, LINK_TAGS). A phone's camera sends no
- * referrer: without the tag they would read as `none`.
+ * referrer, or on Android only the scanning app's name: without the tag
+ * they would read as `none`, `search` or `other`.
  *
  *   advent-poster-a4.<lang>.pdf       an A4 poster
  *   advent-flyer-a5.<lang>.pdf        an A5 flyer

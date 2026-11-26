@@ -474,7 +474,7 @@ export function landingDaysSection(l: LandingDays | null): string {
   return [
     head,
     table(['Day', ...l.words.map(label), 'On a home page', 'On a share page', 'Advent', 'All'], rows),
-    `    <p class="meta">Every landing, by the word its referrer gave, or with no referrer its link's tag (poster for the QR code on a poster or a flyer, chat for a link posted in a chat; the words of the launch log, docs/launch-log.md), and by where it landed: a home page, a share page (a /p/ link or a daily's address), or the advent calendar (its page or a door's address). The 7-day table above leaves only the calendar's page to the Christmas section; it counts a door's address with the share pages. Newest first; today's row is the day so far, and the two totals leave it out. A launch's word is still here at day 14 with the two weeks before it. Unrecorded is a landing counted before the word was kept.</p>`
+    `    <p class="meta">Every landing, by the word its referrer gave, or with no referrer (or only an Android app's name) its link's tag (poster for the QR code on a poster or a flyer, chat for a link posted in a chat; the words of the launch log, docs/launch-log.md), and by where it landed: a home page, a share page (a /p/ link or a daily's address), or the advent calendar (its page or a door's address). The 7-day table above leaves only the calendar's page to the Christmas section; it counts a door's address with the share pages. Newest first; today's row is the day so far, and the two totals leave it out. A launch's word is still here at day 14 with the two weeks before it. Unrecorded is a landing counted before the word was kept.</p>`
   ].join('\n');
 }
 

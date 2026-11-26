@@ -28,10 +28,11 @@ already holds the app; the home page is not.
 
 The word comes from what the browser says about where the link was
 opened from (worker/telemetry.ts, `landingWord`). Where a place says
-nothing, our own tag on the link gives the word: `?utm_source=chat` for a
-chat, `?utm_source=poster` on the printed QR code. A tag names a kind of
-place, never a person. Where the browser does say where it came from, that
-decides, tag or not.
+nothing, or names only the Android app that opened the link (Google Lens,
+a phone's camera), our own tag on the link gives the word:
+`?utm_source=chat` for a chat, `?utm_source=poster` on the printed QR
+code. A tag names a kind of place, never a person. Where the browser
+names a site, such as facebook.com, the site decides, tag or not.
 
 | Post | Link | Word on /admin |
 |---|---|---|

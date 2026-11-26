@@ -51,11 +51,12 @@
  * the site counts there even when the browser holds the app. Its fifth
  * blob says where the link was opened from, as one word of a closed list
  * (landingWord): the referrer the browser sends is read for that word and
- * never written; with no referrer, one parameter of the address,
- * utm_source, is read and never written: for the tag an AI assistant puts
- * on its links (`ai`), and for our own closed list of tags (LINK_TAGS,
- * from 26 November 2026): `poster` on the QR code of a poster or a
- * flyer, `chat` on a link posted in a chat. Any other value is ignored.
+ * never written; with no referrer, or one that names only the Android
+ * app that opened the link, one parameter of the address, utm_source, is
+ * read and never written: for the tag an AI assistant puts on its links
+ * (`ai`), and for our own closed list of tags (LINK_TAGS, from 26
+ * November 2026): `poster` on the QR code of a poster or a flyer, `chat`
+ * on a link posted in a chat. Any other value is ignored.
  *
  * The dataset is an interface, so the tests and the dev and preview
  * servers run the whole thing over memory (memoryEvents).
@@ -365,8 +366,8 @@ export function isLanding(request: Request): boolean {
  * site's address; on Android it can be the app the link was opened from
  * (FROM_APPS), so `chat` and `mail` cover apps as well as sites. `poster`
  * is no referrer's: only our own tag on a poster's QR code gives it
- * (LINK_TAGS, linkTag). The word is all that is written, never the
- * address.
+ * (LINK_TAGS, linkTag), and that tag outranks an app's name
+ * (landingWord). The word is all that is written, never the address.
  */
 export const LANDING_FROM = [
   'none',
@@ -392,16 +393,19 @@ export type LandingFrom = (typeof LANDING_FROM)[number];
 
 /**
  * Our own tags, for the links we hand out where the channel sends no
- * referrer (docs/launch-posts-2026-12.md): `poster` on the QR code
- * of a poster or a flyer, which a phone's camera opens with no referrer;
- * `chat` on a link posted in a chat, which a phone's chat app or a
- * desktop one (Messenger on an iPhone, WhatsApp, Teams, Slack) mostly
- * opens with none either. Each is the word the landing then gets, so
- * `chat` adds to the referrer's `chat`, and `poster` is a word only a tag
- * gives. A tag names a channel, never a person or a group. It rides in
- * utm_source, the parameter the assistants' tag already uses
- * (assistantTagged), so the Worker still reads that one parameter of an
- * address and nothing else.
+ * referrer, or only the name of the app that opened the link
+ * (docs/launch-posts-2026-12.md): `poster` on the QR code of a poster or
+ * a flyer, which an iPhone's camera opens with no referrer and an
+ * Android phone with none or with the scanning app's name (the Google
+ * app for Google Lens: android-app://com.google.android.googlequicksearchbox,
+ * which alone reads as `search`); `chat` on a link posted in a chat, which
+ * a phone's chat app or a desktop one (Messenger on an iPhone, WhatsApp,
+ * Teams, Slack) mostly opens with none either. Each is the word the
+ * landing then gets (landingWord), so `chat` adds to the referrer's
+ * `chat`, and `poster` is a word only a tag gives. A tag names a channel,
+ * never a person or a group. It rides in utm_source, the parameter the
+ * assistants' tag already uses (assistantTagged), so the Worker still
+ * reads that one parameter of an address and nothing else.
  */
 export const LINK_TAGS = ['poster', 'chat'] as const satisfies readonly LandingFrom[];
 export type LinkTag = (typeof LINK_TAGS)[number];
@@ -604,17 +608,37 @@ export function linkTag(address: string): LinkTag | null {
 }
 
 /**
+ * True when a referrer names only the Android app that opened the link
+ * (android-app://<package>), not a page: the app a link was tapped or
+ * scanned in, such as the Google app that hosts Google Lens or a phone
+ * maker's camera, which opens a link in a Custom Tab that names it
+ */
+function appReferrer(referer: string): boolean {
+  try {
+    return new URL(referer).protocol === 'android-app:';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The word for a landing: its referrer's (landingFrom). Assistants often
  * send none, so a landing with no referrer whose link an assistant tagged
  * (assistantTagged) is `ai`; one with no referrer whose link carries one
  * of our own tags (linkTag: `poster` on a QR code, `chat` on a link
- * posted in a chat) is that tag's word; any other stays `none`. A
- * referrer, when there is one, always decides.
+ * posted in a chat) is that tag's word; any other keeps the referrer's
+ * word. The same goes when the referrer names only an Android app: that
+ * is the app that opened the link, not the place it was shared, and an
+ * Android phone that scans a poster's code with Google Lens or its own
+ * camera can name the scanning app. A web referrer (a site's address)
+ * always decides, and so does one the server cannot read (`none`), tag
+ * or not.
  */
 export function landingWord(request: Request): LandingFrom {
-  const word = landingFrom(request.headers.get('referer'));
-  if (word !== 'none') return word;
-  return assistantTagged(request.url) ? 'ai' : (linkTag(request.url) ?? 'none');
+  const referer = request.headers.get('referer');
+  const word = landingFrom(referer);
+  if (referer && !appReferrer(referer)) return word;
+  return assistantTagged(request.url) ? 'ai' : (linkTag(request.url) ?? word);
 }
 
 /**
