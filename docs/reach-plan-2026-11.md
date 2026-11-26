@@ -143,7 +143,7 @@ A link is judged by its preview, and today's previews mislead:
 - One PNG card per technique and language, rendered from /learn/img/*.svg and set as og:image by scripts/build-learn.ts.
 - scripts/build-learn.ts writes each page's lastmod from the git date of its content, never the build date.
 - Retitle /hodoku/ for what people type ('HoDoKu online: ratings and hints in your browser, no Java'), crediting Bernhard Hobiger and the GPL and saying it is unofficial.
-- Manifest (vite.config.ts): id, screenshots (wide and narrow), and shortcuts for Daily and Learn.
+- Manifest (vite.config.ts): id, screenshots (wide and narrow), and shortcuts for Daily and Learn. _Built on 25 November 2026: src/content/manifest.ts, docs/architecture.md "The web manifest"; the manifest is in English only, as a manifest has one language._
 - A static /press/ page in three languages: screenshots and hint images made with item 3, the one-sentence pitch, the line 'built with AI assistance; the engine is checked against HoDoKu by tests', and a contact address.
 - Tests: the daily page uses its own card; no lastmod equals the build date for unchanged pages.
 

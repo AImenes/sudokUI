@@ -776,6 +776,28 @@ none of the player's work.
   when a solved game is opened again; and for its first seconds pieces
   cross the dialog's words.
 
+### The web manifest
+
+[src/content/manifest.ts](../src/content/manifest.ts) is what a browser reads to install sudokUI. vite.config.ts hands it to vite-plugin-pwa, which writes `dist/manifest.webmanifest`. Since 25 November 2026 it carries:
+
+- **`id`, `start_url` and `scope`, all `/`.** The app is the whole site, and an installed copy keeps its identity if the start address ever changes.
+- **Two shortcuts,** offered by a long press on the installed icon (or a right click in a desktop dock):
+  - "Today's daily", `/#daily`, which the app opens as today's daily, whatever the day (src/content/share.ts, `readAppLink`);
+  - "Learn", `/#learn=techniques`, the technique guide.
+
+  Both open inside the app, offline too. A game under way goes aside, as with any link.
+- **Two screenshots for the install sheet:** a narrow one, 1080 x 1920 (a 360 x 640 phone at three device pixels to the CSS pixel), and a wide one, 1280 x 800. scripts/manifest-screenshots.ts takes them from the built app: a Medium daily with its first hint drawn, in English, dark, on a day outside the Christmas season, with no service worker, so no "ready to play offline" line shows. It writes them to public/screenshots/. Run it again after a visible change to the board or the hint panel:
+
+  ```sh
+  npm run build && npx vite-node scripts/manifest-screenshots.ts && npm run build
+  ```
+
+  The second build copies the new pictures into dist/. The service worker never precaches them (`SCREENSHOTS_GLOB` in `globIgnores`), because only the install sheet shows them.
+
+**One language.** A manifest has one `lang`, and the browser shows the shortcuts' names and the screenshots' labels as written, whatever the page's language. So they are in English, for players of nb and es too. A manifest per language would need a different `<link rel="manifest">` on /nb/ and /es/, and an installed app keeps the manifest it was installed from.
+
+tests/manifest.test.ts holds the source: the fields, that each shortcut's address opens what it names, that the pictures are files of their sizes, and that they stay out of the precache. tests/e2e/manifest.spec.ts holds the build: the served manifest, the pictures served at their sizes and missing from sw.js, and both shortcuts opened in the browser.
+
 ## Tests (`tests/`)
 
 - `engine.test.ts` — solver/generator basics against known puzzles.

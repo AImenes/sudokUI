@@ -28,6 +28,7 @@ const BUILD_VERSION = /^[0-9a-f]{7}$/.test(COMMIT) ? `${version}+${COMMIT}` : ve
 const BUILD_STAMP = String(Date.now());
 import type { Plugin } from 'vite';
 import { STATIC_ROUTES, OFFLINE_PAGES } from './src/content/staticRoutes';
+import { WEB_MANIFEST, SCREENSHOTS_GLOB } from './src/content/manifest';
 import { renderHome, homeLangOfPath, HOME_LANGS, APP_NAVIGATION } from './src/content/home';
 import { shareParamsOf, renderSharePage } from './src/content/share';
 import { handleDailyApi, memoryStore } from './worker/daily';
@@ -239,7 +240,9 @@ export default defineConfig({
         // for the chat app, which fetches them from the site: the app never
         // shows one, so no player downloads them. The build still copies
         // them to dist/og/, where the links point.
-        globIgnores: ['learn/**', '**/404.html', 'og/**'],
+        // The install sheet's pictures (public/screenshots/) are the
+        // browser's, shown before the app is installed: never precached.
+        globIgnores: ['learn/**', '**/404.html', 'og/**', SCREENSHOTS_GLOB],
         // all but the privacy page, which the footer opens in place: it
         // reads offline too (src/content/staticRoutes.ts, OFFLINE_PAGES).
         // scripts/build-learn.ts writes it after this step, so it is named
@@ -247,27 +250,8 @@ export default defineConfig({
         // afresh, and an old copy never outlives the code it describes
         additionalManifestEntries: OFFLINE_PAGES.map((url) => ({ url: url.slice(1), revision: COMMIT || BUILD_STAMP }))
       },
-      manifest: {
-        name: 'sudokUI',
-        short_name: 'sudokUI',
-        description:
-          'Play sudoku, rate the difficulty of any puzzle and practise solving techniques with hints that explain every step.',
-        lang: 'en',
-        categories: ['games', 'education'],
-        theme_color: '#1a1d29',
-        background_color: '#1a1d29',
-        display: 'standalone',
-        icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-          {
-            src: 'icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable'
-          }
-        ]
-      }
+      // src/content/manifest.ts: id, scope, shortcuts and the install sheet's pictures
+      manifest: WEB_MANIFEST as any
     })
   ],
   test: {
