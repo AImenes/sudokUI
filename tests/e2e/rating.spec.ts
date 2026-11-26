@@ -41,12 +41,15 @@ test('a player without uniqueness sees the rating without it, and the figure fol
   await expect(badge(page)).toHaveText('Extreme');
   await expect(score(page)).toHaveText('2226');
   await expect(page.locator('.game-meta .score-btn')).toHaveAttribute('title', /^Rated without uniqueness techniques, as you play\. How this rating is calculated$/);
+  // a small mark beside the score says it is the player's own; gone when the figure is HoDoKu's
+  await expect(page.locator('.game-meta .score-btn .rating-own')).toHaveText('*');
   // the address names the puzzle by its HoDoKu rating, whoever opened it
   await expect.poll(() => page.evaluate(() => location.search)).toBe('?b=unfair&s=1322');
   await setUniqueness(page, true);
   await expect(badge(page)).toHaveText('Unfair');
   await expect(score(page)).toHaveText('1322');
   await expect(page.locator('.game-meta .score-btn')).toHaveAttribute('title', 'How this rating is calculated');
+  await expect(page.locator('.game-meta .score-btn .rating-own')).toHaveCount(0);
   await setUniqueness(page, false);
   await expect(badge(page)).toHaveText('Extreme');
   await expect(score(page)).toHaveText('2226');
@@ -99,4 +102,15 @@ test('the record line after a win counts and names the level the player saw', as
   await expect(win).toBeVisible();
   await expect(win).toContainText('Extreme · HoDoKu rating 2318');
   await expect(win.locator('.solve-record').first()).toHaveText(/^Your 2nd Extreme solve(, a new best|; best \d+:\d\d)$/);
+});
+
+test('the New dialog does not promise unique rectangles to a player without uniqueness', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.addInitScript(withoutUniqueness);
+  await page.goto(`/p/${WAPO}`);
+  await expect(page.locator('svg.board')).toBeVisible();
+  await page.getByRole('button', { name: /New/ }).first().click();
+  const hard = page.getByRole('dialog', { name: 'New game' }).locator('.level-btn.level-hard');
+  await expect(hard).toContainText('fish, wings and kites');
+  await expect(hard).not.toContainText('unique rectangles');
 });

@@ -522,7 +522,9 @@ without them. Now what that player sees is true for them:
   on the public pages and in the share lines stays as published. A
   player who does not use uniqueness sees their own figure, and where it
   differs from the published one the rating's title and the win screen
-  say so in a few words (`ratingNote`, src/ui/ratingNote.ts). 19 of the
+  say so in a few words (`ratingNote`, src/ui/ratingNote.ts), and a small
+  mark (`*`) beside the score in the top bar shows there is such a note.
+  The New dialog's Hard line drops "unique rectangles" for such a player. 19 of the
   451 dailies differ without uniqueness (14 in level); no door does.
 - **What leaves the app stays HoDoKu's.** A share link, the address bar
   and a share line carry the puzzle's HoDoKu rating whoever sends it, as

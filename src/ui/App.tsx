@@ -1096,7 +1096,9 @@ export default function App() {
                     aria-label={[t('HoDoKu rating {score}. How the rating is calculated', { score: rating.score }), ratingNote(t, rating, info)].filter(Boolean).join(' ')}
                     aria-busy={rating.pending || undefined}
                   >
-                    <span className="rating-word">{t("HoDoKu rating||the puzzle's score, before the number")}{NBSP}</span><strong>{rating.score}</strong> <span className="mini-i">ⓘ</span>
+                    <span className="rating-word">{t("HoDoKu rating||the puzzle's score, before the number")}{NBSP}</span><strong>{rating.score}</strong>
+                    {/* a figure of the player's own, not the published one: marked, the note in the title (ratingNote) */}
+                    {ratingNote(t, rating, info) && <sup className="rating-own" aria-hidden="true">*</sup>} <span className="mini-i">ⓘ</span>
                   </button>
                 </>
               )}

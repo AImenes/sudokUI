@@ -186,8 +186,11 @@ export function useNewGame() {
 // from the content modules: the guide itself stays in its own chunk.
 
 /** what a level asks of you, in plain words, then the techniques behind it */
-const levelDescription = (loc: LearnLocale | undefined, level: LevelPick) =>
-  `${(loc?.bandLeads ?? BAND_LEADS)[level]}: ${(loc?.bandNotes ?? BAND_NOTES)[level]}`;
+const levelDescription = (loc: LearnLocale | undefined, level: LevelPick, t: Translator, useUniqueness: boolean) =>
+  `${(loc?.bandLeads ?? BAND_LEADS)[level]}: ${
+    // a player without uniqueness is handed Hard puzzles that are Hard without it (docs/architecture.md)
+    !useUniqueness && level === 'Hard' ? t('fish, wings and kites||what a Hard puzzle leans on, for a player who does not use uniqueness') : (loc?.bandNotes ?? BAND_NOTES)[level]
+  }`;
 /** what a technique is, in one line */
 const techWhat = (loc: LearnLocale | undefined, tech: Tech) => loc?.techDocs[tech]?.what ?? TECH_DOCS[tech].what;
 /** another name for it, or the same logic in another family */
@@ -229,6 +232,7 @@ export function NewGameDialog({
 }) {
   const t = useT();
   const loc = useLearnLocale();
+  const useUniqueness = useSettings((s) => s.useUniqueness);
   return (
     <Modal title={t('New game')} onClose={onClose}>
       <div className="level-list">
@@ -279,7 +283,7 @@ export function NewGameDialog({
                 {rangeOf(level, t.level, (n) => t('up to {n}', { n }), (n) => t('above {n}', { n }), t('no limit||the scores of Extreme'))}
               </span>
             </strong>
-            <span>{levelDescription(loc, level)}</span>
+            <span>{levelDescription(loc, level, t, useUniqueness)}</span>
           </button>
         ))}
         <button className="level-btn" onClick={onCustom}>

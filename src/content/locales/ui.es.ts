@@ -368,6 +368,7 @@ const ui: Dictionary = {
   "up to {n}": "hasta {n}",
   "above {n}": "más de {n}",
   "no limit||the scores of Extreme": "sin límite",
+  "fish, wings and kites||what a Hard puzzle leans on, for a player who does not use uniqueness": "peces, wings y kites",
   "No {level} puzzle could be found this time. Please try again": "Esta vez no se ha encontrado ningún sudoku de nivel {level}. Vuelve a intentarlo",
   "No {name} practice could be found this time. Please try again": "Esta vez no se ha encontrado ningún sudoku para practicar {name}. Vuelve a intentarlo",
   "never needed in practice: X-Chains, which run first, find the same loops": "nunca hace falta en la práctica: las X-Chains, que se prueban antes, encuentran los mismos bucles",

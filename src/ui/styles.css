@@ -532,6 +532,14 @@ button {
   font-size: 12px;
 }
 
+/* the score is the player's own, without uniqueness, and not the published
+   one or HoDoKu's: a small mark, the score's title saying why (ratingNote) */
+.rating-own {
+  font-size: 11px;
+  line-height: 0;
+  margin-left: 1px;
+}
+
 .practice-badge {
   font-size: 13px;
   color: var(--hint-secondary-ink);

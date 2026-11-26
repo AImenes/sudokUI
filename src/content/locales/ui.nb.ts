@@ -368,6 +368,7 @@ const ui: Dictionary = {
   "up to {n}": "opptil {n}",
   "above {n}": "over {n}",
   "no limit||the scores of Extreme": "ingen grense",
+  "fish, wings and kites||what a Hard puzzle leans on, for a player who does not use uniqueness": "fisk, wings og kites",
   "No {level} puzzle could be found this time. Please try again": "Fant ingen oppgave på nivået {level} denne gangen. Prøv igjen",
   "No {name} practice could be found this time. Please try again": "Fant ingen øvingsoppgave for {name} denne gangen. Prøv igjen",
   "never needed in practice: X-Chains, which run first, find the same loops": "trengs aldri i praksis: X-Chains, som prøves først, finner de samme sløyfene",
