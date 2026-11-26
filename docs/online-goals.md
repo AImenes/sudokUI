@@ -642,7 +642,9 @@ before the launch:
   `utm_source` and not a short `?via=`: the Worker already reads that one
   parameter, so it still reads one and nothing else, and the privacy page
   names one; it is also the name every link tool and newsletter tool
-  knows. A tag names a channel, never a person or a group. It counts on
+  knows. A tag names a channel, never a person or a group; the launch
+  posts ([launch-posts-2026-12.md](launch-posts-2026-12.md)) say which
+  link each post uses. It counts on
   every page that counts a landing: the share addresses, the daily's, a
   door's, the home pages and the calendar's page, which is where the
   poster's code goes.

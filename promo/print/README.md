@@ -60,7 +60,7 @@ someone, and a poster put up with a yes stays up.
 - **A café:** ask the person at the counter; the board by the door or the
   toilets is where people stand and read.
 - **A church:** ask the parish office. They may also put a line in the
-  newsletter.
+  newsletter: the text is in `docs/launch-posts-2026-12.md`.
 - **A sports club:** the clubhouse board; ask the club's leader or the
   person who runs the kiosk.
 - **A housing association:** the board in the entrance; ask the

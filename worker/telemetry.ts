@@ -392,7 +392,7 @@ export type LandingFrom = (typeof LANDING_FROM)[number];
 
 /**
  * Our own tags, for the links we hand out where the channel sends no
- * referrer (the launch posts of December 2026): `poster` on the QR code
+ * referrer (docs/launch-posts-2026-12.md): `poster` on the QR code
  * of a poster or a flyer, which a phone's camera opens with no referrer;
  * `chat` on a link posted in a chat, which a phone's chat app or a
  * desktop one (Messenger on an iPhone, WhatsApp, Teams, Slack) mostly

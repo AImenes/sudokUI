@@ -42,7 +42,9 @@ reads as `ai`; nothing else in the link is read, and nothing of it kept
 links can carry a tag in the same place, for channels that send no
 referrer: `utm_source=poster` on the QR code of a poster or a flyer reads
 as `poster`, and `utm_source=chat` on a link posted in a chat reads as
-`chat`. A referrer, when there is one, still decides.
+`chat`. A referrer, when there is one, still decides. The advent
+calendar's launch posts say which link each one uses and the word it
+shows as ([launch-posts-2026-12.md](launch-posts-2026-12.md)).
 
 | Where the link is | Landing word |
 |---|---|
