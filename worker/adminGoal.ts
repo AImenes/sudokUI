@@ -136,8 +136,10 @@ export function readingOf(days: DayRow[], today: string, sent: SentLike[] | null
   const langs: Record<string, number> = {};
   const fromHome: Record<string, number> = {};
   const fromShares: Record<string, number> = {};
+  const fromCalendar: Record<string, number> = {};
   const shares: Record<string, number> = {};
   let home = 0;
+  let calendar = 0;
   let completed = 0;
   for (const d of week) {
     completed += d.completed;
@@ -147,6 +149,8 @@ export function readingOf(days: DayRow[], today: string, sent: SentLike[] | null
     sumInto(fromHome, d.landingsFromHome);
     sumInto(fromShares, d.landingsFrom);
     sumInto(fromShares, d.landingsFromHome, -1);
+    calendar += d.landingsCalendar;
+    sumInto(fromCalendar, d.landingsFromCalendar);
     for (const [k, w] of Object.entries(d.sharesBy)) shares[k] = (shares[k] ?? 0) + w.sheet + w.copy + w.save;
   }
   const nbEs: Record<string, number> = { nb: langs.nb ?? 0, es: langs.es ?? 0 };
@@ -162,7 +166,8 @@ export function readingOf(days: DayRow[], today: string, sent: SentLike[] | null
     begunByKind: byName(begun, PLAY_KINDS.filter((k) => k !== 'advent') as string[]),
     begunByLang: byName(nbEs, PLAY_LANGS.filter((l) => l !== 'en')),
     participants,
-    landings: `home ${perDay(home)} (${byName(fromHome, [])}); share pages ${shareWords}`,
+    // the calendar's page, its poster word among them, once it has had a landing in the week
+    landings: `home ${perDay(home)} (${byName(fromHome, [])}); share pages ${shareWords}${calendar > 0 ? `; calendar page ${perDay(calendar)} (${byName(fromCalendar, [])})` : ''}`,
     shares: byName(shares, SHARE_KINDS)
   };
 }
@@ -246,7 +251,7 @@ ${numbers}
     <p class="reading" id="reading-line">${esc(readingLine(r))}</p>
     <p><button type="button" id="copy-reading" data-row="${esc(row)}">Copy as a row of the launch log's Readings</button> <span id="copy-said" class="meta" role="status"></span></p>
     <details><summary class="meta">The row</summary><pre id="reading-row">${esc(row)}</pre></details>
-    <p class="meta">The launch log's Readings (docs/launch-log.md), 7-day averages a day over the 7 whole days before today: Completed leaves practice out, as the numbers below do; daily participants are the daily times sent that reached the database; landings on a home page apart from those on the share pages, by word; the calendar's page is in the Christmas section. Read for is left empty for you to write: the baseline, or the action it judges.</p>
+    <p class="meta">The launch log's Readings (docs/launch-log.md), 7-day averages a day over the 7 whole days before today: Completed leaves practice out, as the numbers below do; daily participants are the daily times sent that reached the database; landings on a home page apart from those on the share pages, by word, and then, in a week it had any, the calendar's page by word (poster is the QR code on the posters and flyers), which the Christmas section shows in full. Read for is left empty for you to write: the baseline, or the action it judges.</p>
     <script>
       document.getElementById('copy-reading').addEventListener('click', function () {
         var row = this.getAttribute('data-row');

@@ -165,6 +165,8 @@ const emptyDay = (day: string): DayRow => ({
   landingsHome: 0,
   landingsFrom: {},
   landingsFromHome: {},
+  landingsCalendar: 0,
+  landingsFromCalendar: {},
   shares: 0,
   sharesSheet: 0,
   sharesSaved: 0,
@@ -215,8 +217,13 @@ export function daysOf(rows: Row[], now: Date): DayRow[] {
     } else if (r.event === 'landing') {
       // a landing on the advent calendar's public page is the Christmas
       // section's (adventOf): the landings here are the home pages' and
-      // the share pages', which the per-share ratio reads
-      if (r.source === 'calendar') continue;
+      // the share pages', which the per-share ratio reads; the page's are
+      // kept apart for the launch log's reading (adminGoal.ts)
+      if (r.source === 'calendar') {
+        d.landingsCalendar += r.n;
+        add(d.landingsFromCalendar, r.kind, r.n);
+        continue;
+      }
       d.landings += r.n;
       if (r.source === 'daily') d.landingsDaily += r.n;
       add(d.landingsFrom, r.kind, r.n);
@@ -377,13 +384,14 @@ const FROM_LABELS: Record<LandingFrom | '', string> & Record<string, string | un
   facebook: 'Facebook',
   discord: 'Discord',
   social: 'Another social site or app',
-  chat: 'A chat app or site',
+  chat: 'A chat app or site (its address or app as the referrer, or with none the chat tag on the link)',
   mail: 'A mail app or webmail',
   github: 'GitHub',
   sudoku: 'Another sudoku site (menneske.no among them)',
   directory: 'An app directory (AlternativeTo, SaaSHub, Product Hunt and the like)',
   fediverse: 'Lemmy or Mastodon',
   press: 'A news site (kode24, Teknisk Ukeblad, Aftenposten)',
+  poster: "Paper: a poster's or a flyer's QR code (the poster tag on the link)",
   other: 'Another site or app',
   '': 'Not recorded: counted before the word was kept'
 };
@@ -560,7 +568,7 @@ ${playRows}
     </table></div>
     <p class="meta">Kind and language are what a start or a solve says about itself, from the builds of November 2026 on: Daily is the daily puzzle, From a share link a puzzle or position opened from a link someone shared, Practice a practice puzzle, and New any other (a new one by band, an import, a grid typed, pasted or scanned, a Learn page's example); the language is the one the app was set to. Lines from older builds say neither and are Not recorded. Practice puzzles are counted from November 2026, at the player's own first move since they open part-way through, and are left out of Starts, Completed, Offline, In installed app, New and Returning and the numbers above, so those read as they did before.</p>
     <p class="meta">A home landing is a visit to /, /nb/ or /es/ from outside the site that the browser did not answer from the app it already holds: mostly a first visit. Landings per share counts the share pages' landings only; a landing on a door's address counts with the share pages. The landings on the advent calendar's public page are in the Christmas section, not here.</p>
-    <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge, the daily's line or an advent door's line, or a picture of the board, that the share sheet took, that was copied or, a picture, saved, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most apps send none (on Android some name themselves), so No referrer is mostly links opened from apps. With no referrer, a link an AI assistant tagged (utm_source=chatgpt.com and the like) counts as An AI assistant. The sixth metric of the plan, search clicks, is in Search Console.</p>
+    <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge, the daily's line or an advent door's line, or a picture of the board, that the share sheet took, that was copied or, a picture, saved, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most apps send none (on Android some name themselves), so No referrer is mostly links opened from apps. With no referrer, a link an AI assistant tagged (utm_source=chatgpt.com and the like) counts as An AI assistant, and a link with one of our own tags counts by it: utm_source=poster, on the QR code of a poster or a flyer, as Paper; utm_source=chat, on a link posted in a chat, as A chat app or site. A referrer, when there is one, always decides. The sixth metric of the plan, search clicks, is in Search Console.</p>
   </body>
 </html>
 `;
@@ -951,7 +959,7 @@ ${rows}
 ${fromRows || '      <tr><td>No landings</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>'}
       </tbody>
     </table></div>
-    <p class="meta">Begun and Completed are the door games' play lines (kind Advent calendar), each with its door, over the calendar's days; a door begun on one day and solved on another counts on each. Times sent are the unassisted times the win screen sent for each door, on its day and up to a week late, until 31 December; the median is the one the win screen shows. A landing on a door's address is a person opening /advent/${m.year}/&lt;door&gt; (or under /nb/, /es/) from outside the site; the door row's Landings are those that say their door (from 25 November 2026), so the number above, every door's landing, may hold more. Shares are a door game's shares that say their door, from the app of 25 November 2026 on: its line from the win screen or the Share dialog, and a puzzle link, a position link or a picture of it; an older app's door line counts as a challenge, with no door, and is in no row. A landing on the calendar's page is a person opening /advent/, /nb/julekalender/ or /es/calendario-de-adviento/ from outside the site, counted as the home pages are (since 25 November 2026), and read from 1 November, before the doors open; the app never answers that page, so a returning player's visit from a post counts too, which a home page's does not. These landings are counted here only, not among the landings at the top of the page. Nothing counts the Christmas look: no line says which theme a player uses.</p>`;
+    <p class="meta">Begun and Completed are the door games' play lines (kind Advent calendar), each with its door, over the calendar's days; a door begun on one day and solved on another counts on each. Times sent are the unassisted times the win screen sent for each door, on its day and up to a week late, until 31 December; the median is the one the win screen shows. A landing on a door's address is a person opening /advent/${m.year}/&lt;door&gt; (or under /nb/, /es/) from outside the site; the door row's Landings are those that say their door (from 25 November 2026), so the number above, every door's landing, may hold more. Shares are a door game's shares that say their door, from the app of 25 November 2026 on: its line from the win screen or the Share dialog, and a puzzle link, a position link or a picture of it; an older app's door line counts as a challenge, with no door, and is in no row. A landing on the calendar's page is a person opening /advent/, /nb/julekalender/ or /es/calendario-de-adviento/ from outside the site, counted as the home pages are (since 25 November 2026), and read from 1 November, before the doors open; the app never answers that page, so a returning player's visit from a post counts too, which a home page's does not. These landings are counted here only, not among the landings at the top of the page; the launch log's reading at the top names them apart, as the calendar page's. The QR code of the calendar's posters and flyers (promo/print/) opens the calendar's page with the poster tag, so their landings show here as Paper. Nothing counts the Christmas look: no line says which theme a player uses.</p>`;
 }
 
 /**

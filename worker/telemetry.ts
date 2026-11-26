@@ -51,8 +51,11 @@
  * the site counts there even when the browser holds the app. Its fifth
  * blob says where the link was opened from, as one word of a closed list
  * (landingWord): the referrer the browser sends is read for that word and
- * never written; with no referrer, the one tag an AI assistant puts on
- * its links, utm_source, is read for `ai` alone, and never written.
+ * never written; with no referrer, one parameter of the address,
+ * utm_source, is read and never written: for the tag an AI assistant puts
+ * on its links (`ai`), and for our own closed list of tags (LINK_TAGS,
+ * from 26 November 2026): `poster` on the QR code of a poster or a
+ * flyer, `chat` on a link posted in a chat. Any other value is ignored.
  *
  * The dataset is an interface, so the tests and the dev and preview
  * servers run the whole thing over memory (memoryEvents).
@@ -360,8 +363,10 @@ export function isLanding(request: Request): boolean {
  * typed, a bookmark, or an app that sends none, as most do), `other` for
  * any site or app the list does not know. A referrer is usually another
  * site's address; on Android it can be the app the link was opened from
- * (FROM_APPS), so `chat` and `mail` cover apps as well as sites. The word
- * is all that is written, never the address.
+ * (FROM_APPS), so `chat` and `mail` cover apps as well as sites. `poster`
+ * is no referrer's: only our own tag on a poster's QR code gives it
+ * (LINK_TAGS, linkTag). The word is all that is written, never the
+ * address.
  */
 export const LANDING_FROM = [
   'none',
@@ -380,9 +385,26 @@ export const LANDING_FROM = [
   'directory',
   'fediverse',
   'press',
+  'poster',
   'other'
 ] as const;
 export type LandingFrom = (typeof LANDING_FROM)[number];
+
+/**
+ * Our own tags, for the links we hand out where the channel sends no
+ * referrer (the launch posts of December 2026): `poster` on the QR code
+ * of a poster or a flyer, which a phone's camera opens with no referrer;
+ * `chat` on a link posted in a chat, which a phone's chat app or a
+ * desktop one (Messenger on an iPhone, WhatsApp, Teams, Slack) mostly
+ * opens with none either. Each is the word the landing then gets, so
+ * `chat` adds to the referrer's `chat`, and `poster` is a word only a tag
+ * gives. A tag names a channel, never a person or a group. It rides in
+ * utm_source, the parameter the assistants' tag already uses
+ * (assistantTagged), so the Worker still reads that one parameter of an
+ * address and nothing else.
+ */
+export const LINK_TAGS = ['poster', 'chat'] as const satisfies readonly LandingFrom[];
+export type LinkTag = (typeof LINK_TAGS)[number];
 
 /** the AI assistants, by their hosts: as a referrer, and as the utm_source tag on a link they give (assistantTagged) */
 const AI_HOSTS = ['chatgpt.com', 'chat.openai.com', 'perplexity.ai', 'claude.ai', 'gemini.google.com', 'copilot.microsoft.com'];
@@ -549,6 +571,15 @@ export function landingFrom(referer: string | null): LandingFrom {
   return SEARCH_ROOTS.test(host) ? 'search' : 'other';
 }
 
+/** the one parameter read from a landing's address: its utm_source, trimmed and in lower case; '' when there is none or the address cannot be read */
+function sourceTag(address: string): string {
+  try {
+    return (new URL(address).searchParams.get('utm_source') ?? '').trim().toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
 /**
  * True when the address a landing asked for carries the tag an AI
  * assistant puts on the links it gives, utm_source naming one of the
@@ -557,24 +588,33 @@ export function landingFrom(referer: string | null): LandingFrom {
  * nothing of it is kept.
  */
 export function assistantTagged(address: string): boolean {
-  let tag: string | null;
-  try {
-    tag = new URL(address).searchParams.get('utm_source');
-  } catch {
-    return false;
-  }
-  return !!tag && hostIn(tag.trim().toLowerCase().replace(/\.$/, ''), AI_HOSTS);
+  const tag = sourceTag(address);
+  return !!tag && hostIn(tag.replace(/\.$/, ''), AI_HOSTS);
+}
+
+/**
+ * Which of our own tags (LINK_TAGS) the address a landing asked for
+ * carries in utm_source, in any case and with any spaces around it; null
+ * for none, and for any other value, which is ignored. That one parameter
+ * is the only thing read from the address, and nothing of it is kept.
+ */
+export function linkTag(address: string): LinkTag | null {
+  const tag = sourceTag(address);
+  return (LINK_TAGS as readonly string[]).includes(tag) ? (tag as LinkTag) : null;
 }
 
 /**
  * The word for a landing: its referrer's (landingFrom). Assistants often
  * send none, so a landing with no referrer whose link an assistant tagged
- * (assistantTagged) is `ai`; any other stays `none`, and a referrer, when
- * there is one, always decides.
+ * (assistantTagged) is `ai`; one with no referrer whose link carries one
+ * of our own tags (linkTag: `poster` on a QR code, `chat` on a link
+ * posted in a chat) is that tag's word; any other stays `none`. A
+ * referrer, when there is one, always decides.
  */
 export function landingWord(request: Request): LandingFrom {
   const word = landingFrom(request.headers.get('referer'));
-  return word === 'none' && assistantTagged(request.url) ? 'ai' : word;
+  if (word !== 'none') return word;
+  return assistantTagged(request.url) ? 'ai' : (linkTag(request.url) ?? 'none');
 }
 
 /**

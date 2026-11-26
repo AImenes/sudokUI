@@ -611,9 +611,9 @@ before the launch:
 - **A landing says where it came from**, as one word of a closed list
   (`landingFrom` in worker/telemetry.ts): none, search, ai, reddit,
   enjoysudoku, hackernews, facebook, discord, social, chat, mail, github,
-  sudoku, other; and since November 2026 directory, fediverse and
-  press. The referrer is read for that word and never written.
-  Browsers usually send only another site's origin, though a site can
+  sudoku, other; since November 2026 directory, fediverse and press;
+  and poster, which only a tag gives (below). The referrer is read for
+  that word and never written. Browsers usually send only another site's origin, though a site can
   choose to send its full address, query and all; only the host (or an
   Android app's package) is used, and nothing of it is written. Most apps
   send nothing, so `none` is mostly them; on Android an app can name itself
@@ -627,6 +627,25 @@ before the launch:
   link whose `utm_source` names an AI assistant by its address (ChatGPT
   tags its links `utm_source=chatgpt.com`) is `ai`. That one parameter
   is read, nothing else in the address, and nothing of it is written.
+  Since 26 November 2026 the same parameter also carries **our own tags**,
+  a closed list of two (`LINK_TAGS`, `linkTag`), for the links we hand
+  out where the channel sends no referrer: `utm_source=poster` on the QR
+  code of the advent calendar's posters and flyers (promo/print/), which
+  a phone's camera opens with no referrer, so a poster's visits would
+  otherwise be `none`; and `utm_source=chat` on a link posted in a chat
+  (a family chat, a workplace channel), which Messenger on an iPhone,
+  WhatsApp, Teams or Slack mostly open with none. With no referrer, the
+  tag is the word: `poster` is a new word, which only the tag gives, and
+  `chat` adds to the referrer's `chat`. A referrer, when there is one,
+  still decides, as for `ai`; any other value, a different case or spaces
+  around it aside, is ignored; nothing of the address is written. Why
+  `utm_source` and not a short `?via=`: the Worker already reads that one
+  parameter, so it still reads one and nothing else, and the privacy page
+  names one; it is also the name every link tool and newsletter tool
+  knows. A tag names a channel, never a person or a group. It counts on
+  every page that counts a landing: the share addresses, the daily's, a
+  door's, the home pages and the calendar's page, which is where the
+  poster's code goes.
 - **A landing can no longer be posted.** `/api/t` takes `started`,
   `completed` and `shared`; before, a forged `landing` line was written
   like the share route's own.
@@ -943,8 +962,9 @@ running on to 31 January.
   unrecorded when there are any), begun in Norwegian and Spanish, daily
   participants (the daily times sent that reached D1, from the read the
   page already makes; "—" without a database), landings on a home page
-  by word apart from those on the share pages by word, and shares by
-  kind. A button copies it as a row of that table, with "Read for" left
+  by word apart from those on the share pages by word, then (since 26
+  November 2026, in a week it had any) those on the calendar's page by
+  word, `poster` among them, and shares by kind. A button copies it as a row of that table, with "Read for" left
   empty for the owner to write; the page's only script, and without it
   the row is under "The row" to copy by hand.
 
