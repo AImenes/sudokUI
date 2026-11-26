@@ -692,10 +692,13 @@ Christmas, November 2026 (the owner's decisions of 12 November;
   times and their median from D1's histogram, and the landings on the
   doors' addresses (`advent` in the source slot) and on the calendar's
   public page (`calendar`), by referrer word. Before
-  1 December it says when the calendar opens and shows zeros. Its counts
-  are a second SQL query, run only from 30 November to 31 January and
-  kept to the calendar's own lines; its times one read on the primary
-  key's range of the year's 24 door numbers.
+  1 December it says when the calendar opens, and the doors' games show
+  zeros. Its counts are a second SQL query, run only from 1 November to
+  31 January and kept to the calendar's own lines: the landings from
+  1 November, so the posts that announce the calendar before it opens
+  can be read by their word, the doors' games and shares from
+  30 November; its times one read on the primary key's range of the
+  year's 24 door numbers.
 - **Nothing counts the Christmas look**: no line says which theme a
   player uses. The public calendar pages (`/advent/`, `/nb/julekalender/`,
   `/es/calendario-de-adviento/`) are files whose script reads the
@@ -955,15 +958,17 @@ launch's landings roll off it before the plan judges the launch at day
 column per landing word (the words of the launch log; `unrecorded` for
 landings counted before the word was kept), then where they landed (a
 home page, a share page, the advent calendar's page or a door's
-address), with the last 7 days and the 28 summed. The calendar's
-landings are in it, as they are not in the 7-day table.
+address), with the last 7 days and the 28 summed. The landings on the
+calendar's page are in it, as they are not in the 7-day table, which
+leaves only that page to the Christmas section; a door's address counts
+in the 7-day table with the share pages.
 
 ### The query check: /admin?check
 
 `/admin?check` (`worker/adminCheck.ts`, behind the same Access check and
 secrets as `/admin`, a 404 otherwise) runs every query the dashboard
 uses against the real Analytics Engine SQL API, one after the other: the
-main query; the Christmas section's (over the calendar's window from 30
+main query; the Christmas section's (over the calendar's window from 1
 November, and before that over the last 30 days, so it meets the
 calendar page's landings and the doors' shares counted since 25
 November); the five further tables'; and the landings by word. For

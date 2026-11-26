@@ -432,8 +432,9 @@ and the January after; outside that, the next one published (October
 shows the coming one), else the last.
 
 - **Where it stands**, by the UTC day: before 1 December it says the
-  calendar opens on 1 December, by each player's own date, and every door
-  shows zeros; in December that it is open; after, that it closed on 31
+  calendar opens on 1 December, by each player's own date, and the doors'
+  games show zeros, while the landings already count the posts that
+  announce it; in December that it is open; after, that it closed on 31
   December and that a door game under way can still be finished.
 - **Six numbers**: door games begun and completed, the completion rate,
   the unassisted times sent, the landings on a door's address, and the
@@ -452,14 +453,18 @@ Where the numbers come from, each read kept bounded:
 
 - **Begun and completed** are the door games' play lines (kind `advent`),
   summed by their door, the seventh blob (`adventQuery`): a second query
-  to the SQL API, run only for the UTC days from 30 November (a player a
-  day ahead of UTC opens door 1 then) to 31 January (a month for the door
-  games under way on 1 January), at most 63 days back, and kept to the
+  to the SQL API, run only for the UTC days from 1 November to 31 January
+  (a month for the door games under way on 1 January), at most 92 days
+  back. The doors' games and shares count from 30 November (a player a
+  day ahead of UTC opens door 1 then); the landings, on the calendar's
+  page and on a door's address, from 1 November, so a post that
+  announces the calendar before 1 December shows by its word (the
+  page's landings are counted since 25 November 2026). It is kept to the
   calendar's own lines (the doors' starts and solves, the shares that
   name a door, and the landings in the `advent` and `calendar` slots): a
   day's are at most two events and two sources and the share kinds by 24
   doors, and two slots of the landing words by 24 doors.
-  Before 30 November nothing is asked and the doors show zeros; after 31
+  Before 1 November nothing is asked and the doors show zeros; after 31
   January the counts are no longer read (Analytics Engine keeps three
   months) and the section says so. If that query fails, the section says
   so and the rest of the page stands.

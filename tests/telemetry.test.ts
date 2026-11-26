@@ -1610,7 +1610,8 @@ describe("the admin page's Christmas section", () => {
     // the calendar's public page, apart from the doors'
     arow('2026-12-04', 'landing', 'facebook', '', 5, 'calendar'),
     arow('2026-12-06', 'landing', 'search', '', 2, 'calendar'),
-    arow('2026-11-29', 'landing', 'facebook', '', 100, 'calendar'),
+    // a landing before 1 November, the window's first day: left out
+    arow('2026-10-31', 'landing', 'facebook', '', 100, 'calendar'),
     // a day before the window, a door off the calendar, a line without a door, a line of another kind: left out
     arow('2026-11-29', 'started', 'advent', '5', 100),
     arow('2026-12-05', 'started', 'advent', '25', 100),
@@ -1644,22 +1645,23 @@ describe("the admin page's Christmas section", () => {
     expect(adventPhase(2026, at('2027-01-01T00:00:00Z'))).toBe('over');
   });
 
-  it('asks for the doors’ lines and their landings only, from 30 November to 31 January, and nothing outside', () => {
-    expect(adventQuery(at('2026-11-12T12:00:00Z'), 2026)).toBeNull();
-    expect(adventQuery(at('2026-11-29T23:59:00Z'), 2026)).toBeNull();
+  it('asks for the doors’ lines and their landings only, from 1 November to 31 January, and nothing outside', () => {
+    expect(adventQuery(at('2026-10-31T23:59:00Z'), 2026)).toBeNull();
     expect(adventQuery(at('2027-02-01T00:00:00Z'), 2026)).toBeNull();
+    // from 1 November, for the landings of the posts that announce the calendar
+    expect(adventQuery(at('2026-11-01T00:00:00Z'), 2026)).toContain("NOW() - INTERVAL '1' DAY");
+    expect(adventQuery(at('2026-11-27T12:00:00Z'), 2026)).toContain("NOW() - INTERVAL '27' DAY");
     const sql = adventQuery(at('2026-12-10T12:00:00Z'), 2026)!;
     expect(sql).toContain(`FROM ${DATASET}`);
     expect(sql).toContain("toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, index1 AS event, blob2 AS slot, blob5 AS kind, blob7 AS door");
     expect(sql).toContain('SUM(_sample_interval * double2) AS n');
-    // whole days back past 30 November's midnight
-    expect(sql).toContain("WHERE timestamp > NOW() - INTERVAL '11' DAY");
+    // whole days back past 1 November's midnight
+    expect(sql).toContain("WHERE timestamp > NOW() - INTERVAL '40' DAY");
     // the landings on a door's address and on the calendar's public page
     expect(sql).toContain("AND ((index1 = 'landing' AND (blob2 = 'advent' OR blob2 = 'calendar')) OR ((index1 = 'started' OR index1 = 'completed') AND blob5 = 'advent') OR (index1 = 'shared' AND blob7 != ''))");
     expect(sql).toContain('GROUP BY day, event, slot, kind, door ORDER BY day FORMAT JSON');
-    expect(adventQuery(at('2026-11-30T00:00:00Z'), 2026)).toContain("NOW() - INTERVAL '1' DAY");
-    // at most the window's 63 days, on its last
-    expect(adventQuery(at('2027-01-31T23:00:00Z'), 2026)).toContain("NOW() - INTERVAL '63' DAY");
+    // at most the window's 92 days, on its last
+    expect(adventQuery(at('2027-01-31T23:00:00Z'), 2026)).toContain("NOW() - INTERVAL '92' DAY");
   });
 
   it('reads the rows the API gives, and nothing it does not', () => {
@@ -1700,6 +1702,32 @@ describe("the admin page's Christmas section", () => {
     expect(adventOf(2031, at('2031-12-06T12:00:00Z'), [], 'read', undefined).doors[0]).toMatchObject({ date: '2031-12-01', level: '', score: 0 });
   });
 
+  it('counts the landings of the posts that announce the calendar from 1 November, and the doors’ games and shares from 30 November only', () => {
+    const rows = [
+      arow('2026-11-27', 'landing', 'reddit', '', 9, 'calendar'),
+      arow('2026-12-03', 'landing', 'facebook', '', 4, 'calendar'),
+      // a door's address in a post before the doors open
+      arow('2026-11-28', 'landing', 'reddit', '3', 2, 'advent'),
+      // a door's game or share before 30 November: no player has it open yet
+      arow('2026-11-28', 'started', 'advent', '1', 50),
+      arow('2026-11-28', 'shared', 'door', '1', 50, 'tab')
+    ];
+    const m = adventOf(2026, at('2026-12-04T10:00:00Z'), rows, 'read', null);
+    expect(m.calendarLandings).toBe(13);
+    expect(m.calendarFrom).toEqual({ reddit: 9, facebook: 4 });
+    expect(m.landings).toBe(2);
+    expect(m.landingsFrom).toEqual({ reddit: 2 });
+    expect(m.doors[2].landings).toBe(2);
+    expect([m.started, m.shares]).toEqual([0, 0]);
+    // and before 1 December, while the doors are still locked
+    const soon = adventOf(2026, at('2026-11-28T10:00:00Z'), rows.slice(0, 1), 'read', undefined);
+    expect(soon).toMatchObject({ phase: 'before', calendarLandings: 9, calendarFrom: { reddit: 9 } });
+    const html = adventSection(soon);
+    expect(html).toContain("<dt>Landings on the calendar's page</dt><dd>9</dd>");
+    expect(html).toContain('<tr><td>Reddit</td><td>9</td><td>0</td><td>9</td><td>100%</td></tr>');
+    expect(html).toContain('the landings below are the posts that announce it');
+  });
+
   it('reads the times from the histogram the win screen reads, on the range of the year’s 24 door numbers', async () => {
     const calls: { sql: string; args: unknown[] }[] = [];
     const hist = [
@@ -1737,8 +1765,8 @@ describe("the admin page's Christmas section", () => {
   it('says before 1 December that the calendar opens then, and shows every door at zero', () => {
     const html = adventSection(adventOf(2026, at('2026-11-12T12:00:00Z'), null, 'soon', undefined));
     expect(html).toContain('<h2>Christmas: the advent calendar 2026</h2>');
-    expect(html).toContain("The 2026 calendar opens on 1 December, by each player's own date: until then every door shows zeros.");
-    expect(html).toContain('The counts are read from 2026-11-30 (UTC)');
+    expect(html).toContain("The 2026 calendar opens on 1 December, by each player's own date: until then the doors' games show zeros");
+    expect(html).toContain('The landings are read from 2026-11-01 (UTC), the doors\' games and shares from 2026-11-30');
     expect(html).toContain('No database is bound: no times.');
     expect(html).toContain('<tr><td>1</td><td>1 Dec</td><td>Easy 104</td><td>0</td><td>0</td><td>—</td><td>—</td><td>—</td><td>0</td><td>0</td></tr>');
     expect(html.match(/<tr><td>\d+<\/td><td>\d+ Dec<\/td><td>\w+ \d+<\/td><td>0<\/td><td>0<\/td><td>—<\/td><td>—<\/td><td>—<\/td><td>0<\/td><td>0<\/td><\/tr>/g)).toHaveLength(24);
@@ -1751,7 +1779,7 @@ describe("the admin page's Christmas section", () => {
   it('shows each door’s numbers once open, and says when the counts are past or could not be read', () => {
     const html = adventSection(adventOf(2026, at('2026-12-06T12:00:00Z'), ROWS, 'read', TIMES));
     expect(html).toContain('The 2026 calendar is open');
-    expect(html).toContain('Counted from 2026-11-30 to 2027-01-31, UTC days, so far.');
+    expect(html).toContain("The landings are counted from 2026-11-01, the doors' games and shares from 2026-11-30, when a player a day ahead of UTC opens door 1, to 2027-01-31, UTC days, so far.");
     // each door's landings and shares beside its games and times
     expect(html).toContain('<th>Median time</th><th>Landings</th><th>Shares</th>');
     expect(html).toContain('<tr><td>5</td><td>5 Dec</td><td>Easy 258</td><td>10</td><td>4</td><td>40%</td><td>3</td><td>4:38</td><td>6</td><td>6</td></tr>');
@@ -1791,7 +1819,7 @@ describe("the admin page's Christmas section", () => {
       throw new Error('the analytics were asked');
     }) as typeof fetch;
     const env = { ADMIN_ACCOUNT_ID: 'a', ADMIN_TOKEN: 't', DB: db as never };
-    expect(await adventFor(env, at('2026-11-12T12:00:00Z'), never)).toMatchObject({ year: 2026, phase: 'before', counted: 'soon', times: 0 });
+    expect(await adventFor(env, at('2026-10-12T12:00:00Z'), never)).toMatchObject({ year: 2026, phase: 'before', counted: 'soon', times: 0 });
     expect(await adventFor(env, at('2027-04-12T12:00:00Z'), never)).toMatchObject({ year: 2026, phase: 'over', counted: 'past' });
     expect(asked).toHaveLength(2);
   });

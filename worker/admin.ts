@@ -21,12 +21,14 @@
  * Below the daily's times sent, a Christmas section (adventSection): the
  * advent calendar in season (docs/advent-calendar.md), each door's games
  * begun and completed (the play lines' door, a second query, run only
- * from 30 November to 31 January and kept to the calendar's own lines),
- * its completion rate, its unassisted times and their median (the
- * database's histogram, one read on the range of the year's 24 door
- * numbers), and the landings on the doors' addresses and on the
- * calendar's public page, by referrer word.
- * Before 1 December it says when the calendar opens and shows zeros.
+ * from 1 November to 31 January and kept to the calendar's own lines;
+ * the doors' games and shares from 30 November), its completion rate,
+ * its unassisted times and their median (the database's histogram, one
+ * read on the range of the year's 24 door numbers), and the landings on
+ * the doors' addresses and on the calendar's public page, by referrer
+ * word, from 1 November, so the posts that announce the calendar before
+ * it opens can be read. Before 1 December it says when the calendar
+ * opens, and the doors' games show zeros.
  *
  * At the top, "Toward 100 a day" (adminGoal.ts): the games begun a day
  * against the owner's goal, and the launch log's reading to copy, from
@@ -557,7 +559,7 @@ ${playRows}
       </tbody>
     </table></div>
     <p class="meta">Kind and language are what a start or a solve says about itself, from the builds of November 2026 on: Daily is the daily puzzle, From a share link a puzzle or position opened from a link someone shared, Practice a practice puzzle, and New any other (a new one by band, an import, a grid typed, pasted or scanned, a Learn page's example); the language is the one the app was set to. Lines from older builds say neither and are Not recorded. Practice puzzles are counted from November 2026, at the player's own first move since they open part-way through, and are left out of Starts, Completed, Offline, In installed app, New and Returning and the numbers above, so those read as they did before.</p>
-    <p class="meta">A home landing is a visit to /, /nb/ or /es/ from outside the site that the browser did not answer from the app it already holds: mostly a first visit. Landings per share counts the share pages' landings only. The landings on the advent calendar's public page are in the Christmas section, not here.</p>
+    <p class="meta">A home landing is a visit to /, /nb/ or /es/ from outside the site that the browser did not answer from the app it already holds: mostly a first visit. Landings per share counts the share pages' landings only; a landing on a door's address counts with the share pages. The landings on the advent calendar's public page are in the Christmas section, not here.</p>
     <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge, the daily's line or an advent door's line, or a picture of the board, that the share sheet took, that was copied or, a picture, saved, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most apps send none (on Android some name themselves), so No referrer is mostly links opened from apps. With no referrer, a link an AI assistant tagged (utm_source=chatgpt.com and the like) counts as An AI assistant. The sixth metric of the plan, search clicks, is in Search Console.</p>
   </body>
 </html>
@@ -667,6 +669,14 @@ export function adventPhase(year: number, now: Date): AdventPhase {
  */
 export const adventCountFrom = (year: number) => `${year}-11-30`;
 export const adventCountTo = (year: number) => `${year + 1}-01-31`;
+/**
+ * The first UTC day the landings are read for, on the calendar's page and
+ * on a door's address: 1 November, when the season starts
+ * (src/content/season.ts), so a post that announces the calendar before
+ * 1 December shows by its word. The page's landings are counted since
+ * 25 November 2026.
+ */
+export const adventLandingsFrom = (year: number) => `${year}-11-01`;
 
 /**
  * The doors' play lines, the shares of a door game, and the landings on
@@ -676,17 +686,18 @@ export const adventCountTo = (year: number) => `${year + 1}-01-31`;
  * source, which is not read), kind (a play line's kind, a share's what, a
  * landing's referrer word: blob5) and door (the seventh blob of a door's
  * play line, share or landing, telemetry.ts pointOf and countLanding),
- * from the window's first day to now; null outside the window, when
- * nothing is read. Bounded as the main query is: at most 63 days, and the
- * rows of the calendar's lines only: a day's are at most two events, two
- * sources and the share kinds by 24 doors, and two slots of the landing
- * words by 24 doors.
+ * from the window's first day (1 November, adventLandingsFrom) to now;
+ * null outside the window, when nothing is read. Bounded: at most 92
+ * days, and the rows of the calendar's lines only: a day's are at most
+ * two events, two sources and the share kinds by 24 doors, and two slots
+ * of the landing words by 24 doors. Before 30 November only the landings
+ * are kept (adventOf).
  */
 export function adventQuery(now: Date, year: number): string | null {
   const today = utcDay(now);
-  if (today < adventCountFrom(year) || today > adventCountTo(year)) return null;
+  if (today < adventLandingsFrom(year) || today > adventCountTo(year)) return null;
   // whole days back past the window's first midnight; the days before it are left out by adventOf
-  return adventSql(daysBetween(adventCountFrom(year), today) + 1);
+  return adventSql(daysBetween(adventLandingsFrom(year), today) + 1);
 }
 
 /** the calendar query over the last `days` days: adventQuery's, and the query check's (/admin?check) before the window opens */
@@ -775,6 +786,7 @@ export function adventOf(
   published: AdventDoor[] = advent as AdventDoor[]
 ): AdventMetrics {
   const from = adventCountFrom(year);
+  const pageFrom = adventLandingsFrom(year);
   const to = adventCountTo(year);
   const started = new Map<number, number>();
   const completed = new Map<number, number>();
@@ -791,7 +803,8 @@ export function adventOf(
   let landings = 0;
   let calendarLandings = 0;
   for (const r of rows ?? []) {
-    if (r.day < from || r.day > to) continue;
+    // the landings from 1 November, the doors' games and shares from 30 November
+    if (r.day < (r.event === 'landing' ? pageFrom : from) || r.day > to) continue;
     if (r.event === 'landing' && r.slot === 'calendar') {
       calendarLandings += r.n;
       add(calendarFrom, r.kind, r.n);
@@ -876,17 +889,17 @@ const shortDay = (date: string) => `${Number(date.slice(8, 10))} Dec`;
 export function adventSection(m: AdventMetrics): string {
   const stand =
     m.phase === 'before'
-      ? `The ${m.year} calendar opens on 1 December, by each player's own date: until then every door shows zeros.`
+      ? `The ${m.year} calendar opens on 1 December, by each player's own date: until then the doors' games show zeros, and the landings below are the posts that announce it.`
       : m.phase === 'open'
         ? `The ${m.year} calendar is open: door n opens on n December by each player's own date, and every open door stays open until 31 December.`
         : `The ${m.year} calendar closed on 31 December. A door game under way then can still be finished, and its completed line counts here until 31 January; no time is taken after 31 December.`;
   const counts =
     m.counted === 'read'
-      ? `Counted from ${adventCountFrom(m.year)} to ${adventCountTo(m.year)}, UTC days, so far.`
+      ? `The landings are counted from ${adventLandingsFrom(m.year)}, the doors' games and shares from ${adventCountFrom(m.year)}, when a player a day ahead of UTC opens door 1, to ${adventCountTo(m.year)}, UTC days, so far.`
       : m.counted === 'soon'
-        ? `The counts are read from ${adventCountFrom(m.year)} (UTC), when a player a day ahead of UTC opens door 1.`
+        ? `The landings are read from ${adventLandingsFrom(m.year)} (UTC), the doors' games and shares from ${adventCountFrom(m.year)}, when a player a day ahead of UTC opens door 1.`
         : m.counted === 'past'
-          ? `The counts were read from ${adventCountFrom(m.year)} to ${adventCountTo(m.year)} and are not read now: Analytics Engine keeps them three months. The times stay in the database.`
+          ? `The counts were read from ${adventLandingsFrom(m.year)} to ${adventCountTo(m.year)} and are not read now: Analytics Engine keeps them three months. The times stay in the database.`
           : 'The analytics API could not be read for the calendar: the counts show as zeros.';
   const database = m.database === undefined ? ' No database is bound: no times.' : m.database ? '' : ' The database could not be read: no times.';
   const number = (label: string, value: string, note = '') =>
@@ -938,7 +951,7 @@ ${rows}
 ${fromRows || '      <tr><td>No landings</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>'}
       </tbody>
     </table></div>
-    <p class="meta">Begun and Completed are the door games' play lines (kind Advent calendar), each with its door, over the calendar's days; a door begun on one day and solved on another counts on each. Times sent are the unassisted times the win screen sent for each door, on its day and up to a week late, until 31 December; the median is the one the win screen shows. A landing on a door's address is a person opening /advent/${m.year}/&lt;door&gt; (or under /nb/, /es/) from outside the site; the door row's Landings are those that say their door (from 25 November 2026), so the number above, every door's landing, may hold more. Shares are a door game's shares that say their door, from the app of 25 November 2026 on: its line from the win screen or the Share dialog, and a puzzle link, a position link or a picture of it; an older app's door line counts as a challenge, with no door, and is in no row. A landing on the calendar's page is a person opening /advent/, /nb/julekalender/ or /es/calendario-de-adviento/ from outside the site, counted as the home pages are (since 25 November 2026); the app never answers that page, so a returning player's visit from a post counts too, which a home page's does not. These landings are counted here only, not among the landings at the top of the page. Nothing counts the Christmas look: no line says which theme a player uses.</p>`;
+    <p class="meta">Begun and Completed are the door games' play lines (kind Advent calendar), each with its door, over the calendar's days; a door begun on one day and solved on another counts on each. Times sent are the unassisted times the win screen sent for each door, on its day and up to a week late, until 31 December; the median is the one the win screen shows. A landing on a door's address is a person opening /advent/${m.year}/&lt;door&gt; (or under /nb/, /es/) from outside the site; the door row's Landings are those that say their door (from 25 November 2026), so the number above, every door's landing, may hold more. Shares are a door game's shares that say their door, from the app of 25 November 2026 on: its line from the win screen or the Share dialog, and a puzzle link, a position link or a picture of it; an older app's door line counts as a challenge, with no door, and is in no row. A landing on the calendar's page is a person opening /advent/, /nb/julekalender/ or /es/calendario-de-adviento/ from outside the site, counted as the home pages are (since 25 November 2026), and read from 1 November, before the doors open; the app never answers that page, so a returning player's visit from a post counts too, which a home page's does not. These landings are counted here only, not among the landings at the top of the page. Nothing counts the Christmas look: no line says which theme a player uses.</p>`;
 }
 
 /**
@@ -951,7 +964,7 @@ export async function adventFor(env: AdminEnv, now: Date, doFetch: typeof fetch)
   const year = adventYearOn(now);
   const sql = adventQuery(now, year);
   let rows: AdventRow[] | null = null;
-  let counted: AdventCounted = utcDay(now) < adventCountFrom(year) ? 'soon' : 'past';
+  let counted: AdventCounted = utcDay(now) < adventLandingsFrom(year) ? 'soon' : 'past';
   if (sql) {
     try {
       const res = await doFetch(sqlApi(env.ADMIN_ACCOUNT_ID!), {
@@ -1026,7 +1039,7 @@ export async function handleAdmin(request: Request, env: AdminEnv, options: Admi
 /**
  * Every query the dashboard asks, in the page's order, as the check runs
  * them (adminCheck.ts): the main one, the calendar's (over its window in
- * season, and before 30 November over the last DAYS_SHOWN days, so it
+ * season, and before 1 November over the last DAYS_SHOWN days, so it
  * meets data before it is needed), the five further tables' and the
  * landings by word
  */
@@ -1041,8 +1054,8 @@ export function dashboardChecks(now: Date): QueryCheck[] {
       sql: inSeason ?? adventSql(DAYS_SHOWN),
       kept: (a) => adventRowsOf(a).length,
       note: inSeason
-        ? `Over the calendar's window, from ${adventCountFrom(year)}, as the page runs it.`
-        : `The page runs it from ${adventCountFrom(year)}; here it runs over the last ${DAYS_SHOWN} days, so it meets real data first: the calendar's page's landings and the doors' shares from 25 November 2026, and any door played early.`
+        ? `Over the calendar's window, from ${adventLandingsFrom(year)}, as the page runs it.`
+        : `The page runs it from ${adventLandingsFrom(year)}; here it runs over the last ${DAYS_SHOWN} days, so it meets real data first: the calendar's page's landings and the doors' shares from 25 November 2026, and any door played early.`
     },
     more('Help used and levels', levelsQuery(), ['day', 'event', 'band', 'kind', 'help']),
     more('Median times', timesQuery(), ['band', 'help', 'bucket']),
