@@ -16,6 +16,8 @@ declare module 'node:fs' {
   export function readdirSync(path: string): string[];
   export function existsSync(path: string): boolean;
   export function writeFileSync(path: string, data: string): void;
+  /** tests/pathBefore.ts, listing the positions the tests ask for, on request */
+  export function appendFileSync(path: string, data: string): void;
   export function mkdtempSync(prefix: string): string;
   export function mkdirSync(path: string, options: { recursive: boolean }): void;
   export function rmSync(path: string, options: { recursive: boolean; force: boolean }): void;

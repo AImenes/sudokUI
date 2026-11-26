@@ -16,7 +16,7 @@
  * Spanish.
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { EXAMPLES } from '../src/content/examples';
+import { EXAMPLES_BEFORE as EXAMPLES } from './examplesBefore';
 import { parseGrid, gridFromValues, sees } from '../src/engine/board';
 import type { Grid } from '../src/engine/board';
 import { findNextStep, findStep, applyStep } from '../src/engine/humanSolver';
@@ -29,11 +29,11 @@ import { extend, chainStep, EMPTY_CHAIN } from '../src/engine/chainTrainer';
 import type { Chain } from '../src/engine/chainTrainer';
 import nb from '../src/content/locales/app.nb';
 import es from '../src/content/locales/app.es';
+import { walkTo } from './pathBefore';
 
 /** a puzzle after the solver's first `at` steps */
 function after(puzzle: string, at: number): Grid {
-  const g = parseGrid(puzzle)!;
-  for (let i = 0; i < at; i++) applyStep(g, findNextStep(g)!);
+  const g = walkTo(puzzle, at);
   return g;
 }
 const stepAt = (puzzle: string, at: number, tech: Tech) => findStep(tech, after(puzzle, at))!;
@@ -105,10 +105,10 @@ describe('an open chain ends on both its ends (docs/hint-readability-2026-11.md 
    */
   const FOUND: [string, number, Tech, string][] = [
     // an almost locked set at the end
-    ['........17....149.3....4.....7.5..1959..4..3668..3.7.....6....7.768....59........', 18, 'AIC_GROUPED', 'Either r1c1 (by the small dot) is 2, or the chain puts a 2 in set A. Each removed 2 sees every 2 of both.'],
-    ['..97....6.4..561......143...82....9.....2.....1....26...748......627..3.4....59..', 28, 'AIC_GROUPED', 'Either r1c7 (by the small dot) is 8, or the chain puts an 8 in set A. Each removed 8 sees every 8 of both.'],
+    ['........17....149.3....4.....7.5..1959..4..3668..3.7.....6....7.768....59........', 18, 'AIC_ALS', 'Either r1c1 (by the small dot) is 2, or the chain puts a 2 in set A. Each removed 2 sees every 2 of both.'],
+    ['..97....6.4..561......143...82....9.....2.....1....26...748......627..3.4....59..', 28, 'AIC_ALS', 'Either r1c7 (by the small dot) is 8, or the chain puts an 8 in set A. Each removed 8 sees every 8 of both.'],
     // two digits, the removal in the start's own cell
-    ['...9.....216547....89.21..............2.93.61......4.3.41.7...98.....7....51...2.', 17, 'AIC_GROUPED', 'Either r1c1 (by the small dot) is 3, or the chain puts a 4 in set B. Either way r1c1 is not 4.'],
+    ['...9.....216547....89.21..............2.93.61......4.3.41.7...98.....7....51...2.', 17, 'AIC_ALS', 'Either r1c1 (by the small dot) is 3, or the chain puts a 4 in set B. Either way r1c1 is not 4.'],
     ['83.7.....6....3.1..2.861....1.5.....98.....27.....8.5....487.3..4.6....9.....9.72', 8, 'AIC_GROUPED', 'Either r1c5 (by the small dot) is 9, or the chain puts 2 in one of r2c4, r2c5. Either way r1c5 is not 2.'],
     ['...9.....216547....89.21..............2.93.61......4.3.41.7...98.....7....51...2.', 17, 'AIC', 'Either r1c1 (by the small dot) is 3, or the chain makes r1c3 4. Either way r1c1 is not 4.'],
     // a removal in each end's cell

@@ -52,6 +52,10 @@
  *
  * and `DRAWING_SNAPSHOT=write-all` walks the paths and the named positions
  * afresh and writes both fixtures, which phase 4 does once, to split them.
+ * `DRAWING_SNAPSHOT=write-kept` writes both at the positions they keep,
+ * with the stored examples drawn again: for a change to the solver that
+ * moves the paths, and the examples with them, on purpose
+ * (docs/rating-chains.md).
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -323,6 +327,16 @@ let fresh: ReturnType<typeof walked> | undefined;
 const WRITES: Record<string, Record<string, () => Snapshot>> = {
   // at the positions the set fixture keeps, never the paths' positions now
   'write-sets': { [SET_FIXTURE]: () => setsAt(read(SET_FIXTURE)) },
+  // both fixtures at the positions they keep, the stored examples drawn
+  // again: for a change that means to move the solve paths, and with them
+  // the examples (docs/rating-chains.md), never the kept positions
+  'write-kept': {
+    [FIXTURE]: () => {
+      const kept = read(FIXTURE);
+      return { examples: examplesOf(plain), paths: entriesAt(kept.paths), named: entriesAt(kept.named) };
+    },
+    [SET_FIXTURE]: () => setsAt(read(SET_FIXTURE))
+  },
   'write-all': { [FIXTURE]: () => (fresh ??= walked()).plain, [SET_FIXTURE]: () => (fresh ??= walked()).sets }
 };
 
@@ -367,7 +381,7 @@ let setsThen: Snapshot;
 beforeAll(() => {
   const flag = env.DRAWING_SNAPSHOT;
   if (flag !== undefined) {
-    if (!WRITES[flag]) throw new Error(`DRAWING_SNAPSHOT=${flag}: write-sets or write-all`);
+    if (!WRITES[flag]) throw new Error(`DRAWING_SNAPSHOT=${flag}: write-sets, write-kept or write-all`);
     for (const [path, drawings] of Object.entries(WRITES[flag])) writeFileSync(path, fixtureText(drawings()));
   }
   plainThen = read(FIXTURE);
@@ -452,8 +466,9 @@ describe("the set techniques' drawings are drawn as the set fixture last wrote t
 
 describe('the fixtures', () => {
   it('are written only on request, and write-sets writes only the set fixture', () => {
-    expect(Object.keys(WRITES)).toEqual(['write-sets', 'write-all']);
+    expect(Object.keys(WRITES)).toEqual(['write-sets', 'write-kept', 'write-all']);
     expect(Object.keys(WRITES['write-sets'])).toEqual([SET_FIXTURE]);
+    expect(Object.keys(WRITES['write-kept'])).toEqual([FIXTURE, SET_FIXTURE]);
     expect(Object.keys(WRITES['write-all'])).toEqual([FIXTURE, SET_FIXTURE]);
   });
 

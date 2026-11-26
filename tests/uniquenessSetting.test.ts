@@ -1,7 +1,9 @@
 /**
  * Hints without uniqueness (settings.useUniqueness): the order hints, Steps,
  * Scan, the proofs and the credit of a move look for steps in
- * (hintOrder, src/engine/ratings.ts), and the rating that never changes.
+ * (hintOrder, src/engine/ratings.ts), and HoDoKu's rating, which the
+ * puzzle keeps (the figure a game shows a player without uniqueness is
+ * tests/playerRating.test.ts's).
  * The puzzle is the one Cracking the Cryptic solved with two chains,
  * declining the unique rectangle our engine reaches for at the same point.
  */

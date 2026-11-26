@@ -106,6 +106,11 @@ const HODOKU_STEPS: [Tech, string, number][] = [
   ['FORCING_NET', 'EXTREME', 700],
   ['BRUTE_FORCE', 'EXTREME', 10000],
   ['GROUPED_NICE_LOOP', 'UNFAIR', 300],
+  // HoDoKu's Nice Loop step is "Nice Loop/AIC": SolutionType.getStepConfig
+  // files AIC under NICE_LOOP and GROUPED_AIC under GROUPED_NICE_LOOP
+  // (src/sudoku/SolutionType.java, r147), so they cost what those cost
+  ['AIC', 'UNFAIR', 280],
+  ['AIC_GROUPED', 'UNFAIR', 300],
   ['EMPTY_RECTANGLE', 'HARD', 120],
   ['HIDDEN_RECTANGLE', 'HARD', 100],
   ['AVOIDABLE_RECTANGLE_1', 'HARD', 100],

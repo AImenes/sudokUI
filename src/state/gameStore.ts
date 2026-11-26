@@ -25,7 +25,7 @@ import { justify, Move } from '../engine/justify';
 import { contradictionStep } from '../engine/techniques/forcing';
 import { Chain, EMPTY_CHAIN, extend, chainStep, conclusions } from '../engine/chainTrainer';
 import type { CellDigit } from '../engine/steps';
-import { Level, Tech, SOLVE_ORDER, hintOrder, asLevel } from '../engine/ratings';
+import { Level, Tech, TECHS, SOLVE_ORDER, hintOrder, asLevel } from '../engine/ratings';
 import { useSettings } from './settings';
 import type { MarkLayer } from './settings';
 import { useStats } from './stats';
@@ -438,6 +438,48 @@ export function stepMatchesSolution(step: Step, solution: string): boolean {
   return true;
 }
 
+/** a puzzle's rating worked out without the uniqueness techniques */
+export interface PlainRating {
+  score: number;
+  level: Level;
+}
+
+/**
+ * The rating a game shows (the top bar, the win screen): HoDoKu's, worked
+ * out with the uniqueness techniques, for a player who uses them; for one
+ * who does not (settings.useUniqueness off), whose hints never use them,
+ * the rating worked out without them, the player's own figure. A practice
+ * puzzle for a uniqueness technique keeps HoDoKu's: it is about the
+ * technique. `pending` while the figure is still being worked out (the
+ * HoDoKu rating stands in meanwhile); `published` the daily's or the
+ * door's own rating, which is the same for everyone and stays as
+ * published, where the player's figure differs from it
+ * (docs/architecture.md, "The rating follows the uniqueness setting").
+ */
+export interface ShownRating {
+  score: number;
+  level: Level;
+  /** worked out without the uniqueness techniques */
+  plain: boolean;
+  pending: boolean;
+  published: PlainRating | null;
+}
+
+export const uniquenessPractice = (info: GameInfo): boolean =>
+  !!info.practiceTech && TECHS[info.practiceTech].category === 'Uniqueness';
+
+/** does the game's figure follow a rating without uniqueness: the player does not use it, and this is no uniqueness practice */
+export const followsPlain = (info: GameInfo, useUniqueness: boolean): boolean => !useUniqueness && !uniquenessPractice(info);
+
+export function shownRating(info: GameInfo, useUniqueness: boolean, plainRatings: Record<string, PlainRating>): ShownRating {
+  if (!followsPlain(info, useUniqueness)) return { score: info.score, level: info.level, plain: false, pending: false, published: null };
+  const own = plainRatings[info.puzzle];
+  if (!own) return { score: info.score, level: info.level, plain: true, pending: true, published: null };
+  const isPublished = !!info.dailyKey || info.adventDoor !== undefined;
+  const differs = own.score !== info.score || own.level !== info.level;
+  return { score: own.score, level: own.level, plain: true, pending: false, published: isPublished && differs ? { score: info.score, level: info.level } : null };
+}
+
 export interface GameInfo {
   puzzle: string;
   solution: string;
@@ -765,6 +807,15 @@ interface GameStore {
    *  trainer is closed. Each history step keeps it (Snapshot), and the
    *  save too, so a reload closes the trainer as Done does */
   chainHandover: ChainHandover | null;
+  /**
+   * Puzzles' ratings without the uniqueness techniques, by puzzle, as
+   * worked out this session for a player who does not use them
+   * (shownRating, src/state/playerRating.ts). In memory only: a reload
+   * works them out again, off the main thread.
+   */
+  plainRatings: Record<string, PlainRating>;
+  /** keep a puzzle's rating without the uniqueness techniques */
+  setPlainRating: (puzzle: string, rating: PlainRating) => void;
 
   startGame: (puzzle: string, score: number, level: Level, practiceTech?: Tech | null, dailyKey?: string) => void;
   /**
@@ -927,7 +978,8 @@ function foundNotice(tech: Tech): string {
 function recordWin(s: GameStore) {
   if (!s.info || s.solved) return;
   useGame.setState({ solved: true, solvedMs: s.elapsedMs(), solvedAssisted: s.assisted, solvedAuto: s.autoCandidates });
-  if (!s.info.practiceTech) useStats.getState().recordSolve(s.info.level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
+  // timed under the level the player saw (shownRating): without uniqueness, the level without it
+  if (!s.info.practiceTech) useStats.getState().recordSolve(shownRating(s.info, useSettings.getState().useUniqueness, s.plainRatings).level, s.elapsedMs(), !s.assisted, s.info.dailyKey);
   useTelemetry.getState().track('completed', s.info.level, Math.floor(s.elapsedMs() / 1000), kindOf(s.info), s.info.adventDoor, s.assisted);
   recordDaily(s);
 }
@@ -1163,6 +1215,13 @@ export const useGame = create<GameStore>()(
       chainGoal: null,
       chainSuggest: false,
       chainHandover: null,
+      plainRatings: {},
+
+      setPlainRating: (puzzle, rating) => {
+        const had = get().plainRatings[puzzle];
+        if (had && had.score === rating.score && had.level === rating.level) return;
+        set({ plainRatings: { ...get().plainRatings, [puzzle]: { score: rating.score, level: rating.level } } });
+      },
 
       startGame: (puzzle, score, level, practiceTech = null, dailyKey) => {
         // a puzzle string may write its empty cells as zeros; the app
@@ -3068,14 +3127,20 @@ export function gameName(g: { info: GameInfo | null; custom?: boolean; customBac
   if (info.adventDoor) return t('door {door} of the advent calendar', { door: info.adventDoor });
   if (info.practiceTech) return t('your {name} practice', { name: t.tech(info.practiceTech) });
   if (info.fromLink) return t('your game on a shared puzzle');
-  return t('your {level} game', { level: t.level(info.level) });
+  // the level the player saw on its top bar (shownRating): without uniqueness, their own
+  return t('your {level} game', { level: t.level(shownOf(info).level) });
+}
+
+/** a game's rating as the player sees it (shownRating), the published one while their own is still being worked out */
+function shownOf(info: GameInfo): ShownRating {
+  return shownRating(info, useSettings.getState().useUniqueness, useGame.getState().plainRatings);
 }
 
 /** a game as gameName names it: its info, and for a puzzle being typed in the game behind it */
 type Named = { info: GameInfo | null; custom?: boolean; customBackup?: GameBackup | null };
 
 /**
- * A game's name (gameName) among others: with its HoDoKu rating when
+ * A game's name (gameName) among others: with its rating as shown (shownRating) when
  * another of them has the same name and another rating (two Hard games),
  * so the words say which is which; a rating that tells nothing apart (two
  * copies of one daily) is left out.
@@ -3083,8 +3148,10 @@ type Named = { info: GameInfo | null; custom?: boolean; customBackup?: GameBacku
 export function nameAmong(g: Named, among: Named[]): string {
   const t = translator();
   const plain = gameName(g);
-  const twin = among.some((o) => o !== g && gameName(o) === plain && o.info?.score !== g.info?.score);
-  return twin && g.info ? t('{game} (HoDoKu rating {score})', { game: plain, score: g.info.score }) : plain;
+  // the score as the player saw it, as the level in the name (shownOf)
+  const score = (o: Named) => (o.info ? shownOf(o.info).score : undefined);
+  const twin = among.some((o) => o !== g && gameName(o) === plain && score(o) !== score(g));
+  return twin && g.info ? t('{game} (HoDoKu rating {score})', { game: plain, score: score(g)! }) : plain;
 }
 
 /**

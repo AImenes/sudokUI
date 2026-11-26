@@ -85,6 +85,10 @@ not from a chat. Where two disagree, the newer one wins, and should be fixed.
   playing at a time; the owner's rule for what may be left; and the edge
   cases left.
 - [generator.md](generator.md): making and rating puzzles.
+- [rating-chains.md](rating-chains.md): one technique, one price (the
+  owner's decision of 25 November 2026): the AIC filed with the Nice Loops
+  and the AIC with Groups with the Grouped Nice Loop, at their price, why
+  the AIC with ALSs stays, and what it did to the ratings, measured.
 - [advent-calendar.md](advent-calendar.md): the advent calendar of
   December 2026 (the owner's decisions of 12 and 15 November): 24 doors,
   door n opening on n December, a gentle climb from about 100 to about

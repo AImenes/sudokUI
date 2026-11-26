@@ -14,6 +14,7 @@ import { deriveTruth } from '../src/engine/truth';
 import { hintMarks } from '../src/content/hintMarks';
 import { EXAMPLES } from '../src/content/examples';
 import { SET_TECHS } from './chainSets';
+import { walkTo } from './pathBefore';
 
 const EASY = '..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..';
 
@@ -158,8 +159,7 @@ describe('what the trainer can take as its goal (Build it yourself)', () => {
 
   it("takes a colouring by its ties, whatever its weak ties join: 3D Medusa rule 3's one weak tie from a cell's two shades", () => {
     // a 3D Medusa practice position where main offered the button
-    const g = parseGrid('....1.63..5.......2...73....9......8..7.......8..4...7.2..38..554.....9....92.7..')!;
-    for (let k = 0; k < 27; k++) applyStep(g, findNextStep(g)!);
+    const g = walkTo('....1.63..5.......2...73....9......8..7.......8..4...7.2..38..554.....9....92.7..', 27);
     const step = findNextStep(g)!;
     expect([step.tech, step.colouring?.rule]).toEqual(['MEDUSA_3D', 'medusa3']);
     const argument = step.links!.filter((l) => !isTie(l));
@@ -204,9 +204,8 @@ describe('what the trainer can take as its goal (Build it yourself)', () => {
     expect(buildable({ ...step, sets: [] })).toBe(true);
     // by its sets, not its name: an AIC with ALS whose only "set" is a bivalue
     // cell names no set (decision 14), and the trainer builds that cell's link
-    const g = parseGrid('4..1.27.......3..45.7.9...3..45..62..8.....4..25..43..7...4.9.12..3.......67.9..2')!;
-    for (let i = 0; i < 10; i++) applyStep(g, findNextStep(g)!);
-    const oneCell = findStep('AIC_GROUPED', g)!;
+    const g = walkTo('4..1.27.......3..45.7.9...3..45..62..8.....4..25..43..7...4.9.12..3.......67.9..2', 10);
+    const oneCell = findStep('AIC_ALS', g)!;
     expect([oneCell.tech, oneCell.sets]).toEqual(['AIC_ALS', undefined]);
     expect(buildable(oneCell)).toBe(true);
   });

@@ -19,7 +19,8 @@ import {
 import { findAllSteps } from '../engine/humanSolver';
 import { Step } from '../engine/steps';
 import { Level, LevelPick, PICKS, Tech, TECHS, PRACTICE_TECHS, ALL_TECHS, Category, SOLVE_ORDER, NOT_PRACTISABLE, hintOrder } from '../engine/ratings';
-import { requestPuzzle, takePoolEntry, levelKey, techKey, poolSize, filePoolEntries, practisable, GenerationHandle } from '../state/pools';
+import { requestPuzzle, takePoolEntry, levelPoolKey, techKey, poolSize, filePoolEntries, practisable, GenerationHandle } from '../state/pools';
+import type { PoolEntry } from '../engine/worker';
 import { useStats, gameSummary, dailyStreak } from '../state/stats';
 import { practiceSeeds } from '../content/practicePuzzles';
 import { seedPuzzles, SEEDED_LEVELS } from '../content/seeds';
@@ -55,6 +56,8 @@ import { BAND_LEADS, BAND_NOTES, rangeOf } from '../content/rating';
 import { TECH_DOCS } from '../content/techniqueDocs';
 import { KIN } from '../content/kin';
 import { useSettings } from '../state/settings';
+import { useShownRating } from '../state/playerRating';
+import { ratingNote } from './ratingNote';
 import { Fireworks } from './Fireworks';
 import type { Lang } from '../state/settings';
 
@@ -67,11 +70,22 @@ interface GenState {
   handle: GenerationHandle;
 }
 
+/**
+ * A level as a player who does not use uniqueness asks for it: the
+ * level must hold without it (docs/architecture.md, "The rating follows the
+ * uniqueness setting"). Practice is the same for everyone.
+ */
+const withSetting = (req: GenRequest): GenRequest & { noUniqueness?: boolean } =>
+  req.kind === 'level' && !useSettings.getState().useUniqueness ? { ...req, noUniqueness: true } : req;
+
+/** the pool a request is served from, for the player's setting */
+const poolKeyOf = (req: GenRequest) =>
+  req.kind === 'level' ? levelPoolKey(req.level, useSettings.getState().useUniqueness) : techKey(req.tech);
+
 /** keep the pool of a band or technique stocked, in the background and rated in full */
 function topUp(req: GenRequest) {
-  const key = req.kind === 'level' ? levelKey(req.level) : techKey(req.tech);
-  if (poolSize(key) >= 2) return;
-  requestPuzzle(req).promise.then((entry) => entry && filePoolEntries([entry]));
+  if (poolSize(poolKeyOf(req)) >= 2) return;
+  requestPuzzle(withSetting(req)).promise.then((entry) => entry && filePoolEntries([entry]));
 }
 
 /**
@@ -80,9 +94,10 @@ function topUp(req: GenRequest) {
  */
 export async function warmSeededPools() {
   for (const level of SEEDED_LEVELS) {
-    if (poolSize(levelKey(level)) > 0) continue;
+    const req = { kind: 'level' as const, level };
+    if (poolSize(poolKeyOf(req)) > 0) continue;
     const seeds = await seedPuzzles(level);
-    requestPuzzle({ kind: 'level', level, seeds }).promise.then((entry) => entry && filePoolEntries([entry]));
+    requestPuzzle({ ...withSetting(req), seeds }).promise.then((entry) => entry && filePoolEntries([entry]));
   }
 }
 
@@ -98,10 +113,12 @@ export function useNewGame() {
    * link (src/ui/links.ts).
    */
   const start = async (req: GenRequest, { setAside = false } = {}) => {
-    const key = req.kind === 'level' ? levelKey(req.level) : techKey(req.tech);
+    const key = poolKeyOf(req);
     // named in the player's language where it is shown (GeneratingDialog)
     const label: GenRequest = req;
-    const begin = (puzzle: string, score: number, level: Level) => {
+    const begin = ({ puzzle, score, level, plain }: PoolEntry) => {
+      // the rating without uniqueness, where the worker worked it out, shown at once (playerRating.ts)
+      if (plain) useGame.getState().setPlainRating(puzzle, plain);
       const go = () => startGame(puzzle, score, level, req.kind === 'tech' ? req.tech : null);
       if (setAside) useGame.getState().openOver(() => (go(), true));
       else go();
@@ -109,7 +126,7 @@ export function useNewGame() {
     // a pooled puzzle filed before the practice ceiling existed may be above it
     const pooled = takePoolEntry(key, (e) => req.kind !== 'tech' || practisable(e, req.tech));
     if (pooled) {
-      begin(pooled.puzzle, pooled.score, pooled.level);
+      begin(pooled);
       topUp(req);
       return true;
     }
@@ -125,7 +142,7 @@ export function useNewGame() {
     const asked = useGame.getState().info;
     const seeds = req.kind === 'level' ? await seedPuzzles(req.level) : await practiceSeeds(req.tech);
     const { promise, handle } = requestPuzzle(
-      { ...req, seeds },
+      { ...withSetting(req), seeds },
       { urgent: true, onProgress: (attempts) => setGenState((g) => (g ? { ...g, attempts } : g)) }
     );
     // the dialog only once the wait is noticeable: a seed answers in milliseconds
@@ -138,7 +155,7 @@ export function useNewGame() {
       return false;
     }
     if (entry) {
-      begin(entry.puzzle, entry.score, entry.level);
+      begin(entry);
       topUp(req);
       return true;
     }
@@ -169,8 +186,11 @@ export function useNewGame() {
 // from the content modules: the guide itself stays in its own chunk.
 
 /** what a level asks of you, in plain words, then the techniques behind it */
-const levelDescription = (loc: LearnLocale | undefined, level: LevelPick) =>
-  `${(loc?.bandLeads ?? BAND_LEADS)[level]}: ${(loc?.bandNotes ?? BAND_NOTES)[level]}`;
+const levelDescription = (loc: LearnLocale | undefined, level: LevelPick, t: Translator, useUniqueness: boolean) =>
+  `${(loc?.bandLeads ?? BAND_LEADS)[level]}: ${
+    // a player without uniqueness is handed Hard puzzles that are Hard without it (docs/architecture.md)
+    !useUniqueness && level === 'Hard' ? t('fish, wings and kites||what a Hard puzzle leans on, for a player who does not use uniqueness') : (loc?.bandNotes ?? BAND_NOTES)[level]
+  }`;
 /** what a technique is, in one line */
 const techWhat = (loc: LearnLocale | undefined, tech: Tech) => loc?.techDocs[tech]?.what ?? TECH_DOCS[tech].what;
 /** another name for it, or the same logic in another family */
@@ -212,6 +232,7 @@ export function NewGameDialog({
 }) {
   const t = useT();
   const loc = useLearnLocale();
+  const useUniqueness = useSettings((s) => s.useUniqueness);
   return (
     <Modal title={t('New game')} onClose={onClose}>
       <div className="level-list">
@@ -262,7 +283,7 @@ export function NewGameDialog({
                 {rangeOf(level, t.level, (n) => t('up to {n}', { n }), (n) => t('above {n}', { n }), t('no limit||the scores of Extreme'))}
               </span>
             </strong>
-            <span>{levelDescription(loc, level)}</span>
+            <span>{levelDescription(loc, level, t, useUniqueness)}</span>
           </button>
         ))}
         <button className="level-btn" onClick={onCustom}>
@@ -1446,6 +1467,8 @@ export function VictoryDialog({
   const creditsDue = useStats((s) => s.pending > 0);
   const bands = useStats((s) => s.bands);
   const dailyDays = useStats((s) => s.dailyDays);
+  // the rating as the player saw it: their own without uniqueness when they do not use it
+  const shown = useShownRating();
   const [copied, setCopied] = useState(false);
   const t = useT();
   // the player's local date, kept current: a day still to come opens Send at its midnight
@@ -1494,7 +1517,7 @@ export function VictoryDialog({
   // the grid (the backdrop takes no tap, so a stray one cannot close it)
   const { ref, onTab } = useDialog(onClose);
   const summaryId = React.useId();
-  if (!info) return null;
+  if (!info || !shown) return null;
   const secs = Math.floor(elapsedMs() / 1000);
   const mm = Math.floor(secs / 60);
   const ss = String(secs % 60).padStart(2, '0');
@@ -1505,13 +1528,14 @@ export function VictoryDialog({
   // which switched auto candidates on, is still that solve
   const mode = (solvedAuto ?? autoCandidates) ? 'auto' : 'marks';
   // Beginner and Nightmare puzzles are timed against their own (solveTimes.ts)
-  const timedAs = timeBand(info.level, info.score);
+  // (by the player's own figure, the level the solve was timed under in the record too)
+  const timedAs = timeBand(shown.level, shown.score);
   const verdict = partWay ? null : timeVerdict(timedAs, secs, mode);
   // what the player did, technique by technique (docs/technique-stats.md),
   // once every move of the solve is credited: the line is then the
   // solve's whole tally, the same on every win screen of that solve
   const summary = creditsDue ? '' : gameSummary(game);
-  const band = info.practiceTech ? null : bands[info.level];
+  const band = info.practiceTech ? null : bands[shown.level];
   const newBest = !!band && band.solves > 1 && band.bestMs === elapsedMs();
   const streak = info.dailyKey ? dailyStreak(dailyDays) : 0;
   const practiceName = info.practiceTech ? t.tech(info.practiceTech) : '';
@@ -1643,7 +1667,10 @@ export function VictoryDialog({
         onKeyDown={onTab}
       >
         <h3>{t('Solved!')} 🎉</h3>
-        <p id={summaryId}>{t('{level} · HoDoKu rating {score} · {time}', { level: t.level(info.level), score: info.score, time: `${mm}:${ss}` })}</p>
+        <p id={summaryId}>
+          {t('{level} · HoDoKu rating {score} · {time}', { level: t.level(shown.level), score: shown.score, time: `${mm}:${ss}` })}
+          {ratingNote(t, shown, info) && <span className="rating-note"> {ratingNote(t, shown, info)}</span>}
+        </p>
         {verdict && (
           <p
             className="solve-verdict"
@@ -1681,10 +1708,10 @@ export function VictoryDialog({
         {band && band.solves > 1 && (
           <p className="solve-record">
             {newBest
-              ? t('Your {nth} {level} solve, a new best', { nth: ordinal(band.solves, t.lang), level: t.level(info.level) })
+              ? t('Your {nth} {level} solve, a new best', { nth: ordinal(band.solves, t.lang), level: t.level(shown.level) })
               : t('Your {nth} {level} solve; best {time}', {
                   nth: ordinal(band.solves, t.lang),
-                  level: t.level(info.level),
+                  level: t.level(shown.level),
                   time: clock(band.bestMs)
                 })}
           </p>

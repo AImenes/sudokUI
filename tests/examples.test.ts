@@ -263,20 +263,26 @@ describe('worked examples', () => {
     }
     expect(sets).toEqual({
       GROUPED_X_CYCLES: ['group r2c4, r3c4 {2} in column 4'],
-      // decision 22's swaps: a TRUE end group, and a false and a true group of three on the same cells
-      GROUPED_NICE_LOOP: ['group r1c9, r2c9, r3c9 {9} in column 9', 'group r1c9, r2c9, r3c9 {7} in column 9'],
-      ALS_XZ: ['A r8c2, r9c1 {159} in box 7', 'B r7c8, r8c9 {159} in box 9'],
+      // decision 22's swaps, chosen again when the AIC was filed with the Nice
+      // Loops (docs/rating-chains.md): a TRUE group of three and a false group
+      GROUPED_NICE_LOOP: ['group r7c3, r8c3, r9c3 {1} in column 3', 'group r4c1, r6c1 {3} in column 1'],
+      ALS_XZ: ['A r2c3, r2c4 {369} in row 2', 'B r8c2, r8c4 {136} in row 8'],
       // the ALS-XZ it is: the bivalue cell A, where the chain starts, and its three cells B
       WXYZ_WING: ['A r4c3 {49} in row 4', 'B r4c4, r5c5, r6c5 {1479} in box 5'],
-      ALS_XY_WING: ['A r8c3, r8c8 {247} in row 8', 'B r4c9, r6c8 {467} in box 6', 'C r6c3 {46} in row 6'],
-      ALS_XY_CHAIN: ['A r4c2, r4c7 {469} in row 4', 'B r1c7 {39} in row 1', 'C r1c5, r1c6 {239} in row 1', 'D r7c5 {49} in row 7'],
+      ALS_XY_WING: ['A r1c3, r4c3 {179} in column 3', 'B r3c8, r5c8 {257} in column 8', 'C r1c7 {12} in row 1'],
+      ALS_XY_CHAIN: [
+        'A r7c1, r7c2, r7c4, r7c8 {12369} in row 7',
+        'B r5c2, r5c3, r5c4, r5c8 {13679} in row 5',
+        'C r5c9 {16} in row 5',
+        'D r1c9, r2c9, r7c9, r8c9 {13679} in column 9'
+      ],
       AIC_GROUPED: ['group r8c6, r9c6 {8} in column 6'],
       AIC_ALS: ['A r7c8, r8c8 {489} in column 8'],
       DEATH_BLOSSOM: ['A r9c7 {24} in row 9', 'B r8c5, r9c6 {145} in box 8', 'C r8c1 {47} in row 8']
     });
     expect(ends).toEqual({
       GROUPED_X_CYCLES: ['·-·', '·-group', 'group-·', '·-·', '·-·', '·-·'],
-      GROUPED_NICE_LOOP: ['·-·', '·-group', 'group-·', '·-·', '·-·', '·-·', '·-group', 'group-·'],
+      GROUPED_NICE_LOOP: ['·-group', 'group-·', '·-·', '·-group', 'group-·', '·-·'],
       // the chains they derive (decision 11): each set's lock inside it, and
       // the restricted commons between them, A's 1 to B's; the wing A's to
       // the hinge C, and the hinge's to the wing B
@@ -294,17 +300,17 @@ describe('worked examples', () => {
 
   it("explain the ALS patterns' and Death Blossom's removals with the board's letters, so the Learn page needs no walk (docs/hint-drawing-sets.md, decision 22)", () => {
     expect(EXAMPLES.ALS_XZ!.step.description).toBe(
-      'ALS-XZ: sets A (r8c2, r9c1) and B (r7c8, r8c9) each hold one digit more than they have cells, and every 1 of A sees every 1 of B, so at most one of them keeps a 1. The other loses its 1, its other digits fill its cells, and it holds a 5: A or B holds a 5, so 5 is removed from every cell that sees every 5 of both.'
+      'ALS-XZ: sets A (r2c3, r2c4) and B (r8c2, r8c4) each hold one digit more than they have cells, and every 6 of A sees every 6 of B, so at most one of them keeps a 6. The other loses its 6, its other digits fill its cells, and it holds a 3: A or B holds a 3, so 3 is removed from every cell that sees every 3 of both.'
     );
-    // the hinge C holds 4 or 6, and so takes one of them from a wing: one lead line, in plain
+    // the hinge C holds 1 or 2, and so takes one of them from a wing: one lead line, in plain
     // words (the readability report's L2 and L3), the links and their notation left to the
     // walk and Copy step
     expect(EXAMPLES.ALS_XY_WING!.step.description).toBe(
-      'ALS-XY-Wing: the hinge C (r6c3) holds a 4 or a 6, so wing A (r8c3, r8c8) holds no 4 or wing B (r4c9, r6c8) no 6, and that wing then holds a 7. A or B holds a 7, so no cell that sees every 7 of both can be 7.'
+      'ALS-XY-Wing: the hinge C (r1c7) holds a 1 or a 2, so wing A (r1c3, r4c3) holds no 1 or wing B (r3c8, r5c8) no 2, and that wing then holds a 7. A or B holds a 7, so no cell that sees every 7 of both can be 7.'
     );
     // each set in turn loses its link digit and fills its cells
     expect(EXAMPLES.ALS_XY_CHAIN!.step.description).toBe(
-      'ALS-XY-Chain: if set A (r4c2, r4c7) holds no 4, it holds a 9; then set B (r1c7) holds no 9 and holds a 3, C (r1c5, r1c6) no 3 and a 9, and D (r7c5) no 9 and a 4. A or D holds a 4, so no cell that sees every 4 of both can be 4.'
+      'ALS-XY-Chain: if set A (r7c1, r7c2, r7c4, r7c8) holds no 1, it holds a 6; then set B (r5c2, r5c3, r5c4, r5c8) holds no 6 and holds a 1, C (r5c9) no 1 and a 6, and D (r1c9, r2c9, r7c9, r8c9) no 6 and a 1. A or D holds a 1, so no cell that sees every 1 of both can be 1.'
     );
     // whichever digit the stem takes, its petal loses it and holds z
     expect(EXAMPLES.DEATH_BLOSSOM!.step.description).toMatch(
@@ -325,7 +331,7 @@ describe('worked examples', () => {
     }
   });
 
-  it('show a group as it mostly is, TRUE, and groups of three: one TRUE and one FALSE on the same cells (docs/hint-drawing-sets.md, decision 22)', () => {
+  it('show a group as it mostly is, TRUE, and a group of three (docs/hint-drawing-sets.md, decision 22)', () => {
     const truthOf = (tech: Tech) => {
       const d = deriveTruth(EXAMPLES[tech]!.step)!;
       expect(d.problems, tech).toEqual([]);
@@ -336,12 +342,14 @@ describe('worked examples', () => {
     };
     // the end group of AIC with Groups is TRUE, its two members "one of these" squares
     expect(truthOf('AIC_GROUPED')).toEqual(['2 TRUE']);
-    // the Grouped Nice Loop: the 9s of r1c9-r3c9 FALSE, the 7s of the same cells TRUE
-    expect(truthOf('GROUPED_NICE_LOOP')).toEqual(['3 FALSE', '3 TRUE']);
+    // the Grouped Nice Loop: the 1s of r7c3-r9c3 TRUE, the 3s of r4c1, r6c1 FALSE (until the AIC
+    // was filed with the Nice Loops, docs/rating-chains.md, a false and a true group of three on
+    // the same cells, whose puzzle no longer reaches the technique cleanly)
+    expect(truthOf('GROUPED_NICE_LOOP')).toEqual(['3 TRUE', '2 FALSE']);
     // Grouped X-Cycles keeps its false group
     expect(truthOf('GROUPED_X_CYCLES')).toEqual(['2 FALSE']);
     // both swaps are the first use of their technique on their puzzle's path, as exampleFrom takes it
-    expect([EXAMPLES.AIC_GROUPED!.stepIndex, EXAMPLES.GROUPED_NICE_LOOP!.stepIndex]).toEqual([18, 10]);
+    expect([EXAMPLES.AIC_GROUPED!.stepIndex, EXAMPLES.GROUPED_NICE_LOOP!.stepIndex]).toEqual([14, 18]);
   });
 
   it('ship one diagram per example', () => {

@@ -515,8 +515,29 @@ button {
   background: rgba(128, 128, 160, 0.15);
 }
 
+/* the win screen's word on a figure worked out without uniqueness */
+.rating-note {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* the player's own figure (without uniqueness) still being worked out:
+   HoDoKu's stands in, faded, for the moment it takes (playerRating.ts) */
+.rating-pending {
+  opacity: 0.5;
+}
+
 .mini-i {
   font-size: 12px;
+}
+
+/* the score is the player's own, without uniqueness, and not the published
+   one or HoDoKu's: a small mark, the score's title saying why (ratingNote) */
+.rating-own {
+  font-size: 11px;
+  line-height: 0;
+  margin-left: 1px;
 }
 
 .practice-badge {

@@ -1,15 +1,17 @@
 // Puzzle pools: puzzles found during background generation, filed per
 // difficulty level and per technique so new games / practice start instantly.
-import { LevelPick, LEVELS, Tech, practiceCeiling, subPick } from '../engine/ratings';
+import { Level, LevelPick, LEVELS, Tech, practiceCeiling, subPick } from '../engine/ratings';
 import type { Grid } from '../engine/board';
 import type { Move, Budget } from '../engine/justify';
 import type { PoolEntry, WorkerRequest, WorkerResponse } from '../engine/worker';
 import { play } from './play';
 
-// v12: HoDoKu's five levels, and the picks inside them. v11 filed the
-// eight bands from before; a pool is only a cache, so it is dropped, not read
-const STORAGE_KEY = 'sudokui-pools-v12';
-const OLD_KEY = 'sudokui-pools-v11';
+// v13: the AIC filed with the Nice Loops (docs/rating-chains.md), which
+// moved ratings and clean techniques; v12 held HoDoKu's five levels and the
+// picks inside them, rated before. A pool is only a cache, so it is
+// dropped, not read
+const STORAGE_KEY = 'sudokui-pools-v13';
+const OLD_KEYS = ['sudokui-pools-v12', 'sudokui-pools-v11'];
 const POOL_CAP = 8;
 
 type Pools = Record<string, PoolEntry[]>;
@@ -27,7 +29,7 @@ function load(): Pools {
 function save(pools: Pools) {
   if (!play.acts()) return;
   try {
-    localStorage.removeItem(OLD_KEY);
+    for (const key of OLD_KEYS) localStorage.removeItem(key);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pools));
   } catch {
     /* storage full — pools are only a cache */
@@ -35,6 +37,14 @@ function save(pools: Pools) {
 }
 
 export const levelKey = (pick: LevelPick) => `level:${pick}`;
+/**
+ * The pool of a level as a player who does not use uniqueness has it
+ * (settings.useUniqueness): its puzzles' level holds without the
+ * uniqueness techniques (PoolEntry.plain, docs/architecture.md).
+ */
+export const plainLevelKey = (pick: LevelPick) => `plain:${pick}`;
+/** the pool New game takes a level from, for a player who does or does not use uniqueness */
+export const levelPoolKey = (pick: LevelPick, useUniqueness: boolean) => (useUniqueness ? levelKey(pick) : plainLevelKey(pick));
 export const techKey = (tech: Tech) => `tech:${tech}`;
 
 /** May this puzzle be served as practice for the technique: within its ceiling? */
@@ -48,8 +58,12 @@ export function filePoolEntries(entries: PoolEntry[]) {
     // a puzzle that fails its level's filters is still good practice material;
     // one above a technique's ceiling is not practice for that technique
     const sub = subPick(entry.level, entry.score);
+    const plain = entry.plain;
+    const plainSub = plain && subPick(plain.level, plain.score);
     const keys = [
       ...(entry.fit === false ? [] : [levelKey(entry.level), ...(sub ? [levelKey(sub)] : [])]),
+      // and by its level without uniqueness, where that is known
+      ...(!plain || plain.fit === false ? [] : [plainLevelKey(plain.level), ...(plainSub ? [plainLevelKey(plainSub)] : [])]),
       ...entry.techs.filter((t) => practisable(entry, t)).map(techKey)
     ];
     for (const key of keys) {
@@ -145,7 +159,7 @@ export interface GenerationHandle {
  */
 export function requestPuzzle(
   req:
-    | { kind: 'level'; level: LevelPick; seeds?: string[] }
+    | { kind: 'level'; level: LevelPick; seeds?: string[]; noUniqueness?: boolean }
     | { kind: 'tech'; tech: Tech; seeds?: string[] },
   opts: { urgent?: boolean; onProgress?: (attempts: number) => void } = {}
 ): { promise: Promise<PoolEntry | null>; handle: GenerationHandle } {
@@ -233,5 +247,38 @@ export function justifyMove(
       resolve(null);
     });
     w.postMessage({ id, kind: 'justify', values, cands, move, budget, noUniqueness } satisfies WorkerRequest);
+  });
+}
+
+/**
+ * A puzzle's rating without the uniqueness techniques (or with them, given
+ * `noUniqueness` false), worked out by the background worker: a hard
+ * puzzle takes a second, which the board must not wait for. Resolves to
+ * null where there are no workers, the worker died or the puzzle cannot be
+ * rated.
+ */
+export function ratePuzzleOff(puzzle: string, noUniqueness = true): Promise<{ score: number; level: Level } | null> {
+  let w: Worker;
+  try {
+    w = getWorker(false);
+  } catch {
+    return Promise.resolve(null);
+  }
+  const id = nextId++;
+  return new Promise((resolve) => {
+    let forget = () => {};
+    const listener = (e: MessageEvent<WorkerResponse>) => {
+      const msg = e.data;
+      if (msg.id !== id || msg.type !== 'rated') return;
+      w.removeEventListener('message', listener);
+      forget();
+      resolve(msg.rating);
+    };
+    w.addEventListener('message', listener);
+    forget = onDeath(w, () => {
+      w.removeEventListener('message', listener);
+      resolve(null);
+    });
+    w.postMessage({ id, kind: 'rate', puzzle, noUniqueness } satisfies WorkerRequest);
   });
 }

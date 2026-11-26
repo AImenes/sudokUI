@@ -43,7 +43,7 @@ import { findExtendedRectangle } from './techniques/extendedRectangle';
 import { findXCycles } from './techniques/xCycles';
 import { findAic, findNiceLoop } from './techniques/aic';
 import { findGroupedXCycles } from './techniques/groupedXCycles';
-import { findGroupedAic, findGroupedNiceLoop } from './techniques/groupedAic';
+import { findGroupedAic, findAlsAic, findGroupedNiceLoop } from './techniques/groupedAic';
 import { findFireworks } from './techniques/fireworks';
 import { findTridagon } from './techniques/tridagon';
 
@@ -105,9 +105,10 @@ const FINDERS: Partial<Record<Tech, Finder>> = {
   GROUPED_X_CYCLES: (g) => findGroupedXCycles(g),
   NICE_LOOP: (g) => findNiceLoop(g),
   GROUPED_NICE_LOOP: (g) => findGroupedNiceLoop(g),
-  // one engine serves both: it labels steps AIC_ALS when an ALS node takes
-  // part and AIC_GROUPED otherwise, so a second call would be pure waste
+  // one engine, two places: groups only right after the Grouped Nice Loop,
+  // at its price; with almost locked sets after the ALS techniques
   AIC_GROUPED: (g) => findGroupedAic(g),
+  AIC_ALS: (g) => findAlsAic(g),
   FIREWORKS: findFireworks,
   TRIDAGON: findTridagon,
   XY_CHAIN: (g) => findXYChain(g),
@@ -142,11 +143,10 @@ export function findNextStep(g: Grid, order: Tech[] = SOLVE_ORDER): Step | null 
 
 /**
  * The step the solver's finder for one technique returns in this position
- * (its first instance), or null. AIC_ALS steps come from the grouped AIC
- * engine, which names its steps by what they contain.
+ * (its first instance), or null.
  */
 export function findStep(tech: Tech, g: Grid): Step | null {
-  const finder = FINDERS[tech] ?? (tech === 'AIC_ALS' ? FINDERS.AIC_GROUPED : undefined);
+  const finder = FINDERS[tech];
   return finder ? withHouses(finder(g), g) : null;
 }
 

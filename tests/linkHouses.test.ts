@@ -33,7 +33,7 @@ import { linkHouse } from '../src/engine/steps';
 import type { ChainLink, Step } from '../src/engine/steps';
 import type { Tech } from '../src/engine/ratings';
 import { setEngineText, unitName } from '../src/engine/text';
-import { EXAMPLES } from '../src/content/examples';
+import { EXAMPLES_BEFORE as EXAMPLES } from './examplesBefore';
 import { exampleGrid } from '../src/content/learnLocale';
 import practice from '../src/content/practicePuzzles.json';
 import engineNb from '../src/content/locales/engine.nb';
@@ -175,7 +175,8 @@ function findsAlong(puzzles: string[]): { step: Step; g: Grid; sol: Grid }[] {
       const next = findNextStep(g);
       if (!next) break;
       if (!['FULL_HOUSE', 'NAKED_SINGLE', 'HIDDEN_SINGLE'].includes(next.tech)) {
-        for (const tech of CHAINS) {
+        // (the AIC with ALSs has a finder of its own since the AIC with Groups moved, docs/rating-chains.md)
+        for (const tech of [...CHAINS, 'AIC_ALS' as Tech]) {
           const step = findStep(tech, g);
           if (step?.links?.length) out.push({ step, g: cloneGrid(g), sol });
         }

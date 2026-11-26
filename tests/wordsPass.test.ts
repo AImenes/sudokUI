@@ -35,7 +35,8 @@ import { setEngineText, tr } from '../src/engine/text';
 import { TECHS } from '../src/engine/ratings';
 import type { Tech } from '../src/engine/ratings';
 import type { CellDigit, ChainSet, Step } from '../src/engine/steps';
-import { EXAMPLES } from '../src/content/examples';
+import { EXAMPLES_BEFORE as EXAMPLES } from './examplesBefore';
+import { EXAMPLES as STORED } from '../src/content/examples';
 import { exampleGrid } from '../src/content/learnLocale';
 import { legendOf } from '../src/content/boardSvg';
 import { stepText } from '../src/content/eureka';
@@ -46,6 +47,7 @@ import engineNb from '../src/content/locales/engine.nb';
 import engineEs from '../src/content/locales/engine.es';
 import { techNames as namesNb } from '../src/content/locales/names.nb';
 import { techNames as namesEs } from '../src/content/locales/names.es';
+import { walkTo } from './pathBefore';
 
 afterEach(() => setEngineText('en', null));
 
@@ -146,7 +148,8 @@ describe('the panel leaves out the name its title repeats (L3)', () => {
     for (const tech of ['FULL_HOUSE', 'EXTENDED_RECTANGLE', 'AIC', 'ALS_XY_CHAIN'] as Tech[]) {
       const page = pages.find((p) => p.lang === 'en' && p.html.includes(`<h1>${TECHS[tech].name} in sudoku</h1>`))!;
       const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      expect(page.html, tech).toContain(`<p>${esc(describeStep(EXAMPLES[tech]!.step))}</p>`);
+      // (the pages show the examples stored now)
+      expect(page.html, tech).toContain(`<p>${esc(describeStep(STORED[tech]!.step))}</p>`);
     }
   });
 });
@@ -271,8 +274,7 @@ describe('plain and exact words, one lead line (L2 and L3)', () => {
 
 /** the position after `at` of the solver's steps, and the solution */
 function positionAt(puzzle: string, at: number): { grid: Grid; solution: Uint8Array } {
-  const grid = parseGrid(puzzle)!;
-  for (let k = 0; k < at; k++) applyStep(grid, findNextStep(grid)!);
+  const grid = walkTo(puzzle, at);
   return { grid, solution: solve(parseGrid(puzzle)!)!.values };
 }
 

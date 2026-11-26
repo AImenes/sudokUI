@@ -21,7 +21,7 @@ import { conclusionText, describe as describeStep, namesCandidate, walkFrames } 
 import { listAnd, setEngineText, unitName } from '../src/engine/text';
 import type { Tech } from '../src/engine/ratings';
 import type { Step } from '../src/engine/steps';
-import { EXAMPLES } from '../src/content/examples';
+import { EXAMPLES_BEFORE as EXAMPLES } from './examplesBefore';
 import { exampleGrid, exampleStep } from '../src/content/learnLocale';
 import practice from '../src/content/practicePuzzles.json';
 import engineNb from '../src/content/locales/engine.nb';

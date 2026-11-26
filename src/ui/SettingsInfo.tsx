@@ -311,7 +311,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <Toggle
         label={t('Use uniqueness in hints')}
         hint={t(
-          'Unique rectangles and their kin assume the puzzle has exactly one solution. Off, hints, Steps and Scan find another way, as many solvers prefer. The HoDoKu rating is unchanged'
+          'Unique rectangles and their kin assume the puzzle has exactly one solution. Off, hints, Steps and Scan find another way, as many solvers prefer, and the rating shown is worked out without them'
         )}
         value={s.useUniqueness}
         onChange={(v) => s.set({ useUniqueness: v })}

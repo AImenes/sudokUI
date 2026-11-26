@@ -19,6 +19,8 @@ import { Poodle } from './Poodle';
 import { Controls } from './Controls';
 import { HintPanel, ChainPanel } from './HintPanel';
 import { RatingGauge, useRatingFit } from './RatingGauge';
+import { useShownRating } from '../state/playerRating';
+import { ratingNote } from './ratingNote';
 import {
   useNewGame,
   warmSeededPools,
@@ -390,6 +392,8 @@ export default function App() {
   // the Christmas look and the advent calendar
   const today = useToday();
   const won = useGame((s) => s.won);
+  // the rating the top bar shows: the player's own without uniqueness when they do not use it (src/state/playerRating.ts)
+  const rating = useShownRating();
   const paused = useGame((s) => s.paused);
   const resting = useResting();
   const togglePause = useGame((s) => s.togglePause);
@@ -820,7 +824,7 @@ export default function App() {
 
   /** the top bar's rating group: how much of the rating it has room for (RatingGauge.tsx) */
   const metaRef = useRef<HTMLDivElement>(null);
-  useRatingFit(metaRef, [!!info, info?.level, info?.score, info?.practiceTech, hideRating, won, lang]);
+  useRatingFit(metaRef, [!!info, rating?.level, rating?.score, info?.practiceTech, hideRating, won, lang]);
 
   /** where a pointer landed on the empty space around the board, until it lifts */
   const layoutTap = useRef<{ x: number; y: number } | null>(null);
@@ -1078,20 +1082,23 @@ export default function App() {
                 >
                   <span className="level-badge level-hidden">🎲 {t('hidden||the difficulty, until the puzzle is solved')}</span>
                 </button>
-              ) : (
+              ) : rating && (
                 <>
-                  <RatingGauge level={info.level} score={info.score} puzzle={info.puzzle} />
+                  <RatingGauge level={rating.level} score={rating.score} puzzle={info.puzzle} />
                   {/* the title names the level where a narrow phone shortens it */}
-                  <span className={`level-badge level-${info.level.toLowerCase()}`} title={t.level(info.level)}>
-                    {t.level(info.level)}
+                  <span className={`level-badge level-${rating.level.toLowerCase()}${rating.pending ? ' rating-pending' : ''}`} title={t.level(rating.level)}>
+                    {t.level(rating.level)}
                   </span>
                   <button
-                    className="score-btn"
+                    className={`score-btn${rating.pending ? ' rating-pending' : ''}`}
                     onClick={() => openLearn({ tab: 'rating' })}
-                    title={t('How this rating is calculated')}
-                    aria-label={t('HoDoKu rating {score}. How the rating is calculated', { score: info.score })}
+                    title={[ratingNote(t, rating, info), t('How this rating is calculated')].filter(Boolean).join(' ')}
+                    aria-label={[t('HoDoKu rating {score}. How the rating is calculated', { score: rating.score }), ratingNote(t, rating, info)].filter(Boolean).join(' ')}
+                    aria-busy={rating.pending || undefined}
                   >
-                    <span className="rating-word">{t("HoDoKu rating||the puzzle's score, before the number")}{NBSP}</span><strong>{info.score}</strong> <span className="mini-i">ⓘ</span>
+                    <span className="rating-word">{t("HoDoKu rating||the puzzle's score, before the number")}{NBSP}</span><strong>{rating.score}</strong>
+                    {/* a figure of the player's own, not the published one: marked, the note in the title (ratingNote) */}
+                    {ratingNote(t, rating, info) && <sup className="rating-own" aria-hidden="true">*</sup>} <span className="mini-i">ⓘ</span>
                   </button>
                 </>
               )}

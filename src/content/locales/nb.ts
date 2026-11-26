@@ -713,6 +713,10 @@ const nb: LearnLocale = {
         "text": "Poengene og søkerekkefølgen er HoDoKus standardverdier for alle teknikkene de to har felles; HoDoKu er referanseverktøyet for sudokuanalyse. En naken singel koster 4, en X-Wing 140 og en Forcing Net 700. Løseren i sudokUI kjenner også teknikker HoDoKu ikke har, som WXYZ-Wing, Chute Remote Pair og 3D Medusa, plassert på poengskalaen like ved sine nærmeste slektninger. Den bruker Death Blossom, som HoDoKu har slått av som standard, og mangler HoDoKus Finned Franken-fisk. HoDoKu-poengsummen følger derfor HoDoKus skala og regler, men for mange oppgaver er den ikke tallet HoDoKu selv gir, og noen ganger ikke nivået."
       },
       {
+        "title": "Hvorfor tallet kan avvike fra HoDoKus",
+        "text": "Poengsummen legger sammen stegene i den ene løsningsstien løseren går. Der flere steg er verdt like mange poeng, kan løseren ta et som gjør mer, for eksempel en sløyfe som plasserer et tall i stedet for en som bare fjerner kandidater, og et steg som gjør mer, kan gjøre stien kortere. Samme oppgave kan derfor få lavere poengsum her enn i HoDoKu selv. Poengsummen som vises, følger også innstillingen din for entydighet: med entydighetsteknikker slått av vurderes oppgaven uten dem, slik du spiller den."
+      },
+      {
         "title": "HoDoKus fem nivåer",
         "text": "Nivået settes slik HoDoKu setter det. Det begynner på nivået til den vanskeligste teknikken i løsningsstien, og stiger så ett nivå om gangen så lenge summen er over nivåets grense: 800 for Lett, 1000 for Middels, 1600 for Vanskelig og 1800 for Urettferdig. Ekstrem har ingen grense. En løsningssti med en X-Wing gjør oppgaven minst Vanskelig, og en sum over 1800 gjør den Ekstrem."
       },

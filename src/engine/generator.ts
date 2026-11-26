@@ -270,11 +270,13 @@ export function hits(target: Target, puzzle: string, rating: Rating): boolean {
  * the rating stops as soon as the puzzle is past the target (null then),
  * which is most of the cost when a player is waiting; without it every
  * puzzle is rated in full so the pools of every band and technique can
- * keep what the attempt turned up.
+ * keep what the attempt turned up. `order` is the solve order the rating
+ * follows: HoDoKu's, or without the uniqueness techniques for a player who
+ * does not use them (worker.ts).
  */
-export function attemptFor(target: Target, limit = true): GeneratedPuzzle | null {
+export function attemptFor(target: Target, limit = true, order: Tech[] = SOLVE_ORDER): GeneratedPuzzle | null {
   const grid = generatePuzzle(Math.random() < 0.7 ? 'rotational' : 'none');
-  const rating = ratePuzzle(grid, SOLVE_ORDER, limit ? limitFor(target) : undefined);
+  const rating = ratePuzzle(grid, order, limit ? limitFor(target) : undefined);
   return rating ? { puzzle: gridToString(grid), rating } : null;
 }
 

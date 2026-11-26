@@ -765,6 +765,10 @@ const es: LearnLocale = {
         "text": "Las puntuaciones y el orden de búsqueda son los predeterminados de HoDoKu para todas las técnicas que ambos comparten; HoDoKu es el analizador de sudokus de referencia. Un Único desnudo cuesta 4; un X-Wing, 140; una Forcing Net, 700. El resolvedor de sudokUI también conoce técnicas que HoDoKu no tiene, como WXYZ-Wing, Chute Remote Pair y 3D Medusa, con puntuaciones cercanas a las de sus parientes más próximos. Usa Death Blossom, que HoDoKu tiene desactivada por defecto, y le faltan los peces Franken con aleta de HoDoKu. Así, la puntuación HoDoKu sigue la escala y las reglas de HoDoKu, pero en muchos sudokus no es el número que da el propio HoDoKu, y a veces tampoco el nivel."
       },
       {
+        "title": "Por qué el número puede diferir del de HoDoKu",
+        "text": "La puntuación suma los pasos de la única ruta que sigue el resolvedor. Donde varios pasos valen los mismos puntos, el resolvedor puede tomar uno que hace más, como un bucle que coloca un número en lugar de uno que solo elimina candidatos, y un paso que hace más puede acortar la ruta. Así, el mismo sudoku puede puntuar más bajo aquí que en el propio HoDoKu. La puntuación que se muestra también sigue tu ajuste de unicidad: con las técnicas de unicidad desactivadas, el sudoku se puntúa sin ellas, como lo juegas tú."
+      },
+      {
         "title": "Los cinco niveles de HoDoKu",
         "text": "El nivel se fija como lo fija HoDoKu. Empieza en el nivel de la técnica más difícil de la ruta de resolución y sube un nivel cada vez mientras el total supere el límite del nivel: 800 para Fácil, 1000 para Medio, 1600 para Difícil y 1800 para Injusto. Extremo no tiene límite. Una ruta de resolución con un X-Wing hace el sudoku como mínimo Difícil, y un total de más de 1800 lo hace Extremo."
       },

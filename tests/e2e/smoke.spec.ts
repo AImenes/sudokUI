@@ -1367,34 +1367,35 @@ for (const [name, size] of [
       await expect(shafts(page)).toHaveClass('chain-shaft weak');
       await expect(heads(page)).toHaveCount(1);
       await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
-      // A's 5s false, its 1 and B's 5 true, B's 1 false; no role
-      await expect(falseRings(page)).toHaveCount(3);
-      await expect(trueDiscs(page)).toHaveCount(2);
+      // A's 3 false, its 6 true, B's 6 false, B's two 3s true, one of them (the example since the AIC moved, docs/rating-chains.md); no role
+      await expect(falseRings(page)).toHaveCount(2);
+      await expect(trueDiscs(page)).toHaveCount(1);
+      await expect(squares(page)).toHaveCount(2);
       await expect(page.locator('svg.board circle[fill="var(--hint-primary)"], svg.board circle[fill="var(--hint-secondary)"]')).toHaveCount(0);
-      await expect(page.locator('.hint-legend')).toContainText('true, if set A holds no 5 (by the small dot)');
+      await expect(page.locator('.hint-legend')).toContainText('true, if set A holds no 3 (by the small dot)');
       // the walk: set A, its lock, set B, the restricted common, B's lock, the conclusion
       await page.getByRole('button', { name: 'Walk through it' }).click();
       await expect(page.locator('.hint-walk-count')).toContainText('1 of 6');
       await expect(page.locator('.hint-walk-text')).toHaveText(
-        'Set A: the 2 cells r8c2, r9c1 of box 7 hold only 1, 5 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.'
+        'Set A: the 2 cells r2c3, r2c4 of row 2 hold only 3, 6 and 9: one digit more than cells. Without any one of these digits, the others fill the cells.'
       );
       await expect(tiles).toHaveCount(2);
       await expect(shafts(page)).toHaveCount(0);
       await page.keyboard.press('ArrowRight');
-      await expect(page.locator('.hint-walk-text')).toHaveText('If set A holds no 5, its other 2 digits fill its 2 cells, so r8c2 must be 1.');
+      await expect(page.locator('.hint-walk-text')).toHaveText('If set A holds no 3, its other 2 digits fill its 2 cells, so r2c4 must be 6.');
       await expect(shafts(page)).toHaveCount(0);
       await expect(page.locator('svg.board .chain-start')).toHaveCount(1);
       await page.keyboard.press('ArrowRight');
       await expect(tiles).toHaveCount(4);
       await page.keyboard.press('ArrowRight');
-      await expect(page.locator('.hint-walk-text')).toHaveText('In row 8, every 1 of set A sees every 1 of set B: if r8c2 is 1, r8c9 cannot be 1.');
+      await expect(page.locator('.hint-walk-text')).toHaveText('In column 4, every 6 of set A sees every 6 of set B: if r2c4 is 6, r8c4 cannot be 6.');
       await expect(shafts(page)).toHaveCount(1);
       await expect(page.locator('svg.board .walk-badge')).toHaveText(['4']);
       await page.keyboard.press('ArrowRight');
       await page.keyboard.press('ArrowRight');
       await expect(page.locator('.hint-walk-count')).toContainText('6 of 6');
       await expect(page.locator('.hint-walk-text')).toHaveText(
-        'Set A or set B holds a 5: if A holds none, B holds one. Each removed 5 sees every 5 of both. So 5 is removed from r7c1.'
+        'Set A or set B holds a 3: if A holds none, B holds one. Each removed 3 sees every 3 of both. So 3 is removed from r8c3.'
       );
     });
 

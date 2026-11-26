@@ -21,6 +21,7 @@ import { findNextStep, applyStep } from '../src/engine/humanSolver';
 import { solve } from '../src/engine/bruteForce';
 import type { CellDigit, ChainLink, ColourRule, Step } from '../src/engine/steps';
 import type { Tech } from '../src/engine/ratings';
+import { walkTo } from './pathBefore';
 
 /** a candidate as HoDoKu writes one, 4r1c5 */
 export function cd(s: string): CellDigit {
@@ -322,8 +323,7 @@ export function positionOf(f: ParityFixture): { grid: Grid; solution: Uint8Array
   const key = `${f.puzzle}@${f.at}`;
   let p = positions.get(key);
   if (!p) {
-    const grid = parseGrid(f.puzzle)!;
-    for (let k = 0; k < f.at; k++) applyStep(grid, findNextStep(grid)!);
+    const grid = walkTo(f.puzzle, f.at);
     p = { grid, solution: solve(parseGrid(f.puzzle)!)!.values };
     positions.set(key, p);
   }

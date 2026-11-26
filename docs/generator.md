@@ -152,6 +152,16 @@ stumbles over, and the pools fill with fresh puzzles rather than seeds.
 Candidates travel to the main thread once per slice and are filed in one
 write.
 
+A player who does not use uniqueness (Settings) asks for a level that
+must hold without it (`noUniqueness`; docs/architecture.md, "The rating
+follows the uniqueness setting"). Their waiting request rates its
+candidates and seeds without the uniqueness techniques only, capped at
+the band, and rates the answer HoDoKu's way as well; their top-ups rate
+HoDoKu's way in full and again without uniqueness where a path takes a
+uniqueness step. Every pool entry whose path takes none carries its own
+rating as the one without uniqueness, so the pools serve both kinds of
+player from the same generation.
+
 ## Nothing repeats
 
 Pools hold eight puzzles per band and per technique in localStorage, and

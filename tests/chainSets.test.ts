@@ -21,13 +21,14 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { checkSets } from '../src/engine/truth';
 import type { Step } from '../src/engine/steps';
-import { EXAMPLES } from '../src/content/examples';
+import { EXAMPLES_BEFORE as EXAMPLES } from './examplesBefore';
 import { parseGrid, cloneGrid, isSolved, bit, popcount } from '../src/engine/board';
 import type { Grid } from '../src/engine/board';
 import { generatePuzzle } from '../src/engine/generator';
 import { findNextStep, findAllSteps, findStep, applyStep } from '../src/engine/humanSolver';
 import type { Tech } from '../src/engine/ratings';
 import { SET_TECHS, setProblems } from './chainSets';
+import { walkTo } from './pathBefore';
 
 const cd = (r: number, c: number, digit: number) => ({ cell: (r - 1) * 9 + (c - 1), digit });
 /** a stored example's step, to break by hand */
@@ -226,9 +227,8 @@ describe("the finders' sets keep their rules", () => {
   });
 
   it('in an AIC with ALS whose only set is a bivalue cell: it keeps its name, and the cell is no set (decision 14)', () => {
-    const g = parseGrid('4..1.27.......3..45.7.9...3..45..62..8.....4..25..43..7...4.9.12..3.......67.9..2')!;
-    for (let i = 0; i < 10; i++) applyStep(g, findNextStep(g)!);
-    const step = findStep('AIC_GROUPED', g)!;
+    const g = walkTo('4..1.27.......3..45.7.9...3..45..62..8.....4..25..43..7...4.9.12..3.......67.9..2', 10);
+    const step = findStep('AIC_ALS', g)!;
     expect(step.tech).toBe('AIC_ALS');
     expect(step.description).toMatch(/^AIC with ALS: 3@r1c2 → 3@r1c3 → 8@r1c3 → 8@r2c1/);
     // the cell r2c4, holding only 8 and 6: a strong link with no set at either end

@@ -7,20 +7,20 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { eurekaOf, stepText, hodokuLine, compactCells, conclusions } from '../src/content/eureka';
-import { EXAMPLES } from '../src/content/examples';
+import { EXAMPLES_BEFORE as EXAMPLES } from './examplesBefore';
 import { alternatingLinks, insideSet } from '../src/engine/steps';
 import type { Step } from '../src/engine/steps';
 import { TECHS, Tech } from '../src/engine/ratings';
 import { cellName, parseGrid } from '../src/engine/board';
 import type { Grid } from '../src/engine/board';
 import { findNextStep, findStep, applyStep } from '../src/engine/humanSolver';
+import { walkTo } from './pathBefore';
 
 const step = (tech: Tech): Step => EXAMPLES[tech]!.step as Step;
 
 /** a puzzle's position after its first `n` solve-path steps */
 function onPath(puzzle: string, n: number): Grid {
-  const g = parseGrid(puzzle)!;
-  for (let i = 0; i < n; i++) applyStep(g, findNextStep(g)!);
+  const g = walkTo(puzzle, n);
   return g;
 }
 
@@ -73,13 +73,13 @@ describe('Eureka notation', () => {
     // set A (r7c1, r8c1, r8c2) entered by its 3, in r8c2, and left by its
     // 8s, in r7c1 and r8c1: once '(3)r8c2 = (8)r78c1', a strong link between
     // two digits of different cells, unbraced
-    const hop = findNextStep(onPath('......4...5...9.3.2.93...7..8.9....136...8..44...6.78......2.53..65....752....9..', 28))!;
+    const hop = findStep('AIC_ALS', onPath('......4...5...9.3.2.93...7..8.9....136...8..44...6.78......2.53..65....752....9..', 28))!;
     expect(hop.tech).toBe('AIC_ALS');
     expect(stepText(hop)).toBe(
       'AIC with ALSs: (6)r1c1 = (6)r1c6 - (6=1)r3c6 - (1)r123c5 = (1-3)r9c5 = (3)r9c3 - (3=8){r7c1,r8c12} => r1c1<>8'
     );
     // a chain whose only "set" is a bivalue cell, r2c4: the cell it is, no braces (decision 14)
-    const bivalue = findStep('AIC_GROUPED', onPath('4..1.27.......3..45.7.9...3..45..62..8.....4..25..43..7...4.9.12..3.......67.9..2', 10))!;
+    const bivalue = findStep('AIC_ALS', onPath('4..1.27.......3..45.7.9...3..45..62..8.....4..25..43..7...4.9.12..3.......67.9..2', 10))!;
     expect(bivalue.tech).toBe('AIC_ALS');
     expect(stepText(bivalue)).toBe(
       'AIC with ALSs: (3)r1c2 = (3-8)r1c3 = (8)r2c1 - (8=6)r2c4 - (6)r5c4 = (6-3)r5c1 = (3)r9c1 => r7c2<>3, r9c2<>3'
@@ -197,13 +197,13 @@ describe('the HoDoKu line', () => {
 
   it('names the sets the step is made of where they were once guessed wrong', () => {
     // a chain of four sets once named as five, A to E, its set B (r4c2, r6c1) split in two
-    const chain = findNextStep(onPath('...3...2..81...7..7..8.15..2....6.3.8...4...5.4.7....2..26.8..4..6...87..3...4...', 32))!;
+    const chain = findStep('ALS_XY_CHAIN', onPath('...3...2..81...7..7..8.15..2....6.3.8...4...5.4.7....2..26.8..4..6...87..3...4...', 32))!;
     expect(chain.tech).toBe('ALS_XY_CHAIN');
     expect(hodokuLine(chain)).toBe(
       'ALS-XY-Chain: A=r2c168 {3569}, B=r4c2,r6c1 {139}, C=r18c2 {159}, D=r8c9 {19}, RCs=3,9,1, Z=9 => r2c9<>9'
     );
     // a wing once named with four sets, its hinge C (r2c1, r3c2) split into B and C
-    const wing = findNextStep(onPath('1.9..3.......9.5.....5.281.2..........18.....86.3...249.....1........63.5..76...8', 22))!;
+    const wing = findStep('ALS_XY_WING', onPath('1.9..3.......9.5.....5.281.2..........18.....86.3...249.....1........63.5..76...8', 22))!;
     expect(wing.tech).toBe('ALS_XY_WING');
     expect(hodokuLine(wing)).toBe('ALS-XY-Wing: A=r8c1 {47}, B=r346c3 {3457}, C=r2c1,r3c2 {347}, X,Y=4,3, Z=7 => r8c3<>7');
     // an ALS-XZ on offer whose set A, the cell r1c3, once took r2c2 from its set B
