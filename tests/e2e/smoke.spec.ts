@@ -3309,6 +3309,9 @@ test.describe('a first visit', () => {
   };
 
   test('opens straight on an easy board, nothing over it, the board taking every touch', async ({ page }) => {
+    // a day with no door of the advent calendar: from 1 to 24 December a
+    // first visit opens today's door instead (tests/e2e/advent.spec.ts)
+    await page.clock.install({ time: new Date('2026-10-15T12:00:00') });
     await page.goto('/');
     await expect(page.locator('svg.board')).toBeVisible();
     await expect.poll(() => saved(page)).toEqual({ level: 'Easy', dailyKey: null });
@@ -3323,6 +3326,27 @@ test.describe('a first visit', () => {
     await expect(won).toBeVisible();
     await won.getByRole('button', { name: 'Why sudokUI?' }).click();
     await expect(page.getByRole('dialog', { name: 'Why sudokUI?' })).toContainText('What stays true');
+  });
+
+  test('a game won offers today’s daily, one tap away, and the daily won does not', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-10-15T12:00:00') });
+    await page.goto('/');
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect.poll(() => saved(page)).toEqual({ level: 'Easy', dailyKey: null });
+    await solveSaved(page);
+    const won = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(won).toBeVisible();
+    await won.getByRole('button', { name: 'Today’s daily' }).click();
+    await expect(won).toHaveCount(0);
+    const daily = dailies.find((d) => d.date === '2026-10-15')!;
+    await expect.poll(() => saved(page)).toEqual({ level: daily.level, dailyKey: '2026-10-15' });
+    await expect(page.locator('.toast')).toContainText('Daily puzzle for 2026-10-15. Everyone gets this same board today');
+    await expect.poll(() => page.evaluate(() => location.pathname)).toBe('/daily/2026-10-15');
+    // today's daily won: its win screen offers no daily
+    await solveSaved(page);
+    await expect(won).toBeVisible();
+    await expect(won.getByRole('button', { name: 'New game' })).toBeVisible();
+    await expect(won.getByRole('button', { name: 'Today’s daily' })).toHaveCount(0);
   });
 
   test('a returning player, with scrolling over the board on only because it was the default, gets it off once', async ({ page }) => {

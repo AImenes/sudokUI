@@ -73,7 +73,7 @@ no date rule: the doors' numbers, their addresses and the published list.
 | Date (local) | What the calendar does |
 |---|---|
 | 1 to 30 November | New has Advent calendar (`calendarOpen`), "Its doors open from 1 December": the 24 doors, every one locked, each with the day it opens. No door opens. |
-| 1 to 24 December | Door n opens on n December (`doorState` is `open`); a door still to come is `locked`. |
+| 1 to 24 December | Door n opens on n December (`doorState` is `open`); a door still to come is `locked`. A first visit (nothing saved on the device, an address that names no game) opens today's door with its toast instead of a random easy puzzle (`startTodaysDoor`, src/ui/links.ts; since 25 November 2026, docs/reach-plan-2026-11.md "A newcomer's first minute"). |
 | 25 to 31 December | Every door is open (an earlier door is always allowed until 31 December). |
 | From 1 January | Nothing of the calendar shows, no door opens, and no door's time is sent, until November (`closed`). A door game in progress stays where it is, on the board or in the slot, and can be finished; asked for again (its address, a reload), it comes back, since it is the player's own game. Finished then, it still counts as a play, with its door, as every play is counted (the owner's decision 4: the started and completed lines), and its line can still be shared; its win screen says "This door is closed for new times". Any other door says "The advent calendar is closed until November". |
 

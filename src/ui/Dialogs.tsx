@@ -1416,6 +1416,7 @@ const clock = (ms: number) => {
 
 export function VictoryDialog({
   onNewGame,
+  onDaily,
   onClose,
   onAnother,
   onProgress,
@@ -1423,6 +1424,8 @@ export function VictoryDialog({
   onWhy
 }: {
   onNewGame: () => void;
+  /** open today's daily (src/ui/links.ts, startDaily): offered after any other game won, until today's is solved on this device */
+  onDaily?: () => void;
   onClose: () => void;
   /** open Why sudokUI?: a quiet link under the buttons, never more */
   onWhy?: () => void;
@@ -1470,6 +1473,11 @@ export function VictoryDialog({
   const kept = useDailyStats((s) => (dailyNo ? s.played[dailyNo] : undefined));
   // whether this game's solve is that one (recordDaily)
   const dailyKept = useGame((s) => s.dailyKept);
+  // today's daily, one tap from a win (the owner's asking of 25 November
+  // 2026): after any other game but a practice one, while today's has not
+  // been solved on this device
+  const todayNo = dailyNumber(today);
+  const todaySolved = useDailyStats((s) => (todayNo ? !!s.played[todayNo] : true));
   const [sent, setSent] = useState<SubmitOutcome | 'sending' | null>(null);
   const [statsFailed, setStatsFailed] = useState(false);
   useEffect(() => {
@@ -1794,6 +1802,9 @@ export function VictoryDialog({
         <div className="hint-actions">
           {info.practiceTech && onAnother && (
             <button onClick={onAnother}>{t('Another {name}', { name: practiceName })}</button>
+          )}
+          {onDaily && !info.practiceTech && info.dailyKey !== today && !todaySolved && (
+            <button onClick={onDaily}>📅 {t('Today’s daily')}</button>
           )}
           <button onClick={onNewGame}>{t('New game')}</button>
           <button onClick={shareResult}>{copied ? `✓ ${t('Copied')}` : `🔗 ${t('Challenge a friend')}`}</button>

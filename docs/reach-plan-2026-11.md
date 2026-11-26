@@ -427,6 +427,32 @@ REALISTIC EXPECTATION for a side project with about 10 players a day: a good two
 6. Day 24: the owner sends the menneske.no email (action 6) and three creator emails plus one to Puzzle Weekly (action 5), with position links and hint images. Their landing words differ ('sudoku' and 'social'), so they can be read apart. Claude ships item 6 (Atom feed, print view with QR code).
 7. Day 30: the owner reads /admin against the baseline: 7-day completions, daily participants, landings by word, shares of kind image and post. He judges the forum thread at day 31 (14 days after). He picks the next single channel: r/WebGames in week 6, or the kode24 pitch. He leaves Show HN until the phase-4 band times exist, and decides on the optional r/sudoku appeal (action 8).
 
+## A newcomer's first minute (25 November 2026)
+
+_Looked at on 25 November 2026, from the built app served locally, as a first-time visitor (nothing on the device), in English, on a 390 x 844 phone (touch) and a 1280 x 800 laptop. The dashboard that day: about 90 visitors a day land on a home page, mostly first visits, and about 35 games are begun; the daily gets 0 to 3 games a day against 25 to 40 for New._
+
+**What a newcomer sees.**
+- **The board at once, an Easy puzzle, no dialog** (the owner's call of 2 November). Good: nothing stands between a visitor and the puzzle.
+- **Nothing says how to play.** No cell is selected and no line says "tap a cell, then a number". Both orders work (a number tapped first is armed, and each cell tapped then takes it), but a newcomer has to guess. Between the board and the numbers sits the mode row, Digit, Corner, Centre, Colour and Multi, which is jargon to someone who has not played here. "How to play" is behind ⓘ, which a newcomer does not open. This is the likeliest reason most first visitors never make a move.
+- **What covers what.** The only thing over the app on a first visit (outside December) is "sudokUI is ready to play offline", for 6 seconds. On the phone it covers the lower row of the Assist box (Auto candidates, Fill candidates), never the board or the numbers. On the laptop it sits under the board. But with a toast up as well, the two stack at the foot of the screen, and on the laptop the toast then covered the board's last row. From 1 December every first visit opens with a toast (below), so this mattered: the offline line now waits until the toast has gone (built, below).
+- **The daily is nowhere in sight.** On the phone the row with New is the last thing on the screen, cut by its bottom edge (it starts 830 px down a screen of 844), and the daily is the first choice inside New: a scroll and two taps. On the laptop New is at the top right, still two taps. The board, the header and the win screen did not mention the daily at all.
+- **The header** shows "Easy 260". The number is HoDoKu's rating; a tap explains it. Fine for a newcomer to ignore.
+
+**What was built (the smallest changes).**
+- **From 1 to 24 December a first visit opens today's door** of the advent calendar instead of a random easy puzzle. It comes with the door's own toast, "Door 5 of the advent calendar. Everyone gets this same board", at the door's address, in the home page's language (`/`, `/nb/`, `/es/`). Doors are Easy to door 18 and Medium after, so a first visit from 19 December meets a Medium puzzle. This happens only when nothing is saved on the device and the address names no game. A returning player's game comes back as before. On 25 to 30 November and from 25 December a first visit opens an easy puzzle as on any day. A door that cannot be had (offline before the app kept the doors, or a December whose doors the build does not have) gives the easy puzzle, with no toast about it. (src/ui/links.ts `startTodaysDoor`, src/ui/App.tsx; tests/e2e/advent.spec.ts "a first visit in December".)
+- **Today's daily, one tap from a win.** After any game won other than today's daily or a practice puzzle, and while today's daily is not solved on this device, the win screen offers "📅 Today's daily" before New game. The first win is the moment a newcomer is most willing to play again. (src/ui/Dialogs.tsx `VictoryDialog`; tests/e2e/smoke.spec.ts "a game won offers today's daily".)
+- **"Ready to play offline" waits for the toast.** The first visit's offline line no longer shows while a toast is up, so the two never stack over the board. (src/ui/App.tsx `UpdateBar`.)
+
+**What was not built, and is recommended to the owner.**
+1. **One line that says how to play, on a first visit only.** For example "Tap a cell, then a number", in the toast's place (never over the board), gone at the first entry and never shown again. Its words would be needed in en, nb and es. It goes against the letter of the 2 November call ("the playing says what the app is"), so it is the owner's decision. It is the most direct answer to "most first visitors never make a move". Judge it on the dashboard: the share of first-visit home landings that become a begun game, before and after, over two weeks each.
+2. **A daily button that is always on the board.** It was not built, because every place measured costs something:
+   - a note in the past-daily note's place costs 60 px on a 390 px phone, which pushes the Assist box's second row below the fold;
+   - a sixth button in the menu row wraps it in Norwegian and Spanish at 320 px;
+   - an icon in the header does not fit beside "Urettferdig" with a four-figure rating at 320 px (the header's fit test).
+
+   If the win screen's button does not move the daily's count in two weeks, the next step is a header icon that shows only from 360 px.
+3. **Put the menu row (New, Learn, Import, Share, Restart) back above the fold on phones,** or move New into the header. On a 390 x 844 phone the row is cut by the screen's edge. It went last on purpose (docs/review.md: the Assist box above the fold). Weigh the two again with the begun-game count.
+
 ## Sources
 
 - /home/user/sudokUI/docs/online-goals.md (principles 1-6, Phase 4 feed and launch moment, Do not build)

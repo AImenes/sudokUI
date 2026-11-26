@@ -472,3 +472,77 @@ test.describe('the advent calendar', () => {
     await expect(settings.getByText('Doors wear the Christmas look')).toHaveCount(0);
   });
 });
+
+/** the game on the board as a new player meets it, with its level */
+const firstGame = (page: Page) =>
+  page.evaluate(() => {
+    const info = JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state?.info;
+    return info ? { puzzle: info.puzzle as string, level: info.level as string, door: (info.adventDoor ?? null) as number | null, daily: (info.dailyKey ?? null) as string | null } : null;
+  });
+
+/** a first visit: nothing saved on the device, the device's date as given */
+async function firstVisit(page: Page, day: string, path = '/') {
+  await on(page, day);
+  await page.goto(path);
+  await expect(page.locator('svg.board')).toBeVisible();
+}
+
+test.describe('a first visit in December', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('opens today’s door with its toast, at its address, from 1 to 24 December', async ({ page }) => {
+    await firstVisit(page, '2026-12-05');
+    await expect.poll(() => firstGame(page)).toEqual({ puzzle: door(5).puzzle, level: 'Easy', door: 5, daily: null });
+    await expect(toast(page)).toContainText('Door 5 of the advent calendar. Everyone gets this same board');
+    await expect.poll(() => path(page)).toBe('/advent/2026/5');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    // a reload is a returning player: the door on the board, where it was left, no second copy
+    await fill(page, door(5).puzzle, 2);
+    await page.reload();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: door(5).puzzle, door: 5, entries: 2, aside: null });
+  });
+
+  for (const { home, toastLine } of [
+    { home: '/nb/', toastLine: 'Luke 20 i julekalenderen. Alle får det samme brettet' },
+    { home: '/es/', toastLine: 'Casilla 20 del calendario de adviento. Todo el mundo recibe este mismo tablero' }
+  ])
+    test(`at ${home} too, in its language, and from door 19 the door is Medium`, async ({ page }) => {
+      await firstVisit(page, '2026-12-20', home);
+      await expect.poll(() => firstGame(page)).toEqual({ puzzle: door(20).puzzle, level: 'Medium', door: 20, daily: null });
+      await expect(toast(page)).toContainText(toastLine);
+      await expect.poll(() => path(page)).toBe(`${home}advent/2026/20`);
+    });
+
+  test('on 24 December door 24; a returning player’s game comes back instead', async ({ page }) => {
+    await firstVisit(page, '2026-12-24');
+    await expect.poll(() => firstGame(page)).toMatchObject({ puzzle: door(24).puzzle, door: 24 });
+    // a game of the player's own, then the home page: that game, not the door
+    await page.goto(`/#p=${EASY}`);
+    await opened(page, EASY);
+    await page.goto('/');
+    await expect(page.locator('svg.board')).toBeVisible();
+    await page.waitForTimeout(500);
+    expect(await firstGame(page)).toMatchObject({ puzzle: EASY, door: null });
+  });
+
+  test('on a laptop the door’s toast keeps off the board, and "ready to play offline" waits until it has gone', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await firstVisit(page, '2026-12-05');
+    await expect(toast(page)).toContainText('Door 5 of the advent calendar. Everyone gets this same board');
+    const board = (await page.locator('svg.board').boundingBox())!;
+    const line = (await toast(page).boundingBox())!;
+    expect(line.y, 'the toast starts below the board').toBeGreaterThanOrEqual(board.y + board.height);
+    await expect(page.locator('.update-bar')).toHaveCount(0);
+    // the toast goes, and the bar takes the foot of the screen (the service worker is in by then)
+    await expect(toast(page)).toHaveCount(0, { timeout: 10_000 });
+    await expect(page.locator('.update-bar')).toContainText('sudokUI is ready to play offline.');
+  });
+
+  for (const day of ['2026-11-30', '2026-12-25'])
+    test(`on ${day} a first visit opens an easy puzzle, as on any day without a door of its own`, async ({ page }) => {
+      await firstVisit(page, day);
+      await expect.poll(() => firstGame(page)).toMatchObject({ level: 'Easy', door: null, daily: null });
+      await page.waitForTimeout(500);
+      await expect(toast(page)).toHaveCount(0);
+    });
+});
