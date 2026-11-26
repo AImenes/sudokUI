@@ -19,7 +19,7 @@ import { findNextStep, findStep, findAllSteps, applyStep } from '../src/engine/h
 import { boardSvg, legendOf, swatchStyle } from '../src/content/boardSvg';
 import { PARITY_FIXTURES, positionOf } from './parityFixtures';
 import { LIGHT } from '../src/content/hintPalette';
-import { EXAMPLES } from '../src/content/examples';
+import { EXAMPLES_BEFORE as EXAMPLES } from './examplesBefore';
 import { TECHS, Tech } from '../src/engine/ratings';
 import { deriveLinks } from '../src/engine/truth';
 import { drawnLinks } from '../src/engine/hintFrames';
@@ -27,6 +27,7 @@ import { isPlaced } from '../src/content/hintMarks';
 import { sees } from '../src/engine/board';
 import type { Grid } from '../src/engine/board';
 import { solve } from '../src/engine/bruteForce';
+import { walkTo } from './pathBefore';
 
 const storage = new Map<string, string>();
 (globalThis as any).localStorage = {
@@ -369,8 +370,7 @@ describe("groups on the board (docs/hint-drawing-sets.md, decisions 1-3 and 18)"
 
   it("takes Grouped X-Cycles rule 3's start through three marks: squares while assumed, rings at the closing link, removals at the end", () => {
     // the set fixture's named rule 3, its first group assumed true
-    const g = parseGrid('.4...2.6.8.2.....51..4.8...4....1..7..5.7.6..3..5....4...1.9..66.....9.2.9.2...5.')!;
-    for (let i = 0; i < 14; i++) applyStep(g, findNextStep(g)!);
+    const g = walkTo('.4...2.6.8.2.....51..4.8...4....1..7..5.7.6..3..5....4...1.9..66.....9.2.9.2...5.', 14);
     const s = findStep('GROUPED_X_CYCLES', g)!;
     const solved = (c: number) => g.values[c] > 0;
     const start = s.links![0].fromSet!;
@@ -1008,8 +1008,7 @@ describe('a true node of several candidates where sets share a cell, and what a 
       }
     }
     for (const [puzzle, steps] of SHARED) {
-      const g = parseGrid(puzzle)!;
-      for (let i = 0; i < steps; i++) applyStep(g, findNextStep(g)!);
+      const g = walkTo(puzzle, steps);
       const values = Array.from(g.values).join('');
       for (const tech of DERIVED) {
         const s = findStep(tech, g);
@@ -1313,8 +1312,7 @@ describe("G18's note where a true disc rules out every square of a true node, re
 
   it('says the premise is impossible in every view that draws such a node, and only there, true in the solution', () => {
     for (const r of REFUTED) {
-      const g = parseGrid(r.puzzle)!;
-      for (let i = 0; i < r.at; i++) applyStep(g, findNextStep(g)!);
+      const g = walkTo(r.puzzle, r.at);
       const s = findStep(r.tech, g)!;
       const values = Array.from(g.values).join('');
       expect([s.tech, alsClash(s), deriveTruth(s)!.problems], r.puzzle).toEqual([r.tech, false, []]);
@@ -1378,8 +1376,7 @@ describe("the sets' tints, review round 2 of phase 4 (docs/hint-drawing-sets.md,
     // an ALS-XY-Chain on offer, (2=1){r13c3} - (1=2)r1c2 - (2=1){r1c35} - (1=2){r146c2}: A and C share r1c3, D only
     // borders A; A sand and C sand put a sand outline dashed inside a sand tile on r1c3, as A sand and D sand do not,
     // each way one conflicting pair alike and every tint used
-    const g = parseGrid('...4.65377..9..6..........4......1.6.465.238.8.3......4..........9..5..22853.4...')!;
-    for (let i = 0; i < 12; i++) applyStep(g, findNextStep(g)!);
+    const g = walkTo('...4.65377..9..6..........4......1.6.465.238.8.3......4..........9..5..22853.4...', 12);
     const s = findStep('ALS_XY_CHAIN', g)!;
     expect(s.sets!.map((x) => `${x.letter} ${x.cells.join(',')}`)).toEqual(['A 2,20', 'B 1', 'C 2,4', 'D 1,28,46']);
     expect(tints(s)).toEqual([1, 2, 3, 1]);
@@ -1406,8 +1403,7 @@ describe("the sets' tints, review round 2 of phase 4 (docs/hint-drawing-sets.md,
         if (s?.tech === tech) steps.push({ where: id, step: s });
       }
     }
-    const g = parseGrid('...4.65377..9..6..........4......1.6.465.238.8.3......4..........9..5..22853.4...')!;
-    for (let i = 0; i < 12; i++) applyStep(g, findNextStep(g)!);
+    const g = walkTo('...4.65377..9..6..........4......1.6.465.238.8.3......4..........9..5..22853.4...', 12);
     steps.push({ where: 'the chain above', step: findStep('ALS_XY_CHAIN', g)! });
     let sharing = 0;
     for (const { where, step: s } of steps) {

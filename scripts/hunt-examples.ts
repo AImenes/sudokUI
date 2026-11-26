@@ -6,6 +6,11 @@
 //   npx vite-node scripts/hunt-examples.ts 40          hunt for 40 minutes
 //   npx vite-node scripts/hunt-examples.ts refresh     re-derive the stored
 //                                                      steps from their puzzles
+//   npx vite-node scripts/hunt-examples.ts 5 only=AIC,ALS_XZ
+//                                                      hunt for these techniques
+//                                                      alone, leaving the other
+//                                                      examples and the
+//                                                      frequencies as they are
 //
 // Hunting keeps whatever is already stored and only replaces an example
 // with a clearer one (a smaller pattern on a fuller board). Run `refresh`
@@ -92,7 +97,9 @@ const frequency: Frequency = existsSync(FREQUENCY)
   ? JSON.parse(readFileSync(FREQUENCY, 'utf8'))
   : { sample: 0, counts: {} };
 
-const wanted = SOLVE_ORDER.filter((t) => t !== 'BRUTE_FORCE');
+/** `only=A,B`: a targeted hunt, for these techniques alone, which counts no frequencies */
+const only = process.argv.find((a) => a.startsWith('only='))?.slice(5).split(',') as Tech[] | undefined;
+const wanted = SOLVE_ORDER.filter((t) => t !== 'BRUTE_FORCE' && (!only || only.includes(t)));
 const isSingle = (tech: Tech) => TECHS[tech].category === 'Singles';
 
 /** the example for `tech` at its first occurrence in the solve path */
@@ -150,7 +157,7 @@ function consider(puzzle: string, credit?: string): Tech[] {
     }
   }
   for (const tech of ['FULL_HOUSE', 'NAKED_SINGLE', 'HIDDEN_SINGLE'] as Tech[]) {
-    if (!stored[tech]) {
+    if (!stored[tech] && wanted.includes(tech)) {
       const candidate = exampleFrom(puzzle, tech, credit);
       if (candidate) stored[tech] = candidate;
     }
@@ -212,7 +219,7 @@ if (process.argv.includes('refresh')) {
     const grid = generatePuzzle(Math.random() < 0.7 ? 'rotational' : 'none');
     const puzzle = gridToString(grid);
     const used = consider(puzzle);
-    if (used.length) {
+    if (used.length && !only) {
       frequency.sample++;
       for (const tech of used) frequency.counts[tech] = (frequency.counts[tech] ?? 0) + 1;
     }

@@ -75,15 +75,26 @@ function chainOf(
   return { ends, sets, setOf };
 }
 
+/** AIC with Groups: a chain through at least one group node, no almost locked set */
 export function findGroupedAic(g: Grid, maxNodes = 10): Step | null {
-  return search(g, 'chain', maxNodes);
+  return search(g, 'chain', maxNodes, false);
+}
+
+/**
+ * AIC with ALSs: a chain through at least one almost locked set (groups
+ * may take part too). The search is the grouped one with the sets' nodes
+ * added; it reports only chains that use a set, since one without is an
+ * AIC with Groups, which is tried long before (ratings.ts).
+ */
+export function findAlsAic(g: Grid, maxNodes = 10): Step | null {
+  return search(g, 'chain', maxNodes, true);
 }
 
 export function findGroupedNiceLoop(g: Grid, maxNodes = 10): Step | null {
-  return search(g, 'loop', maxNodes);
+  return search(g, 'loop', maxNodes, false);
 }
 
-function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null {
+function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number, withAls: boolean): Step | null {
   // ---- nodes ----
   const nodes: GNode[] = [];
   const candId = new Map<number, number>(); // cell*9+digit-1 -> node id
@@ -115,8 +126,8 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
   // ALS digit-nodes (chain mode only): one node per digit of each ALS,
   // internally strong-linked pairwise
   const alsPairs: [number, number][] = [];
-  const alses = mode === 'chain' ? collectAls(g, 3, 90) : [];
-  if (mode === 'chain') {
+  const alses = withAls ? collectAls(g, 3, 90) : [];
+  if (withAls) {
     for (let a = 0; a < alses.length; a++) {
       const ids: number[] = [];
       for (const d of digitsOf(alses[a].mask)) {
@@ -130,7 +141,8 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
       }
     }
   }
-  if (firstGroup === nodes.length) return null; // no groups/ALS -> plain AIC covers it
+  // no groups (or, with sets, no set) -> nothing this search may report
+  if (withAls ? alses.length === 0 : firstGroup === nodes.length) return null;
 
   const disjoint = (a: GNode, b: GNode) => !a.cells.some((c) => b.cells.includes(c));
   const sameDigitWeak = (a: GNode, b: GNode) =>
@@ -231,7 +243,7 @@ function search(g: Grid, mode: 'chain' | 'loop', maxNodes: number): Step | null 
       const groupInPath = path.some((p) => nodes[p].cells.length > 1);
 
       const alsInPath = path.some((p) => nodes[p].als !== undefined);
-      if (mode === 'chain' && nextType === 'weak' && path.length >= 4 && (groupInPath || alsInPath)) {
+      if (mode === 'chain' && nextType === 'weak' && path.length >= 4 && (withAls ? alsInPath : groupInPath)) {
         const endConf = conflictsOf(cur);
         const elims: CellDigit[] = [];
         for (const id of startConf!) {

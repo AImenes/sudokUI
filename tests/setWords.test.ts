@@ -28,7 +28,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
-import { EXAMPLES } from '../src/content/examples';
+import { EXAMPLES_BEFORE as EXAMPLES } from './examplesBefore';
 import { parseGrid } from '../src/engine/board';
 import type { Grid } from '../src/engine/board';
 import { findNextStep, findStep, applyStep } from '../src/engine/humanSolver';
@@ -51,6 +51,7 @@ import { LIGHT } from '../src/content/hintPalette';
 import { alsClash, deriveTruth, refutation } from '../src/engine/truth';
 import { solve } from '../src/engine/bruteForce';
 import { cellNames, sees } from '../src/engine/board';
+import { walkTo } from './pathBefore';
 
 const storage = new Map<string, string>();
 (globalThis as any).localStorage = {
@@ -79,8 +80,7 @@ const sentenceOf = (s: Step, link: number) => walkFrames(s).find((f) => f.links 
 
 /** a puzzle after the solver's first `at` steps */
 function after(puzzle: string, at: number): Grid {
-  const g = parseGrid(puzzle)!;
-  for (let i = 0; i < at; i++) applyStep(g, findNextStep(g)!);
+  const g = walkTo(puzzle, at);
   return g;
 }
 

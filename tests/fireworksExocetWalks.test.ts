@@ -47,6 +47,7 @@ import { exampleGrid } from '../src/content/learnLocale';
 import practice from '../src/content/practicePuzzles.json';
 import engineNb from '../src/content/locales/engine.nb';
 import engineEs from '../src/content/locales/engine.es';
+import { walkTo } from './pathBefore';
 
 afterEach(() => setEngineText('en', null));
 
@@ -491,8 +492,7 @@ describe('Fireworks and Exocet walk their argument (H1, M4)', () => {
     // walk keeps 5 out of the base, but r1c4 holds 5, so the step removes only r5c6's 9; and the base r2c5, r3c5,
     // where r5c4 holds 6
     const at = (puzzle: string, steps: number): Grid => {
-      const g = parseGrid(puzzle)!;
-      for (let i = 0; i < steps; i++) applyStep(g, findNextStep(g)!);
+      const g = walkTo(puzzle, steps);
       return g;
     };
     const cases = [

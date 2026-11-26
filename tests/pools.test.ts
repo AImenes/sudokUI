@@ -95,4 +95,11 @@ describe('pools', () => {
     filePoolEntries([{ puzzle: puzzle(41), score: 900, level: 'Medium', techs: [], fit: true }]);
     expect(store.has('sudokui-pools-v11')).toBe(false);
   });
+
+  it('leave the pools rated before the AIC was filed with the Nice Loops behind (docs/rating-chains.md)', () => {
+    store.set('sudokui-pools-v12', JSON.stringify({ 'level:Hard': [{ puzzle: puzzle(42), score: 900, level: 'Hard', techs: [] }] }));
+    expect(poolSize(levelKey('Hard'))).toBe(0);
+    filePoolEntries([{ puzzle: puzzle(43), score: 900, level: 'Medium', techs: [], fit: true }]);
+    expect(store.has('sudokui-pools-v12')).toBe(false);
+  });
 });

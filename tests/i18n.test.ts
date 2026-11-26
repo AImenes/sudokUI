@@ -13,7 +13,7 @@ import { TECHS, Tech } from '../src/engine/ratings';
 import { readSource, placeholders, holes } from '../scripts/i18n-source';
 import nb from '../src/content/locales/app.nb';
 import es from '../src/content/locales/app.es';
-import { EXAMPLES } from '../src/content/examples';
+import { EXAMPLES_BEFORE as EXAMPLES } from './examplesBefore';
 import { walkFrames } from '../src/engine/hintFrames';
 import { findStep } from '../src/engine/humanSolver';
 import { legendOf } from '../src/content/boardSvg';

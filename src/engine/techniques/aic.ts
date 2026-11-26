@@ -81,8 +81,10 @@ export function findAic(g: Grid, maxNodes = 12): Step | null {
  *   seeing both endpoints.
  * - Discontinuous loop with two strong links at the start node: assuming the
  *   start candidate false forces it true, so it is PLACED.
- * (The double-weak discontinuity is the plain AIC elimination, found by the
- * chain search that runs at its own index.)
+ * (The double-weak discontinuity is the plain AIC elimination: the
+ * candidate where the two weak links meet conflicts with both ends of the
+ * chain between them. The chain search finds it, tried right after this one
+ * and at the same price, ratings.ts.)
  */
 export function findNiceLoop(g: Grid, maxNodes = 12): Step | null {
   return searchAic(g, 'loop', maxNodes);

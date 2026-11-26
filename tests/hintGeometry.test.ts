@@ -15,12 +15,13 @@ import { alternatingLinks, groupSet } from '../src/engine/steps';
 import { boardLayout, boardDrawing, digitShown, squareReachOf, M } from '../src/ui/boardLayout';
 import { MARK } from '../src/content/hintPalette';
 import { hintMarks, frameMarks, markedCandidates, placedKeys, squareKeys } from '../src/content/hintMarks';
-import { EXAMPLES } from '../src/content/examples';
+import { EXAMPLES_BEFORE as EXAMPLES } from './examplesBefore';
 import { parseGrid } from '../src/engine/board';
 import { findNextStep, findAllSteps, findStep, applyStep } from '../src/engine/humanSolver';
 import type { Tech } from '../src/engine/ratings';
 import { readFileSync } from 'node:fs';
 import { linesAlong, shareWithin } from './linesAlong';
+import { walkTo } from './pathBefore';
 
 /** the app board's layout: 100 units a cell, a 4-unit margin, candidates on a 28 pitch */
 const layout: Layout = boardLayout();
@@ -267,8 +268,7 @@ describe('what the second review of phase 1 found', () => {
     // 4r2c1=4r6c1-8r6c1=8r2c1-4r2c1, removing 1, 2, 7, 9 from r6c1: the
     // straight 4r2c1 => 4r6c1 meets its own 1 and 7 beside it, and the
     // removals of r6c1 sit round its target
-    const g = parseGrid('52...6.........7.13...........4..8..6......5...........418.........3..2...87.....')!;
-    for (let k = 0; k < 3; k++) applyStep(g, findNextStep(g)!);
+    const g = walkTo('52...6.........7.13...........4..8..6......5...........418.........3..2...87.....', 3);
     const step = findAllSteps(g).find((s) => s.tech === 'NICE_LOOP' && s.eliminations.length === 5)!;
     expect(step).toBeDefined();
     const { marked, layout: l } = drawn(step, (c) => g.values[c] > 0);
@@ -1379,8 +1379,7 @@ describe("what the first review of phase 4 found: where the ties, the tabs and t
   };
   /** the position after `n` of the solver's steps, and the step there: the solver's own, or a technique's finder's */
   const after = (puzzle: string, n: number, tech?: Tech) => {
-    const g = parseGrid(puzzle)!;
-    for (let i = 0; i < n; i++) applyStep(g, findNextStep(g)!);
+    const g = walkTo(puzzle, n);
     const step = tech ? findStep(tech, g)! : findNextStep(g)!;
     return { step, values: Array.from(g.values).join(''), cands: Array.from(g.cands) };
   };
@@ -1497,13 +1496,13 @@ describe("what the first review of phase 4 found: where the ties, the tabs and t
     const nearestOther = (d: (typeof kept)[number]['drawing'], tab: (typeof d)['sets']['tabs'][number]) => Math.min(...d.sets.tiles.filter((t) => t.set !== tab.set).map((t) => fromTile(tab.p, t)));
     // an ALS-XY-Chain on the solve path: C's tab on r2c1 went to the place right of the 1, two places off C's
     // tile and 16 units from B's on r2c2 (as though r2c2 were in both sets); now inside C's tile, between its 1 and 7
-    const one = after('9.....71...693..2..8.4........74.6..4.......7..2.63........7.5..1..593...37.....1', 22);
+    const one = after('9.....71...693..2..8.4........74.6..4.......7..2.63........7.5..1..593...37.....1', 22, 'ALS_XY_CHAIN');
     expect(one.step.tech).toBe('ALS_XY_CHAIN');
     const d1 = appDrawing(one.step, one.values, one.cands);
     const c = d1.sets.tabs.find((t) => t.letter === 'C' && t.cell === 9)!;
     expect(c.p).toEqual(d1.l.centre(cd(2, 1, 4)));
     // and D's tab on r7c9 went below its tile to the place above C's tile on r8c9; now beside its own
-    const two = after('.5.....284...........3.617....9..5.292..4.........7.1...6..2...7....3.5..8.4....7', 18);
+    const two = after('.5.....284...........3.617....9..5.292..4.........7.1...6..2...7....3.5..8.4....7', 18, 'ALS_XY_CHAIN');
     expect(two.step.tech).toBe('ALS_XY_CHAIN');
     const d2 = appDrawing(two.step, two.values, two.cands);
     const tab = d2.sets.tabs.find((t) => t.letter === 'D' && t.cell === 62)!;
@@ -1558,8 +1557,7 @@ describe("what the first review of phase 4 found: where the ties, the tabs and t
 describe('what the second review of phase 4 found: an arrow a bar pushes onto another, and two links drawn as one', () => {
   /** the position after `n` of the solver's steps, a technique's step there (or the solver's own), and its drawing on the app's board, as src/ui/Grid.tsx works it out */
   const at = (puzzle: string, n: number, tech?: Tech) => {
-    const g = parseGrid(puzzle)!;
-    for (let i = 0; i < n; i++) applyStep(g, findNextStep(g)!);
+    const g = walkTo(puzzle, n);
     const step = tech ? findStep(tech, g)! : findNextStep(g)!;
     const [values, cands] = [Array.from(g.values), Array.from(g.cands)];
     return { step, ...boardDrawing(step, (c) => ({ value: values[c], corner: 0, center: 0 }), (c) => cands[c]) };
@@ -1598,7 +1596,7 @@ describe('what the second review of phase 4 found: an arrow a bar pushes onto an
     // seed Extreme #45 after 8 steps, the solver's own Grouped Nice Loop: either side of the 2s' bar in row 3 blocks
     // link 0, 9r2c2 = 9r6c2, which left along row 2 over the loop's closing weak link 9, 9r2c3 - 9r2c2 (60% of it
     // within 4 units); link 0 has no clearer way round, and link 9 now comes into 9r2c2 apart from it
-    const loop = at('3.89........1..4...6...7.95.....9..74...5...95..8.....62.3...1...7..2........12.6', 8);
+    const loop = at('3.89........1..4...6...7.95.....9..74...5...95..8.....62.3...1...7..2........12.6', 8, 'GROUPED_NICE_LOOP');
     expect(loop.step.tech).toBe('GROUPED_NICE_LOOP');
     expect(shareWithin(lineOf(loop.shapes[9]), lineOf(loop.shapes[0]), 4)).toBeLessThan(0.25);
     expect(along(loop)).toEqual([]);
@@ -1606,7 +1604,7 @@ describe('what the second review of phase 4 found: an arrow a bar pushes onto an
     // along link 3, and link 6 out of 7r8c5 along link 5, which the group's bar turned up and over row 8's 7s
     const eight = at('....1.63..5.......2...73....9......8..7.......8..4...7.2..38..554.....9....92.7..', 14, 'AIC_GROUPED');
     expect(along(eight)).toEqual([]);
-    const seven = at('.1298.....3....4..5....19..9.3..4.....7...2.....2..6.3..45....7..1....2.....1259.', 22, 'AIC_GROUPED');
+    const seven = at('.1298.....3....4..5....19..9.3..4.....7...2.....2..6.3..45....7..1....2.....1259.', 22, 'AIC_ALS');
     expect(seven.step.tech).toBe('AIC_ALS');
     expect(along(seven)).toEqual([]);
     // each was drawn apart without the bars, as main drew it
@@ -1685,8 +1683,7 @@ describe('what the second review of phase 4 found: an arrow a bar pushes onto an
 describe('what the third review of phase 4 found: steps with no sets drawn as before phase 4, and two links drawn side by side', () => {
   /** the position after `n` of the solver's steps, a technique's step there, and its drawing on the app's board, as src/ui/Grid.tsx works it out */
   const at = (puzzle: string, n: number, tech: Tech) => {
-    const g = parseGrid(puzzle)!;
-    for (let i = 0; i < n; i++) applyStep(g, findNextStep(g)!);
+    const g = walkTo(puzzle, n);
     const step = findStep(tech, g)!;
     const [values, cands] = [Array.from(g.values), Array.from(g.cands)];
     return { step, ...boardDrawing(step, (c) => ({ value: values[c], corner: 0, center: 0 }), (c) => cands[c]) };
@@ -1781,8 +1778,7 @@ describe('what the fourth review of phase 4 found: a pair end turned round to th
   it("never turns a pair's end further round its mark than 75 degrees from its way, so no line leaves back over its own candidate and no head lies on its target's digit: an ALS-XY-Chain on offer whose A-B and C-D both join 5r2c6 to 5r1c6", () => {
     // link 5's end was put a pair's width round 5r1c6 from link 1's, which lay 130 degrees round from its way in:
     // 160 degrees, its tail on the left of 5r2c6 leaving right, its head's base 5 units from 5r1c6's centre, across the 5
-    const g = parseGrid('.1.........7.....1.9...32.51..58...9......76....9......54.......2.81.5.......98.7')!;
-    for (let i = 0; i < 25; i++) applyStep(g, findNextStep(g)!);
+    const g = walkTo('.1.........7.....1.9...32.51..58...9......76....9......54.......2.81.5.......98.7', 25);
     const step = findStep('ALS_XY_CHAIN', g)!;
     const [values, cands] = [Array.from(g.values), Array.from(g.cands)];
     const d = boardDrawing(step, (c) => ({ value: values[c], corner: 0, center: 0 }), (c) => cands[c]);
@@ -1809,8 +1805,7 @@ describe('what the fourth review of phase 4 found: a pair end turned round to th
 describe('what the readability check of November 2026 found (docs/hint-readability-2026-11.md)', () => {
   /** the position after `n` of the solver's steps, a technique's step there, and its drawing on the app's board, as src/ui/Grid.tsx works it out */
   const at = (puzzle: string, n: number, tech: Tech) => {
-    const g = parseGrid(puzzle)!;
-    for (let i = 0; i < n; i++) applyStep(g, findNextStep(g)!);
+    const g = walkTo(puzzle, n);
     const step = findStep(tech, g)!;
     const [values, cands] = [Array.from(g.values), Array.from(g.cands)];
     return { step, ...boardDrawing(step, (c) => ({ value: values[c], corner: 0, center: 0 }), (c) => cands[c]) };

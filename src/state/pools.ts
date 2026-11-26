@@ -6,10 +6,12 @@ import type { Move, Budget } from '../engine/justify';
 import type { PoolEntry, WorkerRequest, WorkerResponse } from '../engine/worker';
 import { play } from './play';
 
-// v12: HoDoKu's five levels, and the picks inside them. v11 filed the
-// eight bands from before; a pool is only a cache, so it is dropped, not read
-const STORAGE_KEY = 'sudokui-pools-v12';
-const OLD_KEY = 'sudokui-pools-v11';
+// v13: the AIC filed with the Nice Loops (docs/rating-chains.md), which
+// moved ratings and clean techniques; v12 held HoDoKu's five levels and the
+// picks inside them, rated before. A pool is only a cache, so it is
+// dropped, not read
+const STORAGE_KEY = 'sudokui-pools-v13';
+const OLD_KEYS = ['sudokui-pools-v12', 'sudokui-pools-v11'];
 const POOL_CAP = 8;
 
 type Pools = Record<string, PoolEntry[]>;
@@ -27,7 +29,7 @@ function load(): Pools {
 function save(pools: Pools) {
   if (!play.acts()) return;
   try {
-    localStorage.removeItem(OLD_KEY);
+    for (const key of OLD_KEYS) localStorage.removeItem(key);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pools));
   } catch {
     /* storage full — pools are only a cache */

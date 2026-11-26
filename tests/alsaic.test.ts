@@ -3,7 +3,7 @@ import { cloneGrid, isSolved, gridToString } from '../src/engine/board';
 import { solve } from '../src/engine/bruteForce';
 import { generatePuzzle } from '../src/engine/generator';
 import { findNextStep, findStep, applyStep } from '../src/engine/humanSolver';
-import { findGroupedAic } from '../src/engine/techniques/groupedAic';
+import { findGroupedAic, findAlsAic } from '../src/engine/techniques/groupedAic';
 import type { Tech } from '../src/engine/ratings';
 import { wordProblems } from './setWords';
 import { derivationProblems } from './chainSets';
@@ -22,7 +22,8 @@ it('AIC with ALS nodes fires, is sound, and walks its sets in their own words', 
     const g = cloneGrid(puzzle);
     for (let s = 0; s < 200 && !isSolved(g); s++) {
       if (s % 3 === 0) {
-        const hit = findGroupedAic(g);
+        // the set search first, which reports only chains through a set, then the grouped one
+        const hit = findAlsAic(g) ?? findGroupedAic(g);
         if (hit) {
           if (hit.tech === 'AIC_ALS') alsHits++;
           else groupHits++;

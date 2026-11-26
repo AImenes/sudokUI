@@ -1,0 +1,2015 @@
+{
+ "GROUPED_NICE_LOOP": {
+  "puzzle": ".13.5......6...8.......34...2..6...5...2.1....39....6.68..7..2.1..8....4......9..",
+  "stepIndex": 10,
+  "values": "013050000006000800000003400021060005060201000039000060680070020190800004300000900",
+  "cands": [
+   458,
+   0,
+   0,
+   360,
+   0,
+   490,
+   34,
+   320,
+   354,
+   346,
+   88,
+   0,
+   329,
+   267,
+   330,
+   0,
+   341,
+   327,
+   466,
+   80,
+   208,
+   353,
+   387,
+   0,
+   0,
+   337,
+   355,
+   200,
+   0,
+   0,
+   332,
+   0,
+   328,
+   68,
+   392,
+   0,
+   216,
+   0,
+   216,
+   0,
+   396,
+   0,
+   68,
+   392,
+   384,
+   200,
+   0,
+   0,
+   88,
+   136,
+   216,
+   3,
+   0,
+   3,
+   0,
+   0,
+   24,
+   285,
+   0,
+   280,
+   17,
+   0,
+   5,
+   0,
+   0,
+   82,
+   0,
+   6,
+   50,
+   48,
+   68,
+   0,
+   0,
+   88,
+   90,
+   57,
+   11,
+   58,
+   0,
+   193,
+   225
+  ],
+  "step": {
+   "tech": "GROUPED_NICE_LOOP",
+   "truth": "derived",
+   "labels": {
+    "primary": "the loop, with grouped nodes"
+   },
+   "placements": [],
+   "eliminations": [
+    {
+     "cell": 16,
+     "digit": 9
+    },
+    {
+     "cell": 25,
+     "digit": 9
+    },
+    {
+     "cell": 80,
+     "digit": 1
+    },
+    {
+     "cell": 80,
+     "digit": 6
+    },
+    {
+     "cell": 16,
+     "digit": 7
+    },
+    {
+     "cell": 25,
+     "digit": 7
+    }
+   ],
+   "primary": [
+    {
+     "cell": 7,
+     "digit": 7
+    },
+    {
+     "cell": 7,
+     "digit": 9
+    },
+    {
+     "cell": 8,
+     "digit": 9
+    },
+    {
+     "cell": 17,
+     "digit": 9
+    },
+    {
+     "cell": 26,
+     "digit": 9
+    },
+    {
+     "cell": 44,
+     "digit": 9
+    },
+    {
+     "cell": 44,
+     "digit": 8
+    },
+    {
+     "cell": 80,
+     "digit": 8
+    },
+    {
+     "cell": 80,
+     "digit": 7
+    },
+    {
+     "cell": 8,
+     "digit": 7
+    },
+    {
+     "cell": 17,
+     "digit": 7
+    },
+    {
+     "cell": 26,
+     "digit": 7
+    }
+   ],
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 7,
+       "digit": 7
+      }
+     ],
+     "to": [
+      {
+       "cell": 7,
+       "digit": 9
+      }
+     ],
+     "strong": true
+    },
+    {
+     "from": [
+      {
+       "cell": 7,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 8,
+       "digit": 9
+      },
+      {
+       "cell": 17,
+       "digit": 9
+      },
+      {
+       "cell": 26,
+       "digit": 9
+      }
+     ],
+     "strong": false,
+     "toSet": 0,
+     "unit": 20
+    },
+    {
+     "from": [
+      {
+       "cell": 8,
+       "digit": 9
+      },
+      {
+       "cell": 17,
+       "digit": 9
+      },
+      {
+       "cell": 26,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 44,
+       "digit": 9
+      }
+     ],
+     "strong": true,
+     "fromSet": 0,
+     "unit": 17
+    },
+    {
+     "from": [
+      {
+       "cell": 44,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 44,
+       "digit": 8
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 44,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 80,
+       "digit": 8
+      }
+     ],
+     "strong": true,
+     "unit": 17
+    },
+    {
+     "from": [
+      {
+       "cell": 80,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 80,
+       "digit": 7
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 80,
+       "digit": 7
+      }
+     ],
+     "to": [
+      {
+       "cell": 8,
+       "digit": 7
+      },
+      {
+       "cell": 17,
+       "digit": 7
+      },
+      {
+       "cell": 26,
+       "digit": 7
+      }
+     ],
+     "strong": true,
+     "toSet": 1,
+     "unit": 17
+    },
+    {
+     "from": [
+      {
+       "cell": 8,
+       "digit": 7
+      },
+      {
+       "cell": 17,
+       "digit": 7
+      },
+      {
+       "cell": 26,
+       "digit": 7
+      }
+     ],
+     "to": [
+      {
+       "cell": 7,
+       "digit": 7
+      }
+     ],
+     "strong": false,
+     "fromSet": 1,
+     "unit": 20
+    }
+   ],
+   "sets": [
+    {
+     "kind": "group",
+     "cells": [
+      8,
+      17,
+      26
+     ],
+     "digits": [
+      9
+     ],
+     "members": [
+      {
+       "cell": 8,
+       "digit": 9
+      },
+      {
+       "cell": 17,
+       "digit": 9
+      },
+      {
+       "cell": 26,
+       "digit": 9
+      }
+     ],
+     "unit": 17
+    },
+    {
+     "kind": "group",
+     "cells": [
+      8,
+      17,
+      26
+     ],
+     "digits": [
+      7
+     ],
+     "members": [
+      {
+       "cell": 8,
+       "digit": 7
+      },
+      {
+       "cell": 17,
+       "digit": 7
+      },
+      {
+       "cell": 26,
+       "digit": 7
+      }
+     ],
+     "unit": 17
+    }
+   ],
+   "description": "Grouped Nice Loop: this loop of strong and weak links in turn starts and ends at r1c8, so it holds whichever way round it is read: each weak link has exactly one true end, and a candidate that would make both ends of one false cannot be true."
+  }
+ },
+ "ALS_XZ": {
+  "puzzle": "...3...2..81...7..7..8.15..2....6.3.8...4...5.4.7....2..26.8..4..6...87..3...4...",
+  "stepIndex": 30,
+  "values": "004307128081420700720801540200086437867243915040700682072608304406032870038074200",
+  "cands": [
+   304,
+   272,
+   0,
+   0,
+   304,
+   0,
+   0,
+   0,
+   0,
+   308,
+   0,
+   0,
+   0,
+   0,
+   272,
+   0,
+   288,
+   292,
+   0,
+   0,
+   260,
+   0,
+   288,
+   0,
+   0,
+   0,
+   292,
+   0,
+   257,
+   272,
+   273,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   5,
+   0,
+   276,
+   0,
+   273,
+   272,
+   0,
+   0,
+   0,
+   273,
+   0,
+   0,
+   0,
+   273,
+   0,
+   0,
+   272,
+   0,
+   0,
+   273,
+   0,
+   273,
+   0,
+   0,
+   0,
+   0,
+   257,
+   272,
+   0,
+   0,
+   273,
+   0,
+   0,
+   0,
+   304,
+   289
+  ],
+  "step": {
+   "tech": "ALS_XZ",
+   "placements": [],
+   "eliminations": [
+    {
+     "cell": 54,
+     "digit": 5
+    }
+   ],
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 64,
+       "digit": 5
+      },
+      {
+       "cell": 72,
+       "digit": 5
+      }
+     ],
+     "to": [
+      {
+       "cell": 64,
+       "digit": 1
+      }
+     ],
+     "strong": true,
+     "fromSet": 0,
+     "toSet": 0
+    },
+    {
+     "from": [
+      {
+       "cell": 64,
+       "digit": 1
+      }
+     ],
+     "to": [
+      {
+       "cell": 71,
+       "digit": 1
+      }
+     ],
+     "strong": false,
+     "fromSet": 0,
+     "toSet": 1,
+     "unit": 7
+    },
+    {
+     "from": [
+      {
+       "cell": 71,
+       "digit": 1
+      }
+     ],
+     "to": [
+      {
+       "cell": 61,
+       "digit": 5
+      }
+     ],
+     "strong": true,
+     "fromSet": 1,
+     "toSet": 1
+    }
+   ],
+   "truth": "derived",
+   "sets": [
+    {
+     "kind": "als",
+     "cells": [
+      64,
+      72
+     ],
+     "digits": [
+      1,
+      5,
+      9
+     ],
+     "members": [
+      {
+       "cell": 64,
+       "digit": 1
+      },
+      {
+       "cell": 64,
+       "digit": 5
+      },
+      {
+       "cell": 64,
+       "digit": 9
+      },
+      {
+       "cell": 72,
+       "digit": 5
+      },
+      {
+       "cell": 72,
+       "digit": 9
+      }
+     ],
+     "unit": 24,
+     "letter": "A"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      61,
+      71
+     ],
+     "digits": [
+      1,
+      5,
+      9
+     ],
+     "members": [
+      {
+       "cell": 61,
+       "digit": 5
+      },
+      {
+       "cell": 61,
+       "digit": 9
+      },
+      {
+       "cell": 71,
+       "digit": 1
+      },
+      {
+       "cell": 71,
+       "digit": 9
+      }
+     ],
+     "unit": 26,
+     "letter": "B"
+    }
+   ],
+   "description": "ALS-XZ: sets A (r8c2, r9c1) and B (r7c8, r8c9) each hold one digit more than they have cells, and every 1 of A sees every 1 of B, so at most one of them keeps a 1. The other loses its 1, its other digits fill its cells, and it holds a 5: A or B holds a 5, so 5 is removed from every cell that sees every 5 of both."
+  }
+ },
+ "ALS_XY_WING": {
+  "puzzle": "..3.5........76..52..4..8.6..8...2..9.5.2.13..2.1..5.9......4..5..8.9....8.34....",
+  "stepIndex": 28,
+  "values": "063958700800276305257431896008090200905620138020180509000060480500819600080340950",
+  "cands": [
+   9,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   11,
+   10,
+   0,
+   265,
+   265,
+   0,
+   0,
+   0,
+   0,
+   9,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   109,
+   69,
+   0,
+   80,
+   0,
+   28,
+   0,
+   104,
+   72,
+   0,
+   72,
+   0,
+   0,
+   0,
+   72,
+   0,
+   0,
+   0,
+   108,
+   0,
+   40,
+   0,
+   0,
+   76,
+   0,
+   104,
+   0,
+   69,
+   261,
+   259,
+   80,
+   0,
+   82,
+   0,
+   0,
+   71,
+   0,
+   76,
+   10,
+   0,
+   0,
+   0,
+   0,
+   66,
+   70,
+   97,
+   0,
+   35,
+   0,
+   0,
+   66,
+   0,
+   0,
+   65
+  ],
+  "step": {
+   "tech": "ALS_XY_WING",
+   "placements": [],
+   "eliminations": [
+    {
+     "cell": 34,
+     "digit": 7
+    }
+   ],
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 70,
+       "digit": 7
+      }
+     ],
+     "to": [
+      {
+       "cell": 65,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "fromSet": 0,
+     "toSet": 0
+    },
+    {
+     "from": [
+      {
+       "cell": 65,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 47,
+       "digit": 4
+      }
+     ],
+     "strong": false,
+     "fromSet": 0,
+     "toSet": 2,
+     "unit": 11
+    },
+    {
+     "from": [
+      {
+       "cell": 47,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 47,
+       "digit": 6
+      }
+     ],
+     "strong": true,
+     "fromSet": 2,
+     "toSet": 2
+    },
+    {
+     "from": [
+      {
+       "cell": 47,
+       "digit": 6
+      }
+     ],
+     "to": [
+      {
+       "cell": 52,
+       "digit": 6
+      }
+     ],
+     "strong": false,
+     "fromSet": 2,
+     "toSet": 1,
+     "unit": 5
+    },
+    {
+     "from": [
+      {
+       "cell": 52,
+       "digit": 6
+      }
+     ],
+     "to": [
+      {
+       "cell": 35,
+       "digit": 7
+      },
+      {
+       "cell": 52,
+       "digit": 7
+      }
+     ],
+     "strong": true,
+     "fromSet": 1,
+     "toSet": 1
+    }
+   ],
+   "truth": "derived",
+   "sets": [
+    {
+     "kind": "als",
+     "cells": [
+      65,
+      70
+     ],
+     "digits": [
+      2,
+      4,
+      7
+     ],
+     "members": [
+      {
+       "cell": 65,
+       "digit": 2
+      },
+      {
+       "cell": 65,
+       "digit": 4
+      },
+      {
+       "cell": 70,
+       "digit": 2
+      },
+      {
+       "cell": 70,
+       "digit": 7
+      }
+     ],
+     "unit": 7,
+     "letter": "A"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      35,
+      52
+     ],
+     "digits": [
+      4,
+      6,
+      7
+     ],
+     "members": [
+      {
+       "cell": 35,
+       "digit": 4
+      },
+      {
+       "cell": 35,
+       "digit": 7
+      },
+      {
+       "cell": 52,
+       "digit": 4
+      },
+      {
+       "cell": 52,
+       "digit": 6
+      },
+      {
+       "cell": 52,
+       "digit": 7
+      }
+     ],
+     "unit": 23,
+     "letter": "B"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      47
+     ],
+     "digits": [
+      4,
+      6
+     ],
+     "members": [
+      {
+       "cell": 47,
+       "digit": 4
+      },
+      {
+       "cell": 47,
+       "digit": 6
+      }
+     ],
+     "unit": 5,
+     "letter": "C"
+    }
+   ],
+   "description": "ALS-XY-Wing: the hinge C (r6c3) holds a 4 or a 6, so wing A (r8c3, r8c8) holds no 4 or wing B (r4c9, r6c8) no 6, and that wing then holds a 7. A or B holds a 7, so no cell that sees every 7 of both can be 7."
+  }
+ },
+ "ALS_XY_CHAIN": {
+  "puzzle": ".5.1....789......6......45...25....8.87.1.52.9....71...78......6......412....6.9.",
+  "stepIndex": 27,
+  "values": "456100087893000216721060450102500078387610520905007100578001002639000041214006095",
+  "cands": [
+   0,
+   0,
+   0,
+   0,
+   262,
+   6,
+   260,
+   0,
+   0,
+   0,
+   0,
+   0,
+   72,
+   88,
+   24,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   388,
+   0,
+   388,
+   0,
+   0,
+   260,
+   0,
+   40,
+   0,
+   0,
+   268,
+   268,
+   288,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   264,
+   0,
+   0,
+   264,
+   0,
+   40,
+   0,
+   130,
+   130,
+   0,
+   0,
+   36,
+   12,
+   0,
+   0,
+   0,
+   264,
+   264,
+   0,
+   36,
+   36,
+   0,
+   0,
+   0,
+   0,
+   194,
+   210,
+   146,
+   192,
+   0,
+   0,
+   0,
+   0,
+   0,
+   196,
+   196,
+   0,
+   192,
+   0,
+   0
+  ],
+  "step": {
+   "tech": "ALS_XY_CHAIN",
+   "placements": [],
+   "eliminations": [
+    {
+     "cell": 31,
+     "digit": 4
+    }
+   ],
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 28,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 33,
+       "digit": 9
+      }
+     ],
+     "strong": true,
+     "fromSet": 0,
+     "toSet": 0
+    },
+    {
+     "from": [
+      {
+       "cell": 33,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 6,
+       "digit": 9
+      }
+     ],
+     "strong": false,
+     "fromSet": 0,
+     "toSet": 1,
+     "unit": 15
+    },
+    {
+     "from": [
+      {
+       "cell": 6,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 6,
+       "digit": 3
+      }
+     ],
+     "strong": true,
+     "fromSet": 1,
+     "toSet": 1
+    },
+    {
+     "from": [
+      {
+       "cell": 6,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 4,
+       "digit": 3
+      },
+      {
+       "cell": 5,
+       "digit": 3
+      }
+     ],
+     "strong": false,
+     "fromSet": 1,
+     "toSet": 2,
+     "unit": 0
+    },
+    {
+     "from": [
+      {
+       "cell": 4,
+       "digit": 3
+      },
+      {
+       "cell": 5,
+       "digit": 3
+      }
+     ],
+     "to": [
+      {
+       "cell": 4,
+       "digit": 9
+      }
+     ],
+     "strong": true,
+     "fromSet": 2,
+     "toSet": 2
+    },
+    {
+     "from": [
+      {
+       "cell": 4,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 58,
+       "digit": 9
+      }
+     ],
+     "strong": false,
+     "fromSet": 2,
+     "toSet": 3,
+     "unit": 13
+    },
+    {
+     "from": [
+      {
+       "cell": 58,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 58,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "fromSet": 3,
+     "toSet": 3
+    }
+   ],
+   "truth": "derived",
+   "sets": [
+    {
+     "kind": "als",
+     "cells": [
+      28,
+      33
+     ],
+     "digits": [
+      4,
+      6,
+      9
+     ],
+     "members": [
+      {
+       "cell": 28,
+       "digit": 4
+      },
+      {
+       "cell": 28,
+       "digit": 6
+      },
+      {
+       "cell": 33,
+       "digit": 6
+      },
+      {
+       "cell": 33,
+       "digit": 9
+      }
+     ],
+     "unit": 3,
+     "letter": "A"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      6
+     ],
+     "digits": [
+      3,
+      9
+     ],
+     "members": [
+      {
+       "cell": 6,
+       "digit": 3
+      },
+      {
+       "cell": 6,
+       "digit": 9
+      }
+     ],
+     "unit": 0,
+     "letter": "B"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      4,
+      5
+     ],
+     "digits": [
+      2,
+      3,
+      9
+     ],
+     "members": [
+      {
+       "cell": 4,
+       "digit": 2
+      },
+      {
+       "cell": 4,
+       "digit": 3
+      },
+      {
+       "cell": 4,
+       "digit": 9
+      },
+      {
+       "cell": 5,
+       "digit": 2
+      },
+      {
+       "cell": 5,
+       "digit": 3
+      }
+     ],
+     "unit": 0,
+     "letter": "C"
+    },
+    {
+     "kind": "als",
+     "cells": [
+      58
+     ],
+     "digits": [
+      4,
+      9
+     ],
+     "members": [
+      {
+       "cell": 58,
+       "digit": 4
+      },
+      {
+       "cell": 58,
+       "digit": 9
+      }
+     ],
+     "unit": 6,
+     "letter": "D"
+    }
+   ],
+   "description": "ALS-XY-Chain: if set A (r4c2, r4c7) holds no 4, it holds a 9; then set B (r1c7) holds no 9 and holds a 3, C (r1c5, r1c6) no 3 and a 9, and D (r7c5) no 9 and a 4. A or D holds a 4, so no cell that sees every 4 of both can be 4."
+  }
+ },
+ "AIC": {
+  "puzzle": "....6.9....2....1....2.37..4.96....3.5..9..6.3....75.9..89.1....3....2....6.3....",
+  "stepIndex": 27,
+  "values": "003160900602009310000203706429615873857390060361007509008901630030006200006030000",
+  "cands": [
+   80,
+   200,
+   0,
+   0,
+   0,
+   136,
+   0,
+   154,
+   154,
+   0,
+   136,
+   0,
+   88,
+   88,
+   0,
+   0,
+   0,
+   152,
+   257,
+   257,
+   24,
+   0,
+   152,
+   0,
+   0,
+   152,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   10,
+   9,
+   0,
+   11,
+   0,
+   0,
+   0,
+   136,
+   138,
+   0,
+   0,
+   10,
+   0,
+   82,
+   72,
+   0,
+   0,
+   90,
+   0,
+   0,
+   0,
+   88,
+   257,
+   0,
+   24,
+   216,
+   216,
+   0,
+   0,
+   400,
+   217,
+   82,
+   257,
+   0,
+   216,
+   0,
+   138,
+   9,
+   280,
+   217
+  ],
+  "step": {
+   "tech": "AIC",
+   "truth": "derived",
+   "labels": {
+    "primary": "the chain"
+   },
+   "placements": [],
+   "eliminations": [
+    {
+     "cell": 8,
+     "digit": 8
+    }
+   ],
+   "primary": [
+    {
+     "cell": 5,
+     "digit": 8
+    },
+    {
+     "cell": 5,
+     "digit": 4
+    },
+    {
+     "cell": 41,
+     "digit": 4
+    },
+    {
+     "cell": 41,
+     "digit": 2
+    },
+    {
+     "cell": 44,
+     "digit": 2
+    },
+    {
+     "cell": 8,
+     "digit": 2
+    }
+   ],
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 5,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 5,
+       "digit": 4
+      }
+     ],
+     "strong": true
+    },
+    {
+     "from": [
+      {
+       "cell": 5,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 41,
+       "digit": 4
+      }
+     ],
+     "strong": false,
+     "unit": 14
+    },
+    {
+     "from": [
+      {
+       "cell": 41,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 41,
+       "digit": 2
+      }
+     ],
+     "strong": true
+    },
+    {
+     "from": [
+      {
+       "cell": 41,
+       "digit": 2
+      }
+     ],
+     "to": [
+      {
+       "cell": 44,
+       "digit": 2
+      }
+     ],
+     "strong": false,
+     "unit": 4
+    },
+    {
+     "from": [
+      {
+       "cell": 44,
+       "digit": 2
+      }
+     ],
+     "to": [
+      {
+       "cell": 8,
+       "digit": 2
+      }
+     ],
+     "strong": true,
+     "unit": 17
+    }
+   ],
+   "description": "AIC: if r1c6 is not 8, the chain's links make its last candidate true: r1c9 is then 2. So one of the two is true, and a candidate that would make both false cannot be true."
+  }
+ },
+ "AIC_GROUPED": {
+  "puzzle": "..5...2...7..14...6.........94..6..571.9.2.......3..8.......8..1..5...96.39.2..4.",
+  "stepIndex": 18,
+  "values": "005060200073014000601005000394006025718952000000430080000000802100500096039620040",
+  "cands": [
+   392,
+   136,
+   0,
+   196,
+   0,
+   452,
+   0,
+   69,
+   461,
+   386,
+   0,
+   0,
+   130,
+   0,
+   0,
+   48,
+   48,
+   384,
+   0,
+   138,
+   0,
+   198,
+   448,
+   0,
+   332,
+   68,
+   460,
+   0,
+   0,
+   0,
+   193,
+   192,
+   0,
+   65,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   44,
+   36,
+   12,
+   18,
+   48,
+   34,
+   0,
+   0,
+   65,
+   321,
+   0,
+   320,
+   24,
+   48,
+   96,
+   69,
+   328,
+   260,
+   0,
+   85,
+   0,
+   0,
+   138,
+   66,
+   0,
+   200,
+   196,
+   68,
+   0,
+   0,
+   144,
+   0,
+   0,
+   0,
+   0,
+   193,
+   80,
+   0,
+   65
+  ],
+  "step": {
+   "tech": "AIC_GROUPED",
+   "truth": "derived",
+   "placements": [],
+   "eliminations": [
+    {
+     "cell": 5,
+     "digit": 8
+    }
+   ],
+   "primary": [
+    {
+     "cell": 1,
+     "digit": 8
+    },
+    {
+     "cell": 1,
+     "digit": 4
+    },
+    {
+     "cell": 0,
+     "digit": 4
+    },
+    {
+     "cell": 54,
+     "digit": 4
+    },
+    {
+     "cell": 58,
+     "digit": 4
+    },
+    {
+     "cell": 67,
+     "digit": 4
+    },
+    {
+     "cell": 67,
+     "digit": 8
+    },
+    {
+     "cell": 68,
+     "digit": 8
+    },
+    {
+     "cell": 77,
+     "digit": 8
+    }
+   ],
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 1,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 1,
+       "digit": 4
+      }
+     ],
+     "strong": true
+    },
+    {
+     "from": [
+      {
+       "cell": 1,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 0,
+       "digit": 4
+      }
+     ],
+     "strong": false,
+     "unit": 0
+    },
+    {
+     "from": [
+      {
+       "cell": 0,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 54,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "unit": 9
+    },
+    {
+     "from": [
+      {
+       "cell": 54,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 58,
+       "digit": 4
+      }
+     ],
+     "strong": false,
+     "unit": 6
+    },
+    {
+     "from": [
+      {
+       "cell": 58,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 67,
+       "digit": 4
+      }
+     ],
+     "strong": true,
+     "unit": 13
+    },
+    {
+     "from": [
+      {
+       "cell": 67,
+       "digit": 4
+      }
+     ],
+     "to": [
+      {
+       "cell": 67,
+       "digit": 8
+      }
+     ],
+     "strong": false
+    },
+    {
+     "from": [
+      {
+       "cell": 67,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 68,
+       "digit": 8
+      },
+      {
+       "cell": 77,
+       "digit": 8
+      }
+     ],
+     "strong": true,
+     "toSet": 0,
+     "unit": 25
+    }
+   ],
+   "sets": [
+    {
+     "kind": "group",
+     "cells": [
+      68,
+      77
+     ],
+     "digits": [
+      8
+     ],
+     "members": [
+      {
+       "cell": 68,
+       "digit": 8
+      },
+      {
+       "cell": 77,
+       "digit": 8
+      }
+     ],
+     "unit": 14
+    }
+   ],
+   "description": "Grouped AIC: 8@r1c2 → 4@r1c2 → 4@r1c1 → 4@r7c1 → 4@r7c5 → 4@r8c5 → 8@r8c5 → 8@[r8c6, r9c6]; at least one end is true, so candidates conflicting with both ends are removed."
+  }
+ },
+ "AIC_ALS": {
+  "puzzle": ".4..28.5.7.....1....6........9..5.1..681.347..1.6..5........2....3.....1.8.45..6.",
+  "stepIndex": 22,
+  "values": "041028050705000100806500000009005010568193472010600500000000205053000001080450060",
+  "cands": [
+   260,
+   0,
+   0,
+   324,
+   0,
+   0,
+   356,
+   0,
+   356,
+   0,
+   262,
+   0,
+   260,
+   40,
+   296,
+   0,
+   390,
+   140,
+   0,
+   262,
+   0,
+   0,
+   5,
+   329,
+   324,
+   262,
+   332,
+   14,
+   68,
+   0,
+   66,
+   200,
+   0,
+   164,
+   0,
+   164,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   14,
+   0,
+   74,
+   0,
+   200,
+   74,
+   0,
+   388,
+   388,
+   297,
+   320,
+   72,
+   452,
+   5,
+   353,
+   0,
+   392,
+   0,
+   298,
+   0,
+   0,
+   450,
+   96,
+   354,
+   448,
+   392,
+   0,
+   257,
+   0,
+   66,
+   0,
+   0,
+   323,
+   324,
+   0,
+   324
+  ],
+  "step": {
+   "tech": "AIC_ALS",
+   "truth": "derived",
+   "placements": [],
+   "eliminations": [
+    {
+     "cell": 53,
+     "digit": 8
+    }
+   ],
+   "primary": [
+    {
+     "cell": 17,
+     "digit": 8
+    },
+    {
+     "cell": 16,
+     "digit": 8
+    },
+    {
+     "cell": 61,
+     "digit": 8
+    },
+    {
+     "cell": 70,
+     "digit": 8
+    },
+    {
+     "cell": 61,
+     "digit": 9
+    },
+    {
+     "cell": 70,
+     "digit": 9
+    },
+    {
+     "cell": 52,
+     "digit": 9
+    },
+    {
+     "cell": 53,
+     "digit": 9
+    }
+   ],
+   "links": [
+    {
+     "from": [
+      {
+       "cell": 17,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 16,
+       "digit": 8
+      }
+     ],
+     "strong": true,
+     "unit": 1
+    },
+    {
+     "from": [
+      {
+       "cell": 16,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 61,
+       "digit": 8
+      },
+      {
+       "cell": 70,
+       "digit": 8
+      }
+     ],
+     "strong": false,
+     "toSet": 0,
+     "unit": 16
+    },
+    {
+     "from": [
+      {
+       "cell": 61,
+       "digit": 8
+      },
+      {
+       "cell": 70,
+       "digit": 8
+      }
+     ],
+     "to": [
+      {
+       "cell": 61,
+       "digit": 9
+      },
+      {
+       "cell": 70,
+       "digit": 9
+      }
+     ],
+     "strong": true,
+     "fromSet": 0,
+     "toSet": 0
+    },
+    {
+     "from": [
+      {
+       "cell": 61,
+       "digit": 9
+      },
+      {
+       "cell": 70,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 52,
+       "digit": 9
+      }
+     ],
+     "strong": false,
+     "fromSet": 0,
+     "unit": 16
+    },
+    {
+     "from": [
+      {
+       "cell": 52,
+       "digit": 9
+      }
+     ],
+     "to": [
+      {
+       "cell": 53,
+       "digit": 9
+      }
+     ],
+     "strong": true,
+     "unit": 5
+    }
+   ],
+   "sets": [
+    {
+     "kind": "als",
+     "cells": [
+      61,
+      70
+     ],
+     "digits": [
+      4,
+      8,
+      9
+     ],
+     "members": [
+      {
+       "cell": 61,
+       "digit": 4
+      },
+      {
+       "cell": 61,
+       "digit": 8
+      },
+      {
+       "cell": 61,
+       "digit": 9
+      },
+      {
+       "cell": 70,
+       "digit": 4
+      },
+      {
+       "cell": 70,
+       "digit": 8
+      },
+      {
+       "cell": 70,
+       "digit": 9
+      }
+     ],
+     "unit": 16,
+     "letter": "A"
+    }
+   ],
+   "description": "AIC with ALS: 8@r2c9 → 8@r2c8 → 8@[r7c8, r8c8] → 9@[r7c8, r8c8] → 9@r6c8 → 9@r6c9; at least one end is true, so candidates conflicting with both ends are removed."
+  }
+ }
+}

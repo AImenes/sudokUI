@@ -1865,15 +1865,15 @@
   },
   {
    "puzzle": "91.6...7.....1.5.3..4.2.1.....876..946..........3....51.92...8..2..3.......9..2..",
-   "score": 1186,
-   "level": "Unfair",
+   "score": 2916,
+   "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "EMPTY_RECTANGLE",
     "WXYZ_WING",
     "SASHIMI_X_WING",
-    "GROUPED_NICE_LOOP"
+    "AIC"
    ],
    "fit": true
   },
@@ -2432,8 +2432,8 @@
   },
   {
    "puzzle": ".....87........12..7.32...563.91..8..85..6..7..........1.5...39..2.8......71.....",
-   "score": 1460,
-   "level": "Unfair",
+   "score": 2100,
+   "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
@@ -2441,6 +2441,7 @@
     "NAKED_PAIR",
     "HIDDEN_RECTANGLE",
     "SASHIMI_JELLYFISH",
+    "AIC",
     "GROUPED_NICE_LOOP"
    ]
   },
@@ -2608,7 +2609,7 @@
   },
   {
    "puzzle": "..7...2.9...76.....4...31.7.195....3.........3....851.4.12...8.....56...2.5...6..",
-   "score": 2400,
+   "score": 2980,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -2617,7 +2618,7 @@
     "EMPTY_RECTANGLE",
     "SUE_DE_COQ",
     "XY_CHAIN",
-    "ALS_XZ"
+    "AIC"
    ],
    "fit": true
   },
@@ -2655,7 +2656,7 @@
   },
   {
    "puzzle": "3......8..5..2.3.18.....6.5...7......6...3.5..9.6..7.2....39...9..4.6..7..4..1..6",
-   "score": 4916,
+   "score": 4626,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -3059,7 +3060,7 @@
   },
   {
    "puzzle": "8...2..7...59....4..2..1..9.....631.5...7..4..4....8.............8..39..634....2.",
-   "score": 2304,
+   "score": 3054,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -3069,7 +3070,7 @@
     "TWO_STRING_KITE",
     "X_CHAIN",
     "NICE_LOOP",
-    "ALS_XZ"
+    "AIC"
    ],
    "fit": true
   },
@@ -3106,7 +3107,7 @@
   },
   {
    "puzzle": "2...7........5.84...13...96....176.3.6.....1.1.356....34...29...26.3........9...4",
-   "score": 2692,
+   "score": 2972,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -3119,7 +3120,7 @@
     "TURBOT_FISH",
     "WXYZ_WING",
     "X_CHAIN",
-    "ALS_XZ"
+    "AIC"
    ],
    "fit": true
   },
@@ -3172,7 +3173,7 @@
   },
   {
    "puzzle": "...8.5.3.....69....98..4.....3....5.4...3.6...7.9..2...4....71...92..58.........9",
-   "score": 5128,
+   "score": 4718,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -3183,7 +3184,7 @@
     "FINNED_SWORDFISH",
     "X_CHAIN",
     "XY_CHAIN",
-    "ALS_XZ"
+    "AIC"
    ],
    "fit": true
   }
@@ -3341,212 +3342,86 @@
    ]
   }
  ],
- "GROUPED_NICE_LOOP": [
-  {
-   "puzzle": ".9.............1.7.4...3....5...2...98.6...7...1.39..5..924..8...2..1.5.....7...6",
-   "score": 804,
-   "level": "Unfair",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "EMPTY_RECTANGLE",
-    "GROUPED_NICE_LOOP"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": ".....56...3...8....8.9..7.219.....7.......84.8..71.......8.29.....4....6..3....5.",
-   "score": 998,
-   "level": "Unfair",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "X_WING",
-    "GROUPED_NICE_LOOP"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": ".4...673.6..3.......8..2..65....36.7.1.....5.8.69....22..7..3.......9..1.831...7.",
-   "score": 1248,
-   "level": "Unfair",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_PAIR",
-    "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "EMPTY_RECTANGLE",
-    "UNIQUENESS_4",
-    "HIDDEN_RECTANGLE",
-    "GROUPED_NICE_LOOP"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": "9....7..46......71.1..3.8...2....61.....85.9...32....8..8..25......6....3..4.....",
-   "score": 1354,
-   "level": "Unfair",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "HIDDEN_PAIR",
-    "EMPTY_RECTANGLE",
-    "HIDDEN_RECTANGLE",
-    "GROUPED_NICE_LOOP"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": "2..49..6....7.6583..6.5.......3...........418.94.1....6.....7.4.....7.9.45.9.....",
-   "score": 1576,
-   "level": "Unfair",
-   "techs": [
-    "NAKED_SINGLE",
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "TWO_STRING_KITE",
-    "XYZ_WING",
-    "UNIQUENESS_4",
-    "FINNED_X_WING",
-    "SASHIMI_X_WING",
-    "GROUPED_NICE_LOOP"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": "..9.2..6....56........714..3.......6.5...2.98..4...5..4.........3.7..1....7.5..32",
-   "score": 2104,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "NAKED_TRIPLE",
-    "FINNED_X_WING",
-    "MEDUSA_3D",
-    "GROUPED_NICE_LOOP",
-    "ALS_XY_CHAIN"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": ".13.5......6...8.......34...2..6...5...2.1....39....6.68..7..2.1..8....4......9..",
-   "score": 2142,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_PAIR",
-    "LOCKED_CANDIDATES_1",
-    "NAKED_TRIPLE",
-    "FINNED_X_WING",
-    "GROUPED_NICE_LOOP"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": "..72834...3......6.1....7....2..4.9.5..6.1....6....2......98..7.4.5....3.......8.",
-   "score": 3434,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "XYZ_WING",
-    "NICE_LOOP",
-    "GROUPED_NICE_LOOP",
-    "ALS_XZ",
-    "ALS_XY_WING"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": "..7.3..1.14......76.....5.8.............8.2...1.9..7.6.....7..4...8...9.48..23...",
-   "score": 4074,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "TWO_STRING_KITE",
-    "GROUPED_NICE_LOOP",
-    "ALS_XZ",
-    "ALS_XY_WING",
-    "ALS_XY_CHAIN"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": ".......5.4...821...82...9..9.7..5.2.....9.....1.2..6.9..3...49...891...3.5.......",
-   "score": 4940,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "HIDDEN_PAIR",
-    "TWO_STRING_KITE",
-    "FINNED_SWORDFISH",
-    "GROUPED_NICE_LOOP",
-    "ALS_XZ",
-    "ALS_XY_CHAIN"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": "..68..79......7...9..4.68...9...8..5...1..2......7...1.37..4.5.4...2.3...5.3.....",
-   "score": 6146,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "WXYZ_WING",
-    "FINNED_X_WING",
-    "GROUPED_NICE_LOOP",
-    "ALS_XZ",
-    "ALS_XY_WING",
-    "ALS_XY_CHAIN",
-    "PATTERN_OVERLAY",
-    "DIGIT_FORCING_CHAIN"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": "..8.....1.61.9.......7..5...7.5....431..8..756....3.8...3..6.......4.23.1.....8..",
-   "score": 7946,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_TRIPLE",
-    "LOCKED_CANDIDATES_1",
-    "NAKED_TRIPLE",
-    "X_WING",
-    "XY_WING",
-    "WXYZ_WING",
-    "HIDDEN_RECTANGLE",
-    "GROUPED_NICE_LOOP",
-    "ALS_XZ",
-    "ALS_XY_WING",
-    "AIC",
-    "DIGIT_FORCING_CHAIN"
-   ],
-   "fit": true
-  }
- ],
  "AIC": [
   {
-   "puzzle": "..3.9.......3.5..6.....6.4..9..3.....72......84.51.2.37..4........1.37......2.65.",
-   "score": 3220,
+   "puzzle": "8.23..16.1......39..4........8..62...9..8......3....4.............2.5.17.6.814...",
+   "score": 2170,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
-    "FINNED_SWORDFISH",
-    "ALS_XZ",
-    "ALS_XY_WING",
+    "TWO_STRING_KITE",
+    "AIC"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "3...2.4..5.1....9...25.3......4.2..7..9...5..4..8.5......7.82...2....6.4..5.4...1",
+   "score": 2256,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "SKYSCRAPER",
+    "EMPTY_RECTANGLE",
+    "WXYZ_WING",
+    "UNIQUENESS_6",
+    "HIDDEN_RECTANGLE",
     "AIC",
-    "DIGIT_FORCING_CHAIN"
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..9...5...4.8..1..78...1.4...1.7...25....9...2..4...6.9...45.......8.31....132...",
+   "score": 2530,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "HIDDEN_PAIR",
+    "TWO_STRING_KITE",
+    "AIC"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".316..29......9..39....76..4...26....2..9..6....57...2..24....15..7......76..243.",
+   "score": 3058,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "X_WING",
+    "TWO_STRING_KITE",
+    "W_WING",
+    "WXYZ_WING",
+    "X_CHAIN",
+    "AIC",
+    "AIC_GROUPED"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".8..5.........465.5.2.96..3.78...3.1..5...8..1.9...57.8..41.2.7.917.........8..1.",
+   "score": 3074,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_PAIR",
+    "WXYZ_WING",
+    "AIC"
    ],
    "fit": true
   },
   {
    "puzzle": "7..1.4..9....694....25.....56.....1...4...7...1.....24.....69....591....3..2.5..6",
-   "score": 3424,
+   "score": 3144,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -3554,16 +3429,41 @@
     "NAKED_TRIPLE",
     "CHUTE_REMOTE_PAIR",
     "HIDDEN_RECTANGLE",
-    "ALS_XY_WING",
-    "ALS_XY_CHAIN",
     "AIC",
     "PATTERN_OVERLAY"
    ],
    "fit": true
   },
   {
+   "puzzle": ".........2......7.3...8.421....3.....4.2.68...3.1...9646.3....21..5..9.......75..",
+   "score": 3166,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "WXYZ_WING",
+    "AIC"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".1.5....4.7.94...6....6.3...5....9.32.3...7.11.9....6...6.9....4...87.5.5....4.3.",
+   "score": 3218,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_2",
+    "HIDDEN_RECTANGLE",
+    "NICE_LOOP",
+    "AIC"
+   ],
+   "fit": true
+  },
+  {
    "puzzle": "...1...9.....5..8.16...3..4.3..28..59.4........2...7...1.7..5.3....3...6..7......",
-   "score": 3438,
+   "score": 3378,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -3573,16 +3473,31 @@
     "NAKED_PAIR",
     "UNIQUENESS_6",
     "XY_CHAIN",
-    "ALS_XZ",
-    "ALS_XY_CHAIN",
     "AIC",
+    "ALS_XY_CHAIN",
     "DIGIT_FORCING_CHAIN"
    ],
    "fit": true
   },
   {
+   "puzzle": ".1.6.......3.5...6.27..81.91..26.....4...7..2....3.7..78....3.1.3.....9...19.....",
+   "score": 3458,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "FINNED_X_WING",
+    "XY_CHAIN",
+    "NICE_LOOP",
+    "AIC"
+   ],
+   "fit": true
+  },
+  {
    "puzzle": "....84.21...2.5.....2.69..364.....35..7...1..25.....789..84.5.....5.1...18.69....",
-   "score": 3608,
+   "score": 3568,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -3601,7 +3516,7 @@
   },
   {
    "puzzle": "..1.86....6..4..2..8.1..93....86..9...2...8...4..27....29..8.5..3..5..8....79.6..",
-   "score": 3698,
+   "score": 3608,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -3612,119 +3527,195 @@
     "HIDDEN_TRIPLE",
     "SKYSCRAPER",
     "NICE_LOOP",
-    "ALS_XZ",
-    "ALS_XY_WING",
-    "AIC"
+    "AIC",
+    "AIC_GROUPED"
    ],
    "fit": true
-  },
+  }
+ ],
+ "GROUPED_NICE_LOOP": [
   {
-   "puzzle": ".8..5.........465.5.2.96..3.78...3.1..5...8..1.9...57.8..41.2.7.917.........8..1.",
-   "score": 3984,
-   "level": "Extreme",
-   "techs": [
-    "NAKED_SINGLE",
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_2",
-    "NAKED_PAIR",
-    "WXYZ_WING",
-    "ALS_XY_WING",
-    "ALS_XY_CHAIN",
-    "AIC"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": ".........2......7.3...8.421....3.....4.2.68...3.1...9646.3....21..5..9.......75..",
-   "score": 4146,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "WXYZ_WING",
-    "ALS_XZ",
-    "ALS_XY_CHAIN",
-    "AIC"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": ".....1.8.......47...345.....5.9..6...7...3....69.7..2...8..2..........6.2....9.14",
-   "score": 4238,
-   "level": "Extreme",
+   "puzzle": "4.8...3.....3....1.67....4.5...4.6..2..865....7.2.......4......7.5...9.3.8...2.7.",
+   "score": 1260,
+   "level": "Unfair",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "ALS_XZ",
-    "ALS_XY_CHAIN",
-    "AIC"
-   ],
-   "fit": true
-  },
-  {
-   "puzzle": "......4...5...9.3.2.93...7..8.9....136...8..44...6.78......2.53..65....752....9..",
-   "score": 5248,
-   "level": "Extreme",
-   "techs": [
-    "NAKED_SINGLE",
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "CHUTE_REMOTE_PAIR",
+    "HIDDEN_PAIR",
     "SKYSCRAPER",
-    "W_WING",
-    "GROUPED_NICE_LOOP",
     "AIC",
-    "AIC_ALS"
+    "GROUPED_NICE_LOOP"
    ],
    "fit": true
   },
   {
-   "puzzle": ".....6.7.3.5....8.......9..8.46....2.2.1..5.....2.8.4..4.5..7...7...2..6..1.7....",
-   "score": 6210,
+   "puzzle": ".5....9.......8213..2...47......319....67......7.5.....2.......789..6..1.3.7...8.",
+   "score": 1504,
+   "level": "Unfair",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "XYZ_WING",
+    "HIDDEN_RECTANGLE",
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".6.3..4.9...2...6.9.7.46.3..3.1..5..7.......6..5..2.9..2.61.3.4.7...3...6.3..4.8.",
+   "score": 2520,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
+    "EMPTY_RECTANGLE",
     "FINNED_X_WING",
-    "ALS_XZ",
-    "ALS_XY_CHAIN",
+    "MULTI_COLORS",
+    "NICE_LOOP",
     "AIC",
-    "AIC_ALS",
-    "DIGIT_FORCING_CHAIN"
+    "GROUPED_NICE_LOOP"
    ],
    "fit": true
   },
   {
-   "puzzle": ".83....5..6...4...1.2......37..1...6.51......6..5...7.....41.6....85..494..7.983.",
-   "score": 6862,
+   "puzzle": "..9.2..6....56........714..3.......6.5...2.98..4...5..4.........3.7..1....7.5..32",
+   "score": 2874,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_TRIPLE",
+    "FINNED_X_WING",
+    "MEDUSA_3D",
+    "AIC",
+    "GROUPED_NICE_LOOP",
+    "ALS_XY_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".....6...5.17..9......2...56.43.7.9...8.4.5...5.1.87.42...1......9..51.2...6.....",
+   "score": 3046,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "X_WING",
+    "SKYSCRAPER",
+    "WXYZ_WING",
+    "AIC",
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "4.9..51..3......85.....7........29..2...6..5..38.....6...8.4..........7...7.59..1",
+   "score": 3060,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "HIDDEN_RECTANGLE",
+    "AIC",
+    "GROUPED_NICE_LOOP",
+    "ALS_XY_WING"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "....2.57.....6..4.94..3.1..6....2...47........5...9..1...7.........14....31...72.",
+   "score": 3204,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_TRIPLE",
+    "WXYZ_WING",
+    "HIDDEN_RECTANGLE",
+    "NICE_LOOP",
+    "AIC",
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..72834...3......6.1....7....2..4.9.5..6.1....6....2......98..7.4.5....3.......8.",
+   "score": 3284,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "LOCKED_CANDIDATES_2",
+    "XYZ_WING",
+    "NICE_LOOP",
+    "AIC",
+    "GROUPED_NICE_LOOP",
     "ALS_XZ",
-    "ALS_XY_WING",
-    "ALS_XY_CHAIN",
-    "AIC"
+    "ALS_XY_WING"
    ],
    "fit": true
   },
   {
-   "puzzle": "..6...19..5.2.....1.2........5.2..41..45.98..26..4.5........6.3.....3.1..27...9..",
-   "score": 6994,
+   "puzzle": "....86...4.......6..3..2..15..7.......7.3..4..6..4.9.......92....2...6...8......7",
+   "score": 3356,
    "level": "Extreme",
    "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_PAIR",
+    "HIDDEN_RECTANGLE",
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "9....1....3.4.....8.1..9.36.1......93.6.9.5.17......6.42.7..6.3.....8.1....3....2",
+   "score": 3556,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "EMPTY_RECTANGLE",
+    "NICE_LOOP",
+    "AIC",
+    "GROUPED_NICE_LOOP",
+    "AIC_GROUPED"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..6..147...1.4.28.4..2....9...4..56.63.....94.14..9...1....2..8.68.7.9...438..6..",
+   "score": 4162,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "TWO_STRING_KITE",
-    "TURBOT_FISH",
-    "FINNED_X_WING",
-    "ALS_XY_CHAIN",
     "AIC",
-    "AIC_ALS",
+    "GROUPED_NICE_LOOP"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": ".12.9.3.......69..6..4...1.46..7..5......9..85.8....3..7.....2....92..8......54..",
+   "score": 4658,
+   "level": "Extreme",
+   "techs": [
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "NAKED_TRIPLE",
+    "WXYZ_WING",
+    "AIC",
+    "GROUPED_NICE_LOOP",
+    "ALS_XZ",
+    "ALS_XY_WING",
+    "ALS_XY_CHAIN",
     "DIGIT_FORCING_CHAIN"
    ],
    "fit": true
@@ -3733,33 +3724,30 @@
  "AIC_GROUPED": [
   {
    "puzzle": "....5.8.91.5......8..76...4..754.9.8......3...81...56..1.8.......9......7..31.6..",
-   "score": 1920,
-   "level": "Extreme",
+   "score": 1540,
+   "level": "Unfair",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "SKYSCRAPER",
     "TWO_STRING_KITE",
-    "ALS_XY_CHAIN",
     "AIC_GROUPED"
    ]
   },
   {
    "puzzle": "..5...2...7..14...6.........94..6..571.9.2.......3..8.......8..1..5...96.39.2..4.",
-   "score": 2430,
+   "score": 2020,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "NAKED_TRIPLE",
-    "ALS_XZ",
-    "ALS_XY_CHAIN",
     "AIC_GROUPED"
    ]
   },
   {
    "puzzle": ".71....49.3..915......87..........24..8.......1...9738257.......8..5.39.....6....",
-   "score": 2616,
+   "score": 2536,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -3771,7 +3759,7 @@
   },
   {
    "puzzle": ".....2....7........25.1..46.8.....1.61...3..2..46..7..7..3.5.2.....2.3..9...74..5",
-   "score": 2616,
+   "score": 2536,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -3780,27 +3768,25 @@
     "EMPTY_RECTANGLE",
     "FINNED_SWORDFISH",
     "SASHIMI_SWORDFISH",
-    "ALS_XY_CHAIN",
     "AIC_GROUPED",
     "DIGIT_FORCING_CHAIN"
    ]
   },
   {
    "puzzle": ".9..2.........4..83.....2...2.19......6.8.5..7...........8.3.6.....4..2...5..714.",
-   "score": 3032,
+   "score": 7246,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "AIC",
-    "AIC_GROUPED",
-    "DIGIT_FORCING_CHAIN"
+    "AIC_GROUPED"
    ]
   },
   {
    "puzzle": "5.....28........5.39.6.2..7.....68..1..3..4....6..1..528...9.6.63.7.8.....1......",
-   "score": 3032,
+   "score": 2992,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -3813,7 +3799,7 @@
   },
   {
    "puzzle": "1......9..56..2..79....6.....7...5.9.2.3....8.....8......6...4..1.5.3..6.3.1...8.",
-   "score": 3044,
+   "score": 2964,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -3822,25 +3808,25 @@
     "XYZ_WING",
     "NICE_LOOP",
     "AIC",
-    "AIC_GROUPED"
+    "AIC_GROUPED",
+    "ALS_XY_CHAIN"
    ]
   },
   {
    "puzzle": "2...7....5.8.6.2.4.1.....3.9......1.3.64.........5..49.......85..57..3...831.....",
-   "score": 3180,
+   "score": 3060,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "FINNED_X_WING",
-    "ALS_XY_WING",
     "AIC",
     "AIC_GROUPED"
    ]
   },
   {
    "puzzle": "...72..5.6...48.7.......4...51.3.6...4...2....3.5......9.21.3......59..1..8......",
-   "score": 3234,
+   "score": 3194,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -3854,7 +3840,7 @@
   },
   {
    "puzzle": "1....8...7...3.8...5...1.6.9.2..6.3..6.....9..7.4..6.2.9.3...7...3.2...4...8....6",
-   "score": 3320,
+   "score": 3200,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -3862,25 +3848,27 @@
     "LOCKED_CANDIDATES_2",
     "SKYSCRAPER",
     "HIDDEN_RECTANGLE",
-    "ALS_XZ",
-    "ALS_XY_CHAIN",
-    "AIC_GROUPED"
+    "AIC",
+    "AIC_GROUPED",
+    "ALS_XY_WING",
+    "ALS_XY_CHAIN"
    ]
   },
   {
    "puzzle": "..6.91.3.2.....5...3.6...1......62.882.71..4...5.......7...34.....4....54...7....",
-   "score": 3384,
+   "score": 5054,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "AIC_GROUPED",
+    "ALS_XY_CHAIN",
     "AIC_ALS"
    ]
   },
   {
    "puzzle": ".....1..8.5....24.1.72..6..96.15.3...2...95................3.2.....6.8..6..7.21.5",
-   "score": 3406,
+   "score": 2966,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -3888,9 +3876,7 @@
     "NAKED_TRIPLE",
     "EMPTY_RECTANGLE",
     "NICE_LOOP",
-    "ALS_XZ",
-    "ALS_XY_WING",
-    "ALS_XY_CHAIN",
+    "AIC",
     "AIC_GROUPED"
    ]
   }
@@ -3898,35 +3884,26 @@
  "AIC_ALS": [
   {
    "puzzle": "3.9...5....5.....8.76..9.......48...4..6..17.5..........7...9...3..87..22....34..",
-   "score": 1648,
+   "score": 1588,
    "level": "Unfair",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
-    "ALS_XY_WING",
-    "AIC_ALS"
-   ]
-  },
-  {
-   "puzzle": "...7.8...3.........59.3.6..1..8..9......5..2...7....14.....52...62.....9.....486.",
-   "score": 1692,
-   "level": "Unfair",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "X_CHAIN",
     "AIC",
+    "AIC_GROUPED",
     "AIC_ALS"
    ]
   },
   {
    "puzzle": "...9..5..6....3.8..5318........9.....7.6.12..5.67.2..1..5...61....4...7.2..8..9..",
-   "score": 2126,
+   "score": 2086,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "LOCKED_CANDIDATES_2",
+    "AIC_GROUPED",
     "ALS_XY_WING",
     "AIC_ALS"
    ]
@@ -3947,30 +3924,15 @@
    ]
   },
   {
-   "puzzle": ".1....29...8..93......6...5..95.2..6...3.4...8..9.65..7...4......28..9...84....7.",
-   "score": 2290,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_TRIPLE",
-    "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "NAKED_TRIPLE",
-    "MEDUSA_3D",
-    "ALS_XY_CHAIN",
-    "AIC",
-    "AIC_ALS"
-   ]
-  },
-  {
    "puzzle": "6.9..5.1...4..16..83...6...7...18.29...9....6....2.1....5.4..8.3........4.....59.",
-   "score": 2466,
+   "score": 2366,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "HIDDEN_RECTANGLE",
-    "ALS_XY_CHAIN",
+    "AIC",
+    "AIC_GROUPED",
     "AIC_ALS",
     "DIGIT_FORCING_CHAIN"
    ]
@@ -3999,80 +3961,110 @@
    ]
   },
   {
-   "puzzle": "......7...5...3...74685....59.34...6.........2...76.91....97635...4...8...7......",
-   "score": 3086,
+   "puzzle": ".6.........175...95..4...7.3.....58.7..1.5..3.59.....6.2...1..48...246.........3.",
+   "score": 3446,
    "level": "Extreme",
    "techs": [
-    "NAKED_SINGLE",
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "X_WING",
-    "CHUTE_REMOTE_PAIR",
-    "NICE_LOOP",
-    "ALS_XY_WING",
+    "TWO_STRING_KITE",
+    "TURBOT_FISH",
+    "WXYZ_WING",
     "AIC",
+    "ALS_XZ",
     "AIC_ALS"
-   ]
+   ],
+   "fit": true
   },
   {
-   "puzzle": "....87.1.8.56......3.5.....6.3...78.7.......2.81...3.5.....4.5......16.3.1.75....",
-   "score": 3120,
+   "puzzle": ".6.1....95....437.8..3.......8.3.....2.4.8.5.....1.9.......1..6.712....54....9.2.",
+   "score": 3532,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "LOCKED_CANDIDATES_2",
-    "TWO_STRING_KITE",
     "XYZ_WING",
     "FINNED_X_WING",
-    "ALS_XY_CHAIN",
-    "AIC_ALS"
-   ]
+    "AIC",
+    "AIC_ALS",
+    "DEATH_BLOSSOM",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
   },
   {
-   "puzzle": "......4...92......3..26......8.....3.2....1..5..69.8...5..8..36..43..25.....29...",
-   "score": 3204,
+   "puzzle": "..1.3...4...57...9.9....87.9........1......67.7861...3.8..2.4.....34....34....7..",
+   "score": 3726,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
-    "SKYSCRAPER",
-    "XYZ_WING",
-    "ALS_XY_WING",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "NAKED_PAIR",
+    "TWO_STRING_KITE",
+    "HIDDEN_RECTANGLE",
+    "FINNED_X_WING",
     "AIC",
-    "AIC_ALS"
-   ]
+    "ALS_XY_CHAIN",
+    "AIC_ALS",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
   },
   {
-   "puzzle": "...4...8.....9635....8....2.27.1...564.....231...6.47.9....3....3874.....6...8...",
-   "score": 3232,
+   "puzzle": ".....1..4.3.9.......2...3....95..8...4..7...556..8..9..8.3...6.1..7..5.34......1.",
+   "score": 3766,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "SKYSCRAPER",
+    "HIDDEN_RECTANGLE",
+    "FINNED_X_WING",
+    "AIC_ALS",
+    "DIGIT_FORCING_CHAIN"
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "..9...3.66...3.2...8.....1..5..8...........97..7.24...3..6.........4...8.2435....",
+   "score": 5164,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
-    "LOCKED_PAIR",
     "LOCKED_CANDIDATES_1",
     "NAKED_TRIPLE",
-    "XYZ_WING",
+    "AIC",
+    "AIC_GROUPED",
+    "ALS_XY_WING",
     "AIC_ALS"
-   ]
+   ],
+   "fit": true
+  },
+  {
+   "puzzle": "6.1...43..582.3...2...1.....9......7.....531...5.....9..3..7.....43...6....4.92..",
+   "score": 5650,
+   "level": "Extreme",
+   "techs": [
+    "NAKED_SINGLE",
+    "HIDDEN_SINGLE",
+    "LOCKED_CANDIDATES_1",
+    "LOCKED_CANDIDATES_2",
+    "HIDDEN_PAIR",
+    "AIC",
+    "GROUPED_NICE_LOOP",
+    "AIC_GROUPED",
+    "ALS_XZ",
+    "ALS_XY_WING",
+    "AIC_ALS"
+   ],
+   "fit": true
   }
  ],
  "DEATH_BLOSSOM": [
-  {
-   "puzzle": ".....3..72...8..5...92..1...98.6..3....3.8....6..9.87...4..25...1..7...69..5.....",
-   "score": 1976,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "NAKED_TRIPLE",
-    "ALS_XY_CHAIN",
-    "DEATH_BLOSSOM",
-    "DIGIT_FORCING_CHAIN"
-   ]
-  },
   {
    "puzzle": ".6.4.......5...432.....9..1...6.3..8...75......2.9...31.4...2..7..5...1......49..",
    "score": 2294,
@@ -4108,7 +4100,7 @@
   },
   {
    "puzzle": "8.6........24...6...3...5.9....17.8...........9.86....3.4...2...8...54........9.1",
-   "score": 2516,
+   "score": 2416,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -4117,7 +4109,6 @@
     "SKYSCRAPER",
     "TURBOT_FISH",
     "WXYZ_WING",
-    "ALS_XY_CHAIN",
     "AIC",
     "DEATH_BLOSSOM"
    ]
@@ -4140,53 +4131,21 @@
    ]
   },
   {
-   "puzzle": ".2.4..8.7....8....43.59.1...9...4.5.38..614........6..1..6....8..3..5....42.7....",
-   "score": 2972,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "TWO_STRING_KITE",
-    "WXYZ_WING",
-    "FINNED_X_WING",
-    "ALS_XY_WING",
-    "DEATH_BLOSSOM",
-    "DIGIT_FORCING_CHAIN"
-   ]
-  },
-  {
-   "puzzle": "......53...836.....3..81..97..2.......1...8.......9..61..62..4.....579...56......",
-   "score": 2974,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "NAKED_PAIR",
-    "NAKED_TRIPLE",
-    "ALS_XY_WING",
-    "ALS_XY_CHAIN",
-    "AIC",
-    "DEATH_BLOSSOM",
-    "DIGIT_FORCING_CHAIN"
-   ]
-  },
-  {
    "puzzle": "6.2...9.3.8....5.......816.......6.9.4159...2....1....7..8..35.2....4....5.......",
-   "score": 3038,
+   "score": 2898,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "TWO_STRING_KITE",
     "WXYZ_WING",
-    "ALS_XZ",
     "AIC",
+    "ALS_XZ",
     "DEATH_BLOSSOM"
    ]
   },
   {
    "puzzle": "...........38...7..5..92..1....3.1.91.......437......8..74..68......1.....8..62..",
-   "score": 3118,
+   "score": 3098,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -4196,6 +4155,7 @@
     "LOCKED_CANDIDATES_2",
     "WXYZ_WING",
     "NICE_LOOP",
+    "AIC",
     "ALS_XZ",
     "ALS_XY_WING",
     "DEATH_BLOSSOM"
@@ -4203,7 +4163,7 @@
   },
   {
    "puzzle": ".2........6..9.3....8.7..469.6...1.41..4.......21.5...3.....8..........5....4..37",
-   "score": 3172,
+   "score": 3152,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -4212,7 +4172,7 @@
     "LOCKED_CANDIDATES_1",
     "FINNED_SWORDFISH",
     "X_CHAIN",
-    "ALS_XZ",
+    "AIC",
     "ALS_XY_WING",
     "ALS_XY_CHAIN",
     "DEATH_BLOSSOM"
@@ -4220,7 +4180,7 @@
   },
   {
    "puzzle": "...2...8......6.938....97...9...7..21.4...9.76..9...5...27....693.1......6...4...",
-   "score": 3180,
+   "score": 3020,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -4228,14 +4188,13 @@
     "LOCKED_CANDIDATES_2",
     "WXYZ_WING",
     "HIDDEN_RECTANGLE",
-    "ALS_XY_CHAIN",
     "AIC",
     "DEATH_BLOSSOM"
    ]
   },
   {
    "puzzle": "9..8.....4.8...2.1.5...4..76.7.....5..4.25.1..3..8....3......2....1596.3.........",
-   "score": 3200,
+   "score": 3100,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -4246,8 +4205,7 @@
     "HIDDEN_TRIPLE",
     "HIDDEN_RECTANGLE",
     "NICE_LOOP",
-    "ALS_XY_WING",
-    "ALS_XY_CHAIN",
+    "AIC",
     "DEATH_BLOSSOM"
    ]
   }
@@ -4284,7 +4242,7 @@
   },
   {
    "puzzle": "...47..8...45..69.......71..1...48..9.......5..86...3..27.......81..24...9..85...",
-   "score": 3226,
+   "score": 3236,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -4294,6 +4252,7 @@
     "HIDDEN_RECTANGLE",
     "FINNED_SWORDFISH",
     "NICE_LOOP",
+    "AIC",
     "ALS_XY_WING",
     "AIC_ALS",
     "FIREWORKS"
@@ -4301,7 +4260,7 @@
   },
   {
    "puzzle": "185.......9..........5.......7.13....28..9.53......8..7....5.6...13.6..4....7...2",
-   "score": 3282,
+   "score": 3442,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -4311,32 +4270,16 @@
     "NAKED_PAIR",
     "NAKED_TRIPLE",
     "XY_CHAIN",
-    "ALS_XY_WING",
-    "ALS_XY_CHAIN",
     "AIC",
-    "FIREWORKS"
-   ]
-  },
-  {
-   "puzzle": ".9...7518....8......8....249....8.5.4.......3.8.3....962....7......1....8539...6.",
-   "score": 3686,
-   "level": "Extreme",
-   "techs": [
-    "NAKED_SINGLE",
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "SKYSCRAPER",
-    "XY_CHAIN",
+    "AIC_GROUPED",
     "ALS_XZ",
-    "ALS_XY_WING",
     "ALS_XY_CHAIN",
-    "AIC",
     "FIREWORKS"
    ]
   },
   {
    "puzzle": "..3....4.65.....9.9.248....5..6...3.7.925.6.4........7..7.....9....28..13...9....",
-   "score": 4042,
+   "score": 4282,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -4351,12 +4294,14 @@
   },
   {
    "puzzle": "1.3..95....8.....7...5..3...6.....7.9.........7.12...6..93.8.......7..42.....1...",
-   "score": 4522,
+   "score": 5042,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "XY_WING",
+    "AIC",
+    "AIC_GROUPED",
     "ALS_XZ",
     "FIREWORKS",
     "DIGIT_FORCING_CHAIN"
@@ -4364,7 +4309,7 @@
   },
   {
    "puzzle": "...6..8.9..3.....5.59.4...11..........241......6.9.2....42613.7.3..5..6.7........",
-   "score": 4736,
+   "score": 4856,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -4372,15 +4317,15 @@
     "NAKED_TRIPLE",
     "TWO_STRING_KITE",
     "EMPTY_RECTANGLE",
-    "ALS_XZ",
-    "ALS_XY_WING",
     "AIC",
+    "AIC_GROUPED",
+    "ALS_XZ",
     "FIREWORKS"
    ]
   },
   {
    "puzzle": "..2....61...5.....7.4.....3.......3.42..3.9..3...9267..9.3...5.56.1.......3.8....",
-   "score": 4876,
+   "score": 5190,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
@@ -4388,6 +4333,7 @@
     "LOCKED_CANDIDATES_2",
     "WXYZ_WING",
     "HIDDEN_RECTANGLE",
+    "AIC_GROUPED",
     "ALS_XY_WING",
     "ALS_XY_CHAIN",
     "AIC_ALS",
@@ -4396,7 +4342,7 @@
   },
   {
    "puzzle": "...1..7.3.3..8..42....4.8...1.83..7...........2..19.3...7.9....49..7..8.5.2..4...",
-   "score": 4920,
+   "score": 4880,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -4407,6 +4353,7 @@
     "HIDDEN_RECTANGLE",
     "FINNED_SWORDFISH",
     "NICE_LOOP",
+    "AIC",
     "ALS_XZ",
     "ALS_XY_WING",
     "FIREWORKS"
@@ -4414,7 +4361,7 @@
   },
   {
    "puzzle": ".567.......7...49.2.......7....3...89..4..36.6.....52.82...6....4..1..8.....7.1..",
-   "score": 5410,
+   "score": 5556,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -4422,7 +4369,8 @@
     "LOCKED_CANDIDATES_1",
     "NAKED_PAIR",
     "HIDDEN_RECTANGLE",
-    "ALS_XZ",
+    "AIC",
+    "AIC_GROUPED",
     "ALS_XY_WING",
     "ALS_XY_CHAIN",
     "FIREWORKS",
@@ -4431,13 +4379,13 @@
   },
   {
    "puzzle": "........47.6..2.51..1.5..9.9..2...46...4....8..53..7..2.4..............5.3....17.",
-   "score": 5648,
+   "score": 6690,
    "level": "Extreme",
    "techs": [
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "TWO_STRING_KITE",
-    "ALS_XZ",
+    "AIC",
     "ALS_XY_WING",
     "ALS_XY_CHAIN",
     "AIC_ALS",
@@ -4466,7 +4414,7 @@
   },
   {
    "puzzle": ".8....2....549....9..73.4...7.91...5....2....1...47.8...7.53..4....791....6....7.",
-   "score": 2382,
+   "score": 2362,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
@@ -4475,29 +4423,13 @@
     "HIDDEN_PAIR",
     "W_WING",
     "WXYZ_WING",
-    "ALS_XZ",
-    "ALIGNED_PAIR_EXCLUSION",
-    "DIGIT_FORCING_CHAIN"
-   ]
-  },
-  {
-   "puzzle": "..1.....4.....73....851..7.9...32....6..4.8.....8.........7..9...725863..1...4..5",
-   "score": 2426,
-   "level": "Extreme",
-   "techs": [
-    "NAKED_SINGLE",
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "NAKED_PAIR",
-    "HIDDEN_RECTANGLE",
     "AIC",
     "ALIGNED_PAIR_EXCLUSION",
-    "PATTERN_OVERLAY",
     "DIGIT_FORCING_CHAIN"
    ]
   },
   {
-   "puzzle": ".9..47.2..8..1......3.....13.2.........9....6..8..6..5...4.2.1...6.8..9....7..4.3",
+   "puzzle": "1.6.8.4...5...1......46...8.8......7...3.2...7......4.9...45......7...8...3.9.5.6",
    "score": 2534,
    "level": "Extreme",
    "techs": [
@@ -4507,26 +4439,6 @@
     "LOCKED_CANDIDATES_1",
     "LOCKED_CANDIDATES_2",
     "NAKED_TRIPLE",
-    "SWORDFISH",
-    "CHUTE_REMOTE_PAIR",
-    "XY_CHAIN",
-    "ALS_XZ",
-    "AIC",
-    "ALIGNED_PAIR_EXCLUSION",
-    "DIGIT_FORCING_CHAIN"
-   ]
-  },
-  {
-   "puzzle": "1.6.8.4...5...1......46...8.8......7...3.2...7......4.9...45......7...8...3.9.5.6",
-   "score": 2574,
-   "level": "Extreme",
-   "techs": [
-    "NAKED_SINGLE",
-    "HIDDEN_SINGLE",
-    "LOCKED_PAIR",
-    "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "NAKED_TRIPLE",
     "TWO_STRING_KITE",
     "W_WING",
     "ALIGNED_PAIR_EXCLUSION",
@@ -4534,50 +4446,16 @@
    ]
   },
   {
-   "puzzle": "..........4.3...52.691............738.47....9....1.8......5....73.29...8.984..3..",
-   "score": 2760,
-   "level": "Extreme",
-   "techs": [
-    "NAKED_SINGLE",
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "NAKED_TRIPLE",
-    "HIDDEN_RECTANGLE",
-    "ALS_XZ",
-    "ALIGNED_PAIR_EXCLUSION",
-    "PATTERN_OVERLAY",
-    "DIGIT_FORCING_CHAIN"
-   ]
-  },
-  {
    "puzzle": "....21....3.5...2...4.....3.8..6.4........2.17...1..39.4..8...71.2..6........9...",
-   "score": 2844,
+   "score": 2804,
    "level": "Extreme",
    "techs": [
     "NAKED_SINGLE",
     "HIDDEN_SINGLE",
     "LOCKED_CANDIDATES_1",
     "LOCKED_CANDIDATES_2",
-    "ALS_XY_WING",
+    "AIC",
     "ALS_XY_CHAIN",
-    "ALIGNED_PAIR_EXCLUSION",
-    "DIGIT_FORCING_CHAIN"
-   ]
-  },
-  {
-   "puzzle": ".....14.3.8..7..6.....5...............4..582.81......9.56.8..4..721..98.....2.7..",
-   "score": 3000,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "LOCKED_CANDIDATES_2",
-    "NAKED_PAIR",
-    "HIDDEN_PAIR",
-    "TWO_STRING_KITE",
-    "MEDUSA_3D",
-    "ALS_XZ",
     "ALIGNED_PAIR_EXCLUSION",
     "DIGIT_FORCING_CHAIN"
    ]
@@ -4594,37 +4472,6 @@
     "TWO_STRING_KITE",
     "MEDUSA_3D",
     "ALS_XY_CHAIN",
-    "ALIGNED_PAIR_EXCLUSION",
-    "DIGIT_FORCING_CHAIN"
-   ]
-  },
-  {
-   "puzzle": "..6.....7.....3..8..1.2..5.1...5..3..539.471..2..3...6.9..1.6..6..2.....2.....4..",
-   "score": 3036,
-   "level": "Extreme",
-   "techs": [
-    "NAKED_SINGLE",
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "WXYZ_WING",
-    "FINNED_SWORDFISH",
-    "DEATH_BLOSSOM",
-    "ALIGNED_PAIR_EXCLUSION",
-    "PATTERN_OVERLAY",
-    "DIGIT_FORCING_CHAIN"
-   ]
-  },
-  {
-   "puzzle": ".2.......91.82..4..74.59......4..1..2...3...9..3..8......76.28..8..14.93.......1.",
-   "score": 3158,
-   "level": "Extreme",
-   "techs": [
-    "HIDDEN_SINGLE",
-    "LOCKED_CANDIDATES_1",
-    "HIDDEN_RECTANGLE",
-    "ALS_XZ",
-    "ALS_XY_WING",
-    "AIC_ALS",
     "ALIGNED_PAIR_EXCLUSION",
     "DIGIT_FORCING_CHAIN"
    ]

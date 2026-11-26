@@ -195,8 +195,15 @@ export const TECHS = {
   X_CYCLES: t(5450, 'X-Cycles (loops)', 'Unfair', 'Chains and Loops', 280),
   GROUPED_X_CYCLES: t(5460, 'Grouped X-Cycles', 'Unfair', 'Chains and Loops', 300),
   TWINNED_XY_CHAIN: t(5550, 'Twinned XY-Chains', 'Unfair', 'Chains and Loops', 300, false),
-  AIC: t(5950, 'Alternating Inference Chain', 'Unfair', 'Chains and Loops', 320),
-  AIC_GROUPED: t(5960, 'AIC with Groups', 'Unfair', 'Chains and Loops', 340),
+  // An AIC is a discontinuous Nice Loop broken by two weak links, the same
+  // reasoning read as a chain, so it costs what a Nice Loop costs and is
+  // tried right after it; likewise a grouped AIC after a Grouped Nice Loop.
+  // HoDoKu does the same: its NICE_LOOP search is "Nice Loop/AIC" and files
+  // AIC under it, GROUPED_AIC under GROUPED_NICE_LOOP (SolutionType.java,
+  // getStepConfig). An AIC with ALSs has no loop of its own here and stays
+  // above the ALS-XY-Chain it generalizes. docs/rating-chains.md.
+  AIC: t(5610, 'Alternating Inference Chain', 'Unfair', 'Chains and Loops', 280),
+  AIC_GROUPED: t(5660, 'AIC with Groups', 'Unfair', 'Chains and Loops', 300),
   AIC_ALS: t(5970, 'AIC with ALSs', 'Unfair', 'Chains and Loops', 360),
   EXTENDED_RECTANGLE: t(4040, 'Extended Rectangle', 'Hard', 'Uniqueness', 110),
   FIREWORKS: t(6300, 'Fireworks', 'Extreme', 'Miscellaneous', 400),
