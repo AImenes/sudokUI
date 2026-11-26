@@ -53,3 +53,46 @@ export function pdfPages(pdf: Uint8Array): [number, number][] {
   for (const byte of pdf) text += String.fromCharCode(byte);
   return [...text.matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)].map((m) => [Number(m[1]), Number(m[2])]);
 }
+
+/** the resolution a PNG says it has, in dots to the inch, from its pHYs chunk; null when it says none */
+export function pngDpi(png: Uint8Array): number | null {
+  const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
+  const type = (at: number) => String.fromCharCode(...png.subarray(at, at + 4));
+  // past the signature, chunk by chunk: its length, its type, its data and a CRC
+  for (let at = 8; at + 8 <= png.length; at += 12 + view.getUint32(at)) {
+    if (type(at + 4) === 'pHYs' && view.getUint8(at + 16) === 1) return Math.round(view.getUint32(at + 8) * 0.0254);
+    if (type(at + 4) === 'IDAT') return null;
+  }
+  return null;
+}
+
+/** the width an SVG says it prints at, in millimetres; null when it says none */
+export function svgWidthMm(svg: string): number | null {
+  const m = /^<svg[^>]*\swidth="([\d.]+)mm"/.exec(svg);
+  return m ? Number(m[1]) : null;
+}
+
+/**
+ * The modules an SVG code draws, quiet zone included, as rows of true for
+ * dark: its viewBox is one unit a module, and its path is rectangles of
+ * whole modules (scripts/print-poster/qr.ts, qrSvg)
+ */
+export function svgModules(svg: string): boolean[][] {
+  const size = Number(/viewBox="0 0 (\d+) \d+"/.exec(svg)?.[1] ?? 0);
+  const grid = Array.from({ length: size }, () => Array<boolean>(size).fill(false));
+  for (const [, x, y, w] of svg.matchAll(/M(\d+),(\d+)h(\d+)v1h-\d+z/g))
+    for (let c = Number(x); c < Number(x) + Number(w); c++) grid[Number(y)][c] = true;
+  return grid;
+}
+
+/** the modules of a PNG code drawn a whole number of pixels to a module, `size` modules across with its quiet zone: each module's middle pixel, dark or not */
+export function pngModules(png: Uint8Array, size: number): boolean[][] {
+  const img = PNG.sync.read(png);
+  const step = img.width / size;
+  return Array.from({ length: size }, (_, r) =>
+    Array.from({ length: size }, (_, c) => {
+      const at = (Math.floor((r + 0.5) * step) * img.width + Math.floor((c + 0.5) * step)) * 4;
+      return img.data[at] < 128;
+    })
+  );
+}

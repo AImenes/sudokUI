@@ -17,10 +17,25 @@ rather type it.
 | `advent-flyer-a5.en.pdf` | The flyer, English | A5, upright |
 | `advent-flyers-2up-a4.nb.pdf` | Two Norwegian flyers on one A4 sheet, with a dashed line to cut along | A4, on its side |
 | `advent-flyers-2up-a4.en.pdf` | Two English flyers on one A4 sheet, with a dashed line to cut along | A4, on its side |
+| `advent-qr.nb.svg`, `advent-qr.nb.png` | The Norwegian code alone, for a newsletter's own layout | 4 cm wide |
+| `advent-qr.en.svg`, `advent-qr.en.png` | The English code alone | 4 cm wide |
 
 Each PDF has a PNG of the same name: a picture of the sheet, to look at
 before printing or to send to someone who asks what it looks like. Print
 the PDF, not the PNG.
+
+The PDFs are within 0.2 mm of A4 and A5 (the browser that draws them
+rounds a page to its own pixels). A printer takes them as A4 and A5, and
+nothing on the sheet is near the edge.
+
+**The code alone** is for a parish magazine, a newsletter or anyone who
+lays out their own page in Word, Publisher or InDesign. Both files are
+4 cm wide, the white border around the code included, and the PNG is
+600 dots to the inch, so it places at that size. Give the SVG to a
+layout program that takes it (it stays sharp at any size), the PNG to
+one that does not. Ask that it stays at least 4 cm wide, white border
+included: the border is part of the code. Under it, print the address
+for typing: `sudokui.app/nb/julekalender` (English `sudokui.app/advent`).
 
 The Norwegian code opens `https://sudokui.app/nb/julekalender/?utm_source=poster`
 and its sheet says `sudokui.app/nb/julekalender` under it. The English
@@ -36,11 +51,16 @@ code opens `https://sudokui.app/advent/?utm_source=poster` and says
   the single flyer. Most home printers have no A5 paper: print the sheet
   of two flyers on A4 instead (choose landscape if the printer asks) and
   cut along the dashed line in the middle. Two flyers per sheet also
-  halves the ink.
+  halves the paper.
 - **Colour or black and white** both work. The code is black on white,
   and the text stays dark in grey.
 - **Larger:** a print shop can print the poster on A3 at 141 %. The code
   grows with it and still reads.
+- **At a print shop:** the PDFs keep their letters as Type 3 fonts (the
+  machine that drew them has Inter only as OpenType, which the browser
+  embeds that way). Office and home printers print them fine. If a
+  print shop's check complains, ask them to print it as an image
+  ("rasterise" or "flatten") at 300 dots to the inch or more.
 - **Check one before you hang it:** scan the printed code with your own
   phone's camera. It should open the calendar's page. If it does not,
   the printer scaled the sheet or smudged the code: print again at
@@ -118,9 +138,11 @@ npx vite-node scripts/print-poster.ts
 ```
 
 It needs Playwright's Chromium (the one the browser tests use). It
-draws every sheet, reads each code back from its preview with a QR
-decoder, in colour and in grey, and stops with an error if a code does
-not read as its exact address or a PDF is not one page of its paper.
+draws every sheet and the code alone, reads each code back with a QR
+decoder (each preview in colour and in grey, the code alone as its PNG
+and as its SVG drawn), and stops with an error if a code does not read
+as its exact address, a sheet's words do not fit, or a PDF is not one
+page of its paper.
 Grey renders, to see how a black-and-white printer will do, go to
 `.vite/print-grey/`. `tests/printPoster.test.ts` reads the files here
 the same way. The words are in the script (`WORDS`); the addresses and

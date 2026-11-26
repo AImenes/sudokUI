@@ -434,8 +434,9 @@ and the sitemap, and the dev server serves them.
   ([promo/print/](../promo/print/README.md), made by
   scripts/print-poster.ts). Their QR code opens this page in its
   language with `?utm_source=poster`, so a scan counts as `poster`;
-  the plain address is written under it. Not part of the site: nothing
-  under public/, nothing in the precache.
+  the plain address is written under it. The code alone is there too,
+  4 cm wide as SVG and as a 600 dpi PNG, for a newsletter's own layout.
+  Not part of the site: nothing under public/, nothing in the precache.
 
 ## The admin panel's Christmas section
 

@@ -12,7 +12,9 @@
  *   advent-flyers-2up-a4.<lang>.pdf   two A5 flyers side by side on an A4
  *                                     sheet on its side, a line to cut along
  *
- * each with a PNG preview of the same name, into promo/print/ (never
+ * each with a PNG preview of the same name, and the code alone,
+ * advent-qr.<lang>.svg and .png (40 mm with its white border, the PNG at
+ * 600 dots to the inch), for a newsletter's own layout, into promo/print/ (never
  * public/: they are for printing, not for the site); promo/print/README.md
  * says how to print them and where to hang them. The look is the doors'
  * pictures' (scripts/og-advent-doors.ts): a knitted band in the
@@ -39,11 +41,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { chromium, type Page } from '@playwright/test';
-import QRCode from 'qrcode';
 import { CRANBERRY, GOLD, GROUNDS, PINE, SNOW } from './advent-doors/felt';
 import { BANDS, doorName, type BandName } from './advent-doors/doors';
-import { OUT_DIR, PREVIEW_SCALE, PT_PER_MM, PX_PER_MM, SHEETS, qrAddress, typedAddress, type PrintLang, type Sheet } from './print-poster/sheets';
-import { pdfPages, readCodes } from './print-poster/read';
+import { CODE_ALONE, OUT_DIR, PREVIEW_SCALE, PRINT_LANGS, PT_PER_MM, PX_PER_MM, SHEETS, qrAddress, typedAddress, type PrintLang, type Sheet } from './print-poster/sheets';
+import { pdfPages, pngDpi, readCodes } from './print-poster/read';
+import { qrPng, qrSvg } from './print-poster/qr';
 
 const FONT = "Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif";
 /** the text: near black, which a laser printer still prints as solid black */
@@ -62,6 +64,8 @@ const door = (n: number) => uri(`public/og/advent/${doorName(n)}.png`, 'image/pn
 interface Words {
   title: string;
   days: string;
+  /** after the dates, in their large line, so it carries across a room */
+  free: string;
   lead: string;
   lines: string[];
   hint: string;
@@ -77,33 +81,38 @@ interface Words {
 /**
  * True to the calendar's own page (src/content/adventPage.ts) and the home
  * page's promises (src/content/home.ts): 24 doors, one a day from 1 to 24
- * December, door 1 very easy and each a little harder, the same puzzle
- * for everyone; free, no account, no ads, works offline; a hint that
- * shows the next step on the player's own board and why it works
+ * December, door 1 very easy and each a little harder; free, no account,
+ * no ads, works offline; a hint that shows the next step on the player's
+ * own board and why it works. Few words, so they can be large: what a
+ * noticeboard shows from two metres is the title, the dates with "free",
+ * the doors and the code; the rest is read up close, by older eyes too
+ * (the body at least 11 pt on the flyer).
  */
 const WORDS: Record<PrintLang, Words> = {
   nb: {
     title: 'Sudoku-julekalender',
     days: '1.–24. desember',
-    lead: 'En ny luke åpner hver dag, med en sudoku bak.',
-    lines: ['Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den før.', 'Alle får den samme oppgaven bak samme luke.'],
-    hint: 'Står du fast? Et hint viser deg neste steg på ditt eget brett, og hvorfor det virker.',
-    chips: ['Gratis', 'Ingen konto', 'Ingen reklame', 'Virker uten nett'],
+    free: 'Gratis',
+    lead: 'Hver dag åpner du en ny luke, med en sudoku bak.',
+    lines: ['Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den forrige.'],
+    hint: 'Står du fast? Et hint viser neste steg på ditt eget brett og forklarer hvorfor.',
+    chips: ['Ingen konto', 'Ingen reklame', 'Virker uten nett'],
     scan: 'Skann med mobilkameraet',
-    type: 'eller skriv',
-    foot: 'sudokUI virker i nettleseren på mobil, nettbrett og PC. Du trenger ikke installere noe.',
+    type: 'eller skriv inn',
+    foot: 'Virker i nettleseren på mobil, nettbrett og PC. Ingenting å installere.',
     cut: 'Klipp her'
   },
   en: {
     title: 'Sudoku advent calendar',
     days: '1–24 December',
+    free: 'Free',
     lead: 'A new door opens every day, with a sudoku behind it.',
-    lines: ['Door 1 is very easy, and each door is a little harder than the one before.', 'Everyone gets the same puzzle behind the same door.'],
+    lines: ['Door 1 is very easy, and each door is a little harder than the one before.'],
     hint: 'Stuck? A hint shows you the next step on your own board, and why it works.',
-    chips: ['Free', 'No account', 'No ads', 'Works offline'],
-    scan: 'Scan with your phone’s camera',
+    chips: ['No account', 'No ads', 'Works offline'],
+    scan: 'Scan with your phone',
     type: 'or type',
-    foot: 'sudokUI works in the browser on a phone, tablet or computer. Nothing to install.',
+    foot: 'Works in the browser on a phone, tablet or computer. Nothing to install.',
     cut: 'Cut here'
   }
 };
@@ -150,47 +159,20 @@ function knitBand(widthMm: number, stitchMm: number, band: BandName, foot: boole
 </svg>`;
 }
 
-// ---------------------------------------------------------------- the code
-
-/**
- * The QR code of an address as SVG: black modules on white, with the
- * quiet zone of four modules the standard asks for, each row's runs of
- * dark modules as one rectangle. Error correction Q (a quarter of the code
- * can be lost), for a poster that gets creased, dirty or lit badly.
- */
-function qrSvg(text: string): { svg: string; modules: number } {
-  const qr = QRCode.create(text, { errorCorrectionLevel: 'Q' });
-  const n: number = qr.modules.size;
-  const quiet = 4;
-  const size = n + 2 * quiet;
-  let d = '';
-  for (let r = 0; r < n; r++) {
-    let c = 0;
-    while (c < n) {
-      if (!qr.modules.get(r, c)) {
-        c++;
-        continue;
-      }
-      let run = 1;
-      while (c + run < n && qr.modules.get(r, c + run)) run++;
-      d += `M${c + quiet},${r + quiet}h${run}v1h-${run}z`;
-      c += run;
-    }
-  }
-  return {
-    svg: `<svg class="qr" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${text}"><rect width="${size}" height="${size}" fill="#ffffff"/><path d="${d}" fill="#000000"/></svg>`,
-    modules: n
-  };
-}
-
 // ---------------------------------------------------------------- the sheets
 
-/** the measures of a poster and of a flyer, in millimetres */
+/**
+ * The measures of a poster and of a flyer, in millimetres; a font's size
+ * is its em, so 3.9 mm is 11 pt and 6 mm 17 pt
+ */
 const SIZES = {
-  poster: { w: 210, h: 297, pad: 10, stitch: 2.4, gap: 5, brand: 6.2, title: 15, days: 8.6, lead: 5.6, line: 4.4, chip: 3.9, scan: 4.4, address: 6, foot: 3.5, doors: [1, 8, 12, 24], doorGap: 5, radius: 3.5 },
-  flyer: { w: 148, h: 210, pad: 8, stitch: 1.8, gap: 3.4, brand: 4.6, title: 10.6, days: 6.2, lead: 4, line: 3.25, chip: 2.8, scan: 3.2, address: 4.3, foot: 2.6, doors: [1, 12, 24], doorGap: 4, radius: 2.5 }
+  poster: { w: 210, h: 297, pad: 10, stitch: 2.4, gap: 5, brand: 6.2, title: 15, days: 8.6, lead: 7.6, line: 6, chip: 5, scan: 5, address: 6, foot: 4.4, doors: [1, 8, 12, 24], doorGap: 5, radius: 3.5 },
+  flyer: { w: 148, h: 210, pad: 8, stitch: 1.8, gap: 3.4, brand: 4.6, title: 10.6, days: 6.2, lead: 4.8, line: 3.9, chip: 3.3, scan: 3.6, address: 4.3, foot: 3.3, doors: [1, 12, 24], doorGap: 4, radius: 2.5 }
 } as const;
 type Size = (typeof SIZES)[keyof typeof SIZES];
+
+/** a paragraph whose last two words keep together, so no word is left alone on the last line */
+const keepLast = (text: string) => text.replace(/ (\S+)$/, '&nbsp;$1');
 
 /** one poster or one flyer, as a block of its paper's size */
 function face(lang: PrintLang, s: Size, qrMm: number): string {
@@ -202,14 +184,14 @@ function face(lang: PrintLang, s: Size, qrMm: number): string {
   <header class="brand" style="font-size:${s.brand}mm"><img src="${ICON}" alt=""><span>sudok<b>UI</b></span><span class="site">sudokui.app</span></header>
   <div class="heading">
     <h1 class="fit" style="font-size:${s.title}mm">${t.title}</h1>
-    <p class="days" style="font-size:${s.days}mm">${t.days}</p>
+    <p class="days" style="font-size:${s.days}mm">${t.days} · ${t.free}</p>
   </div>
   <div class="doors" style="gap:${s.doorGap}mm">${s.doors.map((n) => `<img src="${door(n)}" alt="" style="border-radius:${s.radius}mm">`).join('')}</div>
   <div class="main" style="gap:${s.gap * 1.4}mm">
     <div class="text">
-      <p class="lead" style="font-size:${s.lead}mm">${t.lead}</p>
-      ${t.lines.map((l) => `<p class="line" style="font-size:${s.line}mm">${l}</p>`).join('\n      ')}
-      <p class="line hint" style="font-size:${s.line}mm">${t.hint}</p>
+      <p class="lead" style="font-size:${s.lead}mm">${keepLast(t.lead)}</p>
+      ${t.lines.map((l) => `<p class="line" style="font-size:${s.line}mm">${keepLast(l)}</p>`).join('\n      ')}
+      <p class="line hint" style="font-size:${s.line}mm">${keepLast(t.hint)}</p>
       <p class="chips" style="font-size:${s.chip}mm">${t.chips.map((c) => `<span>${c}</span>`).join('')}</p>
     </div>
     <div class="code" style="width:${qrMm + 2 * FRAME_MM}mm">
@@ -218,7 +200,7 @@ function face(lang: PrintLang, s: Size, qrMm: number): string {
       <p class="address fit" style="font-size:${s.address}mm"><small>${t.type}</small> ${typedAddress(lang)}</p>
     </div>
   </div>
-  <p class="foot" style="font-size:${s.foot}mm">${t.foot}</p>
+  <p class="foot" style="font-size:${s.foot}mm">${keepLast(t.foot)}</p>
   ${knitBand(inner, s.stitch, 'stars', true)}
 </section>`;
 }
@@ -252,12 +234,12 @@ h1{font-weight:800;letter-spacing:-.025em;line-height:1.02;color:${PINE};white-s
 .qr{display:block;width:100%;height:100%}
 .scan{font-weight:700;margin-top:.5em;color:${INK}}
 .address{font-weight:800;color:#000000;margin-top:.2em;white-space:nowrap;letter-spacing:-.005em}
-.address small{display:block;font-size:.72em;font-weight:600;color:${MUTED};letter-spacing:0;margin-bottom:.05em}
+.address small{display:block;font-size:.85em;font-weight:600;color:${MUTED};letter-spacing:0;margin-bottom:.05em}
 .foot{text-align:center;line-height:1.3;color:${MUTED}}
 .cut{position:absolute;top:0;bottom:0;left:50%;border-left:.35mm dashed #6b7280}
 .cut span{position:absolute;left:0;transform:translate(-50%,0);background:#ffffff;color:#4b5563;font-size:3mm;font-weight:600;white-space:nowrap;padding:.6mm 0;writing-mode:vertical-rl}
-.cut .top{top:3mm}
-.cut .bottom{bottom:3mm}
+.cut .top{top:6mm}
+.cut .bottom{bottom:6mm}
 `;
 
 /** a sheet as a whole page: its paper's size, exactly, and nothing outside it */
@@ -352,6 +334,25 @@ async function main(): Promise<void> {
         `wrote ${pdfFile} (${Math.round(pdf.length / 1024)} KB) and .png (${Math.round(png.length / 1024)} KB): ${sheet.paper.name}, code ${sheet.qrMm} mm with its quiet zone, ${(moduleMm * modules).toFixed(0)} mm without, ${modules} modules of ${moduleMm.toFixed(2)} mm, reads ${read.map((r) => (r === want ? 'right' : 'WRONG')).join(' and ')}`
       );
       await page.close();
+    }
+    // the code alone, for a newsletter's layout: SVG at its printed size, and a PNG at 600 dots to the inch
+    for (const lang of PRINT_LANGS) {
+      const want = qrAddress(lang);
+      const name = CODE_ALONE.name(lang);
+      writeFileSync(join(out, `${name}.svg`), `${qrSvg(want, CODE_ALONE.mm).svg}\n`);
+      const { png, px, mm } = qrPng(want, CODE_ALONE.mm, CODE_ALONE.dpi);
+      writeFileSync(join(out, `${name}.png`), png);
+      const got = readCodes(png)[0]?.data ?? null;
+      if (got !== want) wrong.push(`${name}.png: read ${JSON.stringify(got)}, ${JSON.stringify(want)} was wanted`);
+      if (pngDpi(png) !== CODE_ALONE.dpi) wrong.push(`${name}.png: says ${pngDpi(png)} dots to the inch, ${CODE_ALONE.dpi} was wanted`);
+      // the SVG drawn as the browser draws it, read back the same way
+      const page = await browser.newPage({ viewport: { width: 400, height: 400 } });
+      await page.setContent(`<body style="margin:0;background:#fff">${qrSvg(want, CODE_ALONE.mm).svg}</body>`);
+      const shot = await page.locator('svg').screenshot({ type: 'png' });
+      await page.close();
+      const fromSvg = readCodes(shot)[0]?.data ?? null;
+      if (fromSvg !== want) wrong.push(`${name}.svg: read ${JSON.stringify(fromSvg)}, ${JSON.stringify(want)} was wanted`);
+      console.log(`wrote ${join(out, name)}.svg and .png (${px} px, ${mm.toFixed(1)} mm at ${CODE_ALONE.dpi} dpi), reads ${got === want && fromSvg === want ? 'right' : 'WRONG'}`);
     }
   } finally {
     await browser.close();

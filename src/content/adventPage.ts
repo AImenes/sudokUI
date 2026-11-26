@@ -101,7 +101,7 @@ export const ADVENT_PAGE: Record<Lang, AdventPageCopy> = {
       'En sudoku bak hver av 24 luker, én åpner hver dag fra 1. til 24. desember. Veldig lett først, litt vanskeligere hver dag, opp til Middels. Gratis, uten konto.',
     h1: 'Sudoku-julekalender {year}',
     lead:
-      '24 luker, én for hver dag fra 1. til 24. desember, og en sudoku bak hver. Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den før; de siste er på nivået Middels. Alle får den samme oppgaven bak den samme luken.',
+      '24 luker, én for hver dag fra 1. til 24. desember, og en sudoku bak hver. Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den forrige; de siste er på nivået Middels. Alle får den samme oppgaven bak den samme luken.',
     statusStatic: 'Luke 1 åpner 1. desember {year}, og luke 24 den 24. desember.',
     status: {
       before: 'Kalenderen åpner 1. desember {year}. Til da er alle lukene låst.',
@@ -116,7 +116,7 @@ export const ADVENT_PAGE: Record<Lang, AdventPageCopy> = {
     howHeading: 'Slik virker den',
     how: [
       'En luke åpner på dagen sin, ved midnatt etter din egen klokke, og står åpen til 31. desember, så en dag du gikk glipp av, kan tas igjen. En luke som ikke har fått dagen sin ennå, er låst: ingen lenke eller adresse åpner den før tiden.',
-      'Bak luke 1 er en oppgave med HoDoKu-poengsum rundt 100, bak luke 24 en med rundt {top}, og hver luke har høyere poengsum enn den før. Luke 1 til {easy} er Lett: bare singler. Luke {medium} til 24 er Middels: der trengs også låste kandidater, par eller tripler. Hver luke viser nivået og poengsummen sin, så du vet hva som kommer.',
+      'Bak luke 1 er en oppgave med HoDoKu-poengsum rundt 100, bak luke 24 en med rundt {top}, og hver luke har høyere poengsum enn den forrige. Luke 1 til {easy} er Lett: bare singler. Luke {medium} til 24 er Middels: der trengs også låste kandidater, par eller tripler. Hver luke viser nivået og poengsummen sin, så du vet hva som kommer.',
       'Løser du en luke uten noe fra Hjelp-boksen, som hint, sjekk eller autokandidater, kan du sende inn tiden din fra seiersskjermen og se hvor den står blant alles, på lukens dag og opptil en uke etter.',
       'Fra 1. januar er kalenderen stengt. En luke du har begynt på, blir værende i appen, og du kan fullføre den.'
     ],

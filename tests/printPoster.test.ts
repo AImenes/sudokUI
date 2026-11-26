@@ -11,8 +11,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { A4, A4_LANDSCAPE, A5, OUT_DIR, PREVIEW_SCALE, PRINT_LANGS, PT_PER_MM, PX_PER_MM, POSTER_TAG, QR_MM, SHEETS, qrAddress, typedAddress } from '../scripts/print-poster/sheets';
-import { pdfPages, pngSize, readCodes } from '../scripts/print-poster/read';
+import { A4, A4_LANDSCAPE, A5, CODE_ALONE, OUT_DIR, PREVIEW_SCALE, PRINT_LANGS, PT_PER_MM, PX_PER_MM, POSTER_TAG, QR_MM, SHEETS, qrAddress, typedAddress } from '../scripts/print-poster/sheets';
+import { pdfPages, pngDpi, pngModules, pngSize, readCodes, svgModules, svgWidthMm } from '../scripts/print-poster/read';
 import { LINK_TAGS, landingWord } from '../worker/telemetry';
 import { CALENDAR_PATHS } from '../worker/index';
 import { STATIC_ROUTES } from '../src/content/staticRoutes';
@@ -61,7 +61,7 @@ describe('the posters and flyers of the advent calendar', () => {
     }
   });
 
-  it('has a poster, a flyer and a sheet of two flyers in Norwegian and in English, each a PDF and a PNG, and nothing else', () => {
+  it('has a poster, a flyer and a sheet of two flyers in Norwegian and in English, each a PDF and a PNG, the code alone, and nothing else', () => {
     expect(SHEETS.map((s) => s.name).sort()).toEqual(
       ['advent-poster-a4', 'advent-flyer-a5', 'advent-flyers-2up-a4'].flatMap((n) => [`${n}.nb`, `${n}.en`]).sort()
     );
@@ -70,7 +70,8 @@ describe('the posters and flyers of the advent calendar', () => {
       expect(existsSync(file(`${s.name}.png`)), s.name).toBe(true);
     }
     const made = readdirSync(OUT_DIR).filter((f) => f !== 'README.md');
-    expect(made.sort()).toEqual(SHEETS.flatMap((s) => [`${s.name}.pdf`, `${s.name}.png`]).sort());
+    const alone = PRINT_LANGS.flatMap((lang) => [`${CODE_ALONE.name(lang)}.svg`, `${CODE_ALONE.name(lang)}.png`]);
+    expect(made.sort()).toEqual([...SHEETS.flatMap((s) => [`${s.name}.pdf`, `${s.name}.png`]), ...alone].sort());
     expect(existsSync(file('README.md'))).toBe(true);
   });
 
@@ -80,9 +81,10 @@ describe('the posters and flyers of the advent calendar', () => {
       expect(s.paper, s.name).toBe(paper[s.kind]);
       const pages = pdfPages(readFileSync(file(`${s.name}.pdf`)));
       expect(pages, s.name).toHaveLength(1);
-      // Chromium rounds a page to its own pixels: within a point (a third of a millimetre) of the paper
-      expect(Math.abs(pages[0][0] - s.paper.w * PT_PER_MM), s.name).toBeLessThan(1);
-      expect(Math.abs(pages[0][1] - s.paper.h * PT_PER_MM), s.name).toBeLessThan(1);
+      // Chromium rounds a page to its own pixels: within 0.6 point (0.2 mm) of the paper, which a printer
+      // still takes as A4 or A5 (the README says so)
+      expect(Math.abs(pages[0][0] - s.paper.w * PT_PER_MM), s.name).toBeLessThan(0.6);
+      expect(Math.abs(pages[0][1] - s.paper.h * PT_PER_MM), s.name).toBeLessThan(0.6);
     }
   });
 
@@ -105,6 +107,28 @@ describe('the posters and flyers of the advent calendar', () => {
       }
     }
     expect(QR_MM.poster).toBeGreaterThan(QR_MM.flyer);
+  });
+
+  it('has the code alone for a newsletter: an SVG that says its width and a 600 dpi PNG, the same modules, read back as the exact address', () => {
+    for (const lang of PRINT_LANGS) {
+      const name = CODE_ALONE.name(lang);
+      const png = readFileSync(file(`${name}.png`));
+      const svg = new TextDecoder().decode(readFileSync(file(`${name}.svg`)));
+      const code = readCodes(png)[0];
+      expect(code?.data, name).toBe(qrAddress(lang));
+      // printed about 40 mm wide with its white border, which leaves at least 3 cm of code
+      expect(pngDpi(png), name).toBe(CODE_ALONE.dpi);
+      const [w, h] = pngSize(png);
+      expect(w, name).toBe(h);
+      expect(Math.abs((w / CODE_ALONE.dpi) * 25.4 - CODE_ALONE.mm), name).toBeLessThan(0.5);
+      expect((code!.widthPx / CODE_ALONE.dpi) * 25.4, name).toBeGreaterThanOrEqual(30);
+      expect(svgWidthMm(svg), name).toBe(CODE_ALONE.mm);
+      // the SVG draws the same code as the PNG, module for module, its quiet zone of four included
+      const grid = svgModules(svg);
+      expect(grid.length, name).toBe(code!.modules + 8);
+      expect(pngModules(png, grid.length), name).toEqual(grid);
+      for (const row of [...grid.slice(0, 4), ...grid.slice(-4)]) expect(row.every((dark) => !dark), name).toBe(true);
+    }
   });
 
   it('keeps the sheets out of the site and its precache: they are for printing, not serving', () => {

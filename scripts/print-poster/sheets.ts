@@ -70,6 +70,14 @@ export const SHEETS: Sheet[] = PRINT_LANGS.flatMap((lang): Sheet[] => [
   { kind: 'flyers', lang, paper: A4_LANDSCAPE, name: `advent-flyers-2up-a4.${lang}`, qrMm: QR_MM.flyer, codes: 2 }
 ]);
 
+/**
+ * The code alone, for a newsletter or a parish magazine to place in its
+ * own layout: advent-qr.<lang>.svg and .png, each 40 mm wide with its
+ * white quiet zone (about 33 mm of code without it on the Norwegian, 32 mm
+ * on the English), the PNG at 600 dots to the inch
+ */
+export const CODE_ALONE = { name: (lang: PrintLang) => `advent-qr.${lang}`, mm: 40, dpi: 600 } as const;
+
 /** CSS pixels in a millimetre: the browser's 96 to the inch */
 export const PX_PER_MM = 96 / 25.4;
 
