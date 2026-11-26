@@ -6,7 +6,7 @@
  * The Washington Post puzzle of November 2026 rates Unfair 1322 with
  * uniqueness and Extreme 2226 without.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, onTestFinished } from 'vitest';
 import { serve, serveRate, WorkerResponse, PoolEntry, toEntry } from '../src/engine/worker';
 import { ratePuzzle } from '../src/engine/humanSolver';
 import { NO_UNIQUENESS_ORDER, inPick } from '../src/engine/ratings';
@@ -116,7 +116,14 @@ describe("the worker's rating without uniqueness", () => {
 
 describe('a level for a player who does not use uniqueness', () => {
   it('is served from a seed only where the level holds without uniqueness, rated both ways', { timeout: 120_000 }, () => {
-    // the Washington Post puzzle as a seed: Unfair with uniqueness, Extreme without
+    // the Washington Post puzzle as a seed: Unfair with uniqueness, Extreme without.
+    // The worker serves a seed in a random disguise (transformPuzzle), and the
+    // solver's path, so the rating, can change with the disguise: about 1 in
+    // 10 disguises of this puzzle rate Extreme even with uniqueness. Pinned to
+    // one disguise (every random draw 0), which rates Unfair 1352 with
+    // uniqueness and Extreme 2512 without, so the test does not depend on luck.
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+    onTestFinished(() => random.mockRestore());
     const unfair = answer(run({ id: 1, kind: 'level', level: 'Unfair', urgent: true, seeds: [WAPO], maxAttempts: 0 }));
     expect(unfair.level).toBe('Unfair');
     const failed = run({ id: 2, kind: 'level', level: 'Unfair', urgent: true, seeds: [WAPO], maxAttempts: 0, noUniqueness: true });
@@ -144,7 +151,18 @@ describe('a level for a player who does not use uniqueness', () => {
   });
 
   it('a background top-up rates every candidate both ways where its path takes a uniqueness step', { timeout: 120_000 }, () => {
-    // a Nightmare is rare enough that most of the attempts are pooled as candidates
+    // a Nightmare is rare enough that most of the attempts are pooled as candidates.
+    // The puzzles are drawn at random, and a Nightmare met in the first few
+    // attempts ends the run early, so the draws are pinned to one sequence
+    // (mulberry32, seed 7) and the test does not depend on luck.
+    let state = 7;
+    const random = vi.spyOn(Math, 'random').mockImplementation(() => {
+      state = (state + 0x6d2b79f5) | 0;
+      let t = Math.imul(state ^ (state >>> 15), 1 | state);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    });
+    onTestFinished(() => random.mockRestore());
     const out = run({ id: 5, kind: 'level', level: 'Nightmare', maxAttempts: 30, noUniqueness: true });
     const entries = out.flatMap((m) => (m.type === 'candidates' ? m.entries : m.type === 'done' ? [m.entry] : []));
     expect(entries.length).toBeGreaterThan(5);
