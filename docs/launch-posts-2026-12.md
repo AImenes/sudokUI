@@ -21,10 +21,10 @@ in. Nothing here names a person, a group or a place on purpose.
 
 ## The links, and the word each shows as
 
-Every post links to the calendar's page (or, for the reminders, to a
-door), never to the home page. The calendar's page is counted for
-everyone who comes from outside the site, even a player whose browser
-already holds the app; the home page is not.
+Every post links to the calendar's page (or, for the Facebook group and
+the reminders, to a door), never to the home page. The calendar's page
+is counted for everyone who comes from outside the site, even a player
+whose browser already holds the app; the home page is not.
 
 The word comes from what the browser says about where the link was
 opened from (worker/telemetry.ts, `landingWord`). Where a place says
@@ -37,9 +37,9 @@ names a site, such as facebook.com, the site decides, tag or not.
 | Post | Link | Word on /admin |
 |---|---|---|
 | 1. Facebook, your own wall | `https://sudokui.app/nb/julekalender/` (English: `https://sudokui.app/advent/`) | `facebook` (a few may be `none`) |
-| 2. Facebook, a local or hobby group | the same | `facebook` |
-| 3. Messenger or a family chat | `https://sudokui.app/nb/julekalender/?utm_source=chat` (English: `https://sudokui.app/advent/?utm_source=chat`) | `chat` |
-| 4. Church newsletter, on paper | the QR code from the flyer, or the address written out: `sudokui.app/nb/julekalender` | `poster` for the code, `none` when typed |
+| 2. Facebook, a local or hobby group | the day's door: `https://sudokui.app/nb/advent/2026/3` on 3 December (English: `https://sudokui.app/advent/2026/3`) | `facebook`, on the door's row |
+| 3. Messenger or a family chat | `https://sudokui.app/nb/julekalender/?utm_source=chat` (English: `https://sudokui.app/advent/?utm_source=chat`) | `chat` (from Messenger, some may read `facebook` or `none`: see below) |
+| 4. Church newsletter, on paper | the QR code (the flyer, or the code alone: `promo/print/advent-qr.nb.svg` or `.png`), or the address written out: `sudokui.app/nb/julekalender` | `poster` for the code, `none` when typed |
 | 4. Church newsletter, by e-mail | `https://sudokui.app/nb/julekalender/` | `mail` from webmail and the Gmail and Outlook apps on Android, `none` from most mail apps; sometimes `search` or `other` (see below) |
 | 5. Workplace social channel | the chat link, `...?utm_source=chat` | `chat` |
 | 6. Noticeboard: poster and flyer | the printed QR code (`?utm_source=poster`, promo/print/) | `poster` |
@@ -55,13 +55,36 @@ address with the click, which decides anyway. A chat tag there would only
 mislabel the few clicks that come with nothing. And no tag fits e-mail:
 the chat tag would count a newsletter as a chat.
 
+Why the group gets a door's link: a Facebook group and your wall both
+read `facebook`, and a post keeps bringing clicks for a day or two. The
+Christmas section counts a door's address apart from the calendar's
+page, and each door's row has its own landings, so the group's clicks
+show on door 3's row and nowhere near your wall's. A group of people you
+do not know mostly has no app installed, so nearly all of them count.
+
 ## What cannot be told apart
 
-- **Your wall and a Facebook group** are both `facebook`. To tell them
-  apart, post them on different days (below) and read them day by day in
-  the 28-day table.
-- **The family chat and the workplace channel** are both `chat`. Post
-  them on different days too.
+- **Your wall and a Facebook group** are both `facebook`. The group's
+  door link keeps it apart (above): read the wall on the calendar's page
+  and the group on door 3's row. The 28-day table puts the calendar's
+  page and its doors in one Advent column, so there a day's `facebook`
+  holds both, plus the wall's tail: a post keeps bringing clicks for a
+  day or two.
+- **The family chat and the workplace channel** are both `chat`. They go
+  out on different days (below); read them day by day in the 28-day
+  table, and expect a chat's tail the next day.
+- **Messenger.** A family chat on Messenger does not always read `chat`.
+  Read on facebook.com/messages, or from a Messenger app that passes the
+  link through Facebook's own address (l.facebook.com), a tap reads
+  `facebook`, tag or not: a site's address decides. A link card may also
+  open the page's own address without the tag, which from an iPhone
+  reads `none`. That is why the family chat has a day with no Facebook
+  post of its own. Before 1 December, test it once (two minutes): send
+  yourself the chat link in Messenger, tap the card on an iPhone and on
+  an Android phone, look at the address bar (is `?utm_source=chat`
+  still there?) and at today's row on `/admin`, and write what you saw
+  in the launch log. A family group on WhatsApp, Signal or text
+  messages reads `chat` either way.
 - **One poster and another.** Every poster and flyer, at the library or
   the café, is `poster`. Write in the launch log the day each one goes up.
 - **`none` is a mix**: a typed address (from a poster, a printed
@@ -74,7 +97,14 @@ the chat tag would count a newsletter as a chat.
 - **Shared on.** A link that someone forwards counts where it was opened
   the second time: your Facebook post sent on in a chat shows as `chat`.
   A tagged link keeps its tag when it is copied, so a chat link pasted
-  into an e-mail still reads `chat`. That is still your post's doing.
+  into an e-mail still reads `chat` when it is opened in a mail app (on
+  an iPhone, or the Gmail and Outlook apps on Android); opened in
+  webmail in a browser, it reads `mail`. That is still your post's
+  doing.
+- **A poster scanned on Android.** An Android phone may name the app
+  that scanned the code (Google Lens, a Samsung camera). The poster tag
+  outranks an app's name, so these still read `poster`. Test it once
+  before printing many (promo/print/README.md).
 - **A door's link** (the reminders) counts only a person whose browser
   does not hold the app yet: an installed app opens a door itself, so a
   returning player's click is not a landing. The calendar's page counts
@@ -87,20 +117,36 @@ the chat tag would count a newsletter as a chat.
 
 ## When to post
 
+The launch log's rule of one channel a week, each judged 14 days later,
+is set aside for the calendar's launch: the calendar has 24 days, so the
+posts go out in four. Day 14 (Tuesday 15 December) judges them together,
+as one launch. The only reading per channel is the word by day (and the
+group on its door's row), which is why each post below has a day, and
+where it can, a word, of its own.
+
+- **Now, Friday 27 to Monday 30 November:** ask the Facebook group's
+  admins (the message is under post 2), and ask the church (post 4).
+  Test a Messenger link on your own phone (above, "Messenger").
 - **By Monday 30 November:** hang the posters and leave the flyers
-  (promo/print/README.md says how to print them and to ask first).
+  (promo/print/README.md says how to print them, to ask first, and to
+  test one scan on an iPhone and an Android phone after the deploy).
   Before 1 December the calendar's page says that it opens on
   1 December, so an early scan is not wasted.
-- **Church newsletter:** ask now. The first Sunday of Advent is 29
-  November; the December issue of a printed parish magazine may already
-  be printed, but the Sunday notices or an e-mailed newsletter may still
-  have room, for 29 November or 6 December.
+- **Church newsletter:** the first Sunday of Advent is 29 November; the
+  December issue of a printed parish magazine may already be printed,
+  but the Sunday notices or an e-mailed newsletter may still have room,
+  for 29 November or 6 December.
 - **Tuesday 1 December, morning (about 7 to 8.30, before work and over
-  breakfast):** door 1 is open. Post on your own Facebook wall and in the
-  family chat. Their words differ, `facebook` and `chat`.
-- **Wednesday 2 December:** the Facebook group (after an admin's yes) in
-  the morning, and the workplace channel at lunch. Again one `facebook`
-  and one `chat`, on a day of their own.
+  breakfast):** door 1 is open. Post on your own Facebook wall, and
+  nothing else that day: the day's `facebook` is the wall's.
+- **Wednesday 2 December, lunch:** the workplace channel (`chat`). Its
+  word is not the wall's, so the wall's tail does not mix with it.
+- **Thursday 3 December:** the Facebook group in the morning, after an
+  admin's yes, with door 3's link (`facebook`, on door 3's row). The
+  family chat in the evening (`chat`): its Messenger taps that read
+  `facebook` land on the calendar's page, apart from the group's door.
+  If the admin's yes comes later, post the group on that day, with that
+  day's door.
 - **Tuesday 8 December, door 8:** a reminder on your wall (a new short
   post or a comment on the first one), and in the family chat only if
   people there liked it. Not in the group or at work.
@@ -117,14 +163,14 @@ The pictures in promo/ are made by `npx vite-node scripts/promo-cards.ts`
 promo/print/. The link previews are the site's own: a link to the
 calendar's page shows its card (public/og-advent-2026.nb.png, and
 og-advent-2026.png in English), and a door's link shows that door's
-picture (public/og/advent/door-08.png, door-15.png).
+picture (public/og/advent/door-03.png, door-08.png, door-15.png).
 
 | Post | Picture |
 |---|---|
 | 1. Facebook, your own wall | Just the link: Facebook shows the calendar's card, and the whole card is a link. For a picture post instead, `promo/sudokui-christmas-square.nb.png` (`.en.png`), with the link in the text; a picture post may be seen more but clicked less. |
-| 2. Facebook group | Just the link and its card; or `promo/sudokui-christmas-square.nb.png` if the group likes pictures. |
+| 2. Facebook group | Just door 3's link: its card is door 3's own picture. Or `promo/sudokui-christmas-square.nb.png` if the group likes pictures, with the link in the text. |
 | 3. Messenger or a family chat | Just the link: the chat shows the card. |
-| 4. Church newsletter | On paper: the flyer as an insert (`promo/print/advent-flyer-a5.nb.pdf`, or two to a sheet, `advent-flyers-2up-a4.nb.pdf`). If they would rather print the code in the newsletter itself, give them the flyer's PDF to place in their layout, and ask that the code stays at least 3 cm wide (the PNG previews are too coarse for print). By e-mail: `promo/sudokui-christmas-square.nb.png`. |
+| 4. Church newsletter | On paper: the flyer as an insert (`promo/print/advent-flyer-a5.nb.pdf`, or two to a sheet, `advent-flyers-2up-a4.nb.pdf`). If they would rather print the code in the newsletter itself, give them the code alone, `promo/print/advent-qr.nb.svg` (or `advent-qr.nb.png`, 600 dpi, for a program that takes no SVG), and ask that it stays at least 4 cm wide, the white border included, with `sudokui.app/nb/julekalender` under it. The sheets' PNG previews are too coarse for print. By e-mail: `promo/sudokui-christmas-square.nb.png`. |
 | 5. Workplace channel | Just the link. Keep it small. |
 | 6. Noticeboard | `promo/print/advent-poster-a4.nb.pdf` and the flyers, `promo/print/advent-flyers-2up-a4.nb.pdf` (English: `.en.pdf`). |
 | 7. Reminders | The door's link: its own picture shows by itself. |
@@ -144,7 +190,7 @@ Link: `https://sudokui.app/nb/julekalender/` (English
 Norsk, kort:
 
 ```text
-Nå har jeg laget en sudoku-julekalender! Fra 1. til 24. desember åpner det en ny luke hver dag, med en sudoku bak. Gratis, uten reklame og uten konto.
+Nå har jeg laget en sudoku-julekalender! Fra 1. til 24. desember åpnes det en ny luke hver dag, med en sudoku bak. Gratis, uten reklame og uten konto.
 
 https://sudokui.app/nb/julekalender/
 ```
@@ -154,11 +200,11 @@ Norsk, lengre:
 ```text
 Julekalender for alle som liker sudoku
 
-På fritiden har jeg laget sudokUI, en sudoku-app som virker rett i nettleseren. I år har den fått en julekalender: fra 1. til 24. desember åpner det en ny luke hver dag, med en sudoku bak.
+På fritiden har jeg laget sudokUI, en sudoku-app som virker rett i nettleseren. I år har den fått en julekalender: fra 1. til 24. desember åpnes det en ny luke hver dag, med en sudoku bak.
 
-Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den før, så du trenger ikke ha spilt sudoku før. Alle får den samme oppgaven bak samme luke, og løser du en luke uten hjelp, kan du se hvordan tiden din står seg mot alle andres.
+Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den forrige, så du trenger ikke ha spilt sudoku før. Alle får samme oppgave bak samme luke, og løser du en luke uten hjelp, kan du se hvordan tiden din står seg mot alle andres.
 
-Står du fast, viser et hint deg neste steg på ditt eget brett, og forklarer hvorfor det virker.
+Står du fast, viser et hint neste steg på ditt eget brett og forklarer hvorfor.
 
 Den er gratis, uten reklame og uten konto, og virker på mobil, nettbrett og PC. Har du gått glipp av en dag, står lukene åpne til 31. desember.
 
@@ -195,8 +241,12 @@ Feel free to share it with someone who likes sudoku!
 
 ### 2. Facebook, a local or hobby group
 
-Link: the same as on your wall. Word: `facebook` (the same word as your
-wall: post it on another day).
+Link: the day's door, `https://sudokui.app/nb/advent/2026/3` on Thursday
+3 December (English `https://sudokui.app/advent/2026/3`); on another day,
+change the 3 to that day's door. Word: `facebook`, on door 3's row in the
+Christmas section, apart from your wall's. The link's card shows the
+door's own picture. Ask the admins between 27 and 30 November, so the
+yes is there in time.
 
 **Before you post:** read the group's rules. Many groups do not allow
 promotion, or only on a set day. Ask an admin first, and post only after
@@ -219,7 +269,7 @@ Norsk, kort:
 ```text
 Liker du sudoku? Jeg har laget en gratis sudoku-julekalender på nett: én ny luke hver dag fra 1. til 24. desember. Luke 1 er veldig lett, og så blir de litt vanskeligere for hver dag. Ingen reklame og ingen konto. (Lagt ut etter avtale med admin.)
 
-https://sudokui.app/nb/julekalender/
+Dagens luke: https://sudokui.app/nb/advent/2026/3
 ```
 
 Norsk, lengre (for en gruppe om sudoku, kryssord eller hjernetrim):
@@ -227,15 +277,15 @@ Norsk, lengre (for en gruppe om sudoku, kryssord eller hjernetrim):
 ```text
 Sudoku-julekalender, gratis (lagt ut etter avtale med admin)
 
-Jeg har laget en sudoku-julekalender på fritiden. Fra 1. til 24. desember åpner det en ny luke hver dag, med en sudoku bak, og alle får den samme oppgaven bak samme luke.
+Jeg har laget en sudoku-julekalender på fritiden. Fra 1. til 24. desember åpnes det en ny luke hver dag, med en sudoku bak, og alle får samme oppgave bak samme luke.
 
 Den begynner rolig og blir litt vanskeligere for hver dag. Hver luke viser nivå og HoDoKu-poengsum: luke 1 har rundt 100, luke 24 rundt 1000. Luke 1 til 18 er Lett (bare singler), luke 19 til 24 er Middels (der trengs også låste kandidater, par eller tripler).
 
-Står du fast, viser et hint neste steg på ditt eget brett og forklarer hvorfor det virker. Løser du en luke uten hjelp, kan du sende inn tiden din og se hvor den står blant alles.
+Står du fast, viser et hint neste steg på ditt eget brett og forklarer hvorfor. Løser du en luke uten hjelp, kan du sende inn tiden din og se hvor den står blant alles.
 
-Gratis, ingen reklame, ingen konto, og den virker uten nett. Lukene står åpne til 31. desember.
+Gratis, ingen reklame, ingen konto, og den virker uten nett. Lukene står åpne til 31. desember, så du kan begynne på luke 1.
 
-https://sudokui.app/nb/julekalender/
+Dagens luke: https://sudokui.app/nb/advent/2026/3
 ```
 
 English, short:
@@ -243,7 +293,7 @@ English, short:
 ```text
 Like sudoku? I've made a free sudoku advent calendar: a new door every day from 1 to 24 December. Door 1 is very easy, and each one gets a little harder. No ads, no account. (Posted with the admins' OK.)
 
-https://sudokui.app/advent/
+Today's door: https://sudokui.app/advent/2026/3
 ```
 
 English, longer (for a sudoku, crossword or puzzle group):
@@ -257,9 +307,9 @@ It starts gently and gets a little harder each day. Every door shows its level a
 
 Stuck? A hint shows the next step on your own board and explains why it works. Solve a door without help and you can send your time and see where it stands among everyone's.
 
-Free, no ads, no account, and it works offline. The doors stay open until 31 December.
+Free, no ads, no account, and it works offline. The doors stay open until 31 December, so you can start at door 1.
 
-https://sudokui.app/advent/
+Today's door: https://sudokui.app/advent/2026/3
 ```
 
 ### 3. Messenger or a family chat
@@ -268,18 +318,22 @@ Link: `https://sudokui.app/nb/julekalender/?utm_source=chat` (English
 `https://sudokui.app/advent/?utm_source=chat`). Word: `chat`. Keep the
 `?utm_source=chat` on the link: Messenger on an iPhone, WhatsApp and text
 messages often say nothing about where a link was opened, and the tag is
-what lets the dashboard count them as a chat. It names no one.
+what lets the dashboard count them as a chat. It names no one. On
+Messenger some taps may still read `facebook` or `none` (above); post it
+on Thursday 3 December, a day with no Facebook post of its own on the
+calendar's page. The posts below say nothing about which day it is, so
+they fit any day.
 
 Norsk, kort:
 
 ```text
-Hei! Jeg har laget en sudoku-julekalender, med en ny luke hver dag frem til jul. Gratis og uten reklame. Første luke er åpen nå: https://sudokui.app/nb/julekalender/?utm_source=chat
+Hei! Jeg har laget en sudoku-julekalender, med en ny luke hver dag til og med julaften. Gratis og uten reklame. Begynn på luke 1, den er veldig lett: https://sudokui.app/nb/julekalender/?utm_source=chat
 ```
 
 Norsk, lengre:
 
 ```text
-Hei alle sammen! Et lite juletips fra meg: Jeg har laget en sudoku-julekalender. Fra i dag og frem til julaften åpner det en ny luke hver dag, med en sudoku bak. Luke 1 er veldig lett, og så blir de litt vanskeligere for hver dag. Alle får samme oppgave, så vi kan jo se hvem som er raskest! Den er gratis, uten reklame og uten konto, og virker rett på mobilen. Si gjerne fra hva dere synes.
+Hei alle sammen! Et lite juletips fra meg: Jeg har laget en sudoku-julekalender. Hver dag til og med julaften åpnes det en ny luke, med en sudoku bak. Luke 1 er veldig lett, og så blir de litt vanskeligere for hver dag. Lukene står åpne til 31. desember, så alle kan begynne på luke 1. Alle får samme oppgave, så vi kan jo se hvem som er raskest! Den er gratis, uten reklame og uten konto, og virker rett på mobilen. Si gjerne fra hva dere synes.
 
 https://sudokui.app/nb/julekalender/?utm_source=chat
 ```
@@ -287,13 +341,13 @@ https://sudokui.app/nb/julekalender/?utm_source=chat
 English, short:
 
 ```text
-Hi! I've made a sudoku advent calendar, with a new door every day until Christmas. Free and no ads. Door 1 is open now: https://sudokui.app/advent/?utm_source=chat
+Hi! I've made a sudoku advent calendar, with a new door every day until Christmas Eve. Free and no ads. Start with door 1, it's very easy: https://sudokui.app/advent/?utm_source=chat
 ```
 
 English, longer:
 
 ```text
-Hi everyone! A little Christmas tip from me: I've made a sudoku advent calendar. From today until Christmas Eve a new door opens every day, with a sudoku behind it. Door 1 is very easy, and they get a little harder each day. Everyone gets the same puzzle, so we can see who's fastest! It's free, with no ads and no account, and works right on your phone. Let me know what you think.
+Hi everyone! A little Christmas tip from me: I've made a sudoku advent calendar. Every day until Christmas Eve a new door opens, with a sudoku behind it. Door 1 is very easy, and they get a little harder each day. The doors stay open until 31 December, so everyone can start at door 1. Everyone gets the same puzzle, so we can see who's fastest! It's free, with no ads and no account, and works right on your phone. Let me know what you think.
 
 https://sudokui.app/advent/?utm_source=chat
 ```
@@ -301,8 +355,9 @@ https://sudokui.app/advent/?utm_source=chat
 ### 4. A church newsletter or bulletin
 
 Ask the parish office or the editor; offer the text and the flyer, and
-let them choose. On paper, the QR code is what counts: from the flyer it
-reads as `poster` (the same word as the posters). The address written out
+let them choose. On paper, the QR code is what counts: from the flyer, or
+from the code alone in their own layout, it reads as `poster` (the same
+word as the posters). The address written out
 reads as `none` when someone types it. By e-mail, use the plain link
 (`https://sudokui.app/nb/julekalender/`): it reads as `mail` or `none`,
 and sometimes `search` or `other` (above). Do not use the chat link in a
@@ -319,9 +374,9 @@ Norsk, lengre (til menighetsbladet eller nyhetsbrevet):
 ```text
 Litt hjernetrim i adventstiden
 
-Har du lyst på en liten sudoku hver dag frem mot jul? På sudokui.app finnes en sudoku-julekalender med en ny luke hver dag fra 1. til 24. desember. Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den før, så du trenger ikke ha spilt sudoku før. Står du fast, viser et hint deg neste steg. Kalenderen er gratis, uten reklame og uten innlogging, og virker på mobil, nettbrett og PC. Har du gått glipp av en dag, står lukene åpne til 31. desember.
+Har du lyst på en liten sudoku hver dag frem mot jul? På sudokui.app finner du en sudoku-julekalender med en ny luke hver dag fra 1. til 24. desember. Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den forrige, så du trenger ikke ha spilt sudoku før. Står du fast, viser et hint deg neste steg. Kalenderen er gratis, uten reklame og uten innlogging, og virker på mobil, nettbrett og PC. Har du gått glipp av en dag, står lukene åpne til 31. desember.
 
-Skriv sudokui.app/nb/julekalender i nettleseren, eller skann QR-koden.
+Skriv inn sudokui.app/nb/julekalender i nettleseren, eller skann QR-koden.
 ```
 
 (Leave out "eller skann QR-koden" when there is no code beside it.)
@@ -346,7 +401,8 @@ Type sudokui.app/advent into your browser, or scan the QR code.
 
 Link: the chat link, `https://sudokui.app/nb/julekalender/?utm_source=chat`
 (English `https://sudokui.app/advent/?utm_source=chat`). Word: `chat`
-(the same word as the family chat: post it on another day). Teams and
+(the same word as the family chat: post it on Wednesday 2 December, a
+day before the family chat). Teams and
 Slack opened in their desktop apps say nothing about where a link came
 from; the tag counts them.
 
@@ -358,19 +414,19 @@ and no reminders there.
 Norsk, kort:
 
 ```text
-Litt reklame for et fritidsprosjekt: Jeg har laget en sudoku-julekalender, med en ny sudoku hver dag frem til jul. Gratis og uten reklame. Hvis noen trenger noe til kaffepausen: https://sudokui.app/nb/julekalender/?utm_source=chat
+Et lite fritidsprosjekt: Jeg har laget en sudoku-julekalender, med en ny sudoku hver dag til og med julaften. Gratis, ingen annonser. Hvis noen trenger noe til kaffepausen: https://sudokui.app/nb/julekalender/?utm_source=chat
 ```
 
 Norsk, lengre:
 
 ```text
-Et lite hobbyprosjekt fra fritiden: Jeg har laget sudokUI, en gratis sudoku-app som virker i nettleseren, og i desember har den en julekalender. Fra 1. til 24. desember åpner det en ny luke hver dag. Den første er veldig lett, og så blir de litt vanskeligere. Ingen reklame og ingen konto. Passer fint til kaffepausen, om noen har lyst: https://sudokui.app/nb/julekalender/?utm_source=chat
+Et lite hobbyprosjekt fra fritiden: Jeg har laget sudokUI, en gratis sudoku-app som virker i nettleseren, og i desember har den en julekalender. Fra 1. til 24. desember åpnes det en ny luke hver dag. Den første er veldig lett, og så blir de litt vanskeligere. Ingen reklame og ingen konto. Passer fint til kaffepausen, om noen har lyst: https://sudokui.app/nb/julekalender/?utm_source=chat
 ```
 
 English, short:
 
 ```text
-A bit of spare-time self-promotion: I've made a sudoku advent calendar, with a new puzzle every day until Christmas. Free and no ads. If anyone needs something for the coffee break: https://sudokui.app/advent/?utm_source=chat
+A small spare-time project: I've made a sudoku advent calendar, with a new puzzle every day until Christmas Eve. Free, no ads. If anyone needs something for the coffee break: https://sudokui.app/advent/?utm_source=chat
 ```
 
 English, longer:
@@ -399,7 +455,7 @@ Hei!
 
 Jeg heter [navn] og har på fritiden laget sudokUI, en gratis sudoku-app som virker i nettleseren på mobil, nettbrett og PC. I desember har den en julekalender: en ny luke hver dag fra 1. til 24. desember, med en sudoku bak.
 
-Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den før, så den passer også for dem som aldri har løst en sudoku. Står man fast, viser et hint neste steg og forklarer hvorfor. Den er helt gratis, uten reklame og uten konto. Den som heller vil skrive enn å skanne, finner adressen på plakaten: sudokui.app/nb/julekalender
+Luke 1 er veldig lett, og hver luke er litt vanskeligere enn den forrige, så den passer også for dem som aldri har løst en sudoku. Står man fast, viser et hint neste steg og forklarer hvorfor. Den er helt gratis, uten reklame og uten konto. Den som heller vil skrive inn adressen enn å skanne, finner den på plakaten: sudokui.app/nb/julekalender
 
 Kan jeg få henge opp den vedlagte plakaten på oppslagstavla, eller legge igjen noen løpesedler? Jeg tar den gjerne ned igjen i januar.
 
@@ -422,7 +478,7 @@ Hello,
 
 My name is [name], and in my spare time I've made sudokUI, a free sudoku app that works in the browser on a phone, tablet or computer. In December it has an advent calendar: a new door every day from 1 to 24 December, with a sudoku behind it.
 
-Door 1 is very easy, and each door is a little harder than the one before, so it also suits people who have never solved a sudoku. If you get stuck, a hint shows the next step and explains why. It is completely free, with no ads and no account. Anyone who would rather type than scan will find the address on the poster: sudokui.app/advent
+Door 1 is very easy, and each door is a little harder than the one before, so it also suits people who have never solved a sudoku. If you get stuck, a hint shows the next step and explains why. It is completely free, with no ads and no account. Anyone who would rather type the address than scan will find it on the poster: sudokui.app/advent
 
 Could I put the enclosed poster up on your noticeboard, or leave a few flyers? I will gladly take it down again in January.
 
@@ -494,9 +550,12 @@ the calendar's first week. Read, in this order:
    chat app or site, Paper, A mail app or webmail, No referrer. That is
    the posts against each other.
 3. **Landings per day by word, last 28 days**: the 1 December row (your
-   wall's `facebook`, the family chat's `chat`), the 2 December row (the
-   group's `facebook`, work's `chat`), and the `poster` column from the
-   days the posters went up.
+   wall's `facebook`), the 2 December row (work's `chat`, and the wall's
+   tail in `facebook`), the 3 December row (the family chat's `chat`,
+   the group's `facebook`), and the `poster` column from the days the
+   posters went up. The group alone is door 3's row in the Christmas
+   section, and "A door's address" beside "Calendar page" in its
+   Facebook row.
 4. **Games begun per day, by kind and language**: the Advent calendar
    column beside New and Daily. Are the calendar's games new games, or did the players
    who were already here move from New to the doors?
@@ -512,11 +571,12 @@ with the link you really used:
 
 | Date | Action | Link used | Landing word expected |
 |---|---|---|---|
+| [date] | Test scans of one poster: iPhone camera, Google Lens on Android, a Samsung camera; and a Messenger tap test: [what /admin showed] | the poster's QR; the chat link | `poster`; `chat` |
 | 2026-11-30 | Posters and flyers up: [where] | QR on promo/print/ (`/nb/julekalender/?utm_source=poster`) | `poster` |
 | 2026-12-01 | Facebook, own wall: the calendar | `https://sudokui.app/nb/julekalender/` | `facebook` |
-| 2026-12-01 | Family chat: the calendar | `https://sudokui.app/nb/julekalender/?utm_source=chat` | `chat` |
-| 2026-12-02 | Facebook group [kind of group], with the admin's yes | `https://sudokui.app/nb/julekalender/` | `facebook` |
 | 2026-12-02 | Workplace social channel | `https://sudokui.app/nb/julekalender/?utm_source=chat` | `chat` |
+| 2026-12-03 | Facebook group [kind of group], with the admin's yes | `https://sudokui.app/nb/advent/2026/3` | `facebook` (door 3's row) |
+| 2026-12-03 | Family chat: the calendar | `https://sudokui.app/nb/julekalender/?utm_source=chat` | `chat` (some `facebook` or `none` from Messenger) |
 | [date] | Church newsletter | flyer's QR, or the written address | `poster`, `none` (`mail` by e-mail) |
 | 2026-12-08 | Reminder, door 8 | `https://sudokui.app/nb/advent/2026/8` | `facebook` (door 8's row) |
 | 2026-12-15 | Reminder, door 15 | `https://sudokui.app/nb/advent/2026/15` | `facebook` (door 15's row) |

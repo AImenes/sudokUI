@@ -14,7 +14,10 @@ channel").
   outreach. Then write the baseline's numbers in "Readings" below.
 - **One channel per week.** Add the line on the day you act, not later:
   the date, what you did, the exact link you used, and the landing word
-  you expect it to show as.
+  you expect it to show as. (The advent calendar's launch, 30 November
+  to 3 December 2026, sets this aside and is judged as one launch on day
+  14: [launch-posts-2026-12.md](launch-posts-2026-12.md), "When to
+  post".)
 - **Use a link that can be counted.** A `/p/` link or a `/daily/<date>`
   link is counted on its own page; a home page link (`https://sudokui.app/`,
   `/nb/`, `/es/`) is counted as `home`. The Learn pages are counted only in
