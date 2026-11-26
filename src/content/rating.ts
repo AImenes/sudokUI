@@ -17,7 +17,7 @@ export const RATING_POINTS: { title: string; text: string }[] = [
   },
   {
     title: 'Why the number can differ from HoDoKu’s',
-    text: 'The rating adds up the steps of the one path the solver takes. Where several steps are worth the same points, the solver may take one that does more, such as a loop that places a digit rather than one that only removes candidates, and a step that does more can make the path shorter. So the same puzzle can rate lower here than in HoDoKu itself.'
+    text: 'The rating adds up the steps of the one path the solver takes. Where several steps are worth the same points, the solver may take one that does more, such as a loop that places a digit rather than one that only removes candidates, and a step that does more can make the path shorter. So the same puzzle can rate lower here than in HoDoKu itself. The rating shown also follows your uniqueness setting: with uniqueness techniques off, a puzzle is rated without them, as you play it.'
   },
   {
     title: 'HoDoKu’s five levels',

@@ -442,7 +442,10 @@ the device's light or dark), so the look cannot break them.
 pools keyed per difficulty and per technique (written, as the saves
 are, only by the page that plays: it is only a cache, so what a view's
 workers find is not kept), plus the worker plumbing
-(`requestPuzzle` with progress + cancel, `justifyMove`). New games and
+(`requestPuzzle` with progress + cancel, `justifyMove`, `ratePuzzleOff`).
+A level's puzzles are filed twice: by their HoDoKu level and, for a player
+who does not use uniqueness, by their level without it (`plain:<pick>`,
+"The rating follows the uniqueness setting" below). New games and
 practice sessions usually start instantly from a pool; the worker restocks
 in the background. A worker that dies settles every request waiting on it
 with null and is replaced on the next request.
@@ -475,6 +478,62 @@ the dialog's own words when its file cannot be had. The error boundary in
 clear-the-board recovery. Offline, the precache holds the app, its lazy
 files, Nutella (`public/poodle.png`) and the privacy page in its three
 languages ([search.md](search.md)).
+
+### The rating follows the uniqueness setting
+
+The owner's decision of 25 November 2026. A player who turns off "Use
+uniqueness" in Settings (`settings.useUniqueness`) gets hints, Steps,
+Scan and the credit of a move that never use a uniqueness technique
+(`hintOrder`). The rating used to be HoDoKu's for everyone, worked out
+with them, so such a player was shown the Washington Post puzzle of
+November 2026 as "Unfair 1322" and played it as the Extreme 2226 it is
+without them. Now what that player sees is true for them:
+
+- **The figure shown.** `shownRating` (src/state/gameStore.ts) is what
+  the top bar's gauge, level and score and the win screen show: HoDoKu's
+  rating (`info.score`, `info.level`) for a player who uses uniqueness;
+  for one who does not, the rating worked out without the uniqueness
+  techniques (`NO_UNIQUENESS_ORDER`). A practice puzzle for a uniqueness
+  technique keeps HoDoKu's: it is about the technique. The record times a
+  solve under the level shown (`recordWin`), and the win screen compares
+  the time with that level's.
+- **Off the main thread.** Rating without uniqueness is slower on hard
+  puzzles (1.2 s for the Washington Post's), so it is never done on the
+  main thread: src/state/playerRating.ts asks the background worker
+  (`ratePuzzleOff` in src/state/pools.ts, the worker's `rate` request)
+  whenever a game opens or the setting is switched off, and keeps the
+  answer in the store's `plainRatings`, by puzzle, in memory only. Until
+  it comes, HoDoKu's figure stands in, faded (`.rating-pending`). A
+  player who switches the setting mid-game sees the figure for the new
+  setting: switched on, HoDoKu's at once; switched off, the worker's.
+  The figure is kept out of the save on purpose: a save another page
+  compares (main.tsx, `clockOnly`) never changes for it, and a reload
+  works it out again, in milliseconds for most puzzles.
+- **The daily and the doors stay as published.** They are the same
+  puzzle for everyone, and their rating in dailies.json and advent.json,
+  on the public pages and in the share lines stays as published. A
+  player who does not use uniqueness sees their own figure, and where it
+  differs from the published one the rating's title and the win screen
+  say so in a few words (`ratingNote`, src/ui/ratingNote.ts). 19 of the
+  451 dailies differ without uniqueness (14 in level); no door does.
+- **What leaves the app stays HoDoKu's.** A share link, the address bar
+  and a share line carry the puzzle's HoDoKu rating whoever sends it, as
+  the published ones do: the friend who opens it is shown the figure for
+  their own setting by their own app.
+- **New by level.** A player who does not use uniqueness is handed
+  puzzles whose level holds without it. A pool entry carries `plain`, its
+  rating without uniqueness, where it is known: its own when its path
+  takes no uniqueness step (the path is then the same without them), or
+  worked out by a request from such a player. `filePoolEntries` files it
+  under `plain:<pick>` as well as `level:<pick>`, and such a player's New
+  game takes from `plain:` (`levelPoolKey`). Their requests carry
+  `noUniqueness`: a waiting player's candidates and every seed are rated
+  without uniqueness only, capped at the level, and the answer alone is
+  rated HoDoKu's way too (its `info.score`); a background top-up rates
+  HoDoKu's way in full, and again without uniqueness where the path
+  takes a uniqueness step, so it stocks both kinds of pool. A waiting
+  player's candidates are not pooled, having no HoDoKu rating. Practice
+  is the same for everyone.
 
 ### A game is never lost
 

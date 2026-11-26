@@ -232,8 +232,10 @@ export const SOLVE_ORDER: Tech[] = (Object.keys(TECHS) as Tech[])
 /**
  * The solve order without the uniqueness family, for a player who does not
  * accept uniqueness (settings.useUniqueness): what hints, Steps, Scan, the
- * why-not proofs and the credit of a move look for. The rating never uses
- * it: a score is HoDoKu's, and HoDoKu's solver uses uniqueness.
+ * why-not proofs and the credit of a move look for. A puzzle's stored and
+ * published rating is HoDoKu's, worked out with uniqueness; the figure a
+ * game shows such a player is worked out with this order instead
+ * (src/state/playerRating.ts, docs/architecture.md).
  */
 export const NO_UNIQUENESS_ORDER: Tech[] = SOLVE_ORDER.filter((t) => TECHS[t].category !== 'Uniqueness');
 

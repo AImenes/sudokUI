@@ -766,7 +766,7 @@ const es: LearnLocale = {
       },
       {
         "title": "Por qué el número puede diferir del de HoDoKu",
-        "text": "La puntuación suma los pasos de la única ruta que sigue el resolvedor. Donde varios pasos valen los mismos puntos, el resolvedor puede tomar uno que hace más, como un bucle que coloca un número en lugar de uno que solo elimina candidatos, y un paso que hace más puede acortar la ruta. Así, el mismo sudoku puede puntuar más bajo aquí que en el propio HoDoKu."
+        "text": "La puntuación suma los pasos de la única ruta que sigue el resolvedor. Donde varios pasos valen los mismos puntos, el resolvedor puede tomar uno que hace más, como un bucle que coloca un número en lugar de uno que solo elimina candidatos, y un paso que hace más puede acortar la ruta. Así, el mismo sudoku puede puntuar más bajo aquí que en el propio HoDoKu. La puntuación que se muestra también sigue tu ajuste de unicidad: con las técnicas de unicidad desactivadas, el sudoku se puntúa sin ellas, como lo juegas tú."
       },
       {
         "title": "Los cinco niveles de HoDoKu",

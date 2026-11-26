@@ -14,6 +14,7 @@ import { useGame, asRead } from './state/gameStore';
 import type { SavedGame, SetAside } from './state/gameStore';
 import { useStats } from './state/stats';
 import { useDailyStats } from './state/dailyStats';
+import { followPlainRatings } from './state/playerRating';
 import { play, startPlay, acted, clearing, SAVES } from './state/play';
 import { useAppStatus, reloadIntoLatest } from './state/appStatus';
 import { useSettings, applySeason } from './state/settings';
@@ -268,6 +269,8 @@ const claimed = Promise.race([startPlay(!!reloadMark.again, !!reloadMark.here), 
     if (play.role === 'solo') arrive();
   });
 Promise.all([startLocales().catch(() => {}), claimed]).finally(() => {
+  // the rating shown follows the uniqueness setting, worked out in the worker
+  followPlainRatings();
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <ErrorBoundary>

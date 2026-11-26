@@ -714,7 +714,7 @@ const nb: LearnLocale = {
       },
       {
         "title": "Hvorfor tallet kan avvike fra HoDoKus",
-        "text": "Poengsummen legger sammen stegene i den ene løsningsstien løseren går. Der flere steg er verdt like mange poeng, kan løseren ta et som gjør mer, for eksempel en sløyfe som plasserer et tall i stedet for en som bare fjerner kandidater, og et steg som gjør mer, kan gjøre stien kortere. Samme oppgave kan derfor få lavere poengsum her enn i HoDoKu selv."
+        "text": "Poengsummen legger sammen stegene i den ene løsningsstien løseren går. Der flere steg er verdt like mange poeng, kan løseren ta et som gjør mer, for eksempel en sløyfe som plasserer et tall i stedet for en som bare fjerner kandidater, og et steg som gjør mer, kan gjøre stien kortere. Samme oppgave kan derfor få lavere poengsum her enn i HoDoKu selv. Poengsummen som vises, følger også innstillingen din for entydighet: med entydighetsteknikker slått av vurderes oppgaven uten dem, slik du spiller den."
       },
       {
         "title": "HoDoKus fem nivåer",
