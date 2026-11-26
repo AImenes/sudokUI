@@ -240,6 +240,12 @@ number reads "—" until some player has turned the opt-in on and finished
 a game online, because the estimate is the ratio of that cohort's offline
 to online solves applied to everyone else.
 
+Once after each change to the dashboard's queries, open
+<https://sudokui.app/admin?check>: it runs every query the page uses on
+the real data and says, for each, whether the API accepted it and how
+many rows came back, with the error if one was refused
+([online-goals.md](online-goals.md), "The query check").
+
 The same numbers from the terminal, if you ever want them raw. In
 PowerShell, put the token and the account id in two variables first
 (they last until the window is closed):
@@ -303,18 +309,25 @@ curl.exe -s -H "Authorization: Bearer $env:ADMIN_TOKEN" "https://api.cloudflare.
 
 What each column holds: `index1` the event (`started`, `completed`,
 `shared`, `landing`); `blob1` the band; `blob2` where it came from (`pwa`,
-`tab`, or for a landing its page, `p`, `daily` or `home`); `blob3` the
+`tab`, or for a landing its page, `p`, `daily`, `home`, `advent` for a
+door of the advent calendar's address or `calendar` for the calendar's
+public page); `blob3` the
 version; `blob4` the
 country; `blob5` for a share what was shared (`puzzle`, `position`,
-`challenge`, `daily`), for a landing where it came from as one word
+`challenge`, `daily`, `image`, `door` for an advent door's line), for a landing where it came from as one word
 (`none`, `search`, `ai`, `reddit`, `enjoysudoku`, `hackernews`,
 `facebook`, `discord`, `social`, `chat`, `mail`, `github`, `sudoku`,
 `directory`, `fediverse`, `press`,
 `other`; empty for landings counted before the word was kept), for a
-play line the kind of game (`daily`, `new`, `practice`, `shared`; empty
-from builds before November 2026); `blob6` for a share the way it went
-(`sheet`, `copy`), for a play line the app's language (`en`, `nb`, `es`;
-empty from those builds);
+play line the kind of game (`daily`, `new`, `practice`, `shared`,
+`advent`; empty from builds before November 2026); `blob6` for a share
+the way it went (`sheet`, `copy`, `save`), for a play line the app's
+language (`en`, `nb`, `es`; empty from those builds); `blob7` the door of
+the advent calendar, `1` to `24`, on a door's play line, on a share of a
+door game (always on a door's line; on a link or a picture of a door game
+from the app of 25 November 2026 on) and on a landing on a door's address
+(from 25 November 2026), empty on every other line; `blob8` for a solve
+whether help was used (`helped`, `alone`);
 `double1` the 15-second time bucket (0 for a start and a share);
 `double2` how many events the row stands for; `double3` installed;
 `double4` kept offline; `double5` the sender has the opt-in on;

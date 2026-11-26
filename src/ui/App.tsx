@@ -67,7 +67,7 @@ import { techFromParam } from '../content/slugs';
 import { sharePath, readAppLink } from '../content/share';
 import type { AppLink } from '../content/share';
 import { dailyPath, pastDailyOn, dayName } from '../content/dailies';
-import { startDaily, startDoor, openAppLink, backToKept, holds, backTo, traversed, markStarted, markEntry, entryState } from './links';
+import { startDaily, startDoor, startTodaysDoor, openAppLink, backToKept, holds, backTo, traversed, markStarted, markEntry, entryState } from './links';
 import { adventPath } from '../content/advent';
 import { AdventDialog } from './Advent';
 import { useDailyStats } from '../state/dailyStats';
@@ -133,8 +133,13 @@ function proofText(p: Proof, t: Translator): string {
 
 /** a new version waiting, or a file that could not load (offline in a
  *  first visit, or a deploy took it): the player decides when to reload;
- *  the game is saved either way */
-function UpdateBar() {
+ *  the game is saved either way. The first visit's "ready to play
+ *  offline" waits while a toast is up (`toastUp`): the two stacked at the
+ *  foot of a laptop's screen put the toast over the board's last row, and
+ *  a first visit in December opens with the door's toast. It waits too
+ *  while a dialog is open (`dialogUp`): on a 320 px phone it covered the
+ *  win screen's buttons */
+function UpdateBar({ toastUp = false, dialogUp = false }: { toastUp?: boolean; dialogUp?: boolean }) {
   const updateReady = useAppStatus((s) => s.updateReady);
   const reason = useAppStatus((s) => s.reason);
   const offlineReady = useAppStatus((s) => s.offlineReady);
@@ -145,7 +150,8 @@ function UpdateBar() {
   // up, the toast stands above it (styles.css, --update-bar-h), so a line
   // saying which game went is never under it
   const bar = useRef<HTMLDivElement>(null);
-  const shown = updateReady || offlineReady;
+  const held = offlineReady && !updateReady && (toastUp || dialogUp);
+  const shown = updateReady || (offlineReady && !held);
   useLayoutEffect(() => {
     const el = bar.current;
     const root = document.documentElement.style;
@@ -161,10 +167,10 @@ function UpdateBar() {
   }, [shown, updateReady]);
   // the offline note is good news, not a decision: it goes by itself
   useEffect(() => {
-    if (!offlineReady || updateReady) return;
+    if (!offlineReady || updateReady || held) return;
     const id = setTimeout(dismiss, 6000);
     return () => clearTimeout(id);
-  }, [offlineReady, updateReady, dismiss]);
+  }, [offlineReady, updateReady, held, dismiss]);
   if (updateReady) {
     return (
       <div className="update-bar" role="status" ref={bar}>
@@ -182,7 +188,7 @@ function UpdateBar() {
       </div>
     );
   }
-  if (offlineReady) {
+  if (offlineReady && !held) {
     return (
       <div className="update-bar" role="status" ref={bar}>
         <span>{t('sudokUI is ready to play offline.')}</span>
@@ -515,6 +521,9 @@ export default function App() {
   // a first visit opens straight on the board, an easy puzzle and no
   // dialog over it: the playing says what the app is (the owner's call,
   // 2 November 2026); what it stands for is under ⓘ and after a win.
+  // From 1 to 24 December it opens on today's door of the advent
+  // calendar instead, whose toast says everyone gets the same board (the
+  // owner's asking of 25 November 2026; links.ts, startTodaysDoor).
   // The day's daily (startDaily) and the app's own links (openAppLink)
   // open through src/ui/links.ts, which never loses a game under way
 
@@ -578,17 +587,26 @@ export default function App() {
       start({ kind: 'tech', tech: practice }, { setAside: true });
       return;
     }
-    const fallBack = async () => {
-      const now = useGame.getState();
-      // (a link whose day's list came once the play had gone opened nothing: a view starts nothing either)
-      if (!now.info && !now.custom && play.acts()) await start({ kind: 'level', level: 'Easy' });
+    // with no game saved, a new player's first: from 1 to 24 December
+    // today's door of the advent calendar, with its toast (links.ts,
+    // startTodaysDoor), when the address named nothing; otherwise, and on
+    // any other day, an easy puzzle
+    const fallBack = async (door = false) => {
+      const empty = () => {
+        const now = useGame.getState();
+        // (a link whose day's list came once the play had gone opened nothing: a view starts nothing either)
+        return !now.info && !now.custom && play.acts();
+      };
+      if (!empty()) return;
+      if (door && (await startTodaysDoor())) return;
+      if (empty()) await start({ kind: 'level', level: 'Easy' });
     };
     const link = readAppLink(window.location);
     if (backForward) {
       if (link && holds(link)) backTo(link);
       return void fallBack();
     }
-    if (!link) return void fallBack();
+    if (!link) return void fallBack(true);
     void openAppLink(link, 'boot').then(async ({ opened, refused }) => {
       if (opened) return;
       // a share page promised a puzzle the app cannot play: say so, then
@@ -1542,6 +1560,10 @@ export default function App() {
               setVictoryDismissed(true);
               setDialog('new');
             }}
+            onDaily={() => {
+              setVictoryDismissed(true);
+              void startDaily();
+            }}
             onAnother={
               info?.practiceTech
                 ? () => {
@@ -1573,7 +1595,10 @@ export default function App() {
         {contractPrompt && contractFor !== 'text' && !resting && (
           <ContractDialog onAnswer={answerContract} onClose={dismissContractPrompt} asked={contractFor} />
         )}
-        <UpdateBar />
+        <UpdateBar
+          toastUp={!!toast && !away}
+          dialogUp={(dialog !== 'none' && (dialog !== 'advent' || calendarOpen(today))) || !!genState || (won && !victoryDismissed) || (!!contractPrompt && !resting)}
+        />
         {/* one live region, always there, so a screen reader hears each
             notice as its words come in; empty while the page is hidden, so
             what came then is said when it is shown. Its words are drawn

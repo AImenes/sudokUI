@@ -175,7 +175,7 @@ describe('a door’s address in the Worker', () => {
     // the picture behind the door, not the band's card
     expect(meta(html, 'og:image')).toBe(`${SITE}/og/advent/door-05.png`);
     expect(meta(html, 'og:image:alt')).toBe('The picture behind door 5 of the sudokUI advent calendar');
-    expect(events.points).toEqual([expect.objectContaining({ indexes: ['landing'], blobs: [DOOR.level, 'advent', expect.any(String), '', 'none'] })]);
+    expect(events.points).toEqual([expect.objectContaining({ indexes: ['landing'], blobs: [DOOR.level, 'advent', expect.any(String), '', 'none', '', '5'] })]);
     expect(LANDING_SLOTS).toContain('advent');
   });
 
@@ -196,8 +196,10 @@ describe('a door’s address in the Worker', () => {
     expect(meta(nb, 'og:description')).toContain('Luke 5 i julekalenderen i sudokUI åpner 5. desember');
     const es = await (await handleRequest(visit('/es/advent/2026/5'), env, undefined, undefined, now)).text();
     expect(meta(es, 'og:description')).toContain('La casilla 5 del calendario de adviento se abre el 5 de diciembre');
-    // a landing, with no band to name
+    // a landing, with no band to name, and its door in the seventh place
     expect(events.points[0].blobs.slice(0, 2)).toEqual(['', 'advent']);
+    expect(events.points[0].blobs.slice(5)).toEqual(['', '5']);
+    expect(events.points.map((p) => p.blobs[6])).toEqual(['5', '5', '5']);
     // one day of grace: on 4 December UTC, someone is already on the 5th
     const early = await (await handleRequest(visit('/advent/2026/5'), env, undefined, undefined, () => Date.parse('2026-12-04T12:00:00Z'))).text();
     expect(meta(early, 'og:description')).toContain(`HoDoKu rating of ${DOOR.score}`);

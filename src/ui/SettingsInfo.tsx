@@ -60,6 +60,9 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const s = useSettings();
   // the Christmas look can be chosen in its season, and is shown while it is the theme
   const christmas = lookAvailable(useToday()) || s.theme === 'christmas';
+  // the switch for a door's look: in the look's season, and while a door is
+  // on the board after it (a door game under way in January)
+  const door = useGame((g) => !!g.info?.adventDoor);
   const t = useT();
   // the Christmas choice gone with the focus on it (midnight on 31
   // December, the dialog open): the focus goes to the theme now chosen,
@@ -114,7 +117,6 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               {t('Christmas can be chosen from 1 November to 31 December, and keeps Dark’s hint colours. On 1 January the theme you had before comes back')}
             </small>
           )}
-          {christmas && <small>{t('A door of the advent calendar is always played in the Christmas look')}</small>}
         </div>
         <div className="segmented theme-choice" ref={choices}>
           {(
@@ -140,6 +142,14 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </div>
+      {(christmas || door) && (
+        <Toggle
+          label={t('Doors wear the Christmas look')}
+          hint={t('A door of the advent calendar is played in the Christmas look, whatever theme you chose. Off, a door shows your own theme')}
+          value={s.doorChristmas}
+          onChange={(v) => s.set({ doorChristmas: v })}
+        />
+      )}
       <div className="setting-row stack" role="group" aria-label={t('Board typeface')}>
         <div className="setting-text">
           <span>{t('Board typeface')}</span>

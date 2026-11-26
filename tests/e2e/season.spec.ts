@@ -175,7 +175,8 @@ test.describe('the Christmas look', () => {
   test('goes on by itself in December for a player who never picked a theme, and stays off once switched off', async ({ page }) => {
     await page.addInitScript(welcomed);
     await page.clock.install({ time: noon('2026-12-01') });
-    await page.goto('/');
+    // a game of its own, not a first visit's door: a door wears the Christmas look whatever the theme (advent.spec.ts)
+    await page.goto(`/#p=${byDate('2026-11-12').puzzle}`);
     await expect(page.locator('svg.board')).toBeVisible();
     await expect.poll(() => theme(page)).toEqual({ shown: 'christmas', stored: 'christmas' });
     const themes = await openSettings(page);
@@ -193,7 +194,8 @@ test.describe('the Christmas look', () => {
     await page.addInitScript(welcomed);
     await page.addInitScript(storedTheme('rose'));
     await page.clock.install({ time: noon('2026-12-05') });
-    await page.goto('/');
+    // a game of its own, not a first visit's door: a door wears the Christmas look whatever the theme (advent.spec.ts)
+    await page.goto(`/#p=${byDate('2026-11-12').puzzle}`);
     await expect(page.locator('svg.board')).toBeVisible();
     await page.waitForTimeout(300);
     expect(await theme(page)).toEqual({ shown: 'rose', stored: 'rose' });
@@ -266,7 +268,8 @@ test.describe('the Christmas look', () => {
   test('a new player’s look on 1 January is the default, dark, after a December of Christmas', async ({ page }) => {
     await page.addInitScript(welcomed);
     await page.clock.install({ time: noon('2026-12-20') });
-    await page.goto('/');
+    // a game of its own, not a first visit's door: a door wears the Christmas look whatever the theme (advent.spec.ts)
+    await page.goto(`/#p=${byDate('2026-11-12').puzzle}`);
     await expect.poll(() => theme(page)).toEqual({ shown: 'christmas', stored: 'christmas' });
     await page.clock.setFixedTime(noon('2027-01-01'));
     await page.reload();

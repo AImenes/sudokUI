@@ -33,7 +33,7 @@ const { useDailyStats } = await import('../src/state/dailyStats');
 const { useSettings } = await import('../src/state/settings');
 const { useTelemetry } = await import('../src/state/telemetry');
 const { standingOf, statsFromHistogram, dailyNumber, dailyDate, localDateKey, PLACE_BELOW, LATE_DAYS } = await import('../src/content/dailies');
-const { standingPhrase, asLine, dailyLine, placeOrdinal } = await import('../src/content/dailyLine');
+const { standingPhrase, asLine, dailyLine, doorLine, placeOrdinal } = await import('../src/content/dailyLine');
 const { makeTranslator } = await import('../src/content/i18n');
 const nb = (await import('../src/content/locales/app.nb')).default;
 const es = (await import('../src/content/locales/app.es')).default;
@@ -139,6 +139,44 @@ describe('the daily’s share line', () => {
     expect(dailyLine(T.en, no, played, day([]), MINE)).toContain(' · unassisted · the only time sent today · ');
     // the percentile from twenty up, as before
     expect(dailyLine(T.en, no, played, secondOf(20), MINE)).toContain(' · unassisted · faster than 95% today · ');
+  });
+});
+
+describe('a door’s share line', () => {
+  const today = localDateKey();
+  const door = { year: 2026, door: 5 };
+  const played = { date: today, level: 'Easy' as const, score: 258, seconds: MINE, assisted: false };
+
+  it('says, as the daily’s does, where the time stands once that very time is among the door’s, in every language', () => {
+    const stats = secondOf(5);
+    expect(doorLine(T.en, door, played, stats, MINE)).toBe(
+      `I opened door 5 of the sudokUI advent calendar in 10:05 · Easy (258) · unassisted · 2nd fastest of 5 today · https://sudokui.app/advent/2026/5?vs=${MINE}`
+    );
+    expect(doorLine(T.nb, door, played, stats, MINE)).toBe(
+      `Jeg åpnet luke 5 i julekalenderen i sudokUI på 10:05 · ${T.nb.level('Easy')} (258) · uten hjelp · 2. plass av 5 i dag · https://sudokui.app/nb/advent/2026/5?vs=${MINE}`
+    );
+    expect(doorLine(T.es, door, played, stats, MINE)).toBe(
+      `Abrí la casilla 5 del calendario de adviento de sudokUI en 10:05 · ${T.es.level('Easy')} (258) · sin ayuda · 2.º puesto de 5 hoy · https://sudokui.app/es/advent/2026/5?vs=${MINE}`
+    );
+    // not sent: no standing
+    expect(doorLine(T.en, door, played, stats, undefined)).toBe(`I opened door 5 of the sudokUI advent calendar in 10:05 · Easy (258) · unassisted · https://sudokui.app/advent/2026/5?vs=${MINE}`);
+    // a later solve of the same door is not the time the server holds
+    expect(doorLine(T.en, door, { ...played, seconds: MINE - 100 }, stats, MINE)).not.toContain('fastest');
+    // an assisted solve is in nobody's statistics, and says nothing of help
+    expect(doorLine(T.en, door, { ...played, assisted: true }, stats, MINE)).toBe(`I opened door 5 of the sudokUI advent calendar in 10:05 · Easy (258) · https://sudokui.app/advent/2026/5?vs=${MINE}`);
+    // the only time in, and the percentile from twenty up
+    expect(doorLine(T.en, door, played, day([]), MINE)).toContain(' · unassisted · the only time sent today · ');
+    expect(doorLine(T.en, door, played, secondOf(20), MINE)).toContain(' · unassisted · faster than 95% today · ');
+    // a door solved on another day than today says "so far", not "today"
+    expect(doorLine(T.en, door, { ...played, date: '2026-12-05' === today ? '2026-12-04' : '2026-12-05' }, stats, MINE)).toContain(' · unassisted · 2nd fastest of 5 so far · ');
+  });
+
+  it('has the win screen’s count and median in every language, for a door as for a daily', () => {
+    for (const t of [T.nb, T.es]) {
+      expect(t('Solved unassisted by {count} so far, median {median}', { count: '3', median: '4:00' })).not.toBe('Solved unassisted by 3 so far, median 4:00');
+      expect(t('Solved unassisted by {count} so far, median {median}', { count: '3', median: '4:00' })).toMatch(/3.*4:00/);
+      expect(t('Nobody has sent in a time for this door yet')).not.toBe('Nobody has sent in a time for this door yet');
+    }
   });
 });
 

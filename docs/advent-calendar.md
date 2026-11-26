@@ -73,7 +73,7 @@ no date rule: the doors' numbers, their addresses and the published list.
 | Date (local) | What the calendar does |
 |---|---|
 | 1 to 30 November | New has Advent calendar (`calendarOpen`), "Its doors open from 1 December": the 24 doors, every one locked, each with the day it opens. No door opens. |
-| 1 to 24 December | Door n opens on n December (`doorState` is `open`); a door still to come is `locked`. |
+| 1 to 24 December | Door n opens on n December (`doorState` is `open`); a door still to come is `locked`. A first visit (nothing saved on the device, an address that names no game) opens today's door with its toast instead of a random easy puzzle (`startTodaysDoor`, src/ui/links.ts; since 25 November 2026, docs/reach-plan-2026-11.md "A newcomer's first minute"). |
 | 25 to 31 December | Every door is open (an earlier door is always allowed until 31 December). |
 | From 1 January | Nothing of the calendar shows, no door opens, and no door's time is sent, until November (`closed`). A door game in progress stays where it is, on the board or in the slot, and can be finished; asked for again (its address, a reload), it comes back, since it is the player's own game. Finished then, it still counts as a play, with its door, as every play is counted (the owner's decision 4: the started and completed lines), and its line can still be shared; its win screen says "This door is closed for new times". Any other door says "The advent calendar is closed until November". |
 
@@ -138,7 +138,11 @@ Worker still refuses a time for a door whose day has not come anywhere
   address from the network instead of answering it offline
   (tests/advent.test.ts and tests/adventPage.test.ts check it).
 - **Its win screen.** As the daily's: the door's numbers fetched when it
-  opens, and "Send my time and compare" for an unassisted solve while the
+  opens ("Solved unassisted by 3 so far, median 4:07", or "Nobody has
+  sent in a time for this door yet"), its place among them once its time
+  is in ("Fastest of 4 today"), the same place in its share line
+  (checked on 25 November 2026: it was already so; tests/e2e/advent.spec.ts
+  and tests/dailyTimes.test.ts now hold it), and "Send my time and compare" for an unassisted solve while the
   door's time can still count (`doorCounts`: its day and up to
   `LATE_DAYS`, 7, late, within its December), "This door is closed for new
   times" after that. A copy of a door whose day has not come (a clock
@@ -160,8 +164,12 @@ Worker still refuses a time for a door whose day has not come anywhere
   friend shares it; the Share dialog gives the door's address as the
   puzzle link, a picture whose line names the door ("sudokui.app · Advent
   door 5 · Easy 258"), and, once the door is solved on the device, "Your
-  result in door 5". A door's line is counted as a `challenge` share: the
-  share kinds are a closed list, and nothing new is sent for it.
+  result in door 5". A door's line is counted as a `door` share, with
+  its door, 1 to 24, in the seventh blob, as a door's play line has it;
+  a puzzle link, a position link or a picture shared from a door game
+  says its door too (`DOOR_SHARES`, worker/telemetry.ts; the owner's
+  asking of 25 November 2026). An app from before counted a door's line
+  as a `challenge` with no door, and its lines are still taken.
 - **The calendar** (src/ui/Advent.tsx): New, then Advent calendar, from 1
   November to 31 December, every door locked in November. The 24 doors: an open one with its day and its band and
   rating, marked ✓ when it was solved on this device and "in progress" when
@@ -204,8 +212,20 @@ Worker still refuses a time for a door whose day has not come anywhere
   an older line has, so no older line moves (worker/telemetry.ts checks
   it: a door's line must carry its door, no other line may). A door's
   address opened from outside the site counts a landing with `advent` in
-  `LANDING_SLOTS`, and the door's band once it is open. Nothing else is
+  `LANDING_SLOTS`, its door in the seventh blob (from 25 November 2026),
+  and the door's band once it is open. A share of a door game says which
+  door (above). Nothing else is
   sent: no count of who opens the calendar, and none of the Christmas look.
+  (That is the app: opening the calendar's dialog sends nothing.) The
+  calendar's public page, `/advent/`, `/nb/julekalender/` and
+  `/es/calendario-de-adviento/`, opened from outside the site, counts a
+  landing exactly as the home pages do (`countLanding`, `isLanding`: a
+  person's browser, a navigation, no referrer from the site, with the
+  referrer's word), with `calendar` in `LANDING_SLOTS`, at the owner's
+  asking of 25 November 2026, to see which post or picture brought
+  people. One difference from a home page: the app's service worker
+  never answers this page (`STATIC_ROUTES`), so a player who holds the
+  app and opens the page from a post counts too.
 - **On the device**, with the dailies' own record
   (src/state/dailyStats.ts): each door solved, its time and whether it had
   help, at most 48 (two calendars), kept apart from the 31 days of daily
@@ -391,9 +411,13 @@ and the sitemap, and the dev server serves them.
   date, so a search engine finds the link and a reader sees it only in
   season. llms.txt lists the page too.
 - **Not the app's.** `STATIC_ROUTES` matches the three pages, so the
-  service worker never answers them with the app; `/advent/` is under
-  `/advent/*` in wrangler.jsonc's `run_worker_first`, and the Worker hands
-  it back to the assets as it is, counting nothing (tests/telemetry.test.ts).
+  service worker never answers them with the app. `/advent/` is under
+  `/advent/*` in wrangler.jsonc's `run_worker_first`, and
+  `/nb/julekalender/` and `/es/calendario-de-adviento/` are listed there
+  exactly (since 25 November 2026); the Worker counts a visit from
+  outside the site as a landing with `calendar` (`CALENDAR_PATHS`,
+  worker/index.ts) and hands the page back to the assets as it is
+  (tests/telemetry.test.ts). The page's own script sends nothing.
 - **IndexNow** reads the sitemap (scripts/build-indexnow.ts), so the
   three pages go to IndexNow on the first deploy with them, and again
   whenever they change. No other page's HTML changes with them but the
@@ -408,27 +432,39 @@ and the January after; outside that, the next one published (October
 shows the coming one), else the last.
 
 - **Where it stands**, by the UTC day: before 1 December it says the
-  calendar opens on 1 December, by each player's own date, and every door
-  shows zeros; in December that it is open; after, that it closed on 31
+  calendar opens on 1 December, by each player's own date, and the doors'
+  games show zeros, while the landings already count the posts that
+  announce it; in December that it is open; after, that it closed on 31
   December and that a door game under way can still be finished.
-- **Five numbers**: door games begun and completed, the completion rate,
-  the unassisted times sent, and the landings on a door's address.
+- **Six numbers**: door games begun and completed, the completion rate,
+  the unassisted times sent, the landings on a door's address, and the
+  landings on the calendar's public page.
 - **A row per door**: its day, its band and rating (from `advent.json`),
   games begun and completed, the completion rate, the unassisted times
-  that reached the database and their median, and a row for all.
-- **Where the door landings came from**, by the referrer's word, as the
-  main table of landings has it.
+  that reached the database and their median, the landings on its
+  address and the shares of it (its line, and a link or a picture of the
+  door game), and a row for all; and a number for every door's shares,
+  with how many were a door's line.
+- **Where the calendar's landings came from**, by the referrer's word,
+  as the main table of landings has it: on the calendar's page and on a
+  door's address, side by side.
 
 Where the numbers come from, each read kept bounded:
 
 - **Begun and completed** are the door games' play lines (kind `advent`),
   summed by their door, the seventh blob (`adventQuery`): a second query
-  to the SQL API, run only for the UTC days from 30 November (a player a
-  day ahead of UTC opens door 1 then) to 31 January (a month for the door
-  games under way on 1 January), at most 63 days back, and kept to the
-  calendar's own lines (the doors' starts and solves, and the landings in
-  the `advent` slot): two events of 24 doors and the landing words, a day.
-  Before 30 November nothing is asked and the doors show zeros; after 31
+  to the SQL API, run only for the UTC days from 1 November to 31 January
+  (a month for the door games under way on 1 January), at most 92 days
+  back. The doors' games and shares count from 30 November (a player a
+  day ahead of UTC opens door 1 then); the landings, on the calendar's
+  page and on a door's address, from 1 November, so a post that
+  announces the calendar before 1 December shows by its word (the
+  page's landings are counted since 25 November 2026). It is kept to the
+  calendar's own lines (the doors' starts and solves, the shares that
+  name a door, and the landings in the `advent` and `calendar` slots): a
+  day's are at most two events and two sources and the share kinds by 24
+  doors, and two slots of the landing words by 24 doors.
+  Before 1 November nothing is asked and the doors show zeros; after 31
   January the counts are no longer read (Analytics Engine keeps three
   months) and the section says so. If that query fails, the section says
   so and the rest of the page stands.
@@ -440,8 +476,16 @@ Where the numbers come from, each read kept bounded:
   fails says so. The daily's own table of times sent (`dailySent`) leaves
   the doors' numbers out (`puzzle_no < ADVENT_BASE`): a door's time is
   counted here only, so the daily's Sent share never counts a door's.
-- **Landings** are the `landing` points with `advent` in the source slot,
-  by the word in the fifth blob.
+- **Landings** are the `landing` points with `advent` in the source slot
+  (a door's address) or `calendar` (the public page), by the word in the
+  fifth blob; a door's row has the door landings that name their door in
+  the seventh blob, so the landings counted before 25 November 2026, which
+  do not, are in the number and in no row.
+- **Shares** are the `shared` points that name a door in the seventh
+  blob, by the door, and of them the kind `door`. An older app's door
+  line, a `challenge` with no door, is in no row. The calendar page's landings are counted in this section
+  only, not among the landings at the top of the page, whose share-page
+  ratio they would skew.
 - Nothing counts the Christmas look: no line says which theme a player
   uses, and the section says that too.
 

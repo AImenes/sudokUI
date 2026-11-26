@@ -157,6 +157,10 @@ interface Settings extends ThemeState {
   showTimer: boolean;
   /** fireworks and confetti on the win screen (src/ui/Fireworks.tsx); off, the win screen opens still and plain */
   celebrate: boolean;
+  /** a door of the advent calendar is played in the Christmas look, whatever
+   *  theme is chosen (src/ui/theme.ts, useShownTheme); off, a door shows the
+   *  player's own look, for one who needs a light one */
+  doorChristmas: boolean;
   /** when auto candidates are switched off, write the current candidate
    *  state into pencil marks so play continues seamlessly */
   autoOffMaterialize: boolean;
@@ -248,6 +252,7 @@ export const useSettings = create<Settings>()(
       showConflicts: true,
       showTimer: true,
       celebrate: true,
+      doorChristmas: true,
       autoOffMaterialize: true,
       materializeLayer: 'center',
       practiceFastForward: true,

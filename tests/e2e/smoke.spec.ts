@@ -3310,6 +3310,9 @@ test.describe('a first visit', () => {
   };
 
   test('opens straight on an easy board, nothing over it, the board taking every touch', async ({ page }) => {
+    // a day with no door of the advent calendar: from 1 to 24 December a
+    // first visit opens today's door instead (tests/e2e/advent.spec.ts)
+    await page.clock.install({ time: new Date('2026-10-15T12:00:00') });
     await page.goto('/');
     await expect(page.locator('svg.board')).toBeVisible();
     await expect.poll(() => saved(page)).toEqual({ level: 'Easy', dailyKey: null });
@@ -3324,6 +3327,53 @@ test.describe('a first visit', () => {
     await expect(won).toBeVisible();
     await won.getByRole('button', { name: 'Why sudokUI?' }).click();
     await expect(page.getByRole('dialog', { name: 'Why sudokUI?' })).toContainText('What stays true');
+  });
+
+  test('a game won offers today’s daily, one tap away, and the daily won does not', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-10-15T12:00:00') });
+    await page.goto('/');
+    await expect(page.locator('svg.board')).toBeVisible();
+    await expect.poll(() => saved(page)).toEqual({ level: 'Easy', dailyKey: null });
+    await solveSaved(page);
+    const won = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(won).toBeVisible();
+    await won.getByRole('button', { name: 'Today’s daily' }).click();
+    await expect(won).toHaveCount(0);
+    const daily = dailies.find((d) => d.date === '2026-10-15')!;
+    await expect.poll(() => saved(page)).toEqual({ level: daily.level, dailyKey: '2026-10-15' });
+    await expect(page.locator('.toast')).toContainText('Daily puzzle for 2026-10-15. Everyone gets this same board today');
+    await expect.poll(() => page.evaluate(() => location.pathname)).toBe('/daily/2026-10-15');
+    // today's daily won: its win screen offers no daily
+    await solveSaved(page);
+    await expect(won).toBeVisible();
+    await expect(won.getByRole('button', { name: 'New game' })).toBeVisible();
+    await expect(won.getByRole('button', { name: 'Today’s daily' })).toHaveCount(0);
+  });
+
+  test('"ready to play offline" waits while a dialog is open, and shows once it is closed', async ({ page }) => {
+    // on a 320 px phone the bar covered the win screen's buttons
+    await page.setViewportSize({ width: 320, height: 640 });
+    // whether the bar was ever on the page while a dialog was
+    await page.addInitScript(() => {
+      (window as any).__barOverDialog = false;
+      new MutationObserver(() => {
+        if (document.querySelector('.update-bar') && document.querySelector('[role=dialog]')) (window as any).__barOverDialog = true;
+      }).observe(document, { subtree: true, childList: true });
+    });
+    await page.clock.install({ time: new Date('2026-10-15T12:00:00') });
+    await page.goto('/');
+    await expect(page.locator('svg.board')).toBeVisible();
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    await expect(settings).toBeVisible();
+    // the service worker is in: the app is ready offline, and says nothing over the dialog
+    await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
+    await page.waitForTimeout(1500);
+    expect(await page.locator('.update-bar').count()).toBe(0);
+    await page.keyboard.press('Escape');
+    await expect(settings).toHaveCount(0);
+    await expect(page.locator('.update-bar')).toContainText('sudokUI is ready to play offline.');
+    expect(await page.evaluate(() => (window as any).__barOverDialog)).toBe(false);
   });
 
   test('a returning player, with scrolling over the board on only because it was the default, gets it off once', async ({ page }) => {
@@ -3605,6 +3655,8 @@ test.describe('a puzzle being typed in', () => {
 
   test('survives a reload, at the home address, and Cancel then brings back the game from before', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('sudokui-welcomed', '1'));
+    // a first visit's easy puzzle: on a day with no door of the advent calendar (tests/e2e/advent.spec.ts)
+    await page.clock.install({ time: new Date('2026-10-15T12:00:00') });
     await page.goto('/');
     await expect(page.locator('svg.board')).toBeVisible();
     await expect.poll(() => savedLevel(page)).toBe('Easy');

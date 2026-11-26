@@ -21,11 +21,22 @@
  * Below the daily's times sent, a Christmas section (adventSection): the
  * advent calendar in season (docs/advent-calendar.md), each door's games
  * begun and completed (the play lines' door, a second query, run only
- * from 30 November to 31 January and kept to the calendar's own lines),
- * its completion rate, its unassisted times and their median (the
- * database's histogram, one read on the range of the year's 24 door
- * numbers), and the landings on the doors' addresses by referrer word.
- * Before 1 December it says when the calendar opens and shows zeros.
+ * from 1 November to 31 January and kept to the calendar's own lines;
+ * the doors' games and shares from 30 November), its completion rate,
+ * its unassisted times and their median (the database's histogram, one
+ * read on the range of the year's 24 door numbers), and the landings on
+ * the doors' addresses and on the calendar's public page, by referrer
+ * word, from 1 November, so the posts that announce the calendar before
+ * it opens can be read. Before 1 December it says when the calendar
+ * opens, and the doors' games show zeros.
+ *
+ * At the top, "Toward 100 a day" (adminGoal.ts): the games begun a day
+ * against the owner's goal, and the launch log's reading to copy, from
+ * the rows the page already has. After the week's landings by word, the
+ * same over 28 days, from a small query of its own (adminMore.ts). And
+ * /admin?check (adminCheck.ts, dashboardChecks) runs every query the page
+ * uses against the real SQL API and shows what each answered
+ * (docs/online-goals.md, "Toward 100 a day").
  */
 import {
   DAYS_SHOWN,
@@ -50,7 +61,22 @@ import { statsFromHistogram, type HistogramRow } from '../src/content/dailies';
 export { DAYS_SHOWN, DATASET };
 export type { AdventMetrics, DayRow, Metrics, Totals };
 
-import { moreFor, moreSection } from './adminMore';
+import {
+  moreFor,
+  moreSection,
+  levelsQuery,
+  timesQuery,
+  countriesQuery,
+  versionsQuery,
+  hoursQuery,
+  landingDaysQuery,
+  landingDaysFor,
+  landingDaysSection,
+  moreRowsOf,
+  LANDING_DAY_COLUMNS
+} from './adminMore';
+import { readingOf, towardOf, towardSection } from './adminGoal';
+import { renderCheck, runChecks, runDatabaseChecks, type DatabaseCheck, type QueryCheck } from './adminCheck';
 
 export const ADMIN_PATH = '/admin';
 
@@ -187,6 +213,10 @@ export function daysOf(rows: Row[], now: Date): DayRow[] {
       d.completedOptinOffline += r.optin_offline;
       d.completedStandalone += r.standalone;
     } else if (r.event === 'landing') {
+      // a landing on the advent calendar's public page is the Christmas
+      // section's (adventOf): the landings here are the home pages' and
+      // the share pages', which the per-share ratio reads
+      if (r.source === 'calendar') continue;
       d.landings += r.n;
       if (r.source === 'daily') d.landingsDaily += r.n;
       add(d.landingsFrom, r.kind, r.n);
@@ -316,7 +346,8 @@ const SHARE_LABELS: Record<ShareKind, string> & Record<string, string | undefine
   position: 'Position link (Share)',
   challenge: 'Challenge (win screen)',
   daily: 'Daily line (win screen)',
-  image: 'Picture of the board (Share, or a hint)'
+  image: 'Picture of the board (Share, or a hint)',
+  door: "Advent door's line (win screen, Share)"
 };
 
 /** what kind of game, as a column of the page */
@@ -390,6 +421,9 @@ tr.today td{color:#9aa0b3;font-style:italic}
 svg{display:block;max-width:100%;height:auto;margin:8px 0}
 .wide{overflow-x:auto}
 a{color:#8ab6f7}
+.reading{background:#1a1d29;border:1px solid #2a2e3f;border-radius:10px;padding:10px 14px;margin:12px 0 8px}
+button{font:inherit;color:#e8eaf2;background:#2a2e3f;border:1px solid #3a3f55;border-radius:8px;padding:6px 12px;cursor:pointer}
+pre{white-space:pre-wrap;word-break:break-word;font-size:12px}
 `.trim();
 
 /** a row's cells by kind of game, then by language, then the lines an older app sent, which say neither */
@@ -397,8 +431,14 @@ const playCells = (by: Record<string, number>, byLang: Record<string, number>) =
   [...PLAY_KINDS.map((k) => by[k] ?? 0), ...PLAY_LANGS.map((l) => byLang[l] ?? 0), by[''] ?? 0].map((n) => `<td>${num(n)}</td>`).join('');
 const PLAY_HEADS = [...PLAY_KINDS.map((k) => KIND_LABELS[k]), ...PLAY_LANGS.map((l) => LANG_LABELS[l]), 'Not recorded'].map((h) => `<th>${esc(h)}</th>`).join('');
 
+/** sections made elsewhere that the page puts in their places: at the top (adminGoal.ts), and after the week's landings by word (adminMore.ts) */
+export interface AdminExtras {
+  top?: string;
+  afterLandings?: string;
+}
+
 /** the page: the fourteen numbers, the sparkline of the month, what was shared, the games by kind and language, and where landings came from that week, and every day of the month */
-export function renderAdmin(m: Metrics): string {
+export function renderAdmin(m: Metrics, extras: AdminExtras = {}): string {
   const w = m.week;
   const d = m.yesterday;
   const number = (label: string, value: string, note = '') =>
@@ -475,8 +515,8 @@ export function renderAdmin(m: Metrics): string {
   </head>
   <body>
     <h1>sudokUI: plays, shares, landings, players</h1>
-    <p class="meta">Workers Analytics Engine, ${esc(DATASET)}, UTC days. Generated ${esc(m.generatedAt)}. Nothing here names a player.</p>
-    <dl class="numbers">
+    <p class="meta">Workers Analytics Engine, ${esc(DATASET)}, UTC days. Generated ${esc(m.generatedAt)}. Nothing here names a player. <a href="/admin?check">Check every query against the real data</a>.</p>
+${extras.top ? `${extras.top}\n    <h2>The plan's numbers, last 7 days</h2>\n` : ''}    <dl class="numbers">
 ${numbers}
     </dl>
     <h2>Completed per day, last ${DAYS_SHOWN} days</h2>
@@ -504,7 +544,7 @@ ${shareRows}
 ${fromRows || '      <tr><td>No landings</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>'}
       </tbody>
     </table></div>
-    <h2>Every day</h2>
+${extras.afterLandings ? `${extras.afterLandings}\n` : ''}    <h2>Every day</h2>
     <div class="wide"><table>
       <thead><tr><th>Day</th><th>Starts</th><th>Completed</th><th>Offline</th><th>In installed app</th><th>Shares</th><th>Landings</th><th>On a home page</th><th>New</th><th>Returning</th></tr></thead>
       <tbody>
@@ -519,8 +559,8 @@ ${playRows}
       </tbody>
     </table></div>
     <p class="meta">Kind and language are what a start or a solve says about itself, from the builds of November 2026 on: Daily is the daily puzzle, From a share link a puzzle or position opened from a link someone shared, Practice a practice puzzle, and New any other (a new one by band, an import, a grid typed, pasted or scanned, a Learn page's example); the language is the one the app was set to. Lines from older builds say neither and are Not recorded. Practice puzzles are counted from November 2026, at the player's own first move since they open part-way through, and are left out of Starts, Completed, Offline, In installed app, New and Returning and the numbers above, so those read as they did before.</p>
-    <p class="meta">A home landing is a visit to /, /nb/ or /es/ from outside the site that the browser did not answer from the app it already holds: mostly a first visit. Landings per share counts the share pages' landings only.</p>
-    <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge or the daily's line that the share sheet took or that was copied, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most apps send none (on Android some name themselves), so No referrer is mostly links opened from apps. With no referrer, a link an AI assistant tagged (utm_source=chatgpt.com and the like) counts as An AI assistant. The sixth metric of the plan, search clicks, is in Search Console.</p>
+    <p class="meta">A home landing is a visit to /, /nb/ or /es/ from outside the site that the browser did not answer from the app it already holds: mostly a first visit. Landings per share counts the share pages' landings only; a landing on a door's address counts with the share pages. The landings on the advent calendar's public page are in the Christmas section, not here.</p>
+    <p class="meta">Today's row is the day so far. Starts are games begun, counted at the first move. Before 21 October 2026 every game opened was counted, the app's own first game included, and builds a device has not yet updated still do so for a few days after; their lines carry the version 1.0.0, the new builds' 1.0.0+ and a commit. In installed app is the completed games played from the app installed on a home screen or desktop, through the browser's Add to Home Screen or Install; it is not a count of installs. Offline is the count opted-in devices kept and sent later; New and Returning count opted-in starts only. Devices switched to "Leave this device out of the counts" send no starts or solves; a share or daily link opened in a browser or chat app where the switch is not on, even on the same phone, can still be a landing, since the server cannot see the switch. A share is a link to a puzzle, a position, a challenge, the daily's line or an advent door's line, or a picture of the board, that the share sheet took, that was copied or, a picture, saved, sent live from a device not left out; copying the puzzle as text is not one. Landings per share is not the reach of one link: a landing may come from a link shared days before, or found somewhere other than the app. Where a landing came from is the one word the referrer gave; most apps send none (on Android some name themselves), so No referrer is mostly links opened from apps. With no referrer, a link an AI assistant tagged (utm_source=chatgpt.com and the like) counts as An AI assistant. The sixth metric of the plan, search clicks, is in Search Console.</p>
   </body>
 </html>
 `;
@@ -629,27 +669,46 @@ export function adventPhase(year: number, now: Date): AdventPhase {
  */
 export const adventCountFrom = (year: number) => `${year}-11-30`;
 export const adventCountTo = (year: number) => `${year + 1}-01-31`;
+/**
+ * The first UTC day the landings are read for, on the calendar's page and
+ * on a door's address: 1 November, when the season starts
+ * (src/content/season.ts), so a post that announces the calendar before
+ * 1 December shows by its word. The page's landings are counted since
+ * 25 November 2026.
+ */
+export const adventLandingsFrom = (year: number) => `${year}-11-01`;
 
 /**
- * The doors' play lines and the landings on their addresses, summed per
- * UTC day, event, kind (a landing's referrer word, blob5) and door (a
- * play line's seventh blob, telemetry.ts pointOf), from the window's first
- * day to now; null outside the window, when nothing is read. Bounded as
- * the main query is: at most 63 days, and the rows of the calendar's
- * lines only, two events of 24 doors and one of the landing words a day.
+ * The doors' play lines, the shares of a door game, and the landings on
+ * the doors' addresses and on the calendar's public page, summed per UTC
+ * day, event, slot (blob2: a landing's page, `advent` for a door's
+ * address, `calendar` for the public page; a play line's or a share's
+ * source, which is not read), kind (a play line's kind, a share's what, a
+ * landing's referrer word: blob5) and door (the seventh blob of a door's
+ * play line, share or landing, telemetry.ts pointOf and countLanding),
+ * from the window's first day (1 November, adventLandingsFrom) to now;
+ * null outside the window, when nothing is read. Bounded: at most 92
+ * days, and the rows of the calendar's lines only: a day's are at most
+ * two events, two sources and the share kinds by 24 doors, and two slots
+ * of the landing words by 24 doors. Before 30 November only the landings
+ * are kept (adventOf).
  */
 export function adventQuery(now: Date, year: number): string | null {
   const today = utcDay(now);
-  if (today < adventCountFrom(year) || today > adventCountTo(year)) return null;
+  if (today < adventLandingsFrom(year) || today > adventCountTo(year)) return null;
   // whole days back past the window's first midnight; the days before it are left out by adventOf
-  const days = daysBetween(adventCountFrom(year), today) + 1;
+  return adventSql(daysBetween(adventLandingsFrom(year), today) + 1);
+}
+
+/** the calendar query over the last `days` days: adventQuery's, and the query check's (/admin?check) before the window opens */
+export function adventSql(days: number): string {
   return [
-    "SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, index1 AS event, blob5 AS kind, blob7 AS door,",
+    "SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, index1 AS event, blob2 AS slot, blob5 AS kind, blob7 AS door,",
     'SUM(_sample_interval * double2) AS n',
     `FROM ${DATASET}`,
     `WHERE timestamp > NOW() - INTERVAL '${days}' DAY`,
-    "AND ((index1 = 'landing' AND blob2 = 'advent') OR ((index1 = 'started' OR index1 = 'completed') AND blob5 = 'advent'))",
-    'GROUP BY day, event, kind, door ORDER BY day FORMAT JSON'
+    "AND ((index1 = 'landing' AND (blob2 = 'advent' OR blob2 = 'calendar')) OR ((index1 = 'started' OR index1 = 'completed') AND blob5 = 'advent') OR (index1 = 'shared' AND blob7 != ''))",
+    'GROUP BY day, event, slot, kind, door ORDER BY day FORMAT JSON'
   ].join(' ');
 }
 
@@ -657,9 +716,11 @@ export function adventQuery(now: Date, year: number): string | null {
 export interface AdventRow {
   day: string;
   event: string;
+  /** a landing's page: `advent` for a door's address, `calendar` for the public page; a play line's source (pwa, tab), which is not read */
+  slot?: string;
   /** a play line's kind (advent), a landing's referrer word */
   kind: string;
-  /** a play line's door, '1' to '24'; '' for a landing */
+  /** a door's play line, share or landing: its door, '1' to '24'; '' for the calendar page's landing, and for a door's landing or share from before they said */
   door: string;
   n: number;
 }
@@ -674,7 +735,7 @@ export function adventRowsOf(answer: unknown): AdventRow[] {
     const r = x as Record<string, unknown>;
     if (typeof r.day !== 'string' || typeof r.event !== 'string') return [];
     const n = Number(r.n);
-    return [{ day: r.day.slice(0, 10), event: r.event, kind: text(r.kind), door: text(r.door), n: Number.isFinite(n) ? n : 0 }];
+    return [{ day: r.day.slice(0, 10), event: r.event, slot: text(r.slot), kind: text(r.kind), door: text(r.door), n: Number.isFinite(n) ? n : 0 }];
   });
 }
 
@@ -725,20 +786,46 @@ export function adventOf(
   published: AdventDoor[] = advent as AdventDoor[]
 ): AdventMetrics {
   const from = adventCountFrom(year);
+  const pageFrom = adventLandingsFrom(year);
   const to = adventCountTo(year);
   const started = new Map<number, number>();
   const completed = new Map<number, number>();
+  const landed = new Map<number, number>();
+  const shared = new Map<number, number>();
+  const lines = new Map<number, number>();
+  /** a row's door, or 0 when it names none on the calendar */
+  const doorOf = (r: AdventRow) => {
+    const n = Number(r.door);
+    return r.door !== '' && Number.isInteger(n) && n >= 1 && n <= ADVENT_DOORS ? n : 0;
+  };
   const landingsFrom: Record<string, number> = {};
+  const calendarFrom: Record<string, number> = {};
   let landings = 0;
+  let calendarLandings = 0;
   for (const r of rows ?? []) {
-    if (r.day < from || r.day > to) continue;
+    // the landings from 1 November, the doors' games and shares from 30 November
+    if (r.day < (r.event === 'landing' ? pageFrom : from) || r.day > to) continue;
+    if (r.event === 'landing' && r.slot === 'calendar') {
+      calendarLandings += r.n;
+      add(calendarFrom, r.kind, r.n);
+      continue;
+    }
     if (r.event === 'landing') {
       landings += r.n;
       add(landingsFrom, r.kind, r.n);
+      const door = doorOf(r);
+      if (door) landed.set(door, (landed.get(door) ?? 0) + r.n);
       continue;
     }
-    const door = Number(r.door);
-    if (r.kind !== 'advent' || !Number.isInteger(door) || door < 1 || door > ADVENT_DOORS) continue;
+    if (r.event === 'shared') {
+      const door = doorOf(r);
+      if (!door) continue;
+      shared.set(door, (shared.get(door) ?? 0) + r.n);
+      if (r.kind === 'door') lines.set(door, (lines.get(door) ?? 0) + r.n);
+      continue;
+    }
+    const door = doorOf(r);
+    if (r.kind !== 'advent' || !door) continue;
     if (r.event === 'started') started.set(door, (started.get(door) ?? 0) + r.n);
     else if (r.event === 'completed') completed.set(door, (completed.get(door) ?? 0) + r.n);
   }
@@ -757,7 +844,10 @@ export function adventOf(
       completed: c,
       completionRate: ratio(c, s),
       times: t ? t.count : null,
-      median: t ? t.median : null
+      median: t ? t.median : null,
+      landings: landed.get(door) ?? 0,
+      shares: shared.get(door) ?? 0,
+      sharesLine: lines.get(door) ?? 0
     };
   });
   const sum = (f: (d: AdventDoorRow) => number) => doors.reduce((acc, d) => acc + f(d), 0);
@@ -771,10 +861,17 @@ export function adventOf(
     completed: sum((d) => d.completed),
     completionRate: ratio(sum((d) => d.completed), sum((d) => d.started)),
     times: times ? sum((d) => d.times ?? 0) : null,
+    shares: sum((d) => d.shares),
+    sharesLine: sum((d) => d.sharesLine),
     landings,
-    landingsFrom
+    landingsFrom,
+    calendarLandings,
+    calendarFrom
   };
 }
+
+/** a sum over the doors */
+const sumOf = (doors: AdventDoorRow[], f: (d: AdventDoorRow) => number) => doors.reduce((acc, d) => acc + f(d), 0);
 
 /** a time in seconds as the win screen writes it: 4:12, 1:02:03 */
 const clock = (seconds: number | null) => {
@@ -792,17 +889,17 @@ const shortDay = (date: string) => `${Number(date.slice(8, 10))} Dec`;
 export function adventSection(m: AdventMetrics): string {
   const stand =
     m.phase === 'before'
-      ? `The ${m.year} calendar opens on 1 December, by each player's own date: until then every door shows zeros.`
+      ? `The ${m.year} calendar opens on 1 December, by each player's own date: until then the doors' games show zeros, and the landings below are the posts that announce it.`
       : m.phase === 'open'
         ? `The ${m.year} calendar is open: door n opens on n December by each player's own date, and every open door stays open until 31 December.`
         : `The ${m.year} calendar closed on 31 December. A door game under way then can still be finished, and its completed line counts here until 31 January; no time is taken after 31 December.`;
   const counts =
     m.counted === 'read'
-      ? `Counted from ${adventCountFrom(m.year)} to ${adventCountTo(m.year)}, UTC days, so far.`
+      ? `The landings are counted from ${adventLandingsFrom(m.year)}, the doors' games and shares from ${adventCountFrom(m.year)}, when a player a day ahead of UTC opens door 1, to ${adventCountTo(m.year)}, UTC days, so far.`
       : m.counted === 'soon'
-        ? `The counts are read from ${adventCountFrom(m.year)} (UTC), when a player a day ahead of UTC opens door 1.`
+        ? `The landings are read from ${adventLandingsFrom(m.year)} (UTC), the doors' games and shares from ${adventCountFrom(m.year)}, when a player a day ahead of UTC opens door 1.`
         : m.counted === 'past'
-          ? `The counts were read from ${adventCountFrom(m.year)} to ${adventCountTo(m.year)} and are not read now: Analytics Engine keeps them three months. The times stay in the database.`
+          ? `The counts were read from ${adventLandingsFrom(m.year)} to ${adventCountTo(m.year)} and are not read now: Analytics Engine keeps them three months. The times stay in the database.`
           : 'The analytics API could not be read for the calendar: the counts show as zeros.';
   const database = m.database === undefined ? ' No database is bound: no times.' : m.database ? '' : ' The database could not be read: no times.';
   const number = (label: string, value: string, note = '') =>
@@ -812,18 +909,28 @@ export function adventSection(m: AdventMetrics): string {
     number('Door games completed', num(m.completed)),
     number('Completion rate', pct(m.completionRate), `${num(m.completed)} completed of ${num(m.started)} begun`),
     number('Unassisted times sent', num(m.times), 'that reached the database, every door'),
-    number("Landings on a door's address", num(m.landings), 'opened from outside the site, by people')
+    number("Landings on a door's address", num(m.landings), 'opened from outside the site, by people'),
+    number('Shares of a door game', num(m.shares), `${num(m.sharesLine)} of them a door's line; from the app of 25 November 2026 on`),
+    number("Landings on the calendar's page", num(m.calendarLandings), '/advent/, /nb/julekalender/, /es/calendario-de-adviento/, from outside the site')
   ].join('\n');
   const rows = m.doors
     .map(
       (d) =>
-        `      <tr><td>${d.door}</td><td>${esc(shortDay(d.date))}</td><td>${d.level ? `${esc(d.level)} ${d.score}` : '—'}</td><td>${num(d.started)}</td><td>${num(d.completed)}</td><td>${pct(d.completionRate)}</td><td>${num(d.times)}</td><td>${clock(d.median)}</td></tr>`
+        `      <tr><td>${d.door}</td><td>${esc(shortDay(d.date))}</td><td>${d.level ? `${esc(d.level)} ${d.score}` : '—'}</td><td>${num(d.started)}</td><td>${num(d.completed)}</td><td>${pct(d.completionRate)}</td><td>${num(d.times)}</td><td>${clock(d.median)}</td><td>${num(d.landings)}</td><td>${num(d.shares)}</td></tr>`
     )
     .join('\n');
-  const fromRows = Object.entries(m.landingsFrom)
-    .filter(([, n]) => n > 0)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([from, n]) => `      <tr><td>${esc(FROM_LABELS[from] ?? from)}</td><td>${num(n)}</td><td>${pct(m.landings > 0 ? n / m.landings : null)}</td></tr>`)
+  // where the calendar's landings came from, the most first: on its page
+  // and on a door's address, side by side
+  const all = m.landings + m.calendarLandings;
+  const words = new Set([...Object.keys(m.landingsFrom), ...Object.keys(m.calendarFrom)]);
+  const fromRows = [...words]
+    .map((from): [string, number, number] => [from, m.calendarFrom[from] ?? 0, m.landingsFrom[from] ?? 0])
+    .filter(([, page, doors]) => page + doors > 0)
+    .sort((a, b) => b[1] + b[2] - (a[1] + a[2]) || a[0].localeCompare(b[0]))
+    .map(
+      ([from, page, doors]) =>
+        `      <tr><td>${esc(FROM_LABELS[from] ?? from)}</td><td>${num(page)}</td><td>${num(doors)}</td><td>${num(page + doors)}</td><td>${pct(all > 0 ? (page + doors) / all : null)}</td></tr>`
+    )
     .join('\n');
   return `    <h2>Christmas: the advent calendar ${m.year}</h2>
     <p class="meta">${esc(stand)} ${esc(counts)}${esc(database)}</p>
@@ -831,20 +938,20 @@ export function adventSection(m: AdventMetrics): string {
 ${numbers}
     </dl>
     <div class="wide"><table>
-      <thead><tr><th>Door</th><th>Day</th><th>Rating</th><th>Begun</th><th>Completed</th><th>Completion</th><th>Times sent</th><th>Median time</th></tr></thead>
+      <thead><tr><th>Door</th><th>Day</th><th>Rating</th><th>Begun</th><th>Completed</th><th>Completion</th><th>Times sent</th><th>Median time</th><th>Landings</th><th>Shares</th></tr></thead>
       <tbody>
 ${rows}
-      <tr><td>All</td><td></td><td></td><td>${num(m.started)}</td><td>${num(m.completed)}</td><td>${pct(m.completionRate)}</td><td>${num(m.times)}</td><td></td></tr>
+      <tr><td>All</td><td></td><td></td><td>${num(m.started)}</td><td>${num(m.completed)}</td><td>${pct(m.completionRate)}</td><td>${num(m.times)}</td><td></td><td>${num(sumOf(m.doors, (d) => d.landings))}</td><td>${num(m.shares)}</td></tr>
       </tbody>
     </table></div>
-    <h2>Where the door landings came from</h2>
+    <h2>Where the calendar's landings came from</h2>
     <div class="wide"><table>
-      <thead><tr><th>From</th><th>Landings</th><th>Of all</th></tr></thead>
+      <thead><tr><th>From</th><th>Calendar page</th><th>A door's address</th><th>All</th><th>Of all</th></tr></thead>
       <tbody>
-${fromRows || '      <tr><td>No landings</td><td>0</td><td>—</td></tr>'}
+${fromRows || '      <tr><td>No landings</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>'}
       </tbody>
     </table></div>
-    <p class="meta">Begun and Completed are the door games' play lines (kind Advent calendar), each with its door, over the calendar's days; a door begun on one day and solved on another counts on each. Times sent are the unassisted times the win screen sent for each door, on its day and up to a week late, until 31 December; the median is the one the win screen shows. A landing on a door's address is a person opening /advent/${m.year}/&lt;door&gt; (or under /nb/, /es/) from outside the site; the public calendar pages, /advent/, /nb/julekalender/ and /es/calendario-de-adviento/, are files and count nothing. Nothing counts the Christmas look: no line says which theme a player uses.</p>`;
+    <p class="meta">Begun and Completed are the door games' play lines (kind Advent calendar), each with its door, over the calendar's days; a door begun on one day and solved on another counts on each. Times sent are the unassisted times the win screen sent for each door, on its day and up to a week late, until 31 December; the median is the one the win screen shows. A landing on a door's address is a person opening /advent/${m.year}/&lt;door&gt; (or under /nb/, /es/) from outside the site; the door row's Landings are those that say their door (from 25 November 2026), so the number above, every door's landing, may hold more. Shares are a door game's shares that say their door, from the app of 25 November 2026 on: its line from the win screen or the Share dialog, and a puzzle link, a position link or a picture of it; an older app's door line counts as a challenge, with no door, and is in no row. A landing on the calendar's page is a person opening /advent/, /nb/julekalender/ or /es/calendario-de-adviento/ from outside the site, counted as the home pages are (since 25 November 2026), and read from 1 November, before the doors open; the app never answers that page, so a returning player's visit from a post counts too, which a home page's does not. These landings are counted here only, not among the landings at the top of the page. Nothing counts the Christmas look: no line says which theme a player uses.</p>`;
 }
 
 /**
@@ -857,7 +964,7 @@ export async function adventFor(env: AdminEnv, now: Date, doFetch: typeof fetch)
   const year = adventYearOn(now);
   const sql = adventQuery(now, year);
   let rows: AdventRow[] | null = null;
-  let counted: AdventCounted = utcDay(now) < adventCountFrom(year) ? 'soon' : 'past';
+  let counted: AdventCounted = utcDay(now) < adventLandingsFrom(year) ? 'soon' : 'past';
   if (sql) {
     try {
       const res = await doFetch(sqlApi(env.ADMIN_ACCOUNT_ID!), {
@@ -900,6 +1007,7 @@ export async function handleAdmin(request: Request, env: AdminEnv, options: Admi
   if (!(await cameThroughAccess(request, env, options.accessKeys ?? ISOLATE_KEYS, now))) return null;
   if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405, headers: { allow: 'GET, HEAD' } });
   const doFetch = options.fetch ?? fetch;
+  if (url.searchParams.has('check')) return handleCheck(request, env, now, doFetch);
   let answer: unknown;
   try {
     const res = await doFetch(sqlApi(env.ADMIN_ACCOUNT_ID), {
@@ -917,6 +1025,72 @@ export async function handleAdmin(request: Request, env: AdminEnv, options: Admi
   const christmas = adventSection(await adventFor(env, now, doFetch));
   // help used, levels, practice, countries, versions and hours (adminMore.ts): five small queries of their own
   const more = moreSection(await moreFor(env, now, doFetch, sqlApi(env.ADMIN_ACCOUNT_ID)));
-  const html = renderAdmin(metricsOf(rows, now)).replace('  </body>', `${dailySentTable(rows, await dailySent(env.DB, now))}\n${more}\n${christmas}\n  </body>`);
+  // landings per day by word, 28 days (adminMore.ts): one more
+  const landingDays = landingDaysSection(await landingDaysFor(env, now, doFetch, sqlApi(env.ADMIN_ACCOUNT_ID)));
+  const sent = await dailySent(env.DB, now);
+  const metrics = metricsOf(rows, now);
+  // toward 100 a day and the launch log's reading (adminGoal.ts): from the rows above, nothing more asked
+  const today = utcDay(now);
+  const top = towardSection(towardOf(metrics.days, today), readingOf(metrics.days, today, sent));
+  const html = renderAdmin(metrics, { top, afterLandings: landingDays }).replace('  </body>', `${dailySentTable(rows, sent)}\n${more}\n${christmas}\n  </body>`);
   return request.method === 'HEAD' ? page('', 200) : page(html);
+}
+
+/**
+ * Every query the dashboard asks, in the page's order, as the check runs
+ * them (adminCheck.ts): the main one, the calendar's (over its window in
+ * season, and before 1 November over the last DAYS_SHOWN days, so it
+ * meets data before it is needed), the five further tables' and the
+ * landings by word
+ */
+export function dashboardChecks(now: Date): QueryCheck[] {
+  const year = adventYearOn(now);
+  const inSeason = adventQuery(now, year);
+  const more = (name: string, sql: string, columns: string[]): QueryCheck => ({ name, sql, kept: (a) => moreRowsOf(a, columns).length });
+  return [
+    { name: 'The main query: plays, shares, landings', sql: adminQuery(), kept: (a) => rowsOf(a).length },
+    {
+      name: 'Christmas: the advent calendar',
+      sql: inSeason ?? adventSql(DAYS_SHOWN),
+      kept: (a) => adventRowsOf(a).length,
+      note: inSeason
+        ? `Over the calendar's window, from ${adventLandingsFrom(year)}, as the page runs it.`
+        : `The page runs it from ${adventLandingsFrom(year)}; here it runs over the last ${DAYS_SHOWN} days, so it meets real data first: the calendar's page's landings and the doors' shares from 25 November 2026, and any door played early.`
+    },
+    more('Help used and levels', levelsQuery(), ['day', 'event', 'band', 'kind', 'help']),
+    more('Median times', timesQuery(), ['band', 'help', 'bucket']),
+    more('Countries', countriesQuery(), ['country', 'event']),
+    more('App versions', versionsQuery(), ['version', 'source']),
+    more('When games begin', hoursQuery(), ['hour']),
+    more('Landings per day by word', landingDaysQuery(), LANDING_DAY_COLUMNS)
+  ];
+}
+
+/** /admin?check: every query run against the real dataset, and the database's two reads, with what each answered */
+async function handleCheck(request: Request, env: AdminEnv, now: Date, doFetch: typeof fetch): Promise<Response> {
+  if (request.method === 'HEAD') return page('', 200);
+  const secrets = [env.ADMIN_TOKEN, env.ADMIN_ACCOUNT_ID, env.ACCESS_AUD];
+  const results = await runChecks(dashboardChecks(now), doFetch, sqlApi(env.ADMIN_ACCOUNT_ID!), env.ADMIN_TOKEN!, secrets);
+  const db = env.DB;
+  const year = adventYearOn(now);
+  const database: DatabaseCheck[] | null = db
+    ? [
+        {
+          name: 'Daily times sent, the last 30 days',
+          run: async () => {
+            const sent = await dailySent(db, now);
+            return sent ? { ok: true, rows: sent.length } : { ok: false, error: 'The read failed.' };
+          }
+        },
+        {
+          name: `The doors' times, ${year}`,
+          run: async () => {
+            const times = await adventTimes(db, year);
+            return times ? { ok: true, rows: times.size } : { ok: false, error: 'The read failed.' };
+          }
+        }
+      ]
+    : null;
+  const dbResults = database ? await runDatabaseChecks(database) : null;
+  return page(renderCheck(results, dbResults, now.toISOString().slice(0, 16).replace('T', ' ') + ' UTC', STYLE));
 }

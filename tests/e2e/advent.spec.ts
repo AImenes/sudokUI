@@ -258,6 +258,66 @@ test.describe('the advent calendar', () => {
     });
   }
 
+  test('a door’s win screen says how many have solved the door so far and its median, and once its time is in, its place, in the share line too', async ({ page }) => {
+    // the counted lines, as the Worker would take them: a door's share says it is a door's, and which
+    const lines: Record<string, unknown>[] = [];
+    await page.route('**/api/t', async (route) => {
+      lines.push(...JSON.parse(route.request().postData() ?? '[]'));
+      await route.fulfill({ status: 204 });
+    });
+    await open(page, '2026-12-05', '/advent/2026/5');
+    await opened(page, door(5).puzzle);
+    // the door's own numbers, under its own number (adventNo), as the Worker gives them
+    const asked: string[] = [];
+    await page.route('**/api/daily/302605/stats', async (route) => {
+      asked.push(route.request().method());
+      await route.fulfill({ json: { no: 302605, count: 3, median: 247, histogram: [[16, 1], [100, 2]] } });
+    });
+    await page.route('**/api/daily/302605/result', (route) =>
+      route.fulfill({ json: { ok: true, accepted: true, stats: { no: 302605, count: 4, median: 1508, histogram: [[0, 1], [16, 1], [100, 2]] } } })
+    );
+    await fill(page, door(5).puzzle);
+    const win = page.getByRole('dialog', { name: 'Puzzle solved' });
+    await expect(win).toBeVisible();
+    await expect(win.getByText('Solved unassisted by 3 so far, median 4:07')).toBeVisible();
+    expect(asked).toEqual(['GET']);
+    await win.getByRole('button', { name: /Send my time and compare/ }).click();
+    // in among them: the count grows, and the place is said
+    await expect(win.getByText('Solved unassisted by 4 so far, median 25:08')).toBeVisible();
+    await expect(win.getByText('Fastest of 4 today')).toBeVisible();
+    // the share line carries the place, as the daily's does
+    await page.evaluate(() => {
+      (window as any).__shared = [];
+      Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+      navigator.clipboard.writeText = async (text: string) => void (window as any).__shared.push(text);
+    });
+    await win.getByRole('button', { name: /Challenge a friend/ }).click();
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__shared[0] as string | undefined))
+      .toMatch(/^I opened door 5 of the sudokUI advent calendar in \d+:\d\d · Easy \(\d+\) · unassisted · fastest of 4 today · .*\/advent\/2026\/5(\?vs=\d+)?$/);
+    await expect.poll(() => lines.filter((l) => l.event === 'shared')).toEqual([expect.objectContaining({ event: 'shared', what: 'door', door: 5, via: 'copy', band: 'Easy', bucket: 0 })]);
+  });
+
+  test('a door’s puzzle link from the Share dialog is counted with its door', async ({ page }) => {
+    const lines: Record<string, unknown>[] = [];
+    await page.route('**/api/t', async (route) => {
+      lines.push(...JSON.parse(route.request().postData() ?? '[]'));
+      await route.fulfill({ status: 204 });
+    });
+    await open(page, '2026-12-05', '/advent/2026/5');
+    await opened(page, door(5).puzzle);
+    await page.evaluate(() => {
+      (window as any).__shared = [];
+      Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+      navigator.clipboard.writeText = async (text: string) => void (window as any).__shared.push(text);
+    });
+    await page.locator('.menu-row button', { hasText: 'Share' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Share this puzzle' });
+    await dialog.getByRole('button', { name: 'Puzzle link' }).click();
+    await expect.poll(() => page.evaluate(() => (window as any).__shared[0] as string | undefined)).toMatch(/\/advent\/2026\/5$/);
+    await expect.poll(() => lines.filter((l) => l.event === 'shared')).toEqual([expect.objectContaining({ what: 'puzzle', door: 5, via: 'copy' })]);
+  });
+
   test('a door solved on a clock gone back before its day offers no Send and says when its time can go, and offers it on its day', async ({ page }) => {
     const posted: unknown[] = [];
     await page.route('**/api/daily/302605/result', async (route) => {
@@ -339,7 +399,7 @@ test.describe('the advent calendar', () => {
     await expect(win.getByText('This door is closed for new times')).toBeVisible();
   });
 
-  test('a door is always played in the Christmas look, whatever theme is chosen, and the choice comes back with the next game', async ({ page }) => {
+  test('a door is played in the Christmas look by default, whatever theme is chosen, and the choice comes back with the next game', async ({ page }) => {
     // the player chose Dark, and it stays their choice
     await page.addInitScript(() => {
       if (!localStorage.getItem('sudokui-settings-v1')) localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { theme: 'dark', themePicked: true }, version: 2 }));
@@ -360,7 +420,8 @@ test.describe('the advent calendar', () => {
     // Settings says why, and still shows Dark as the choice
     await page.getByRole('button', { name: 'Settings' }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });
-    await expect(settings.getByText('A door of the advent calendar is always played in the Christmas look')).toBeVisible();
+    await expect(settings.getByText('A door of the advent calendar is played in the Christmas look, whatever theme you chose. Off, a door shows your own theme')).toBeVisible();
+    await expect(settings.getByRole('switch', { name: 'Doors wear the Christmas look' })).toHaveAttribute('aria-checked', 'true');
     await expect(settings.getByRole('radio', { name: 'Dark', exact: true }).or(settings.getByRole('button', { name: 'Dark', exact: true })).first()).toBeVisible();
     await page.keyboard.press('Escape');
     // a game that is no door: the chosen look again
@@ -369,4 +430,119 @@ test.describe('the advent calendar', () => {
     await expect.poll(() => look().then((l) => l.shown)).toBe('dark');
     expect((await look()).bar).not.toBe(door.bar);
   });
+  test('with "Doors wear the Christmas look" off, a door shows the chosen look, and on again it wears the Christmas one', async ({ page }) => {
+    // the player chose Daylight: a light look
+    await page.addInitScript(() => {
+      if (!localStorage.getItem('sudokui-settings-v1')) localStorage.setItem('sudokui-settings-v1', JSON.stringify({ state: { theme: 'light', themePicked: true }, version: 2 }));
+    });
+    const shown = () => page.evaluate(() => document.documentElement.dataset.theme);
+    await open(page, '2026-12-10', '/advent/2026/5');
+    await opened(page, doors[4].puzzle);
+    await expect.poll(shown).toBe('christmas');
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    const doorLook = settings.getByRole('switch', { name: 'Doors wear the Christmas look' });
+    await expect(doorLook).toHaveAttribute('aria-checked', 'true');
+    await doorLook.click();
+    await expect(doorLook).toHaveAttribute('aria-checked', 'false');
+    // off: the door on the board shows Daylight at once, and the bar with it
+    await expect.poll(shown).toBe('light');
+    await page.keyboard.press('Escape');
+    expect(await page.evaluate(() => document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.content)).toBe(
+      await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bar-bg').trim())
+    );
+    // kept on the device: a reload of the door keeps the player's look
+    await page.reload();
+    await opened(page, doors[4].puzzle);
+    await expect.poll(shown).toBe('light');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-settings-v1')!).state)).toMatchObject({ theme: 'light', doorChristmas: false });
+    // on again: the door wears the Christmas look
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await doorLook.click();
+    await expect(doorLook).toHaveAttribute('aria-checked', 'true');
+    await expect.poll(shown).toBe('christmas');
+  });
+
+  test('the switch for a door\'s look is not in Settings outside the season while no door is on the board', async ({ page }) => {
+    await open(page, '2026-10-10', `/#p=${EASY}`);
+    await opened(page, EASY);
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    await expect(settings.getByText('Board typeface')).toBeVisible();
+    await expect(settings.getByText('Doors wear the Christmas look')).toHaveCount(0);
+  });
+});
+
+/** the game on the board as a new player meets it, with its level */
+const firstGame = (page: Page) =>
+  page.evaluate(() => {
+    const info = JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state?.info;
+    return info ? { puzzle: info.puzzle as string, level: info.level as string, door: (info.adventDoor ?? null) as number | null, daily: (info.dailyKey ?? null) as string | null } : null;
+  });
+
+/** a first visit: nothing saved on the device, the device's date as given */
+async function firstVisit(page: Page, day: string, path = '/') {
+  await on(page, day);
+  await page.goto(path);
+  await expect(page.locator('svg.board')).toBeVisible();
+}
+
+test.describe('a first visit in December', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('opens today’s door with its toast, at its address, from 1 to 24 December', async ({ page }) => {
+    await firstVisit(page, '2026-12-05');
+    await expect.poll(() => firstGame(page)).toEqual({ puzzle: door(5).puzzle, level: 'Easy', door: 5, daily: null });
+    await expect(toast(page)).toContainText('Door 5 of the advent calendar. Everyone gets this same board');
+    await expect.poll(() => path(page)).toBe('/advent/2026/5');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    // a reload is a returning player: the door on the board, where it was left, no second copy
+    await fill(page, door(5).puzzle, 2);
+    await page.reload();
+    await expect.poll(() => saved(page)).toMatchObject({ puzzle: door(5).puzzle, door: 5, entries: 2, aside: null });
+  });
+
+  for (const { home, toastLine } of [
+    { home: '/nb/', toastLine: 'Luke 20 i julekalenderen. Alle får det samme brettet' },
+    { home: '/es/', toastLine: 'Casilla 20 del calendario de adviento. Todo el mundo recibe este mismo tablero' }
+  ])
+    test(`at ${home} too, in its language, and from door 19 the door is Medium`, async ({ page }) => {
+      await firstVisit(page, '2026-12-20', home);
+      await expect.poll(() => firstGame(page)).toEqual({ puzzle: door(20).puzzle, level: 'Medium', door: 20, daily: null });
+      await expect(toast(page)).toContainText(toastLine);
+      await expect.poll(() => path(page)).toBe(`${home}advent/2026/20`);
+    });
+
+  test('on 24 December door 24; a returning player’s game comes back instead', async ({ page }) => {
+    await firstVisit(page, '2026-12-24');
+    await expect.poll(() => firstGame(page)).toMatchObject({ puzzle: door(24).puzzle, door: 24 });
+    // a game of the player's own, then the home page: that game, not the door
+    await page.goto(`/#p=${EASY}`);
+    await opened(page, EASY);
+    await page.goto('/');
+    await expect(page.locator('svg.board')).toBeVisible();
+    await page.waitForTimeout(500);
+    expect(await firstGame(page)).toMatchObject({ puzzle: EASY, door: null });
+  });
+
+  test('on a laptop the door’s toast keeps off the board, and "ready to play offline" waits until it has gone', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await firstVisit(page, '2026-12-05');
+    await expect(toast(page)).toContainText('Door 5 of the advent calendar. Everyone gets this same board');
+    const board = (await page.locator('svg.board').boundingBox())!;
+    const line = (await toast(page).boundingBox())!;
+    expect(line.y, 'the toast starts below the board').toBeGreaterThanOrEqual(board.y + board.height);
+    await expect(page.locator('.update-bar')).toHaveCount(0);
+    // the toast goes, and the bar takes the foot of the screen (the service worker is in by then)
+    await expect(toast(page)).toHaveCount(0, { timeout: 10_000 });
+    await expect(page.locator('.update-bar')).toContainText('sudokUI is ready to play offline.');
+  });
+
+  for (const day of ['2026-11-30', '2026-12-25'])
+    test(`on ${day} a first visit opens an easy puzzle, as on any day without a door of its own`, async ({ page }) => {
+      await firstVisit(page, day);
+      await expect.poll(() => firstGame(page)).toMatchObject({ level: 'Easy', door: null, daily: null });
+      await page.waitForTimeout(500);
+      await expect(toast(page)).toHaveCount(0);
+    });
 });

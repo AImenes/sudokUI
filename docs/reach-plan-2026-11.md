@@ -143,7 +143,7 @@ A link is judged by its preview, and today's previews mislead:
 - One PNG card per technique and language, rendered from /learn/img/*.svg and set as og:image by scripts/build-learn.ts.
 - scripts/build-learn.ts writes each page's lastmod from the git date of its content, never the build date.
 - Retitle /hodoku/ for what people type ('HoDoKu online: ratings and hints in your browser, no Java'), crediting Bernhard Hobiger and the GPL and saying it is unofficial.
-- Manifest (vite.config.ts): id, screenshots (wide and narrow), and shortcuts for Daily and Learn.
+- Manifest (vite.config.ts): id, screenshots (wide and narrow), and shortcuts for Daily and Learn. _Built on 25 November 2026: src/content/manifest.ts, docs/architecture.md "The web manifest"; the manifest is in English only, as a manifest has one language._
 - A static /press/ page in three languages: screenshots and hint images made with item 3, the one-sentence pitch, the line 'built with AI assistance; the engine is checked against HoDoKu by tests', and a contact address.
 - Tests: the daily page uses its own card; no lastmod equals the build date for unchanged pages.
 
@@ -426,6 +426,36 @@ REALISTIC EXPECTATION for a side project with about 10 players a day: a good two
 5. Day 17: the baseline ends. The owner writes the numbers in the launch log and opens the Enjoy Sudoku Software thread (action 3): in his own words, with the AI-assistance line and a /p/ link. He replies in the thread through the week.
 6. Day 24: the owner sends the menneske.no email (action 6) and three creator emails plus one to Puzzle Weekly (action 5), with position links and hint images. Their landing words differ ('sudoku' and 'social'), so they can be read apart. Claude ships item 6 (Atom feed, print view with QR code).
 7. Day 30: the owner reads /admin against the baseline: 7-day completions, daily participants, landings by word, shares of kind image and post. He judges the forum thread at day 31 (14 days after). He picks the next single channel: r/WebGames in week 6, or the kode24 pitch. He leaves Show HN until the phase-4 band times exist, and decides on the optional r/sudoku appeal (action 8).
+
+## A newcomer's first minute (25 November 2026)
+
+_Looked at on 25 November 2026, from the built app served locally, as a first-time visitor (nothing on the device), in English, on a 390 x 844 phone (touch) and a 1280 x 800 laptop. The dashboard that day: about 90 visitors a day land on a home page, mostly first visits, and about 35 games are begun; the daily gets 0 to 3 games a day against 25 to 40 for New._
+
+**What a newcomer sees.**
+- **The board at once, an Easy puzzle, no dialog** (the owner's call of 2 November). Good: nothing stands between a visitor and the puzzle.
+- **Nothing says how to play.** No cell is selected and no line says "tap a cell, then a number". Both orders work (a number tapped first is armed, and each cell tapped then takes it), but a newcomer has to guess. Between the board and the numbers sits the mode row, Digit, Corner, Centre, Colour and Multi, which is jargon to someone who has not played here. "How to play" is behind ⓘ, which a newcomer does not open. This is the likeliest reason most first visitors never make a move.
+- **What covers what.** The only thing over the app on a first visit (outside December) is "sudokUI is ready to play offline", for 6 seconds. On the phone it covers the lower row of the Assist box (Auto candidates, Fill candidates), never the board or the numbers. On the laptop it sits under the board. But with a toast up as well, the two stack at the foot of the screen, and on the laptop the toast then covered the board's last row. From 1 December every first visit opens with a toast (below), so this mattered: the offline line now waits until the toast has gone (built, below).
+- **The daily is nowhere in sight.** On the phone the row with New is the last thing on the screen, cut by its bottom edge (it starts 828 px down a screen of 844), and the daily is the first choice inside New: a scroll and two taps. On the laptop New is at the top right, still two taps. The board, the header and the win screen did not mention the daily at all.
+- **The header** shows "Easy 260". The number is HoDoKu's rating; a tap explains it. Fine for a newcomer to ignore.
+
+**What was built (the smallest changes).**
+- **From 1 to 24 December a first visit opens today's door** of the advent calendar instead of a random easy puzzle. It comes with the door's own toast, "Door 5 of the advent calendar. Everyone gets this same board", at the door's address, in the home page's language (`/`, `/nb/`, `/es/`). Doors are Easy to door 18 and Medium after, so a first visit from 19 December meets a Medium puzzle. This happens only when nothing is saved on the device and the address names no game. A returning player's game comes back as before. On 25 to 30 November and from 25 December a first visit opens an easy puzzle as on any day. A door that cannot be had (offline before the app kept the doors, or a December whose doors the build does not have) gives the easy puzzle, with no toast about it. (src/ui/links.ts `startTodaysDoor`, src/ui/App.tsx; tests/e2e/advent.spec.ts "a first visit in December".)
+- **Today's daily, one tap from a win.** After any game won other than today's daily or a practice puzzle, and while today's daily is not solved on this device, the win screen offers "📅 Today's daily" before New game. The first win is the moment a newcomer is most willing to play again. (src/ui/Dialogs.tsx `VictoryDialog`; tests/e2e/smoke.spec.ts "a game won offers today's daily".)
+- **"Ready to play offline" waits for the toast.** The first visit's offline line no longer shows while a toast is up, so the two never stack over the board. (src/ui/App.tsx `UpdateBar`.)
+- **And for a dialog** (26 November). On a 320 px phone the line covered the win screen's buttons for its 6 seconds; it now waits while any dialog is open, the win screen included, and shows its 6 seconds once the dialog is closed. (src/ui/App.tsx `UpdateBar`, `dialogUp`; tests/e2e/smoke.spec.ts '"ready to play offline" waits while a dialog is open'.)
+
+**What was not built, and is recommended to the owner.**
+1. **One line that says how to play, on a first visit only.** For example "Tap a cell, then a number", in the toast's place (never over the board), gone at the first entry and never shown again. Its words would be needed in en, nb and es. It goes against the letter of the 2 November call ("the playing says what the app is"), so it is the owner's decision. It is the most direct answer to "most first visitors never make a move". Judge it on the dashboard: the share of first-visit home landings that become a begun game, before and after, over two weeks each.
+2. **The daily one tap from the board: the owner's decision.** The task of 25 November asked for the daily one tap from the board; it is not done. The daily is still two taps from the board (New, then Daily puzzle), and on a 390 x 844 phone the New row starts 828 px down; only the win screen got a one-tap entry. No place on the board was built, because every place measured costs something:
+   - a note in the past-daily note's place costs 60 px on a 390 px phone, which pushes the Assist box's second row below the fold;
+   - a sixth button in the menu row wraps it in Norwegian and Spanish at 320 px;
+   - an icon in the header does not fit beside "Urettferdig" with a four-figure rating at 320 px (the header's fit test).
+
+   The smallest candidate is a daily icon (📅) in the header, shown only from 360 px up, so the 320 px fit test stays as it is. It opens today's daily in one tap. Its label (for screen readers and the tooltip) is needed in en, nb and es, and it needs a fit test at 360, 390 and 430 px in all three languages. The owner chooses: build it now, or first wait two weeks to see whether the win screen's button moves the daily's games begun on the dashboard.
+
+3. **Put the menu row (New, Learn, Import, Share, Restart) back above the fold on phones,** or move New into the header. On a 390 x 844 phone the row is cut by the screen's edge. It went last on purpose (docs/review.md: the Assist box above the fold). Weigh the two again with the begun-game count.
+
+**The browser tests in December.** From 1 to 24 December a first visit opens a door, so every browser test that relies on a first visit's easy puzzle now sets its clock to a day outside the season. The whole suite was run once with every page's clock moved to 10 December, both on this work and on the commit before it. The same tests failed both times, and none failed only on this work. Most of those failures come from the method, not the app: a test that reckons "today" in Node disagrees with a page whose clock was moved. One may be real and older than this work: smoke.spec "the hint panel and its buttons are on screen, and H walks the hint" did not find "Use Hint" under a December clock. Look at it if CI goes red on 1 December.
 
 ## Sources
 

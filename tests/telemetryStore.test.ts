@@ -384,10 +384,37 @@ describe('a link shared', () => {
   it('says only what the Worker takes', async () => {
     const { checkEvent, SHARE_KINDS, SHARE_VIAS } = await import('../worker/telemetry');
     answers = SHARE_KINDS.map(() => ok());
-    for (const what of SHARE_KINDS) for (const via of SHARE_VIAS) useTelemetry.getState().shared(what, via, 'Extreme');
+    // a door's line with its door, every other kind without one
+    for (const what of SHARE_KINDS) for (const via of SHARE_VIAS) useTelemetry.getState().shared(what, via, 'Extreme', what === 'door' ? 5 : undefined);
     await useTelemetry.getState().flush();
     const lines = calls.flatMap((_, i) => sent(i));
     expect(lines).toHaveLength(SHARE_KINDS.length * SHARE_VIAS.length);
+    for (const line of lines) expect(checkEvent(line), JSON.stringify(line)).not.toBeNull();
+  });
+
+  it('says which door a share of a door game came from, a door’s line always, and never on a challenge or a daily’s line', async () => {
+    const { checkEvent } = await import('../worker/telemetry');
+    answers = [ok()];
+    const shared = useTelemetry.getState().shared;
+    shared('door', 'sheet', 'Easy', 5);
+    shared('puzzle', 'copy', 'Easy', 5);
+    shared('position', 'copy', 'Easy', 12);
+    shared('image', 'save', 'Easy', 24);
+    // a challenge or a daily's line is no door's: the door is not said
+    shared('challenge', 'copy', 'Easy', 5);
+    shared('daily', 'copy', 'Easy', 5);
+    // a door's line without its door is not sent at all
+    shared('door', 'copy', 'Easy');
+    await useTelemetry.getState().flush();
+    const lines = calls.flatMap((_, i) => sent(i));
+    expect(lines.map((l) => [l.what, l.door])).toEqual([
+      ['door', 5],
+      ['puzzle', 5],
+      ['position', 12],
+      ['image', 24],
+      ['challenge', undefined],
+      ['daily', undefined]
+    ]);
     for (const line of lines) expect(checkEvent(line), JSON.stringify(line)).not.toBeNull();
   });
 });

@@ -1109,9 +1109,9 @@ function useShareTechs(puzzle: string | undefined): () => Tech[] {
  * never what it said or showed (src/state/telemetry.ts). A closed sheet or
  * a failed copy is not one, and nor is a board whose band is not known.
  */
-function countShare(outcome: Sent, what: ShareKind, band: Level | undefined): void {
+function countShare(outcome: Sent, what: ShareKind, band: Level | undefined, door?: number): void {
   const via = outcome === 'shared' ? 'sheet' : outcome === 'copied' ? 'copy' : outcome === 'saved' ? 'save' : null;
-  if (band && via) useTelemetry.getState().shared(what, via, band);
+  if (band && via) useTelemetry.getState().shared(what, via, band, door);
 }
 
 /**
@@ -1226,7 +1226,7 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
       frame={hint?.frame}
       footer={footer}
       name={hint ? 'sudokui-hint.png' : 'sudokui-board.png'}
-      onSent={(outcome) => countShare(outcome, 'image', known?.level)}
+      onSent={(outcome) => countShare(outcome, 'image', known?.level, door?.door)}
     />
   );
 
@@ -1255,8 +1255,9 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
     const stats = freshNo === resultNo ? dailyStats[resultNo] : undefined;
     const line = resultDoor ? doorLine(t, resultDoor, result, stats, submitted[resultNo]) : dailyLine(t, resultNo, result, stats, submitted[resultNo]);
     void sendText(line).then((outcome) => {
-      // (a door's line counts as a challenge: the share kinds are a closed list)
-      countShare(outcome, resultDoor ? 'challenge' : 'daily', result.level);
+      // a door's line is a door's share, with its door
+      if (resultDoor) countShare(outcome, 'door', result.level, resultDoor.door);
+      else countShare(outcome, 'daily', result.level);
       if (outcome !== 'copied') return;
       setCopied('result');
       setTimeout(() => setCopied(''), 2000);
@@ -1276,7 +1277,7 @@ export function ShareDialog({ onClose, withHint = false }: { onClose: () => void
           : copyText(what === 'text' ? text : currentAsString());
     void sent.then((outcome) => {
       // the two links count; the string and the grid go into another tool
-      if (what === 'link' || what === 'position') countShare(outcome, what === 'link' ? 'puzzle' : 'position', known?.level);
+      if (what === 'link' || what === 'position') countShare(outcome, what === 'link' ? 'puzzle' : 'position', known?.level, door?.door);
       if (outcome !== 'copied') return;
       setCopied(what);
       setTimeout(() => setCopied(''), 2000);
@@ -1436,6 +1437,7 @@ const clock = (ms: number) => {
 
 export function VictoryDialog({
   onNewGame,
+  onDaily,
   onClose,
   onAnother,
   onProgress,
@@ -1443,6 +1445,8 @@ export function VictoryDialog({
   onWhy
 }: {
   onNewGame: () => void;
+  /** open today's daily (src/ui/links.ts, startDaily): offered after any other game won, until today's is solved on this device */
+  onDaily?: () => void;
   onClose: () => void;
   /** open Why sudokUI?: a quiet link under the buttons, never more */
   onWhy?: () => void;
@@ -1492,6 +1496,11 @@ export function VictoryDialog({
   const kept = useDailyStats((s) => (dailyNo ? s.played[dailyNo] : undefined));
   // whether this game's solve is that one (recordDaily)
   const dailyKept = useGame((s) => s.dailyKept);
+  // today's daily, one tap from a win (the owner's asking of 25 November
+  // 2026): after any other game but a practice one, while today's has not
+  // been solved on this device
+  const todayNo = dailyNumber(today);
+  const todaySolved = useDailyStats((s) => (todayNo ? !!s.played[todayNo] : true));
   const [sent, setSent] = useState<SubmitOutcome | 'sending' | null>(null);
   const [statsFailed, setStatsFailed] = useState(false);
   useEffect(() => {
@@ -1639,8 +1648,9 @@ export function VictoryDialog({
         : t('I solved a {level} sudoku (HoDoKu rating {score}) in {time}, no assists, every mark my own on sudokUI. Can you beat that? {link}', vars);
     // to a friend: a phone's share sheet, else the clipboard (src/ui/send.ts)
     void sendText(text).then((outcome) => {
-      // (a door's line counts as a challenge: the share kinds are a closed list)
-      countShare(outcome, info.dailyNo ? 'daily' : 'challenge', info.level);
+      // a door's line is a door's share, with its door
+      if (door && counted) countShare(outcome, 'door', info.level, door.door);
+      else countShare(outcome, info.dailyNo ? 'daily' : 'challenge', info.level);
       if (outcome !== 'copied') return;
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -1819,6 +1829,9 @@ export function VictoryDialog({
         <div className="hint-actions">
           {info.practiceTech && onAnother && (
             <button onClick={onAnother}>{t('Another {name}', { name: practiceName })}</button>
+          )}
+          {onDaily && !info.practiceTech && info.dailyKey !== today && !todaySolved && (
+            <button onClick={onDaily}>📅 {t('Today’s daily')}</button>
           )}
           <button onClick={onNewGame}>{t('New game')}</button>
           <button onClick={shareResult}>{copied ? `✓ ${t('Copied')}` : `🔗 ${t('Challenge a friend')}`}</button>

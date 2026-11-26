@@ -598,7 +598,10 @@ before the launch:
   way (`sheet`, `copy`), the band, where it ran and the version. A picture
   of the board (the Share dialog's image, or 'Share this hint' in the hint
   panel; November 2026) is the kind `image`, and saving it as a file is
-  the way `save`; the picture is made on the device and never sent. Never
+  the way `save`; the picture is made on the device and never sent. A
+  door of the advent calendar's line is the kind `door` (25 November
+  2026; before, it was a `challenge`), and a share of a door game says
+  which door, `1` to `24`, in the seventh blob. Never
   the link, the text, the picture or where it went; a closed sheet, a failed copy, and
   copying the puzzle string or the pencil-mark grid count nothing. Live
   only: never kept on the device, not even with the opt-in, so it
@@ -687,15 +690,21 @@ Christmas, November 2026 (the owner's decisions of 12 November;
   in season: each door's games begun and completed (the door rides on its
   play lines as a seventh blob), its completion rate, its unassisted
   times and their median from D1's histogram, and the landings on the
-  doors' addresses (`advent` in the source slot) by referrer word. Before
-  1 December it says when the calendar opens and shows zeros. Its counts
-  are a second SQL query, run only from 30 November to 31 January and
-  kept to the calendar's own lines; its times one read on the primary
-  key's range of the year's 24 door numbers.
+  doors' addresses (`advent` in the source slot) and on the calendar's
+  public page (`calendar`), by referrer word. Before
+  1 December it says when the calendar opens, and the doors' games show
+  zeros. Its counts are a second SQL query, run only from 1 November to
+  31 January and kept to the calendar's own lines: the landings from
+  1 November, so the posts that announce the calendar before it opens
+  can be read by their word, the doors' games and shares from
+  30 November; its times one read on the primary key's range of the
+  year's 24 door numbers.
 - **Nothing counts the Christmas look**: no line says which theme a
   player uses. The public calendar pages (`/advent/`, `/nb/julekalender/`,
-  `/es/calendario-de-adviento/`) are files and count nothing; their
-  script reads the device's date only.
+  `/es/calendario-de-adviento/`) are files whose script reads the
+  device's date only and sends nothing; since 25 November 2026 the Worker
+  counts a visit to them from outside the site as a landing, as on a home
+  page, with `calendar` in the source slot (docs/advent-calendar.md).
 
 ### Phase 4, after four to eight weeks of data
 
@@ -886,7 +895,97 @@ between "Daily times sent" and the Christmas section:
 - **When games begin**, 14 days: by hour of the day and by weekday, UTC.
 
 A query that fails leaves its tables saying so and the rest of the page
-stands. Left as it is: these five queries are tested against made-up
-answers and have not been run against the real Analytics Engine from
-here, as the calendar's query has not; a table that says it could not be
-read after a deploy is the sign.
+stands. These five queries, like the calendar's, were tested against
+made-up answers only; since 25 November 2026 `/admin?check` runs them on
+the real data ("The query check" below).
+
+## Toward 100 a day (25 November 2026)
+
+The owner's goal is reach: about 30 to 40 games were begun a day in
+November 2026, and the goal is **100 games begun a day, as a 7-day
+average, by 31 January 2027**. The dashboard of 25 November showed about
+90 visitors a day landing on a home page, mostly first visits, against
+about 35 games begun: most first visitors never make a move. Three
+things were added to `/admin` for it, and nothing new is sent by the app.
+
+### Toward 100 a day, at the top of /admin
+
+`worker/adminGoal.ts`, read from the main query's rows the page already
+has: the games begun a day over the 7 whole UTC days before today, the 7
+before those and the change, the owner's line on the last whole day and
+the week against it, and the rise a week still needed (straight, and as
+a compounded share), with a chart of the 7-day average against the line,
+running on to 31 January.
+
+- **Which games count: every game begun, practice out.** That is the
+  dashboard's Starts: the daily, New, a puzzle from a share link and the
+  advent calendar's doors, counted at the first move, sent live or kept
+  by an opted-in device and sent later. Practice is left out. A practice
+  puzzle is a short drill begun part-way through, and one learner begins
+  many in a sitting, so it counts how hard the players already here
+  practise, not how many come to play; the goal is about people coming
+  to play, and the closest count of that the app sends is games they
+  begin. It also keeps the goal's number the same as the Starts the owner
+  has read since October and the "about 35" the goal was set against.
+  Games begun, not solved: a first visitor who makes a move has become a
+  player, and the gap the dashboard of 25 November showed is between
+  landing and the first move. Completions stay on the page as the
+  plan's first metric.
+- **The owner's line** runs straight from 35 a day on 25 November 2026
+  (the dashboard's reading that day) to 100 a day on 31 January 2027, and
+  is flat outside those days. The week is read against the line on its
+  last whole day. Constants: `GOAL_PER_DAY`, `GOAL_BY`, `LINE_FROM`,
+  `LINE_FROM_PER_DAY`.
+- **The reading**: one line with the figures the launch log's Readings
+  table wants ([launch-log.md](launch-log.md)), each a 7-day average a day
+  over the same 7 whole days: completed (practice out, as on the rest of
+  the page), begun by kind (daily, new, practice, shared; advent and
+  unrecorded when there are any), begun in Norwegian and Spanish, daily
+  participants (the daily times sent that reached D1, from the read the
+  page already makes; "—" without a database), landings on a home page
+  by word apart from those on the share pages by word, and shares by
+  kind. A button copies it as a row of that table, with "Read for" left
+  empty for the owner to write; the page's only script, and without it
+  the row is under "The row" to copy by hand.
+
+### Landings per day by word, 28 days
+
+The table "Where landings came from" sums the last 7 days only, so a
+launch's landings roll off it before the plan judges the launch at day
+14. Below it, a table of its own query (`landingDaysQuery` in
+`worker/adminMore.ts`: the `landing` points per UTC day, page and word,
+29 days back): a row per day, newest first, today's so far at the top, a
+column per landing word (the words of the launch log; `unrecorded` for
+landings counted before the word was kept), then where they landed (a
+home page, a share page, the advent calendar's page or a door's
+address), with the last 7 days and the 28 summed. The landings on the
+calendar's page are in it, as they are not in the 7-day table, which
+leaves only that page to the Christmas section; a door's address counts
+in the 7-day table with the share pages.
+
+### The query check: /admin?check
+
+`/admin?check` (`worker/adminCheck.ts`, behind the same Access check and
+secrets as `/admin`, a 404 otherwise) runs every query the dashboard
+uses against the real Analytics Engine SQL API, one after the other: the
+main query; the Christmas section's (over the calendar's window from 1
+November, and before that over the last 30 days, so it meets the
+calendar page's landings and the doors' shares counted since 25
+November); the five further tables'; and the landings by word. For
+each it shows whether the API accepted it, its HTTP status, how many
+rows came back, how many of them the page's own reader keeps (fewer
+means a column it reads is missing or of another type, and that table
+would show less than the data holds), the answer's columns and types,
+its first row, the time taken, the error's text if any, and the SQL.
+It also runs the database's two reads (the daily times sent and the
+doors' times) and says whether each answered. The account id, the token
+and the Access AUD tag are taken out of any text the API sends back, and
+the rows are the dashboard's own sums, which name no player.
+
+**The owner should open `https://sudokui.app/admin?check` once, before 1
+December**, after the deploy that carries it. The Christmas query and
+the five newer ones have only ever run against the tests' stand-in;
+every row should say Accepted, with "Read by the page" equal to "Rows".
+A Refused row's error says what to fix (a column name, a type) before
+the calendar opens. Nothing is written by it; it is only a read, as
+`/admin` is.

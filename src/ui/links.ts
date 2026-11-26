@@ -16,7 +16,7 @@ import { clockOf } from '../content/share';
 import type { AppLink } from '../content/share';
 import { localDateKey, dateOfKey, loadDailies, findDaily, dailyNumber, dailyLocked, dayAfter, dayName } from '../content/dailies';
 import { loadAdvent, findDoor, calendarYears } from '../content/advent';
-import { calendarOpen, doorDate, doorState, isDoor } from '../content/season';
+import { calendarOpen, doorDate, doorOf, doorState, isDoor, seasonYear } from '../content/season';
 import { play } from '../state/play';
 
 /** the challenger's time becomes the one to beat, and the player is told */
@@ -242,6 +242,28 @@ export async function startDoor(year: number, door: number): Promise<DoorOpened>
   });
   useGame.setState({ notice: t('Door {door} of the advent calendar. Everyone gets this same board', { door }) });
   return 'started';
+}
+
+/**
+ * A new player's first game from 1 to 24 December: today's door of the
+ * advent calendar (doorOf, the player's local date), with the door's own
+ * toast, which says everyone gets the same board, in place of a random
+ * easy puzzle (App.tsx, the start-up; the owner's asking of 25 November
+ * 2026). Doors are Easy to door 18 and Medium after. True when the door
+ * is on the board; false on any other day, and when its doors could not
+ * be had (offline before the app kept them, a December whose doors this
+ * build does not have): then the line about that goes, and the start-up
+ * opens its easy puzzle as on any other day.
+ */
+export async function startTodaysDoor(today = localDateKey()): Promise<boolean> {
+  const door = doorOf(today);
+  const year = seasonYear(today);
+  if (!door || !year) return false;
+  const was = useGame.getState().notice;
+  const opened = await startDoor(year, door);
+  if (opened === 'started' || opened === 'resumed') return true;
+  if (opened !== 'dropped') useGame.setState({ notice: was });
+  return false;
 }
 
 /** a position link's board, over a game under way set aside: true, or why it could not be loaded */

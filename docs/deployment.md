@@ -58,9 +58,13 @@ push.
   the site (`worker/index.ts`, `HOME_PATHS`):
   `curl -I -H 'Sec-Fetch-Mode: navigate' https://sudokui.app/nb/` must
   answer 200 with the page as before (a HEAD request counts nothing).
+  So does the advent calendar's public page, `/advent/` (under
+  `/advent/*`), `/nb/julekalender/` and `/es/calendario-de-adviento/`
+  (`CALENDAR_PATHS`): `curl -I -H 'Sec-Fetch-Mode: navigate'
+  https://sudokui.app/nb/julekalender/` must answer 200 with the page.
 
 The free plan allows 100,000 Worker requests a day; static files are not
-counted. Only share landings, the three home pages and unknown paths
+counted. Only share landings, the three home pages, the calendar's three pages and unknown paths
 reach the Worker, so the budget in [online-goals.md](online-goals.md)
 holds.
 
@@ -130,6 +134,37 @@ To change the key, replace the file in `public/` with a new
 `<key>.txt` holding the new key, and nothing else; the job reads it from
 the checkout.
 
+## The live-site check
+
+[live-check.yml](../.github/workflows/live-check.yml) runs at two times:
+- each morning at 06:23 UTC;
+- after every push to `main`, once Cloudflare has deployed the push.
+
+It asks the live site for the pages a player or a chat app meets first. Each must answer 200 to a navigation, carry the `og:image` it should, and say noindex where the site sets it and nowhere else. The pages:
+
+- the home pages, `/`, `/nb/` and `/es/` (the site's card in each language; indexable);
+- the advent calendar's public pages, `/advent/`, `/nb/julekalender/` and `/es/calendario-de-adviento/` (the calendar's card; indexable);
+- today's daily, `/daily/<UTC date>` (its band's card; noindex);
+- one `/p/` share link: the first daily's puzzle as a plain puzzle, with its band and rating (the band's card; noindex);
+- from 1 to 24 December, today's door in the three languages, `/advent/2026/<n>` and the same under `/nb/` and `/es/` (the door's own picture, `/og/advent/door-<nn>.png`; noindex).
+
+Each picture named is fetched too, and must be a PNG. The expected values are worked out from the modules that render the pages (scripts/liveCheck.ts), at the commit being checked. A failure fails the job, and GitHub e-mails the owner the failed run, with one line per problem.
+
+**After a push**, the job first waits for the site to serve the pushed commit. It reads the commit from `indexnow.json`, as the IndexNow job does. If a later push has gone live by then, the job checks that one. If nothing changes within 20 minutes, the job fails, because a push that never went live is worth knowing about. A newer push's check cancels an older one that is still waiting.
+
+**Never a landing, never a write.** Every request is a GET, for a page or a picture, never `/api/`. Each carries the User-Agent `sudokui-live-check/1.0 (...)`. It does not start with `Mozilla/`, so `isPersonAgent` (worker/telemetry.ts) says it is no person, and the Worker writes no landing for it. tests/liveCheck.test.ts holds this against the Worker itself: the same requests with a browser's User-Agent write a landing each, and with the check's they write none.
+
+**Trying it without the live site.**
+
+```sh
+npm run build && npx vite preview --port 4173 &
+LIVE_CHECK_BASE=http://localhost:4173 npx vite-node scripts/live-check.ts
+```
+
+`vite preview` renders the share addresses as the Worker does. `LIVE_CHECK_DATE=2026-12-05` sets the day checked. The local server opens a daily or a door by its own clock, so a December date checked in November fails on the daily and the doors, as it should.
+
+**Making it a gate.** A failed check only sends a mail; it does not stop anything. To keep a red CI from reaching `main` at all, the owner turns on GitHub's branch protection for `main`: Settings, Branches, "Require status checks to pass before merging", with CI's jobs as the required checks ("CI vs deployment", below).
+
 ## Domain & TLS (one-time, already applicable)
 
 1. In the Worker/Pages project → **Custom Domains** → add `sudokui.app`
@@ -146,7 +181,8 @@ gate: typecheck, the full test suite including the technique soundness
 harness, and a build. Cloudflare's build is what actually deploys. A second
 workflow, [indexnow.yml](../.github/workflows/indexnow.yml), runs on a push
 to `main` only and tells IndexNow what the deploy changed ("IndexNow", above); it can
-never fail.
+never fail. A third, [live-check.yml](../.github/workflows/live-check.yml), checks the
+live site each morning and after each push's deploy ("The live-site check", above); it fails, and mails the owner, when a page answers wrongly.
 
 Note they are independent — a push to `main` deploys even if CI fails. For
 stricter gating, protect `main` with a required CI status check in GitHub

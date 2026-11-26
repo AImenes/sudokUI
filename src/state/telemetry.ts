@@ -37,8 +37,9 @@
 // board (the Share dialog's image, also opened from a hint), sends a
 // `shared` line once the share sheet took it, it was copied or the picture
 // was saved: what was shared, which way, and the puzzle's band, with the
-// version and where the app ran. Never the link, the text, the picture or
-// where it went. It goes live or not at all,
+// version and where the app ran; from a door of the advent calendar, which
+// door (a door's line is a kind of its own). Never the link, the text, the
+// picture or where it went. It goes live or not at all,
 // and nothing is kept on the device for it: offline it is dropped, with
 // or without the opt-in, so it carries none of the opt-in's flags; a
 // device left out sends none. (The Worker writes it like the play lines,
@@ -63,8 +64,8 @@ export const STORAGE_KEY = 'sudokui-telemetry-v1';
 /** how long a live event waits for company before it goes, in ms */
 export const BATCH_DELAY = 1000;
 
-/** what a share was: the Share dialog's puzzle or position link or picture of the board, the win screen's challenge or daily line (worker/telemetry.ts, SHARE_KINDS) */
-export type ShareKind = 'puzzle' | 'position' | 'challenge' | 'daily' | 'image';
+/** what a share was: the Share dialog's puzzle or position link or picture of the board, the win screen's challenge or daily line, or a door of the advent calendar's line, from its win screen or the Share dialog (worker/telemetry.ts, SHARE_KINDS) */
+export type ShareKind = 'puzzle' | 'position' | 'challenge' | 'daily' | 'image' | 'door';
 /** the share sheet took it, it was copied, or the picture was saved as a file (SHARE_VIAS) */
 export type ShareVia = 'sheet' | 'copy' | 'save';
 /** what kind of game a start or a solve is about (worker/telemetry.ts, PLAY_KINDS; gameStore.ts, kindOf) */
@@ -93,7 +94,7 @@ export interface PlayEvent {
   /** a start's or a solve's kind of game and the app's language, both on every one the app makes now (PLAY_KINDS, PLAY_LANGS); a line kept by an older version has neither */
   kind?: PlayKind;
   lang?: Lang;
-  /** a door of the advent calendar's start or solve: its door, 1 to 24; on no other line (worker/telemetry.ts, checkEvent) */
+  /** a door of the advent calendar's start or solve, or a share of a door game (its line always; a link or a picture of it too): its door, 1 to 24; on no other line (worker/telemetry.ts, checkEvent) */
   door?: number;
   /** a solve's line only: whether any help was used in the game, yes or no; a line kept by an older version does not say */
   assisted?: boolean;
@@ -111,8 +112,8 @@ interface TelemetryState extends Kept {
   pending: PlayEvent[];
   /** a game of a kind began or was solved (a door of the advent calendar with its door; a solve with whether help was used): sent now while online, kept with the opt-in while offline, dropped otherwise */
   track(event: 'started' | 'completed', band: Level, seconds: number, kind: PlayKind, door?: number, assisted?: boolean): void;
-  /** a link or a picture went to someone, through the share sheet, a copy or a saved file: sent now while online, else dropped; never kept on the device */
-  shared(what: ShareKind, via: ShareVia, band: Level): void;
+  /** a link or a picture went to someone, through the share sheet, a copy or a saved file (from a door game, with its door): sent now while online, else dropped; never kept on the device */
+  shared(what: ShareKind, via: ShareVia, band: Level, door?: number): void;
   /** sends what waits: the live batch at once, then the kept queue while online and opted in */
   flush(): Promise<void>;
   /** drops the queue and the date, here and from the device */
@@ -251,11 +252,16 @@ export const useTelemetry = create<TelemetryState>()((set, get) => ({
     keep({ queue, firstSeen: get().firstSeen });
   },
 
-  shared: (what, via, band) => {
+  shared: (what, via, band, door) => {
     // live or not at all, and never from a device left out, nor from a view
     if (leftOut() || !online() || !play.acts()) return;
+    // a door's line always says its door; a link or a picture of a door
+    // game says it when given; the win screen's challenge and the daily's
+    // line never do (worker/telemetry.ts, DOOR_SHARES)
+    const withDoor = door !== undefined && (what === 'door' || what === 'puzzle' || what === 'position' || what === 'image');
+    if (what === 'door' && !withDoor) return;
     const source = playedFrom();
-    sendLive({ event: 'shared', band, bucket: 0, standalone: source === 'pwa', version: APP_VERSION, source, what, via });
+    sendLive({ event: 'shared', band, bucket: 0, standalone: source === 'pwa', version: APP_VERSION, source, what, via, ...(withDoor ? { door } : {}) });
   },
 
   flush: async () => {

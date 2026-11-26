@@ -357,10 +357,14 @@ and the privacy page says what these keep.
 
 **A door wears the Christmas look, and the look is knitted** (the owner's
 asking of 23 November 2026). A game that is a door of the advent calendar
-is always shown in the Christmas look, whatever theme is chosen and
-whatever the day ([theme.ts](../src/ui/theme.ts), `useShownTheme`): the
-choice is left as it is and comes back with the next game that is no
-door, and Settings says so in the look's season. The look itself took on
+is shown in the Christmas look, whatever theme is chosen and whatever the
+day ([theme.ts](../src/ui/theme.ts), `useShownTheme`), while Settings'
+switch "Doors wear the Christmas look" is on, as it is by default
+(`doorChristmas`, src/state/settings.ts); off, a door shows the chosen
+look, so a player who needs a light one can have it. The switch is in
+Settings in the look's season, and while a door is on the board after it.
+Either way the choice is left as it is and comes back with the next game
+that is no door. The look itself took on
 the doors' pictures' knitting: the bar's pine and the page's night are
 stocking stitch (a few hundredths of the ground, under no measured
 contrast), a pattern band runs along the bar's foot where the lights
@@ -370,8 +374,6 @@ top and foot; the wide margins hold knitted eight-petalled roses where
 the snowflakes were, as faint and in the same places; and the pause
 card's button and the number keys are patches with a running stitch
 inside their edge, as the doors' numbers are. Nothing lies on the board.
-Left as it is: a player who needs a light look gets the dark Christmas
-one while a door is open, with no way round it but to leave the door.
 
 **The Christmas look** ([styles.css](../src/ui/styles.css), keyed by
 `data-theme='christmas'`). A winter night since 15 November 2026. It went
@@ -845,6 +847,28 @@ none of the player's work.
   Left as it is: the show plays each time the win screen opens, so also
   when a solved game is opened again; and for its first seconds pieces
   cross the dialog's words.
+
+### The web manifest
+
+[src/content/manifest.ts](../src/content/manifest.ts) is what a browser reads to install sudokUI. vite.config.ts hands it to vite-plugin-pwa, which writes `dist/manifest.webmanifest`. Since 25 November 2026 it carries:
+
+- **`id`, `start_url` and `scope`, all `/`.** The app is the whole site, and an installed copy keeps its identity if the start address ever changes.
+- **Two shortcuts,** offered by a long press on the installed icon (or a right click in a desktop dock):
+  - "Today's daily", `/#daily`, which the app opens as today's daily, whatever the day (src/content/share.ts, `readAppLink`);
+  - "Learn", `/#learn=techniques`, the technique guide.
+
+  Both open inside the app, offline too. A game under way goes aside, as with any link.
+- **Two screenshots for the install sheet:** a narrow one, 1080 x 1920 (a 360 x 640 phone at three device pixels to the CSS pixel), and a wide one, 1280 x 800. scripts/manifest-screenshots.ts takes them from the built app: a Medium daily with its first hint drawn, in English, dark, on a day outside the Christmas season, with no service worker, so no "ready to play offline" line shows. It writes them to public/screenshots/. Run it again after a visible change to the board or the hint panel:
+
+  ```sh
+  npm run build && npx vite-node scripts/manifest-screenshots.ts && npm run build
+  ```
+
+  The second build copies the new pictures into dist/. The service worker never precaches them (`SCREENSHOTS_GLOB` in `globIgnores`), because only the install sheet shows them.
+
+**One language.** A manifest has one `lang`, and the browser shows the shortcuts' names and the screenshots' labels as written, whatever the page's language. So they are in English, for players of nb and es too. A manifest per language would need a different `<link rel="manifest">` on /nb/ and /es/, and an installed app keeps the manifest it was installed from.
+
+tests/manifest.test.ts holds the source: the fields, that each shortcut's address opens what it names, that the pictures are files of their sizes, and that they stay out of the precache. tests/e2e/manifest.spec.ts holds the build: the served manifest, the pictures served at their sizes and missing from sw.js, and both shortcuts opened in the browser.
 
 ## Tests (`tests/`)
 
