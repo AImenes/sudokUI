@@ -9,7 +9,9 @@
  * each step is still what its finder gives at its position, and the tests
  * that pin an example's words, sets and drawing keep the example they
  * were written for (tests/examples.test.ts holds the stored examples
- * themselves to the engine, and the snapshot tests their drawings).
+ * themselves to the engine, and the snapshot tests their drawings;
+ * tests/storedExampleWords.test.ts pins the words of the stored ones, the
+ * ones the Learn pages show, in English, Norwegian and Spanish).
  *
  * Not a test file itself.
  */
