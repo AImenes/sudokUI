@@ -1,0 +1,52 @@
+name: Live check
+
+# The live site, as a player or a chat app first meets it (scripts/liveCheck.ts;
+# docs/deployment.md, "The live-site check"): the home pages in en, nb and
+# es, the advent calendar's three public pages, today's daily's address,
+# one /p/ share link, and from 1 to 24 December today's door in the three
+# languages. Each must answer 200, carry the og:image it should (a door its
+# own picture) and noindex where the site sets it. Any failure fails the
+# job, and GitHub mails the owner.
+#
+# GET requests only, never /api/, with a User-Agent the Worker counts as no
+# person (worker/telemetry.ts, isPersonAgent), so none of them is counted
+# as a landing (tests/liveCheck.test.ts proves it against the Worker).
+
+on:
+  # each morning, 06:23 UTC (07:23 in Oslo in winter): a minute off the
+  # hour, when GitHub's scheduler is less busy
+  schedule:
+    - cron: '23 6 * * *'
+  # and after every push to main, once Cloudflare's Workers Builds has
+  # deployed it: the job waits for the site to serve the pushed commit
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# a newer push's check takes over from an older one still waiting for its
+# deploy; the morning's run is never cancelled by a push
+concurrency:
+  group: live-check-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # up to 20 minutes waiting for the deploy, then a minute of checking
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check the live site (after a push, once its deploy is live)
+        run: npx vite-node scripts/live-check.ts ${{ github.event_name == 'push' && '--after-push' || '' }}
