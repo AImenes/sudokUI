@@ -3127,14 +3127,20 @@ export function gameName(g: { info: GameInfo | null; custom?: boolean; customBac
   if (info.adventDoor) return t('door {door} of the advent calendar', { door: info.adventDoor });
   if (info.practiceTech) return t('your {name} practice', { name: t.tech(info.practiceTech) });
   if (info.fromLink) return t('your game on a shared puzzle');
-  return t('your {level} game', { level: t.level(info.level) });
+  // the level the player saw on its top bar (shownRating): without uniqueness, their own
+  return t('your {level} game', { level: t.level(shownOf(info).level) });
+}
+
+/** a game's rating as the player sees it (shownRating), the published one while their own is still being worked out */
+function shownOf(info: GameInfo): ShownRating {
+  return shownRating(info, useSettings.getState().useUniqueness, useGame.getState().plainRatings);
 }
 
 /** a game as gameName names it: its info, and for a puzzle being typed in the game behind it */
 type Named = { info: GameInfo | null; custom?: boolean; customBackup?: GameBackup | null };
 
 /**
- * A game's name (gameName) among others: with its HoDoKu rating when
+ * A game's name (gameName) among others: with its rating as shown (shownRating) when
  * another of them has the same name and another rating (two Hard games),
  * so the words say which is which; a rating that tells nothing apart (two
  * copies of one daily) is left out.
@@ -3142,8 +3148,10 @@ type Named = { info: GameInfo | null; custom?: boolean; customBackup?: GameBacku
 export function nameAmong(g: Named, among: Named[]): string {
   const t = translator();
   const plain = gameName(g);
-  const twin = among.some((o) => o !== g && gameName(o) === plain && o.info?.score !== g.info?.score);
-  return twin && g.info ? t('{game} (HoDoKu rating {score})', { game: plain, score: g.info.score }) : plain;
+  // the score as the player saw it, as the level in the name (shownOf)
+  const score = (o: Named) => (o.info ? shownOf(o.info).score : undefined);
+  const twin = among.some((o) => o !== g && gameName(o) === plain && score(o) !== score(g));
+  return twin && g.info ? t('{game} (HoDoKu rating {score})', { game: plain, score: score(g)! }) : plain;
 }
 
 /**

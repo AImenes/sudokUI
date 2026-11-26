@@ -10,6 +10,8 @@ import { ratePuzzle } from '../src/engine/humanSolver';
 import { NO_UNIQUENESS_ORDER } from '../src/engine/ratings';
 
 const asked: string[] = [];
+/** puzzles the stand-in worker cannot answer for, as a worker that died: how many times more */
+const failing = new Map<string, number>();
 vi.mock('../src/state/pools', async (importOriginal) => {
   const real = await importOriginal<typeof import('../src/state/pools')>();
   return {
@@ -17,6 +19,11 @@ vi.mock('../src/state/pools', async (importOriginal) => {
     // the worker's answer, worked out here in the test
     ratePuzzleOff: async (puzzle: string) => {
       asked.push(puzzle);
+      const fails = failing.get(puzzle) ?? 0;
+      if (fails > 0) {
+        failing.set(puzzle, fails - 1);
+        return null;
+      }
       const r = ratePuzzle(puzzle, NO_UNIQUENESS_ORDER);
       return r ? { score: r.score, level: r.level } : null;
     }
@@ -64,5 +71,23 @@ describe('the figure a game shows, as the setting changes', () => {
     await settle();
     expect(asked.at(-1)).toBe(easy);
     expect(shown()).toMatchObject({ score: 454, level: 'Medium', plain: true, pending: false });
+  });
+
+  it('a request the worker could not answer is asked once more, then the published figure stands, no longer on its way', async () => {
+    useSettings.getState().set({ useUniqueness: false });
+    const once = '1.2...6....5..1.7.6.4..7.51...3..1...6..9..3...3..6...38.2..7.5.2.5..4....6...2.8';
+    failing.set(once, 1);
+    useGame.getState().startGame(once, 1218, 'Hard');
+    await settle();
+    await settle();
+    expect(asked.filter((p) => p === once)).toHaveLength(2);
+    expect(shown()).toMatchObject({ level: 'Extreme', plain: true, pending: false });
+    const never = '4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......';
+    failing.set(never, 2);
+    useGame.getState().startGame(never, 9999, 'Extreme');
+    await settle();
+    await settle();
+    expect(asked.filter((p) => p === never)).toHaveLength(2);
+    expect(shown()).toMatchObject({ score: 9999, level: 'Extreme', plain: true, pending: false });
   });
 });

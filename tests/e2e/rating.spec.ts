@@ -10,6 +10,8 @@
  * 1088 with it and Unfair 1208 without.
  */
 import { test, expect, Page } from '@playwright/test';
+import { parseGrid, gridToString } from '../../src/engine/board';
+import { solve } from '../../src/engine/bruteForce';
 
 const WAPO = '.4......1...7.5...9...3.........15.6.....2..8.79......4.2....3...53..8...9..4...7';
 
@@ -63,4 +65,38 @@ test('a daily keeps its published rating, and says the player’s own differs', 
   // the game keeps the published rating
   const info = await page.evaluate(() => JSON.parse(localStorage.getItem('sudokui-game-v1') ?? '{}').state?.info);
   expect([info.level, info.score]).toEqual(['Hard', 1088]);
+});
+
+const empties = (puzzle: string) => [...puzzle].map((ch, i) => (ch === '.' ? i : -1)).filter((i) => i >= 0);
+
+/** every empty cell filled, a click on it and the key */
+async function solveBoard(page: Page, puzzle: string) {
+  const solution = gridToString(solve(parseGrid(puzzle)!)!);
+  const box = (await page.locator('svg.board').boundingBox())!;
+  const size = box.width / 9;
+  for (const cell of empties(puzzle)) {
+    await page.mouse.click(box.x + ((cell % 9) + 0.5) * size, box.y + (Math.floor(cell / 9) + 0.5) * size);
+    await page.keyboard.press(`Digit${solution[cell]}`);
+  }
+}
+
+test('the record line after a win counts and names the level the player saw', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.addInitScript(withoutUniqueness);
+  const win = page.getByRole('dialog', { name: 'Puzzle solved' });
+  // Unfair 1322 with uniqueness, Extreme 2226 without
+  await page.goto(`/p/${WAPO}`);
+  await expect(badge(page)).toHaveText('Extreme');
+  await solveBoard(page, WAPO);
+  await expect(win).toBeVisible();
+  // Hard 1218 with uniqueness, Extreme 2318 without
+  const HARD = '1.2...6....5..1.7.6.4..7.51...3..1...6..9..3...3..6...38.2..7.5.2.5..4....6...2.8';
+  await page.goto(`/p/${HARD}`);
+  await expect(badge(page)).toHaveText('Extreme');
+  await expect(score(page)).toHaveText('2318');
+  await solveBoard(page, HARD);
+  await expect(win).toBeVisible();
+  await expect(win).toContainText('Extreme · HoDoKu rating 2318');
+  await expect(win.locator('.solve-record').first()).toHaveText(/^Your 2nd Extreme solve(, a new best|; best \d+:\d\d)$/);
 });

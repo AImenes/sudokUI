@@ -222,6 +222,29 @@ describe('a link opened over a game under way', () => {
     );
   });
 
+  it('names a game by the level and score the player saw: without uniqueness, their own once it is known', () => {
+    const game = (puzzle: string, score: number, level = 'Hard') =>
+      ({ info: { puzzle, solution: '', score, level, practiceTech: null }, cells: [], autoCandidates: false, elapsedBefore: 0, won: false }) as never;
+    useSettings.setState({ useUniqueness: false });
+    try {
+      // still being worked out: the published figure stands in
+      useGame.setState({ plainRatings: {} });
+      expect(gameName(game(HARD, 1348))).toBe('your Hard game');
+      useGame.setState({ plainRatings: { [HARD]: { score: 1500, level: 'Unfair' }, [EASY]: { score: 1290, level: 'Unfair' } } });
+      expect(gameName(game(HARD, 1348))).toBe('your Unfair game');
+      // told apart by the scores shown, not the published ones
+      expect(letGoLine([game(HARD, 1348)], game(EASY, 1290))).toBe(
+        'Only one game in progress is kept at a time: your Unfair game (HoDoKu rating 1500) is gone, your Unfair game (HoDoKu rating 1290) is kept'
+      );
+      // with uniqueness on, HoDoKu's again
+      useSettings.setState({ useUniqueness: true });
+      expect(gameName(game(HARD, 1348))).toBe('your Hard game');
+    } finally {
+      useSettings.setState({ useUniqueness: true });
+      useGame.setState({ plainRatings: {} });
+    }
+  });
+
   it('a Practice link or the Daily button over two games under way tells which one went', async () => {
     g().startGame(HARD, 1348, 'Hard');
     play(2);

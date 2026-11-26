@@ -496,7 +496,12 @@ without them. Now what that player sees is true for them:
   techniques (`NO_UNIQUENESS_ORDER`). A practice puzzle for a uniqueness
   technique keeps HoDoKu's: it is about the technique. The record times a
   solve under the level shown (`recordWin`), and the win screen compares
-  the time with that level's.
+  the time with that level's and names that level in its record line
+  ("Your 2nd Extreme solve"). The notices that name a game (`gameName`,
+  `nameAmong`: "Back to your Unfair game", a game set aside or let go)
+  name it by the level and score shown too; the game set aside has its
+  figure worked out as the one on the board does, and until it is known
+  the published one stands in.
 - **Off the main thread.** Rating without uniqueness is slower on hard
   puzzles (1.2 s for the Washington Post's), so it is never done on the
   main thread: src/state/playerRating.ts asks the background worker
@@ -504,6 +509,9 @@ without them. Now what that player sees is true for them:
   whenever a game opens or the setting is switched off, and keeps the
   answer in the store's `plainRatings`, by puzzle, in memory only. Until
   it comes, HoDoKu's figure stands in, faded (`.rating-pending`). A
+  request the worker could not answer (it died) is asked once more; a
+  second failure leaves the published figure standing, no longer faded,
+  rather than faded for good. A
   player who switches the setting mid-game sees the figure for the new
   setting: switched on, HoDoKu's at once; switched off, the worker's.
   The figure is kept out of the save on purpose: a save another page

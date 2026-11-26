@@ -1704,10 +1704,10 @@ export function VictoryDialog({
         {band && band.solves > 1 && (
           <p className="solve-record">
             {newBest
-              ? t('Your {nth} {level} solve, a new best', { nth: ordinal(band.solves, t.lang), level: t.level(info.level) })
+              ? t('Your {nth} {level} solve, a new best', { nth: ordinal(band.solves, t.lang), level: t.level(shown.level) })
               : t('Your {nth} {level} solve; best {time}', {
                   nth: ordinal(band.solves, t.lang),
-                  level: t.level(info.level),
+                  level: t.level(shown.level),
                   time: clock(band.bestMs)
                 })}
           </p>
